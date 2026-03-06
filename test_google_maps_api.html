@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Google Maps API Key Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0f1e;
+            color: #fff;
+            padding: 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .test-card {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.success {
+            background: #10b981;
+            color: #fff;
+        }
+
+        .status.error {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .status.pending {
+            background: #f59e0b;
+            color: #fff;
+        }
+
+        #map {
+            width: 100%;
+            height: 400px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .info {
+            background: #0f172a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 13px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        code {
+            background: #000;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        h1 {
+            color: #3b82f6;
+        }
+
+        h3 {
+            color: #64748b;
+            margin-top: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🗺️ Google Maps API Key Diagnostic Test</h1>
+
+    <div class="test-card">
+        <h3>Test 1: Script Loading <span id="status1" class="status pending">TESTING...</span></h3>
+        <div id="result1">Checking if Google Maps script loads...</div>
+    </div>
+
+    <div class="test-card">
+        <h3>Test 2: API Initialization <span id="status2" class="status pending">TESTING...</span></h3>
+        <div id="result2">Checking if window.google is available...</div>
+    </div>
+
+    <div class="test-card">
+        <h3>Test 3: Map Rendering <span id="status3" class="status pending">TESTING...</span></h3>
+        <div id="result3">Attempting to render map...</div>
+        <div id="map"></div>
+    </div>
+
+    <div class="test-card">
+        <h3>📋 Your API Key Configuration</h3>
+        <div class="info">
+            <strong>API Key:</strong> <code>AIzaSyCDjsoBjx9cPhadcW5PfIXdFjmbiwbnVF8</code><br><br>
+            <strong>Required APIs to Enable:</strong>
+            <ul>
+                <li>Maps JavaScript API</li>
+                <li>Roads API (for route snapping)</li>
+                <li>Distance Matrix API (for ETA calculations)</li>
+            </ul>
+            <strong>Referrer Restrictions:</strong>
+            <ul>
+                <li><code>http://localhost:*/*</code></li>
+                <li><code>https://gen-lang-client-0535844903.web.app/*</code></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = 'AIzaSyCDjsoBjx9cPhadcW5PfIXdFjmbiwbnVF8';
+
+        // Test 1: Script Loading
+        function test1() {
+            const scripts = document.querySelectorAll('script[src*="maps.googleapis.com"]');
+            if (scripts.length > 0) {
+                document.getElementById('status1').className = 'status success';
+                document.getElementById('status1').textContent = 'PASSED';
+                document.getElementById('result1').innerHTML = '✅ Google Maps script successfully injected into DOM';
+                return true;
+            } else {
+                document.getElementById('status1').className = 'status error';
+                document.getElementById('status1').textContent = 'FAILED';
+                document.getElementById('result1').innerHTML = '❌ No Google Maps script found in DOM';
+                return false;
+            }
+        }
+
+        // Test 2: API Initialization
+        function test2() {
+            if (typeof window.google !== 'undefined' && window.google.maps) {
+                document.getElementById('status2').className = 'status success';
+                document.getElementById('status2').textContent = 'PASSED';
+                document.getElementById('result2').innerHTML = '✅ window.google.maps is ready and initialized';
+                return true;
+            } else {
+                document.getElementById('status2').className = 'status error';
+                document.getElementById('status2').textContent = 'FAILED';
+                document.getElementById('result2').innerHTML = '❌ window.google is undefined - API failed to load';
+                return false;
+            }
+        }
+
+        // Test 3: Map Rendering
+        function test3() {
+            try {
+                const map = new google.maps.Map(document.getElementById('map'), {
+                    center: { lat: 39.8283, lng: -98.5795 },
+                    zoom: 4,
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#0a0f18" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#020617" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#64748b" }] }
+                    ]
+                });
+
+                // Add a test marker
+                new google.maps.Marker({
+                    position: { lat: 39.8283, lng: -98.5795 },
+                    map: map,
+                    title: 'Test Marker - Center of USA'
+                });
+
+                document.getElementById('status3').className = 'status success';
+                document.getElementById('status3').textContent = 'PASSED';
+                document.getElementById('result3').innerHTML = '✅ Map rendered successfully! Your API key is working correctly.';
+                return true;
+            } catch (error) {
+                document.getElementById('status3').className = 'status error';
+                document.getElementById('status3').textContent = 'FAILED';
+                document.getElementById('result3').innerHTML = `❌ Map rendering failed: <code>${error.message}</code>`;
+                return false;
+            }
+        }
+
+        // Load Google Maps API
+        function loadGoogleMaps() {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initTests`;
+            script.async = true;
+            script.defer = true;
+            script.onerror = function () {
+                document.getElementById('status1').className = 'status error';
+                document.getElementById('status1').textContent = 'FAILED';
+                document.getElementById('result1').innerHTML = '❌ Failed to load Google Maps script. Check your API key or network connection.';
+            };
+            document.head.appendChild(script);
+        }
+
+        // Initialize tests after Google Maps loads
+        window.initTests = function () {
+            setTimeout(() => {
+                test1();
+                test2();
+                test3();
+            }, 500);
+        };
+
+        // Start the test
+        loadGoogleMaps();
+    </script>
+</body>
+
+</html>

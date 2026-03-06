@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "gen-lang-client-0535844903"
+  },
+  "targets": {
+    "gen-lang-client-0535844903": {
+      "hosting": {
+        "loadpilot": [
+          "gen-lang-client-0535844903-849a7"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

@@ -1,0 +1,7 @@
+{
+  "name": "LoadPilot",
+  "description": "An intelligent load management system for truckers. Capture BOLs and Rate Confirmations via camera/screenshot, automatically extract data using AI, calculate IFTA mileage breakdowns, and manage fleet assets with deep P&L tracking.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
