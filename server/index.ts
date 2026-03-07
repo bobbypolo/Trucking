@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { errorHandler } from './middleware/errorHandler';
 
 // Domain route modules
 import usersRouter from './routes/users';
@@ -43,6 +44,9 @@ app.use(complianceRouter);
 app.use(incidentsRouter);
 app.use(accountingRouter);
 app.use(exceptionsRouter);
+
+// Global error handler — must be registered AFTER all routes
+app.use(errorHandler);
 
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);

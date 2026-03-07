@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodSchema, ZodError } from 'zod';
+import { ValidationError } from '../errors/AppError';
 
 /**
- * Structured validation error detail returned in the response.
+ * Structured validation error detail for Zod field-level issues.
  */
-export interface ValidationError {
+export interface ValidationErrorDetail {
     field: string;
     message: string;
 }
@@ -15,8 +16,9 @@ export interface ValidationError {
  * On success: replaces req.body with the parsed (coerced/defaulted) value
  * and calls next().
  *
- * On failure: responds with 400 and a structured error:
- *   { error_code: "VALIDATION_001", message: "Validation failed", details: [...] }
+ * On failure: throws a ValidationError with field-level details.
+ * The global errorHandler middleware catches this and returns the
+ * structured envelope to the client.
  */
 export function validateBody(schema: ZodSchema) {
     return function validate(req: Request, res: Response, next: NextFunction) {
@@ -30,15 +32,14 @@ export function validateBody(schema: ZodSchema) {
 
         const zodError = result.error as ZodError;
         const issues = zodError.issues || (zodError as any).errors || [];
-        const details: ValidationError[] = issues.map((err: any) => ({
+        const details: ValidationErrorDetail[] = issues.map((err: any) => ({
             field: err.path.join('.') || '(root)',
             message: err.message,
         }));
 
-        res.status(400).json({
-            error_code: 'VALIDATION_001',
-            message: 'Validation failed',
-            details,
+        const error = new ValidationError('Validation failed', {
+            fields: details,
         });
+        next(error);
     };
 }
