@@ -52,9 +52,9 @@ export const equipmentRepository = {
   /**
    * Assign equipment to a load with optimistic locking.
    *
-   * Uses version check in WHERE clause:
-   *   UPDATE equipment SET assigned_load_id = ?, version = version + 1
-   *   WHERE id = ? AND company_id = ? AND version = ?
+   * Uses version check in WHERE clause. The assigned_load_id is set
+   * and the version is atomically incremented. If the expected version
+   * does not match, 0 rows are affected and null is returned.
    *
    * Returns null if 0 rows affected (version mismatch or wrong tenant).
    */
