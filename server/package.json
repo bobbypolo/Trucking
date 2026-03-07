@@ -22,7 +22,8 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.16.0"
+    "mysql2": "^3.16.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

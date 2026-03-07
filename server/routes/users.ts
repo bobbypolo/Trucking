@@ -4,13 +4,15 @@ import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { verifyFirebaseToken } from '../auth';
 import db from '../firestore';
+import { validateBody } from '../middleware/validate';
+import { registerUserSchema, syncUserSchema, loginUserSchema } from '../schemas/users';
 
 const router = Router();
 const authenticateToken = verifyFirebaseToken;
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
 // AUTHENTICATION & REGISTRATION
-router.post('/api/auth/register', async (req, res) => {
+router.post('/api/auth/register', validateBody(registerUserSchema), async (req, res) => {
     console.log('[API] Registration Request:', JSON.stringify(req.body, null, 2));
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate } = req.body;
     try {
@@ -39,7 +41,7 @@ router.post('/api/auth/register', async (req, res) => {
 });
 
 // User Management (Sync)
-router.post('/api/users', async (req, res) => {
+router.post('/api/users', validateBody(syncUserSchema), async (req, res) => {
     console.log('[API] User Sync Request:', JSON.stringify(req.body, null, 2));
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate, managed_by_user_id, managedByUserId, safety_score, safetyScore } = req.body;
     try {
@@ -74,7 +76,7 @@ router.post('/api/users', async (req, res) => {
     }
 });
 
-router.post('/api/auth/login', async (req, res) => {
+router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) => {
     const { email, password, firebaseUid } = req.body;
     try {
         // Firebase Auth is handled on the frontend

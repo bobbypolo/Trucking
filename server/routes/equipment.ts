@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { verifyFirebaseToken } from '../auth';
 import pool from '../db';
 import { redactData, getVisibilitySettings } from '../helpers';
+import { validateBody } from '../middleware/validate';
+import { createEquipmentSchema } from '../schemas/equipment';
 
 const router = Router();
 const authenticateToken = verifyFirebaseToken;
@@ -21,7 +23,7 @@ router.get('/api/equipment/:companyId', authenticateToken, async (req: any, res)
     }
 });
 
-router.post('/api/equipment', authenticateToken, async (req: any, res) => {
+router.post('/api/equipment', authenticateToken, validateBody(createEquipmentSchema), async (req: any, res) => {
     const { id, company_id, unit_number, type, status, ownership_type, provider_name, daily_cost, maintenance_history } = req.body;
     if (req.user.companyId !== company_id && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Unauthorized company access' });

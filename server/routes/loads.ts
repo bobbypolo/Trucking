@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { verifyFirebaseToken } from '../auth';
 import pool from '../db';
 import { redactData, getVisibilitySettings, sendNotification, checkBreakdownLateness } from '../helpers';
+import { validateBody } from '../middleware/validate';
+import { createLoadSchema, updateLoadStatusSchema } from '../schemas/loads';
 
 const router = Router();
 const authenticateToken = verifyFirebaseToken;
@@ -38,7 +40,7 @@ router.get('/api/loads/:companyId', authenticateToken, async (req: any, res) => 
     }
 });
 
-router.post('/api/loads', authenticateToken, async (req: any, res) => {
+router.post('/api/loads', authenticateToken, validateBody(createLoadSchema), async (req: any, res) => {
     const { id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, container_number, chassis_number, bol_number, legs, notification_emails, contract_id, gpsHistory, podUrls, customerUserId } = req.body;
 
     if (req.user.companyId !== company_id && req.user.role !== 'admin') {
@@ -123,7 +125,7 @@ router.post('/api/loads', authenticateToken, async (req: any, res) => {
 });
 
 // Specialized Load Update (for Status Triggers)
-router.patch('/api/loads/:id/status', async (req, res) => {
+router.patch('/api/loads/:id/status', validateBody(updateLoadStatusSchema), async (req, res) => {
     const { status, dispatcher_id } = req.body;
     const loadId = req.params.id;
     try {

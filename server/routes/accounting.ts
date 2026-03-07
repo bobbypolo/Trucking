@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import pool from '../db';
 import { detectState, calculateDistance } from '../geoUtils';
+import { validateBody } from '../middleware/validate';
+import { createSettlementSchema } from '../schemas/settlements';
 
 const router = Router();
 
@@ -274,7 +276,7 @@ router.get('/api/accounting/settlements', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/settlements', async (req, res) => {
+router.post('/api/accounting/settlements', validateBody(createSettlementSchema), async (req, res) => {
     const set = req.body;
     const connection = await pool.getConnection();
     try {
