@@ -9,6 +9,10 @@ research/
 # END ADE MANAGED
 
 # Project-specific patterns below this line
+node_modules/
+dist/
+dist-ssr/
+*.local
 
 # Full ADE workflow directory — not tracked in git
 .claude/
