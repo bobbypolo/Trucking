@@ -218,7 +218,7 @@ describe("R-P2-06: Dispatch Flow — Status Transitions via API", () => {
       // Mock the loadService.transitionLoad flow
       mockSuccessfulTransition("draft", 1);
 
-      // Transaction: UPDATE + INSERT event
+      // Mock transaction: status change and event record
       mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
       mockExecute.mockResolvedValueOnce([{ affectedRows: 1, insertId: 0 }, []]);
 
@@ -282,7 +282,7 @@ describe("R-P2-06: Dispatch Flow — Status Transitions via API", () => {
           mockSuccessfulTransition(step.from, step.version);
         }
 
-        // Transaction: UPDATE + INSERT event
+        // Mock transaction: status change and event record
         mockExecute.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
         mockExecute.mockResolvedValueOnce([
           { affectedRows: 1, insertId: 0 },
