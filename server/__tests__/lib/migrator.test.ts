@@ -245,13 +245,15 @@ describe("R-P1-08: Database Migration Framework", () => {
       const migrationsDir = path.resolve(__dirname, "..", "..", "migrations");
       const available = await scanMigrationFiles(migrationsDir);
 
-      // Simulate both migrations applied
+      // Simulate all migrations applied
       for (const m of available) {
         runner.db.simulateApply(m.filename, m.checksum);
       }
 
       const result = await runner.runner.down();
-      expect(result.rolledBack).toBe("003_enhance_dispatch_events.sql");
+      // down() rolls back the last applied migration (newest file)
+      const lastMigration = available[available.length - 1].filename;
+      expect(result.rolledBack).toBe(lastMigration);
 
       // Verify DELETE was executed for the rolled-back migration
       const deleteStatements = runner.db.executedSql.filter((s) =>

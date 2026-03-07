@@ -10,6 +10,7 @@ import {
   checkBreakdownLateness,
 } from "../helpers";
 import { validateBody } from "../middleware/validate";
+import { idempotencyMiddleware } from "../middleware/idempotency";
 import { createLoadSchema, updateLoadStatusSchema } from "../schemas/loads";
 import { createChildLogger } from "../lib/logger";
 import { loadService } from "../services/load.service";
@@ -306,11 +307,13 @@ router.get(
 );
 
 // Status Transition — wired to state machine via loadService.transitionLoad
+// Idempotency enforced: duplicate transition requests with same key+hash replay stored response
 router.patch(
   "/api/loads/:id/status",
   requireAuth,
   requireTenant,
   validateBody(updateLoadStatusSchema),
+  idempotencyMiddleware(),
   async (req: any, res, next) => {
     const { status } = req.body;
     const loadId = req.params.id;
