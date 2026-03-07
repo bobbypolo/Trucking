@@ -1,6 +1,7 @@
 
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
+import { logger } from './lib/logger';
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ let serviceAccount: any;
 try {
     serviceAccount = require('./serviceAccount.json');
 } catch (e) {
-    console.warn('Firebase Service Account not found. Backend security is running in BYPASS mode.');
+    logger.warn('Firebase Service Account not found. Backend security is running in BYPASS mode.');
 }
 
 
@@ -22,14 +23,14 @@ if (serviceAccount) {
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount)
     });
-    console.log('Firebase Admin initialized successfully.');
+    logger.info('Firebase Admin initialized successfully.');
 }
 
 export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
     if (!serviceAccount) {
         // SECURITY HARDENING: Fail closed if service account is missing.
         // Was: return next(); // BYPASS MODE
-        console.error('CRITICAL: Firebase Service Account missing. Rejecting request to enforce security.');
+        logger.error('CRITICAL: Firebase Service Account missing. Rejecting request to enforce security.');
         return res.status(500).json({ error: 'Server Security Configuration Error: Service Account Missing.' });
     }
 
@@ -48,7 +49,7 @@ export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
         const snapshot = await usersRef.where('email', '==', decodedToken.email).limit(1).get();
 
         if (snapshot.empty) {
-            console.warn(`[AUTH] Identity verified for ${decodedToken.email} but no Firestore User record found.`);
+            logger.warn({ email: decodedToken.email }, 'Identity verified but no Firestore User record found');
             return res.status(403).json({ error: 'Identity verified but no linked LoadPilot account found.' });
         }
 
@@ -64,7 +65,7 @@ export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
         };
         next();
     } catch (error) {
-        console.error('Firebase Token Verification Failed:', error);
+        logger.error({ err: error }, 'Firebase Token Verification Failed');
         res.status(403).json({ error: 'Invalid or expired identity token.' });
     }
 };

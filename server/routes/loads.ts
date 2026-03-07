@@ -6,6 +6,7 @@ import pool from '../db';
 import { redactData, getVisibilitySettings, sendNotification, checkBreakdownLateness } from '../helpers';
 import { validateBody } from '../middleware/validate';
 import { createLoadSchema, updateLoadStatusSchema } from '../schemas/loads';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
@@ -35,7 +36,8 @@ router.get('/api/loads/:companyId', requireAuth, requireTenant, async (req: any,
 
         res.json(redactData(enrichedLoads, req.user.role, settings));
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/loads]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/loads' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/loads]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -117,7 +119,8 @@ router.post('/api/loads', requireAuth, requireTenant, validateBody(createLoadSch
         res.status(201).json({ message: 'Load saved' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/loads]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/loads' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/loads]');
         res.status(500).json({ error: 'Database error' });
     } finally {
         connection.release();
@@ -144,7 +147,8 @@ router.patch('/api/loads/:id/status', requireAuth, requireTenant, validateBody(u
 
         res.json({ message: 'Status updated' });
     } catch (error) {
-        console.error('SERVER ERROR [PATCH /api/loads/status]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'PATCH /api/loads/status' });
+        log.error({ err: error }, 'SERVER ERROR [PATCH /api/loads/status]');
         res.status(500).json({ error: 'Database error' });
     }
 });

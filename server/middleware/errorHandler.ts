@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError, InternalError } from '../errors/AppError';
+import { createChildLogger } from '../lib/logger';
 
 /**
  * Global Express error-handling middleware.
@@ -7,7 +8,7 @@ import { AppError, InternalError } from '../errors/AppError';
  * - AppError instances → returns their structured JSON envelope
  * - Unknown errors → wraps as InternalError with generic message
  * - NEVER exposes stack traces in the response body
- * - Logs full error details (including stack) to console.error
+ * - Logs full error details (including stack) via structured logger
  */
 export function errorHandler(
     err: unknown,
@@ -31,13 +32,18 @@ export function errorHandler(
     }
 
     // Log full details server-side (including stack for debugging)
-    console.error(
-        `[${appError.error_class}] ${appError.error_code}: ${appError.message}`,
+    const log = createChildLogger({
+        correlationId: appError.correlation_id,
+        route: `${_req.method} ${_req.path}`,
+    });
+    log.error(
         {
-            correlation_id: appError.correlation_id,
+            error_class: appError.error_class,
+            error_code: appError.error_code,
             details: appError.details,
             stack: err instanceof Error ? err.stack : String(err),
         },
+        appError.message,
     );
 
     res.status(appError.statusCode).json(appError.toJSON());

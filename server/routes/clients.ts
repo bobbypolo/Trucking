@@ -5,6 +5,7 @@ import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 import db from '../firestore';
 import { redactData, getVisibilitySettings } from '../helpers';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
@@ -18,7 +19,8 @@ router.get('/api/clients/:companyId', requireAuth, requireTenant, async (req: an
         const settings = await getVisibilitySettings(req.params.companyId);
         res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/clients]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/clients' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/clients]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -35,7 +37,8 @@ router.post('/api/clients', requireAuth, requireTenant, async (req: any, res) =>
         );
         res.status(201).json({ message: 'Client saved' });
     } catch (error) {
-        console.error('SERVER ERROR [POST /api/clients]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/clients' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/clients]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -47,7 +50,8 @@ router.get('/api/companies/:id', requireAuth, requireTenant, async (req: any, re
         if (!doc.exists) return res.status(404).json({ error: 'Company not found' });
         res.json(doc.data());
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/companies]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/companies' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/companies]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     }
 });
@@ -63,7 +67,8 @@ router.post('/api/companies', requireAuth, requireTenant, async (req: any, res) 
         }, { merge: true });
         res.status(201).json({ message: 'Company created' });
     } catch (error) {
-        console.error('SERVER ERROR [POST /api/companies]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/companies' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/companies]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -161,7 +166,8 @@ router.get('/api/parties', requireAuth, requireTenant, async (req: any, res) => 
         }));
         res.json(enrichedParties);
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/parties]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/parties' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/parties]');
     }
 });
 
@@ -244,7 +250,8 @@ router.post('/api/parties', requireAuth, requireTenant, async (req: any, res) =>
         res.status(201).json({ message: 'Party synced with Unified Engine' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/parties]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/parties' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/parties]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     } finally {
         connection.release();
@@ -328,7 +335,8 @@ router.get('/api/global-search', requireAuth, requireTenant, async (req: any, re
 
         res.json(results.slice(0, 20));
     } catch (error) {
-        console.error('SEARCH ERROR:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/global-search' });
+        log.error({ err: error }, 'Search failed');
         res.status(500).json({ error: 'Search failed' });
     }
 });

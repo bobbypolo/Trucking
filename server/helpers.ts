@@ -1,5 +1,6 @@
 import pool from './db';
 import { calculateDistance } from './geoUtils';
+import { logger } from './lib/logger';
 
 // Redaction Helper (Security Hardening)
 export const redactData = (data: any, role: string, settings: any) => {
@@ -50,9 +51,7 @@ export const redactData = (data: any, role: string, settings: any) => {
 // Helper for Email Notifications (KCI Specialization)
 export const sendNotification = (emails: string[], subject: string, message: string) => {
     if (!emails || emails.length === 0) return;
-    console.log(`[EMAIL NOTIFICATION] TO: ${emails.join(', ')}`);
-    console.log(`[EMAIL NOTIFICATION] SUBJECT: ${subject}`);
-    console.log(`[EMAIL NOTIFICATION] MESSAGE: ${message}`);
+    logger.info({ to: emails.join(', '), subject, message }, 'Email notification dispatched');
 };
 
 /**
@@ -95,7 +94,7 @@ export const getVisibilitySettings = async (companyId: string) => {
         const rawSettings = companyRows[0]?.driver_visibility_settings;
         settings = rawSettings ? (typeof rawSettings === 'string' ? JSON.parse(rawSettings) : rawSettings) : null;
     } catch (e) {
-        console.error('Failed to parse driver_visibility_settings:', e);
+        logger.error({ err: e }, 'Failed to parse driver_visibility_settings');
     }
     return settings;
 };

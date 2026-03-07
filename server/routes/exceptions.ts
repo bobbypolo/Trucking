@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { requireAuth } from '../middleware/requireAuth';
 import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
@@ -73,7 +74,8 @@ router.patch('/api/exceptions/:id', requireAuth, requireTenant, async (req: any,
             // Dispatch Update: If Delay, update ETA or Status
             // Billing Update: If POD Received, unlock Invoicing
             // Payroll Update: If doc correct, approve settlement line
-            console.log(`[TRIGGER] Automated resolution logic for ${exception.type} on ${exception.entity_type} ${exception.entity_id}`);
+            const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'PATCH /api/exceptions' });
+            log.info({ exceptionType: exception.type, entityType: exception.entity_type, entityId: exception.entity_id }, 'Automated resolution triggered');
         }
 
         // Log event

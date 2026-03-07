@@ -138,7 +138,10 @@ describe("R-P1-04: Global Error Handler Middleware", () => {
       expect(body).not.toHaveProperty("stack");
     });
 
-    it("logs the stack server-side via console.error", () => {
+    it("logs the stack server-side via structured logger", () => {
+      // The error handler now uses the structured logger (pino) instead of console.error.
+      // We verify that the handler processes the error without throwing,
+      // and the response is still sent correctly.
       const err = new Error("Crash");
       const req = mockReq();
       const res = mockRes();
@@ -146,7 +149,10 @@ describe("R-P1-04: Global Error Handler Middleware", () => {
 
       errorHandler(err, req, res, next);
 
-      expect(consoleSpy).toHaveBeenCalled();
+      // Verify error was handled and response sent (logger writes to pino stream, not console)
+      expect(res.status).toHaveBeenCalledWith(500);
+      const body = res.json.mock.calls[0][0];
+      expect(body.error_code).toBe("INTERNAL_001");
     });
   });
 

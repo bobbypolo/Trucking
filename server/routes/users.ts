@@ -6,12 +6,14 @@ import { requireTenant } from '../middleware/requireTenant';
 import db from '../firestore';
 import { validateBody } from '../middleware/validate';
 import { registerUserSchema, syncUserSchema, loginUserSchema } from '../schemas/users';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
 // AUTHENTICATION & REGISTRATION
 router.post('/api/auth/register', validateBody(registerUserSchema), async (req, res) => {
-    console.log('[API] Registration Request:', JSON.stringify(req.body, null, 2));
+    const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/register' });
+    log.info({ data: { email: req.body.email } }, 'Registration request received');
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password || 'admin123', 10);
@@ -33,14 +35,15 @@ router.post('/api/auth/register', validateBody(registerUserSchema), async (req, 
         });
         res.status(201).json({ message: 'User registered successfully' });
     } catch (error) {
-        console.error('REGISTRATION ERROR:', error);
+        log.error({ err: error }, 'Registration failed');
         res.status(500).json({ error: 'Registration failed', details: error instanceof Error ? error.message : String(error) });
     }
 });
 
 // User Management (Sync)
 router.post('/api/users', validateBody(syncUserSchema), async (req, res) => {
-    console.log('[API] User Sync Request:', JSON.stringify(req.body, null, 2));
+    const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/users' });
+    log.info({ data: { email: req.body.email } }, 'User sync request received');
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate, managed_by_user_id, managedByUserId, safety_score, safetyScore } = req.body;
     try {
         let targetCompanyId = company_id || companyId || 'iscope-authority-001';
@@ -69,7 +72,7 @@ router.post('/api/users', validateBody(syncUserSchema), async (req, res) => {
         await db.collection('users').doc(userId).set(userData, { merge: true });
         res.status(201).json({ message: 'User updated/created' });
     } catch (error) {
-        console.error('USER SYNC ERROR:', error);
+        log.error({ err: error }, 'User sync failed');
         res.status(500).json({ error: 'User sync failed', details: error instanceof Error ? error.message : String(error) });
     }
 });
@@ -85,7 +88,8 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
         if (userSnapshot.empty) {
             // User authenticated with Firebase but no Firestore record exists
             // This shouldn't happen if seeding worked correctly
-            console.warn(`[LOGIN] User ${email} authenticated with Firebase but no Firestore record found`);
+            const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/login' });
+            log.warn({ email }, 'User authenticated with Firebase but no Firestore record found');
             return res.status(404).json({ error: 'User profile not found. Please contact support.' });
         }
 
@@ -124,7 +128,8 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
 
 
     } catch (error) {
-        console.error('LOGIN ERROR:', error);
+        const loginLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/login' });
+        loginLog.error({ err: error }, 'Login failed');
         res.status(500).json({ error: 'Login failed', details: error instanceof Error ? error.message : String(error) });
     }
 });
@@ -166,7 +171,8 @@ router.get('/api/users/:companyId', requireAuth, requireTenant, async (req: any,
         res.json(users);
 
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/users]:', error);
+        const usersLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/users' });
+        usersLog.error({ err: error }, 'SERVER ERROR [GET /api/users]');
         res.status(500).json({ error: 'Database error' });
     }
 });

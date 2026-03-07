@@ -6,6 +6,7 @@ import pool from '../db';
 import { detectState, calculateDistance } from '../geoUtils';
 import { validateBody } from '../middleware/validate';
 import { createSettlementSchema } from '../schemas/settlements';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
@@ -17,7 +18,8 @@ router.get('/api/accounting/accounts', requireAuth, requireTenant, async (req: a
         const [rows] = await pool.query('SELECT * FROM gl_accounts WHERE is_active = TRUE ORDER BY account_number ASC');
         res.json(rows);
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/accounting/accounts]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/accounting/accounts' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/accounting/accounts]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -64,7 +66,8 @@ router.get('/api/accounting/load-pl/:loadId', requireAuth, requireTenant, async 
             details
         });
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/accounting/load-pl]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/accounting/load-pl' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/accounting/load-pl]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -94,7 +97,8 @@ router.post('/api/accounting/journal', requireAuth, requireTenant, async (req: a
         res.status(201).json({ message: 'Journal entry posted' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/accounting/journal]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/journal' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/accounting/journal]');
         res.status(500).json({ error: 'Failed to post journal entry' });
     } finally {
         connection.release();
@@ -156,7 +160,8 @@ router.post('/api/accounting/invoices', requireAuth, requireTenant, async (req: 
         res.status(201).json({ message: 'Invoice created and posted to GL' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/accounting/invoices]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/invoices' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/accounting/invoices]');
         res.status(500).json({ error: 'Failed to create invoice' });
     } finally {
         connection.release();
@@ -219,7 +224,8 @@ router.post('/api/accounting/bills', requireAuth, requireTenant, async (req: any
         res.status(201).json({ message: 'Bill created and posted to GL' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/accounting/bills]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/bills' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/accounting/bills]');
         res.status(500).json({ error: 'Failed to create bill' });
     } finally {
         connection.release();
@@ -336,7 +342,8 @@ router.post('/api/accounting/settlements', requireAuth, requireTenant, validateB
         res.status(201).json({ message: 'Settlement created and posted to GL' });
     } catch (error) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/accounting/settlements]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/settlements' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/accounting/settlements]');
         res.status(500).json({ error: 'Failed to create settlement' });
     } finally {
         connection.release();
@@ -433,7 +440,8 @@ router.post('/api/accounting/ifta-audit-lock', requireAuth, requireTenant, async
 
         res.json({ message: 'Trip locked for audit' });
     } catch (e) {
-        console.error(e);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/ifta-audit-lock' });
+        log.error({ err: e }, 'SERVER ERROR [POST /api/accounting/ifta-audit-lock]');
         res.status(500).json({ error: 'Locking failed' });
     }
 });
@@ -500,7 +508,8 @@ router.post('/api/accounting/mileage', requireAuth, requireTenant, async (req: a
         );
         res.status(201).json({ message: 'Mileage logged' });
     } catch (e) {
-        console.error('SERVER ERROR [POST /api/accounting/mileage]:', e);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/mileage' });
+        log.error({ err: e }, 'SERVER ERROR [POST /api/accounting/mileage]');
         res.status(500).json({ error: 'Failed to log mileage' });
     }
 });
@@ -544,7 +553,8 @@ router.post('/api/accounting/adjustments', requireAuth, requireTenant, async (re
         );
         res.status(201).json({ message: 'Adjustment recorded' });
     } catch (e) {
-        console.error('SERVER ERROR [POST /api/accounting/adjustments]:', e);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/adjustments' });
+        log.error({ err: e }, 'SERVER ERROR [POST /api/accounting/adjustments]');
         res.status(500).json({ error: 'Failed to record adjustment' });
     }
 });
@@ -583,7 +593,8 @@ router.post('/api/accounting/batch-import', requireAuth, requireTenant, async (r
         res.json({ message: `Successfully imported ${data.length} records` });
     } catch (e) {
         await connection.rollback();
-        console.error('SERVER ERROR [POST /api/accounting/batch-import]:', e);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/accounting/batch-import' });
+        log.error({ err: e }, 'SERVER ERROR [POST /api/accounting/batch-import]');
         res.status(500).json({ error: 'Import failed' });
     } finally {
         connection.release();

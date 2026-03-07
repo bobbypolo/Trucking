@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { errorHandler } from './middleware/errorHandler';
+import { correlationId } from './middleware/correlationId';
+import { logger } from './lib/logger';
 
 // Domain route modules
 import usersRouter from './routes/users';
@@ -23,6 +25,7 @@ const port = process.env.PORT || 5000;
 // Global middleware
 app.use(cors());
 app.use(express.json());
+app.use(correlationId);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -49,5 +52,5 @@ app.use(exceptionsRouter);
 app.use(errorHandler);
 
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    logger.info({ port }, `Server running on port ${port}`);
 });

@@ -5,6 +5,7 @@ import pool from '../db';
 import { redactData, getVisibilitySettings } from '../helpers';
 import { validateBody } from '../middleware/validate';
 import { createEquipmentSchema } from '../schemas/equipment';
+import { createChildLogger } from '../lib/logger';
 
 const router = Router();
 
@@ -18,7 +19,8 @@ router.get('/api/equipment/:companyId', requireAuth, requireTenant, async (req: 
         const settings = await getVisibilitySettings(req.params.companyId);
         res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-        console.error('SERVER ERROR [GET /api/equipment]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/equipment' });
+        log.error({ err: error }, 'SERVER ERROR [GET /api/equipment]');
         res.status(500).json({ error: 'Database error' });
     }
 });
@@ -35,7 +37,8 @@ router.post('/api/equipment', requireAuth, requireTenant, validateBody(createEqu
         );
         res.status(201).json({ message: 'Equipment added' });
     } catch (error) {
-        console.error('SERVER ERROR [POST /api/equipment]:', error);
+        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/equipment' });
+        log.error({ err: error }, 'SERVER ERROR [POST /api/equipment]');
         res.status(500).json({ error: 'Database error' });
     }
 });
