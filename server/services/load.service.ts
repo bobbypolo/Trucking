@@ -135,22 +135,25 @@ export const loadService = {
         );
       }
 
-      // 4b. INSERT dispatch_event audit record
+      // 4b. INSERT dispatch_event audit record with formal audit columns
       const eventId = uuidv4();
+      const correlationId = uuidv4();
       const payload = JSON.stringify({
-        from_status: currentStatus,
-        to_status: targetStatus,
         version: newVersion,
-        user_id: userId,
       });
 
       await connection.execute(
-        `INSERT INTO dispatch_events (id, load_id, dispatcher_id, event_type, message, payload)
-                VALUES (?, ?, ?, 'StatusChange', ?, ?)`,
+        `INSERT INTO dispatch_events
+          (id, load_id, dispatcher_id, actor_id, event_type, prior_state, next_state, correlation_id, message, payload)
+         VALUES (?, ?, ?, ?, 'StatusChange', ?, ?, ?, ?, ?)`,
         [
           eventId,
           loadId,
           userId,
+          userId,
+          currentStatus,
+          targetStatus,
+          correlationId,
           `Status changed from ${currentStatus} to ${targetStatus}`,
           payload,
         ],

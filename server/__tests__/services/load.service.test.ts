@@ -493,8 +493,8 @@ describe("R-P2-02: Load Service", () => {
     });
   });
 
-  describe("AC3: dispatch_event payload includes transition metadata", () => {
-    it("event payload includes from_status, to_status, and user_id", async () => {
+  describe("AC3: dispatch_event includes transition metadata in formal columns", () => {
+    it("event INSERT includes actor_id, prior_state, next_state, correlation_id columns", async () => {
       mockQuery.mockResolvedValueOnce([
         [makeLoadRow({ status: "draft", version: 1 })],
         [],
@@ -518,15 +518,19 @@ describe("R-P2-02: Load Service", () => {
 
       // Second execute call is dispatch_event INSERT
       const eventCall = mockExecute.mock.calls[1];
+      const eventSql = eventCall[0] as string;
       const eventParams = eventCall[1] as unknown[];
-      // The payload (JSON) should contain from_status and to_status
-      const payloadStr = eventParams.find(
-        (p) => typeof p === "string" && p.includes("from_status"),
-      );
-      expect(payloadStr).toBeDefined();
-      const payload = JSON.parse(payloadStr as string);
-      expect(payload.from_status).toBe("draft");
-      expect(payload.to_status).toBe("planned");
+
+      // SQL should reference formal audit columns
+      expect(eventSql).toContain("actor_id");
+      expect(eventSql).toContain("prior_state");
+      expect(eventSql).toContain("next_state");
+      expect(eventSql).toContain("correlation_id");
+
+      // Params should include prior_state and next_state as direct values
+      expect(eventParams).toContain("draft"); // prior_state
+      expect(eventParams).toContain("planned"); // next_state
+      expect(eventParams).toContain(USER_ID); // actor_id
     });
   });
 });

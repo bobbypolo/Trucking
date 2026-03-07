@@ -251,7 +251,7 @@ describe("R-P1-08: Database Migration Framework", () => {
       }
 
       const result = await runner.runner.down();
-      expect(result.rolledBack).toBe("002_add_version_columns.sql");
+      expect(result.rolledBack).toBe("003_enhance_dispatch_events.sql");
 
       // Verify DELETE was executed for the rolled-back migration
       const deleteStatements = runner.db.executedSql.filter((s) =>
