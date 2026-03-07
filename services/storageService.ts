@@ -1,24 +1,71 @@
 import {
-  Message, LoadData, User, Company, LOAD_STATUS, LoadStatus, Broker, LoadExpense, Issue,
-  BolData, LoadLeg, FleetEquipment, LoadNumberingConfig, TimeLog,
-  DispatchEvent, Contract, Incident, IncidentAction, EmergencyCharge,
-  CallLog, OperationalTrend, KCIRequest, OperationalEvent, RequestStatus,
-  CallSession, RecordLink, LoadSummary, DriverSummary, GlobalSearchResult,
-  EntityType, Provider, Contact, OperationalTask, CrisisAction,
-  OperationalThread, Lead, Quote, Booking, WorkItem, ServiceTicket,
-  NotificationJob, VaultDoc, VaultDocType, VaultDocStatus
+  Message,
+  LoadData,
+  User,
+  Company,
+  LOAD_STATUS,
+  LoadStatus,
+  Broker,
+  LoadExpense,
+  Issue,
+  BolData,
+  LoadLeg,
+  FleetEquipment,
+  LoadNumberingConfig,
+  TimeLog,
+  DispatchEvent,
+  Contract,
+  Incident,
+  IncidentAction,
+  EmergencyCharge,
+  CallLog,
+  OperationalTrend,
+  KCIRequest,
+  OperationalEvent,
+  RequestStatus,
+  CallSession,
+  RecordLink,
+  LoadSummary,
+  DriverSummary,
+  GlobalSearchResult,
+  EntityType,
+  Provider,
+  Contact,
+  OperationalTask,
+  CrisisAction,
+  OperationalThread,
+  Lead,
+  Quote,
+  Booking,
+  WorkItem,
+  ServiceTicket,
+  NotificationJob,
+  VaultDoc,
+  VaultDocType,
+  VaultDocStatus,
 } from "../types";
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getCompany, updateCompany, getStoredUsers, getAuthHeaders } from "./authService";
+import { storage } from "./firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+  getCompany,
+  updateCompany,
+  getStoredUsers,
+  getAuthHeaders,
+} from "./authService";
 export { getAuthHeaders };
 import { getRawBrokers } from "./brokerService";
 import { jsPDF } from "jspdf";
-import autoTable from 'jspdf-autotable';
-import { v4 as uuidv4 } from 'uuid';
+import autoTable from "jspdf-autotable";
+import { v4 as uuidv4 } from "uuid";
 import { DispatchIntelligence } from "./dispatchIntelligence";
+import {
+  fetchLoads as apiFetchLoads,
+  createLoad as apiCreateLoad,
+  updateLoadStatusApi,
+  searchLoadsApi,
+} from "./loadService";
 
-const STORAGE_KEY = "loadpilot_loads_v1";
+// STORAGE_KEY for loads removed — load data comes from backend API only
 const STORAGE_KEY_INCIDENTS = "loadpilot_incidents_v1";
 const STORAGE_KEY_MESSAGES = "loadpilot_messages_v1";
 const STORAGE_KEY_REQUESTS = "loadpilot_requests_v1";
@@ -34,45 +81,14 @@ const STORAGE_KEY_BOOKINGS = "loadpilot_bookings_v1";
 const STORAGE_KEY_LEADS = "loadpilot_leads_v1";
 const STORAGE_KEY_WORK_ITEMS = "loadpilot_work_items_v1";
 const STORAGE_KEY_VAULT_DOCS = "loadpilot_vault_docs_v1";
-const API_URL = 'http://localhost:5000/api';
+const API_URL = "http://localhost:5000/api";
+
+// In-memory cache for loads fetched from API (replaces localStorage)
+let _cachedLoads: LoadData[] = [];
 
 const getRawLoads = (): LoadData[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    let loads = data ? JSON.parse(data) : [];
-    if (!Array.isArray(loads)) loads = [];
-
-    if (loads.length === 0) {
-      // Seed rich initial loads for predictive search testing
-      const now = new Date();
-      loads = [
-        { id: 'L-1001', loadNumber: 'LP-9001', status: 'in_transit', carrierRate: 2400, driverPay: 600, pickup: { city: 'Chicago', state: 'IL', facilityName: 'CenterPoint' }, dropoff: { city: 'Indianapolis', state: 'IN', facilityName: 'FedEx Hub' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver1@loadpilot.com', brokerId: 'B-101' },
-        { id: 'L-1102', loadNumber: 'LP-1102', status: 'in_transit', carrierRate: 1800, driverPay: 450, pickup: { city: 'Gary', state: 'IN', facilityName: 'U.S. Steel' }, dropoff: { city: 'Columbus', state: 'OH', facilityName: 'Distribution Center' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver2@loadpilot.com', brokerId: 'B-103' },
-        { id: 'L-1003', loadNumber: 'LP-9003', status: 'draft', carrierRate: 3200, driverPay: 800, pickup: { city: 'Savannah', state: 'GA', facilityName: 'Port of Savannah' }, dropoff: { city: 'Atlanta', state: 'GA', facilityName: 'Home Depot RDC' }, pickupDate: new Date(now.getTime() + 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver5@loadpilot.com', brokerId: 'B-104' },
-        { id: 'L-1004', loadNumber: 'LP-9004', status: 'delivered', carrierRate: 2100, driverPay: 525, pickup: { city: 'Dallas', state: 'TX', facilityName: 'Lineage Logistics' }, dropoff: { city: 'Houston', state: 'TX', facilityName: 'Port Houston' }, pickupDate: new Date(now.getTime() - 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver4@loadpilot.com', brokerId: 'B-102', financialStatus: 'Paid' },
-        { id: 'L-1105', loadNumber: 'LP-1105', status: 'in_transit', carrierRate: 1500, driverPay: 375, pickup: { city: 'Cincinnati', state: 'OH', facilityName: 'P&G Plant' }, dropoff: { city: 'Louisville', state: 'KY', facilityName: 'UPS Worldport' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver3@loadpilot.com', brokerId: 'B-105' },
-        { id: 'L-2001', loadNumber: 'LP-2001', status: 'in_transit', carrierRate: 2900, driverPay: 700, pickup: { city: 'Phoenix', state: 'AZ', facilityName: 'Amazon PHX6' }, dropoff: { city: 'Los Angeles', state: 'CA', facilityName: 'Port of LA' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver6@loadpilot.com', brokerId: 'B-101' },
-      ];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
-    }
-
-    return (loads as any[]).map((l: any) => ({
-      ...l,
-      id: l.id || uuidv4(),
-      loadNumber: l.loadNumber || 'UNKNOWN',
-      status: l.status || 'draft',
-      carrierRate: Number(l.carrierRate) || 0,
-      driverPay: Number(l.driverPay) || 0,
-      pickup: l.pickup || { city: '', state: '', facilityName: '' },
-      dropoff: l.dropoff || { city: '', state: '', facilityName: '' },
-      legs: l.legs || [],
-      pickupDate: l.pickupDate || new Date().toISOString().split('T')[0],
-      createdAt: l.createdAt || Date.now(),
-      containerNumber: l.containerNumber || (l.loadNumber ? `CONT-${l.loadNumber.split('-')[1]}` : undefined)
-    }));
-  } catch (e) {
-    return [];
-  }
+  // Returns cached loads from last API fetch — no localStorage
+  return _cachedLoads;
 };
 
 const getRawIncidents = (): Incident[] => {
@@ -85,7 +101,7 @@ const getRawIncidents = (): Incident[] => {
       ...inc,
       id: inc.id || uuidv4(),
       timeline: inc.timeline || [],
-      billingItems: inc.billingItems || []
+      billingItems: inc.billingItems || [],
     }));
   } catch (e) {
     return [];
@@ -94,33 +110,22 @@ const getRawIncidents = (): Incident[] => {
 
 export const getLoads = async (user: User): Promise<LoadData[]> => {
   try {
-    const res = await fetch(`${API_URL}/loads/${user.companyId}`, {
-      headers: await getAuthHeaders()
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.map((l: any) => ({
-        ...l,
-        loadNumber: l.load_number,
-        companyId: l.company_id,
-        driverId: l.driver_id,
-        dispatcherId: l.dispatcher_id,
-        brokerId: l.customer_id,
-        carrierRate: Number(l.carrier_rate) || 0,
-        driverPay: Number(l.driver_pay) || 0,
-        pickupDate: l.pickup_date,
-        legs: l.legs || [],
-        pickup: (l.legs?.find((leg: any) => leg.type === 'Pickup')) || { city: '', state: '', facilityName: '' },
-        dropoff: (l.legs?.find((leg: any) => leg.type === 'Dropoff')) || { city: '', state: '', facilityName: '' }
-      }));
-    }
-  } catch (e) { }
+    const loads = await apiFetchLoads();
+    // Update in-memory cache for functions that use getRawLoads()
+    _cachedLoads = loads;
 
-  const allLoads = getRawLoads();
-  if (['admin', 'dispatcher', 'safety_manager', 'payroll_manager'].includes(user.role)) {
-    return allLoads.filter(l => l.companyId === user.companyId);
-  } else {
-    return allLoads.filter(l => l.driverId === user.id);
+    if (
+      ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
+        user.role,
+      )
+    ) {
+      return loads.filter((l) => l.companyId === user.companyId);
+    } else {
+      return loads.filter((l) => l.driverId === user.id);
+    }
+  } catch (e) {
+    // Return cached loads if API is unavailable
+    return _cachedLoads;
   }
 };
 
@@ -131,66 +136,42 @@ export const saveLoad = async (load: LoadData, user: User) => {
     driverId: load.driverId || user.id,
   };
 
-  try {
-    await fetch(`${API_URL}/loads`, {
-      method: 'POST',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...loadToSave,
-        company_id: loadToSave.companyId,
-        customer_id: loadToSave.brokerId,
-        driver_id: loadToSave.driverId,
-        load_number: loadToSave.loadNumber,
-        carrier_rate: loadToSave.carrierRate,
-        driver_pay: loadToSave.driverPay,
-        pickup_date: loadToSave.pickupDate,
-        freight_type: loadToSave.freightType,
-        container_number: loadToSave.containerNumber,
-        container_size: loadToSave.containerSize,
-        chassis_number: loadToSave.chassisNumber,
-        chassis_provider: loadToSave.chassisProvider,
-        notification_emails: loadToSave.notificationEmails,
-        contract_id: loadToSave.contractId
-      })
-    });
-  } catch (e) { }
+  await apiCreateLoad(loadToSave);
 
-  const loads = getRawLoads();
-  const index = loads.findIndex(l => l.id === load.id);
-  if (index >= 0) loads[index] = loadToSave;
-  else loads.unshift(loadToSave);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+  // Update in-memory cache
+  const index = _cachedLoads.findIndex((l) => l.id === load.id);
+  if (index >= 0) _cachedLoads[index] = loadToSave;
+  else _cachedLoads.unshift(loadToSave);
 };
 
 export const deleteLoad = async (id: string) => {
-  const loads = getRawLoads();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(loads.filter(l => l.id !== id)));
+  // Remove from in-memory cache; backend delete not yet implemented
+  _cachedLoads = _cachedLoads.filter((l) => l.id !== id);
 };
 
-export const updateLoadStatus = async (loadId: string, status: LoadStatus, dispatcherId: string) => {
-  try {
-    await fetch(`${API_URL}/loads/${loadId}/status`, {
-      method: 'PATCH',
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ status, dispatcher_id: dispatcherId })
-    });
-  } catch (e) {
-    console.error('Failed to update status on backend', e);
-  }
+export const updateLoadStatus = async (
+  loadId: string,
+  status: LoadStatus,
+  dispatcherId: string,
+) => {
+  await updateLoadStatusApi(loadId, status, dispatcherId);
 
-  const loads = getRawLoads();
-  const idx = loads.findIndex(l => l.id === loadId);
+  // Update in-memory cache
+  const idx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (idx >= 0) {
-    loads[idx].status = status;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+    _cachedLoads[idx].status = status;
   }
 };
 
-export const linkSessionToRecord = async (sessionId: string, recordId: string, recordType: EntityType) => {
+export const linkSessionToRecord = async (
+  sessionId: string,
+  recordId: string,
+  recordType: EntityType,
+) => {
   const data = localStorage.getItem(STORAGE_KEY_CALLS);
   if (!data) return;
   let sessions: CallSession[] = JSON.parse(data);
-  const idx = sessions.findIndex(s => s.id === sessionId);
+  const idx = sessions.findIndex((s) => s.id === sessionId);
   if (idx >= 0) {
     const link: RecordLink = {
       id: uuidv4(),
@@ -198,7 +179,7 @@ export const linkSessionToRecord = async (sessionId: string, recordId: string, r
       entityId: recordId,
       isPrimary: true,
       createdAt: new Date().toISOString(),
-      createdBy: 'SYSTEM'
+      createdBy: "SYSTEM",
     };
     sessions[idx].links = [...(sessions[idx].links || []), link];
     localStorage.setItem(STORAGE_KEY_CALLS, JSON.stringify(sessions));
@@ -208,7 +189,7 @@ export const linkSessionToRecord = async (sessionId: string, recordId: string, r
 export const logTime = async (log: Partial<TimeLog>) => {
   try {
     await fetch(`${API_URL}/time-logs`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         ...log,
@@ -216,35 +197,37 @@ export const logTime = async (log: Partial<TimeLog>) => {
         load_id: log.loadId,
         activity_type: log.activityType,
         location_lat: log.location?.lat,
-        location_lng: log.location?.lng
-      })
+        location_lng: log.location?.lng,
+      }),
     });
   } catch (e) {
-    console.error('Failed to log time', e);
+    console.error("Failed to log time", e);
   }
 };
 
 export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
   try {
     await fetch(`${API_URL}/dispatch-events`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         ...event,
         load_id: event.loadId,
         dispatcher_id: event.dispatcherId,
-        event_type: event.eventType
-      })
+        event_type: event.eventType,
+      }),
     });
   } catch (e) {
-    console.error('Failed to log dispatch event', e);
+    console.error("Failed to log dispatch event", e);
   }
 };
 
-export const getDispatchEvents = async (companyId: string): Promise<DispatchEvent[]> => {
+export const getDispatchEvents = async (
+  companyId: string,
+): Promise<DispatchEvent[]> => {
   try {
     const res = await fetch(`${API_URL}/dispatch-events/${companyId}`, {
-      headers: await getAuthHeaders()
+      headers: await getAuthHeaders(),
     });
     if (res.ok) {
       const data = await res.json();
@@ -253,18 +236,23 @@ export const getDispatchEvents = async (companyId: string): Promise<DispatchEven
         loadId: e.load_id,
         dispatcherId: e.dispatcher_id,
         eventType: e.event_type,
-        createdAt: e.created_at
+        createdAt: e.created_at,
       }));
     }
-  } catch (e) { }
+  } catch (e) {}
   return [];
 };
 
-export const getTimeLogs = async (userIdOrCompanyId: string, isCompany = false): Promise<TimeLog[]> => {
+export const getTimeLogs = async (
+  userIdOrCompanyId: string,
+  isCompany = false,
+): Promise<TimeLog[]> => {
   try {
-    const url = isCompany ? `${API_URL}/time-logs/company/${userIdOrCompanyId}` : `${API_URL}/time-logs/${userIdOrCompanyId}`;
+    const url = isCompany
+      ? `${API_URL}/time-logs/company/${userIdOrCompanyId}`
+      : `${API_URL}/time-logs/${userIdOrCompanyId}`;
     const res = await fetch(url, {
-      headers: await getAuthHeaders()
+      headers: await getAuthHeaders(),
     });
     if (res.ok) {
       const data = await res.json();
@@ -277,22 +265,24 @@ export const getTimeLogs = async (userIdOrCompanyId: string, isCompany = false):
         clockOut: t.clock_out,
         location: {
           lat: t.location_lat,
-          lng: t.location_lng
-        }
+          lng: t.location_lng,
+        },
       }));
     }
-  } catch (e) { }
+  } catch (e) {}
   return [];
 };
 
 // Consolidated Work Item logic at the end of the file
 
-export const settleLoad = (loadId: string) => {
-  const loads = getRawLoads();
-  const idx = loads.findIndex(l => l.id === loadId);
+export const settleLoad = async (loadId: string) => {
+  // Update via API — no localStorage
+  await updateLoadStatusApi(loadId, LOAD_STATUS.Settled, "system");
+
+  // Update in-memory cache
+  const idx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (idx >= 0) {
-    loads[idx].status = LOAD_STATUS.Settled;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+    _cachedLoads[idx].status = LOAD_STATUS.Settled;
   }
 };
 
@@ -301,12 +291,12 @@ export const settleLoad = (loadId: string) => {
 export const getLeads = async (companyId: string): Promise<Lead[]> => {
   const data = localStorage.getItem(STORAGE_KEY_LEADS);
   const leads: Lead[] = data ? JSON.parse(data) : [];
-  return leads.filter(l => l.companyId === companyId);
+  return leads.filter((l) => l.companyId === companyId);
 };
 
 export const saveLead = async (lead: Lead) => {
   const leads = await getLeads(lead.companyId);
-  const idx = leads.findIndex(l => l.id === lead.id);
+  const idx = leads.findIndex((l) => l.id === lead.id);
   if (idx >= 0) leads[idx] = lead;
   else leads.unshift(lead);
   localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(leads));
@@ -315,13 +305,13 @@ export const saveLead = async (lead: Lead) => {
 export const getQuotes = async (companyId: string): Promise<Quote[]> => {
   const data = localStorage.getItem(STORAGE_KEY_QUOTES);
   const quotes: Quote[] = data ? JSON.parse(data) : [];
-  return quotes.filter(q => q.companyId === companyId);
+  return quotes.filter((q) => q.companyId === companyId);
 };
 
 export const saveQuote = async (quote: Quote) => {
   const data = localStorage.getItem(STORAGE_KEY_QUOTES);
   let quotes: Quote[] = data ? JSON.parse(data) : [];
-  const idx = quotes.findIndex(q => q.id === quote.id);
+  const idx = quotes.findIndex((q) => q.id === quote.id);
   if (idx >= 0) quotes[idx] = quote;
   else quotes.unshift(quote);
   localStorage.setItem(STORAGE_KEY_QUOTES, JSON.stringify(quotes));
@@ -330,31 +320,34 @@ export const saveQuote = async (quote: Quote) => {
 export const getBookings = async (companyId: string): Promise<Booking[]> => {
   const data = localStorage.getItem(STORAGE_KEY_BOOKINGS);
   const bookings: Booking[] = data ? JSON.parse(data) : [];
-  return bookings.filter(b => b.companyId === companyId);
+  return bookings.filter((b) => b.companyId === companyId);
 };
 
 export const saveBooking = async (booking: Booking) => {
   const data = localStorage.getItem(STORAGE_KEY_BOOKINGS);
   let bookings: Booking[] = data ? JSON.parse(data) : [];
-  const idx = bookings.findIndex(b => b.id === booking.id);
+  const idx = bookings.findIndex((b) => b.id === booking.id);
   if (idx >= 0) bookings[idx] = booking;
   else bookings.unshift(booking);
   localStorage.setItem(STORAGE_KEY_BOOKINGS, JSON.stringify(bookings));
 };
 
-export const convertBookingToLoad = async (bookingId: string, user: User): Promise<LoadData | null> => {
+export const convertBookingToLoad = async (
+  bookingId: string,
+  user: User,
+): Promise<LoadData | null> => {
   const bookings = await getBookings(user.companyId);
-  const booking = bookings.find(b => b.id === bookingId);
+  const booking = bookings.find((b) => b.id === bookingId);
   if (!booking) return null;
 
   const quotes = await getQuotes(user.companyId);
-  const quote = quotes.find(q => q.id === booking.quoteId);
+  const quote = quotes.find((q) => q.id === booking.quoteId);
   if (!quote) return null;
 
   const newLoad: LoadData = {
     id: uuidv4(),
     companyId: user.companyId,
-    driverId: '', // Unassigned initially
+    driverId: "", // Unassigned initially
     loadNumber: `LD-${Math.floor(Math.random() * 9000) + 1000}`,
     status: LOAD_STATUS.Unassigned,
     carrierRate: quote.totalRate,
@@ -362,73 +355,45 @@ export const convertBookingToLoad = async (bookingId: string, user: User): Promi
     pickup: quote.pickup,
     dropoff: quote.dropoff,
     legs: [],
-    pickupDate: new Date().toISOString().split('T')[0],
+    pickupDate: new Date().toISOString().split("T")[0],
     freightType: quote.equipmentType,
     createdAt: Date.now(),
-    version: 1
+    version: 1,
   };
 
   await saveLoad(newLoad, user);
 
   // Link back
   booking.loadId = newLoad.id;
-  booking.status = 'Ready_for_Dispatch';
+  booking.status = "Ready_for_Dispatch";
   await saveBooking(booking);
 
   return newLoad;
 };
 
-export const seedDemoLoads = (user: User) => {
-  const loads = getRawLoads();
-  if (loads.length > 0) return;
-
-  const demoLoads: LoadData[] = [
-    {
-      id: uuidv4(),
-      companyId: user.companyId,
-      driverId: user.id, // Admin
-      loadNumber: 'LD-1001',
-      status: LOAD_STATUS.Delivered,
-      carrierRate: 2500,
-      driverPay: 1200,
-      pickupDate: '2025-12-10',
-      freightType: 'Dry Van',
-      legs: [],
-      pickup: { city: 'Chicago', state: 'IL', facilityName: 'Logistics Hub A' },
-      dropoff: { city: 'Detroit', state: 'MI', facilityName: 'Manufacturing B' },
-      createdAt: Date.now(),
-      version: 1,
-      expenses: [{ id: uuidv4(), category: 'Fuel', amount: 150, date: '2025-12-10', status: 'approved' }]
-    },
-    {
-      id: uuidv4(),
-      companyId: user.companyId,
-      driverId: user.id, // Admin
-      loadNumber: 'LD-1002',
-      status: LOAD_STATUS.Settled,
-      carrierRate: 3200,
-      driverPay: 1500,
-      pickupDate: '2025-12-12',
-      freightType: 'Reefer',
-      legs: [],
-      pickup: { city: 'Indianapolis', state: 'IN', facilityName: 'Cold Storage C' },
-      dropoff: { city: 'Columbus', state: 'OH', facilityName: 'Distribution D' },
-      createdAt: Date.now(),
-      version: 1,
-      expenses: []
-    }
-  ];
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(demoLoads));
+export const seedDemoLoads = (_user: User) => {
+  // No-op: demo data seeding removed — all load data comes from the backend API
 };
 
-export const generateNextLoadNumber = (company: Company, clientName: string): string => {
+export const generateNextLoadNumber = (
+  company: Company,
+  clientName: string,
+): string => {
   const config: LoadNumberingConfig = company.loadNumberingConfig || {
-    enabled: true, prefix: 'LD', suffix: '', nextSequence: 1000, separator: '-',
-    includeClientTag: false, clientTagPosition: 'after_prefix', clientTagFormat: 'first_3'
+    enabled: true,
+    prefix: "LD",
+    suffix: "",
+    nextSequence: 1000,
+    separator: "-",
+    includeClientTag: false,
+    clientTagPosition: "after_prefix",
+    clientTagFormat: "first_3",
   };
   const loadNumber = `${config.prefix}${config.separator}${config.nextSequence}`;
-  updateCompany({ ...company, loadNumberingConfig: { ...config, nextSequence: config.nextSequence + 1 } });
+  updateCompany({
+    ...company,
+    loadNumberingConfig: { ...config, nextSequence: config.nextSequence + 1 },
+  });
   return loadNumber;
 };
 
@@ -444,9 +409,17 @@ export const generateInvoicePDF = async (load: LoadData) => {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(company?.address || "Address Pending", 14, 26);
-  doc.text(`${company?.city || ""}, ${company?.state || ""} ${company?.zip || ""}`, 14, 30);
-  doc.text(`DOT: ${company?.dotNumber || 'N/A'} | MC: ${company?.mcNumber || 'N/A'}`, 14, 34);
-  doc.text(`Phone: ${company?.phone || 'N/A'}`, 14, 38);
+  doc.text(
+    `${company?.city || ""}, ${company?.state || ""} ${company?.zip || ""}`,
+    14,
+    30,
+  );
+  doc.text(
+    `DOT: ${company?.dotNumber || "N/A"} | MC: ${company?.mcNumber || "N/A"}`,
+    14,
+    34,
+  );
+  doc.text(`Phone: ${company?.phone || "N/A"}`, 14, 38);
 
   // Invoice Meta
   doc.setFontSize(28);
@@ -462,21 +435,31 @@ export const generateInvoicePDF = async (load: LoadData) => {
 
   // Billing Box
   doc.setFillColor(245, 248, 255);
-  doc.rect(14, 60, 180, 25, 'F');
+  doc.rect(14, 60, 180, 25, "F");
   doc.setFontSize(10);
   doc.text("BILL TO (CUSTOMER):", 18, 67);
   doc.setFont("helvetica", "normal");
   doc.text(load.pickup.facilityName || "Customer Record Pending", 18, 73);
-  doc.text(`${load.pickup.city || ''}, ${load.pickup.state || ''}`, 18, 78);
+  doc.text(`${load.pickup.city || ""}, ${load.pickup.state || ""}`, 18, 78);
 
   // Line Items
   const rows = [
-    ["Professional Freight Transportation Services", "1", `$${load.carrierRate.toFixed(2)}`, `$${load.carrierRate.toFixed(2)}`]
+    [
+      "Professional Freight Transportation Services",
+      "1",
+      `$${load.carrierRate.toFixed(2)}`,
+      `$${load.carrierRate.toFixed(2)}`,
+    ],
   ];
 
   if (load.expenses) {
-    load.expenses.forEach(e => {
-      rows.push([e.category, "1", `$${e.amount.toFixed(2)}`, `$${e.amount.toFixed(2)}`]);
+    load.expenses.forEach((e) => {
+      rows.push([
+        e.category,
+        "1",
+        `$${e.amount.toFixed(2)}`,
+        `$${e.amount.toFixed(2)}`,
+      ]);
     });
   }
 
@@ -484,11 +467,12 @@ export const generateInvoicePDF = async (load: LoadData) => {
     startY: 95,
     head: [["Description", "Qty", "Unit Price", "Total"]],
     body: rows,
-    theme: 'striped',
-    headStyles: { fillColor: [37, 99, 235] }
+    theme: "striped",
+    headStyles: { fillColor: [37, 99, 235] },
   });
 
-  const total = load.carrierRate + (load.expenses?.reduce((s, e) => s + e.amount, 0) || 0);
+  const total =
+    load.carrierRate + (load.expenses?.reduce((s, e) => s + e.amount, 0) || 0);
 
   const finalY = (doc as any).lastAutoTable.finalY;
   doc.setFont("helvetica", "bold");
@@ -499,7 +483,11 @@ export const generateInvoicePDF = async (load: LoadData) => {
   doc.setFontSize(8);
   doc.setFont("helvetica", "italic");
   doc.setTextColor(100);
-  doc.text("Payment is due as per agreement. Thank you for your business.", 14, 280);
+  doc.text(
+    "Payment is due as per agreement. Thank you for your business.",
+    14,
+    280,
+  );
 
   doc.save(`Invoice_${load.loadNumber}.pdf`);
 };
@@ -509,35 +497,43 @@ export const generateBolPDF = (load: LoadData) => {
   doc.setFontSize(18);
   doc.text(`BILL OF LADING - LOAD #${load.loadNumber}`, 14, 20);
   doc.setFontSize(10);
-  doc.text(`Pickup: ${load.pickup.facilityName} (${load.pickup.city}, ${load.pickup.state})`, 14, 30);
-  doc.text(`Delivery: ${load.dropoff.facilityName} (${load.dropoff.city}, ${load.dropoff.state})`, 14, 40);
+  doc.text(
+    `Pickup: ${load.pickup.facilityName} (${load.pickup.city}, ${load.pickup.state})`,
+    14,
+    30,
+  );
+  doc.text(
+    `Delivery: ${load.dropoff.facilityName} (${load.dropoff.city}, ${load.dropoff.state})`,
+    14,
+    40,
+  );
   doc.text(`Commodity: ${load.commodity}`, 14, 50);
   doc.text(`Weight: ${load.weight} lbs`, 14, 60);
   if (load.generatedBol?.driverSignature) {
     doc.text("Driver Signed Electronically", 14, 80);
-    doc.addImage(load.generatedBol.driverSignature, 'PNG', 14, 85, 50, 20);
+    doc.addImage(load.generatedBol.driverSignature, "PNG", 14, 85, 50, 20);
   }
   doc.save(`BOL_${load.loadNumber}.pdf`);
 };
 
 export const exportToCSV = (loads: LoadData[], config: any) => {
-  let csv = config.columns.join(',') + '\n';
-  loads.forEach(l => {
+  let csv = config.columns.join(",") + "\n";
+  loads.forEach((l) => {
     const row = config.columns.map((c: string) => {
-      if (c === 'loadNumber') return l.loadNumber;
-      if (c === 'rate') return l.carrierRate;
-      if (c === 'customer') return l.pickup.facilityName;
-      if (c === 'origin') return l.pickup.city;
-      return '';
+      if (c === "loadNumber") return l.loadNumber;
+      if (c === "rate") return l.carrierRate;
+      if (c === "customer") return l.pickup.facilityName;
+      if (c === "origin") return l.pickup.city;
+      return "";
     });
-    csv += row.join(',') + '\n';
+    csv += row.join(",") + "\n";
   });
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const blob = new Blob([csv], { type: "text/csv" });
   const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.setAttribute('hidden', '');
-  a.setAttribute('href', url);
-  a.setAttribute('download', 'loads.csv');
+  const a = document.createElement("a");
+  a.setAttribute("hidden", "");
+  a.setAttribute("href", url);
+  a.setAttribute("download", "loads.csv");
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -546,23 +542,42 @@ export const exportToCSV = (loads: LoadData[], config: any) => {
 export const exportToPDF = (loads: LoadData[], config: any) => {
   const doc = new jsPDF();
   doc.text(config.title, 14, 15);
-  const rows = loads.map(l => [l.loadNumber, l.status, l.pickupDate, l.pickup.facilityName, `$${l.carrierRate}`]);
-  autoTable(doc, { startY: 25, head: [['Load #', 'Status', 'Date', 'Customer', 'Rate']], body: rows });
-  doc.save('load_report.pdf');
+  const rows = loads.map((l) => [
+    l.loadNumber,
+    l.status,
+    l.pickupDate,
+    l.pickup.facilityName,
+    `$${l.carrierRate}`,
+  ]);
+  autoTable(doc, {
+    startY: 25,
+    head: [["Load #", "Status", "Date", "Customer", "Rate"]],
+    body: rows,
+  });
+  doc.save("load_report.pdf");
 };
 
 export const generateMaintenanceLogPDF = (eq: FleetEquipment, name: string) => {
   const doc = new jsPDF();
   doc.text(`Maintenance History: ${eq.id} (${eq.type})`, 14, 20);
-  const rows = (eq.maintenanceHistory || []).map(m => [m.date, m.type, m.description, `$${m.cost}`]);
-  autoTable(doc, { startY: 30, head: [['Date', 'Type', 'Description', 'Cost']], body: rows });
+  const rows = (eq.maintenanceHistory || []).map((m) => [
+    m.date,
+    m.type,
+    m.description,
+    `$${m.cost}`,
+  ]);
+  autoTable(doc, {
+    startY: 30,
+    head: [["Date", "Type", "Description", "Cost"]],
+    body: rows,
+  });
   doc.save(`Maintenance_${eq.id}.pdf`);
 };
 
 export const getIncidents = async (): Promise<Incident[]> => {
   try {
     const res = await fetch(`${API_URL}/incidents`, {
-      headers: await getAuthHeaders()
+      headers: await getAuthHeaders(),
     });
     if (res.ok) {
       const data = await res.json();
@@ -571,30 +586,35 @@ export const getIncidents = async (): Promise<Incident[]> => {
         loadId: inc.load_id,
         reportedAt: inc.reported_at,
         slaDeadline: inc.sla_deadline,
-        location: { lat: Number(inc.location_lat), lng: Number(inc.location_lng) },
-        timeline: inc.timeline?.map((t: any) => ({
-          ...t,
-          actorName: t.actor_name,
-          timestamp: t.timestamp
-        })) || [],
-        billingItems: inc.billingItems?.map((b: any) => ({
-          ...b,
-          providerVendor: b.provider_vendor,
-          approvedBy: b.approved_by,
-          receiptUrl: b.receipt_url
-        })) || []
+        location: {
+          lat: Number(inc.location_lat),
+          lng: Number(inc.location_lng),
+        },
+        timeline:
+          inc.timeline?.map((t: any) => ({
+            ...t,
+            actorName: t.actor_name,
+            timestamp: t.timestamp,
+          })) || [],
+        billingItems:
+          inc.billingItems?.map((b: any) => ({
+            ...b,
+            providerVendor: b.provider_vendor,
+            approvedBy: b.approved_by,
+            receiptUrl: b.receipt_url,
+          })) || [],
       }));
 
       // Merge: Remote takes precedence for existing, but local-only (unsynced) are kept
       const local = getRawIncidents();
       const remoteIds = new Set(remote.map((r: any) => r.id));
-      const localOnly = local.filter(l => !remoteIds.has(l.id));
+      const localOnly = local.filter((l) => !remoteIds.has(l.id));
       const merged = [...remote, ...localOnly];
 
       localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify(merged));
       return merged;
     }
-  } catch (e) { }
+  } catch (e) {}
 
   console.log("[SQL SYNC] Incident fetch failed, falling back to localStorage");
   return getRawIncidents();
@@ -609,59 +629,73 @@ export const seedIncidents = async (loads: LoadData[]) => {
     {
       id: "inc-desc-001",
       loadId: loads[0].id,
-      type: 'Motor Breakdown',
-      severity: 'Critical',
-      status: 'Open',
+      type: "Motor Breakdown",
+      severity: "Critical",
+      status: "Open",
       reportedAt: new Date(Date.now() - 3600000 * 4).toISOString(), // 4h ago
       slaDeadline: new Date(Date.now() + 3600000).toISOString(), // 1h left
-      description: 'Engine failure on I-90 EB. Smoke reported from engine bay. Vehicle stationary on shoulder.',
+      description:
+        "Engine failure on I-90 EB. Smoke reported from engine bay. Vehicle stationary on shoulder.",
       location: { lat: 41.8781, lng: -87.6298 },
       timeline: [
-        { id: uuidv4(), timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), actorName: 'System', action: 'INCIDENT_REPORTED', notes: 'Automated breakdown detection via ELD telemetry.' }
+        {
+          id: uuidv4(),
+          timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
+          actorName: "System",
+          action: "INCIDENT_REPORTED",
+          notes: "Automated breakdown detection via ELD telemetry.",
+        },
       ],
       billingItems: [],
       serviceTickets: [],
-      isAtRisk: true
+      isAtRisk: true,
     },
     {
       id: "inc-desc-002",
       loadId: (loads[1] || loads[0]).id,
-      type: 'Hours of Service Risk',
-      severity: 'High',
-      status: 'Open',
+      type: "Hours of Service Risk",
+      severity: "High",
+      status: "Open",
       reportedAt: new Date(Date.now() - 3600000).toISOString(), // 1h ago
       slaDeadline: new Date(Date.now() + 3600000 * 3).toISOString(), // 3h left
-      description: 'Driver nearing 11-hour driving limit while 80 miles from destination. High risk of violation.',
+      description:
+        "Driver nearing 11-hour driving limit while 80 miles from destination. High risk of violation.",
       location: { lat: 40.0, lng: -83.0 },
       timeline: [
-        { id: uuidv4(), timestamp: new Date(Date.now() - 3600000).toISOString(), actorName: 'Safety Bot', action: 'RISK_DETECTED', notes: 'ELD analysis predicts violation in 45 minutes.' }
+        {
+          id: uuidv4(),
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+          actorName: "Safety Bot",
+          action: "RISK_DETECTED",
+          notes: "ELD analysis predicts violation in 45 minutes.",
+        },
       ],
       billingItems: [],
       serviceTickets: [],
-      isAtRisk: true
-    }
+      isAtRisk: true,
+    },
   ];
 
   for (const inc of incidents) {
     try {
       await fetch(`${API_URL}/incidents`, {
-        method: 'POST',
+        method: "POST",
         headers: await getAuthHeaders(),
         body: JSON.stringify({
           ...inc,
           load_id: inc.loadId,
-          sla_deadline: inc.slaDeadline
-        })
+          sla_deadline: inc.slaDeadline,
+        }),
       });
 
       for (const t of inc.timeline || []) {
         await fetch(`${API_URL}/incidents/${inc.id}/actions`, {
-          method: 'POST',
+          method: "POST",
           headers: await getAuthHeaders(),
           body: JSON.stringify({
             ...t,
-            actor_name: t.actorName
-          })
+            actor_name: t.actorName,
+          }),
         });
       }
     } catch (e) {
@@ -670,7 +704,10 @@ export const seedIncidents = async (loads: LoadData[]) => {
   }
 
   const currentLocal = getRawIncidents();
-  localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify([...incidents, ...currentLocal]));
+  localStorage.setItem(
+    STORAGE_KEY_INCIDENTS,
+    JSON.stringify([...incidents, ...currentLocal]),
+  );
 };
 
 export const createIncident = async (incident: Partial<Incident>) => {
@@ -679,20 +716,20 @@ export const createIncident = async (incident: Partial<Incident>) => {
     id: incident.id || uuidv4(),
     reportedAt: incident.reportedAt || new Date().toISOString(),
     timeline: incident.timeline || [],
-    billingItems: incident.billingItems || []
+    billingItems: incident.billingItems || [],
   };
 
   try {
     const res = await fetch(`${API_URL}/incidents`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         ...incToSave,
         load_id: incToSave.loadId,
         sla_deadline: incToSave.slaDeadline,
         location_lat: incToSave.location?.lat,
-        location_lng: incToSave.location?.lng
-      })
+        location_lng: incToSave.location?.lng,
+      }),
     });
 
     if (res.ok) {
@@ -711,22 +748,25 @@ export const createIncident = async (incident: Partial<Incident>) => {
 
 export const saveIncident = async (incident: Incident) => {
   const incidents = getRawIncidents();
-  const idx = incidents.findIndex(i => i.id === incident.id);
+  const idx = incidents.findIndex((i) => i.id === incident.id);
   if (idx >= 0) incidents[idx] = incident;
   else incidents.unshift(incident);
   localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify(incidents));
   return true;
 };
 
-export const saveIncidentAction = async (incidentId: string, action: Partial<IncidentAction>) => {
+export const saveIncidentAction = async (
+  incidentId: string,
+  action: Partial<IncidentAction>,
+) => {
   try {
     const res = await fetch(`${API_URL}/incidents/${incidentId}/actions`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         ...action,
-        actor_name: action.actorName
-      })
+        actor_name: action.actorName,
+      }),
     });
     if (res.ok) {
       // Synced
@@ -737,16 +777,16 @@ export const saveIncidentAction = async (incidentId: string, action: Partial<Inc
 
   // Persist locally
   const incidents = getRawIncidents();
-  const idx = incidents.findIndex(inc => inc.id === incidentId);
+  const idx = incidents.findIndex((inc) => inc.id === incidentId);
   if (idx >= 0) {
     const newAction: IncidentAction = {
       id: uuidv4(),
       incident_id: incidentId,
-      action: action.action || 'Unknown',
-      actorName: action.actorName || 'System',
-      actor_name: action.actorName || 'System',
-      notes: action.notes || '',
-      timestamp: new Date().toISOString()
+      action: action.action || "Unknown",
+      actorName: action.actorName || "System",
+      actor_name: action.actorName || "System",
+      notes: action.notes || "",
+      timestamp: new Date().toISOString(),
     };
     incidents[idx].timeline = [...(incidents[idx].timeline || []), newAction];
     localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify(incidents));
@@ -757,49 +797,50 @@ export const saveIncidentAction = async (incidentId: string, action: Partial<Inc
 export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
   const newIssue: Issue = {
     id: uuidv4(),
-    category: 'Safety',
-    description: '',
+    category: "Safety",
+    description: "",
     reportedAt: new Date().toISOString(),
-    reportedBy: 'System',
-    status: 'Open',
-    ...issue as any
+    reportedBy: "System",
+    status: "Open",
+    ...(issue as any),
   };
 
   try {
     await fetch(`${API_URL}/issues`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...newIssue, load_id: loadId })
+      body: JSON.stringify({ ...newIssue, load_id: loadId }),
     });
   } catch (e) {
-    console.error('Failed to sync issue', e);
+    console.error("Failed to sync issue", e);
   }
 
-  // If tied to load, update local load record
+  // If tied to load, update in-memory cache (no localStorage)
   if (loadId) {
-    const loads = getRawLoads();
-    const idx = loads.findIndex(l => l.id === loadId);
+    const idx = _cachedLoads.findIndex((l) => l.id === loadId);
     if (idx >= 0) {
-      const existingIssues = loads[idx].issues || [];
-      loads[idx].issues = [...existingIssues, newIssue];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+      const existingIssues = _cachedLoads[idx].issues || [];
+      _cachedLoads[idx].issues = [...existingIssues, newIssue];
     }
   }
 
   return newIssue;
 };
 
-export const saveIncidentCharge = async (incidentId: string, charge: Partial<EmergencyCharge>) => {
+export const saveIncidentCharge = async (
+  incidentId: string,
+  charge: Partial<EmergencyCharge>,
+) => {
   try {
     const res = await fetch(`${API_URL}/incidents/${incidentId}/charges`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({
         ...charge,
         provider_vendor: charge.providerVendor,
         approved_by: charge.approvedBy,
-        receipt_url: charge.receiptUrl
-      })
+        receipt_url: charge.receiptUrl,
+      }),
     });
     return res.ok;
   } catch (e) {
@@ -810,42 +851,61 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
   const newCall: CallLog = {
     id: uuidv4(),
     timestamp: new Date().toISOString(),
-    type: 'Operational',
-    category: 'Update',
-    entityId: 'global',
-    notes: '',
-    recordedBy: 'System',
-    ...callLog
+    type: "Operational",
+    category: "Update",
+    entityId: "global",
+    notes: "",
+    recordedBy: "System",
+    ...callLog,
   };
 
   try {
     await fetch(`${API_URL}/call-logs`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
-      body: JSON.stringify(newCall)
+      body: JSON.stringify(newCall),
     });
   } catch (e) {
-    console.error('Failed to sync call log', e);
+    console.error("Failed to sync call log", e);
   }
 
-  // Update related load if applicable
-  if (newCall.entityId && newCall.entityId !== 'global') {
-    const loads = getRawLoads();
-    const idx = loads.findIndex(l => l.id === newCall.entityId);
+  // Update related load in-memory cache if applicable (no localStorage)
+  if (newCall.entityId && newCall.entityId !== "global") {
+    const idx = _cachedLoads.findIndex((l) => l.id === newCall.entityId);
     if (idx >= 0) {
-      loads[idx].callLogs = [...(loads[idx].callLogs || []), newCall];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+      _cachedLoads[idx].callLogs = [
+        ...(_cachedLoads[idx].callLogs || []),
+        newCall,
+      ];
     }
   }
 
   return newCall;
 };
 
-export const getOperationalTrends = async (companyId: string): Promise<OperationalTrend[]> => {
+export const getOperationalTrends = async (
+  companyId: string,
+): Promise<OperationalTrend[]> => {
   // Static placeholder for ERP demonstration
   return [
-    { id: 't1', entityType: 'Driver', entityId: 'd1', trendType: 'Consistent_Late', severity: 'Critical', observationCount: 4, lastOccurrence: new Date().toISOString() },
-    { id: 't2', entityType: 'Broker', entityId: 'b1', trendType: 'Contract_Risk', severity: 'Warning', observationCount: 2, lastOccurrence: new Date().toISOString() }
+    {
+      id: "t1",
+      entityType: "Driver",
+      entityId: "d1",
+      trendType: "Consistent_Late",
+      severity: "Critical",
+      observationCount: 4,
+      lastOccurrence: new Date().toISOString(),
+    },
+    {
+      id: "t2",
+      entityType: "Broker",
+      entityId: "b1",
+      trendType: "Contract_Risk",
+      severity: "Warning",
+      observationCount: 2,
+      lastOccurrence: new Date().toISOString(),
+    },
   ];
 };
 
@@ -857,14 +917,28 @@ export const getMessages = async (loadId?: string): Promise<Message[]> => {
     if (messages.length === 0) {
       // Seed initial mock messages
       messages = [
-        { id: '1', loadId: 'L-1001', senderId: 'driver-123', senderName: 'Alex Rivera', text: 'Stuck at terminal gates. Long wait time today.', timestamp: new Date(Date.now() - 3600000).toISOString() },
-        { id: '2', loadId: 'L-1001', senderId: 'dispatcher-1', senderName: 'Dispatcher', text: 'Acknowledged. Log detention after 2 hours.', timestamp: new Date(Date.now() - 3000000).toISOString() }
+        {
+          id: "1",
+          loadId: "L-1001",
+          senderId: "driver-123",
+          senderName: "Alex Rivera",
+          text: "Stuck at terminal gates. Long wait time today.",
+          timestamp: new Date(Date.now() - 3600000).toISOString(),
+        },
+        {
+          id: "2",
+          loadId: "L-1001",
+          senderId: "dispatcher-1",
+          senderName: "Dispatcher",
+          text: "Acknowledged. Log detention after 2 hours.",
+          timestamp: new Date(Date.now() - 3000000).toISOString(),
+        },
       ];
       localStorage.setItem(STORAGE_KEY_MESSAGES, JSON.stringify(messages));
     }
 
     if (loadId) {
-      return messages.filter(m => m.loadId === loadId);
+      return messages.filter((m) => m.loadId === loadId);
     }
     return messages;
   } catch (e) {
@@ -881,23 +955,27 @@ export const saveMessage = async (message: Message) => {
     // Attempt remote sync if API is available
     try {
       await fetch(`${API_URL}/messages`, {
-        method: 'POST',
+        method: "POST",
         headers: await getAuthHeaders(),
-        body: JSON.stringify(message)
+        body: JSON.stringify(message),
       });
-    } catch (e) { }
+    } catch (e) {}
   } catch (e) {
-    console.error('Failed to save message', e);
+    console.error("Failed to save message", e);
   }
 };
 const STORAGE_KEY_THREADS = "trucklogix_threads_v1";
 
-export const getThreads = async (companyId: string): Promise<OperationalThread[]> => {
+export const getThreads = async (
+  companyId: string,
+): Promise<OperationalThread[]> => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_THREADS);
     if (!data) return [];
     const threads: OperationalThread[] = JSON.parse(data);
-    return threads.filter(t => t.id.includes(companyId) || t.ownerId === companyId); // Loose filter for now
+    return threads.filter(
+      (t) => t.id.includes(companyId) || t.ownerId === companyId,
+    ); // Loose filter for now
   } catch (e) {
     return [];
   }
@@ -905,22 +983,24 @@ export const getThreads = async (companyId: string): Promise<OperationalThread[]
 
 export const saveThread = async (thread: OperationalThread) => {
   try {
-    const threads = await getThreads(''); // Get all
-    const idx = threads.findIndex(t => t.id === thread.id);
+    const threads = await getThreads(""); // Get all
+    const idx = threads.findIndex((t) => t.id === thread.id);
     if (idx >= 0) threads[idx] = thread;
     else threads.unshift(thread);
     localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threads));
   } catch (e) {
-    console.error('Failed to save thread', e);
+    console.error("Failed to save thread", e);
   }
 };
 
-export const getUnifiedEvents = async (selectedThreadId?: string): Promise<OperationalEvent[]> => {
+export const getUnifiedEvents = async (
+  selectedThreadId?: string,
+): Promise<OperationalEvent[]> => {
   // 1. Get native events from threads if selected
   let events: OperationalEvent[] = [];
   if (selectedThreadId) {
-    const threads = await getThreads('');
-    const thread = threads.find(t => t.id === selectedThreadId);
+    const threads = await getThreads("");
+    const thread = threads.find((t) => t.id === selectedThreadId);
     if (thread) events = [...thread.events];
   }
 
@@ -929,123 +1009,132 @@ export const getUnifiedEvents = async (selectedThreadId?: string): Promise<Opera
   const rawIncidents = await getIncidents();
   const rawMessages = await getMessages();
 
-  rawIncidents.forEach(inc => {
+  rawIncidents.forEach((inc) => {
     events.push({
       id: inc.id,
-      type: 'INCIDENT',
+      type: "INCIDENT",
       timestamp: inc.reportedAt,
-      actorId: 'system',
-      actorName: 'System Monitor',
+      actorId: "system",
+      actorName: "System Monitor",
       message: `Incident Reported: ${inc.type} - ${inc.severity}`,
       payload: inc,
       loadId: inc.loadId,
-      isActionRequired: inc.status === 'Open'
+      isActionRequired: inc.status === "Open",
     });
   });
 
-  rawLoads.forEach(load => {
-    (load.callLogs || []).forEach(call => {
+  rawLoads.forEach((load) => {
+    (load.callLogs || []).forEach((call) => {
       events.push({
         id: call.id,
-        type: 'CALL_LOG',
+        type: "CALL_LOG",
         timestamp: call.timestamp,
-        actorId: 'user',
+        actorId: "user",
         actorName: call.recordedBy,
         message: `${call.category} Call: ${call.notes}`,
         payload: call,
-        loadId: load.id
+        loadId: load.id,
       });
     });
-    (load.issues || []).forEach(issue => {
+    (load.issues || []).forEach((issue) => {
       events.push({
         id: issue.id,
-        type: 'ISSUE',
+        type: "ISSUE",
         timestamp: issue.reportedAt,
-        actorId: 'user',
+        actorId: "user",
         actorName: issue.reportedBy,
         message: `Issue Logged: ${issue.category} - ${issue.description}`,
         payload: issue,
         loadId: load.id,
-        isActionRequired: issue.status === 'Open'
+        isActionRequired: issue.status === "Open",
       });
     });
   });
 
-  rawMessages.forEach(msg => {
+  rawMessages.forEach((msg) => {
     events.push({
       id: msg.id,
-      type: 'MESSAGE',
+      type: "MESSAGE",
       timestamp: msg.timestamp,
       actorId: msg.senderId,
       actorName: msg.senderName,
       message: msg.text,
       payload: msg,
-      loadId: msg.loadId
+      loadId: msg.loadId,
     });
   });
   // 3. Add Requests
   const requests = getRawRequests();
-  requests.forEach(req => {
+  requests.forEach((req) => {
     events.push({
       id: req.id,
-      type: 'REQUEST',
+      type: "REQUEST",
       timestamp: req.createdAt,
       actorId: req.createdBy,
       actorName: req.createdBy,
-      message: `${req.type} Request: ${req.requestedAmount ? '$' + req.requestedAmount : ''} - ${req.status}`,
+      message: `${req.type} Request: ${req.requestedAmount ? "$" + req.requestedAmount : ""} - ${req.status}`,
       payload: req,
       loadId: req.loadId,
       driverId: req.driverId,
       requestId: req.id,
-      isActionRequired: ['NEW', 'PENDING_APPROVAL', 'NEEDS_INFO'].includes(req.status)
+      isActionRequired: ["NEW", "PENDING_APPROVAL", "NEEDS_INFO"].includes(
+        req.status,
+      ),
     });
   });
 
   // 4. Add Tasks
   const tasks = getRawTasks();
-  tasks.forEach(task => {
+  tasks.forEach((task) => {
     events.push({
       id: task.id,
-      type: 'TASK',
+      type: "TASK",
       timestamp: task.createdAt,
       actorId: task.createdBy,
       actorName: task.createdBy,
       message: `Task: ${task.title} - ${task.status}`,
       payload: task,
-      isActionRequired: task.status !== 'DONE'
+      isActionRequired: task.status !== "DONE",
     });
   });
 
   // 5. Add Crisis Actions
   const crisisActions = getRawCrisisActions();
-  crisisActions.forEach(ca => {
+  crisisActions.forEach((ca) => {
     events.push({
       id: ca.id,
-      type: 'INCIDENT',
+      type: "INCIDENT",
       timestamp: ca.createdAt,
-      actorId: 'SYSTEM',
-      actorName: 'Crisis Command',
+      actorId: "SYSTEM",
+      actorName: "Crisis Command",
       message: `Crisis Action: ${ca.type} - ${ca.status}`,
       payload: ca,
-      loadId: ca.loadId
+      loadId: ca.loadId,
     });
   });
 
-  return events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return events.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
 };
 
 export const searchLoads = async (query: string): Promise<LoadData[]> => {
-  const loads = getRawLoads();
-  if (!query) return loads.slice(0, 10);
-
-  const q = query.toLowerCase();
-  return loads.filter(l =>
-    l.loadNumber.toLowerCase().includes(q) ||
-    l.pickup.facilityName?.toLowerCase().includes(q) ||
-    l.dropoff.facilityName?.toLowerCase().includes(q) ||
-    l.pickup.city?.toLowerCase().includes(q) ||
-    l.dropoff.city?.toLowerCase().includes(q)
-  );
+  try {
+    return await searchLoadsApi(query);
+  } catch (e) {
+    // Fallback to in-memory cache search
+    const loads = getRawLoads();
+    if (!query) return loads.slice(0, 10);
+    const q = query.toLowerCase();
+    return loads.filter(
+      (l) =>
+        l.loadNumber.toLowerCase().includes(q) ||
+        l.pickup.facilityName?.toLowerCase().includes(q) ||
+        l.dropoff.facilityName?.toLowerCase().includes(q) ||
+        l.pickup.city?.toLowerCase().includes(q) ||
+        l.dropoff.city?.toLowerCase().includes(q),
+    );
+  }
 };
 
 export const getRawCalls = (): CallSession[] => {
@@ -1059,15 +1148,20 @@ export const getRawCalls = (): CallSession[] => {
 
 export const saveCallSession = async (session: CallSession) => {
   const sessions = getRawCalls();
-  const idx = sessions.findIndex(s => s.id === session.id);
+  const idx = sessions.findIndex((s) => s.id === session.id);
   if (idx >= 0) sessions[idx] = session;
   else sessions.unshift(session);
   localStorage.setItem(STORAGE_KEY_CALLS, JSON.stringify(sessions));
 };
 
-export const attachToRecord = async (callId: string, entityType: string, entityId: string, actorName: string) => {
+export const attachToRecord = async (
+  callId: string,
+  entityType: string,
+  entityId: string,
+  actorName: string,
+) => {
   const sessions = getRawCalls();
-  const idx = sessions.findIndex(s => s.id === callId);
+  const idx = sessions.findIndex((s) => s.id === callId);
   if (idx >= 0) {
     const session = sessions[idx];
     const newLink: RecordLink = {
@@ -1076,7 +1170,7 @@ export const attachToRecord = async (callId: string, entityType: string, entityI
       entityId,
       isPrimary: session.links.length === 0,
       createdAt: new Date().toISOString(),
-      createdBy: actorName
+      createdBy: actorName,
     };
     session.links.push(newLink);
     localStorage.setItem(STORAGE_KEY_CALLS, JSON.stringify(sessions));
@@ -1094,37 +1188,52 @@ const getRawRequests = (): KCIRequest[] => {
   }
 };
 
-export const getRequests = async (filters?: { loadId?: string, driverId?: string, openRecordId?: string }): Promise<KCIRequest[]> => {
+export const getRequests = async (filters?: {
+  loadId?: string;
+  driverId?: string;
+  openRecordId?: string;
+}): Promise<KCIRequest[]> => {
   let requests = getRawRequests();
   if (filters) {
-    if (filters.loadId) requests = requests.filter(r => r.loadId === filters.loadId);
-    if (filters.driverId) requests = requests.filter(r => r.driverId === filters.driverId);
-    if (filters.openRecordId) requests = requests.filter(r => r.openRecordId === filters.openRecordId);
+    if (filters.loadId)
+      requests = requests.filter((r) => r.loadId === filters.loadId);
+    if (filters.driverId)
+      requests = requests.filter((r) => r.driverId === filters.driverId);
+    if (filters.openRecordId)
+      requests = requests.filter(
+        (r) => r.openRecordId === filters.openRecordId,
+      );
   }
   return requests;
 };
 
 export const saveRequest = async (request: KCIRequest) => {
   const requests = getRawRequests();
-  const idx = requests.findIndex(r => r.id === request.id);
+  const idx = requests.findIndex((r) => r.id === request.id);
   if (idx >= 0) requests[idx] = request;
   else requests.unshift(request);
   localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
   return request;
 };
 
-export const updateRequestStatus = async (requestId: string, status: RequestStatus, actor: { id: string, name: string }, note?: string, approvedAmount?: number) => {
+export const updateRequestStatus = async (
+  requestId: string,
+  status: RequestStatus,
+  actor: { id: string; name: string },
+  note?: string,
+  approvedAmount?: number,
+) => {
   const requests = getRawRequests();
-  const idx = requests.findIndex(r => r.id === requestId);
+  const idx = requests.findIndex((r) => r.id === requestId);
   if (idx >= 0) {
     const req = requests[idx];
     const before = req.status;
     req.status = status;
-    if (status === 'APPROVED') {
+    if (status === "APPROVED") {
       req.approvedBy = actor.name;
       req.approvedAt = new Date().toISOString();
       if (approvedAmount !== undefined) req.approvedAmount = approvedAmount;
-    } else if (status === 'DENIED') {
+    } else if (status === "DENIED") {
       req.deniedBy = actor.name;
       req.deniedAt = new Date().toISOString();
       req.denialReason = note;
@@ -1136,7 +1245,7 @@ export const updateRequestStatus = async (requestId: string, status: RequestStat
       action: `Status changed to ${status}`,
       beforeState: before,
       afterState: status,
-      note
+      note,
     });
     localStorage.setItem(STORAGE_KEY_REQUESTS, JSON.stringify(requests));
     return req;
@@ -1146,27 +1255,36 @@ export const updateRequestStatus = async (requestId: string, status: RequestStat
 
 export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
   const requests = getRawRequests();
-  return requests.filter(r => ['NEW', 'PENDING_APPROVAL', 'NEEDS_INFO', 'DEFERRED'].includes(r.status))
+  return requests
+    .filter((r) =>
+      ["NEW", "PENDING_APPROVAL", "NEEDS_INFO", "DEFERRED"].includes(r.status),
+    )
     .sort((a, b) => {
       // High priority first
-      if (a.priority === 'HIGH' && b.priority !== 'HIGH') return -1;
-      if (a.priority !== 'HIGH' && b.priority === 'HIGH') return 1;
+      if (a.priority === "HIGH" && b.priority !== "HIGH") return -1;
+      if (a.priority !== "HIGH" && b.priority === "HIGH") return 1;
       // Then Overdue (not implemented strictly here, but could use dueAt)
       // Then Oldest
       return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
     });
 };
 
-export const getLoadSummary = async (loadId: string): Promise<LoadSummary | null> => {
+export const getLoadSummary = async (
+  loadId: string,
+): Promise<LoadSummary | null> => {
   const loads = getRawLoads();
-  const load = loads.find(l => l.id === loadId);
+  const load = loads.find((l) => l.id === loadId);
   if (!load) return null;
 
-  const requests = getRawRequests().filter(r => r.loadId === loadId);
-  const unresolved = requests.filter(r => ['NEW', 'PENDING_APPROVAL', 'NEEDS_INFO'].includes(r.status));
-  const calls = getRawCalls().filter(c => c.links.some(l => l.entityId === loadId));
-  const messages = (await getMessages()).filter(m => m.loadId === loadId);
-  const incidents = (await getIncidents()).filter(i => i.loadId === loadId);
+  const requests = getRawRequests().filter((r) => r.loadId === loadId);
+  const unresolved = requests.filter((r) =>
+    ["NEW", "PENDING_APPROVAL", "NEEDS_INFO"].includes(r.status),
+  );
+  const calls = getRawCalls().filter((c) =>
+    c.links.some((l) => l.entityId === loadId),
+  );
+  const messages = (await getMessages()).filter((m) => m.loadId === loadId);
+  const incidents = (await getIncidents()).filter((i) => i.loadId === loadId);
 
   return {
     id: load.id,
@@ -1175,70 +1293,104 @@ export const getLoadSummary = async (loadId: string): Promise<LoadSummary | null
     hasUnresolvedRequests: unresolved.length > 0,
     unresolvedCount: unresolved.length,
     unpaidAmount: unresolved.reduce((s, r) => s + (r.requestedAmount || 0), 0),
-    paidAmount: requests.filter(r => r.status === 'PAID').reduce((s, r) => s + (r.approvedAmount || 0), 0),
+    paidAmount: requests
+      .filter((r) => r.status === "PAID")
+      .reduce((s, r) => s + (r.approvedAmount || 0), 0),
     lastCallAt: calls[0]?.startTime,
     lastMessageAt: messages[messages.length - 1]?.timestamp,
     safetyFlagsCount: incidents.length,
-    lastEventAt: new Date().toISOString()
+    lastEventAt: new Date().toISOString(),
   };
 };
 
-export const getDriverSummary = async (driverId: string): Promise<DriverSummary | null> => {
+export const getDriverSummary = async (
+  driverId: string,
+): Promise<DriverSummary | null> => {
   const users = getStoredUsers();
-  const driver = users.find(u => u.id === driverId);
+  const driver = users.find((u) => u.id === driverId);
   if (!driver) return null;
 
-  const incidents = (await getIncidents()).filter(i => {
+  const incidents = (await getIncidents()).filter((i) => {
     const rawLoads = getRawLoads();
-    const load = rawLoads.find(l => l.id === i.loadId);
+    const load = rawLoads.find((l) => l.id === i.loadId);
     return load?.driverId === driverId;
   });
 
-  const activeLoad = getRawLoads().find(l => l.driverId === driverId && !['delivered', 'completed', 'cancelled'].includes(l.status));
+  const activeLoad = getRawLoads().find(
+    (l) =>
+      l.driverId === driverId &&
+      !["delivered", "completed", "cancelled"].includes(l.status),
+  );
 
   return {
     id: driver.id,
     name: driver.name,
-    complianceStatus: driver.complianceStatus === 'Restricted' ? 'RESTRICTED' : 'CLEAR',
-    expiringDocsCount: (driver.complianceChecklist || []).filter(c => c.status === 'Expired').length,
-    openIncidentsCount: incidents.filter(i => i.status !== 'Closed').length,
+    complianceStatus:
+      driver.complianceStatus === "Restricted" ? "RESTRICTED" : "CLEAR",
+    expiringDocsCount: (driver.complianceChecklist || []).filter(
+      (c) => c.status === "Expired",
+    ).length,
+    openIncidentsCount: incidents.filter((i) => i.status !== "Closed").length,
     lastContactAt: new Date().toISOString(),
-    assignedLoadId: activeLoad?.id
+    assignedLoadId: activeLoad?.id,
   };
 };
 
 export const getBrokerSummary = async (brokerId: string) => {
   const brokers = getRawBrokers();
-  const broker = brokers.find(b => b.id === brokerId);
+  const broker = brokers.find((b) => b.id === brokerId);
   if (!broker) return null;
 
-  const loads = getRawLoads().filter(l => l.brokerId === brokerId);
-  const loadIds = loads.map(l => l.id);
-  const requests = getRawRequests().filter(r => loadIds.includes(r.loadId || r.links.find(lk => lk.entityType === 'LOAD')?.entityId || ''));
-  const calls = getRawCalls().filter(c => c.links.some(l => l.entityId === brokerId || loadIds.includes(l.entityId)));
+  const loads = getRawLoads().filter((l) => l.brokerId === brokerId);
+  const loadIds = loads.map((l) => l.id);
+  const requests = getRawRequests().filter((r) =>
+    loadIds.includes(
+      r.loadId ||
+        r.links.find((lk) => lk.entityType === "LOAD")?.entityId ||
+        "",
+    ),
+  );
+  const calls = getRawCalls().filter((c) =>
+    c.links.some(
+      (l) => l.entityId === brokerId || loadIds.includes(l.entityId),
+    ),
+  );
 
   return {
     id: broker.id,
     name: broker.name,
-    activeLoads: loads.filter(l => l.status !== 'delivered' && l.status !== 'completed' && l.status !== 'cancelled').length,
-    unpaidAmount: requests.filter(r => r.status !== 'PAID').reduce((s, r) => s + (r.requestedAmount || 0), 0),
-    paidAmount: requests.filter(r => r.status === 'PAID').reduce((s, r) => s + (r.approvedAmount || 0), 0),
+    activeLoads: loads.filter(
+      (l) =>
+        l.status !== "delivered" &&
+        l.status !== "completed" &&
+        l.status !== "cancelled",
+    ).length,
+    unpaidAmount: requests
+      .filter((r) => r.status !== "PAID")
+      .reduce((s, r) => s + (r.requestedAmount || 0), 0),
+    paidAmount: requests
+      .filter((r) => r.status === "PAID")
+      .reduce((s, r) => s + (r.approvedAmount || 0), 0),
     lastCallAt: calls[0]?.startTime,
-    safetyRating: 9.8 // Mock rating
+    safetyRating: 9.8, // Mock rating
   };
 };
 
-
-export const globalSearch = async (query: string): Promise<GlobalSearchResult[]> => {
+export const globalSearch = async (
+  query: string,
+): Promise<GlobalSearchResult[]> => {
   if (!query) return [];
   const q = query.toLowerCase();
 
   // Try to fetch from backend first for 360 degree intelligence
   try {
     const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/global-search?query=${encodeURIComponent(query)}`, {
-      headers
-    });
+    const res = await fetch(
+      `${API_URL}/global-search?query=${encodeURIComponent(query)}`,
+      {
+        headers,
+      },
+    );
     if (res.ok) {
       return await res.json();
     }
@@ -1251,77 +1403,104 @@ export const globalSearch = async (query: string): Promise<GlobalSearchResult[]>
 
   // 1. Search Loads
   const loads = getRawLoads();
-  loads.filter(l =>
-    l.loadNumber.toLowerCase().includes(q) ||
-    l.containerNumber?.toLowerCase().includes(q) ||
-    l.pickup.facilityName?.toLowerCase().includes(q) ||
-    l.pickup.city?.toLowerCase().includes(q)
-  ).slice(0, 5).forEach(l => {
-    results.push({
-      id: l.id,
-      type: 'LOAD',
-      label: `Load #${l.loadNumber}`,
-      subLabel: `${l.pickup.city} -> ${l.dropoff.city}`,
-      status: l.status,
-      chips: [
-        { label: l.status, color: l.status === 'in_transit' ? 'blue' : 'slate' },
-        { label: 'Carrier Rate', color: 'slate', value: '$' + l.carrierRate }
-      ]
+  loads
+    .filter(
+      (l) =>
+        l.loadNumber.toLowerCase().includes(q) ||
+        l.containerNumber?.toLowerCase().includes(q) ||
+        l.pickup.facilityName?.toLowerCase().includes(q) ||
+        l.pickup.city?.toLowerCase().includes(q),
+    )
+    .slice(0, 5)
+    .forEach((l) => {
+      results.push({
+        id: l.id,
+        type: "LOAD",
+        label: `Load #${l.loadNumber}`,
+        subLabel: `${l.pickup.city} -> ${l.dropoff.city}`,
+        status: l.status,
+        chips: [
+          {
+            label: l.status,
+            color: l.status === "in_transit" ? "blue" : "slate",
+          },
+          { label: "Carrier Rate", color: "slate", value: "$" + l.carrierRate },
+        ],
+      });
     });
-  });
 
   // 2. Search Drivers
-  const users = getStoredUsers().filter(u => u.role === 'driver');
-  users.filter(u =>
-    u.name.toLowerCase().includes(q) ||
-    u.email.toLowerCase().includes(q) ||
-    u.id.toLowerCase().includes(q)
-  ).slice(0, 5).forEach(d => {
-    results.push({
-      id: d.id,
-      type: 'DRIVER',
-      label: d.name,
-      subLabel: d.email,
-      status: d.complianceStatus,
-      chips: [
-        { label: d.role?.toUpperCase() || 'DRIVER', color: 'blue' },
-        { label: d.complianceStatus || 'Active', color: d.complianceStatus === 'Restricted' ? 'red' : 'green' }
-      ]
+  const users = getStoredUsers().filter((u) => u.role === "driver");
+  users
+    .filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.id.toLowerCase().includes(q),
+    )
+    .slice(0, 5)
+    .forEach((d) => {
+      results.push({
+        id: d.id,
+        type: "DRIVER",
+        label: d.name,
+        subLabel: d.email,
+        status: d.complianceStatus,
+        chips: [
+          { label: d.role?.toUpperCase() || "DRIVER", color: "blue" },
+          {
+            label: d.complianceStatus || "Active",
+            color: d.complianceStatus === "Restricted" ? "red" : "green",
+          },
+        ],
+      });
     });
-  });
 
   // 3. Search Requests
   const requests = getRawRequests();
-  requests.filter(r => r.id.toLowerCase().includes(q) || r.type.toLowerCase().includes(q)).slice(0, 5).forEach(r => {
-    results.push({
-      id: r.id,
-      type: 'REQUEST',
-      label: `${r.type} Request #${r.id}`,
-      subLabel: `Status: ${r.status}`,
-      chips: [
-        { label: r.status, color: r.status === 'APPROVED' ? 'green' : 'orange' }
-      ]
+  requests
+    .filter(
+      (r) => r.id.toLowerCase().includes(q) || r.type.toLowerCase().includes(q),
+    )
+    .slice(0, 5)
+    .forEach((r) => {
+      results.push({
+        id: r.id,
+        type: "REQUEST",
+        label: `${r.type} Request #${r.id}`,
+        subLabel: `Status: ${r.status}`,
+        chips: [
+          {
+            label: r.status,
+            color: r.status === "APPROVED" ? "green" : "orange",
+          },
+        ],
+      });
     });
-  });
 
   // 4. Search Brokers (Customers)
   const brokers = getRawBrokers();
-  brokers.filter(b => b.name.toLowerCase().includes(q) || b.email?.toLowerCase().includes(q) || b.mcNumber?.toLowerCase().includes(q)).slice(0, 5).forEach(b => {
-    results.push({
-      id: b.id,
-      type: 'BROKER',
-      label: b.name,
-      subLabel: `MC# ${b.mcNumber || 'N/A'}`,
-      status: b.isShared ? 'Shared' : 'Private',
-      chips: [
-        { label: b.clientType || 'Broker', color: 'blue' }
-      ]
+  brokers
+    .filter(
+      (b) =>
+        b.name.toLowerCase().includes(q) ||
+        b.email?.toLowerCase().includes(q) ||
+        b.mcNumber?.toLowerCase().includes(q),
+    )
+    .slice(0, 5)
+    .forEach((b) => {
+      results.push({
+        id: b.id,
+        type: "BROKER",
+        label: b.name,
+        subLabel: `MC# ${b.mcNumber || "N/A"}`,
+        status: b.isShared ? "Shared" : "Private",
+        chips: [{ label: b.clientType || "Broker", color: "blue" }],
+      });
     });
-  });
 
   return results;
 };
-
 
 export const getRecord360Data = async (type: EntityType, id: string) => {
   const loads = getRawLoads();
@@ -1333,77 +1512,228 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
   const contacts = getRawContacts();
 
   const buildTimeline = (events: any[]) => {
-    return events.sort((a, b) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime());
+    return events.sort(
+      (a, b) =>
+        new Date(b.timestamp || b.createdAt).getTime() -
+        new Date(a.timestamp || a.createdAt).getTime(),
+    );
   };
 
-  if (type === 'LOAD') {
-    const load = loads.find(l => l.id === id);
-    const linkedRequests = requests.filter(r => r.loadId === id || r.links.some(l => l.entityId === id));
-    const linkedCalls = calls.filter(c => c.links.some(l => l.entityId === id));
-    const linkedMessages = messages.filter(m => m.loadId === id);
-    const linkedIncidents = incidents.filter(i => i.loadId === id);
-    const linkedTasks = tasks.filter(t => t.links.some(lk => lk.entityType === 'LOAD' && lk.entityId === id) || t.assignedTo === load?.driverId);
-    const driver = getStoredUsers().find(u => u.id === load?.driverId);
-    const broker = getRawBrokers().find(b => b.id === load?.brokerId);
+  if (type === "LOAD") {
+    const load = loads.find((l) => l.id === id);
+    const linkedRequests = requests.filter(
+      (r) => r.loadId === id || r.links.some((l) => l.entityId === id),
+    );
+    const linkedCalls = calls.filter((c) =>
+      c.links.some((l) => l.entityId === id),
+    );
+    const linkedMessages = messages.filter((m) => m.loadId === id);
+    const linkedIncidents = incidents.filter((i) => i.loadId === id);
+    const linkedTasks = tasks.filter(
+      (t) =>
+        t.links.some((lk) => lk.entityType === "LOAD" && lk.entityId === id) ||
+        t.assignedTo === load?.driverId,
+    );
+    const driver = getStoredUsers().find((u) => u.id === load?.driverId);
+    const broker = getRawBrokers().find((b) => b.id === load?.brokerId);
 
-    const vaultDocs = getRawVaultDocs().filter(d => d.entityId === id);
-
-    const timeline = buildTimeline([
-      ...linkedRequests.map(r => ({ ...r, type: 'REQUEST', timestamp: r.createdAt, actorName: r.createdBy, action: `${r.type} Request` })),
-      ...linkedCalls.map(c => ({ ...c, type: 'CALL', timestamp: c.startTime, actorName: c.participants[0]?.name || 'Unknown', action: 'Interaction' })),
-      ...linkedMessages.map(m => ({ ...m, type: 'MESSAGE', action: 'Strategic Note', actorName: m.senderName })),
-      ...linkedIncidents.map(i => ({ ...i, type: 'INCIDENT', timestamp: i.reportedAt, actorName: 'System', action: `${i.type} Reported` })),
-      ...linkedTasks.map(t => ({ ...t, type: 'TASK', timestamp: t.createdAt, actorName: t.createdBy, action: `Task: ${t.title}` }))
-    ]);
-
-    return { load, requests: linkedRequests, calls: linkedCalls, messages: linkedMessages, incidents: linkedIncidents, tasks: linkedTasks, driver, broker, timeline, vaultDocs };
-  } else if (type === 'DRIVER') {
-    const driver = getStoredUsers().find(u => u.id === id);
-    const driverLoads = loads.filter(l => l.driverId === id);
-    const loadIds = driverLoads.map(l => l.id);
-    const linkedRequests = requests.filter(r => r.driverId === id || loadIds.includes(r.loadId || ''));
-    const linkedCalls = calls.filter(c => c.links.some(l => l.entityId === id || loadIds.includes(l.entityId)));
-    const linkedMessages = messages.filter(m => loadIds.includes(m.loadId || ''));
-    const linkedIncidents = incidents.filter(i => loadIds.includes(i.loadId));
+    const vaultDocs = getRawVaultDocs().filter((d) => d.entityId === id);
 
     const timeline = buildTimeline([
-      ...linkedRequests.map(r => ({ ...r, type: 'REQUEST', timestamp: r.createdAt, actorName: r.createdBy, action: `${r.type} Request` })),
-      ...linkedCalls.map(c => ({ ...c, type: 'CALL', timestamp: c.startTime, actorName: c.participants[0]?.name || 'Unknown', action: 'Interaction' })),
-      ...linkedMessages.map(m => ({ ...m, type: 'MESSAGE', action: 'Strategic Note', actorName: m.senderName })),
-      ...linkedIncidents.map(i => ({ ...i, type: 'INCIDENT', timestamp: i.reportedAt, actorName: 'System', action: `${i.type} Reported` }))
+      ...linkedRequests.map((r) => ({
+        ...r,
+        type: "REQUEST",
+        timestamp: r.createdAt,
+        actorName: r.createdBy,
+        action: `${r.type} Request`,
+      })),
+      ...linkedCalls.map((c) => ({
+        ...c,
+        type: "CALL",
+        timestamp: c.startTime,
+        actorName: c.participants[0]?.name || "Unknown",
+        action: "Interaction",
+      })),
+      ...linkedMessages.map((m) => ({
+        ...m,
+        type: "MESSAGE",
+        action: "Strategic Note",
+        actorName: m.senderName,
+      })),
+      ...linkedIncidents.map((i) => ({
+        ...i,
+        type: "INCIDENT",
+        timestamp: i.reportedAt,
+        actorName: "System",
+        action: `${i.type} Reported`,
+      })),
+      ...linkedTasks.map((t) => ({
+        ...t,
+        type: "TASK",
+        timestamp: t.createdAt,
+        actorName: t.createdBy,
+        action: `Task: ${t.title}`,
+      })),
     ]);
 
-    return { driver, loads: driverLoads, requests: linkedRequests, calls: linkedCalls, messages: linkedMessages, incidents: linkedIncidents, timeline };
-  } else if (type === 'BROKER') {
-    const broker = getRawBrokers().find(b => b.id === id);
-    const brokerLoads = loads.filter(l => l.brokerId === id);
-    const loadIds = brokerLoads.map(l => l.id);
-    const linkedRequests = requests.filter(r => r.links.some(l => l.entityId === id || loadIds.includes(l.entityId)));
-    const linkedCalls = calls.filter(c => c.links.some(l => l.entityId === id || loadIds.includes(l.entityId)));
+    return {
+      load,
+      requests: linkedRequests,
+      calls: linkedCalls,
+      messages: linkedMessages,
+      incidents: linkedIncidents,
+      tasks: linkedTasks,
+      driver,
+      broker,
+      timeline,
+      vaultDocs,
+    };
+  } else if (type === "DRIVER") {
+    const driver = getStoredUsers().find((u) => u.id === id);
+    const driverLoads = loads.filter((l) => l.driverId === id);
+    const loadIds = driverLoads.map((l) => l.id);
+    const linkedRequests = requests.filter(
+      (r) => r.driverId === id || loadIds.includes(r.loadId || ""),
+    );
+    const linkedCalls = calls.filter((c) =>
+      c.links.some((l) => l.entityId === id || loadIds.includes(l.entityId)),
+    );
+    const linkedMessages = messages.filter((m) =>
+      loadIds.includes(m.loadId || ""),
+    );
+    const linkedIncidents = incidents.filter((i) => loadIds.includes(i.loadId));
 
     const timeline = buildTimeline([
-      ...linkedRequests.map(r => ({ ...r, type: 'REQUEST', timestamp: r.createdAt, actorName: r.createdBy, action: `${r.type} Request` })),
-      ...linkedCalls.map(c => ({ ...c, type: 'CALL', timestamp: c.startTime, actorName: c.participants[0]?.name || 'Unknown', action: 'Interaction' }))
+      ...linkedRequests.map((r) => ({
+        ...r,
+        type: "REQUEST",
+        timestamp: r.createdAt,
+        actorName: r.createdBy,
+        action: `${r.type} Request`,
+      })),
+      ...linkedCalls.map((c) => ({
+        ...c,
+        type: "CALL",
+        timestamp: c.startTime,
+        actorName: c.participants[0]?.name || "Unknown",
+        action: "Interaction",
+      })),
+      ...linkedMessages.map((m) => ({
+        ...m,
+        type: "MESSAGE",
+        action: "Strategic Note",
+        actorName: m.senderName,
+      })),
+      ...linkedIncidents.map((i) => ({
+        ...i,
+        type: "INCIDENT",
+        timestamp: i.reportedAt,
+        actorName: "System",
+        action: `${i.type} Reported`,
+      })),
     ]);
 
-    return { broker, loads: brokerLoads, requests: linkedRequests, calls: linkedCalls, timeline };
-  } else if (type === 'INCIDENT') {
-    const incident = incidents.find(i => i.id === id);
-    const load = loads.find(l => l.id === incident?.loadId);
-    const driver = getStoredUsers().find(u => u.id === load?.driverId);
-    const linkedRequests = requests.filter(r => r.links.some(l => l.entityId === id || l.entityId === incident?.loadId));
-    const linkedTasks = tasks.filter(t => t.links.some(lk => lk.entityId === id || lk.entityId === incident?.loadId));
-    const linkedCalls = calls.filter(c => c.links.some(l => l.entityId === id || l.entityId === incident?.loadId));
-    const vaultDocs = getRawVaultDocs().filter(d => d.entityId === id || d.entityId === incident?.loadId);
+    return {
+      driver,
+      loads: driverLoads,
+      requests: linkedRequests,
+      calls: linkedCalls,
+      messages: linkedMessages,
+      incidents: linkedIncidents,
+      timeline,
+    };
+  } else if (type === "BROKER") {
+    const broker = getRawBrokers().find((b) => b.id === id);
+    const brokerLoads = loads.filter((l) => l.brokerId === id);
+    const loadIds = brokerLoads.map((l) => l.id);
+    const linkedRequests = requests.filter((r) =>
+      r.links.some((l) => l.entityId === id || loadIds.includes(l.entityId)),
+    );
+    const linkedCalls = calls.filter((c) =>
+      c.links.some((l) => l.entityId === id || loadIds.includes(l.entityId)),
+    );
 
     const timeline = buildTimeline([
-      ...(incident?.timeline || []).map((ev: any) => ({ ...ev, type: 'CRISIS_EVENT' })),
-      ...linkedRequests.map(r => ({ ...r, type: 'REQUEST', timestamp: r.createdAt, actorName: r.createdBy, action: `${r.type} Request` })),
-      ...linkedTasks.map(t => ({ ...t, type: 'TASK', timestamp: t.createdAt, actorName: t.createdBy, action: `Task: ${t.title}` })),
-      ...linkedCalls.map(c => ({ ...c, type: 'CALL', timestamp: c.startTime, actorName: c.participants[0]?.name || 'Unknown', action: 'Interaction' }))
+      ...linkedRequests.map((r) => ({
+        ...r,
+        type: "REQUEST",
+        timestamp: r.createdAt,
+        actorName: r.createdBy,
+        action: `${r.type} Request`,
+      })),
+      ...linkedCalls.map((c) => ({
+        ...c,
+        type: "CALL",
+        timestamp: c.startTime,
+        actorName: c.participants[0]?.name || "Unknown",
+        action: "Interaction",
+      })),
     ]);
 
-    return { incident, load, driver, requests: linkedRequests, tasks: linkedTasks, calls: linkedCalls, timeline, vaultDocs };
+    return {
+      broker,
+      loads: brokerLoads,
+      requests: linkedRequests,
+      calls: linkedCalls,
+      timeline,
+    };
+  } else if (type === "INCIDENT") {
+    const incident = incidents.find((i) => i.id === id);
+    const load = loads.find((l) => l.id === incident?.loadId);
+    const driver = getStoredUsers().find((u) => u.id === load?.driverId);
+    const linkedRequests = requests.filter((r) =>
+      r.links.some((l) => l.entityId === id || l.entityId === incident?.loadId),
+    );
+    const linkedTasks = tasks.filter((t) =>
+      t.links.some(
+        (lk) => lk.entityId === id || lk.entityId === incident?.loadId,
+      ),
+    );
+    const linkedCalls = calls.filter((c) =>
+      c.links.some((l) => l.entityId === id || l.entityId === incident?.loadId),
+    );
+    const vaultDocs = getRawVaultDocs().filter(
+      (d) => d.entityId === id || d.entityId === incident?.loadId,
+    );
+
+    const timeline = buildTimeline([
+      ...(incident?.timeline || []).map((ev: any) => ({
+        ...ev,
+        type: "CRISIS_EVENT",
+      })),
+      ...linkedRequests.map((r) => ({
+        ...r,
+        type: "REQUEST",
+        timestamp: r.createdAt,
+        actorName: r.createdBy,
+        action: `${r.type} Request`,
+      })),
+      ...linkedTasks.map((t) => ({
+        ...t,
+        type: "TASK",
+        timestamp: t.createdAt,
+        actorName: t.createdBy,
+        action: `Task: ${t.title}`,
+      })),
+      ...linkedCalls.map((c) => ({
+        ...c,
+        type: "CALL",
+        timestamp: c.startTime,
+        actorName: c.participants[0]?.name || "Unknown",
+        action: "Interaction",
+      })),
+    ]);
+
+    return {
+      incident,
+      load,
+      driver,
+      requests: linkedRequests,
+      tasks: linkedTasks,
+      calls: linkedCalls,
+      timeline,
+      vaultDocs,
+    };
   }
 
   return null;
@@ -1419,13 +1749,22 @@ export const getTriageQueues = async () => {
   if (calls.length === 0) {
     const seedCalls: CallSession[] = [
       {
-        id: 'CALL-INT-101',
+        id: "CALL-INT-101",
         startTime: new Date(Date.now() - 300000).toISOString(),
-        status: 'WAITING',
-        participants: [{ id: 'D-22', name: 'Robert Miller', role: 'DRIVER' }],
+        status: "WAITING",
+        participants: [{ id: "D-22", name: "Robert Miller", role: "DRIVER" }],
         lastActivityAt: new Date().toISOString(),
-        links: [{ id: uuidv4(), entityType: 'LOAD', entityId: 'L-1001', isPrimary: true, createdAt: new Date().toISOString(), createdBy: 'System' }]
-      }
+        links: [
+          {
+            id: uuidv4(),
+            entityType: "LOAD",
+            entityId: "L-1001",
+            isPrimary: true,
+            createdAt: new Date().toISOString(),
+            createdBy: "System",
+          },
+        ],
+      },
     ];
     localStorage.setItem(STORAGE_KEY_CALLS, JSON.stringify(seedCalls));
   }
@@ -1434,45 +1773,52 @@ export const getTriageQueues = async () => {
   if (workItems.length === 0) {
     const seedWorkItems: WorkItem[] = [
       {
-        id: 'WI-5001',
-        companyId: 'iscope-authority-001',
-        type: 'Detention_Review',
-        label: 'Detention: Load LP-9001',
-        description: 'Driver Alex R. has been at receiver for 3.5 hours. Automated detention trigger.',
-        priority: 'High',
-        status: 'Pending',
-        entityType: 'LOAD',
-        entityId: 'L-1001',
-        createdAt: new Date().toISOString()
+        id: "WI-5001",
+        companyId: "iscope-authority-001",
+        type: "Detention_Review",
+        label: "Detention: Load LP-9001",
+        description:
+          "Driver Alex R. has been at receiver for 3.5 hours. Automated detention trigger.",
+        priority: "High",
+        status: "Pending",
+        entityType: "LOAD",
+        entityId: "L-1001",
+        createdAt: new Date().toISOString(),
       },
       {
-        id: 'WI-5002',
-        companyId: 'iscope-authority-001',
-        type: 'Document_Issue',
-        label: 'Missing BOL: Load LP-9002',
-        description: 'Load delivered but no BOL artifact uploaded. SLA breach in 45m.',
-        priority: 'Critical',
-        status: 'Pending',
-        entityType: 'LOAD',
-        entityId: 'L-1002',
-        createdAt: new Date().toISOString()
-      }
+        id: "WI-5002",
+        companyId: "iscope-authority-001",
+        type: "Document_Issue",
+        label: "Missing BOL: Load LP-9002",
+        description:
+          "Load delivered but no BOL artifact uploaded. SLA breach in 45m.",
+        priority: "Critical",
+        status: "Pending",
+        entityType: "LOAD",
+        entityId: "L-1002",
+        createdAt: new Date().toISOString(),
+      },
     ];
     localStorage.setItem(STORAGE_KEY_WORK_ITEMS, JSON.stringify(seedWorkItems));
   }
 
-  const finalWorkItems = workItems.filter(wi => wi.status !== 'Resolved');
+  const finalWorkItems = workItems.filter((wi) => wi.status !== "Resolved");
 
   return {
-    requests: requests.filter(r => ['NEW', 'PENDING_APPROVAL'].includes(r.status)),
-    incidents: incidents.filter(i => i.status !== 'Closed'),
-    tasks: tasks.filter(t => t.status === 'OPEN'),
-    calls: (await getRawCalls()).filter(c => !['RESOLVED', 'COMPLETED'].includes(c.status)),
-    atRiskLoads: loads.filter(l =>
-      (l.status === 'in_transit' && l.isActionRequired) ||
-      DispatchIntelligence.predictExceptionRisk(l).risk === 'HIGH'
+    requests: requests.filter((r) =>
+      ["NEW", "PENDING_APPROVAL"].includes(r.status),
     ),
-    workItems: finalWorkItems
+    incidents: incidents.filter((i) => i.status !== "Closed"),
+    tasks: tasks.filter((t) => t.status === "OPEN"),
+    calls: (await getRawCalls()).filter(
+      (c) => !["RESOLVED", "COMPLETED"].includes(c.status),
+    ),
+    atRiskLoads: loads.filter(
+      (l) =>
+        (l.status === "in_transit" && l.isActionRequired) ||
+        DispatchIntelligence.predictExceptionRisk(l).risk === "HIGH",
+    ),
+    workItems: finalWorkItems,
   };
 };
 
@@ -1482,12 +1828,14 @@ export const getRawProviders = (): Provider[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_PROVIDERS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveProvider = async (provider: Provider) => {
   const providers = getRawProviders();
-  const idx = providers.findIndex(p => p.id === provider.id);
+  const idx = providers.findIndex((p) => p.id === provider.id);
   if (idx >= 0) providers[idx] = provider;
   else providers.unshift(provider);
   localStorage.setItem(STORAGE_KEY_PROVIDERS, JSON.stringify(providers));
@@ -1500,14 +1848,34 @@ export const getRawContacts = (): Contact[] => {
     const parsed = data ? JSON.parse(data) : [];
     if (parsed.length === 0) {
       const seed: Contact[] = [
-        { id: 'c1', name: 'John Dispatcher', title: 'Senior Operator', phone: '555-0199', email: 'john@asset.com', type: 'Internal', preferredChannel: 'Phone', normalizedPhone: '5550199' },
-        { id: 'c2', name: 'Sarah Broker', title: 'Agent', phone: '555-0288', email: 'sarah@choptank.com', type: 'Broker', preferredChannel: 'SMS', normalizedPhone: '5550288' }
+        {
+          id: "c1",
+          name: "John Dispatcher",
+          title: "Senior Operator",
+          phone: "555-0199",
+          email: "john@asset.com",
+          type: "Internal",
+          preferredChannel: "Phone",
+          normalizedPhone: "5550199",
+        },
+        {
+          id: "c2",
+          name: "Sarah Broker",
+          title: "Agent",
+          phone: "555-0288",
+          email: "sarah@choptank.com",
+          type: "Broker",
+          preferredChannel: "SMS",
+          normalizedPhone: "5550288",
+        },
       ];
       localStorage.setItem(STORAGE_KEY_CONTACTS, JSON.stringify(seed));
       return seed;
     }
     return parsed;
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const getProviders = async (): Promise<Provider[]> => {
@@ -1515,31 +1883,45 @@ export const getProviders = async (): Promise<Provider[]> => {
   if (providers.length === 0) {
     const seed: Provider[] = [
       {
-        id: 'p1',
-        name: 'Titan Recovery Specialists',
-        type: 'Recovery',
-        status: 'Preferred',
+        id: "p1",
+        name: "Titan Recovery Specialists",
+        type: "Recovery",
+        status: "Preferred",
         is247: true,
-        coverage: { regions: ['Northeast', 'Mid-Atlantic'] },
-        capabilities: ['Heavy Tow', 'Recovery', 'Transload'],
+        coverage: { regions: ["Northeast", "Mid-Atlantic"] },
+        capabilities: ["Heavy Tow", "Recovery", "Transload"],
         contacts: [
-          { id: 'pc1', name: 'Mike Titan', phone: '800-555-9000', email: 'mike@titan.com', type: 'Provider', preferredChannel: 'Phone' }
+          {
+            id: "pc1",
+            name: "Mike Titan",
+            phone: "800-555-9000",
+            email: "mike@titan.com",
+            type: "Provider",
+            preferredChannel: "Phone",
+          },
         ],
-        afterHoursContacts: []
+        afterHoursContacts: [],
       },
       {
-        id: 'p2',
-        name: 'Rapid Tire & Service',
-        type: 'Tire',
-        status: 'Approved',
+        id: "p2",
+        name: "Rapid Tire & Service",
+        type: "Tire",
+        status: "Approved",
         is247: true,
-        coverage: { regions: ['National'] },
-        capabilities: ['Tire', 'Mobile Mechanic'],
+        coverage: { regions: ["National"] },
+        capabilities: ["Tire", "Mobile Mechanic"],
         contacts: [
-          { id: 'pc2', name: 'Dispatch', phone: '800-RAPID-NOW', email: 'service@rapid.com', type: 'Provider', preferredChannel: 'Phone' }
+          {
+            id: "pc2",
+            name: "Dispatch",
+            phone: "800-RAPID-NOW",
+            email: "service@rapid.com",
+            type: "Provider",
+            preferredChannel: "Phone",
+          },
         ],
-        afterHoursContacts: []
-      }
+        afterHoursContacts: [],
+      },
     ];
     localStorage.setItem(STORAGE_KEY_PROVIDERS, JSON.stringify(seed));
     return seed;
@@ -1553,7 +1935,7 @@ export const getContacts = async (): Promise<Contact[]> => {
 
 export const saveContact = async (contact: Contact) => {
   const contacts = getRawContacts();
-  const idx = contacts.findIndex(c => c.id === contact.id);
+  const idx = contacts.findIndex((c) => c.id === contact.id);
   if (idx >= 0) contacts[idx] = contact;
   else contacts.unshift(contact);
   localStorage.setItem(STORAGE_KEY_CONTACTS, JSON.stringify(contacts));
@@ -1564,12 +1946,14 @@ export const getRawTasks = (): OperationalTask[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_TASKS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveTask = async (task: OperationalTask) => {
   const tasks = getRawTasks();
-  const idx = tasks.findIndex(t => t.id === task.id);
+  const idx = tasks.findIndex((t) => t.id === task.id);
   if (idx >= 0) tasks[idx] = task;
   else tasks.unshift(task);
   localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
@@ -1580,100 +1964,129 @@ export const getRawCrisisActions = (): CrisisAction[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_CRISIS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveCrisisAction = async (action: CrisisAction) => {
   const actions = getRawCrisisActions();
-  const idx = actions.findIndex(a => a.id === action.id);
+  const idx = actions.findIndex((a) => a.id === action.id);
   if (idx >= 0) actions[idx] = action;
   else actions.unshift(action);
   localStorage.setItem(STORAGE_KEY_CRISIS, JSON.stringify(actions));
   return action;
 };
 
-export const initiateRepowerWorkflow = async (loadId: string, user: User, notes: string) => {
+export const initiateRepowerWorkflow = async (
+  loadId: string,
+  user: User,
+  notes: string,
+) => {
   // 1. Create Request
   const request: KCIRequest = {
     id: `REQ-${uuidv4().slice(0, 8).toUpperCase()}`,
-    type: 'REPOWER',
-    status: 'PENDING_APPROVAL',
-    priority: 'HIGH',
-    currency: 'USD',
+    type: "REPOWER",
+    status: "PENDING_APPROVAL",
+    priority: "HIGH",
+    currency: "USD",
     requiresDocs: false,
-    links: [{ id: uuidv4(), entityType: 'LOAD', entityId: loadId, isPrimary: true, createdAt: new Date().toISOString(), createdBy: user.name }],
+    links: [
+      {
+        id: uuidv4(),
+        entityType: "LOAD",
+        entityId: loadId,
+        isPrimary: true,
+        createdAt: new Date().toISOString(),
+        createdBy: user.name,
+      },
+    ],
     loadId,
-    source: 'SAFETY',
+    source: "SAFETY",
     createdBy: user.name,
     requestedAt: new Date().toISOString(),
     createdAt: new Date().toISOString(),
     dueAt: new Date(Date.now() + 3600000).toISOString(),
-    decisionLog: []
+    decisionLog: [],
   };
   await saveRequest(request);
 
   // 2. Create Task for Dispatch
   const task: OperationalTask = {
     id: `TASK-${uuidv4().slice(0, 8).toUpperCase()}`,
-    type: 'REPOWER_HANDOFF',
+    type: "REPOWER_HANDOFF",
     title: `URGENT: Repower Required for Load`,
     description: `Safety has triggered a repower request. Reason: ${notes}`,
-    status: 'OPEN',
-    priority: 'CRITICAL',
-    assignedTo: 'DISPATCH_TEAM',
+    status: "OPEN",
+    priority: "CRITICAL",
+    assignedTo: "DISPATCH_TEAM",
     dueDate: new Date(Date.now() + 1800000).toISOString(),
-    links: [{ id: uuidv4(), entityType: 'LOAD', entityId: loadId, isPrimary: true, createdAt: new Date().toISOString(), createdBy: user.name }],
+    links: [
+      {
+        id: uuidv4(),
+        entityType: "LOAD",
+        entityId: loadId,
+        isPrimary: true,
+        createdAt: new Date().toISOString(),
+        createdBy: user.name,
+      },
+    ],
     createdAt: new Date().toISOString(),
-    createdBy: user.name
+    createdBy: user.name,
   };
   await saveTask(task);
 
-  // 3. Mark Load as At Risk
-  const loads = getRawLoads();
-  const idx = loads.findIndex(l => l.id === loadId);
+  // 3. Mark Load as At Risk (in-memory cache only — no localStorage)
+  const idx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (idx >= 0) {
-    loads[idx].isActionRequired = true;
-    loads[idx].actionSummary = "REPOWER PENDING";
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+    _cachedLoads[idx].isActionRequired = true;
+    _cachedLoads[idx].actionSummary = "REPOWER PENDING";
   }
 
   // 4. Log Event
   await logDispatchEvent({
     loadId,
     dispatcherId: user.id,
-    eventType: 'SystemAlert',
-    message: `REPOWER WORKFLOW INITIATED by Safety (${user.name})`
+    eventType: "SystemAlert",
+    message: `REPOWER WORKFLOW INITIATED by Safety (${user.name})`,
   });
 };
 
-export const verifyTrailerDrop = async (loadId: string, user: User, data: { trailerId: string, location: string, photo?: string, condition: string }) => {
+export const verifyTrailerDrop = async (
+  loadId: string,
+  user: User,
+  data: {
+    trailerId: string;
+    location: string;
+    photo?: string;
+    condition: string;
+  },
+) => {
   // 1. Log Event
   await logDispatchEvent({
     loadId,
     dispatcherId: user.id,
-    eventType: 'Note',
-    message: `TRAILER DROP VERIFIED: Unit ${data.trailerId} @ ${data.location}. Condition: ${data.condition}`
+    eventType: "Note",
+    message: `TRAILER DROP VERIFIED: Unit ${data.trailerId} @ ${data.location}. Condition: ${data.condition}`,
   });
 
-  // 2. Update Load
-  const loads = getRawLoads();
-  const idx = loads.findIndex(l => l.id === loadId);
-  if (idx >= 0) {
-    const legs = loads[idx].legs || [];
-    const legIdx = legs.findIndex(leg => leg.type === 'Dropoff');
+  // 2. Update Load (in-memory cache only — no localStorage)
+  const tvIdx = _cachedLoads.findIndex((l) => l.id === loadId);
+  if (tvIdx >= 0) {
+    const legs = _cachedLoads[tvIdx].legs || [];
+    const legIdx = legs.findIndex((leg) => leg.type === "Dropoff");
     if (legIdx >= 0) {
       legs[legIdx].completed = true;
       legs[legIdx].completedAt = new Date().toISOString();
     }
-    loads[idx].legs = legs;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
+    _cachedLoads[tvIdx].legs = legs;
   }
 };
 
 export const getDirectory = async () => {
   return {
     providers: getRawProviders(),
-    contacts: getRawContacts()
+    contacts: getRawContacts(),
   };
 };
 
@@ -1681,18 +2094,20 @@ export const getRawWorkItems = (): WorkItem[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_WORK_ITEMS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const getWorkItems = async (companyId?: string): Promise<WorkItem[]> => {
   const items = getRawWorkItems();
-  if (companyId) return items.filter(i => i.companyId === companyId);
+  if (companyId) return items.filter((i) => i.companyId === companyId);
   return items;
 };
 
 export const saveWorkItem = async (item: WorkItem) => {
   const items = getRawWorkItems();
-  const idx = items.findIndex(i => i.id === item.id);
+  const idx = items.findIndex((i) => i.id === item.id);
   if (idx >= 0) items[idx] = item;
   else items.unshift(item);
   localStorage.setItem(STORAGE_KEY_WORK_ITEMS, JSON.stringify(items));
@@ -1703,12 +2118,14 @@ export const getRawServiceTickets = (): ServiceTicket[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_SERVICE_TICKETS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveServiceTicket = async (ticket: ServiceTicket) => {
   const tickets = getRawServiceTickets();
-  const idx = tickets.findIndex(t => t.id === ticket.id);
+  const idx = tickets.findIndex((t) => t.id === ticket.id);
   if (idx >= 0) tickets[idx] = ticket;
   else tickets.unshift(ticket);
   localStorage.setItem(STORAGE_KEY_SERVICE_TICKETS, JSON.stringify(tickets));
@@ -1716,11 +2133,11 @@ export const saveServiceTicket = async (ticket: ServiceTicket) => {
   // Sync to API
   try {
     await fetch(`${API_URL}/service-tickets`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
-      body: JSON.stringify(ticket)
+      body: JSON.stringify(ticket),
     });
-  } catch (e) { }
+  } catch (e) {}
 
   return ticket;
 };
@@ -1729,12 +2146,14 @@ export const getRawNotificationJobs = (): NotificationJob[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_NOTIFICATION_JOBS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveNotificationJob = async (job: NotificationJob) => {
   const jobs = getRawNotificationJobs();
-  const idx = jobs.findIndex(j => j.id === job.id);
+  const idx = jobs.findIndex((j) => j.id === job.id);
   if (idx >= 0) jobs[idx] = job;
   else jobs.unshift(job);
   localStorage.setItem(STORAGE_KEY_NOTIFICATION_JOBS, JSON.stringify(jobs));
@@ -1742,11 +2161,11 @@ export const saveNotificationJob = async (job: NotificationJob) => {
   // Sync to API
   try {
     await fetch(`${API_URL}/notification-jobs`, {
-      method: 'POST',
+      method: "POST",
       headers: await getAuthHeaders(),
-      body: JSON.stringify(job)
+      body: JSON.stringify(job),
     });
-  } catch (e) { }
+  } catch (e) {}
 
   return job;
 };
@@ -1757,22 +2176,32 @@ export const getRawVaultDocs = (): VaultDoc[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_VAULT_DOCS);
     return data ? JSON.parse(data) : [];
-  } catch (e) { return []; }
+  } catch (e) {
+    return [];
+  }
 };
 
 export const saveVaultDoc = async (doc: VaultDoc) => {
   const docs = getRawVaultDocs();
-  const idx = docs.findIndex(d => d.id === doc.id);
+  const idx = docs.findIndex((d) => d.id === doc.id);
   if (idx >= 0) docs[idx] = doc;
   else docs.unshift(doc);
   localStorage.setItem(STORAGE_KEY_VAULT_DOCS, JSON.stringify(docs));
   return doc;
 };
 
-export const uploadVaultDoc = async (file: File, docType: VaultDocType, tenantId: string, metadata: any = {}): Promise<VaultDoc> => {
+export const uploadVaultDoc = async (
+  file: File,
+  docType: VaultDocType,
+  tenantId: string,
+  metadata: any = {},
+): Promise<VaultDoc> => {
   const id = uuidv4();
   const filename = `${id}_${file.name}`;
-  const storageRef = ref(storage, `tenants/${tenantId}/docs/${docType}/${filename}`);
+  const storageRef = ref(
+    storage,
+    `tenants/${tenantId}/docs/${docType}/${filename}`,
+  );
 
   // Upload to Firebase Storage
   await uploadBytes(storageRef, file);
@@ -1786,10 +2215,10 @@ export const uploadVaultDoc = async (file: File, docType: VaultDocType, tenantId
     filename: file.name,
     mimeType: file.type,
     fileSize: file.size,
-    status: 'Submitted',
+    status: "Submitted",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    ...metadata
+    ...metadata,
   };
 
   return await saveVaultDoc(doc);

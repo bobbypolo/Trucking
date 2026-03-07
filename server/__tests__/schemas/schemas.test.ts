@@ -1,18 +1,8 @@
 import { describe, it, expect } from "vitest";
-import {
-  createLoadSchema,
-  updateLoadStatusSchema,
-} from "../../schemas/loads";
-import {
-  registerUserSchema,
-  syncUserSchema,
-} from "../../schemas/users";
-import {
-  createEquipmentSchema,
-} from "../../schemas/equipment";
-import {
-  createSettlementSchema,
-} from "../../schemas/settlements";
+import { createLoadSchema, updateLoadStatusSchema } from "../../schemas/loads";
+import { registerUserSchema, syncUserSchema } from "../../schemas/users";
+import { createEquipmentSchema } from "../../schemas/equipment";
+import { createSettlementSchema } from "../../schemas/settlements";
 
 // Tests R-P1-03-AC1, R-P1-03-AC2
 
@@ -29,14 +19,15 @@ describe("R-P1-03: Zod Schemas", () => {
       expect(result.success).toBe(true);
     });
 
-    it("AC2: createLoadSchema rejects missing company_id", () => {
-      const invalid = {
+    it("AC2: createLoadSchema accepts missing company_id (derived from auth)", () => {
+      // company_id is optional — server derives from auth context
+      const valid = {
         id: "load-001",
         load_number: "L-1000",
         status: "Booked",
       };
-      const result = createLoadSchema.safeParse(invalid);
-      expect(result.success).toBe(false);
+      const result = createLoadSchema.safeParse(valid);
+      expect(result.success).toBe(true);
     });
 
     it("AC2: createLoadSchema rejects non-string load_number", () => {
