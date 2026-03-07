@@ -1,15 +1,13 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyFirebaseToken } from '../auth';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import db from '../firestore';
 import { validateBody } from '../middleware/validate';
 import { registerUserSchema, syncUserSchema, loginUserSchema } from '../schemas/users';
 
 const router = Router();
-const authenticateToken = verifyFirebaseToken;
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
 // AUTHENTICATION & REGISTRATION
 router.post('/api/auth/register', validateBody(registerUserSchema), async (req, res) => {
@@ -99,13 +97,6 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
         const companyDoc = await db.collection('companies').doc(user.company_id).get();
         const companyData = companyDoc.exists ? companyDoc.data() : null;
 
-        // Generate JWT token
-        const token = jwt.sign(
-            { id: user.id || userDoc.id, companyId: user.company_id, role: user.role, email: user.email },
-            JWT_SECRET,
-            { expiresIn: '24h' }
-        );
-
         // Normalize for frontend (camelCase)
         const normalizedUser = {
             ...user,
@@ -129,8 +120,7 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
         delete (normalizedUser as any).primary_workspace;
         delete (normalizedUser as any).duty_mode;
 
-        console.log(`[LOGIN SUCCESS] User ${email} logged in successfully`);
-        res.json({ user: normalizedUser, company: companyData, token });
+        res.json({ user: normalizedUser, company: companyData });
 
 
     } catch (error) {
@@ -140,7 +130,7 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
 });
 
 // Protected User Routes (Require Token)
-router.get('/api/users/me', authenticateToken, async (req: any, res) => {
+router.get('/api/users/me', requireAuth, async (req: any, res) => {
     try {
         const doc = await db.collection('users').doc(req.user.id).get();
         const user = doc.data();
@@ -153,7 +143,7 @@ router.get('/api/users/me', authenticateToken, async (req: any, res) => {
     }
 });
 
-router.get('/api/users/:companyId', authenticateToken, async (req: any, res) => {
+router.get('/api/users/:companyId', requireAuth, requireTenant, async (req: any, res) => {
     // RBAC: Ensure user only sees users from their own company
     if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Resource unauthorized' });

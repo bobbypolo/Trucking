@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyFirebaseToken } from '../auth';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 
 const router = Router();
-const authenticateToken = verifyFirebaseToken;
 
 // Driver Time Logs
-router.post('/api/time-logs', authenticateToken, async (req: any, res) => {
+router.post('/api/time-logs', requireAuth, requireTenant, async (req: any, res) => {
     const { id, user_id, load_id, activity_type, location_lat, location_lng, clock_out } = req.body;
     // Security: Only allow logging for oneself unless manager
     if (req.user.id !== user_id && req.user.role !== 'admin' && req.user.role !== 'dispatcher') {
@@ -29,7 +29,7 @@ router.post('/api/time-logs', authenticateToken, async (req: any, res) => {
     }
 });
 
-router.get('/api/time-logs/:userId', authenticateToken, async (req: any, res) => {
+router.get('/api/time-logs/:userId', requireAuth, requireTenant, async (req: any, res) => {
     if (req.user.id !== req.params.userId && req.user.role === 'driver') {
         return res.status(403).json({ error: 'Unauthorized profile access' });
     }
@@ -42,7 +42,7 @@ router.get('/api/time-logs/:userId', authenticateToken, async (req: any, res) =>
     }
 });
 
-router.get('/api/time-logs/company/:companyId', authenticateToken, async (req: any, res) => {
+router.get('/api/time-logs/company/:companyId', requireAuth, requireTenant, async (req: any, res) => {
     if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Resource unauthorized' });
     }
@@ -59,7 +59,7 @@ router.get('/api/time-logs/company/:companyId', authenticateToken, async (req: a
 });
 
 // Dispatch Events
-router.get('/api/dispatch-events/:companyId', authenticateToken, async (req: any, res) => {
+router.get('/api/dispatch-events/:companyId', requireAuth, requireTenant, async (req: any, res) => {
     if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Resource unauthorized' });
     }
@@ -75,7 +75,7 @@ router.get('/api/dispatch-events/:companyId', authenticateToken, async (req: any
     }
 });
 
-router.post('/api/dispatch-events', async (req, res) => {
+router.post('/api/dispatch-events', requireAuth, requireTenant, async (req: any, res) => {
     const { id, load_id, dispatcher_id, event_type, message, payload } = req.body;
     try {
         await pool.query(
@@ -90,7 +90,7 @@ router.post('/api/dispatch-events', async (req, res) => {
 });
 
 // Operational Messaging
-router.get('/api/messages/:loadId', async (req, res) => {
+router.get('/api/messages/:loadId', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM messages WHERE load_id = ? ORDER BY timestamp ASC', [req.params.loadId]);
         res.json(rows);
@@ -100,7 +100,7 @@ router.get('/api/messages/:loadId', async (req, res) => {
     }
 });
 
-router.post('/api/messages', async (req, res) => {
+router.post('/api/messages', requireAuth, requireTenant, async (req: any, res) => {
     const { id, load_id, sender_id, sender_name, text, attachments } = req.body;
     try {
         await pool.query(
@@ -115,7 +115,7 @@ router.post('/api/messages', async (req, res) => {
 });
 
 // Dashboard
-router.get('/api/dashboard/cards', async (req, res) => {
+router.get('/api/dashboard/cards', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM dashboard_card ORDER BY sort_order ASC');
         res.json(rows);

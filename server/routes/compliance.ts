@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { verifyFirebaseToken } from '../auth';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 
 const router = Router();
-const authenticateToken = verifyFirebaseToken;
 
 // Compliance Records
-router.get('/api/compliance/:userId', authenticateToken, async (req: any, res) => {
+router.get('/api/compliance/:userId', requireAuth, requireTenant, async (req: any, res) => {
     if (req.user.id !== req.params.userId && req.user.role !== 'admin' && req.user.role !== 'dispatcher' && req.user.role !== 'safety_manager') {
         return res.status(403).json({ error: 'Unauthorized profile access' });
     }

@@ -122,6 +122,27 @@ export class AuthError extends AppError {
 }
 
 /**
+ * 403 — Forbidden: authenticated but not authorized for this resource.
+ */
+export class ForbiddenError extends AppError {
+    constructor(
+        message: string,
+        details: Record<string, unknown> = {},
+        error_code = 'FORBIDDEN_001',
+    ) {
+        super({
+            error_code,
+            error_class: 'FORBIDDEN',
+            message,
+            statusCode: 403,
+            retryable: false,
+            details,
+        });
+        this.name = 'ForbiddenError';
+    }
+}
+
+/**
  * 409 — State conflicts (duplicate, already assigned, concurrent edit).
  */
 export class ConflictError extends AppError {

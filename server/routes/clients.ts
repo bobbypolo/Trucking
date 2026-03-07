@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import { verifyFirebaseToken } from '../auth';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 import db from '../firestore';
 import { redactData, getVisibilitySettings } from '../helpers';
 
 const router = Router();
-const authenticateToken = verifyFirebaseToken;
 
 // Clients / Brokers Routes
-router.get('/api/clients/:companyId', authenticateToken, async (req: any, res) => {
+router.get('/api/clients/:companyId', requireAuth, requireTenant, async (req: any, res) => {
     if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Unauthorized company access' });
     }
@@ -23,7 +23,7 @@ router.get('/api/clients/:companyId', authenticateToken, async (req: any, res) =
     }
 });
 
-router.post('/api/clients', authenticateToken, async (req: any, res) => {
+router.post('/api/clients', requireAuth, requireTenant, async (req: any, res) => {
     const { id, name, type, mc_number, dot_number, email, phone, address, payment_terms, company_id, chassis_requirements } = req.body;
     if (req.user.companyId !== company_id && req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Unauthorized company access' });
@@ -41,7 +41,7 @@ router.post('/api/clients', authenticateToken, async (req: any, res) => {
 });
 
 // Companies
-router.get('/api/companies/:id', async (req, res) => {
+router.get('/api/companies/:id', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const doc = await db.collection('companies').doc(req.params.id).get();
         if (!doc.exists) return res.status(404).json({ error: 'Company not found' });
@@ -52,7 +52,7 @@ router.get('/api/companies/:id', async (req, res) => {
     }
 });
 
-router.post('/api/companies', async (req, res) => {
+router.post('/api/companies', requireAuth, requireTenant, async (req: any, res) => {
     const { id, name, account_type, email, address, city, state, zip, tax_id, phone, mc_number, dot_number, load_numbering_config, accessorial_rates } = req.body;
     try {
         await db.collection('companies').doc(id).set({
@@ -69,7 +69,7 @@ router.post('/api/companies', async (req, res) => {
 });
 
 // Party Onboarding / Network Routes
-router.get('/api/parties', async (req, res) => {
+router.get('/api/parties', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [parties]: any = await pool.query('SELECT * FROM parties WHERE company_id = ?', [req.query.companyId]);
         const enrichedParties = await Promise.all(parties.map(async (p: any) => {
@@ -165,7 +165,7 @@ router.get('/api/parties', async (req, res) => {
     }
 });
 
-router.post('/api/parties', async (req, res) => {
+router.post('/api/parties', requireAuth, requireTenant, async (req: any, res) => {
     const { id, company_id, companyId, tenantId, name, type, status, mcNumber, dotNumber, rating, isCustomer, isVendor, contacts, rates, constraintSets, catalogLinks } = req.body;
     const finalCompanyId = companyId || company_id;
     const finalTenantId = tenantId || 'DEFAULT';
@@ -252,7 +252,7 @@ router.post('/api/parties', async (req, res) => {
 });
 
 // GLOBAL SEARCH ENGINE (360 Degree Intelligence)
-router.get('/api/global-search', authenticateToken, async (req: any, res) => {
+router.get('/api/global-search', requireAuth, requireTenant, async (req: any, res) => {
     const { query } = req.query;
     const companyId = req.user.companyId;
 

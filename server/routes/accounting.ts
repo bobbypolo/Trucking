@@ -1,5 +1,7 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 import { detectState, calculateDistance } from '../geoUtils';
 import { validateBody } from '../middleware/validate';
@@ -10,7 +12,7 @@ const router = Router();
 // --- UNIFIED FINANCIAL LEDGER ---
 
 // Chart of Accounts
-router.get('/api/accounting/accounts', async (req, res) => {
+router.get('/api/accounting/accounts', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM gl_accounts WHERE is_active = TRUE ORDER BY account_number ASC');
         res.json(rows);
@@ -21,7 +23,7 @@ router.get('/api/accounting/accounts', async (req, res) => {
 });
 
 // Load P&L (True Profitability Engine)
-router.get('/api/accounting/load-pl/:loadId', async (req, res) => {
+router.get('/api/accounting/load-pl/:loadId', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const loadId = req.params.loadId;
 
@@ -68,7 +70,7 @@ router.get('/api/accounting/load-pl/:loadId', async (req, res) => {
 });
 
 // Journal Entry Posting
-router.post('/api/accounting/journal', async (req, res) => {
+router.post('/api/accounting/journal', requireAuth, requireTenant, async (req: any, res) => {
     const { id, tenantId, entryDate, referenceNumber, description, sourceDocumentType, sourceDocumentId, createdBy, lines } = req.body;
     const connection = await pool.getConnection();
     try {
@@ -100,7 +102,7 @@ router.post('/api/accounting/journal', async (req, res) => {
 });
 
 // AR Invoices
-router.post('/api/accounting/invoices', async (req, res) => {
+router.post('/api/accounting/invoices', requireAuth, requireTenant, async (req: any, res) => {
     const invoice = req.body;
     const connection = await pool.getConnection();
     try {
@@ -162,7 +164,7 @@ router.post('/api/accounting/invoices', async (req, res) => {
 });
 
 // AP Bills
-router.post('/api/accounting/bills', async (req, res) => {
+router.post('/api/accounting/bills', requireAuth, requireTenant, async (req: any, res) => {
     const bill = req.body;
     const connection = await pool.getConnection();
     try {
@@ -227,7 +229,7 @@ router.post('/api/accounting/bills', async (req, res) => {
 // --- ACCOUNTING V3 EXTENSIONS ---
 
 // AR Invoices List
-router.get('/api/accounting/invoices', async (req, res) => {
+router.get('/api/accounting/invoices', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows]: any = await pool.query('SELECT * FROM ar_invoices ORDER BY invoice_date DESC');
         const enriched = await Promise.all(rows.map(async (inv: any) => {
@@ -241,7 +243,7 @@ router.get('/api/accounting/invoices', async (req, res) => {
 });
 
 // AP Bills List
-router.get('/api/accounting/bills', async (req, res) => {
+router.get('/api/accounting/bills', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows]: any = await pool.query('SELECT * FROM ap_bills ORDER BY bill_date DESC');
         const enriched = await Promise.all(rows.map(async (bill: any) => {
@@ -255,7 +257,7 @@ router.get('/api/accounting/bills', async (req, res) => {
 });
 
 // Driver Settlements List
-router.get('/api/accounting/settlements', async (req, res) => {
+router.get('/api/accounting/settlements', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const { driverId } = req.query;
         let query = 'SELECT * FROM driver_settlements';
@@ -276,7 +278,7 @@ router.get('/api/accounting/settlements', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/settlements', validateBody(createSettlementSchema), async (req, res) => {
+router.post('/api/accounting/settlements', requireAuth, requireTenant, validateBody(createSettlementSchema), async (req: any, res) => {
     const set = req.body;
     const connection = await pool.getConnection();
     try {
@@ -342,7 +344,7 @@ router.post('/api/accounting/settlements', validateBody(createSettlementSchema),
 });
 
 // Document Vault
-router.get('/api/accounting/docs', async (req, res) => {
+router.get('/api/accounting/docs', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const { loadId, driverId, truckId } = req.query;
         let query = 'SELECT * FROM document_vault WHERE 1=1';
@@ -358,7 +360,7 @@ router.get('/api/accounting/docs', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/docs', async (req, res) => {
+router.post('/api/accounting/docs', requireAuth, requireTenant, async (req: any, res) => {
     const doc = req.body;
     try {
         await pool.query(
@@ -371,7 +373,7 @@ router.post('/api/accounting/docs', async (req, res) => {
     }
 });
 
-router.patch('/api/accounting/docs/:id', async (req, res) => {
+router.patch('/api/accounting/docs/:id', requireAuth, requireTenant, async (req: any, res) => {
     const { status, is_locked } = req.body;
     try {
         await pool.query('UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ?', [status, is_locked, req.params.id]);
@@ -382,7 +384,7 @@ router.patch('/api/accounting/docs/:id', async (req, res) => {
 });
 
 // IFTA Intelligence & Auditing
-router.get('/api/accounting/ifta-evidence/:loadId', async (req, res) => {
+router.get('/api/accounting/ifta-evidence/:loadId', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query(
             'SELECT * FROM ifta_trip_evidence WHERE load_id = ? ORDER BY timestamp ASC',
@@ -394,7 +396,7 @@ router.get('/api/accounting/ifta-evidence/:loadId', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/ifta-analyze', async (req, res) => {
+router.post('/api/accounting/ifta-analyze', requireAuth, requireTenant, async (req: any, res) => {
     const { pings, mode } = req.body; // mode: 'GPS' | 'ROUTES'
 
     if (mode === 'GPS') {
@@ -413,7 +415,7 @@ router.post('/api/accounting/ifta-analyze', async (req, res) => {
     res.json({ message: 'Routing engine ready' });
 });
 
-router.post('/api/accounting/ifta-audit-lock', async (req, res) => {
+router.post('/api/accounting/ifta-audit-lock', requireAuth, requireTenant, async (req: any, res) => {
     const audit = req.body;
     try {
         await pool.query(
@@ -437,7 +439,7 @@ router.post('/api/accounting/ifta-audit-lock', async (req, res) => {
 });
 
 // IFTA Summary
-router.get('/api/accounting/ifta-summary', async (req, res) => {
+router.get('/api/accounting/ifta-summary', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const { quarter, year } = req.query;
         // Mock state tax rates for calculation
@@ -480,7 +482,7 @@ router.get('/api/accounting/ifta-summary', async (req, res) => {
     }
 });
 
-router.get('/api/accounting/mileage', async (req, res) => {
+router.get('/api/accounting/mileage', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM mileage_jurisdiction ORDER BY entry_date DESC LIMIT 50');
         res.json(rows);
@@ -489,7 +491,7 @@ router.get('/api/accounting/mileage', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/mileage', async (req, res) => {
+router.post('/api/accounting/mileage', requireAuth, requireTenant, async (req: any, res) => {
     const { truckId, loadId, date, stateCode, miles, source } = req.body;
     try {
         await pool.query(
@@ -503,7 +505,7 @@ router.post('/api/accounting/mileage', async (req, res) => {
     }
 });
 
-router.post('/api/accounting/ifta-post', async (req, res) => {
+router.post('/api/accounting/ifta-post', requireAuth, requireTenant, async (req: any, res) => {
     const { quarter, year, netTaxDue } = req.body;
     const connection = await pool.getConnection();
     try {
@@ -533,7 +535,7 @@ router.post('/api/accounting/ifta-post', async (req, res) => {
 });
 
 // Adjustment Entries (V3)
-router.post('/api/accounting/adjustments', async (req, res) => {
+router.post('/api/accounting/adjustments', requireAuth, requireTenant, async (req: any, res) => {
     const adj = req.body;
     try {
         await pool.query(
@@ -548,7 +550,7 @@ router.post('/api/accounting/adjustments', async (req, res) => {
 });
 
 // Batch Imports
-router.post('/api/accounting/batch-import', async (req, res) => {
+router.post('/api/accounting/batch-import', requireAuth, requireTenant, async (req: any, res) => {
     const { type, data } = req.body;
     const connection = await pool.getConnection();
     try {
@@ -589,7 +591,7 @@ router.post('/api/accounting/batch-import', async (req, res) => {
 });
 
 // QB Sync Placeholder
-router.post('/api/accounting/sync-qb', async (req, res) => {
+router.post('/api/accounting/sync-qb', requireAuth, requireTenant, async (req: any, res) => {
     const { entityType, entityId } = req.body;
     try {
         const syncId = uuidv4();

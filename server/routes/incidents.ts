@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 
 const router = Router();
 
 // Emergency Management: Incidents
-router.get('/api/incidents', async (req, res) => {
+router.get('/api/incidents', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows]: any = await pool.query('SELECT * FROM incidents ORDER BY reported_at DESC');
         const enrichedIncidents = await Promise.all(rows.map(async (inc: any) => {
@@ -20,7 +22,7 @@ router.get('/api/incidents', async (req, res) => {
     }
 });
 
-router.post('/api/incidents', async (req, res) => {
+router.post('/api/incidents', requireAuth, requireTenant, async (req: any, res) => {
     const { id, load_id, type, severity, status, sla_deadline, description, location_lat, location_lng, recovery_plan } = req.body;
 
     // Validation: check if load exists to prevent FK violation
@@ -43,7 +45,7 @@ router.post('/api/incidents', async (req, res) => {
     }
 });
 
-router.post('/api/incidents/:id/actions', async (req, res) => {
+router.post('/api/incidents/:id/actions', requireAuth, requireTenant, async (req: any, res) => {
     const { id, actor_name, action, notes, attachments } = req.body;
     const incidentId = req.params.id;
     try {
@@ -66,7 +68,7 @@ router.post('/api/incidents/:id/actions', async (req, res) => {
     }
 });
 
-router.post('/api/incidents/:id/charges', async (req, res) => {
+router.post('/api/incidents/:id/charges', requireAuth, requireTenant, async (req: any, res) => {
     const { id, category, amount, provider_vendor, status, approved_by, receipt_url } = req.body;
     const incidentId = req.params.id;
     try {

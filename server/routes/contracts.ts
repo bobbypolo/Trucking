@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { verifyFirebaseToken } from '../auth';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 
 const router = Router();
-const authenticateToken = verifyFirebaseToken;
 
 // Contracts
-router.get('/api/contracts/:customerId', authenticateToken, async (req: any, res) => {
+router.get('/api/contracts/:customerId', requireAuth, requireTenant, async (req: any, res) => {
     try {
         // Basic check: user should probably be allowed to see contracts if they have access to the customer
         // For now, allow authenticated users, but in production, we'd join with company_id
@@ -18,7 +18,7 @@ router.get('/api/contracts/:customerId', authenticateToken, async (req: any, res
     }
 });
 
-router.post('/api/contracts', async (req, res) => {
+router.post('/api/contracts', requireAuth, requireTenant, async (req: any, res) => {
     const { id, customer_id, contract_name, terms, start_date, expiry_date, equipment_preferences, status } = req.body;
     try {
         await pool.query(

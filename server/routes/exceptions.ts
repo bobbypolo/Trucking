@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAuth } from '../middleware/requireAuth';
+import { requireTenant } from '../middleware/requireTenant';
 import pool from '../db';
 
 const router = Router();
 
 // Exception Management
-router.get('/api/exceptions', async (req, res) => {
+router.get('/api/exceptions', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const { status, type, severity, entityType, entityId, ownerId } = req.query;
         let query = 'SELECT * FROM exceptions WHERE 1=1';
@@ -24,7 +26,7 @@ router.get('/api/exceptions', async (req, res) => {
     }
 });
 
-router.post('/api/exceptions', async (req, res) => {
+router.post('/api/exceptions', requireAuth, requireTenant, async (req: any, res) => {
     const ex = req.body;
     const id = uuidv4();
     try {
@@ -43,7 +45,7 @@ router.post('/api/exceptions', async (req, res) => {
     }
 });
 
-router.patch('/api/exceptions/:id', async (req, res) => {
+router.patch('/api/exceptions/:id', requireAuth, requireTenant, async (req: any, res) => {
     const { id } = req.params;
     const { status, ownerUserId, workflowStep, severity, notes, actorName } = req.body;
     try {
@@ -86,7 +88,7 @@ router.patch('/api/exceptions/:id', async (req, res) => {
     }
 });
 
-router.get('/api/exceptions/:id/events', async (req, res) => {
+router.get('/api/exceptions/:id/events', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM exception_events WHERE exception_id = ? ORDER BY timestamp DESC', [req.params.id]);
         res.json(rows);
@@ -95,7 +97,7 @@ router.get('/api/exceptions/:id/events', async (req, res) => {
     }
 });
 
-router.get('/api/exception-types', async (req, res) => {
+router.get('/api/exception-types', requireAuth, requireTenant, async (req: any, res) => {
     try {
         const [rows] = await pool.query('SELECT * FROM exception_type ORDER BY display_name ASC');
         res.json(rows);
