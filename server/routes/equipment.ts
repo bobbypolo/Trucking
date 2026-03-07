@@ -1,0 +1,41 @@
+import { Router } from 'express';
+import { verifyFirebaseToken } from '../auth';
+import pool from '../db';
+import { redactData, getVisibilitySettings } from '../helpers';
+
+const router = Router();
+const authenticateToken = verifyFirebaseToken;
+
+// Equipment — single definition (duplicate from original removed per AC3)
+router.get('/api/equipment/:companyId', authenticateToken, async (req: any, res) => {
+    if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized company access' });
+    }
+    try {
+        const [rows]: any = await pool.query('SELECT * FROM equipment WHERE company_id = ?', [req.params.companyId]);
+        const settings = await getVisibilitySettings(req.params.companyId);
+        res.json(redactData(rows, req.user.role, settings));
+    } catch (error) {
+        console.error('SERVER ERROR [GET /api/equipment]:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.post('/api/equipment', authenticateToken, async (req: any, res) => {
+    const { id, company_id, unit_number, type, status, ownership_type, provider_name, daily_cost, maintenance_history } = req.body;
+    if (req.user.companyId !== company_id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Unauthorized company access' });
+    }
+    try {
+        await pool.query(
+            'INSERT INTO equipment (id, company_id, unit_number, type, status, ownership_type, provider_name, daily_cost, maintenance_history) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [id, company_id, unit_number, type, status, ownership_type, provider_name, daily_cost, JSON.stringify(maintenance_history)]
+        );
+        res.status(201).json({ message: 'Equipment added' });
+    } catch (error) {
+        console.error('SERVER ERROR [POST /api/equipment]:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+export default router;
