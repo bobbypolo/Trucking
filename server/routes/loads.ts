@@ -12,6 +12,8 @@ import {
 import { validateBody } from "../middleware/validate";
 import { createLoadSchema, updateLoadStatusSchema } from "../schemas/loads";
 import { createChildLogger } from "../lib/logger";
+import { loadService } from "../services/load.service";
+import { LoadStatus } from "../services/load-state-machine";
 
 const router = Router();
 
@@ -261,56 +263,71 @@ router.post(
   },
 );
 
-// Specialized Load Update (for Status Triggers)
+// Dashboard — real status counts for authenticated tenant
+router.get(
+  "/api/loads/counts",
+  requireAuth,
+  requireTenant,
+  async (req: any, res, next) => {
+    const companyId = req.user.tenantId;
+    try {
+      const [rows]: any = await pool.query(
+        "SELECT status, COUNT(*) as count FROM loads WHERE company_id = ? GROUP BY status",
+        [companyId],
+      );
+
+      // Build counts map with all statuses defaulting to 0
+      const counts: Record<string, number> = {
+        draft: 0,
+        planned: 0,
+        dispatched: 0,
+        in_transit: 0,
+        arrived: 0,
+        delivered: 0,
+        completed: 0,
+        cancelled: 0,
+      };
+
+      let total = 0;
+      for (const row of rows) {
+        const status = row.status as string;
+        const count = Number(row.count);
+        if (status in counts) {
+          counts[status] = count;
+        }
+        total += count;
+      }
+
+      res.json({ ...counts, total });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Status Transition — wired to state machine via loadService.transitionLoad
 router.patch(
   "/api/loads/:id/status",
   requireAuth,
   requireTenant,
   validateBody(updateLoadStatusSchema),
-  async (req: any, res) => {
-    const { status, dispatcher_id } = req.body;
+  async (req: any, res, next) => {
+    const { status } = req.body;
     const loadId = req.params.id;
+    const companyId = req.user.tenantId;
+    const userId = req.user.id;
+
     try {
-      await pool.query("UPDATE loads SET status = ? WHERE id = ?", [
-        status,
+      const result = await loadService.transitionLoad(
         loadId,
-      ]);
-      await pool.query(
-        "INSERT INTO dispatch_events (id, load_id, dispatcher_id, event_type, message) VALUES (?, ?, ?, ?, ?)",
-        [
-          uuidv4(),
-          loadId,
-          dispatcher_id,
-          "StatusChange",
-          `Status updated to ${status}`,
-        ],
+        status as LoadStatus,
+        companyId,
+        userId,
       );
 
-      // Notify if there are emails
-      const [rows]: any = await pool.query(
-        "SELECT load_number, notification_emails FROM loads WHERE id = ?",
-        [loadId],
-      );
-      if (rows[0] && rows[0].notification_emails) {
-        const emails =
-          typeof rows[0].notification_emails === "string"
-            ? JSON.parse(rows[0].notification_emails)
-            : rows[0].notification_emails;
-        sendNotification(
-          emails,
-          `Status Update: #${rows[0].load_number}`,
-          `Load #${rows[0].load_number} has been updated to ${status}.`,
-        );
-      }
-
-      res.json({ message: "Status updated" });
+      res.json(result);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: (req as any).correlationId,
-        route: "PATCH /api/loads/status",
-      });
-      log.error({ err: error }, "SERVER ERROR [PATCH /api/loads/status]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
