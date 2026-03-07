@@ -23,7 +23,7 @@ export const generateQBSummaryJournal = (
 
     // 1. Sales Summary Journal (Accounts Receivable vs Revenue)
     const periodRevenue = loads
-        .filter(l => l.status === 'Invoiced' || l.status === 'Settled')
+        .filter(l => l.status === 'delivered' || l.status === 'completed')
         .reduce((sum, l) => sum + (l.carrierRate || 0), 0);
 
     if (periodRevenue > 0) {

@@ -146,7 +146,7 @@ export const BookingPortal: React.FC<Props> = ({ user, company, onBookingComplet
             companyId: user.companyId,
             driverId: '', // Unassigned
             loadNumber: loadNumber,
-            status: 'Unassigned',
+            status: 'draft',
             carrierRate: quote.totalRate || 0,
             driverPay: 0,
             pickupDate: quote.validUntil || new Date().toISOString(),

@@ -49,20 +49,14 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
     const StatusBadge = ({ status }: { status: string }) => {
         const baseStyle = "text-[7px] px-2 py-0.5 rounded uppercase tracking-[0.2em] font-black border";
         const colors: Record<string, string> = {
-            [LOAD_STATUS.Delivered]: 'bg-green-600/20 text-green-400 border-green-500/30',
-            [LOAD_STATUS.In_Transit]: 'bg-amber-600/20 text-amber-400 border-amber-500/30',
-            [LOAD_STATUS.Unassigned]: 'bg-slate-800 text-slate-500 border-slate-700',
-            [LOAD_STATUS.Assigned]: 'bg-blue-600/20 text-blue-400 border-blue-500/30',
-            [LOAD_STATUS.Dispatched]: 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30',
-            [LOAD_STATUS.At_Pickup]: 'bg-orange-600/20 text-orange-400 border-orange-500/30',
-            [LOAD_STATUS.Loaded]: 'bg-cyan-600/20 text-cyan-400 border-cyan-500/30',
-            [LOAD_STATUS.At_Delivery]: 'bg-violet-600/20 text-violet-400 border-violet-500/30',
-            [LOAD_STATUS.Settled]: 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30',
-            [LOAD_STATUS.Closed]: 'bg-slate-900 text-slate-400 border-slate-800',
-            [LOAD_STATUS.Cancelled]: 'bg-red-600/20 text-red-400 border-red-500/30',
-            [LOAD_STATUS.Active]: 'bg-blue-600/20 text-blue-400 border-blue-500/30',
-            [LOAD_STATUS.Booked]: 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30',
-            [LOAD_STATUS.Planned]: 'bg-slate-700/20 text-slate-400 border-slate-600/30',
+            'draft': 'bg-slate-800 text-slate-500 border-slate-700',
+            'planned': 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30',
+            'dispatched': 'bg-blue-600/20 text-blue-400 border-blue-500/30',
+            'in_transit': 'bg-amber-600/20 text-amber-400 border-amber-500/30',
+            'arrived': 'bg-orange-600/20 text-orange-400 border-orange-500/30',
+            'delivered': 'bg-green-600/20 text-green-400 border-green-500/30',
+            'completed': 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30',
+            'cancelled': 'bg-red-600/20 text-red-400 border-red-500/30',
         };
         return <span className={`${baseStyle} ${colors[status] || 'bg-slate-900 text-slate-400 border-slate-800'}`}>{status}</span>;
     };

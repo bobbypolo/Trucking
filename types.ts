@@ -1,6 +1,7 @@
 export type QuoteStatus = 'Draft' | 'Sent' | 'Negotiating' | 'Accepted' | 'Declined' | 'Expired';
 export type BookingStatus = 'Accepted' | 'Tendered' | 'Pending_Docs' | 'Ready_for_Dispatch';
-export type LoadStatus = 'Unassigned' | 'Assigned' | 'Dispatched' | 'In-Transit' | 'At_Pickup' | 'Loaded' | 'At_Delivery' | 'Delivered' | 'Closed' | 'Settled' | 'Cancelled' | 'Active' | 'Booked' | 'Planned' | 'Completed';
+export type LoadStatus = 'draft' | 'planned' | 'dispatched' | 'in_transit' | 'arrived' | 'delivered' | 'completed' | 'cancelled';
+export type SettlementStatus = 'pending_generation' | 'generated' | 'reviewed' | 'posted' | 'adjusted';
 
 export const QuoteStatus = {
   Draft: 'Draft',
@@ -19,24 +20,33 @@ export const BookingStatus = {
 } as const;
 
 export const LOAD_STATUS = {
-  Unassigned: 'Unassigned',
-  Assigned: 'Assigned',
-  Dispatched: 'Dispatched',
-  In_Transit: 'In-Transit',
-  At_Pickup: 'At_Pickup',
-  Loaded: 'Loaded',
-  At_Delivery: 'At_Delivery',
-  Delivered: 'Delivered',
-  Closed: 'Closed',
-  Settled: 'Settled',
-  Cancelled: 'Cancelled',
-  Active: 'Active',
-  Booked: 'Booked',
-  Planned: 'Planned',
-  Completed: 'Completed'
+  Draft: 'draft',
+  Planned: 'planned',
+  Dispatched: 'dispatched',
+  In_Transit: 'in_transit',
+  Arrived: 'arrived',
+  Delivered: 'delivered',
+  Completed: 'completed',
+  Cancelled: 'cancelled',
+  // Legacy aliases (mapped to canonical values)
+  Unassigned: 'draft',
+  Assigned: 'planned',
+  Active: 'in_transit',
+  Booked: 'planned',
+  At_Pickup: 'arrived',
+  Loaded: 'in_transit',
+  At_Delivery: 'arrived',
+  Closed: 'completed',
+  Settled: 'completed',
 } as const;
 
-export const LoadStatus = LOAD_STATUS; // Backup for transition
+export const SETTLEMENT_STATUS = {
+  PendingGeneration: 'pending_generation',
+  Generated: 'generated',
+  Reviewed: 'reviewed',
+  Posted: 'posted',
+  Adjusted: 'adjusted',
+} as const;
 
 export type UserRole =
   | 'admin' | 'driver' | 'owner_operator' | 'safety_manager' | 'dispatcher' | 'payroll_manager' | 'customer'
@@ -44,7 +54,9 @@ export type UserRole =
   | 'OWNER_ADMIN' | 'OPS' | 'SAFETY_MAINT' | 'FINANCE' | 'SALES_CS'
   | 'ORG_OWNER_SUPER_ADMIN' | 'OPS_MANAGER' | 'SAFETY_COMPLIANCE' | 'MAINTENANCE_MANAGER'
   | 'ACCOUNTING_AR' | 'ACCOUNTING_AP' | 'PAYROLL_SETTLEMENTS' | 'DRIVER_PORTAL' | 'FLEET_OO_ADMIN_PORTAL'
-  | 'SALES_CUSTOMER_SERVICE';
+  | 'SALES_CUSTOMER_SERVICE'
+  // Split Roles Pack
+  | 'DISPATCHER';
 
 // --- AGILE OPERATION MODELS ---
 export type OperatingMode = 'Small Team' | 'Split Roles' | 'Enterprise';
@@ -212,6 +224,7 @@ export interface ServiceTicket {
   status: TicketStatus;
   priority: 'Critical' | 'High' | 'Medium' | 'Low';
   description: string;
+  vendorId?: string;
   assignedVendorId?: string;
   eta?: string;
   estimatedCost: number;
@@ -235,16 +248,16 @@ export interface Incident {
   status: 'Open' | 'In_Progress' | 'Recovered' | 'Closed' | 'Handoff_Pending' | 'Critical';
   ownerUserId?: string;
   reportedAt: string;
-  slaDeadline: string;
+  slaDeadline?: string;
   description: string;
   location?: { lat: number, lng: number, address?: string };
   timeline: IncidentAction[];
   billingItems: EmergencyCharge[];
-  serviceTickets: string[]; // IDs of ServiceTicket
+  serviceTickets?: string[]; // IDs of ServiceTicket
   recoveryPlan?: string;
   repowerDriverId?: string;
   repowerLoadId?: string; // New load created for repower
-  isAtRisk: boolean;
+  isAtRisk?: boolean;
 }
 
 export interface NotificationJob {
@@ -519,12 +532,12 @@ export interface LoadData {
   driverPay: number;
   pickupDate: string;
   dropoffDate?: string;
-  freightType: FreightType;
-  legs: LoadLeg[];
+  freightType?: FreightType;
+  legs?: LoadLeg[];
   pickup: { city: string, state: string, facilityName?: string };
   dropoff: { city: string, state: string, facilityName?: string };
-  createdAt: number;
-  version: number;
+  createdAt?: number;
+  version?: number;
   bolNumber?: string;
   bookingNumber?: string;
   containerNumber?: string;
@@ -572,6 +585,7 @@ export interface LoadData {
     email?: string;
   };
   gpsHistory?: { lat: number, lng: number, timestamp: string }[];
+  telemetry?: { timestamp: string; event: string; lat: number; lng: number; speed: number }[];
   podUrls?: string[];
   bolUrls?: string[];
   customerUserId?: string;
@@ -609,6 +623,7 @@ export interface User {
   fleetOwnerContact?: { name: string, phone: string };
   preferredCommChannel?: 'SMS' | 'Call' | 'Chat' | 'Email';
   afterHoursPreference?: string;
+  phone?: string;
 
   // Agile Workflow additions
   primaryWorkspace?: PrimaryWorkspace;
@@ -859,7 +874,7 @@ export type OperationalEventType = 'CALL_LOG' | 'MESSAGE' | 'INCIDENT' | 'ISSUE'
 
 export type RequestType = 'DETENTION' | 'LUMPER' | 'LAYOVER' | 'TONU' | 'REPOWER' | 'TOW' | 'DOWNTIME' | 'LIFT_RESTRICTION' | 'ACCESSORIAL_PAY' | 'CHANGE_ORDER';
 export type RequestStatus = 'NEW' | 'NEEDS_INFO' | 'PENDING_APPROVAL' | 'APPROVED' | 'DENIED' | 'DEFERRED' | 'REASSIGNED' | 'PAID' | 'CLOSED';
-export type EntityType = 'LOAD' | 'JOB' | 'CUSTOMER' | 'BROKER' | 'DRIVER' | 'EQUIPMENT' | 'DOCUMENT' | 'OPEN_RECORD' | 'GENERAL' | 'REQUEST' | 'CALL' | 'PROVIDER' | 'TASK' | 'CRISIS_ACTION' | 'INCIDENT';
+export type EntityType = 'LOAD' | 'JOB' | 'CUSTOMER' | 'BROKER' | 'DRIVER' | 'EQUIPMENT' | 'DOCUMENT' | 'OPEN_RECORD' | 'GENERAL' | 'REQUEST' | 'CALL' | 'PROVIDER' | 'TASK' | 'CRISIS_ACTION' | 'INCIDENT' | 'Quote';
 
 export type CallSessionStatus = 'WAITING' | 'ACTIVE' | 'WRAP_UP' | 'CALLBACK' | 'ESCALATED' | 'RESOLVED' | 'MISSED' | 'VOICEMAIL';
 
@@ -1022,17 +1037,20 @@ export interface GlobalSearchResult {
 export interface Provider {
   id: string;
   name: string;
-  type: 'Tow' | 'Mobile Mechanic' | 'Tire' | 'Recovery' | 'Hazmat' | 'Storage' | 'Legal' | 'Broker partner';
-  coverage: {
+  type: 'Tow' | 'Mobile Mechanic' | 'Tire' | 'Recovery' | 'Hazmat' | 'Storage' | 'Legal' | 'Broker partner' | 'Broker' | 'Carrier' | 'Roadside';
+  coverage?: {
     regions?: string[];
     zipCodes?: string[];
     radius?: number;
   };
-  capabilities: string[];
-  contacts: Contact[];
-  afterHoursContacts: Contact[];
+  capabilities?: string[];
+  contacts?: Contact[];
+  afterHoursContacts?: Contact[];
   rates?: any;
-  status: 'Preferred' | 'Approved' | 'Blocked';
+  status: 'Preferred' | 'Approved' | 'Blocked' | 'Active' | 'Pre-Approved';
+  location?: string;
+  contactPhone?: string;
+  rating?: number;
   is247?: boolean; // 24/7 Ready Flag
   notes?: string;
   documents?: { type: string, url: string, expiry?: string }[];
@@ -1042,25 +1060,31 @@ export interface Contact {
   id: string;
   name: string;
   title?: string;
-  phone: string;
-  email: string;
-  type: 'Broker' | 'Shipper' | 'Receiver' | 'Emergency' | 'Provider' | 'Internal' | 'Customer';
-  preferredChannel: 'Phone' | 'SMS' | 'Email';
+  phone?: string;
+  email?: string;
+  type: 'Broker' | 'Shipper' | 'Receiver' | 'Emergency' | 'Provider' | 'Internal' | 'Customer' | 'Customer_Support';
+  preferredChannel?: 'Phone' | 'SMS' | 'Email';
   normalizedPhone?: string; // For inbound matching
+  notes?: string;
 }
 
 export interface OperationalTask {
   id: string;
-  type: 'GENERAL' | 'FOLLOW_UP' | 'DOCUMENTation' | 'REPOWER_HANDOFF';
+  companyId?: string;
+  type?: 'GENERAL' | 'FOLLOW_UP' | 'DOCUMENTation' | 'REPOWER_HANDOFF';
   title: string;
   description: string;
   status: 'OPEN' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  assignedTo: string;
-  dueDate: string;
-  links: RecordLink[];
+  assignedTo?: string;
+  assignedToUserIds?: string[];
+  entityType?: string;
+  entityId?: string;
+  dueDate?: string;
+  links?: RecordLink[];
   createdAt: string;
-  createdBy: string;
+  createdBy?: string;
+  updatedAt?: string;
 }
 
 export interface CrisisAction {
@@ -1473,6 +1497,7 @@ export interface VaultDoc {
   fileSize?: number;
 
   // Link Targets
+  entityId?: string;
   loadId?: string;
   driverId?: string;
   truckId?: string;

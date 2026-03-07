@@ -289,7 +289,7 @@ export const DispatchIntelligence = {
      * Calculates deep performance metrics for a driver based on their load history.
      */
     getDriverPerformance: (driverId: string, loads: LoadData[]): DriverPerformance => {
-        const driverLoads = loads.filter(l => l.driverId === driverId && (l.status === LOAD_STATUS.Delivered || l.status === LOAD_STATUS.Completed || l.status === LOAD_STATUS.Settled));
+        const driverLoads = loads.filter(l => l.driverId === driverId && (l.status === LOAD_STATUS.Delivered || l.status === LOAD_STATUS.Completed));
         const totalLoads = driverLoads.length;
 
         if (totalLoads === 0) {

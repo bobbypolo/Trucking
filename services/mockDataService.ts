@@ -48,7 +48,7 @@ export const seedMockData = async (user: User) => {
         {
             id: 'LD-8801',
             loadNumber: 'KCI-8801',
-            status: 'In-Transit',
+            status: 'in_transit',
             carrierRate: 3500,
             driverPay: 850,
             pickup: { city: 'Chicago', state: 'IL', facilityName: 'Mars Wrigley' },
@@ -68,7 +68,7 @@ export const seedMockData = async (user: User) => {
             ]
         }
     ];
-    for (const l of mockLoads) await saveLoad(l);
+    for (const l of mockLoads) await saveLoad(l, user);
 
     // 5. Mock Incidents (Breakdown)
     const mockIncidentState: Incident = {

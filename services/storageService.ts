@@ -46,12 +46,12 @@ const getRawLoads = (): LoadData[] => {
       // Seed rich initial loads for predictive search testing
       const now = new Date();
       loads = [
-        { id: 'L-1001', loadNumber: 'LP-9001', status: 'In-Transit', carrierRate: 2400, driverPay: 600, pickup: { city: 'Chicago', state: 'IL', facilityName: 'CenterPoint' }, dropoff: { city: 'Indianapolis', state: 'IN', facilityName: 'FedEx Hub' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver1@loadpilot.com', brokerId: 'B-101' },
-        { id: 'L-1102', loadNumber: 'LP-1102', status: 'In-Transit', carrierRate: 1800, driverPay: 450, pickup: { city: 'Gary', state: 'IN', facilityName: 'U.S. Steel' }, dropoff: { city: 'Columbus', state: 'OH', facilityName: 'Distribution Center' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver2@loadpilot.com', brokerId: 'B-103' },
-        { id: 'L-1003', loadNumber: 'LP-9003', status: 'Unassigned', carrierRate: 3200, driverPay: 800, pickup: { city: 'Savannah', state: 'GA', facilityName: 'Port of Savannah' }, dropoff: { city: 'Atlanta', state: 'GA', facilityName: 'Home Depot RDC' }, pickupDate: new Date(now.getTime() + 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver5@loadpilot.com', brokerId: 'B-104' },
-        { id: 'L-1004', loadNumber: 'LP-9004', status: 'Delivered', carrierRate: 2100, driverPay: 525, pickup: { city: 'Dallas', state: 'TX', facilityName: 'Lineage Logistics' }, dropoff: { city: 'Houston', state: 'TX', facilityName: 'Port Houston' }, pickupDate: new Date(now.getTime() - 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver4@loadpilot.com', brokerId: 'B-102', financialStatus: 'Paid' },
-        { id: 'L-1105', loadNumber: 'LP-1105', status: 'In-Transit', carrierRate: 1500, driverPay: 375, pickup: { city: 'Cincinnati', state: 'OH', facilityName: 'P&G Plant' }, dropoff: { city: 'Louisville', state: 'KY', facilityName: 'UPS Worldport' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver3@loadpilot.com', brokerId: 'B-105' },
-        { id: 'L-2001', loadNumber: 'LP-2001', status: 'In-Transit', carrierRate: 2900, driverPay: 700, pickup: { city: 'Phoenix', state: 'AZ', facilityName: 'Amazon PHX6' }, dropoff: { city: 'Los Angeles', state: 'CA', facilityName: 'Port of LA' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver6@loadpilot.com', brokerId: 'B-101' },
+        { id: 'L-1001', loadNumber: 'LP-9001', status: 'in_transit', carrierRate: 2400, driverPay: 600, pickup: { city: 'Chicago', state: 'IL', facilityName: 'CenterPoint' }, dropoff: { city: 'Indianapolis', state: 'IN', facilityName: 'FedEx Hub' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver1@loadpilot.com', brokerId: 'B-101' },
+        { id: 'L-1102', loadNumber: 'LP-1102', status: 'in_transit', carrierRate: 1800, driverPay: 450, pickup: { city: 'Gary', state: 'IN', facilityName: 'U.S. Steel' }, dropoff: { city: 'Columbus', state: 'OH', facilityName: 'Distribution Center' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver2@loadpilot.com', brokerId: 'B-103' },
+        { id: 'L-1003', loadNumber: 'LP-9003', status: 'draft', carrierRate: 3200, driverPay: 800, pickup: { city: 'Savannah', state: 'GA', facilityName: 'Port of Savannah' }, dropoff: { city: 'Atlanta', state: 'GA', facilityName: 'Home Depot RDC' }, pickupDate: new Date(now.getTime() + 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver5@loadpilot.com', brokerId: 'B-104' },
+        { id: 'L-1004', loadNumber: 'LP-9004', status: 'delivered', carrierRate: 2100, driverPay: 525, pickup: { city: 'Dallas', state: 'TX', facilityName: 'Lineage Logistics' }, dropoff: { city: 'Houston', state: 'TX', facilityName: 'Port Houston' }, pickupDate: new Date(now.getTime() - 86400000).toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver4@loadpilot.com', brokerId: 'B-102', financialStatus: 'Paid' },
+        { id: 'L-1105', loadNumber: 'LP-1105', status: 'in_transit', carrierRate: 1500, driverPay: 375, pickup: { city: 'Cincinnati', state: 'OH', facilityName: 'P&G Plant' }, dropoff: { city: 'Louisville', state: 'KY', facilityName: 'UPS Worldport' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver3@loadpilot.com', brokerId: 'B-105' },
+        { id: 'L-2001', loadNumber: 'LP-2001', status: 'in_transit', carrierRate: 2900, driverPay: 700, pickup: { city: 'Phoenix', state: 'AZ', facilityName: 'Amazon PHX6' }, dropoff: { city: 'Los Angeles', state: 'CA', facilityName: 'Port of LA' }, pickupDate: now.toISOString().split('T')[0], companyId: 'iscope-authority-001', driverId: 'driver6@loadpilot.com', brokerId: 'B-101' },
       ];
       localStorage.setItem(STORAGE_KEY, JSON.stringify(loads));
     }
@@ -60,7 +60,7 @@ const getRawLoads = (): LoadData[] => {
       ...l,
       id: l.id || uuidv4(),
       loadNumber: l.loadNumber || 'UNKNOWN',
-      status: l.status || 'Unassigned',
+      status: l.status || 'draft',
       carrierRate: Number(l.carrierRate) || 0,
       driverPay: Number(l.driverPay) || 0,
       pickup: l.pickup || { city: '', state: '', facilityName: '' },
@@ -1194,7 +1194,7 @@ export const getDriverSummary = async (driverId: string): Promise<DriverSummary 
     return load?.driverId === driverId;
   });
 
-  const activeLoad = getRawLoads().find(l => l.driverId === driverId && !['Delivered', 'Settled', 'Cancelled'].includes(l.status));
+  const activeLoad = getRawLoads().find(l => l.driverId === driverId && !['delivered', 'completed', 'cancelled'].includes(l.status));
 
   return {
     id: driver.id,
@@ -1220,7 +1220,7 @@ export const getBrokerSummary = async (brokerId: string) => {
   return {
     id: broker.id,
     name: broker.name,
-    activeLoads: loads.filter(l => l.status !== 'Delivered' && l.status !== 'Settled' && l.status !== 'Cancelled').length,
+    activeLoads: loads.filter(l => l.status !== 'delivered' && l.status !== 'completed' && l.status !== 'cancelled').length,
     unpaidAmount: requests.filter(r => r.status !== 'PAID').reduce((s, r) => s + (r.requestedAmount || 0), 0),
     paidAmount: requests.filter(r => r.status === 'PAID').reduce((s, r) => s + (r.approvedAmount || 0), 0),
     lastCallAt: calls[0]?.startTime,
@@ -1264,7 +1264,7 @@ export const globalSearch = async (query: string): Promise<GlobalSearchResult[]>
       subLabel: `${l.pickup.city} -> ${l.dropoff.city}`,
       status: l.status,
       chips: [
-        { label: l.status, color: l.status === 'In-Transit' ? 'blue' : 'slate' },
+        { label: l.status, color: l.status === 'in_transit' ? 'blue' : 'slate' },
         { label: 'Carrier Rate', color: 'slate', value: '$' + l.carrierRate }
       ]
     });
@@ -1469,7 +1469,7 @@ export const getTriageQueues = async () => {
     tasks: tasks.filter(t => t.status === 'OPEN'),
     calls: (await getRawCalls()).filter(c => !['RESOLVED', 'COMPLETED'].includes(c.status)),
     atRiskLoads: loads.filter(l =>
-      (l.status === 'In-Transit' && l.isActionRequired) ||
+      (l.status === 'in_transit' && l.isActionRequired) ||
       DispatchIntelligence.predictExceptionRisk(l).risk === 'HIGH'
     ),
     workItems: finalWorkItems

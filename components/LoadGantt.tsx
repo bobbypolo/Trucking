@@ -9,7 +9,7 @@ interface Props {
 export const LoadGantt: React.FC<Props> = ({ loads }) => {
     // Sort by status and ID
     const sortedLoads = [...loads].sort((a, b) => {
-        const order = { [LOAD_STATUS.Active]: 1, [LOAD_STATUS.Booked]: 2, [LOAD_STATUS.Planned]: 3 };
+        const order: Record<string, number> = { [LOAD_STATUS.In_Transit]: 1, [LOAD_STATUS.Planned]: 2, [LOAD_STATUS.Draft]: 3 };
         return (order[a.status as keyof typeof order] || 4) - (order[b.status as keyof typeof order] || 4);
     });
 

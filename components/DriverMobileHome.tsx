@@ -25,7 +25,7 @@ export const DriverMobileHome: React.FC<Props> = ({ user, company, loads, onLogo
     // Mock Change Requests & Docs for MVP
     const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
 
-    const activeLoads = useMemo(() => loads.filter(l => l.driverId === user.id && !['Delivered', 'Invoiced', 'Settled'].includes(l.status)), [loads, user.id]);
+    const activeLoads = useMemo(() => loads.filter(l => l.driverId === user.id && !['delivered', 'delivered', 'completed'].includes(l.status)), [loads, user.id]);
     const selectedLoad = useMemo(() => loads.find(l => l.id === selectedLoadId), [loads, selectedLoadId]);
 
     // Visibility Logic

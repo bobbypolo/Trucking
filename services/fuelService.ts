@@ -33,7 +33,7 @@ export const FuelCardService = {
         console.log(`[FuelCardService] Stream Received: Truck ${fuelEntry.truckId} at ${fuelEntry.vendorName}`);
 
         // Auto-Trigger Matching Logic
-        const docs = await getVaultDocs();
+        const docs = await getVaultDocs({});
         const mockRule: AutomationRule = {
             id: 'auto-fuel-match',
             name: 'Stream Meta-Match',

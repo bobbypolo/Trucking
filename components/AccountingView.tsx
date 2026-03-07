@@ -17,9 +17,9 @@ export const AccountingView: React.FC<AccountingViewProps> = ({ loads, users, on
         const netMargin = totalRevenue - totalDriverPay;
         const marginPercent = totalRevenue > 0 ? (netMargin / totalRevenue) * 100 : 0;
 
-        const pendingLoads = loads.filter(l => l.status !== 'Settled' && l.status !== 'Cancelled').length;
+        const pendingLoads = loads.filter(l => l.status !== 'completed' && l.status !== 'cancelled').length;
         const completedRevenue = loads
-            .filter(l => l.status === 'Delivered' || l.status === 'Settled' || l.status === 'Invoiced')
+            .filter(l => l.status === 'delivered' || l.status === 'completed' || l.status === 'delivered')
             .reduce((sum, l) => sum + (Number(l.carrierRate) || 0), 0);
 
         return {

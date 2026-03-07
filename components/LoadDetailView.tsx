@@ -84,7 +84,7 @@ export const LoadDetailView: React.FC<Props> = ({ load, onClose, onEdit, canView
 
         setIsClosing(true);
         try {
-            const updatedLoad = { ...load, status: 'Delivered' as LoadStatus, isLocked: true, financialStatus: 'Unbilled' as const };
+            const updatedLoad = { ...load, status: 'delivered' as LoadStatus, isLocked: true, financialStatus: 'Unbilled' as const };
             await saveLoad(updatedLoad, currentUser!);
             alert('Load Closed and Locked for Settlement');
             onClose();
@@ -107,7 +107,7 @@ export const LoadDetailView: React.FC<Props> = ({ load, onClose, onEdit, canView
                         </button>
                         <div className="h-4 w-px bg-slate-800" />
                         <span className="text-white uppercase tracking-widest font-black italic">Manifest Workspace: {load.loadNumber}</span>
-                        <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${load.status === 'Delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
+                        <div className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${load.status === 'delivered' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
                             'bg-blue-600/10 text-blue-400 border-blue-500/20'
                             }`}>
                             {load.status}

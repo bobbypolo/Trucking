@@ -196,10 +196,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
             if (loadFilter === 'all') return matchesSearch;
             if (loadFilter === 'In Transit') {
-                return matchesSearch && (v.activeLoad?.status === 'In-Transit' || v.activeLoad?.status === 'Active');
+                return matchesSearch && (v.activeLoad?.status === 'in_transit' || v.activeLoad?.status === 'dispatched');
             }
-            if (loadFilter === 'Booked') return matchesSearch && v.activeLoad?.status === 'Booked';
-            if (loadFilter === 'Unassigned') return matchesSearch && !v.activeLoad;
+            if (loadFilter === 'Booked') return matchesSearch && v.activeLoad?.status === 'planned';
+            if (loadFilter === 'draft') return matchesSearch && !v.activeLoad;
 
             return matchesSearch;
         });
@@ -400,7 +400,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                             <Filter className="w-3.5 h-3.5 text-slate-500" />
                         </div>
                         <div className="grid grid-cols-2 gap-2">
-                            {['all', 'In Transit', 'Booked', 'Unassigned'].map(f => (
+                            {['all', 'In Transit', 'Booked', 'draft'].map(f => (
                                 <button
                                     key={f}
                                     className={`py-2 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${loadFilter === f ? 'bg-blue-600 text-white shadow-lg' : 'bg-slate-950/50 text-slate-500 border border-white/5 hover:text-white'}`}

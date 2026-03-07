@@ -1,5 +1,5 @@
 
-import { User, Company, UserRole, AccountType, RolePermissions, PayModel, FreightType, TimeLog, PermissionCode, PermissionEffect, SubscriptionTier } from "../types";
+import { User, Company, UserRole, AccountType, RolePermissions, PayModel, FreightType, TimeLog, PermissionCode, PermissionEffect, SubscriptionTier, OperatingMode, CapabilityPermission, Capability } from "../types";
 import { v4 as uuidv4 } from 'uuid';
 import { seedDemoLoads } from "./storageService";
 import { auth } from "./firebase";
@@ -368,6 +368,22 @@ export const registerCompany = async (
     },
     operatingMode: 'Small Team',
     capabilityMatrix: CAPABILITY_PRESETS['Small Team']
+  };
+
+  const newUser: User = {
+    id: uuidv4(),
+    companyId: newCompany.id,
+    email: adminEmail,
+    name: adminName,
+    role: 'admin',
+    payModel: 'salary',
+    payRate: 100000,
+    password: password || 'admin123',
+    onboardingStatus: 'Completed',
+    safetyScore: 100,
+    restricted: false,
+    overrideActive: false,
+    auditHistory: []
   };
 
   try {

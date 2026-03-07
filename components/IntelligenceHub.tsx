@@ -112,7 +112,7 @@ const IntelligenceHub: React.FC<{
     const isHighObstruction = obstructionLevel === 'HIGH' || obstructionLevel === 'CRITICAL';
 
     const threads = useMemo(() => {
-        const activeLoadThreads = (loads || []).filter(l => l.status === 'In-Transit' || (l.issues && Array.isArray(l.issues) && l.issues.some((i: any) => i.status === 'Open'))).map(l => ({
+        const activeLoadThreads = (loads || []).filter(l => l.status === 'in_transit' || (l.issues && Array.isArray(l.issues) && l.issues.some((i: any) => i.status === 'Open'))).map(l => ({
             id: l.id,
             primaryContext: { label: `Load #${l.loadNumber || '---'}` },
             lastTouch: new Date(l.createdAt || Date.now()).toISOString(),
