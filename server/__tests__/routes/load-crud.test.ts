@@ -170,16 +170,15 @@ describe("Load CRUD API — round-trip", () => {
       expect(res.body[0].company_id).toBe(COMPANY_A);
 
       // Verify query used tenantId from auth, NOT from URL
-      expect(mockQuery).toHaveBeenCalledWith(
-        expect.stringContaining("SELECT * FROM loads WHERE company_id = ?"),
-        [COMPANY_A],
-      );
+      const firstQueryCall = mockQuery.mock.calls[0];
+      expect(firstQueryCall[0]).toContain("company_id = ?");
+      expect(firstQueryCall[1]).toEqual([COMPANY_A]);
     });
   });
 
   describe("POST /api/loads — create load", () => {
     it("creates a load and returns 201", async () => {
-      // Mock connection.query for INSERT (load + no legs)
+      // Mock connection.query for load creation (no legs)
       mockConnection.query.mockResolvedValue([{ affectedRows: 1 }]);
 
       const app = createApp();
