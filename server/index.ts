@@ -1,9 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+
+// Load .env BEFORE any validation or module imports that read env vars
+dotenv.config();
+
+import { validateEnv } from './lib/env';
 import { errorHandler } from './middleware/errorHandler';
 import { correlationId } from './middleware/correlationId';
 import { logger } from './lib/logger';
+
+// Fail fast if required environment variables are missing
+validateEnv();
 
 // Domain route modules
 import usersRouter from './routes/users';
@@ -16,8 +24,6 @@ import complianceRouter from './routes/compliance';
 import incidentsRouter from './routes/incidents';
 import accountingRouter from './routes/accounting';
 import exceptionsRouter from './routes/exceptions';
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
