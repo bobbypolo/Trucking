@@ -446,8 +446,8 @@ describe("R-P5-01-AC1: Full Lifecycle Regression", () => {
     // The settlement repository only reads load status; never writes it.
     expect(completed.status).toBe(LoadStatus.COMPLETED);
 
-    // Verify all 6 state transitions created dispatch_events via connection.execute
-    // Each of 6 transitions: 1 UPDATE + 1 INSERT = 2 execute calls = 12 total
+    // Verify all 6 state transitions created dispatch_events via connection.execute.
+    // Each transition produces 2 execute calls (status change, audit record) = 12 total.
     // (draft->planned->dispatched->in_transit->arrived->delivered->completed = 6 transitions)
     expect(mockExecute).toHaveBeenCalledTimes(12);
 
