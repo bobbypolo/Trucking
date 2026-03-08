@@ -133,6 +133,7 @@ interface Thread {
 }
 
 const IntelligenceHub: React.FC<{
+  show?: boolean;
   user: User;
   loads: LoadData[];
   activeLoad?: LoadData;
@@ -142,9 +143,12 @@ const IntelligenceHub: React.FC<{
   currentLoadId?: string;
   initialTab?: string;
   showInitialCallForm?: boolean;
-  activeCallSession: CallSession | null;
-  setActiveCallSession: (s: CallSession | null) => void;
-  setOverlayState: (s: "floating" | "docked" | "collapsed") => void;
+  initialShowCallForm?: boolean;
+  activeCallSession?: CallSession | null;
+  initialCallSession?: CallSession | null;
+  initialOverlayState?: "floating" | "docked" | "collapsed";
+  setActiveCallSession?: (s: CallSession | null) => void;
+  setOverlayState?: (s: "floating" | "docked" | "collapsed") => void;
   onClose?: () => void;
   onRecordAction: (e: OperationalEvent) => Promise<void>;
   onNavigate?: (tab: string, context?: any) => void;
@@ -152,8 +156,8 @@ const IntelligenceHub: React.FC<{
   setSession: (
     s: WorkspaceSession | ((prev: WorkspaceSession) => WorkspaceSession),
   ) => void;
-  summary: any;
-  setSummary: (s: any) => void;
+  summary?: any;
+  setSummary?: (s: any) => void;
   openRecordWorkspace: (
     type: EntityType,
     id: string,
@@ -476,11 +480,11 @@ const IntelligenceHub: React.FC<{
     });
 
     // KCI Requirement: Notify Shipper/Receiver ASAP
-    if (load.notification_emails && load.notification_emails.length > 0) {
+    if (load.notificationEmails && load.notificationEmails.length > 0) {
       const msg = `UPDATE: Load #${load.loadNumber} has been repowered to Driver ${driverName}. Estimated arrival updated. We apologize for the delay.`;
 
       // Trigger automated notification (system-to-customer)
-      await automatedStakeholderNotify(load.id, load.notification_emails, msg);
+      await automatedStakeholderNotify(load.id, load.notificationEmails, msg);
     }
 
     setShowRepowerPanel(false);
@@ -498,6 +502,7 @@ const IntelligenceHub: React.FC<{
     {
       id: "CS-9901",
       status: "WAITING",
+      startTime: new Date(Date.now() - 300000).toISOString(),
       participants: [{ id: "D-12", name: "Mark Stevens", role: "DRIVER" }],
       lastActivityAt: new Date(Date.now() - 300000).toISOString(),
       links: [],
@@ -506,6 +511,7 @@ const IntelligenceHub: React.FC<{
     {
       id: "CS-9902",
       status: "ACTIVE",
+      startTime: new Date(Date.now() - 60000).toISOString(),
       participants: [
         { id: "B-88", name: "Choptank Logistics", role: "BROKER" },
       ],
@@ -894,7 +900,14 @@ const IntelligenceHub: React.FC<{
     workItems: [],
   });
   const [activeTriageTab, setActiveTriageTab] = useState<
-    "LIVE_COMMS" | "REQUESTS" | "CRISIS" | "SERVICE" | "TASKS" | "INSIGHTS"
+    | "LIVE_COMMS"
+    | "REQUESTS"
+    | "CRISIS"
+    | "SERVICE"
+    | "TASKS"
+    | "INSIGHTS"
+    | "SUPPORT"
+    | "ASSETS"
   >("LIVE_COMMS");
 
   // Directory Management
@@ -1349,8 +1362,7 @@ const IntelligenceHub: React.FC<{
             status: "Approved",
           }),
         });
-      } catch (e) {
-      }
+      } catch (e) {}
     }
 
     await handleActionLogging({
@@ -1612,12 +1624,9 @@ const IntelligenceHub: React.FC<{
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const saveThread = async (thread: Thread) => {
-  };
-  const handleTimelineEventClick = (event: OperationalEvent) => {
-  };
-  const handleTimelineAction = (eventId: string, action: string) => {
-  };
+  const saveThread = async (thread: Thread) => {};
+  const handleTimelineEventClick = (event: OperationalEvent) => {};
+  const handleTimelineAction = (eventId: string, action: string) => {};
   const handleInitiateGlobalInbound = async () => {
     const mockCallers = [
       { id: "D-5501", name: "Mike Thompson", role: "DRIVER", team: "DISPATCH" },

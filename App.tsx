@@ -139,7 +139,14 @@ export default function App() {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [showIntelligenceHub, setShowIntelligenceHub] = useState(false);
   const [hubInitialTab, setHubInitialTab] = useState<
-    "messaging" | "safety" | "command" | "directory"
+    | "feed"
+    | "messaging"
+    | "intelligence"
+    | "reports"
+    | "crm"
+    | "safety"
+    | "command"
+    | "directory"
   >("command");
   const [hubInitialShowCallForm, setHubInitialShowCallForm] = useState(false);
   const [activeCallSession, setActiveCallSession] =
@@ -587,8 +594,8 @@ export default function App() {
               canCreateBroker={permissions.createBrokers}
               isRestrictedDriver={
                 !permissions.editCompletedLoads &&
-                (editingLoad?.status === "Delivered" ||
-                  editingLoad?.status === "Invoiced")
+                (editingLoad?.status === "delivered" ||
+                  editingLoad?.status === "completed")
               }
               potentialBroker={potentialBroker}
               onOpenHub={(tab, call) => {
