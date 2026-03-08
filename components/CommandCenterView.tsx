@@ -52,6 +52,7 @@ interface Props {
     onRoadside?: () => void;
     onNotify?: () => void;
     setSuccessMessage?: (msg: string | null) => void;
+    refreshQueues?: () => Promise<void>;
 }
 
 export const CommandCenterView: React.FC<Props> = ({
@@ -316,16 +317,16 @@ export const CommandCenterView: React.FC<Props> = ({
                                 {/* Filtered Triage List */}
                                 {[...incidents.map(i => ({ ...i, category: 'INCIDENT' })), ...safeWorkItems.map(w => ({ ...w, category: 'TASK' }))]
                                     .filter(item => {
-                                        const matchesSearch = (item.type || item.label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                        const matchesSearch = (item.type || (item as any).label || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
                                         const matchesSeverity = filterSeverity === 'all' ||
                                             (filterSeverity === 'tasks' && item.category === 'TASK') ||
-                                            (item.severity === filterSeverity || item.priority === filterSeverity);
+                                            ((item as any).severity === filterSeverity || (item as any).priority === filterSeverity);
                                         return matchesSearch && matchesSeverity;
                                     })
                                     .sort((a, b) => {
                                         const pMap: any = { 'Critical': 3, 'High': 2, 'Medium': 1, 'Low': 0 };
-                                        return (pMap[b.severity || (b as any).priority] || 0) - (pMap[a.severity || (a as any).priority] || 0);
+                                        return (pMap[(b as any).severity || (b as any).priority] || 0) - (pMap[(a as any).severity || (a as any).priority] || 0);
                                     })
                                     .map((item, idx) => (
                                         <div
