@@ -33,7 +33,7 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
     for (const mod of ROUTE_MODULES) {
       const filePath = path.join(ROUTES_DIR, `${mod}.ts`);
       expect(fs.existsSync(filePath), `Missing route module: ${mod}.ts`).toBe(
-        true
+        true,
       );
     }
   });
@@ -48,19 +48,19 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
       expect(
         content.includes("import { Router }") ||
           content.includes("import {Router}"),
-        `${mod}.ts must import Router from express`
+        `${mod}.ts must import Router from express`,
       ).toBe(true);
 
       // Must create a Router instance
       expect(
         content.includes("Router()"),
-        `${mod}.ts must create a Router instance`
+        `${mod}.ts must create a Router instance`,
       ).toBe(true);
 
       // Must have default export
       expect(
         content.includes("export default router"),
-        `${mod}.ts must export default router`
+        `${mod}.ts must export default router`,
       ).toBe(true);
     }
   });
@@ -76,12 +76,11 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
       expect(content.length).toBeGreaterThan(100);
 
       // Verify route definitions use router.* pattern (not app.*)
-      const appRouteRegex =
-        /\bapp\.(get|post|put|patch|delete)\s*\(/g;
+      const appRouteRegex = /\bapp\.(get|post|put|patch|delete)\s*\(/g;
       const appMatches = content.match(appRouteRegex) || [];
       expect(
         appMatches.length,
-        `${mod}.ts should not use app.* for routes; use router.* instead`
+        `${mod}.ts should not use app.* for routes; use router.* instead`,
       ).toBe(0);
     }
   });
@@ -127,7 +126,7 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
 
     expect(
       duplicates,
-      `Duplicate routes found:\n${duplicates.join("\n")}`
+      `Duplicate routes found:\n${duplicates.join("\n")}`,
     ).toHaveLength(0);
   });
 
@@ -140,7 +139,7 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
     const matches = content.match(routeRegex) || [];
     expect(
       matches.length,
-      "index.ts should not contain direct route handlers (except /api/health)"
+      "index.ts should not contain direct route handlers (except /api/health)",
     ).toBe(0);
   });
 
@@ -149,8 +148,9 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
     const content = fs.readFileSync(INDEX_PATH, "utf-8");
     for (const mod of ROUTE_MODULES) {
       expect(
-        content.includes(`from './routes/${mod}'`),
-        `index.ts must import from './routes/${mod}'`
+        content.includes(`from './routes/${mod}'`) ||
+          content.includes(`from "./routes/${mod}"`),
+        `index.ts must import from './routes/${mod}' or "./routes/${mod}"`,
       ).toBe(true);
     }
   });
