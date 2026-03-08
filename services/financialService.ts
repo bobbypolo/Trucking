@@ -1,9 +1,8 @@
+import { API_URL as API_BASE } from './config';
 import {
     GLAccount, JournalEntry, ARInvoice, APBill, DriverSettlement, FuelEntry,
     IFTASummary, MileageEntry, VaultDoc, IFTATripEvidence, IFTATripAudit
 } from '../types';
-
-const API_BASE = 'http://localhost:5000/api';
 
 export const getGLAccounts = async (): Promise<GLAccount[]> => {
     const res = await fetch(`${API_BASE}/accounting/accounts`);

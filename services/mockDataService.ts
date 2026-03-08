@@ -29,7 +29,6 @@ import {
 const COMPANY_ID = "iscope-authority-001";
 
 const _seedMockDataImpl = async (user: User) => {
-  console.log("Starting Heavy-Duty Operational Seeding...");
   const now = new Date();
 
   // 1. Mock Customers & Partners (Providers/Contacts)
@@ -321,8 +320,6 @@ const _seedMockDataImpl = async (user: User) => {
     },
   ];
   for (const s of mockSessions) await saveCallSession(s);
-
-  console.log("Operational Seeding Complete. Environment is live.");
 };
 
 /**
@@ -332,5 +329,4 @@ const _seedMockDataImpl = async (user: User) => {
 export const seedMockData: typeof _seedMockDataImpl = import.meta.env.DEV
   ? _seedMockDataImpl
   : async () => {
-      console.warn("seedMockData called in production — skipped");
     };

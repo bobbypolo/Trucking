@@ -1350,7 +1350,6 @@ const IntelligenceHub: React.FC<{
           }),
         });
       } catch (e) {
-        console.warn("API fallthrough: Mocking financial record entry");
       }
     }
 
@@ -1614,13 +1613,10 @@ const IntelligenceHub: React.FC<{
   };
 
   const saveThread = async (thread: Thread) => {
-    console.log("Saving thread", thread);
   };
   const handleTimelineEventClick = (event: OperationalEvent) => {
-    console.log("Event clicked", event);
   };
   const handleTimelineAction = (eventId: string, action: string) => {
-    console.log("Action", action, eventId);
   };
   const handleInitiateGlobalInbound = async () => {
     const mockCallers = [

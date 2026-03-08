@@ -46,7 +46,6 @@ export const Scanner: React.FC<Props> = ({ onDataExtracted, onCancel, mode = 'lo
            onDataExtracted(load, broker);
         }
       } catch (err: any) {
-        console.error(err);
         const errorMessage = err?.message || 'Unknown error occurred';
         setError(`Scanning Failed: ${errorMessage}`);
       } finally {

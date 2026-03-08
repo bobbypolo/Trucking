@@ -26,9 +26,9 @@ export const fetchWeatherData = async (lat: number, lng: number): Promise<Weathe
     const azureMapsKey = import.meta.env.VITE_WEATHER_API_KEY;
     const openWeatherKey = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
-    // TODO: PRODUCTION - Switch to Azure Maps before launch
-    // Currently using OpenWeatherMap (free tier) for development
-    // See WEATHER_SETUP_DEV.md for migration instructions
+    // PRODUCTION STRATEGY: Azure Maps (azureMapsKey) is the recommended provider for production.
+    // OpenWeatherMap serves as the development/fallback provider when Azure Maps is not configured.
+    // Set VITE_WEATHER_API_KEY (Azure Maps) in .env for production; VITE_OPENWEATHER_API_KEY for dev fallback.
 
     // Try Azure Maps Weather API first (recommended for production)
     if (azureMapsKey && azureMapsKey !== 'your_azure_maps_subscription_key_here') {
@@ -41,10 +41,8 @@ export const fetchWeatherData = async (lat: number, lng: number): Promise<Weathe
                 const data = await response.json();
                 return parseAzureMapsWeather(data);
             } else {
-                console.error('Azure Maps Weather API error:', response.status, response.statusText);
             }
         } catch (error) {
-            console.error('Azure Maps Weather API error:', error);
         }
     }
 
@@ -59,10 +57,8 @@ export const fetchWeatherData = async (lat: number, lng: number): Promise<Weathe
                 const data = await response.json();
                 return parseOpenWeatherData(data);
             } else {
-                console.error('OpenWeatherMap API error:', response.status, response.statusText);
             }
         } catch (error) {
-            console.error('OpenWeatherMap API error:', error);
         }
     }
 

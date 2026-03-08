@@ -95,7 +95,6 @@ const AccountingPortal: React.FC<Props> = ({ loads, users, currentUser, onUserUp
             setBills(Array.isArray(bs) ? bs : []);
             setSettlements(Array.isArray(sets) ? sets : []);
         } catch (error) {
-            console.error('Failed to load accounting data', error);
         }
     };
 
@@ -439,7 +438,6 @@ const AccountingPortal: React.FC<Props> = ({ loads, users, currentUser, onUserUp
                             users={users}
                             onUserUpdate={onUserUpdate}
                             onNavigate={(tab) => {
-                                console.log('Navigating to', tab);
                             }}
                         />
                     </div>

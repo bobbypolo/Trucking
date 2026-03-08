@@ -41,7 +41,6 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
             setBookings(b);
             setWorkItems(w);
         } catch (error) {
-            console.error("Failed to load quote data", error);
         } finally {
             setLoading(false);
         }
@@ -150,7 +149,6 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
         window.location.href = `tel:${phoneNumber}`;
 
         // 2. Log Interaction (Mock)
-        console.log(`[Interaction Logged] Call to ${phoneNumber} regarding ${context}`);
         // In reality, this would save a CallLog entity
     };
 

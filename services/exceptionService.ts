@@ -1,6 +1,5 @@
+import { API_URL } from './config';
 import { Exception, ExceptionType, ExceptionEvent, DashboardCard } from "../types";
-
-const API_URL = 'http://localhost:5000/api';
 
 export const getExceptions = async (filters: any = {}): Promise<Exception[]> => {
     try {
@@ -9,7 +8,6 @@ export const getExceptions = async (filters: any = {}): Promise<Exception[]> => 
         if (!res.ok) throw new Error('Failed to fetch exceptions');
         return await res.json();
     } catch (error) {
-        console.error(error);
         return [];
     }
 };
@@ -25,7 +23,6 @@ export const createException = async (exception: Partial<Exception>): Promise<st
         const data = await res.json();
         return data.id;
     } catch (error) {
-        console.error(error);
         return null;
     }
 };
@@ -39,7 +36,6 @@ export const updateException = async (id: string, updates: any): Promise<boolean
         });
         return res.ok;
     } catch (error) {
-        console.error(error);
         return false;
     }
 };
@@ -50,7 +46,6 @@ export const getExceptionEvents = async (id: string): Promise<ExceptionEvent[]> 
         if (!res.ok) throw new Error('Failed to fetch exception events');
         return await res.json();
     } catch (error) {
-        console.error(error);
         return [];
     }
 };
@@ -61,7 +56,6 @@ export const getExceptionTypes = async (): Promise<ExceptionType[]> => {
         if (!res.ok) throw new Error('Failed to fetch exception types');
         return await res.json();
     } catch (error) {
-        console.error(error);
         return [];
     }
 };
@@ -72,7 +66,6 @@ export const getDashboardCards = async (): Promise<DashboardCard[]> => {
         if (!res.ok) throw new Error('Failed to fetch dashboard cards');
         return await res.json();
     } catch (error) {
-        console.error(error);
         return [];
     }
 };

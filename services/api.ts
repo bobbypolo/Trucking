@@ -1,7 +1,6 @@
+import { API_URL } from './config';
 
 import { getIdTokenAsync } from './authService';
-
-const API_URL = 'http://localhost:5000/api';
 
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     const token = await getIdTokenAsync();

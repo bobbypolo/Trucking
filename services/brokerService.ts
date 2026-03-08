@@ -1,9 +1,8 @@
+import { API_URL } from './config';
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
 
 const BROKERS_KEY = "loadpilot_brokers_v1";
-
-const API_URL = 'http://localhost:5000/api';
 
 export const getRawBrokers = (): Broker[] => {
   try {
@@ -41,7 +40,6 @@ export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
       })).sort((a: Broker, b: Broker) => a.name.localeCompare(b.name));
     }
   } catch (e) {
-    console.warn('Backend not available, falling back to localStorage');
   }
   return getRawBrokers().sort((a, b) => a.name.localeCompare(b.name));
 };
@@ -60,7 +58,6 @@ export const saveBroker = async (broker: Broker) => {
     });
     if (!response.ok) throw new Error('Failed to save to backend');
   } catch (e) {
-    console.warn('Backend not available, saving to localStorage only');
   }
 
   // Fallback/Parallel save to localStorage
@@ -94,7 +91,6 @@ export const getContracts = async (customerId: string): Promise<Contract[]> => {
       }));
     }
   } catch (e) {
-    console.error('Failed to fetch contracts', e);
   }
   return [];
 };
@@ -108,7 +104,6 @@ export const saveContract = async (contract: Contract) => {
     });
     if (!response.ok) throw new Error('Failed to save contract');
   } catch (e) {
-    console.error('Failed to save contract', e);
   }
 };
 

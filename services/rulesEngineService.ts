@@ -29,7 +29,6 @@ export const executeFuelMatchingRule = async (
             // "Auto-Link" by updating the doc with the purchase details or vice versa
             // In our system, we'd link the FuelEntry id to the VaultDoc
             matchedCount++;
-            console.log(`[Rules Engine] Matched Purchase ${purchase.id} to Doc ${matchingDoc.id}`);
         }
     }
 
@@ -45,13 +44,11 @@ export const runRuleAutomation = async (rule: AutomationRule, context: any) => {
     switch (rule.trigger) {
         case 'load_status_change':
             if (rule.action === 'update_ifta' && context.status === 'Delivered') {
-                console.log(`[Rules Engine] Triggering IFTA Analysis for Load ${context.id}`);
                 // Call IFTA Intelligence API
             }
             break;
         case 'doc_upload':
             if (rule.action === 'match_receipt') {
-                console.log(`[Rules Engine] New document detected. Running matching logic.`);
             }
             break;
     }

@@ -51,7 +51,6 @@ export const SafetyView: React.FC<Props> = ({ user, loads = [], incidents = [], 
                             const performance = await calculateDriverPerformance(u, c);
                             return { user: u, performance };
                         } catch (err) {
-                            console.error(`Performance calculation failed for ${u.name}:`, err);
                             return {
                                 user: u,
                                 performance: {
@@ -74,7 +73,6 @@ export const SafetyView: React.FC<Props> = ({ user, loads = [], incidents = [], 
                     setFleetEquipment(equips);
                 }
             } catch (error) {
-                console.error("Safety Payload Synchronization Error:", error);
                 showFeedback("Logic Sync Interrupted. Re-establishing connection...");
             }
         };

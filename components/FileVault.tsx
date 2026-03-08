@@ -27,7 +27,6 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
             const data = await getVaultDocs({});
             setDocs(Array.isArray(data) ? data : []);
         } catch (error) {
-            console.error('Failed to load vault', error);
         }
         setLoading(false);
     };

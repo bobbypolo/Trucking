@@ -1,9 +1,8 @@
+import { API_URL as API_BASE } from './config';
 import { FuelEntry, VaultDoc, AutomationRule } from '../types';
 import { executeFuelMatchingRule } from './rulesEngineService';
 import { getVaultDocs } from './financialService';
 import { v4 as uuidv4 } from 'uuid';
-
-const API_BASE = 'http://localhost:5000/api';
 
 /**
  * FuelCardService handles the integration with external fuel card providers 
@@ -30,8 +29,6 @@ export const FuelCardService = {
             isBillableToLoad: false
         };
 
-        console.log(`[FuelCardService] Stream Received: Truck ${fuelEntry.truckId} at ${fuelEntry.vendorName}`);
-
         // Auto-Trigger Matching Logic
         const docs = await getVaultDocs({});
         const mockRule: AutomationRule = {
@@ -45,7 +42,6 @@ export const FuelCardService = {
 
         const result = await executeFuelMatchingRule([fuelEntry], docs, mockRule);
         if (result.matched > 0) {
-            console.log(`[FuelCardService] SUCCESS: Transaction ${fuelEntry.id} auto-linked to Vault document.`);
         }
 
         return fuelEntry;
@@ -68,7 +64,6 @@ export const FuelCardService = {
      * Broadcasts optimal fuel stops based on current price anchors to all active drivers.
      */
     pushOptimalRoutes: async (drivers: string[]): Promise<boolean> => {
-        console.log(`[FuelCardService] Pushing optimal routes to ${drivers.length} drivers...`);
         // Simulate API call to mobile push service
         return new Promise(resolve => setTimeout(() => resolve(true), 800));
     }

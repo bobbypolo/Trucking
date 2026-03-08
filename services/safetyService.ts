@@ -35,7 +35,6 @@ export const getEquipment = async (companyId: string): Promise<FleetEquipment[]>
     });
     return await res.json();
   } catch (e) {
-    console.error("Failed to fetch equipment", e);
     return [];
   }
 };
@@ -47,7 +46,6 @@ export const getComplianceRecords = async (userId: string): Promise<any[]> => {
     });
     return await res.json();
   } catch (e) {
-    console.error("Failed to fetch compliance records", e);
     return [];
   }
 };
