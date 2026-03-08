@@ -699,10 +699,11 @@ router.patch(
   requireTenant,
   async (req: any, res) => {
     const { status, is_locked } = req.body;
+    const tenantId = req.user.tenantId;
     try {
       await pool.query(
-        "UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ?",
-        [status, is_locked, req.params.id],
+        "UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ? AND tenant_id = ?",
+        [status, is_locked, req.params.id, tenantId],
       );
       res.json({ message: "Document status updated" });
     } catch (error) {

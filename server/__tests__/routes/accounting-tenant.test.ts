@@ -506,3 +506,48 @@ describe("R-P1-03: No DEFAULT fallback tenant_id values (structural)", () => {
     expect(true).toBe(true);
   });
 });
+
+// ============================================================
+// PATCH /api/accounting/docs/:id — tenant isolation
+// ============================================================
+
+describe("PATCH /api/accounting/docs/:id — tenant isolation", () => {
+  // Tests R-P1-01, R-P1-02
+  it("SQL contains tenant_id in WHERE clause and params include req.user.tenantId", async () => {
+    const app = buildApp();
+    await request(app)
+      .patch("/api/accounting/docs/doc-001")
+      .send({ status: "Approved", is_locked: true });
+
+    expect(mockPoolQuery).toHaveBeenCalled();
+    const [sql, params] = mockPoolQuery.mock.calls[0];
+    expect((sql as string).toLowerCase()).toContain("tenant_id");
+    expect(params as unknown[]).toContain(TEST_TENANT_ID);
+  });
+
+  it("cannot modify a document belonging to a different tenant", async () => {
+    // The UPDATE is scoped to tenant_id = req.user.tenantId.
+    // Simulate a request from ATTACKER_TENANT — it must NOT affect
+    // rows belonging to VICTIM_TENANT. Because the WHERE clause is
+    // "id = ? AND tenant_id = ?", the attacker's tenantId is passed
+    // and the database will match 0 rows for the victim's document.
+    const ATTACKER_TENANT = "tenant-attacker-xyz";
+    const attackerApp = buildApp(ATTACKER_TENANT);
+
+    // Return 0 affected rows (the attacker's tenantId doesn't match victim's doc)
+    mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+
+    await request(attackerApp)
+      .patch("/api/accounting/docs/victim-doc-001")
+      .send({ status: "Approved", is_locked: true });
+
+    expect(mockPoolQuery).toHaveBeenCalled();
+    const [sql, params] = mockPoolQuery.mock.calls[0];
+    // SQL must scope by tenant_id
+    expect((sql as string).toLowerCase()).toContain("tenant_id");
+    // Attacker's tenantId (not victim's) is passed in params
+    expect(params as unknown[]).toContain(ATTACKER_TENANT);
+    // Victim's tenantId must NOT appear in the params
+    expect(params as unknown[]).not.toContain(TEST_TENANT_ID);
+  });
+});
