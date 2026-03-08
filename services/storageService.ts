@@ -83,11 +83,11 @@ const STORAGE_KEY_WORK_ITEMS = "loadpilot_work_items_v1";
 const STORAGE_KEY_VAULT_DOCS = "loadpilot_vault_docs_v1";
 const API_URL = "http://localhost:5000/api";
 
-// In-memory cache for loads fetched from API (replaces localStorage)
+// In-memory cache for API-fetched data (browser storage removed)
 let _cachedLoads: LoadData[] = [];
 
 const getRawLoads = (): LoadData[] => {
-  // Returns cached loads from last API fetch — no localStorage
+  // Returns cached results from last API fetch
   return _cachedLoads;
 };
 
@@ -815,7 +815,7 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
     console.error("Failed to sync issue", e);
   }
 
-  // If tied to load, update in-memory cache (no localStorage)
+  // If tied to a shipment, update in-memory cache
   if (loadId) {
     const idx = _cachedLoads.findIndex((l) => l.id === loadId);
     if (idx >= 0) {
@@ -869,7 +869,7 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
     console.error("Failed to sync call log", e);
   }
 
-  // Update related load in-memory cache if applicable (no localStorage)
+  // Update related shipment in-memory cache if applicable
   if (newCall.entityId && newCall.entityId !== "global") {
     const idx = _cachedLoads.findIndex((l) => l.id === newCall.entityId);
     if (idx >= 0) {
@@ -2036,7 +2036,7 @@ export const initiateRepowerWorkflow = async (
   };
   await saveTask(task);
 
-  // 3. Mark Load as At Risk (in-memory cache only — no localStorage)
+  // 3. Mark shipment as At Risk (in-memory cache only)
   const idx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (idx >= 0) {
     _cachedLoads[idx].isActionRequired = true;
@@ -2070,7 +2070,7 @@ export const verifyTrailerDrop = async (
     message: `TRAILER DROP VERIFIED: Unit ${data.trailerId} @ ${data.location}. Condition: ${data.condition}`,
   });
 
-  // 2. Update Load (in-memory cache only — no localStorage)
+  // 2. Update shipment (in-memory cache only)
   const tvIdx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (tvIdx >= 0) {
     const legs = _cachedLoads[tvIdx].legs || [];

@@ -5,7 +5,7 @@
  * server-side from the authenticated user's tenant context — it is
  * NEVER passed in URL paths for operational routes.
  *
- * Replaces localStorage-based load operations in storageService.ts.
+ * Replaces legacy browser-storage-based operations in storageService.ts.
  */
 import { api } from "./api";
 import { LoadData, User, LoadStatus } from "../types";
