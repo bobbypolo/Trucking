@@ -161,8 +161,7 @@ export default function App() {
 
   useEffect(() => {
     if (import.meta.env.DEV) {
-      await seedDatabase();
-      seedSafetyData(true);
+      seedDatabase().then(() => seedSafetyData(true));
     }
 
     const unsubscribe = onUserChange(async (updatedUser) => {
@@ -1027,27 +1026,27 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen w-screen overflow-hidden bg-slate-950">
-      {mainContent}
-      {globalOverlays}
-      {user && (
-        <CommsOverlay
-          session={session}
-          activeCallSession={activeCallSession}
-          setActiveCallSession={setActiveCallSession}
-          onRecordAction={handleRecordAction}
-          openRecordWorkspace={openRecordWorkspace}
-          onNavigate={(tab) => {
-            handleNavigate("operations-hub");
-          }}
-          overlayState={overlayState}
-          setOverlayState={setOverlayState}
-          user={user}
-          allLoads={loads}
-          onLinkSessionToRecord={handleLinkSessionToRecord}
-        />
-      )}
-    </div>
+      <div className="h-screen w-screen overflow-hidden bg-slate-950">
+        {mainContent}
+        {globalOverlays}
+        {user && (
+          <CommsOverlay
+            session={session}
+            activeCallSession={activeCallSession}
+            setActiveCallSession={setActiveCallSession}
+            onRecordAction={handleRecordAction}
+            openRecordWorkspace={openRecordWorkspace}
+            onNavigate={(tab) => {
+              handleNavigate("operations-hub");
+            }}
+            overlayState={overlayState}
+            setOverlayState={setOverlayState}
+            user={user}
+            allLoads={loads}
+            onLinkSessionToRecord={handleLinkSessionToRecord}
+          />
+        )}
+      </div>
     </ErrorBoundary>
   );
 }
