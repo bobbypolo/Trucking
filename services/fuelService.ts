@@ -1,9 +1,8 @@
+import { API_URL as API_BASE } from './config';
 import { FuelEntry, VaultDoc, AutomationRule } from '../types';
 import { executeFuelMatchingRule } from './rulesEngineService';
 import { getVaultDocs } from './financialService';
 import { v4 as uuidv4 } from 'uuid';
-
-const API_BASE = 'http://localhost:5000/api';
 
 /**
  * FuelCardService handles the integration with external fuel card providers 

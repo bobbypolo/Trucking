@@ -1,9 +1,8 @@
+import { API_URL } from './config';
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
 
 const BROKERS_KEY = "loadpilot_brokers_v1";
-
-const API_URL = 'http://localhost:5000/api';
 
 export const getRawBrokers = (): Broker[] => {
   try {

@@ -1,6 +1,5 @@
+import { API_URL } from './config';
 import { Exception, ExceptionType, ExceptionEvent, DashboardCard } from "../types";
-
-const API_URL = 'http://localhost:5000/api';
 
 export const getExceptions = async (filters: any = {}): Promise<Exception[]> => {
     try {

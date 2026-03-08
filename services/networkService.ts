@@ -1,6 +1,5 @@
+import { API_URL } from './config';
 import { NetworkParty } from "../types";
-
-const API_URL = 'http://localhost:5000/api';
 
 export const getParties = async (companyId: string): Promise<NetworkParty[]> => {
     try {

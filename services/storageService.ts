@@ -1,3 +1,4 @@
+import { API_URL } from './config';
 import {
   Message,
   LoadData,
@@ -81,7 +82,6 @@ const STORAGE_KEY_BOOKINGS = "loadpilot_bookings_v1";
 const STORAGE_KEY_LEADS = "loadpilot_leads_v1";
 const STORAGE_KEY_WORK_ITEMS = "loadpilot_work_items_v1";
 const STORAGE_KEY_VAULT_DOCS = "loadpilot_vault_docs_v1";
-const API_URL = "http://localhost:5000/api";
 
 // In-memory cache for API-fetched data (browser storage removed)
 let _cachedLoads: LoadData[] = [];
@@ -239,7 +239,7 @@ export const getDispatchEvents = async (
         createdAt: e.created_at,
       }));
     }
-  } catch (e) {}
+  } catch (e) { console.warn("[storageService] API fallback:", e); }
   return [];
 };
 
@@ -269,7 +269,7 @@ export const getTimeLogs = async (
         },
       }));
     }
-  } catch (e) {}
+  } catch (e) { console.warn("[storageService] API fallback:", e); }
   return [];
 };
 
@@ -614,7 +614,7 @@ export const getIncidents = async (): Promise<Incident[]> => {
       localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify(merged));
       return merged;
     }
-  } catch (e) {}
+  } catch (e) { console.warn("[storageService] API fallback:", e); }
 
   console.log("[SQL SYNC] Incident fetch failed, falling back to localStorage");
   return getRawIncidents();
@@ -959,7 +959,7 @@ export const saveMessage = async (message: Message) => {
         headers: await getAuthHeaders(),
         body: JSON.stringify(message),
       });
-    } catch (e) {}
+    } catch (e) { console.warn("[storageService] API fallback:", e); }
   } catch (e) {
     console.error("Failed to save message", e);
   }
@@ -2137,7 +2137,7 @@ export const saveServiceTicket = async (ticket: ServiceTicket) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(ticket),
     });
-  } catch (e) {}
+  } catch (e) { console.warn("[storageService] API fallback:", e); }
 
   return ticket;
 };
@@ -2165,7 +2165,7 @@ export const saveNotificationJob = async (job: NotificationJob) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(job),
     });
-  } catch (e) {}
+  } catch (e) { console.warn("[storageService] API fallback:", e); }
 
   return job;
 };

@@ -1,3 +1,4 @@
+import { API_URL } from './config';
 import {
   User,
   Company,
@@ -31,8 +32,6 @@ const SEED_COMPANY_ID = "iscope-authority-001";
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
 let _usersCache: User[] = [];
-
-const API_URL = "http://localhost:5000/api";
 
 /**
  * Global token storage for API requests
@@ -374,7 +373,7 @@ export const getCompany = async (
   try {
     const res = await fetch(`${API_URL}/companies/${companyId}`);
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { console.warn("[authService] API fallback:", e); }
   return getStoredCompanies().find((c) => c.id === companyId);
 };
 
@@ -385,7 +384,7 @@ export const updateCompany = async (company: Company) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(company),
     });
-  } catch (e) {}
+  } catch (e) { console.warn("[authService] API fallback:", e); }
 
   const companies = getStoredCompanies();
   const idx = companies.findIndex((c) => c.id === company.id);
@@ -405,7 +404,7 @@ export const updateUser = async (user: User) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(user),
     });
-  } catch (e) {}
+  } catch (e) { console.warn("[authService] API fallback:", e); }
 
   const index = _usersCache.findIndex((u) => u.id === user.id);
   if (index >= 0) {
@@ -860,7 +859,7 @@ export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
       headers: await getAuthHeaders(),
     });
     if (res.ok) return await res.json();
-  } catch (e) {}
+  } catch (e) { console.warn("[authService] API fallback:", e); }
   return getStoredUsers().filter((u) => u.companyId === companyId);
 };
 
