@@ -101,6 +101,7 @@ import {
   RequestType,
   WorkflowStep,
   CallSession,
+  CallSessionStatus,
   OperationalEvent,
   LoadData,
   User,
@@ -200,7 +201,7 @@ const IntelligenceHub: React.FC<{
   // Sync selectedTab with initialTab when navigation occurs
   useEffect(() => {
     if (initialTab && initialTab !== selectedTab) {
-      setSelectedTab(initialTab as any);
+      setSelectedTab(initialTab);
     }
   }, [initialTab]);
 
@@ -529,10 +530,14 @@ const IntelligenceHub: React.FC<{
     id: `REQ-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
     type: "DETENTION" as RequestType,
     amount: 0,
-    priority: "NORMAL" as any,
+    priority: "NORMAL" as "NORMAL" | "HIGH",
     requiresDocs: false,
     notes: "",
-    attachedRecord: null as any,
+    attachedRecord: null as {
+      id: string;
+      type: EntityType;
+      label?: string;
+    } | null,
   });
   const [globalOpenRequestsCount, setGlobalOpenRequestsCount] = useState(0);
   const [isAutoPilotEnabled, setIsAutoPilotEnabled] = useState(false);
@@ -610,7 +615,7 @@ const IntelligenceHub: React.FC<{
 
     const updatedSession = {
       ...sessionToWrap,
-      status: "COMPLETED" as any,
+      status: "COMPLETED" as CallSessionStatus,
       endTime: new Date().toISOString(),
       notes: callNotes,
     };
@@ -765,7 +770,7 @@ const IntelligenceHub: React.FC<{
     if (currentCallSession) {
       newRequest.links.push({
         id: uuidv4(),
-        entityType: "CallSession" as any,
+        entityType: "CALL" as EntityType,
         entityId: currentCallSession.id,
         isPrimary: false,
         createdAt: new Date().toISOString(),
@@ -952,7 +957,7 @@ const IntelligenceHub: React.FC<{
   const fetchQueues = async () => {
     const queues = await getTriageQueues();
     const workItems = await getWorkItems(user.companyId);
-    setTriageQueues({ ...(queues as any), workItems });
+    setTriageQueues({ ...queues, workItems });
   };
 
   useEffect(() => {
@@ -1101,7 +1106,7 @@ const IntelligenceHub: React.FC<{
     type: "Driver",
     category: "Update",
     notes: "",
-    attachedRecord: null as any,
+    attachedRecord: null as GlobalSearchResult | null,
   });
   const [handoffData, setHandoffData] = useState({ assignedTo: "", notes: "" });
   const [issueData, setIssueData] = useState({
@@ -1653,7 +1658,7 @@ const IntelligenceHub: React.FC<{
       participants: [randomCaller],
       lastActivityAt: new Date().toISOString(),
       links: [],
-      team: randomCaller.team as any,
+      team: randomCaller.team,
     };
     await saveCallSession(newCall);
     const queues = await getTriageQueues();
@@ -1845,7 +1850,7 @@ const IntelligenceHub: React.FC<{
         } else if (type === "WORK_ITEM") {
           const updatedItem = {
             ...item,
-            status: "In_Progress" as any,
+            status: "In-Progress" as WorkItem["status"],
             assignedTo: [user.id],
           };
           await saveWorkItem(updatedItem);
@@ -2022,7 +2027,7 @@ const IntelligenceHub: React.FC<{
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAction("TAKE", e as any);
+                    handleAction("TAKE", e);
                   }}
                   className={`${isHighObstruction ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]"} bg-blue-600/90 hover:bg-blue-500 font-black text-white rounded-xl uppercase transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
                 >
@@ -2031,7 +2036,7 @@ const IntelligenceHub: React.FC<{
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleAction("ESCALATE", e as any);
+                    handleAction("ESCALATE", e);
                   }}
                   className={`${isHighObstruction ? "p-1" : "p-1.5"} bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/10`}
                   title="Escalate Critical"
@@ -2162,7 +2167,7 @@ const IntelligenceHub: React.FC<{
               ].map((chip) => (
                 <button
                   key={chip.label}
-                  onClick={() => setSelectedTab(chip.tab as any)}
+                  onClick={() => setSelectedTab(chip.tab)}
                   className={`text-[10px] font-black uppercase tracking-widest transition-all border-b pb-1 ${selectedTab === chip.tab ? "text-blue-400 border-blue-400/50" : "text-slate-500 border-transparent hover:text-blue-400 hover:border-blue-400/50"}`}
                 >
                   {chip.label}
@@ -2323,7 +2328,7 @@ const IntelligenceHub: React.FC<{
                   onNavigate={(tab) => {
                     if (tab === "loads") setSelectedTab("command");
                     else if (tab === "quotes") setSelectedTab("crm");
-                    else setSelectedTab(tab as any);
+                    else setSelectedTab(tab);
                   }}
                   onRepower={handleRepower}
                   onRoadside={handleRoadsideAssist}
@@ -2558,7 +2563,9 @@ const IntelligenceHub: React.FC<{
                   ].map((tab) => (
                     <button
                       key={tab.id}
-                      onClick={() => setActiveTriageTab(tab.id as any)}
+                      onClick={() =>
+                        setActiveTriageTab(tab.id as typeof activeTriageTab)
+                      }
                       className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
                     >
                       {tab.label}
@@ -2594,7 +2601,7 @@ const IntelligenceHub: React.FC<{
                             type="WORK_ITEM"
                             onClick={() =>
                               handleOpenWorkspace(
-                                wi.entityType as any,
+                                wi.entityType as EntityType,
                                 wi.entityId,
                                 wi.type.includes("Detention")
                                   ? "DETENTION"
@@ -2633,7 +2640,7 @@ const IntelligenceHub: React.FC<{
                             type="WORK_ITEM"
                             onClick={() =>
                               handleOpenWorkspace(
-                                wi.entityType as any,
+                                wi.entityType as EntityType,
                                 wi.entityId,
                                 wi.type.includes("Detention")
                                   ? "DETENTION"
@@ -3179,7 +3186,7 @@ const IntelligenceHub: React.FC<{
                     onChange={(e) =>
                       setRequestData({
                         ...requestData,
-                        type: e.target.value as any,
+                        type: e.target.value as RequestType,
                       })
                     }
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-[11px] font-black text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"

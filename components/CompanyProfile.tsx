@@ -51,6 +51,7 @@ import {
   Navigation,
   User as UserIcon,
 } from "lucide-react";
+import type { AccountType } from "../types";
 import { EditUserModal } from "./EditUserModal";
 
 interface Props {
@@ -185,7 +186,11 @@ export const CompanyProfile: React.FC<Props> = ({
     setTimeout(() => setMsg(""), 3000);
   };
 
-  const freightOptions: { id: FreightType; label: string; icon: any }[] = [
+  const freightOptions: {
+    id: FreightType;
+    label: string;
+    icon: React.ElementType;
+  }[] = [
     { id: "Dry Van", label: "Dry Van", icon: Box },
     { id: "Reefer", label: "Reefer", icon: ThermometerSnowflake },
     { id: "Flatbed", label: "Flatbed", icon: Construction },
@@ -266,7 +271,16 @@ export const CompanyProfile: React.FC<Props> = ({
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() =>
+                  setActiveTab(
+                    tab.id as
+                      | "identity"
+                      | "authority_dna"
+                      | "registry"
+                      | "permissions"
+                      | "policy",
+                  )
+                }
                 className={`pb-5 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all flex items-center gap-3 whitespace-nowrap ${activeTab === tab.id ? "border-blue-500 text-blue-500" : "border-transparent text-slate-600 hover:text-slate-400"}`}
               >
                 <tab.icon className="w-4 h-4" /> {tab.label}
@@ -503,7 +517,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     onChange={(e) =>
                       setCompany({
                         ...company,
-                        accountType: e.target.value as any,
+                        accountType: e.target.value as AccountType,
                       })
                     }
                   >
@@ -816,18 +830,21 @@ export const CompanyProfile: React.FC<Props> = ({
                                   ...prev,
                                   driverPermissions: {
                                     ...prev.driverPermissions,
-                                    [perm.id]: !(prev.driverPermissions as any)[
-                                      perm.id
-                                    ],
+                                    [perm.id]: !(
+                                      prev.driverPermissions as Record<
+                                        string,
+                                        boolean | undefined
+                                      >
+                                    )[perm.id],
                                   },
                                 }
                               : undefined,
                           )
                         }
-                        className={`w-10 h-5 rounded-full relative transition-all ${(company.driverPermissions as any)[perm.id] ? "bg-blue-600" : "bg-slate-700"}`}
+                        className={`w-10 h-5 rounded-full relative transition-all ${(company.driverPermissions as Record<string, boolean | undefined>)[perm.id] ? "bg-blue-600" : "bg-slate-700"}`}
                       >
                         <div
-                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(company.driverPermissions as any)[perm.id] ? "left-5" : "left-0.5"}`}
+                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(company.driverPermissions as Record<string, boolean | undefined>)[perm.id] ? "left-5" : "left-0.5"}`}
                         />
                       </button>
                     </div>
@@ -858,17 +875,20 @@ export const CompanyProfile: React.FC<Props> = ({
                                   dispatcherPermissions: {
                                     ...prev.dispatcherPermissions,
                                     [perm.id]: !(
-                                      prev.dispatcherPermissions as any
+                                      prev.dispatcherPermissions as Record<
+                                        string,
+                                        boolean | undefined
+                                      >
                                     )[perm.id],
                                   },
                                 }
                               : undefined,
                           )
                         }
-                        className={`w-10 h-5 rounded-full relative transition-all ${(company.dispatcherPermissions as any)[perm.id] ? "bg-blue-600" : "bg-slate-700"}`}
+                        className={`w-10 h-5 rounded-full relative transition-all ${(company.dispatcherPermissions as Record<string, boolean | undefined>)[perm.id] ? "bg-blue-600" : "bg-slate-700"}`}
                       >
                         <div
-                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(company.dispatcherPermissions as any)[perm.id] ? "left-5" : "left-0.5"}`}
+                          className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all ${(company.dispatcherPermissions as Record<string, boolean | undefined>)[perm.id] ? "left-5" : "left-0.5"}`}
                         />
                       </button>
                     </div>

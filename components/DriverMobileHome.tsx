@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import {
   User,
   LoadData,
+  LoadStatus,
   Company,
   ChangeRequest,
   VisibilityLevel,
@@ -85,7 +86,7 @@ export const DriverMobileHome: React.FC<Props> = ({
     rateCon: company?.driverVisibilitySettings?.allowRateCon,
   };
 
-  const handleStatusUpdate = async (newStatus: any) => {
+  const handleStatusUpdate = async (newStatus: LoadStatus) => {
     if (!selectedLoad) return;
     await onSaveLoad({ ...selectedLoad, status: newStatus });
   };
@@ -339,7 +340,9 @@ export const DriverMobileHome: React.FC<Props> = ({
                 {["DETENTION", "LUMPER", "LAYOVER", "TONU"].map((type) => (
                   <button
                     key={type}
-                    onClick={() => createChangeRequest(type as any)}
+                    onClick={() =>
+                      createChangeRequest(type as ChangeRequest["type"])
+                    }
                     className="p-4 bg-slate-900 border border-white/5 rounded-2xl text-[10px] font-black text-slate-300 hover:bg-blue-600 hover:text-white transition-all uppercase"
                   >
                     {type}
@@ -376,11 +379,12 @@ export const DriverMobileHome: React.FC<Props> = ({
                               category: "Maintenance",
                               description: `BREAKDOWN: ${issueNotes} | Tow: ${needsTow ? "YES" : "NO"} | Risk: ${isLoadAtRisk ? "HIGH" : "LOW"}`,
                               status: "Open",
-                              reported_at: new Date().toISOString(),
+                              reportedBy: user?.id || "driver",
+                              reportedAt: new Date().toISOString(),
                             },
                           ],
                           isActionRequired: true,
-                        } as any);
+                        });
                         setIsCreatingChange(false);
                         alert(
                           "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
