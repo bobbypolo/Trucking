@@ -15,6 +15,7 @@ import { createLoadSchema, updateLoadStatusSchema } from "../schemas/loads";
 import { createChildLogger } from "../lib/logger";
 import { loadService } from "../services/load.service";
 import { LoadStatus } from "../services/load-state-machine";
+import { geocodeStopAddress } from "../services/geocoding.service";
 
 const router = Router();
 
@@ -138,19 +139,40 @@ router.post(
         await connection.query("DELETE FROM load_legs WHERE load_id = ?", [id]);
         for (let i = 0; i < legs.length; i++) {
           const leg = legs[i];
+          const legCity = leg.location?.city || leg.city;
+          const legState = leg.location?.state || leg.state;
+          const legFacility = leg.location?.facilityName || leg.facility_name;
+
+          // Geocode at create time — populate canonical lat/lng from address
+          let latitude = leg.latitude ?? null;
+          let longitude = leg.longitude ?? null;
+          if (latitude == null && longitude == null && legCity) {
+            const coords = await geocodeStopAddress(
+              legCity,
+              legState,
+              legFacility,
+            );
+            if (coords) {
+              latitude = coords.latitude;
+              longitude = coords.longitude;
+            }
+          }
+
           await connection.query(
-            "INSERT INTO load_legs (id, load_id, type, facility_name, city, state, date, appointment_time, completed, sequence_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO load_legs (id, load_id, type, facility_name, city, state, date, appointment_time, completed, sequence_order, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
               leg.id || uuidv4(),
               id,
               leg.type,
-              leg.location?.facilityName || leg.facility_name,
-              leg.location?.city || leg.city,
-              leg.location?.state || leg.state,
+              legFacility,
+              legCity,
+              legState,
               leg.date,
               leg.appointmentTime || leg.appointment_time,
               leg.completed,
               i,
+              latitude,
+              longitude,
             ],
           );
         }

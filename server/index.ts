@@ -24,6 +24,7 @@ import complianceRouter from './routes/compliance';
 import incidentsRouter from './routes/incidents';
 import accountingRouter from './routes/accounting';
 import exceptionsRouter from './routes/exceptions';
+import trackingRouter from './routes/tracking';
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -53,6 +54,7 @@ app.use(complianceRouter);
 app.use(incidentsRouter);
 app.use(accountingRouter);
 app.use(exceptionsRouter);
+app.use(trackingRouter);
 
 // Global error handler — must be registered AFTER all routes
 app.use(errorHandler);
