@@ -6,6 +6,13 @@ import pool from "../db";
 import { detectState, calculateDistance } from "../geoUtils";
 import { validateBody } from "../middleware/validate";
 import { createSettlementSchema } from "../schemas/settlements";
+import {
+  createJournalEntrySchema,
+  createInvoiceSchema,
+  createBillSchema,
+  createDocumentVaultSchema,
+  batchImportSchema,
+} from "../schemas/accounting";
 import { createChildLogger } from "../lib/logger";
 
 const router = Router();
@@ -104,6 +111,7 @@ router.post(
   "/api/accounting/journal",
   requireAuth,
   requireTenant,
+  validateBody(createJournalEntrySchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const {
@@ -173,6 +181,7 @@ router.post(
   "/api/accounting/invoices",
   requireAuth,
   requireTenant,
+  validateBody(createInvoiceSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const invoice = req.body;
@@ -298,6 +307,7 @@ router.post(
   "/api/accounting/bills",
   requireAuth,
   requireTenant,
+  validateBody(createBillSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const bill = req.body;
@@ -652,6 +662,7 @@ router.post(
   "/api/accounting/docs",
   requireAuth,
   requireTenant,
+  validateBody(createDocumentVaultSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const doc = req.body;
@@ -1000,6 +1011,7 @@ router.post(
   "/api/accounting/batch-import",
   requireAuth,
   requireTenant,
+  validateBody(batchImportSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const { type, data } = req.body;
