@@ -9,8 +9,14 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD!,
     database: process.env.DB_NAME!,
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0
+    connectionLimit: 25,
+    queueLimit: 100,
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10000,
 });
+
+export async function closePool(): Promise<void> {
+    await pool.end();
+}
 
 export default pool;

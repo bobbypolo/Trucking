@@ -13,6 +13,7 @@ import { errorHandler } from "./middleware/errorHandler";
 import { correlationId } from "./middleware/correlationId";
 import { metricsMiddleware } from "./middleware/metrics";
 import { logger } from "./lib/logger";
+import { registerShutdownHandlers } from "./lib/graceful-shutdown";
 
 // Fail fast if required environment variables are missing
 validateEnv();
@@ -43,12 +44,7 @@ app.use(compression());
 
 // CORS — restrict to configured origin in production
 const corsOrigin = process.env.CORS_ORIGIN;
-app.use(
-  cors({
-    origin: corsOrigin || "*",
-    credentials: true,
-  })
-);
+app.use(cors({ origin: corsOrigin || "*", credentials: true }));
 
 app.use(express.json());
 app.use(correlationId);
@@ -67,11 +63,7 @@ app.use("/api", apiLimiter);
 
 // Health check
 app.get("/api/health", (req, res) => {
-  res.json({
-    status: "ok",
-    message: "LoadPilot API is running",
-    database: "Firestore",
-  });
+  res.json({ status: "ok", message: "LoadPilot API is running", database: "Firestore" });
 });
 
 // Mount domain routers
@@ -92,8 +84,12 @@ app.use(metricsRouter);
 // Global error handler — must be registered AFTER all routes
 app.use(errorHandler);
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   logger.info({ port }, `Server running on port ${port}`);
 });
+
+// Graceful shutdown — SIGTERM and SIGINT both invoke shutdownHandler
+process.on("SIGTERM", () => registerShutdownHandlers(server, "SIGTERM"));
+process.on("SIGINT", () => registerShutdownHandlers(server, "SIGINT"));
 
 export { app };
