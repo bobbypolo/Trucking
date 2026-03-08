@@ -39,7 +39,6 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             setSummary(s);
             setMileageEntries(m);
         } catch (error) {
-            console.error('IFTA Data Load Error:', error);
         }
         setLoading(false);
     };

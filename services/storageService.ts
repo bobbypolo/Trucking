@@ -201,7 +201,6 @@ export const logTime = async (log: Partial<TimeLog>) => {
       }),
     });
   } catch (e) {
-    console.error("Failed to log time", e);
   }
 };
 
@@ -218,7 +217,6 @@ export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
       }),
     });
   } catch (e) {
-    console.error("Failed to log dispatch event", e);
   }
 };
 
@@ -616,7 +614,6 @@ export const getIncidents = async (): Promise<Incident[]> => {
     }
   } catch (e) { console.warn("[storageService] API fallback:", e); }
 
-  console.log("[SQL SYNC] Incident fetch failed, falling back to localStorage");
   return getRawIncidents();
 };
 
@@ -699,7 +696,6 @@ export const seedIncidents = async (loads: LoadData[]) => {
         });
       }
     } catch (e) {
-      console.warn("Seeding incident failed, falling back to local:", e);
     }
   }
 
@@ -736,7 +732,6 @@ export const createIncident = async (incident: Partial<Incident>) => {
       // Successfully synced
     }
   } catch (e) {
-    console.error("[SQL SYNC] Failed to sync new incident", e);
   }
 
   // Always save to localStorage as safety
@@ -772,7 +767,6 @@ export const saveIncidentAction = async (
       // Synced
     }
   } catch (e) {
-    console.error("[SQL SYNC] Failed to sync incident action", e);
   }
 
   // Persist locally
@@ -812,7 +806,6 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
       body: JSON.stringify({ ...newIssue, load_id: loadId }),
     });
   } catch (e) {
-    console.error("Failed to sync issue", e);
   }
 
   // If tied to a shipment, update in-memory cache
@@ -866,7 +859,6 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
       body: JSON.stringify(newCall),
     });
   } catch (e) {
-    console.error("Failed to sync call log", e);
   }
 
   // Update related shipment in-memory cache if applicable
@@ -961,7 +953,6 @@ export const saveMessage = async (message: Message) => {
       });
     } catch (e) { console.warn("[storageService] API fallback:", e); }
   } catch (e) {
-    console.error("Failed to save message", e);
   }
 };
 const STORAGE_KEY_THREADS = "trucklogix_threads_v1";
@@ -989,7 +980,6 @@ export const saveThread = async (thread: OperationalThread) => {
     else threads.unshift(thread);
     localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threads));
   } catch (e) {
-    console.error("Failed to save thread", e);
   }
 };
 
@@ -1395,7 +1385,6 @@ export const globalSearch = async (
       return await res.json();
     }
   } catch (e) {
-    console.warn("Backend search failed, falling back to local cache", e);
   }
 
   // Fallback to local storage search

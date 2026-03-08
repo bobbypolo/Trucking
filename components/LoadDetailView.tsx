@@ -39,7 +39,6 @@ export const LoadDetailView: React.FC<Props> = ({ load, onClose, onEdit, canView
         try {
             const docs = await getVaultDocs({ loadId: load.id });
             setVaultDocs(docs);
-        } catch (e) { console.error(e); }
     };
 
     const driver = users.find(u => u.id === load.driverId);
@@ -69,7 +68,6 @@ export const LoadDetailView: React.FC<Props> = ({ load, onClose, onEdit, canView
             });
             alert('Invoice Generated and posted to GL');
         } catch (error) {
-            console.error(error);
             alert('Failed to generate invoice');
         } finally {
             setIsGenerating(false);

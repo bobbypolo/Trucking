@@ -1,9 +1,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 describe('graceful shutdown handler', () => {
-  let mockServer: { close: ReturnType<typeof vi.fn> };
-  let mockClosePool: ReturnType<typeof vi.fn>;
-  let mockExit: ReturnType<typeof vi.fn>;
+  let mockServer: { close: ((cb?: (err?: Error) => void) => void) };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClosePool: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockExit: any;
   let shutdownHandler: (signal: string) => Promise<void>;
 
   beforeEach(() => {

@@ -276,7 +276,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain(BODY_TENANT_ID);
@@ -299,7 +299,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain(BODY_TENANT_ID);
@@ -321,7 +321,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain(BODY_TENANT_ID);
@@ -346,7 +346,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain(BODY_TENANT_ID);
@@ -366,7 +366,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allParams).toContain(TEST_TENANT_ID);
     expect(allParams).not.toContain(BODY_TENANT_ID);
@@ -392,7 +392,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allParams).toContain(TEST_TENANT_ID);
     expect(allParams).not.toContain("DEFAULT");
@@ -411,7 +411,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allParams).toContain(TEST_TENANT_ID);
     expect(allParams).not.toContain("DEFAULT");
@@ -427,7 +427,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain("DEFAULT");
@@ -446,7 +446,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allParams).toContain(TEST_TENANT_ID);
     expect(allParams).not.toContain("DEFAULT");
@@ -471,7 +471,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allInsertParams).toContain(TEST_TENANT_ID);
     expect(allInsertParams).not.toContain("DEFAULT");
@@ -486,7 +486,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
-      .map(([_sql, params]: [string, unknown[]]) => params)
+      .map((call: any[]) => call[1])
       .flat();
     expect(allParams).toContain(TEST_TENANT_ID);
     expect(allParams).not.toContain("DEFAULT");

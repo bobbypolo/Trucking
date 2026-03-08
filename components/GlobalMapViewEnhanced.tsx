@@ -238,7 +238,6 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         humidity: data.main.humidity,
       });
     } catch (e) {
-      console.error("Failed to fetch weather", e);
     }
   }, []);
 
@@ -340,7 +339,6 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               setRoutePaths((prev) => ({ ...prev, [load.id]: points }));
             }
           } catch (e) {
-            console.error(`Failed to fetch route for load ${load.id}`, e);
           }
         }
       }

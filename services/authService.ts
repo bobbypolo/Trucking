@@ -456,7 +456,6 @@ export const login = async (
       return user;
     }
   } catch (error) {
-    console.error("Firebase Login Error:", error);
     // Legacy fallback for development before Firebase is fully configured
     const users = getStoredUsers();
     const user = users.find(
@@ -609,7 +608,6 @@ export const registerCompany = async (
       password || "admin123",
     );
   } catch (error) {
-    console.error("Firebase Registration Error:", error);
     // Continue for now to allow local storage fallback if Firebase fails/not configured
   }
 
@@ -841,11 +839,8 @@ export const addDriver = async (
     await createUserWithEmailAndPassword(auth, email, password || "admin123");
   } catch (error: any) {
     if (error.code === "auth/email-already-in-use") {
-      console.log(
-        `User ${email} already exists in Firebase Auth. Skipping creation.`,
-      );
+      // User already exists in Firebase Auth — skip creation silently
     } else {
-      console.error("Firebase Add Driver Error:", error);
     }
   }
 

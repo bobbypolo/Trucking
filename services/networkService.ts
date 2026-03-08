@@ -6,7 +6,6 @@ export const getParties = async (companyId: string): Promise<NetworkParty[]> => 
         const res = await fetch(`${API_URL}/parties/${companyId}`);
         if (res.ok) return await res.json();
     } catch (e) {
-        console.error('Failed to fetch parties', e);
     }
     return [];
 };
@@ -20,7 +19,6 @@ export const saveParty = async (party: Partial<NetworkParty>) => {
         });
         if (!res.ok) throw new Error('Failed to save party');
     } catch (e) {
-        console.error('Failed to save party', e);
         throw e;
     }
 };

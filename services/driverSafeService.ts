@@ -37,6 +37,5 @@ export const generateDriverSafeLoadDTO = (load: LoadData, company: Company) => {
 
 export const generateDriverLoadSheet = (load: LoadData): string => {
     // Mocking the auto-generation of a PDF/HTML Load Sheet
-    console.log(`[DRIVER_SAFE_PACK] Generating Load Sheet for Load #${load.loadNumber}`);
     return `load-sheets/LD-${load.loadNumber}-safe.pdf`;
 };

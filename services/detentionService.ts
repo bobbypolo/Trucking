@@ -9,7 +9,6 @@ export const DetentionService = {
      * Monitors facility dwell time and trigger auto-billing if free time is exceeded.
      */
     processGeofenceEvent: async (load: LoadData, event: 'ENTRY' | 'EXIT', timestamp: string): Promise<any> => {
-        console.log(`[DetentionService] Geofence ${event} for Load #${load.loadNumber} at ${timestamp}`);
 
         // Mocked check for existing entry event
         if (event === 'EXIT') {
@@ -22,8 +21,6 @@ export const DetentionService = {
                 const billableHours = Math.ceil(dwellHours - freeTime);
                 const rate = 50.00;
                 const totalAmount = billableHours * rate;
-
-                console.log(`[DetentionService] DETENTION DETECTED: ${billableHours} hours billable ($${totalAmount})`);
 
                 const detentionRequest: any = {
                     id: `DET-${uuidv4().slice(0, 6).toUpperCase()}`,
