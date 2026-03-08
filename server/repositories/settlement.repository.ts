@@ -25,6 +25,30 @@ export interface SettlementRow extends RowDataPacket {
 }
 
 /**
+ * Database row shape for the `settlement_adjustments` table.
+ */
+export interface SettlementAdjustmentRow extends RowDataPacket {
+  id: string;
+  settlement_id: string;
+  reason: string;
+  adjustment_type: string;
+  amount: number;
+  created_by: string;
+  created_at: string;
+}
+
+/**
+ * Input shape for creating a settlement adjustment.
+ */
+export interface CreateAdjustmentInput {
+  settlement_id: string;
+  reason: string;
+  adjustment_type: string;
+  amount: number;
+  created_by: string;
+}
+
+/**
  * Database row shape for the `settlement_lines` table.
  */
 export interface SettlementLineRow extends RowDataPacket {
@@ -230,5 +254,41 @@ export const settlementRepository = {
     } finally {
       connection.release();
     }
+  },
+
+  /**
+   * Create a settlement adjustment (correction record).
+   *
+   * Adjustments are immutable records that reference an existing posted
+   * settlement. The original settlement is NEVER modified.
+   */
+  async createAdjustment(
+    input: CreateAdjustmentInput,
+  ): Promise<SettlementAdjustmentRow> {
+    const adjustmentId = uuidv4();
+
+    await pool.query(
+      `INSERT INTO settlement_adjustments
+        (id, settlement_id, reason, adjustment_type, amount, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        adjustmentId,
+        input.settlement_id,
+        input.reason,
+        input.adjustment_type,
+        input.amount,
+        input.created_by,
+      ],
+    );
+
+    return {
+      id: adjustmentId,
+      settlement_id: input.settlement_id,
+      reason: input.reason,
+      adjustment_type: input.adjustment_type,
+      amount: input.amount,
+      created_by: input.created_by,
+      created_at: new Date().toISOString(),
+    } as SettlementAdjustmentRow;
   },
 };
