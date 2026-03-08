@@ -104,7 +104,12 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                 <button
                     onClick={() => {
                         alert(`Generating Audit-Ready IFTA Package for Q${quarter} ${year}...\n- Miles by State Summary\n- Tax Paid Fuel Receipts\n- Individual Trip Evidence (GPS Breadcrumbs)`);
-                        exportToPDF({ title: `IFTA Package Q${quarter} ${year}`, data: mileageEntries });
+                        exportToPDF(
+                            ['State', 'Miles', 'Gallons', 'Tax Rate'],
+                            mileageEntries.map(e => [e.state, String(e.miles), String(e.gallons || ''), '']),
+                            `IFTA Package Q${quarter} ${year}`,
+                            `ifta-q${quarter}-${year}`
+                        );
                     }}
                     className="flex items-center gap-2 px-8 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
                 >

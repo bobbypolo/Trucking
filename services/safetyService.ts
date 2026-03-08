@@ -145,7 +145,7 @@ export const calculateDriverPerformance = async (user: User, company?: Company):
   const compliance = checkDriverCompliance(user);
 
   const allLoads = (await getLoads(user)) as LoadData[];
-  const driverLoads = allLoads.filter(l => l.driverId === user.id && (l.status === 'Delivered' || l.financialStatus === 'Invoiced'));
+  const driverLoads = allLoads.filter(l => l.driverId === user.id && (l.status === 'delivered' || l.financialStatus === 'Invoiced'));
 
   let onTimeLoads = 0;
   let paperWorkCompleteLoads = 0;

@@ -6,7 +6,7 @@ export const exportToExcel = (data: any[], filename: string) => {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Report");
-    XLSX.utils.writeFile(wb, `${filename}.xlsx`);
+    XLSX.writeFile(wb, `${filename}.xlsx`);
 };
 
 export const exportToPDF = (headers: string[], data: any[][], title: string, filename: string) => {

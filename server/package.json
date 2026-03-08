@@ -22,14 +22,21 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.16.0"
+    "mysql2": "^3.16.0",
+    "pino": "^10.3.1",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.0.3",
+    "@types/supertest": "^7.2.0",
+    "@types/uuid": "^10.0.0",
+    "glob": "^13.0.6",
     "nodemon": "^3.1.11",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }
