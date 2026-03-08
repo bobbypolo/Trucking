@@ -1,55 +1,59 @@
-import { FuelEntry, VaultDoc, AutomationRule } from '../types';
-import { getBills, uploadToVault, getVaultDocs } from './financialService';
+import { FuelEntry, VaultDoc, AutomationRule } from "../types";
+import { getBills, uploadToVault, getVaultDocs } from "./financialService";
 
 export const executeFuelMatchingRule = async (
-    purchases: FuelEntry[],
-    docs: VaultDoc[],
-    rule: AutomationRule
-): Promise<{ matched: number, orphaned: number }> => {
-    let matchedCount = 0;
-    const tolerance = rule.configuration.matchTolerance || 0.05;
+  purchases: FuelEntry[],
+  docs: VaultDoc[],
+  rule: AutomationRule,
+): Promise<{ matched: number; orphaned: number }> => {
+  let matchedCount = 0;
+  const tolerance = rule.configuration.matchTolerance || 0.05;
 
-    for (const purchase of purchases) {
-        // Find a doc that matches criteria
-        const matchingDoc = docs.find(doc => {
-            if (doc.type !== 'Fuel') return false;
+  for (const purchase of purchases) {
+    // Find a doc that matches criteria
+    const matchingDoc = docs.find((doc) => {
+      if (doc.type !== "Fuel") return false;
 
-            // Basic matching logic: Same truck, and amount within tolerance if metadata exists
-            // In a real OCR app, we'd have extracted 'amount' from the doc.
-            // For this simulation, we check if they were uploaded within the lookback window.
-            const purchaseDate = new Date(purchase.transactionDate);
-            const docDate = new Date(doc.createdAt);
-            const daysDiff = Math.abs(purchaseDate.getTime() - docDate.getTime()) / (1000 * 3600 * 24);
+      // Basic matching logic: Same truck, and amount within tolerance if metadata exists
+      // In a real OCR app, we'd have extracted 'amount' from the doc.
+      // For this simulation, we check if they were uploaded within the lookback window.
+      const purchaseDate = new Date(purchase.transactionDate);
+      const docDate = new Date(doc.createdAt);
+      const daysDiff =
+        Math.abs(purchaseDate.getTime() - docDate.getTime()) /
+        (1000 * 3600 * 24);
 
-            return doc.truckId === purchase.truckId &&
-                daysDiff <= (rule.configuration.lookbackDays || 7);
-        });
+      return (
+        doc.truckId === purchase.truckId &&
+        daysDiff <= (rule.configuration.lookbackDays || 7)
+      );
+    });
 
-        if (matchingDoc) {
-            // "Auto-Link" by updating the doc with the purchase details or vice versa
-            // In our system, we'd link the FuelEntry id to the VaultDoc
-            matchedCount++;
-        }
+    if (matchingDoc) {
+      // "Auto-Link" by updating the doc with the purchase details or vice versa
+      // In our system, we'd link the FuelEntry id to the VaultDoc
+      matchedCount++;
     }
+  }
 
-    return {
-        matched: matchedCount,
-        orphaned: purchases.length - matchedCount
-    };
+  return {
+    matched: matchedCount,
+    orphaned: purchases.length - matchedCount,
+  };
 };
 
 export const runRuleAutomation = async (rule: AutomationRule, context: any) => {
-    if (!rule.enabled) return;
+  if (!rule.enabled) return;
 
-    switch (rule.trigger) {
-        case 'load_status_change':
-            if (rule.action === 'update_ifta' && context.status === 'Delivered') {
-                // Call IFTA Intelligence API
-            }
-            break;
-        case 'doc_upload':
-            if (rule.action === 'match_receipt') {
-            }
-            break;
-    }
+  switch (rule.trigger) {
+    case "load_status_change":
+      if (rule.action === "update_ifta" && context.status === "delivered") {
+        // Call IFTA Intelligence API
+      }
+      break;
+    case "doc_upload":
+      if (rule.action === "match_receipt") {
+      }
+      break;
+  }
 };
