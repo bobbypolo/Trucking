@@ -16,6 +16,12 @@ interface RouteMetrics {
   latencies: number[]; // milliseconds
 }
 
+/**
+ * Maximum number of latency samples retained per route.
+ * Older samples are evicted (ring-buffer semantics) to prevent unbounded growth.
+ */
+export const MAX_LATENCY_SAMPLES = 1000;
+
 /** In-memory store keyed by "METHOD /path" */
 const routeStore = new Map<string, RouteMetrics>();
 
@@ -115,6 +121,9 @@ export function metricsMiddleware(
 
     metrics.requestCount++;
     metrics.latencies.push(durationMs);
+    if (metrics.latencies.length > MAX_LATENCY_SAMPLES) {
+      metrics.latencies = metrics.latencies.slice(-MAX_LATENCY_SAMPLES);
+    }
 
     // Count errors (4xx and 5xx)
     if (res.statusCode >= 400) {

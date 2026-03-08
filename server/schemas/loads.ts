@@ -32,7 +32,7 @@ export const createLoadSchema = z.object({
         date: z.string().optional(),
         appointment_time: z.string().optional(),
         appointmentTime: z.string().optional(),
-        completed: z.any().optional(),
+        completed: z.union([z.boolean(), z.string()]).optional(),
         location: z
           .object({
             facilityName: z.string().optional(),
@@ -46,7 +46,17 @@ export const createLoadSchema = z.object({
     .optional(),
   notification_emails: z.array(z.string()).optional(),
   contract_id: z.string().optional(),
-  gpsHistory: z.array(z.any()).optional(),
+  gpsHistory: z
+    .array(
+      z
+        .object({
+          lat: z.number(),
+          lng: z.number(),
+          timestamp: z.string().optional(),
+        })
+        .passthrough(),
+    )
+    .optional(),
   podUrls: z.array(z.string()).optional(),
   customerUserId: z.string().optional(),
   issues: z
