@@ -186,10 +186,10 @@ export const DriverMobileHome: React.FC<Props> = ({ user, company, loads, onLogo
 
                 <div className="fixed bottom-0 left-0 right-0 p-6 bg-slate-950/80 backdrop-blur-xl border-t border-white/5 flex gap-4">
                     <button onClick={() => setIsCreatingChange(true)} className="flex-1 py-4 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all">Report Issue</button>
-                    {selectedLoad.status === 'Booked' && (
+                    {selectedLoad.status === 'planned' && (
                         <button onClick={() => handleStatusUpdate('Active')} className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/40 transition-all">Start Trip</button>
                     )}
-                    {selectedLoad.status === 'Active' && (
+                    {selectedLoad.status === 'in_transit' && (
                         <button onClick={() => handleStatusUpdate('Arrived')} className="flex-[2] py-4 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-green-900/40 transition-all">Arrived At Stop</button>
                     )}
                 </div>

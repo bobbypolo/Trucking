@@ -61,8 +61,8 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
           entry.loadCount++;
           entry.totalSpend += load.carrierRate;
           entry.loads.push(load);
-          if (load.status === 'Cancelled') entry.cancelCount++;
-          if (!load.issues?.some(i => i.category === 'Dispatch') && load.status !== 'Cancelled') entry.onTimeCount++;
+          if (load.status === 'cancelled') entry.cancelCount++;
+          if (!load.issues?.some(i => i.category === 'Dispatch') && load.status !== 'cancelled') entry.onTimeCount++;
           const lane = `${load.pickup.state} -> ${load.dropoff.state}`;
           entry.lanes.set(lane, (entry.lanes.get(lane) || 0) + 1);
       });

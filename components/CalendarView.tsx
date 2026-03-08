@@ -56,14 +56,13 @@ const DayCell: React.FC<DayCellProps> = ({ date, loads, onEdit, onMoveLoad, drag
                     className={`
                         cursor-move select-none text-[10px] p-1.5 rounded border shadow-sm transition-transform hover:scale-[1.02]
                         flex items-start gap-1 relative overflow-hidden group/card
-                        ${load.status === 'Delivered' ? 'bg-green-900/20 border-green-800/50 text-green-200' : 
-                        load.status === 'delivered' ? 'bg-purple-900/20 border-purple-800/50 text-purple-200' : 
+                        ${load.status === 'delivered' ? 'bg-green-900/20 border-green-800/50 text-green-200' : 
                         'bg-blue-900/20 border-blue-800/50 text-blue-200'}
                         ${draggedLoadId === load.id ? 'opacity-50' : 'opacity-100'}
                     `}
                     >
                         <div className={`absolute left-0 top-0 bottom-0 w-1 ${
-                            load.status === 'Delivered' ? 'bg-green-500' : load.status === 'delivered' ? 'bg-purple-500' : 'bg-blue-500'
+                            load.status === 'delivered' ? 'bg-green-500' : 'bg-blue-500'
                         }`}></div>
                         <div className="flex-1 min-w-0 ml-1">
                             <div className="font-bold truncate flex justify-between">
