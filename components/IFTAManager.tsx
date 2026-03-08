@@ -144,7 +144,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     </div>
                 </div>
                 <div className="grid grid-cols-3 gap-6">
-                    {(loads || []).filter(l => l.status === 'Delivered').slice(0, 3).map((load) => (
+                    {(loads || []).filter(l => l.status === 'delivered').slice(0, 3).map((load) => (
                         <div key={load.id} className="bg-slate-950/50 border border-white/5 p-6 rounded-3xl group hover:border-blue-500/50 transition-all cursor-pointer" onClick={() => setReviewLoad(load)}>
                             <div className="flex justify-between items-start mb-4">
                                 <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">#{load.loadNumber || load.id.slice(0, 5)}</span>
@@ -160,7 +160,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                             </div>
                         </div>
                     ))}
-                    {(loads || []).filter(l => l.status === 'Delivered').length === 0 && (
+                    {(loads || []).filter(l => l.status === 'delivered').length === 0 && (
                         <div className="col-span-3 text-center py-10">
                             <p className="text-[10px] font-black text-slate-700 uppercase italic">No trips currently pending audit attestation</p>
                         </div>

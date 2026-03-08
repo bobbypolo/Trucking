@@ -152,8 +152,8 @@ export const BookingPortal: React.FC<Props> = ({ user, company, onBookingComplet
             pickupDate: quote.validUntil || new Date().toISOString(),
             freightType: quote.equipmentType || 'Intermodal',
             legs: [
-                { id: uuidv4(), type: 'Pickup', location: quote.pickup!, date: quote.validUntil!, completed: false },
-                { id: uuidv4(), type: 'Dropoff', location: quote.dropoff!, date: quote.validUntil!, completed: false }
+                { id: uuidv4(), type: 'Pickup', location: { ...quote.pickup!, facilityName: quote.pickup?.facilityName || '' }, date: quote.validUntil!, completed: false },
+                { id: uuidv4(), type: 'Dropoff', location: { ...quote.dropoff!, facilityName: quote.dropoff?.facilityName || '' }, date: quote.validUntil!, completed: false }
             ],
             pickup: quote.pickup!,
             dropoff: quote.dropoff!,

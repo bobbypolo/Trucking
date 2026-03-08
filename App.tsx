@@ -139,7 +139,14 @@ export default function App() {
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(null);
   const [showIntelligenceHub, setShowIntelligenceHub] = useState(false);
   const [hubInitialTab, setHubInitialTab] = useState<
-    "messaging" | "safety" | "command" | "directory"
+    | "feed"
+    | "messaging"
+    | "intelligence"
+    | "reports"
+    | "crm"
+    | "safety"
+    | "command"
+    | "directory"
   >("command");
   const [hubInitialShowCallForm, setHubInitialShowCallForm] = useState(false);
   const [activeCallSession, setActiveCallSession] =
@@ -161,8 +168,7 @@ export default function App() {
 
   useEffect(() => {
     if (import.meta.env.DEV) {
-      await seedDatabase();
-      seedSafetyData(true);
+      seedDatabase().then(() => seedSafetyData(true));
     }
 
     const unsubscribe = onUserChange(async (updatedUser) => {
@@ -588,8 +594,8 @@ export default function App() {
               canCreateBroker={permissions.createBrokers}
               isRestrictedDriver={
                 !permissions.editCompletedLoads &&
-                (editingLoad?.status === "Delivered" ||
-                  editingLoad?.status === "Invoiced")
+                (editingLoad?.status === "delivered" ||
+                  editingLoad?.status === "completed")
               }
               potentialBroker={potentialBroker}
               onOpenHub={(tab, call) => {
@@ -1027,27 +1033,27 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-    <div className="h-screen w-screen overflow-hidden bg-slate-950">
-      {mainContent}
-      {globalOverlays}
-      {user && (
-        <CommsOverlay
-          session={session}
-          activeCallSession={activeCallSession}
-          setActiveCallSession={setActiveCallSession}
-          onRecordAction={handleRecordAction}
-          openRecordWorkspace={openRecordWorkspace}
-          onNavigate={(tab) => {
-            handleNavigate("operations-hub");
-          }}
-          overlayState={overlayState}
-          setOverlayState={setOverlayState}
-          user={user}
-          allLoads={loads}
-          onLinkSessionToRecord={handleLinkSessionToRecord}
-        />
-      )}
-    </div>
+      <div className="h-screen w-screen overflow-hidden bg-slate-950">
+        {mainContent}
+        {globalOverlays}
+        {user && (
+          <CommsOverlay
+            session={session}
+            activeCallSession={activeCallSession}
+            setActiveCallSession={setActiveCallSession}
+            onRecordAction={handleRecordAction}
+            openRecordWorkspace={openRecordWorkspace}
+            onNavigate={(tab) => {
+              handleNavigate("operations-hub");
+            }}
+            overlayState={overlayState}
+            setOverlayState={setOverlayState}
+            user={user}
+            allLoads={loads}
+            onLinkSessionToRecord={handleLinkSessionToRecord}
+          />
+        )}
+      </div>
     </ErrorBoundary>
   );
 }

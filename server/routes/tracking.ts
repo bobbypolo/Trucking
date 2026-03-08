@@ -70,7 +70,7 @@ router.get(
       const [loads]: any = await pool.query(
         `SELECT id, load_number, status, driver_id
              FROM loads
-             WHERE company_id = ? AND status IN ('Active', 'Departed', 'Booked', 'Planned')
+             WHERE company_id = ? AND status IN ('in_transit', 'dispatched', 'planned', 'arrived')
              ORDER BY created_at DESC`,
         [companyId],
       );

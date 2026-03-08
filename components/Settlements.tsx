@@ -42,7 +42,7 @@ export const Settlements: React.FC<Props> = ({ loads = [], users = [], onUserUpd
   }, [feedback]);
 
   const calculatePayData = (user: User) => {
-    const userLoads = loads.filter(l => l.driverId === user.id && (l.status === 'Delivered' || l.status === 'Invoiced'));
+    const userLoads = loads.filter(l => l.driverId === user.id && (l.status === 'delivered' || l.financialStatus === 'Invoiced'));
 
     let earnings = 0;
     if (user.payModel === 'salary') earnings = user.payRate || 0;
@@ -429,7 +429,7 @@ export const Settlements: React.FC<Props> = ({ loads = [], users = [], onUserUpd
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                  {loads.filter(l => l.status === 'Delivered').map(load => (
+                  {loads.filter(l => l.status === 'delivered').map(load => (
                     <tr key={load.id} className="hover:bg-slate-800/50 transition-colors">
                       <td className="px-6 py-4 text-sm font-bold text-white">{load.loadNumber}</td>
                       <td className="px-6 py-4 text-sm text-slate-400">{load.pickup.facilityName}</td>
@@ -442,7 +442,7 @@ export const Settlements: React.FC<Props> = ({ loads = [], users = [], onUserUpd
                       </td>
                     </tr>
                   ))}
-                  {loads.filter(l => l.status === 'Delivered').length === 0 && (
+                  {loads.filter(l => l.status === 'delivered').length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-6 py-12 text-center text-slate-500 bg-slate-900/50 italic text-sm">No pending deliveries found for invoicing.</td>
                     </tr>

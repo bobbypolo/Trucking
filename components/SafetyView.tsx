@@ -18,6 +18,7 @@ interface Props {
     onRecordAction?: (e: any) => Promise<void>;
     openRecordWorkspace?: (type: any, id: string) => void;
     onOpenHub?: (tab: string, startCall?: boolean) => void;
+    onSaveIncident?: (inc: any) => Promise<void>;
 }
 
 export const SafetyView: React.FC<Props> = ({ user, loads = [], incidents = [], onIncidentAction, onRecordAction, openRecordWorkspace, onOpenHub }) => {

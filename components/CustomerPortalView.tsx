@@ -124,7 +124,7 @@ export const CustomerPortalView: React.FC<Props> = ({ user, loads, onOpenHub }) 
 
                                             <div className="space-y-3">
                                                 <div className="h-1.5 w-full bg-slate-900 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-blue-600 rounded-full" style={{ width: load.status === 'Delivered' ? '100%' : '65%' }} />
+                                                    <div className="h-full bg-blue-600 rounded-full" style={{ width: load.status === 'delivered' ? '100%' : '65%' }} />
                                                 </div>
                                                 <div className="flex justify-between items-center text-[8px] font-black text-slate-600 uppercase">
                                                     <span>En Route</span>

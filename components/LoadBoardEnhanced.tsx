@@ -214,8 +214,8 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                                                 {visibleColumns.includes('loadNumber') && <td className="p-4 text-[10px] font-black text-blue-400 font-mono border-r border-slate-800/50">{load.loadNumber}</td>}
                                                 {visibleColumns.includes('status') && (
                                                     <td className="p-4 border-r border-slate-800/50">
-                                                        <span className={`text-[7px] px-2 py-0.5 rounded font-black uppercase tracking-widest border ${load.status === 'Delivered' || load.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-                                                            load.status === 'in_transit' || load.status === 'Dispatched' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                        <span className={`text-[7px] px-2 py-0.5 rounded font-black uppercase tracking-widest border ${load.status === 'delivered' || load.status === 'completed' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                                            load.status === 'in_transit' || load.status === 'dispatched' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
                                                                 'bg-slate-950 text-slate-500 border-slate-800'
                                                             }`}>
                                                             {load.status}

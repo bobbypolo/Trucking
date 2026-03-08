@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode } from "react";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -9,10 +9,14 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
+  state: ErrorBoundaryState = { hasError: false, error: null };
+
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
@@ -20,7 +24,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error('[ErrorBoundary] Uncaught render error:', error, errorInfo);
+    console.error("[ErrorBoundary] Uncaught render error:", error, errorInfo);
   }
 
   render(): ReactNode {
@@ -29,14 +33,16 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return (
         <div className="flex flex-col items-center justify-center h-screen bg-slate-950 text-white p-8">
           <div className="max-w-lg w-full bg-slate-800 rounded-lg p-6 shadow-lg">
-            <h1 className="text-2xl font-bold text-red-400 mb-2">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-red-400 mb-2">
+              Something went wrong
+            </h1>
             <p className="text-slate-300 mb-4">
               An unexpected error occurred. Please reload the page.
             </p>
             {isDev && this.state.error && (
               <pre className="text-xs text-red-300 bg-slate-900 rounded p-3 overflow-auto mb-4">
                 {this.state.error.message}
-                {'\n'}
+                {"\n"}
                 {this.state.error.stack}
               </pre>
             )}
