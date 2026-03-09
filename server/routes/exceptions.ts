@@ -74,7 +74,7 @@ router.patch('/api/exceptions/:id', requireAuth, requireTenant, async (req: any,
             // Dispatch Update: If Delay, update ETA or Status
             // Billing Update: If POD Received, unlock Invoicing
             // Payroll Update: If doc correct, approve settlement line
-            const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'PATCH /api/exceptions' });
+            const log = createChildLogger({ correlationId: req.correlationId, route: 'PATCH /api/exceptions' });
             log.info({ exceptionType: exception.type, entityType: exception.entity_type, entityId: exception.entity_id }, 'Automated resolution triggered');
         }
 

@@ -20,7 +20,7 @@ export function correlationId(
     const id =
         (req.headers['x-correlation-id'] as string | undefined) || uuidv4();
 
-    (req as any).correlationId = id;
+    req.correlationId = id;
     res.setHeader('X-Correlation-Id', id);
 
     next();
