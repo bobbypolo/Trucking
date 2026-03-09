@@ -67,6 +67,68 @@ export function getValidNextStatuses(status: LoadStatus): LoadStatus[] {
 }
 
 /**
+ * Maps all 12 legacy PascalCase DB values to the 8 canonical LoadStatus values.
+ *
+ * Used by load.repository.ts to normalize status values read from the DB during
+ * the transition period before migration 002_load_status_normalization.sql is applied.
+ *
+ * Legacy DB values (from 001_baseline.sql):
+ *   Planned, Booked, Active, Departed, Arrived, Docked, Unloaded, Delivered,
+ *   Invoiced, Settled, Cancelled, CorrectionRequested
+ *
+ * Canonical values (from LoadStatus enum above):
+ *   draft, planned, dispatched, in_transit, arrived, delivered, completed, cancelled
+ */
+const LEGACY_STATUS_MAP: Record<string, LoadStatus> = {
+  // Canonical values — pass through unchanged
+  draft: LoadStatus.DRAFT,
+  planned: LoadStatus.PLANNED,
+  dispatched: LoadStatus.DISPATCHED,
+  in_transit: LoadStatus.IN_TRANSIT,
+  arrived: LoadStatus.ARRIVED,
+  delivered: LoadStatus.DELIVERED,
+  completed: LoadStatus.COMPLETED,
+  cancelled: LoadStatus.CANCELLED,
+
+  // Legacy PascalCase values — mapped to canonical
+  Planned: LoadStatus.PLANNED,
+  Booked: LoadStatus.PLANNED, // legacy alias for planned
+  Active: LoadStatus.IN_TRANSIT, // legacy alias
+  Departed: LoadStatus.DISPATCHED, // renamed to dispatched
+  Arrived: LoadStatus.ARRIVED, // direct map
+  Docked: LoadStatus.ARRIVED, // sub-state collapsed to arrived
+  Unloaded: LoadStatus.DELIVERED, // sub-state collapsed to delivered
+  Delivered: LoadStatus.DELIVERED, // direct map
+  Invoiced: LoadStatus.COMPLETED, // financial state collapsed to completed
+  Settled: LoadStatus.COMPLETED, // financial state collapsed to completed
+  Cancelled: LoadStatus.CANCELLED, // direct map
+  CorrectionRequested: LoadStatus.PLANNED, // dead code — map to planned as safety net
+};
+
+/**
+ * Normalizes a raw DB status string to a canonical LoadStatus value.
+ *
+ * Handles all 12 legacy PascalCase values from 001_baseline.sql and all 8
+ * canonical lowercase values. Throws a BusinessRuleError if the value is
+ * completely unknown (not in either legacy or canonical set).
+ *
+ * @param raw - Raw status string from the database
+ * @returns Canonical LoadStatus value
+ * @throws BusinessRuleError if the raw value is not a known status
+ */
+export function normalizeStatus(raw: string): LoadStatus {
+  const canonical = LEGACY_STATUS_MAP[raw];
+  if (canonical === undefined) {
+    throw new BusinessRuleError(
+      `Unknown load status value: '${raw}'`,
+      { raw_value: raw, known_values: Object.keys(LEGACY_STATUS_MAP) },
+      "BUSINESS_RULE_UNKNOWN_STATUS",
+    );
+  }
+  return canonical;
+}
+
+/**
  * Input for dispatch guard validation.
  */
 export interface DispatchGuardInput {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 
-// Tests R-P2-02-AC1, R-P2-02-AC2
+// Tests R-P2-02-AC1, R-P2-02-AC2, R-P2-03-AC1, R-P2-03-AC2
 
 import {
   LoadStatus,
@@ -8,6 +8,7 @@ import {
   validateTransition,
   getValidNextStatuses,
   validateDispatchGuards,
+  normalizeStatus,
   type DispatchGuardInput,
 } from "../../services/load-state-machine";
 import { BusinessRuleError } from "../../errors/AppError";
@@ -266,6 +267,95 @@ describe("R-P2-02: Load State Machine", () => {
           equipmentCompanyId: "company-bbb",
         }),
       ).toThrow(/tenant/i);
+    });
+  });
+
+  describe("R-P2-03: normalizeStatus() — legacy DB value normalization", () => {
+    describe("AC1: canonical values pass through unchanged", () => {
+      const canonicalValues: Array<[string, LoadStatus]> = [
+        ["draft", LoadStatus.DRAFT],
+        ["planned", LoadStatus.PLANNED],
+        ["dispatched", LoadStatus.DISPATCHED],
+        ["in_transit", LoadStatus.IN_TRANSIT],
+        ["arrived", LoadStatus.ARRIVED],
+        ["delivered", LoadStatus.DELIVERED],
+        ["completed", LoadStatus.COMPLETED],
+        ["cancelled", LoadStatus.CANCELLED],
+      ];
+
+      for (const [raw, expected] of canonicalValues) {
+        it(`normalizes canonical '${raw}' to ${expected}`, () => {
+          expect(normalizeStatus(raw)).toBe(expected);
+        });
+      }
+    });
+
+    describe("AC1: all 12 legacy PascalCase values map to canonical", () => {
+      const legacyMappings: Array<[string, LoadStatus]> = [
+        // Direct maps
+        ["Planned", LoadStatus.PLANNED],
+        ["Cancelled", LoadStatus.CANCELLED],
+        ["Arrived", LoadStatus.ARRIVED],
+        ["Delivered", LoadStatus.DELIVERED],
+        // Legacy aliases — same canonical value
+        ["Booked", LoadStatus.PLANNED],
+        ["CorrectionRequested", LoadStatus.PLANNED],
+        // Renamed statuses
+        ["Departed", LoadStatus.DISPATCHED],
+        // Sub-states collapsed
+        ["Active", LoadStatus.IN_TRANSIT],
+        ["Docked", LoadStatus.ARRIVED],
+        ["Unloaded", LoadStatus.DELIVERED],
+        // Financial states collapsed to completed
+        ["Invoiced", LoadStatus.COMPLETED],
+        ["Settled", LoadStatus.COMPLETED],
+      ];
+
+      for (const [raw, expected] of legacyMappings) {
+        it(`normalizes legacy '${raw}' to '${expected}'`, () => {
+          expect(normalizeStatus(raw)).toBe(expected);
+        });
+      }
+    });
+
+    describe("AC2: throws on unknown status values", () => {
+      const unknownValues = [
+        "Unknown",
+        "DRAFT",
+        "IN_TRANSIT",
+        "active",
+        "departed",
+        "",
+        "bogus",
+        "null",
+        "undefined",
+      ];
+
+      for (const raw of unknownValues) {
+        it(`throws BusinessRuleError for unknown value '${raw}'`, () => {
+          expect(() => normalizeStatus(raw)).toThrow(BusinessRuleError);
+        });
+      }
+
+      it("throws BusinessRuleError with BUSINESS_RULE error_class for unknown value", () => {
+        try {
+          normalizeStatus("COMPLETELY_UNKNOWN");
+          expect.unreachable("Should have thrown");
+        } catch (err) {
+          expect(err).toBeInstanceOf(BusinessRuleError);
+          const brErr = err as BusinessRuleError;
+          expect(brErr.error_class).toBe("BUSINESS_RULE");
+          expect(brErr.statusCode).toBe(422);
+          expect(brErr.details).toHaveProperty(
+            "raw_value",
+            "COMPLETELY_UNKNOWN",
+          );
+        }
+      });
+
+      it("error message includes the unknown value", () => {
+        expect(() => normalizeStatus("BadValue")).toThrow(/BadValue/);
+      });
     });
   });
 });

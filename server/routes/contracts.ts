@@ -14,7 +14,7 @@ router.get('/api/contracts/:customerId', requireAuth, requireTenant, async (req:
         const [rows] = await pool.query('SELECT * FROM customer_contracts WHERE customer_id = ?', [req.params.customerId]);
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/contracts' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/contracts' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/contracts]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -29,7 +29,7 @@ router.post('/api/contracts', requireAuth, requireTenant, async (req: any, res) 
         );
         res.status(201).json({ message: 'Contract saved' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/contracts' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/contracts' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/contracts]');
         res.status(500).json({ error: 'Database error' });
     }

@@ -23,7 +23,7 @@ const ADMIN_ROLES: ReadonlySet<string> = new Set([
  * Returns 403 ForbiddenError if the user's role is not in ADMIN_ROLES.
  */
 function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
-  const user = (req as any).user;
+  const user = req.user;
   if (!user || !ADMIN_ROLES.has(user.role)) {
     return next(
       new ForbiddenError(
@@ -58,12 +58,12 @@ router.get(
   "/api/metrics",
   requireAuth,
   requireAdmin,
-  (req: any, res: Response) => {
+  (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
       route: "GET /api/metrics",
     });
-    log.info({ data: { userId: req.user.uid } }, "Metrics endpoint accessed");
+    log.info({ data: { userId: req.user!.uid } }, "Metrics endpoint accessed");
 
     const snapshot = getMetricsSnapshot();
     res.json(snapshot);

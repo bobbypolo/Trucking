@@ -144,7 +144,7 @@ export function idempotencyMiddleware() {
       res.status = function (code: number) {
         capturedStatus = code;
         return originalStatus(code);
-      } as any;
+      } as typeof res.status;
 
       res.json = function (body: unknown) {
         capturedBody = body;
@@ -171,7 +171,7 @@ export function idempotencyMiddleware() {
           });
 
         return originalJson(body);
-      } as any;
+      } as typeof res.json;
 
       next();
     } catch {

@@ -25,7 +25,7 @@ router.post('/api/time-logs', requireAuth, requireTenant, async (req: any, res) 
         }
         res.status(201).json({ message: 'Time log recorded' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/time-logs' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/time-logs' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/time-logs]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -39,7 +39,7 @@ router.get('/api/time-logs/:userId', requireAuth, requireTenant, async (req: any
         const [rows] = await pool.query('SELECT * FROM driver_time_logs WHERE user_id = ? ORDER BY clock_in DESC LIMIT 50', [req.params.userId]);
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/time-logs' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/time-logs' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/time-logs]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -56,7 +56,7 @@ router.get('/api/time-logs/company/:companyId', requireAuth, requireTenant, asyn
         );
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/time-logs-company' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/time-logs-company' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/time-logs-company]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -74,7 +74,7 @@ router.get('/api/dispatch-events/:companyId', requireAuth, requireTenant, async 
         );
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/dispatch-events' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/dispatch-events' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/dispatch-events]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -89,7 +89,7 @@ router.post('/api/dispatch-events', requireAuth, requireTenant, async (req: any,
         );
         res.status(201).json({ message: 'Dispatch event logged' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/dispatch-events' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/dispatch-events' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/dispatch-events]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -101,7 +101,7 @@ router.get('/api/messages/:loadId', requireAuth, requireTenant, async (req: any,
         const [rows] = await pool.query('SELECT * FROM messages WHERE load_id = ? ORDER BY timestamp ASC', [req.params.loadId]);
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/messages' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/messages' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/messages]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -116,7 +116,7 @@ router.post('/api/messages', requireAuth, requireTenant, async (req: any, res) =
         );
         res.status(201).json({ message: 'Message sent' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/messages' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/messages' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/messages]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -128,7 +128,7 @@ router.get('/api/dashboard/cards', requireAuth, requireTenant, async (req: any, 
         const [rows] = await pool.query('SELECT * FROM dashboard_card ORDER BY sort_order ASC');
         res.json(rows);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/dashboard/cards' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/dashboard/cards' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/dashboard/cards]');
         res.status(500).json({ error: 'Database error' });
     }
