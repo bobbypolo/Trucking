@@ -202,7 +202,9 @@ export const logTime = async (log: Partial<TimeLog>) => {
         location_lng: log.location?.lng,
       }),
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] logTime sync failed:", e);
+  }
 };
 
 export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
@@ -217,7 +219,9 @@ export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
         event_type: event.eventType,
       }),
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] logDispatchEvent failed:", e);
+  }
 };
 
 export const getDispatchEvents = async (
@@ -701,7 +705,9 @@ export const seedIncidents = async (loads: LoadData[]) => {
           }),
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error("[storageService] seedIncidents sync failed:", e);
+    }
   }
 
   const currentLocal = getRawIncidents();
@@ -736,7 +742,9 @@ export const createIncident = async (incident: Partial<Incident>) => {
     if (res.ok) {
       // Successfully synced
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] createIncident sync failed:", e);
+  }
 
   // Always save to localStorage as safety
   const incidents = getRawIncidents();
@@ -796,7 +804,9 @@ export const saveIncidentAction = async (
     if (res.ok) {
       // Synced
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] saveIncidentAction sync failed:", e);
+  }
 
   // Persist locally
   const incidents = getRawIncidents();
@@ -834,7 +844,9 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify({ ...newIssue, load_id: loadId }),
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] saveIssue sync failed:", e);
+  }
 
   // If tied to a shipment, update in-memory cache
   if (loadId) {
@@ -886,7 +898,9 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(newCall),
     });
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] saveCallLog sync failed:", e);
+  }
 
   // Update related shipment in-memory cache if applicable
   if (newCall.entityId && newCall.entityId !== "global") {
@@ -981,7 +995,9 @@ export const saveMessage = async (message: Message) => {
     } catch (e) {
       console.warn("[storageService] API fallback:", e);
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] saveMessage failed:", e);
+  }
 };
 const STORAGE_KEY_THREADS = "trucklogix_threads_v1";
 
@@ -1007,7 +1023,9 @@ export const saveThread = async (thread: OperationalThread) => {
     if (idx >= 0) threads[idx] = thread;
     else threads.unshift(thread);
     localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threads));
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] saveThread failed:", e);
+  }
 };
 
 export const getUnifiedEvents = async (
@@ -1411,7 +1429,9 @@ export const globalSearch = async (
     if (res.ok) {
       return await res.json();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("[storageService] globalSearch API failed:", e);
+  }
 
   // Fallback to local storage search
   const results: GlobalSearchResult[] = [];

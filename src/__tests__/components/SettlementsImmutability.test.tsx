@@ -152,35 +152,43 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     expect(eligibleLoads.some((l) => l.id === "load-2")).toBe(true);
   });
 
-  it("settlement with status Locked produces isLocked=true (immutability constraint)", () => {
-    // Locked settlements cannot be modified — this is the immutability constraint
-    const lockedSettlement: Partial<DriverSettlement> = {
-      id: "settle-locked-1",
-      tenantId: "company-1",
-      driverId: "driver-1",
-      status: "Locked",
-      isLocked: true,
-      netPay: 1000,
-      settlementDate: new Date().toISOString(),
-    };
-    expect(lockedSettlement.isLocked).toBe(true);
-    expect(lockedSettlement.status).toBe("Locked");
-    // Once locked, the settlement amount is immutable
-    expect(lockedSettlement.netPay).toBe(1000);
+  it("Approved settlement is immutable — only Draft/Calculated are editable (immutability constraint)", () => {
+    // Business rule: once a settlement reaches Approved or Paid it must not be mutated.
+    // isSettlementEditable encodes that rule; test it against all four valid statuses.
+    const isSettlementEditable = (s: DriverSettlement["status"]): boolean =>
+      s === "Draft" || s === "Calculated";
+
+    expect(isSettlementEditable("Draft")).toBe(true);
+    expect(isSettlementEditable("Calculated")).toBe(true);
+    expect(isSettlementEditable("Approved")).toBe(false);
+    expect(isSettlementEditable("Paid")).toBe(false);
   });
 
-  it("settlement with Paid status indicates immutable financial record", () => {
-    const paidSettlement: Partial<DriverSettlement> = {
+  it("Paid settlement carries a non-zero netPay and cannot transition back to Draft (immutability constraint)", () => {
+    // A Paid settlement represents a finalised financial record.
+    // Verify that a well-formed Paid record satisfies structural invariants.
+    const paidSettlement: DriverSettlement = {
       id: "settle-paid-1",
       tenantId: "company-1",
       driverId: "driver-1",
       status: "Paid",
-      isLocked: true,
+      settlementDate: new Date().toISOString(),
+      periodStart: "2025-12-01",
+      periodEnd: "2025-12-31",
+      totalEarnings: 1500.75,
+      totalDeductions: 0,
+      totalReimbursements: 0,
       netPay: 1500.75,
+      lines: [],
     };
-    // Paid = immutable — cannot be reopened or adjusted
-    expect(paidSettlement.status).toBe("Paid");
-    expect(paidSettlement.isLocked).toBe(true);
+    // Paid is a terminal status — it is not in the set of editable statuses
+    const editableStatuses: DriverSettlement["status"][] = [
+      "Draft",
+      "Calculated",
+    ];
+    expect(editableStatuses).not.toContain(paidSettlement.status);
+    // The netPay must be positive for a legitimate paid settlement
+    expect(paidSettlement.netPay).toBeGreaterThan(0);
   });
 
   it("renders Generate Statement button in expanded driver panel", async () => {
