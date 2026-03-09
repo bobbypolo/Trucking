@@ -31,7 +31,7 @@ export function validateBody(schema: ZodSchema) {
         }
 
         const zodError = result.error as ZodError;
-        const issues = zodError.issues || (zodError as any).errors || [];
+        const issues = zodError.issues || [];
         const details: ValidationErrorDetail[] = issues.map((err: any) => ({
             field: err.path.join('.') || '(root)',
             message: err.message,

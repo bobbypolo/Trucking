@@ -19,7 +19,7 @@ router.get('/api/clients/:companyId', requireAuth, requireTenant, async (req: an
         const settings = await getVisibilitySettings(req.params.companyId);
         res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/clients' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/clients' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/clients]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -37,7 +37,7 @@ router.post('/api/clients', requireAuth, requireTenant, async (req: any, res) =>
         );
         res.status(201).json({ message: 'Client saved' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/clients' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/clients' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/clients]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -50,7 +50,7 @@ router.get('/api/companies/:id', requireAuth, requireTenant, async (req: any, re
         if (!doc.exists) return res.status(404).json({ error: 'Company not found' });
         res.json(doc.data());
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/companies' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/companies' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/companies]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     }
@@ -67,7 +67,7 @@ router.post('/api/companies', requireAuth, requireTenant, async (req: any, res) 
         }, { merge: true });
         res.status(201).json({ message: 'Company created' });
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/companies' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/companies' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/companies]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -166,7 +166,7 @@ router.get('/api/parties', requireAuth, requireTenant, async (req: any, res) => 
         }));
         res.json(enrichedParties);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/parties' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/parties' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/parties]');
     }
 });
@@ -250,7 +250,7 @@ router.post('/api/parties', requireAuth, requireTenant, async (req: any, res) =>
         res.status(201).json({ message: 'Party synced with Unified Engine' });
     } catch (error) {
         await connection.rollback();
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/parties' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/parties' });
         log.error({ err: error }, 'SERVER ERROR [POST /api/parties]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     } finally {
@@ -335,7 +335,7 @@ router.get('/api/global-search', requireAuth, requireTenant, async (req: any, re
 
         res.json(results.slice(0, 20));
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/global-search' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/global-search' });
         log.error({ err: error }, 'Search failed');
         res.status(500).json({ error: 'Search failed' });
     }

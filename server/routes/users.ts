@@ -12,7 +12,7 @@ const router = Router();
 
 // AUTHENTICATION & REGISTRATION
 router.post('/api/auth/register', validateBody(registerUserSchema), async (req, res) => {
-    const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/register' });
+    const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/auth/register' });
     log.info({ data: { email: req.body.email } }, 'Registration request received');
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate } = req.body;
     try {
@@ -42,7 +42,7 @@ router.post('/api/auth/register', validateBody(registerUserSchema), async (req, 
 
 // User Management (Sync)
 router.post('/api/users', validateBody(syncUserSchema), async (req, res) => {
-    const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/users' });
+    const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/users' });
     log.info({ data: { email: req.body.email } }, 'User sync request received');
     const { id, company_id, companyId, email, password, name, role, pay_model, payModel, pay_rate, payRate, managed_by_user_id, managedByUserId, safety_score, safetyScore } = req.body;
     try {
@@ -88,7 +88,7 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
         if (userSnapshot.empty) {
             // User authenticated with Firebase but no Firestore record exists
             // This shouldn't happen if seeding worked correctly
-            const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/login' });
+            const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/auth/login' });
             log.warn({ email }, 'User authenticated with Firebase but no Firestore record found');
             return res.status(404).json({ error: 'User profile not found. Please contact support.' });
         }
@@ -114,30 +114,30 @@ router.post('/api/auth/login', validateBody(loginUserSchema), async (req, res) =
             primaryWorkspace: user.primary_workspace,
             dutyMode: user.duty_mode
         };
-        delete (normalizedUser as any).password;
-        delete (normalizedUser as any).company_id;
-        delete (normalizedUser as any).onboarding_status;
-        delete (normalizedUser as any).pay_model;
-        delete (normalizedUser as any).pay_rate;
-        delete (normalizedUser as any).managed_by_user_id;
-        delete (normalizedUser as any).safety_score;
-        delete (normalizedUser as any).primary_workspace;
-        delete (normalizedUser as any).duty_mode;
+        delete (normalizedUser as Record<string, unknown>).password;
+        delete (normalizedUser as Record<string, unknown>).company_id;
+        delete (normalizedUser as Record<string, unknown>).onboarding_status;
+        delete (normalizedUser as Record<string, unknown>).pay_model;
+        delete (normalizedUser as Record<string, unknown>).pay_rate;
+        delete (normalizedUser as Record<string, unknown>).managed_by_user_id;
+        delete (normalizedUser as Record<string, unknown>).safety_score;
+        delete (normalizedUser as Record<string, unknown>).primary_workspace;
+        delete (normalizedUser as Record<string, unknown>).duty_mode;
 
         res.json({ user: normalizedUser, company: companyData });
 
 
     } catch (error) {
-        const loginLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/auth/login' });
+        const loginLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/auth/login' });
         loginLog.error({ err: error }, 'Login failed');
         res.status(500).json({ error: 'Login failed', details: error instanceof Error ? error.message : String(error) });
     }
 });
 
 // Protected User Routes (Require Token)
-router.get('/api/users/me', requireAuth, async (req: any, res) => {
+router.get('/api/users/me', requireAuth, async (req, res) => {
     try {
-        const doc = await db.collection('users').doc(req.user.id).get();
+        const doc = await db.collection('users').doc(req.user!.uid).get();
         const user = doc.data();
         if (!user) return res.status(404).json({ error: 'User not found' });
 
@@ -148,9 +148,9 @@ router.get('/api/users/me', requireAuth, async (req: any, res) => {
     }
 });
 
-router.get('/api/users/:companyId', requireAuth, requireTenant, async (req: any, res) => {
+router.get('/api/users/:companyId', requireAuth, requireTenant, async (req, res) => {
     // RBAC: Ensure user only sees users from their own company
-    if (req.user.companyId !== req.params.companyId && req.user.role !== 'admin') {
+    if (req.user!.tenantId !== req.params.companyId && req.user!.role !== 'admin') {
         return res.status(403).json({ error: 'Resource unauthorized' });
     }
 
@@ -171,7 +171,7 @@ router.get('/api/users/:companyId', requireAuth, requireTenant, async (req: any,
         res.json(users);
 
     } catch (error) {
-        const usersLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/users' });
+        const usersLog = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/users' });
         usersLog.error({ err: error }, 'SERVER ERROR [GET /api/users]');
         res.status(500).json({ error: 'Database error' });
     }

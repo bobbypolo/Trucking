@@ -18,7 +18,7 @@ router.get('/api/incidents', requireAuth, requireTenant, async (req: any, res) =
         }));
         res.json(enrichedIncidents);
     } catch (error) {
-        const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'GET /api/incidents' });
+        const log = createChildLogger({ correlationId: req.correlationId, route: 'GET /api/incidents' });
         log.error({ err: error }, 'SERVER ERROR [GET /api/incidents]');
         res.status(500).json({ error: 'Database error' });
     }
@@ -31,7 +31,7 @@ router.post('/api/incidents', requireAuth, requireTenant, async (req: any, res) 
     try {
         const [loadRows]: any = await pool.query('SELECT id FROM loads WHERE id = ?', [load_id]);
         if (loadRows.length === 0) {
-            const log = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents' });
+            const log = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents' });
             log.warn({ load_id }, 'Incident creation failed: Load not found');
             return res.status(400).json({ error: 'FK Violation', details: `Load ${load_id} does not exist. Please use a valid Load ID.` });
         }
@@ -40,11 +40,11 @@ router.post('/api/incidents', requireAuth, requireTenant, async (req: any, res) 
             'INSERT INTO incidents (id, load_id, type, severity, status, sla_deadline, description, location_lat, location_lng, recovery_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [id || uuidv4(), load_id, type, severity, status, sla_deadline, description, location_lat, location_lng, recovery_plan]
         );
-        const incLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents' });
+        const incLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents' });
         incLog.info({ incidentId: id }, 'Incident created successfully');
         res.status(201).json({ message: 'Incident created' });
     } catch (error) {
-        const errLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents' });
+        const errLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents' });
         errLog.error({ err: error }, 'SERVER ERROR [POST /api/incidents]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     }
@@ -57,7 +57,7 @@ router.post('/api/incidents/:id/actions', requireAuth, requireTenant, async (req
         // Validation: check if incident exists
         const [incRows]: any = await pool.query('SELECT id FROM incidents WHERE id = ?', [incidentId]);
         if (incRows.length === 0) {
-            const warnLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents/actions' });
+            const warnLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents/actions' });
             warnLog.warn({ incidentId }, 'Action log failed: Incident not found');
             return res.status(404).json({ error: 'Not Found', details: `Incident ${incidentId} does not exist.` });
         }
@@ -66,11 +66,11 @@ router.post('/api/incidents/:id/actions', requireAuth, requireTenant, async (req
             'INSERT INTO incident_actions (id, incident_id, actor_name, action, notes, attachments) VALUES (?, ?, ?, ?, ?, ?)',
             [id || uuidv4(), incidentId, actor_name, action, notes, JSON.stringify(attachments)]
         );
-        const actionLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents/actions' });
+        const actionLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents/actions' });
         actionLog.info({ incidentId }, 'Action logged for incident');
         res.status(201).json({ message: 'Action logged' });
     } catch (error) {
-        const errLog = createChildLogger({ correlationId: (req as any).correlationId, route: 'POST /api/incidents/actions' });
+        const errLog = createChildLogger({ correlationId: req.correlationId, route: 'POST /api/incidents/actions' });
         errLog.error({ err: error }, 'SERVER ERROR [POST /api/incidents/actions]');
         res.status(500).json({ error: 'Database error', details: error instanceof Error ? error.message : String(error) });
     }

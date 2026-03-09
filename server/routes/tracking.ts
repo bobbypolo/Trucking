@@ -103,7 +103,7 @@ router.get(
       res.json(result);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/loads/tracking",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/loads/tracking]");
@@ -154,7 +154,7 @@ router.get(
       });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: `GET /api/loads/${req.params.id}/tracking`,
       });
       log.error(

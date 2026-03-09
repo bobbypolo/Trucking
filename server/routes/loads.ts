@@ -64,7 +64,7 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
     res.json(redactData(enrichedLoads, req.user.role, settings));
   } catch (error) {
     const log = createChildLogger({
-      correlationId: (req as any).correlationId,
+      correlationId: req.correlationId,
       route: "GET /api/loads",
     });
     log.error({ err: error }, "SERVER ERROR [GET /api/loads]");
@@ -275,7 +275,7 @@ router.post(
     } catch (error) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/loads",
       });
       log.error({ err: error }, "SERVER ERROR [POST /api/loads]");

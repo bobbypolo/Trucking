@@ -36,6 +36,8 @@ import {
   Broker,
   RolePermissions,
   FreightType,
+  PermissionCode,
+  Capability,
   Company,
   DispatchEvent,
   TimeLog,
@@ -109,6 +111,33 @@ import { getRecord360Data } from "./services/storageService";
 import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
 import { CommandCenterView } from "./components/CommandCenterView";
 
+/** Navigation item with optional permission/capability gates. */
+interface NavItem {
+  id: string;
+  label: string;
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  permission?: PermissionCode;
+  capability?: Capability;
+}
+
+/** Navigation category grouping NavItems. */
+interface NavCategory {
+  title: string;
+  items: NavItem[];
+}
+
+/** Valid tab IDs for AccountingPortal. */
+type AccountingPortalTab =
+  | 'DASHBOARD'
+  | 'AR'
+  | 'AP'
+  | 'SETTLEMENTS'
+  | 'GL'
+  | 'IFTA'
+  | 'VAULT'
+  | 'MAINTENANCE'
+  | 'AUTOMATION';
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loads, setLoads] = useState<LoadData[]>([]);
@@ -120,7 +149,7 @@ export default function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
 
   const [activeTab, setActiveTab] = useState("operations-hub");
-  const [activeSubTab, setActiveSubTab] = useState<string | undefined>();
+  const [activeSubTab, setActiveSubTab] = useState<AccountingPortalTab | string | undefined>();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isIssueSidebarOpen, setIsIssueSidebarOpen] = useState(false);
 
@@ -284,18 +313,18 @@ export default function App() {
       await saveCallLog({
         id: event.id,
         timestamp: event.timestamp,
-        type: (event.payload as any)?.type || "Operational",
-        category: (event.payload as any)?.category || "Update",
+        type: event.payload?.type || "Operational",
+        category: event.payload?.category || "Update",
         entityId: event.loadId || "GLOBAL",
-        notes: (event.payload as any)?.notes || event.message,
+        notes: event.payload?.notes || event.message,
         recordedBy: event.actorName,
       });
     } else if (event.type === "ISSUE") {
       await saveIssue(
         {
           id: event.id,
-          category: (event.payload as any)?.category || "Dispatch",
-          description: (event.payload as any)?.description || event.message,
+          category: event.payload?.category || "Dispatch",
+          description: event.payload?.description || event.message,
           reportedAt: event.timestamp,
           reportedBy: event.actorName,
           status: "Open",
@@ -303,7 +332,7 @@ export default function App() {
         event.loadId,
       );
     } else if (event.type === "INCIDENT") {
-      const incidentPayload = event.payload || (event as any).incident;
+      const incidentPayload = event.payload;
       if (incidentPayload) await createIncident(incidentPayload);
     } else if (event.type === "REQUEST") {
       if (event.payload) await saveRequest(event.payload as KCIRequest);
@@ -388,7 +417,7 @@ export default function App() {
 
   if (!user) return <Auth onLogin={handleLogin} />;
 
-  const categories = [
+  const categories: NavCategory[] = [
     {
       title: "OPERATIONS",
       items: [
@@ -492,15 +521,15 @@ export default function App() {
 
         // Check Agile Capability
         if (
-          (item as any).capability &&
-          !checkCapability(user!, (item as any).capability, undefined, company)
+          item.capability &&
+          !checkCapability(user!, item.capability, undefined, company)
         )
           return false;
 
         // Check Legacy Permission
         if (
           item.permission &&
-          !permissions.permissions?.includes(item.permission as any)
+          !permissions.permissions?.includes(item.permission!)
         )
           return false;
 
@@ -536,7 +565,7 @@ export default function App() {
               brokerId: bid,
               driverId: did,
               loadNumber: ln,
-              phoneCallNotes: cn as any,
+              phoneCallNotes: cn,
               freightType: oft,
               ...imd,
             });
@@ -621,7 +650,7 @@ export default function App() {
           brokers={brokers}
           canViewRates={permissions.showRates}
           onOpenHub={(tab) => {
-            setHubInitialTab(tab as any);
+            setHubInitialTab(tab);
             setShowIntelligenceHub(true);
           }}
         />
@@ -1003,7 +1032,7 @@ export default function App() {
                   users={companyUsers}
                   currentUser={user!}
                   onUserUpdate={() => refreshData(user!)}
-                  initialTab={activeSubTab as any}
+                  initialTab={activeSubTab as AccountingPortalTab | undefined}
                 />
               )}
               {activeTab === "accounting" && (
@@ -1012,7 +1041,7 @@ export default function App() {
                   users={companyUsers}
                   currentUser={user!}
                   onUserUpdate={() => refreshData(user!)}
-                  initialTab={activeSubTab as any}
+                  initialTab={activeSubTab as AccountingPortalTab | undefined}
                 />
               )}
               {activeTab === "audit" && <AuditLogs user={user} />}

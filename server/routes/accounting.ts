@@ -34,7 +34,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/accounting/accounts",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/accounts]");
@@ -97,7 +97,7 @@ router.get(
       });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/accounting/load-pl",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/load-pl]");
@@ -165,7 +165,7 @@ router.post(
     } catch (error) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/journal",
       });
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/journal]");
@@ -291,7 +291,7 @@ router.post(
     } catch (error) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/invoices",
       });
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/invoices]");
@@ -400,7 +400,7 @@ router.post(
     } catch (error) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/bills",
       });
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/bills]");
@@ -612,7 +612,7 @@ router.post(
     } catch (error) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/settlements",
       });
       log.error(
@@ -806,7 +806,7 @@ router.post(
       res.json({ message: "Trip locked for audit" });
     } catch (e) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/ifta-audit-lock",
       });
       log.error(
@@ -923,7 +923,7 @@ router.post(
       res.status(201).json({ message: "Mileage logged" });
     } catch (e) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/mileage",
       });
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/mileage]");
@@ -998,7 +998,7 @@ router.post(
       res.status(201).json({ message: "Adjustment recorded" });
     } catch (e) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/adjustments",
       });
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/adjustments]");
@@ -1079,7 +1079,7 @@ router.post(
     } catch (e) {
       await connection.rollback();
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/accounting/batch-import",
       });
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/batch-import]");
