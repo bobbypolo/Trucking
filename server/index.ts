@@ -32,6 +32,7 @@ import exceptionsRouter from "./routes/exceptions";
 import trackingRouter from "./routes/tracking";
 import weatherRouter from "./routes/weather";
 import metricsRouter from "./routes/metrics";
+import aiRouter from "./routes/ai";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -80,6 +81,7 @@ app.use(exceptionsRouter);
 app.use(trackingRouter);
 app.use(weatherRouter);
 app.use(metricsRouter);
+app.use(aiRouter);
 
 // Global error handler — must be registered AFTER all routes
 app.use(errorHandler);
