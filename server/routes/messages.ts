@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { messageRepository } from "../repositories/message.repository";
@@ -14,8 +14,8 @@ router.get(
   "/api/messages",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const loadId = req.query.loadId as string | undefined;
 
     try {
@@ -40,17 +40,15 @@ router.post(
   "/api/messages",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const { load_id, sender_id, sender_name, text, attachments } = req.body;
 
     if (!load_id || !sender_id) {
-      return res
-        .status(400)
-        .json({
-          error: "Validation error",
-          details: "load_id and sender_id are required",
-        });
+      return res.status(400).json({
+        error: "Validation error",
+        details: "load_id and sender_id are required",
+      });
     }
 
     try {
@@ -78,8 +76,8 @@ router.delete(
   "/api/messages/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const { id } = req.params;
 
     try {

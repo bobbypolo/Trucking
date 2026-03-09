@@ -6,6 +6,7 @@
  */
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { v4 as uuidv4 } from "uuid";
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -180,7 +181,7 @@ export const generateTrainingFromImage = async (
   const quiz = JSON.parse(response.text || "{}");
   return {
     ...quiz,
-    id: Math.random().toString(36).substr(2, 9),
+    id: uuidv4(),
     assignedTo: ["all"],
     createdAt: new Date().toISOString(),
   };

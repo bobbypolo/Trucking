@@ -20,7 +20,7 @@ UPDATE incidents i
 -- Add FK after population so existing rows are valid
 ALTER TABLE incidents
   ADD CONSTRAINT fk_incidents_company
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 
 -- 2. Add company_id to messages (tenant scoping)
 ALTER TABLE messages
@@ -33,7 +33,7 @@ UPDATE messages m
 
 ALTER TABLE messages
   ADD CONSTRAINT fk_messages_company
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE SET NULL;
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 
 -- 3. Create call_sessions table (does not exist in baseline)
 CREATE TABLE IF NOT EXISTS call_sessions (

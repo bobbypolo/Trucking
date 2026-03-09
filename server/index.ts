@@ -16,6 +16,10 @@ import { registerShutdownHandlers } from "./lib/graceful-shutdown";
 
 validateEnv();
 
+if (!process.env.GEMINI_API_KEY) {
+  logger.warn("GEMINI_API_KEY is not set — AI endpoints will be unavailable");
+}
+
 import usersRouter from "./routes/users";
 import loadsRouter from "./routes/loads";
 import equipmentRouter from "./routes/equipment";
@@ -73,7 +77,7 @@ app.use(exceptionsRouter);
 app.use(trackingRouter);
 app.use(weatherRouter);
 app.use(metricsRouter);
-app.use(aiRouter);
+app.use("/api/ai", express.json({ limit: "15mb" }), aiRouter);
 app.use(messagesRouter);
 app.use(callSessionsRouter);
 

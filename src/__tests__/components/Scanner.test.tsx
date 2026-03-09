@@ -3,14 +3,6 @@ import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Scanner } from "../../../components/Scanner";
 
-// Mock geminiService — Scanner.tsx still imports it directly (Phase 1 not complete yet)
-vi.mock("../../../services/geminiService", () => ({
-  extractLoadInfo: vi.fn().mockResolvedValue({ load: {}, broker: {} }),
-  extractBrokerFromImage: vi.fn().mockResolvedValue({}),
-  extractEquipmentFromImage: vi.fn().mockResolvedValue({}),
-  generateTrainingFromImage: vi.fn().mockResolvedValue({}),
-}));
-
 describe("Scanner component", () => {
   const defaultProps = {
     onDataExtracted: vi.fn(),

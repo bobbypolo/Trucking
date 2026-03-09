@@ -99,29 +99,26 @@ describe("GET /api/incidents", () => {
     const incidents = [
       {
         id: "inc-001",
+        company_id: "company-aaa",
         load_id: "load-001",
         type: "Breakdown",
         severity: "High",
         status: "Open",
         reported_at: "2026-03-08T00:00:00.000Z",
-        timeline: [],
-        billingItems: [],
       },
     ];
 
-    // SELECT * FROM incidents
+    // findByCompany: SELECT * FROM incidents WHERE company_id = ? (C4 fix — tenant-scoped)
     mockQuery.mockResolvedValueOnce([incidents, []]);
-    // Two nested queries (timeline + billing) for each incident
-    mockQuery.mockResolvedValueOnce([[], []]);
-    mockQuery.mockResolvedValueOnce([[], []]);
 
     const res = await request(app)
       .get("/api/incidents")
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body).toHaveLength(1);
+    // W4: response is wrapped in an envelope { incidents: [...] }
+    expect(Array.isArray(res.body.incidents)).toBe(true);
+    expect(res.body.incidents).toHaveLength(1);
   });
 
   it("returns 500 on database error", async () => {
@@ -164,10 +161,27 @@ describe("POST /api/incidents", () => {
   });
 
   it("creates incident and returns 201", async () => {
+    const createdIncident = {
+      id: "new-inc-uuid",
+      company_id: "company-aaa",
+      load_id: "load-001",
+      type: "Breakdown",
+      severity: "High",
+      status: "Open",
+      reported_at: "2026-03-08T00:00:00.000Z",
+      sla_deadline: null,
+      description: "Engine failure on I-90",
+      location_lat: null,
+      location_lng: null,
+      recovery_plan: null,
+    };
+
     // SELECT to check load existence: found
     mockQuery.mockResolvedValueOnce([[{ id: "load-001" }], []]);
-    // INSERT
+    // incidentRepository.create -> INSERT
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    // incidentRepository.create -> SELECT (findById to return created record)
+    mockQuery.mockResolvedValueOnce([[createdIncident], []]);
 
     const res = await request(app)
       .post("/api/incidents")

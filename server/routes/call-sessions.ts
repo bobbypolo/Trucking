@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { callSessionRepository } from "../repositories/call-session.repository";
@@ -14,8 +14,8 @@ router.get(
   "/api/call-sessions",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
 
     try {
       const sessions = await callSessionRepository.findByCompany(companyId);
@@ -39,8 +39,8 @@ router.post(
   "/api/call-sessions",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const {
       start_time,
       end_time,
@@ -52,6 +52,13 @@ router.post(
       participants,
       links,
     } = req.body;
+
+    if (!status) {
+      return res.status(400).json({
+        error: "Validation error",
+        details: "status is required",
+      });
+    }
 
     try {
       const session = await callSessionRepository.create(
@@ -88,8 +95,8 @@ router.put(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const { id } = req.params;
 
     try {
@@ -121,8 +128,8 @@ router.delete(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const companyId: string = req.user?.companyId ?? req.user?.tenantId;
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
     const { id } = req.params;
 
     try {
