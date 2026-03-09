@@ -1,5 +1,7 @@
 import { test, expect } from "@playwright/test";
 
+const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+
 /**
  * E2E Scanner / AI Proxy Tests — Phase 6: R-P6-01
  *
@@ -40,23 +42,17 @@ test.describe("AI Proxy Endpoint", () => {
 
   test("AI proxy endpoint requires authentication", async ({ request }) => {
     // Unauthenticated request to AI proxy should return 401
-    const response = await request.post(
-      "http://localhost:3001/api/ai/extract-load",
-      {
-        data: { imageBase64: "test" },
-      },
-    );
+    const response = await request.post(`${API_BASE}/api/ai/extract-load`, {
+      data: { imageBase64: "test" },
+    });
     expect([401, 403]).toContain(response.status());
   });
 
   test("AI proxy endpoint rejects missing image data", async ({ request }) => {
     // Request without required imageBase64 should return 400 or 401
-    const response = await request.post(
-      "http://localhost:3001/api/ai/extract-load",
-      {
-        data: {},
-      },
-    );
+    const response = await request.post(`${API_BASE}/api/ai/extract-load`, {
+      data: {},
+    });
     // 400 (bad request) or 401 (unauthorized — auth checked first)
     expect([400, 401, 403]).toContain(response.status());
   });
