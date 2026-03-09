@@ -31,11 +31,16 @@ const DEV_STAGING_PUBLIC_ROUTES = new Set([
     'POST /api/users',
 ]);
 
-// Regex to match Express route definitions
+// Regex to match Express route definitions (handles multi-line declarations)
+// Captures: method, path, and a window of text up to the handler to detect middleware
+const ROUTE_BLOCK_REGEX = /router\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]([\s\S]{0,300}?)\)\s*[,;)]/g;
+const INDEX_ROUTE_BLOCK_REGEX = /app\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]([\s\S]{0,300}?)\)\s*[,;)]/g;
+
+// Fallback: single-line regex for routes that fit on one line
 const ROUTE_DEF_REGEX = /router\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]/g;
 const INDEX_ROUTE_DEF_REGEX = /app\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]/g;
 
-// Regex to check if a route handler line includes requireAuth
+// Regex to check if a route handler block includes requireAuth / requireTenant
 const AUTH_MIDDLEWARE_REGEX = /requireAuth/;
 const TENANT_MIDDLEWARE_REGEX = /requireTenant/;
 
@@ -48,6 +53,45 @@ interface RouteEntry {
     hasTenant: boolean;
 }
 
+/**
+ * Extracts all route definitions from a file, handling both single-line and
+ * multi-line `router.METHOD("path", middleware1, middleware2, handler)` forms.
+ *
+ * Strategy: scan the whole file for each router.METHOD( opening, then capture
+ * 300 characters of context after the path string to detect requireAuth /
+ * requireTenant references that may appear on subsequent lines.
+ */
+function extractRoutesFromContent(content: string, file: string, routerVar: string = 'router'): RouteEntry[] {
+    const routes: RouteEntry[] = [];
+    // Match: router.get("/path", ... up to closing paren of the route call
+    // We use a forward scan: find METHOD + path, then scan ahead for middleware
+    const methodRe = new RegExp(
+        `${routerVar}\\.(get|post|put|patch|delete)\\s*\\(\\s*['"\`]([^'"\`]+)['"\`]`,
+        'g',
+    );
+
+    let match: RegExpExecArray | null;
+    while ((match = methodRe.exec(content)) !== null) {
+        const method = match[1].toUpperCase();
+        const routePath = match[2];
+        // Capture ~300 chars after the path to detect middleware
+        const contextStart = match.index;
+        const contextEnd = Math.min(content.length, contextStart + 400);
+        const block = content.slice(contextStart, contextEnd);
+
+        routes.push({
+            method,
+            path: routePath,
+            file,
+            line: block.split('\n')[0].trim(),
+            hasAuth: AUTH_MIDDLEWARE_REGEX.test(block),
+            hasTenant: TENANT_MIDDLEWARE_REGEX.test(block),
+        });
+    }
+
+    return routes;
+}
+
 function extractRoutes(): RouteEntry[] {
     const routes: RouteEntry[] = [];
 
@@ -58,44 +102,13 @@ function extractRoutes(): RouteEntry[] {
     for (const file of routeFiles) {
         const filePath = path.join(ROUTES_DIR, file);
         const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n');
-
-        for (const line of lines) {
-            const match = ROUTE_DEF_REGEX.exec(line);
-            if (match) {
-                routes.push({
-                    method: match[1].toUpperCase(),
-                    path: match[2],
-                    file,
-                    line: line.trim(),
-                    hasAuth: AUTH_MIDDLEWARE_REGEX.test(line),
-                    hasTenant: TENANT_MIDDLEWARE_REGEX.test(line),
-                });
-            }
-            // Reset regex lastIndex since we reuse it
-            ROUTE_DEF_REGEX.lastIndex = 0;
-        }
+        routes.push(...extractRoutesFromContent(content, file, 'router'));
     }
 
-    // Scan index.ts for inline routes
+    // Scan index.ts for inline routes (uses 'app' variable)
     if (fs.existsSync(INDEX_PATH)) {
         const content = fs.readFileSync(INDEX_PATH, 'utf-8');
-        const lines = content.split('\n');
-
-        for (const line of lines) {
-            const match = INDEX_ROUTE_DEF_REGEX.exec(line);
-            if (match) {
-                routes.push({
-                    method: match[1].toUpperCase(),
-                    path: match[2],
-                    file: 'index.ts',
-                    line: line.trim(),
-                    hasAuth: AUTH_MIDDLEWARE_REGEX.test(line),
-                    hasTenant: TENANT_MIDDLEWARE_REGEX.test(line),
-                });
-            }
-            INDEX_ROUTE_DEF_REGEX.lastIndex = 0;
-        }
+        routes.push(...extractRoutesFromContent(content, 'index.ts', 'app'));
     }
 
     return routes;
@@ -133,13 +146,27 @@ describe('R-P1-05: Route Protection Audit', () => {
         it('every non-public route has requireTenant middleware', () => {
             const noTenant: string[] = [];
 
+            // Routes that are intentionally auth-only (no tenant isolation needed):
+            // - /api/users/me: returns the calling user's own profile
+            // - /api/metrics: admin-only cross-tenant operational metrics (uses requireAdmin)
+            // - /api/ai/*: AI proxy routes scope output by user identity, not tenant DB rows
+            const TENANT_EXEMPT_ROUTES = new Set([
+                'GET /api/users/me',
+                'GET /api/metrics',
+                'POST /api/ai/extract-load',
+                'POST /api/ai/extract-broker',
+                'POST /api/ai/extract-equipment',
+                'POST /api/ai/generate-training',
+                'POST /api/ai/analyze-safety',
+            ]);
+
             for (const route of allRoutes) {
                 const key = `${route.method} ${route.path}`;
                 // Skip public routes
                 if (PRODUCTION_PUBLIC_ROUTES.has(key)) continue;
                 if (DEV_STAGING_PUBLIC_ROUTES.has(key)) continue;
-                // /api/users/me is auth-only (no tenant param needed)
-                if (key === 'GET /api/users/me') continue;
+                // Skip auth-only routes that have documented exemptions
+                if (TENANT_EXEMPT_ROUTES.has(key)) continue;
 
                 if (!route.hasTenant) {
                     noTenant.push(`${key} in ${route.file}`);
