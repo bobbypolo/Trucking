@@ -44,10 +44,11 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
       const filePath = path.join(ROUTES_DIR, `${mod}.ts`);
       const content = fs.readFileSync(filePath, "utf-8");
 
-      // Must import Router from express
+      // Must import Router from express (may be alongside other imports)
       expect(
         content.includes("import { Router }") ||
-          content.includes("import {Router}"),
+          content.includes("import {Router}") ||
+          /import\s*\{[^}]*Router[^}]*\}\s*from\s*["']express["']/.test(content),
         `${mod}.ts must import Router from express`,
       ).toBe(true);
 
