@@ -174,6 +174,59 @@ router.post(
   },
 );
 
+// Operational Messaging
+router.get(
+  "/api/messages/:loadId",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    try {
+      const [rows] = await pool.query(
+        "SELECT * FROM messages WHERE load_id = ? ORDER BY timestamp ASC",
+        [req.params.loadId],
+      );
+      res.json(rows);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/messages",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/messages]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+router.post(
+  "/api/messages",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const { id, load_id, sender_id, sender_name, text, attachments } = req.body;
+    try {
+      await pool.query(
+        "INSERT INTO messages (id, load_id, sender_id, sender_name, text, attachments) VALUES (?, ?, ?, ?, ?, ?)",
+        [
+          id || uuidv4(),
+          load_id,
+          sender_id,
+          sender_name,
+          text,
+          JSON.stringify(attachments),
+        ],
+      );
+      res.status(201).json({ message: "Message sent" });
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/messages",
+      });
+      log.error({ err: error }, "SERVER ERROR [POST /api/messages]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 // Dashboard
 router.get(
   "/api/dashboard/cards",

@@ -41,9 +41,12 @@ test.describe("Load API — Auth Enforcement", () => {
   test("PATCH /api/loads/:id/status — unauthenticated returns 401", async ({
     request,
   }) => {
-    const res = await request.patch(`${API_BASE}/api/loads/test-load-id/status`, {
-      data: { status: "dispatched" },
-    });
+    const res = await request.patch(
+      `${API_BASE}/api/loads/test-load-id/status`,
+      {
+        data: { status: "dispatched" },
+      },
+    );
     expect([401, 403, 404, 500]).toContain(res.status());
     // Should NOT be 200
     expect(res.status()).not.toBe(200);

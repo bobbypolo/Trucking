@@ -106,12 +106,10 @@ router.get(
         route: "GET /api/companies",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/companies]");
-      res
-        .status(500)
-        .json({
-          error: "Database error",
-          details: error instanceof Error ? error.message : String(error),
-        });
+      res.status(500).json({
+        error: "Database error",
+        details: error instanceof Error ? error.message : String(error),
+      });
     }
   },
 );
@@ -486,12 +484,10 @@ router.post(
         route: "POST /api/parties",
       });
       log.error({ err: error }, "SERVER ERROR [POST /api/parties]");
-      res
-        .status(500)
-        .json({
-          error: "Database error",
-          details: error instanceof Error ? error.message : String(error),
-        });
+      res.status(500).json({
+        error: "Database error",
+        details: error instanceof Error ? error.message : String(error),
+      });
     } finally {
       connection.release();
     }
