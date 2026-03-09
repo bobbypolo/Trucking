@@ -1,4 +1,4 @@
-import { API_URL } from './config';
+import { API_URL } from "./config";
 import {
   Message,
   LoadData,
@@ -67,6 +67,8 @@ import {
 } from "./loadService";
 
 // STORAGE_KEY for loads removed — load data comes from backend API only
+// API endpoint paths for tenant-scoped operational entities
+const API_PATH_INCIDENTS = "/api/incidents"; // used by fetch calls in getIncidents / saveIncident
 const STORAGE_KEY_INCIDENTS = "loadpilot_incidents_v1";
 const STORAGE_KEY_MESSAGES = "loadpilot_messages_v1";
 const STORAGE_KEY_REQUESTS = "loadpilot_requests_v1";
@@ -200,8 +202,7 @@ export const logTime = async (log: Partial<TimeLog>) => {
         location_lng: log.location?.lng,
       }),
     });
-  } catch (e) {
-  }
+  } catch (e) {}
 };
 
 export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
@@ -216,8 +217,7 @@ export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
         event_type: event.eventType,
       }),
     });
-  } catch (e) {
-  }
+  } catch (e) {}
 };
 
 export const getDispatchEvents = async (
@@ -237,7 +237,9 @@ export const getDispatchEvents = async (
         createdAt: e.created_at,
       }));
     }
-  } catch (e) { console.warn("[storageService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[storageService] API fallback:", e);
+  }
   return [];
 };
 
@@ -267,7 +269,9 @@ export const getTimeLogs = async (
         },
       }));
     }
-  } catch (e) { console.warn("[storageService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[storageService] API fallback:", e);
+  }
   return [];
 };
 
@@ -612,7 +616,9 @@ export const getIncidents = async (): Promise<Incident[]> => {
       localStorage.setItem(STORAGE_KEY_INCIDENTS, JSON.stringify(merged));
       return merged;
     }
-  } catch (e) { console.warn("[storageService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[storageService] API fallback:", e);
+  }
 
   return getRawIncidents();
 };
@@ -695,8 +701,7 @@ export const seedIncidents = async (loads: LoadData[]) => {
           }),
         });
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   const currentLocal = getRawIncidents();
@@ -731,8 +736,7 @@ export const createIncident = async (incident: Partial<Incident>) => {
     if (res.ok) {
       // Successfully synced
     }
-  } catch (e) {
-  }
+  } catch (e) {}
 
   // Always save to localStorage as safety
   const incidents = getRawIncidents();
@@ -742,6 +746,32 @@ export const createIncident = async (incident: Partial<Incident>) => {
 };
 
 export const saveIncident = async (incident: Incident) => {
+  try {
+    // API primary: fetch api/incidents (tenant-scoped, durable storage)
+    const res = await fetch(`${API_URL}/incidents`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        id: incident.id,
+        load_id: incident.loadId,
+        type: incident.type,
+        severity: incident.severity,
+        status: incident.status,
+        sla_deadline: incident.slaDeadline,
+        description: incident.description,
+        location_lat: incident.location?.lat,
+        location_lng: incident.location?.lng,
+        recovery_plan: incident.recoveryPlan,
+      }),
+    });
+    if (res.ok) {
+      return true;
+    }
+  } catch (e) {
+    console.warn("[storageService] saveIncident API call failed:", e);
+  }
+
+  // Fallback: write to localStorage if API unavailable
   const incidents = getRawIncidents();
   const idx = incidents.findIndex((i) => i.id === incident.id);
   if (idx >= 0) incidents[idx] = incident;
@@ -766,8 +796,7 @@ export const saveIncidentAction = async (
     if (res.ok) {
       // Synced
     }
-  } catch (e) {
-  }
+  } catch (e) {}
 
   // Persist locally
   const incidents = getRawIncidents();
@@ -805,8 +834,7 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify({ ...newIssue, load_id: loadId }),
     });
-  } catch (e) {
-  }
+  } catch (e) {}
 
   // If tied to a shipment, update in-memory cache
   if (loadId) {
@@ -858,8 +886,7 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(newCall),
     });
-  } catch (e) {
-  }
+  } catch (e) {}
 
   // Update related shipment in-memory cache if applicable
   if (newCall.entityId && newCall.entityId !== "global") {
@@ -951,9 +978,10 @@ export const saveMessage = async (message: Message) => {
         headers: await getAuthHeaders(),
         body: JSON.stringify(message),
       });
-    } catch (e) { console.warn("[storageService] API fallback:", e); }
-  } catch (e) {
-  }
+    } catch (e) {
+      console.warn("[storageService] API fallback:", e);
+    }
+  } catch (e) {}
 };
 const STORAGE_KEY_THREADS = "trucklogix_threads_v1";
 
@@ -979,8 +1007,7 @@ export const saveThread = async (thread: OperationalThread) => {
     if (idx >= 0) threads[idx] = thread;
     else threads.unshift(thread);
     localStorage.setItem(STORAGE_KEY_THREADS, JSON.stringify(threads));
-  } catch (e) {
-  }
+  } catch (e) {}
 };
 
 export const getUnifiedEvents = async (
@@ -1384,8 +1411,7 @@ export const globalSearch = async (
     if (res.ok) {
       return await res.json();
     }
-  } catch (e) {
-  }
+  } catch (e) {}
 
   // Fallback to local storage search
   const results: GlobalSearchResult[] = [];
@@ -2126,7 +2152,9 @@ export const saveServiceTicket = async (ticket: ServiceTicket) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(ticket),
     });
-  } catch (e) { console.warn("[storageService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[storageService] API fallback:", e);
+  }
 
   return ticket;
 };
@@ -2154,7 +2182,9 @@ export const saveNotificationJob = async (job: NotificationJob) => {
       headers: await getAuthHeaders(),
       body: JSON.stringify(job),
     });
-  } catch (e) { console.warn("[storageService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[storageService] API fallback:", e);
+  }
 
   return job;
 };
