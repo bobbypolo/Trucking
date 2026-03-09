@@ -38,7 +38,7 @@ const mockUser: User = {
   email: "driver@test.com",
   name: "Test Driver",
   role: "driver",
-  payModel: "flat",
+  payModel: "percent",
   payRate: 500,
   onboardingStatus: "Completed",
   safetyScore: 95,
