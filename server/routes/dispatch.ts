@@ -1,6 +1,10 @@
 import { Router } from "express";
+import type { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
@@ -12,7 +16,8 @@ router.post(
   "/api/time-logs",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
     const {
       id,
       user_id,
@@ -24,9 +29,9 @@ router.post(
     } = req.body;
     // Security: Only allow logging for oneself unless manager
     if (
-      req.user.id !== user_id &&
-      req.user.role !== "admin" &&
-      req.user.role !== "dispatcher"
+      user.uid !== user_id &&
+      user.role !== "admin" &&
+      user.role !== "dispatcher"
     ) {
       return res.status(403).json({ error: "Access denied" });
     }
@@ -52,10 +57,13 @@ router.post(
       res.status(201).json({ message: "Time log recorded" });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "POST /api/time-logs",
       });
-      log.error({ err: error }, "SERVER ERROR [POST /api/time-logs]");
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [POST /api/time-logs]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -65,8 +73,9 @@ router.get(
   "/api/time-logs/:userId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    if (req.user.id !== req.params.userId && req.user.role === "driver") {
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    if (user.uid !== req.params.userId && user.role === "driver") {
       return res.status(403).json({ error: "Unauthorized profile access" });
     }
     try {
@@ -77,10 +86,13 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "GET /api/time-logs",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/time-logs]");
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [GET /api/time-logs]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -90,11 +102,9 @@ router.get(
   "/api/time-logs/company/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    if (
-      req.user.companyId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    if (user.tenantId !== req.params.companyId && user.role !== "admin") {
       return res.status(403).json({ error: "Resource unauthorized" });
     }
     try {
@@ -105,10 +115,13 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "GET /api/time-logs-company",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/time-logs-company]");
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [GET /api/time-logs-company]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -119,11 +132,9 @@ router.get(
   "/api/dispatch-events/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    if (
-      req.user.companyId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    if (user.tenantId !== req.params.companyId && user.role !== "admin") {
       return res.status(403).json({ error: "Resource unauthorized" });
     }
     try {
@@ -134,10 +145,13 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "GET /api/dispatch-events",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/dispatch-events]");
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [GET /api/dispatch-events]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -147,10 +161,37 @@ router.post(
   "/api/dispatch-events",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
     const { id, load_id, dispatcher_id, event_type, message, payload } =
       req.body;
+
     try {
+      // Verify load belongs to user's tenant before writing
+      const [loadRows] = await pool.query(
+        "SELECT company_id FROM loads WHERE id = ?",
+        [load_id],
+      );
+      const loads = loadRows as Array<{ company_id: string }>;
+
+      if (!loads || loads.length === 0) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      if (loads[0].company_id !== user.tenantId) {
+        return res
+          .status(403)
+          .json({ error: "Access denied: load belongs to different tenant" });
+      }
+
+      // Validate payload serialization
+      let serializedPayload: string;
+      try {
+        serializedPayload = JSON.stringify(payload);
+      } catch {
+        return res.status(400).json({ error: "Invalid payload structure" });
+      }
+
       await pool.query(
         "INSERT INTO dispatch_events (id, load_id, dispatcher_id, event_type, message, payload) VALUES (?, ?, ?, ?, ?, ?)",
         [
@@ -159,69 +200,19 @@ router.post(
           dispatcher_id,
           event_type,
           message,
-          JSON.stringify(payload),
+          serializedPayload,
         ],
       );
       res.status(201).json({ message: "Dispatch event logged" });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "POST /api/dispatch-events",
       });
-      log.error({ err: error }, "SERVER ERROR [POST /api/dispatch-events]");
-      res.status(500).json({ error: "Database error" });
-    }
-  },
-);
-
-// Operational Messaging
-router.get(
-  "/api/messages/:loadId",
-  requireAuth,
-  requireTenant,
-  async (req: any, res) => {
-    try {
-      const [rows] = await pool.query(
-        "SELECT * FROM messages WHERE load_id = ? ORDER BY timestamp ASC",
-        [req.params.loadId],
+      log.error(
+        { err: error, userId: user.uid, loadId: load_id },
+        "SERVER ERROR [POST /api/dispatch-events]",
       );
-      res.json(rows);
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/messages",
-      });
-      log.error({ err: error }, "SERVER ERROR [GET /api/messages]");
-      res.status(500).json({ error: "Database error" });
-    }
-  },
-);
-
-router.post(
-  "/api/messages",
-  requireAuth,
-  requireTenant,
-  async (req: any, res) => {
-    const { id, load_id, sender_id, sender_name, text, attachments } = req.body;
-    try {
-      await pool.query(
-        "INSERT INTO messages (id, load_id, sender_id, sender_name, text, attachments) VALUES (?, ?, ?, ?, ?, ?)",
-        [
-          id || uuidv4(),
-          load_id,
-          sender_id,
-          sender_name,
-          text,
-          JSON.stringify(attachments),
-        ],
-      );
-      res.status(201).json({ message: "Message sent" });
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/messages",
-      });
-      log.error({ err: error }, "SERVER ERROR [POST /api/messages]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -232,7 +223,7 @@ router.get(
   "/api/dashboard/cards",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
       const [rows] = await pool.query(
         "SELECT * FROM dashboard_card ORDER BY sort_order ASC",
@@ -240,7 +231,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: req.correlationId,
+        correlationId: (req as any).correlationId,
         route: "GET /api/dashboard/cards",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/dashboard/cards]");

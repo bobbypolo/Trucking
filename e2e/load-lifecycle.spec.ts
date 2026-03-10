@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * E2E Load Lifecycle Tests — R-FS-03-02
+ * E2E Load Lifecycle Tests — R-RV-03-02
  *
  * Real assertions for: create, assign, dispatch, complete load workflow.
  * API-level assertions cover auth enforcement and response shape.

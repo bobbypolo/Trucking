@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * E2E Tenant Isolation Tests — R-FS-03-04
+ * E2E Tenant Isolation Tests — R-RV-03-04
  *
  * Real assertions that company A cannot access company B data.
  * Tests cover API-level isolation enforcement and cross-tenant rejection.

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * E2E Auth Flow Tests — R-FS-03-01
+ * E2E Auth Flow Tests — R-RV-03-01
  *
  * Real assertions for: login form structure, tenant context, unauthorized rejection.
  *
