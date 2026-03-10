@@ -153,4 +153,30 @@ All 10 hard no-go conditions remain CLEAR (unchanged from RC_GO_NO_GO.md).
 
 ---
 
+## 7. Post-Remediation Rerun Addendum (2026-03-09)
+
+Final validation rerun after commit `fab829e` (dispatch tenant isolation fix).
+
+### Corrected Test Accounting
+
+| Suite | Runner | Count | Files |
+|-------|--------|-------|-------|
+| Server (includes 30 integration) | Vitest | 1029 | 78 |
+| Frontend | Vitest | 92 | 10 |
+| Playwright E2E | Playwright | 13 | 2 |
+| **Total** | | **1134** | **90** |
+
+### Skip Path Audit
+
+28/30 integration tests ran with real assertions. 2 soft-skipped in `real-auth-flow.test.ts`
+(require `serviceAccount.json` — a production secret correctly absent from dev).
+Zero tests were made green by skip-path evasion.
+
+### Weather Feature
+
+Disabled by default (`WEATHER_ENABLED` env var). Degrades gracefully — never throws, never 500s.
+No broken UX in core flows. Will be enabled when `WEATHER_API_KEY` is configured.
+
+---
+
 *End of evidence document — satisfies R-P4-01*
