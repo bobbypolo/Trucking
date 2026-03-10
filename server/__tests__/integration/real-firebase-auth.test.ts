@@ -38,8 +38,10 @@ describe("Real Firebase REST Auth", () => {
     if (createdUser) {
       try {
         await deleteTestUser(createdUser.idToken);
-      } catch {
-        // Best-effort cleanup
+      } catch (err) {
+        console.warn(
+          `Firebase cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }, 15000);

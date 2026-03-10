@@ -11,6 +11,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
@@ -33,17 +34,7 @@ let skip = false;
 describe("Real MySQL Connection (Docker loadpilot-dev)", () => {
   beforeAll(async () => {
     // Check if container is running
-    const { execSync } = await import("child_process");
-    try {
-      const out = execSync(
-        'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-        { encoding: "utf-8", timeout: 5000 },
-      );
-      if (!out.includes("loadpilot-dev")) {
-        skip = true;
-        return;
-      }
-    } catch {
+    if (!isDockerRunning()) {
       skip = true;
       return;
     }

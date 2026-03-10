@@ -11,7 +11,7 @@ import mysql from "mysql2/promise";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
@@ -25,18 +25,6 @@ const TEST_LEG_ID_DROPOFF = "test-leg-crud-p2-do";
 
 let pool: mysql.Pool;
 let skip = false;
-
-function isDockerRunning(): boolean {
-  try {
-    const out = execSync(
-      'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-      { encoding: "utf-8", timeout: 5000 },
-    );
-    return out.includes("loadpilot-dev");
-  } catch {
-    return false;
-  }
-}
 
 describe("Real Load CRUD and Lifecycle (Docker MySQL)", () => {
   beforeAll(async () => {
@@ -78,7 +66,13 @@ describe("Real Load CRUD and Lifecycle (Docker MySQL)", () => {
 
   afterAll(async () => {
     if (pool) {
-      await cleanupTestData();
+      try {
+        await cleanupTestData();
+      } catch (err) {
+        console.warn(
+          `Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
       await pool.end();
     }
   }, 20000);

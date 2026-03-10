@@ -50,8 +50,7 @@ export function hasServiceAccount(): boolean {
   return fs.existsSync(serviceAccountPath);
 }
 
-export function skipIfNoDocker(): boolean {
-  // Check if Docker is accessible by looking for the container
+export function isDockerRunning(): boolean {
   try {
     const { execSync } = require("child_process");
     const output = execSync(
@@ -61,10 +60,14 @@ export function skipIfNoDocker(): boolean {
         timeout: 5000,
       },
     );
-    return !output.includes("loadpilot-dev");
+    return output.trim().includes("loadpilot-dev");
   } catch {
-    return true; // Skip if docker not available
+    return false;
   }
+}
+
+export function skipIfNoDocker(): boolean {
+  return !isDockerRunning();
 }
 
 export function skipIfNoFirebase(): boolean {

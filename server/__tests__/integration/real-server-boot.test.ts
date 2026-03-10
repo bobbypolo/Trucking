@@ -10,16 +10,19 @@ import { spawn, type ChildProcess } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const serverDir = path.resolve(__dirname, "../..");
 const projectRoot = path.resolve(serverDir, "..");
 dotenv.config({ path: path.join(projectRoot, ".env") });
 
+const REQUIRE_INFRA = process.env.REQUIRE_INFRA === "1";
 const TEST_PORT = 5099; // Use non-default port to avoid conflicts
 
 let serverProcess: ChildProcess | null = null;
 let skip = false;
+let skipReason = "";
 let serverUrl = `http://127.0.0.1:${TEST_PORT}`;
 
 async function waitForServer(url: string, maxMs = 15000): Promise<boolean> {
@@ -36,29 +39,32 @@ async function waitForServer(url: string, maxMs = 15000): Promise<boolean> {
   return false;
 }
 
+function requireOrSkip(condition: boolean, reason: string): void {
+  if (condition) return;
+  if (REQUIRE_INFRA) {
+    throw new Error(
+      `REQUIRE_INFRA=1 but infrastructure unavailable: ${reason}`,
+    );
+  }
+  skip = true;
+  skipReason = reason;
+}
+
 describe("Real Express Server Boot", () => {
   beforeAll(async () => {
     // Check required env vars
-    if (!process.env.DB_HOST || !process.env.DB_NAME) {
-      skip = true;
-      return;
-    }
+    requireOrSkip(
+      !!(process.env.DB_HOST && process.env.DB_NAME),
+      "DB_HOST/DB_NAME env vars not set",
+    );
+    if (skip) return;
 
     // Check if Docker MySQL is accessible
-    const { execSync } = await import("child_process");
-    try {
-      const out = execSync(
-        'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-        { encoding: "utf-8", timeout: 5000 },
-      );
-      if (!out.includes("loadpilot-dev")) {
-        skip = true;
-        return;
-      }
-    } catch {
-      skip = true;
-      return;
-    }
+    requireOrSkip(
+      isDockerRunning(),
+      "Docker container loadpilot-dev not running",
+    );
+    if (skip) return;
 
     // Spawn server via ts-node
     const env = {
@@ -68,9 +74,10 @@ describe("Real Express Server Boot", () => {
     };
 
     // On Windows, .cmd files require shell:true (cannot spawn .cmd directly)
-    const tsNodeBin = process.platform === "win32"
-      ? path.join(serverDir, "node_modules", ".bin", "ts-node.cmd")
-      : path.join(serverDir, "node_modules", ".bin", "ts-node");
+    const tsNodeBin =
+      process.platform === "win32"
+        ? path.join(serverDir, "node_modules", ".bin", "ts-node.cmd")
+        : path.join(serverDir, "node_modules", ".bin", "ts-node");
 
     serverProcess = spawn(tsNodeBin, ["index.ts"], {
       cwd: serverDir,
@@ -80,9 +87,7 @@ describe("Real Express Server Boot", () => {
     });
 
     const ready = await waitForServer(serverUrl, 20000);
-    if (!ready) {
-      skip = true;
-    }
+    requireOrSkip(ready, "Server failed to start within 20s");
   }, 30000);
 
   afterAll(async () => {
@@ -97,20 +102,29 @@ describe("Real Express Server Boot", () => {
   }, 10000);
 
   it("GET /api/health returns HTTP 200", async () => {
-    if (skip) return;
+    if (skip) {
+      console.warn(`SKIP: ${skipReason}`);
+      return;
+    }
     const res = await fetch(`${serverUrl}/api/health`);
     expect(res.status).toBe(200);
   });
 
   it("GET /api/health returns { status: 'ok' }", async () => {
-    if (skip) return;
+    if (skip) {
+      console.warn(`SKIP: ${skipReason}`);
+      return;
+    }
     const res = await fetch(`${serverUrl}/api/health`);
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.status).toBe("ok");
   });
 
   it("server responds to unknown routes with non-200 (not a crash)", async () => {
-    if (skip) return;
+    if (skip) {
+      console.warn(`SKIP: ${skipReason}`);
+      return;
+    }
     const res = await fetch(`${serverUrl}/api/nonexistent-route-xyz`);
     // Should get 404 or similar, not a crash (5xx)
     expect(res.status).not.toBe(500);

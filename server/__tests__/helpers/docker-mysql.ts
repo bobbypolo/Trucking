@@ -76,8 +76,11 @@ export async function ensureContainer(): Promise<void> {
       // Container does not exist — create it
       const rootPw = process.env.DB_PASSWORD || "";
       execSync(
-        `docker run -d --name loadpilot-dev -e MYSQL_ROOT_PASSWORD=${rootPw} -e MYSQL_DATABASE=trucklogix -p 3306:3306 mysql:8`,
-        { timeout: 60000 },
+        "docker run -d --name loadpilot-dev -e MYSQL_ROOT_PASSWORD -e MYSQL_DATABASE=trucklogix -p 3306:3306 mysql:8",
+        {
+          timeout: 60000,
+          env: { ...process.env, MYSQL_ROOT_PASSWORD: rootPw },
+        },
       );
     }
   }

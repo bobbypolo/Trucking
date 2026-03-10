@@ -10,7 +10,7 @@ import mysql from "mysql2/promise";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
@@ -32,18 +32,6 @@ const CO_B_LOAD_IDS = ["test-tenant-load-b1-p2", "test-tenant-load-b2-p2"];
 
 let pool: mysql.Pool;
 let skip = false;
-
-function isDockerRunning(): boolean {
-  try {
-    const out = execSync(
-      'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-      { encoding: "utf-8", timeout: 5000 },
-    );
-    return out.includes("loadpilot-dev");
-  } catch {
-    return false;
-  }
-}
 
 describe("Real Tenant Isolation (Docker MySQL)", () => {
   beforeAll(async () => {

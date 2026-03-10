@@ -11,7 +11,7 @@ import mysql from "mysql2/promise";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
@@ -27,18 +27,6 @@ const TEST_SDL_REIMB_ID = "test-sdl-p2-reimb";
 
 let pool: mysql.Pool;
 let skip = false;
-
-function isDockerRunning(): boolean {
-  try {
-    const out = execSync(
-      'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-      { encoding: "utf-8", timeout: 5000 },
-    );
-    return out.includes("loadpilot-dev");
-  } catch {
-    return false;
-  }
-}
 
 describe("Real Settlement Flow (Docker MySQL)", () => {
   beforeAll(async () => {
@@ -86,7 +74,13 @@ describe("Real Settlement Flow (Docker MySQL)", () => {
 
   afterAll(async () => {
     if (pool) {
-      await cleanupTestData();
+      try {
+        await cleanupTestData();
+      } catch (err) {
+        console.warn(
+          `Cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
       await pool.end();
     }
   }, 20000);
@@ -164,11 +158,11 @@ describe("Real Settlement Flow (Docker MySQL)", () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].status).toBe("pending_generation");
-    // DECIMAL values returned as strings by mysql2
-    expect(parseFloat(rows[0].total_earnings)).toBeCloseTo(1500.0, 2);
-    expect(parseFloat(rows[0].total_deductions)).toBeCloseTo(250.0, 2);
-    expect(parseFloat(rows[0].total_reimbursements)).toBeCloseTo(75.5, 2);
-    expect(parseFloat(rows[0].net_pay)).toBeCloseTo(1325.5, 2);
+    // DECIMAL values returned as strings by mysql2 — compare as strings for precision
+    expect(String(rows[0].total_earnings)).toBe("1500.00");
+    expect(String(rows[0].total_deductions)).toBe("250.00");
+    expect(String(rows[0].total_reimbursements)).toBe("75.50");
+    expect(String(rows[0].net_pay)).toBe("1325.50");
 
     // Verify 3 detail lines exist
     const [lines] = (await pool.query(
@@ -178,11 +172,11 @@ describe("Real Settlement Flow (Docker MySQL)", () => {
 
     expect(lines).toHaveLength(3);
     expect(lines[0].type).toBe("earning");
-    expect(parseFloat(lines[0].amount)).toBeCloseTo(1500.0, 2);
+    expect(String(lines[0].amount)).toBe("1500.00");
     expect(lines[1].type).toBe("deduction");
-    expect(parseFloat(lines[1].amount)).toBeCloseTo(250.0, 2);
+    expect(String(lines[1].amount)).toBe("250.00");
     expect(lines[2].type).toBe("reimbursement");
-    expect(parseFloat(lines[2].amount)).toBeCloseTo(75.5, 2);
+    expect(String(lines[2].amount)).toBe("75.50");
   });
 
   it("transitions settlement through pending_generation->generated->reviewed->posted", async () => {
@@ -221,11 +215,11 @@ describe("Real Settlement Flow (Docker MySQL)", () => {
     )) as [mysql.RowDataPacket[], mysql.FieldPacket[]];
 
     expect(rows).toHaveLength(1);
-    // Verify DECIMAL(10,2) precision is maintained after all transitions
-    expect(parseFloat(rows[0].total_earnings)).toBeCloseTo(1500.0, 2);
-    expect(parseFloat(rows[0].total_deductions)).toBeCloseTo(250.0, 2);
-    expect(parseFloat(rows[0].total_reimbursements)).toBeCloseTo(75.5, 2);
-    expect(parseFloat(rows[0].net_pay)).toBeCloseTo(1325.5, 2);
+    // Verify DECIMAL(10,2) precision is maintained after all transitions — string comparison
+    expect(String(rows[0].total_earnings)).toBe("1500.00");
+    expect(String(rows[0].total_deductions)).toBe("250.00");
+    expect(String(rows[0].total_reimbursements)).toBe("75.50");
+    expect(String(rows[0].net_pay)).toBe("1325.50");
   });
 
   it("posted settlement status update with wrong prior state affects 0 rows (business-level immutability)", async () => {

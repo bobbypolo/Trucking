@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-import { execSync } from "child_process";
+import { isDockerRunning } from "../helpers/test-env.js";
 import {
   createTestUser,
   signInTestUser,
@@ -21,7 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
 dotenv.config({ path: path.join(projectRoot, ".env") });
 
-const TEST_EMAIL = "auth-flow-p2@loadpilot.dev";
+const TEST_EMAIL = `auth-flow-p2-${Date.now()}@loadpilot.dev`;
 const TEST_PASSWORD = "AuthFlowP2Test123!";
 const TEST_PORT = 5098; // Different port from real-server-boot to avoid conflicts
 const SERVER_URL = `http://127.0.0.1:${TEST_PORT}`;
@@ -37,18 +37,6 @@ function hasFirebaseApiKey(): boolean {
 function hasServiceAccount(): boolean {
   const fs = require("fs");
   return fs.existsSync(path.join(projectRoot, "serviceAccount.json"));
-}
-
-function isDockerRunning(): boolean {
-  try {
-    const out = execSync(
-      'docker ps --filter name=loadpilot-dev --format "{{.Names}}"',
-      { encoding: "utf-8", timeout: 5000 },
-    );
-    return out.includes("loadpilot-dev");
-  } catch {
-    return false;
-  }
 }
 
 async function waitForServer(url: string, maxMs = 15000): Promise<boolean> {
@@ -121,8 +109,10 @@ describe("Real Auth Flow (Firebase REST + Server)", () => {
     if (firebaseUser && !skipFirebase) {
       try {
         await deleteTestUser(firebaseUser.idToken);
-      } catch {
-        // Best-effort cleanup
+      } catch (err) {
+        console.warn(
+          `Firebase cleanup failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }, 15000);
