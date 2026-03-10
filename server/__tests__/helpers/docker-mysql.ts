@@ -85,8 +85,7 @@ export async function ensureContainer(): Promise<void> {
 }
 
 function extractUpSection(content: string): string {
-  const lines = content.split("
-");
+  const lines = content.split("\n");
   let inUp = false;
   const upLines: string[] = [];
   for (const line of lines) {
@@ -98,8 +97,7 @@ function extractUpSection(content: string): string {
     if (stripped === "-- DOWN") break;
     if (inUp) upLines.push(line);
   }
-  return upLines.length > 0 ? upLines.join("
-") : content;
+  return upLines.length > 0 ? upLines.join("\n") : content;
 }
 
 export async function runMigrations(
