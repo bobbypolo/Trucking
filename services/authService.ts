@@ -1,4 +1,4 @@
-import { API_URL } from './config';
+import { API_URL } from "./config";
 import {
   User,
   Company,
@@ -17,7 +17,7 @@ import {
 } from "../types";
 import { v4 as uuidv4 } from "uuid";
 import { seedDemoLoads } from "./storageService";
-import { auth } from "./firebase";
+import { auth, DEMO_MODE } from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -39,6 +39,7 @@ let _usersCache: User[] = [];
 let _idToken: string | null = null;
 
 export const getIdTokenAsync = async (): Promise<string | null> => {
+  if (DEMO_MODE) return _idToken || "demo-token";
   if (_idToken) return _idToken;
   if (auth.currentUser) {
     _idToken = await getIdToken(auth.currentUser);
@@ -61,31 +62,33 @@ const notifyUserChange = (user: User | null) => {
   _userChangeListeners.forEach((c) => c(user));
 };
 
-onAuthStateChanged(auth, async (fbUser) => {
-  if (fbUser) {
-    _idToken = await getIdToken(fbUser);
-    let localUser = getCurrentUser();
+if (!DEMO_MODE) {
+  onAuthStateChanged(auth, async (fbUser) => {
+    if (fbUser) {
+      _idToken = await getIdToken(fbUser);
+      let localUser = getCurrentUser();
 
-    if (
-      !localUser ||
-      localUser.email.toLowerCase() !== fbUser.email?.toLowerCase()
-    ) {
-      const users = getStoredUsers();
-      localUser =
-        users.find(
-          (u) => u.email.toLowerCase() === fbUser.email?.toLowerCase(),
-        ) || null;
-      if (localUser) {
-        _sessionCache = localUser;
+      if (
+        !localUser ||
+        localUser.email.toLowerCase() !== fbUser.email?.toLowerCase()
+      ) {
+        const users = getStoredUsers();
+        localUser =
+          users.find(
+            (u) => u.email.toLowerCase() === fbUser.email?.toLowerCase(),
+          ) || null;
+        if (localUser) {
+          _sessionCache = localUser;
+        }
       }
+      notifyUserChange(localUser);
+    } else {
+      _idToken = null;
+      _sessionCache = null;
+      notifyUserChange(null);
     }
-    notifyUserChange(localUser);
-  } else {
-    _idToken = null;
-    _sessionCache = null;
-    notifyUserChange(null);
-  }
-});
+  });
+}
 
 export const getAuthHeaders = async () => {
   const token = await getIdTokenAsync();
@@ -358,6 +361,10 @@ const safeParseCompanies = (): Company[] => {
     if (!data) return [];
     return JSON.parse(data);
   } catch (e) {
+    console.warn(
+      "[authService] Failed to parse companies from localStorage:",
+      e,
+    );
     return [];
   }
 };
@@ -373,7 +380,9 @@ export const getCompany = async (
   try {
     const res = await fetch(`${API_URL}/companies/${companyId}`);
     if (res.ok) return await res.json();
-  } catch (e) { console.warn("[authService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[authService] API fallback:", e);
+  }
   return getStoredCompanies().find((c) => c.id === companyId);
 };
 
@@ -384,7 +393,9 @@ export const updateCompany = async (company: Company) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(company),
     });
-  } catch (e) { console.warn("[authService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[authService] API fallback:", e);
+  }
 
   const companies = getStoredCompanies();
   const idx = companies.findIndex((c) => c.id === company.id);
@@ -404,7 +415,9 @@ export const updateUser = async (user: User) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(user),
     });
-  } catch (e) { console.warn("[authService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[authService] API fallback:", e);
+  }
 
   const index = _usersCache.findIndex((u) => u.id === user.id);
   if (index >= 0) {
@@ -423,6 +436,26 @@ export const login = async (
   email: string,
   password?: string,
 ): Promise<User | null> => {
+  // Demo mode: skip Firebase, authenticate against localStorage users
+  if (DEMO_MODE) {
+    const users = getStoredUsers();
+    const user = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase(),
+    );
+    if (
+      user &&
+      (password === "admin123" ||
+        password === "12345" ||
+        user.password === password)
+    ) {
+      _sessionCache = user;
+      _idToken = "demo-token";
+      notifyUserChange(user);
+      return user;
+    }
+    return null;
+  }
+
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -475,9 +508,10 @@ export const login = async (
 };
 
 export const logout = async () => {
-  await signOut(auth);
+  if (!DEMO_MODE) await signOut(auth);
   _idToken = null;
   _sessionCache = null;
+  notifyUserChange(null);
 };
 
 export const registerCompany = async (
@@ -600,15 +634,17 @@ export const registerCompany = async (
     auditHistory: [],
   };
 
-  try {
-    // Create Firebase User
-    await createUserWithEmailAndPassword(
-      auth,
-      adminEmail,
-      password || "admin123",
-    );
-  } catch (error) {
-    // Continue for now to allow local storage fallback if Firebase fails/not configured
+  if (!DEMO_MODE) {
+    try {
+      // Create Firebase User
+      await createUserWithEmailAndPassword(
+        auth,
+        adminEmail,
+        password || "admin123",
+      );
+    } catch (error) {
+      console.warn("[authService] Firebase user creation failed:", error);
+    }
   }
 
   await updateCompany(newCompany);
@@ -834,13 +870,14 @@ export const addDriver = async (
     auditHistory: [],
   };
 
-  try {
-    // Create Firebase User
-    await createUserWithEmailAndPassword(auth, email, password || "admin123");
-  } catch (error: any) {
-    if (error.code === "auth/email-already-in-use") {
-      // User already exists in Firebase Auth — skip creation silently
-    } else {
+  if (!DEMO_MODE) {
+    try {
+      // Create Firebase User
+      await createUserWithEmailAndPassword(auth, email, password || "admin123");
+    } catch (error: any) {
+      if (error.code === "auth/email-already-in-use") {
+        // User already exists in Firebase Auth — skip creation silently
+      }
     }
   }
 
@@ -854,7 +891,9 @@ export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
       headers: await getAuthHeaders(),
     });
     if (res.ok) return await res.json();
-  } catch (e) { console.warn("[authService] API fallback:", e); }
+  } catch (e) {
+    console.warn("[authService] API fallback:", e);
+  }
   return getStoredUsers().filter((u) => u.companyId === companyId);
 };
 
