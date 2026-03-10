@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 /**
- * E2E Settlement Workflow Tests — R-FS-03-03
+ * E2E Settlement Workflow Tests — R-RV-03-03
  *
  * Real assertions for: settlement generation, review, immutability enforcement.
  * API-level assertions cover auth enforcement and response shape.

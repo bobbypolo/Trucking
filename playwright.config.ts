@@ -47,23 +47,37 @@ export default defineConfig({
     },
   ],
 
-  /* Run the dev server before starting the tests */
-  webServer: [
-    {
-      command: "npm run server",
-      url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
-      timeout: 30_000,
-      reuseExistingServer: !process.env.CI,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-    {
-      command: "npm run dev",
-      url: "http://localhost:5173",
-      timeout: 30_000,
-      reuseExistingServer: !process.env.CI,
-      stdout: "pipe",
-      stderr: "pipe",
-    },
-  ],
+  /* Run the dev server before starting the tests.
+   * REAL_E2E=1 — API-only tests: only Express server needed (no Vite).
+   * E2E_SERVER_RUNNING=1 — Full UI tests: both Express + Vite needed.
+   */
+  webServer: process.env.E2E_SERVER_RUNNING
+    ? [
+        {
+          command: "npm run server",
+          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
+          timeout: 60_000,
+          reuseExistingServer: true,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+        {
+          command: "npm run dev",
+          url: "http://localhost:5173",
+          timeout: 60_000,
+          reuseExistingServer: true,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      ]
+    : [
+        {
+          command: "npm run server",
+          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
+          timeout: 60_000,
+          reuseExistingServer: !process.env.CI,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
+      ],
 });
