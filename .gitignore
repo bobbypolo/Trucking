@@ -15,10 +15,31 @@ dist-ssr/
 *.local
 *-firebase-adminsdk-*.json
 
+# Secrets and credentials — never track
+server/.env
+*.key
+*.pem
+serviceAccount*.json
+
+# Files with embedded API keys — untracked, kept local only
+API_CONFIGURATION_AUDIT.md
+API_QUICK_REFERENCE.md
+API_SETUP_CHECKLIST.md
+API_STATUS_SUMMARY.md
+GOOGLE_MAPS_FIX_SECURITY.md
+GOOGLE_MAPS_IMPLEMENTATION_GUIDE.md
+LIVE_MAP_IMPLEMENTATION.md
+LIVE_MAP_SETUP.md
+WEATHER_SETUP_DEV.md
+test_google_maps_api.html
+
+# Test artifacts
+test-results/
+playwright-results/
+
 # Full ADE workflow directory — not tracked in git
 .claude/
 CLAUDE.md
 WORKFLOW.md
 PROJECT_BRIEF.md
 .mcp.json.example
-test-results/
