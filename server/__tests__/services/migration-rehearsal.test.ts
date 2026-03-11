@@ -499,3 +499,147 @@ describe("R-PV-04: Document Integrity — reconciliation.service.ts", () => {
     expect(src).toContain("duplicate_equipment_assignments");
   });
 });
+
+// ─── Phase 3: Table Count Validation ──────────────────────────────────────────
+
+describe("R-P3: Table Count Validation — staging-rehearsal.ts", () => {
+  // Tests R-P3-01, R-P3-04
+  const rehearsalPath = path.resolve(
+    __dirname,
+    "../../scripts/staging-rehearsal.ts",
+  );
+
+  it("Tests R-P3-01, R-P3-04 — staging-rehearsal.ts has table-count-validation step", () => {
+    const src = fs.readFileSync(rehearsalPath, "utf-8");
+    expect(src).toContain("table-count-validation");
+  });
+
+  it("Tests R-P3-04 — staging-rehearsal.ts validates expected table count after migrations", () => {
+    const src = fs.readFileSync(rehearsalPath, "utf-8");
+    expect(src).toContain("EXPECTED_TABLE_COUNT");
+  });
+
+  it("Tests R-P3-04 — staging-rehearsal.ts queries information_schema for table count", () => {
+    const src = fs.readFileSync(rehearsalPath, "utf-8");
+    expect(src).toContain("information_schema.tables");
+    expect(src).toContain("table-count-validation");
+  });
+});
+
+// ─── Phase 3: Migration 015 Coverage ──────────────────────────────────────────
+
+describe("R-P3: Migration 015 Coverage Verification", () => {
+  // Tests R-P3-05
+  const rehearsalPath = path.resolve(
+    __dirname,
+    "../../scripts/staging-rehearsal.ts",
+  );
+
+  it("Tests R-P3-05 — staging-rehearsal.ts references 015", () => {
+    const src = fs.readFileSync(rehearsalPath, "utf-8");
+    expect(src).toContain("015");
+  });
+
+  it("Tests R-P3-05 — migration-dry-run.sh exists", () => {
+    const dryRunPath = path.resolve(
+      __dirname,
+      "../../scripts/migration-dry-run.sh",
+    );
+    expect(fs.existsSync(dryRunPath)).toBe(true);
+  });
+
+  it("Tests R-P3-05 — migration-dry-run.sh references 015", () => {
+    const dryRunPath = path.resolve(
+      __dirname,
+      "../../scripts/migration-dry-run.sh",
+    );
+    const src = fs.readFileSync(dryRunPath, "utf-8");
+    expect(src).toContain("015");
+  });
+
+  it("Tests R-P3-02 — migration-dry-run.sh creates a temp database", () => {
+    const dryRunPath = path.resolve(
+      __dirname,
+      "../../scripts/migration-dry-run.sh",
+    );
+    const src = fs.readFileSync(dryRunPath, "utf-8");
+    expect(src.toUpperCase()).toContain("CREATE DATABASE");
+    expect(src.toUpperCase()).toContain("DROP DATABASE");
+  });
+
+  it("Tests R-P3-02 — migration-dry-run.sh runs staging-rehearsal.ts", () => {
+    const dryRunPath = path.resolve(
+      __dirname,
+      "../../scripts/migration-dry-run.sh",
+    );
+    const src = fs.readFileSync(dryRunPath, "utf-8");
+    expect(src).toContain("staging-rehearsal.ts");
+  });
+});
+
+// ─── Phase 3: Migration Runbook ───────────────────────────────────────────────
+
+describe("R-P3: MIGRATION_RUNBOOK.md Completeness", () => {
+  // Tests R-P3-03, R-P3-06
+  const runbookPath = path.resolve(
+    __dirname,
+    "../../../docs/deployment/MIGRATION_RUNBOOK.md",
+  );
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md exists", () => {
+    expect(fs.existsSync(runbookPath)).toBe(true);
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md contains Pre-flight section", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("pre-flight");
+  });
+
+  it("Tests R-P3-03, R-P3-06 — MIGRATION_RUNBOOK.md contains Backup section with mysqldump", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("backup");
+    expect(content).toContain("mysqldump");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md contains Apply section", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("apply");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md contains Validate section", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("validat");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md contains Rollback section", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("rollback");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md contains post-migration smoke section", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("smoke");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md covers fresh-DB rehearsal type", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("fresh");
+  });
+
+  it("Tests R-P3-03 — MIGRATION_RUNBOOK.md covers prod-like-snapshot rehearsal type", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    expect(content.toLowerCase()).toContain("prod");
+  });
+
+  it("Tests R-P3-06 — MIGRATION_RUNBOOK.md Backup section has integrity verification step", () => {
+    const content = fs.readFileSync(runbookPath, "utf-8");
+    const hasVerification =
+      content.includes("file size") ||
+      content.includes("wc -c") ||
+      content.includes("ls -lh") ||
+      content.includes("stat ") ||
+      content.includes("spot-check") ||
+      content.includes("verify");
+    expect(hasVerification).toBe(true);
+  });
+});

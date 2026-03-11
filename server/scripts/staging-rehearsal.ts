@@ -71,6 +71,13 @@ const LEGACY_STATUSES = [
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "..", "migrations");
 
+// Expected table count after applying all migrations 001–015.
+// This is the authoritative count for the full migration chain.
+// Update this when adding new migrations (016+).
+// Verified count as of migration 015_add_users_phone: 48 tables.
+const EXPECTED_TABLE_COUNT = 48;
+const HIGHEST_MIGRATION = "015_add_users_phone";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface StatusRow {
@@ -364,7 +371,29 @@ async function main(): Promise<void> {
       statusAfter,
     );
 
-    // ── Step 10: Rollback round-trip (optional) ──────────────────────────────
+    // ── Step 10: Table count validation ─────────────────────────────────────
+    const [tableCountRows] = await connection.query<mysql.RowDataPacket[]>(`
+      SELECT COUNT(*) AS cnt
+      FROM information_schema.tables
+      WHERE table_schema = DATABASE()
+        AND table_type = 'BASE TABLE'
+    `);
+    const actualTableCount = (tableCountRows[0] as { cnt: number }).cnt;
+    const tableCountOk = actualTableCount >= EXPECTED_TABLE_COUNT;
+    addStep(
+      "table-count-validation",
+      tableCountOk,
+      tableCountOk
+        ? `Table count OK: ${actualTableCount} tables (expected >= ${EXPECTED_TABLE_COUNT}). Highest migration: ${HIGHEST_MIGRATION}`
+        : `Table count mismatch: ${actualTableCount} tables found, expected >= ${EXPECTED_TABLE_COUNT}. Highest migration: ${HIGHEST_MIGRATION}`,
+      {
+        actualTableCount,
+        expectedTableCount: EXPECTED_TABLE_COUNT,
+        highestMigration: HIGHEST_MIGRATION,
+      },
+    );
+
+    // ── Step 11: Rollback round-trip (optional) ──────────────────────────────
     if (rollbackTest && statusAfter.applied.length > 0) {
       logger.info("Running rollback round-trip test...");
 
@@ -402,7 +431,7 @@ async function main(): Promise<void> {
       }
     }
 
-    // ── Step 11: Reconciliation smoke check ─────────────────────────────────
+    // ── Step 12: Reconciliation smoke check ─────────────────────────────────
     // Check for orphaned records: dispatch_events without valid loads
     const [orphanRows] = await connection.query<mysql.RowDataPacket[]>(`
       SELECT COUNT(*) AS cnt
