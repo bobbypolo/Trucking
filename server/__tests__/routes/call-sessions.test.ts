@@ -65,6 +65,17 @@ vi.mock("firebase-admin", () => {
   };
 });
 
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: vi.fn().mockResolvedValue({
+    id: "1",
+    tenantId: "company-aaa",
+    companyId: "company-aaa",
+    role: "admin",
+    email: "test@test.com",
+    firebaseUid: "firebase-uid-1",
+  }),
+}));
+
 import express from "express";
 import request from "supertest";
 import callSessionsRouter from "../../routes/call-sessions";
