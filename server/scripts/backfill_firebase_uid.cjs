@@ -48,15 +48,25 @@ async function loadFirebaseUsersByEmail() {
   const emailToUid = new Map();
   let pageToken;
 
-  do {
-    const result = await admin.auth().listUsers(1000, pageToken);
-    for (const user of result.users) {
-      if (user.email) {
-        emailToUid.set(user.email.toLowerCase(), user.uid);
+  try {
+    do {
+      const result = await admin.auth().listUsers(1000, pageToken);
+      for (const user of result.users) {
+        if (user.email) {
+          emailToUid.set(user.email.toLowerCase(), user.uid);
+        }
       }
-    }
-    pageToken = result.pageToken;
-  } while (pageToken);
+      pageToken = result.pageToken;
+    } while (pageToken);
+  } catch (error) {
+    // Firebase Admin credentials may be present but invalid (e.g. applicationDefault
+    // without ADC configured). Log a warning and proceed without remote user list.
+    // Rows already linked (firebase_uid IS NOT NULL) will still be counted as alreadyLinked.
+    console.warn(
+      "Firebase Admin listUsers failed; proceeding with empty UID map.",
+      error.message,
+    );
+  }
 
   return emailToUid;
 }
