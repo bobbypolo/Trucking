@@ -22,6 +22,7 @@ const MIGRATIONS = [
   "server/migrations/011_accounting_financial_ledger.sql",
   "server/migrations/012_accounting_v3_extensions.sql",
   "server/migrations/013_ifta_intelligence.sql",
+  "server/migrations/015_add_users_phone.sql",
 ];
 
 const IGNORABLE_CODES = new Set([
