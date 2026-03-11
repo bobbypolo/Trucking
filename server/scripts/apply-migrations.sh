@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apply-migrations.sh — Apply schema.sql + all migrations 001-013 sequentially.
+# apply-migrations.sh — Apply schema.sql + all migrations 001-015 sequentially.
 # Exits 0 on success, non-zero on any SQL error.
 #
 # Usage:
@@ -12,7 +12,7 @@
 #   DB_HOST      — MySQL host (default: 127.0.0.1)
 #   DB_NAME      — Target database name (default: trucklogix)
 #
-# Tests R-P1-04
+# Tests R-P1-04, R-P2-03
 
 set -euo pipefail
 
@@ -45,6 +45,8 @@ MIGRATION_FILES=(
   "${MIGRATIONS_DIR}/011_accounting_financial_ledger.sql"
   "${MIGRATIONS_DIR}/012_accounting_v3_extensions.sql"
   "${MIGRATIONS_DIR}/013_ifta_intelligence.sql"
+  "${MIGRATIONS_DIR}/014_companies_visibility_settings.sql"
+  "${MIGRATIONS_DIR}/015_add_users_phone.sql"
 )
 
 echo "[apply-migrations] Starting migration run against ${DB_HOST}/${DB_NAME}"
