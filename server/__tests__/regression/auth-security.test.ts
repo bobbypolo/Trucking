@@ -17,9 +17,9 @@ import { Request, Response, NextFunction } from "express";
  */
 
 // --- Mock Firebase Admin ---
-const { mockVerifyIdToken, mockCollection, mockApp } = vi.hoisted(() => ({
+const { mockVerifyIdToken, mockResolvePrincipal, mockApp } = vi.hoisted(() => ({
   mockVerifyIdToken: vi.fn(),
-  mockCollection: vi.fn(),
+  mockResolvePrincipal: vi.fn(),
   mockApp: vi.fn(),
 }));
 
@@ -29,10 +29,11 @@ vi.mock("firebase-admin", () => ({
     auth: () => ({
       verifyIdToken: mockVerifyIdToken,
     }),
-    firestore: () => ({
-      collection: mockCollection,
-    }),
   },
+}));
+
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolvePrincipal,
 }));
 
 import {
@@ -223,33 +224,21 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
     });
   });
 
-  describe("User profile resolution from Firestore", () => {
+  describe("User profile resolution from SQL", () => {
     it("authenticates valid token and resolves user profile", async () => {
       mockApp.mockReturnValue(true);
       mockVerifyIdToken.mockResolvedValue({
         uid: "firebase-uid-security-001",
         email: "driver@security-test.com",
       });
-
-      const mockUserDoc = {
-        id: "user-doc-id",
-        data: () => ({
-          id: "user-security-001",
-          company_id: "company-security-001",
-          role: "driver",
-          email: "driver@security-test.com",
-        }),
-      };
-
-      const mockWhere = vi.fn().mockReturnValue({
-        limit: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({
-            empty: false,
-            docs: [mockUserDoc],
-          }),
-        }),
+      mockResolvePrincipal.mockResolvedValue({
+        id: "user-security-001",
+        tenantId: "company-security-001",
+        companyId: "company-security-001",
+        role: "driver",
+        email: "driver@security-test.com",
+        firebaseUid: "firebase-uid-security-001",
       });
-      mockCollection.mockReturnValue({ where: mockWhere });
 
       const req = mockReq({ authorization: "Bearer valid-token-abc123" });
       const res = mockRes();
@@ -274,18 +263,7 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
         email: "orphan@test.com",
       });
 
-      const mockWhere = vi.fn().mockReturnValue({
-        limit: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ empty: true }),
-        }),
-      });
-      const mockDoc = vi.fn().mockReturnValue({
-        get: vi.fn().mockResolvedValue({ exists: false }),
-      });
-      mockCollection.mockReturnValue({
-        where: mockWhere,
-        doc: mockDoc,
-      });
+      mockResolvePrincipal.mockResolvedValue(null);
 
       const req = mockReq({ authorization: "Bearer valid-but-orphan" });
       const res = mockRes();
@@ -319,24 +297,13 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
         email: "user@chain.com",
       });
 
-      const mockUserDoc = {
-        id: "user-doc-chain",
-        data: () => ({
-          id: "user-chain-001",
-          company_id: "company-chain-001",
-          role: "dispatcher",
-          email: "user@chain.com",
-        }),
-      };
-      mockCollection.mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({
-              empty: false,
-              docs: [mockUserDoc],
-            }),
-          }),
-        }),
+      mockResolvePrincipal.mockResolvedValue({
+        id: "user-chain-001",
+        tenantId: "company-chain-001",
+        companyId: "company-chain-001",
+        role: "dispatcher",
+        email: "user@chain.com",
+        firebaseUid: "fb-uid-chain-001",
       });
 
       const req = {
@@ -368,24 +335,13 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
         email: "user@chain.com",
       });
 
-      const mockUserDoc = {
-        id: "user-doc-chain-2",
-        data: () => ({
-          id: "user-chain-002",
-          company_id: "company-chain-001",
-          role: "dispatcher",
-          email: "user@chain.com",
-        }),
-      };
-      mockCollection.mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({
-              empty: false,
-              docs: [mockUserDoc],
-            }),
-          }),
-        }),
+      mockResolvePrincipal.mockResolvedValue({
+        id: "user-chain-002",
+        tenantId: "company-chain-001",
+        companyId: "company-chain-001",
+        role: "dispatcher",
+        email: "user@chain.com",
+        firebaseUid: "fb-uid-chain-002",
       });
 
       const req = {

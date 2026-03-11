@@ -802,6 +802,7 @@ export interface User {
   id: string;
   companyId: string;
   email: string;
+  firebaseUid?: string;
   name: string;
   role: UserRole;
   password?: string;

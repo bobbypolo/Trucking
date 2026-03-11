@@ -29,6 +29,7 @@ const MIGRATION_ORDER = [
   "007_ocr_results.sql",
   "008_settlements.sql",
   "009_settlement_adjustments.sql",
+  "010_add_firebase_uid_to_users.sql",
   "exception_management.sql",
 ];
 

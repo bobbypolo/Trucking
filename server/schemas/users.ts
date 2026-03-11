@@ -15,6 +15,8 @@ export const registerUserSchema = z.object({
     payModel: z.string().optional(),
     pay_rate: z.number().optional(),
     payRate: z.number().optional(),
+    firebase_uid: z.string().optional(),
+    firebaseUid: z.string().optional(),
 });
 
 /**
@@ -36,13 +38,27 @@ export const syncUserSchema = z.object({
     managedByUserId: z.string().optional(),
     safety_score: z.number().optional(),
     safetyScore: z.number().optional(),
+    primary_workspace: z.string().optional(),
+    primaryWorkspace: z.string().optional(),
+    duty_mode: z.string().optional(),
+    dutyMode: z.string().optional(),
+    phone: z.string().optional(),
+    firebase_uid: z.string().optional(),
+    firebaseUid: z.string().optional(),
 });
 
 /**
  * Schema for POST /api/auth/login — login request.
  */
 export const loginUserSchema = z.object({
-    email: z.string().email(),
+    email: z.string().email().optional(),
     password: z.string().optional(),
-    firebaseUid: z.string().optional(),
-});
+    firebaseUid: z.string().min(1).optional(),
+    firebase_uid: z.string().optional(),
+}).refine(
+    (value) => Boolean(value.firebaseUid || value.firebase_uid),
+    {
+        message: 'firebaseUid is required',
+        path: ['firebaseUid'],
+    },
+);
