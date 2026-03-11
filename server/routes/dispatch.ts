@@ -188,7 +188,12 @@ router.post(
       let serializedPayload: string;
       try {
         serializedPayload = JSON.stringify(payload);
-      } catch {
+      } catch (error) {
+        const log = createChildLogger({
+          correlationId: (req as any).correlationId,
+          route: "POST /api/dispatch-events",
+        });
+        log.error({ err: error }, "Invalid payload — JSON.stringify failed");
         return res.status(400).json({ error: "Invalid payload structure" });
       }
 

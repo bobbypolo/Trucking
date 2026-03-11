@@ -436,6 +436,11 @@ router.get(
       );
       res.json(enriched);
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/invoices",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/invoices]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -464,6 +469,11 @@ router.get(
       );
       res.json(enriched);
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/bills",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/bills]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -497,6 +507,11 @@ router.get(
       );
       res.json(enriched);
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/settlements",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/settlements]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -653,6 +668,11 @@ router.get(
       const [rows] = await pool.query(query, params);
       res.json(rows);
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/docs",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/docs]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -688,6 +708,11 @@ router.post(
       );
       res.status(201).json({ message: "Document archived in vault" });
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/accounting/docs",
+      });
+      log.error({ err: error }, "SERVER ERROR [POST /api/accounting/docs]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -707,6 +732,11 @@ router.patch(
       );
       res.json({ message: "Document status updated" });
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "PATCH /api/accounting/docs/:id",
+      });
+      log.error({ err: error }, "SERVER ERROR [PATCH /api/accounting/docs/:id]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -726,6 +756,11 @@ router.get(
       );
       res.json(rows);
     } catch (e) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/ifta-evidence",
+      });
+      log.error({ err: e }, "SERVER ERROR [GET /api/accounting/ifta-evidence]");
       res.status(500).json({ error: "Failed to fetch evidence" });
     }
   },
@@ -876,6 +911,11 @@ router.get(
         netTaxDue,
       });
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/ifta-summary",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/ifta-summary]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -894,6 +934,11 @@ router.get(
       );
       res.json(rows);
     } catch (e) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/accounting/mileage",
+      });
+      log.error({ err: e }, "SERVER ERROR [GET /api/accounting/mileage]");
       res.status(500).json({ error: "Failed to fetch mileage" });
     }
   },
@@ -966,6 +1011,11 @@ router.post(
       res.json({ message: "IFTA posted successfully" });
     } catch (e) {
       await connection.rollback();
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/accounting/ifta-post",
+      });
+      log.error({ err: e }, "SERVER ERROR [POST /api/accounting/ifta-post]");
       res.status(500).json({ error: "Posting failed" });
     } finally {
       connection.release();
@@ -1107,6 +1157,11 @@ router.post(
       // In a real scenario, we would trigger the QB SDK/API here
       res.json({ message: "Sync queued", syncId });
     } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/accounting/sync-qb",
+      });
+      log.error({ err: error }, "SERVER ERROR [POST /api/accounting/sync-qb]");
       res.status(500).json({ error: "Database error" });
     }
   },
