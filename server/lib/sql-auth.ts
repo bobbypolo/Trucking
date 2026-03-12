@@ -101,7 +101,7 @@ function parseJsonColumn(value: unknown): unknown {
 
   try {
     return JSON.parse(value);
-  } catch {
+  } catch (_error: unknown) {
     return value;
   }
 }

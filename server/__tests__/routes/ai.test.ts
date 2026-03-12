@@ -1,13 +1,18 @@
 /**
  * AI proxy route tests.
  *
- * Tests R-P0-01, R-P1-01, R-P1-02, R-P1-03, R-P1-04
+ * Tests R-P0-01, R-P0-03, R-P1-01, R-P1-02, R-P1-03, R-P1-04
  *
  * Covers:
  *   - All 5 AI endpoints require authentication (401 without token)
  *   - Input validation rejects bad payloads (400)
  *   - Successful requests return expected response shapes
  *   - Gemini SDK errors are sanitized to 500 (no API key leak)
+ *
+ * NOTE: The AI router is mounted at /api/ai in index.ts.
+ * Route definitions use bare paths (/extract-load, etc.) — no /api/ai/ prefix.
+ * This test mounts the router directly (no prefix), so tests call /extract-load.
+ * Effective production path: /api/ai/extract-load (mount + route).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -120,11 +125,11 @@ describe("AI proxy routes — authentication", () => {
   });
 
   const endpoints = [
-    "/api/ai/extract-load",
-    "/api/ai/extract-broker",
-    "/api/ai/extract-equipment",
-    "/api/ai/generate-training",
-    "/api/ai/analyze-safety",
+    "/extract-load",
+    "/extract-broker",
+    "/extract-equipment",
+    "/generate-training",
+    "/analyze-safety",
   ];
 
   for (const endpoint of endpoints) {
@@ -135,7 +140,7 @@ describe("AI proxy routes — authentication", () => {
   }
 });
 
-describe("POST /api/ai/extract-load", () => {
+describe("POST /extract-load", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -145,7 +150,7 @@ describe("POST /api/ai/extract-load", () => {
 
   it("returns 400 when imageBase64 is missing", async () => {
     const res = await request(app)
-      .post("/api/ai/extract-load")
+      .post("/extract-load")
       .set("Authorization", AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
@@ -154,7 +159,7 @@ describe("POST /api/ai/extract-load", () => {
 
   it("returns 400 when imageBase64 is empty string", async () => {
     const res = await request(app)
-      .post("/api/ai/extract-load")
+      .post("/extract-load")
       .set("Authorization", AUTH_HEADER)
       .send({ imageBase64: "" });
     expect(res.status).toBe(400);
@@ -173,7 +178,7 @@ describe("POST /api/ai/extract-load", () => {
     mockExtractLoadInfo.mockResolvedValueOnce(mockResult);
 
     const res = await request(app)
-      .post("/api/ai/extract-load")
+      .post("/extract-load")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -192,7 +197,7 @@ describe("POST /api/ai/extract-load", () => {
     );
 
     const res = await request(app)
-      .post("/api/ai/extract-load")
+      .post("/extract-load")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -203,7 +208,7 @@ describe("POST /api/ai/extract-load", () => {
   });
 });
 
-describe("POST /api/ai/extract-broker", () => {
+describe("POST /extract-broker", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -213,7 +218,7 @@ describe("POST /api/ai/extract-broker", () => {
 
   it("returns 400 when imageBase64 is missing", async () => {
     const res = await request(app)
-      .post("/api/ai/extract-broker")
+      .post("/extract-broker")
       .set("Authorization", AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
@@ -224,7 +229,7 @@ describe("POST /api/ai/extract-broker", () => {
     mockExtractBrokerFromImage.mockResolvedValueOnce(mockBroker);
 
     const res = await request(app)
-      .post("/api/ai/extract-broker")
+      .post("/extract-broker")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -239,7 +244,7 @@ describe("POST /api/ai/extract-broker", () => {
     );
 
     const res = await request(app)
-      .post("/api/ai/extract-broker")
+      .post("/extract-broker")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -248,7 +253,7 @@ describe("POST /api/ai/extract-broker", () => {
   });
 });
 
-describe("POST /api/ai/extract-equipment", () => {
+describe("POST /extract-equipment", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -258,7 +263,7 @@ describe("POST /api/ai/extract-equipment", () => {
 
   it("returns 400 when imageBase64 is missing", async () => {
     const res = await request(app)
-      .post("/api/ai/extract-equipment")
+      .post("/extract-equipment")
       .set("Authorization", AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
@@ -269,7 +274,7 @@ describe("POST /api/ai/extract-equipment", () => {
     mockExtractEquipmentFromImage.mockResolvedValueOnce(mockEquipment);
 
     const res = await request(app)
-      .post("/api/ai/extract-equipment")
+      .post("/extract-equipment")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -282,7 +287,7 @@ describe("POST /api/ai/extract-equipment", () => {
     mockExtractEquipmentFromImage.mockRejectedValueOnce(new Error("timeout"));
 
     const res = await request(app)
-      .post("/api/ai/extract-equipment")
+      .post("/extract-equipment")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -291,7 +296,7 @@ describe("POST /api/ai/extract-equipment", () => {
   });
 });
 
-describe("POST /api/ai/generate-training", () => {
+describe("POST /generate-training", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -301,7 +306,7 @@ describe("POST /api/ai/generate-training", () => {
 
   it("returns 400 when imageBase64 is missing", async () => {
     const res = await request(app)
-      .post("/api/ai/generate-training")
+      .post("/generate-training")
       .set("Authorization", AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
@@ -319,7 +324,7 @@ describe("POST /api/ai/generate-training", () => {
     mockGenerateTrainingFromImage.mockResolvedValueOnce(mockTraining);
 
     const res = await request(app)
-      .post("/api/ai/generate-training")
+      .post("/generate-training")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -334,7 +339,7 @@ describe("POST /api/ai/generate-training", () => {
     );
 
     const res = await request(app)
-      .post("/api/ai/generate-training")
+      .post("/generate-training")
       .set("Authorization", AUTH_HEADER)
       .send(VALID_IMAGE_BODY);
 
@@ -343,7 +348,7 @@ describe("POST /api/ai/generate-training", () => {
   });
 });
 
-describe("POST /api/ai/analyze-safety", () => {
+describe("POST /analyze-safety", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -353,7 +358,7 @@ describe("POST /api/ai/analyze-safety", () => {
 
   it("returns 400 when data field is missing", async () => {
     const res = await request(app)
-      .post("/api/ai/analyze-safety")
+      .post("/analyze-safety")
       .set("Authorization", AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
@@ -362,7 +367,7 @@ describe("POST /api/ai/analyze-safety", () => {
 
   it("returns 400 when data is not an object", async () => {
     const res = await request(app)
-      .post("/api/ai/analyze-safety")
+      .post("/analyze-safety")
       .set("Authorization", AUTH_HEADER)
       .send({ data: "not-an-object" });
     expect(res.status).toBe(400);
@@ -377,7 +382,7 @@ describe("POST /api/ai/analyze-safety", () => {
     mockAnalyzeSafetyCompliance.mockResolvedValueOnce(mockAnalysis);
 
     const res = await request(app)
-      .post("/api/ai/analyze-safety")
+      .post("/analyze-safety")
       .set("Authorization", AUTH_HEADER)
       .send({
         data: {
@@ -397,7 +402,7 @@ describe("POST /api/ai/analyze-safety", () => {
     );
 
     const res = await request(app)
-      .post("/api/ai/analyze-safety")
+      .post("/analyze-safety")
       .set("Authorization", AUTH_HEADER)
       .send({ data: { activityHistory: [], performance: {} } });
 

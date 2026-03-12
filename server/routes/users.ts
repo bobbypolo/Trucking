@@ -38,7 +38,7 @@ function firebaseAdminReady(): boolean {
   try {
     admin.app();
     return true;
-  } catch {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -47,7 +47,7 @@ async function loadCompanyConfig(companyId: string) {
   try {
     const companyDoc = await db.collection("companies").doc(companyId).get();
     return companyDoc.exists ? companyDoc.data() : null;
-  } catch {
+  } catch (_error: unknown) {
     return null;
   }
 }

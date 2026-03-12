@@ -21,7 +21,7 @@ function isFirebaseInitialized(): boolean {
   try {
     admin.app();
     return true;
-  } catch {
+  } catch (_error: unknown) {
     return false;
   }
 }
@@ -71,7 +71,9 @@ export async function requireAuth(
       principal = await resolveSqlPrincipalByFirebaseUid(decodedToken.uid);
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Unknown SQL auth resolution error";
+        error instanceof Error
+          ? error.message
+          : "Unknown SQL auth resolution error";
 
       return next(
         new InternalError(
