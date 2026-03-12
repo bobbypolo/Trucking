@@ -512,9 +512,9 @@ export default function App() {
         },
         {
           id: "api-tester",
+          permission: "ORG_SETTINGS_VIEW",
           label: "API Tester",
           icon: Zap,
-          permission: "ORG_SETTINGS_VIEW",
         },
       ],
     },
