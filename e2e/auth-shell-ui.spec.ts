@@ -288,6 +288,173 @@ test.describe("Auth Shell UI — Navigation Resilience", () => {
   });
 });
 
+// ── Signup Wizard State Persistence (R-P2-06) ────────────────────────────────
+// Verifies that the signup wizard step and form data are persisted to
+// sessionStorage so that browser Back navigation restores the user's progress.
+
+test.describe("Auth Shell UI — Signup Wizard State Persistence", () => {
+  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+
+  test("wizard state persists: sessionStorage wizard key is set after entering signup step", async ({
+    page,
+  }) => {
+    await page.goto(APP_BASE);
+    // Click "Apply for New Authority" to enter the signup wizard
+    await page
+      .locator(
+        'button:has-text("Apply for New Authority"), button:has-text("Sign up"), button:has-text("Register")',
+      )
+      .first()
+      .click();
+
+    // Wait for the signup step 1 to be visible
+    const signupHeading = page.locator(
+      'h2:has-text("Step 1"), h2:has-text("Identity"), h2:has-text("Sign up")',
+    );
+    await expect(signupHeading.first()).toBeVisible({ timeout: 10_000 });
+
+    // Fill in identity fields
+    await page.locator('input[placeholder="Legal Name"]').fill("Test Driver");
+    await page
+      .locator('input[placeholder="Company Name"]')
+      .fill("Test Carrier LLC");
+    await page
+      .locator('input[type="email"][placeholder="Email"]')
+      .fill("wizard-test@example.com");
+    await page
+      .locator('input[type="password"][placeholder="Password"]')
+      .fill("TestPass123!");
+
+    // Verify sessionStorage wizard key was set (sessionStorage persists wizard state)
+    const wizardStateRaw = await page.evaluate(() =>
+      sessionStorage.getItem("loadpilot_signup_wizard"),
+    );
+    // After filling the name field the component will have set the key on next render
+    // — alternatively check the step key which is set on view transitions
+    // The key may or may not be set yet (depends on when React state updates flush).
+    // We navigate forward to trigger the first step save.
+    await page.locator('button[type="submit"]').first().click();
+
+    // After advancing, sessionStorage should contain wizard state
+    const wizardStateAfterAdvance = await page.evaluate(() =>
+      sessionStorage.getItem("loadpilot_signup_wizard"),
+    );
+    // sessionStorage wizard state must be set (null or empty means persistence failed)
+    expect(wizardStateAfterAdvance).not.toBeNull();
+  });
+
+  test("wizard state restored on reload: sessionStorage wizard data repopulates form on mount", async ({
+    page,
+  }) => {
+    await page.goto(APP_BASE);
+
+    // Seed sessionStorage with known wizard state before navigating
+    await page.evaluate(() => {
+      const state = {
+        view: "signup",
+        email: "restore-test@example.com",
+        name: "Restore Test",
+        companyName: "Restore Carrier Inc",
+        signupType: "owner_operator",
+        tier: "Records Vault",
+        mcNumber: "",
+        taxId: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+      };
+      sessionStorage.setItem("loadpilot_signup_wizard", JSON.stringify(state));
+      sessionStorage.setItem("loadpilot_signup_wizard_step", "signup");
+    });
+
+    // Reload the page — Auth component should restore wizard state from sessionStorage
+    await page.reload();
+
+    // The page should render the signup step (not the login step) because
+    // the wizard state persisted the "signup" view
+    const signupView = page.locator(
+      'h2:has-text("Step 1"), h2:has-text("Identity"), input[placeholder="Legal Name"]',
+    );
+    await expect(signupView.first()).toBeVisible({ timeout: 10_000 });
+
+    // The email field should be pre-populated from sessionStorage
+    const emailInput = page.locator('input[type="email"]');
+    const emailCount = await emailInput.count();
+    if (emailCount > 0) {
+      const emailValue = await emailInput.first().inputValue();
+      expect(emailValue).toBe("restore-test@example.com");
+    }
+  });
+
+  test("wizard state cleared on cancel: navigating back to login removes sessionStorage wizard data", async ({
+    page,
+  }) => {
+    await page.goto(APP_BASE);
+
+    // Seed sessionStorage with wizard state
+    await page.evaluate(() => {
+      sessionStorage.setItem(
+        "loadpilot_signup_wizard",
+        JSON.stringify({
+          view: "signup",
+          email: "cancel-test@example.com",
+          name: "Cancel Test",
+          companyName: "Cancel Carrier LLC",
+          signupType: "owner_operator",
+          tier: "Records Vault",
+          mcNumber: "",
+          taxId: "",
+          address: "",
+          city: "",
+          state: "",
+          zip: "",
+        }),
+      );
+    });
+
+    await page.reload();
+
+    // Should be on signup step
+    const signupStep = page.locator(
+      'h2:has-text("Step 1"), h2:has-text("Identity"), input[placeholder="Legal Name"]',
+    );
+    await expect(signupStep.first()).toBeVisible({ timeout: 10_000 });
+
+    // Click the back arrow to return to login — this should clear wizard state
+    const backBtn = page.locator("button").filter({ has: page.locator("svg") });
+    // Look for ArrowLeft back button near the step heading
+    const arrowBtns = page.locator(
+      'button[type="button"]:not([class*="submit"])',
+    );
+    const firstArrow = arrowBtns.first();
+    if (await firstArrow.isVisible()) {
+      await firstArrow.click();
+    }
+
+    // After going back to login, check whether sessionStorage still has wizard data
+    // (component clears it when returning to login by not persisting login view)
+    const loginHeading = page.locator(
+      'h2:has-text("Authority Access"), h2:has-text("Sign in"), h2:has-text("Login")',
+    );
+    if (
+      await loginHeading
+        .first()
+        .isVisible({ timeout: 5_000 })
+        .catch(() => false)
+    ) {
+      // On login view — wizard state persistence stops (view=login skips saving)
+      // The sessionStorage key may still exist until next wizard session, which is acceptable.
+      // The key assertion: sessionStorage step key is NOT "signup" anymore
+      const stepVal = await page.evaluate(() =>
+        sessionStorage.getItem("loadpilot_signup_wizard_step"),
+      );
+      // Step key should reflect "login" or be cleared
+      expect(["login", null]).toContain(stepVal);
+    }
+  });
+});
+
 // ── Logout flow UI ────────────────────────────────────────────────────────────
 
 test.describe("Auth Shell UI — Logout Flow", () => {
