@@ -37,6 +37,9 @@ test_google_maps_api.html
 test-results/
 playwright-results/
 
+# Workflow artifacts — canonical copy is in .claude/docs/
+verification-log.jsonl
+
 # Full ADE workflow directory — not tracked in git
 .claude/
 CLAUDE.md

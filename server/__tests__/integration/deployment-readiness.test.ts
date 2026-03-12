@@ -12,7 +12,7 @@
  * Uses supertest against the Express app directly (no running server needed).
  * Firebase Admin SDK is mocked so serviceAccount.json is not required.
  *
- * Tests R-P4-03
+ * Tests R-P0-04, R-P0-05, R-P4-03
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import path from "path";

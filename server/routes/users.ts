@@ -86,7 +86,10 @@ router.post(
       correlationId: req.correlationId,
       route: "POST /api/auth/register",
     });
-    log.info({ data: { email: req.body.email } }, "Registration request received");
+    log.info(
+      { data: { email: req.body.email } },
+      "Registration request received",
+    );
 
     try {
       const userInput = {
@@ -248,7 +251,12 @@ router.get("/api/users/me", requireAuth, async (req: any, res) => {
     }
 
     res.json(mapUserRowToApiUser(user));
-  } catch {
+  } catch (error) {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "GET /api/users/me",
+    });
+    log.error({ err: error }, "SERVER ERROR [GET /api/users/me]");
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -258,7 +266,10 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    if (req.user.tenantId !== req.params.companyId && req.user.role !== "admin") {
+    if (
+      req.user.tenantId !== req.params.companyId &&
+      req.user.role !== "admin"
+    ) {
       return res.status(403).json({ error: "Resource unauthorized" });
     }
 

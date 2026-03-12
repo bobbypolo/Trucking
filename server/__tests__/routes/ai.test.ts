@@ -1,7 +1,7 @@
 /**
  * AI proxy route tests.
  *
- * Tests R-P1-01, R-P1-02, R-P1-03, R-P1-04
+ * Tests R-P0-01, R-P1-01, R-P1-02, R-P1-03, R-P1-04
  *
  * Covers:
  *   - All 5 AI endpoints require authentication (401 without token)

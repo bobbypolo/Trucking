@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Tests R-P5-02-AC5, R-P5-02-AC6
+// Tests R-P0-02, R-P5-02-AC5, R-P5-02-AC6
 
 const { mockFindByCompany, mockFindById, mockCreate, mockUpdate, mockDelete } =
   vi.hoisted(() => ({

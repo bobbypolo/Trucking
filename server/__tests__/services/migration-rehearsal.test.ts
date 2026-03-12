@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as path from "path";
 
 /**
- * Tests R-PV-04: Migration Rehearsal on Prod-Like Data
+ * Tests R-P0-03, R-PV-04: Migration Rehearsal on Prod-Like Data
  *
  * Validates without a live DB connection:
  *  - All 13 migration files exist and are valid SQL

@@ -57,7 +57,7 @@ router.post(
       res.status(201).json({ message: "Time log recorded" });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/time-logs",
       });
       log.error(
@@ -86,7 +86,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/time-logs",
       });
       log.error(
@@ -115,7 +115,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/time-logs-company",
       });
       log.error(
@@ -145,7 +145,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/dispatch-events",
       });
       log.error(
@@ -190,7 +190,7 @@ router.post(
         serializedPayload = JSON.stringify(payload);
       } catch (error) {
         const log = createChildLogger({
-          correlationId: (req as any).correlationId,
+          correlationId: req.correlationId,
           route: "POST /api/dispatch-events",
         });
         log.error({ err: error }, "Invalid payload — JSON.stringify failed");
@@ -211,7 +211,7 @@ router.post(
       res.status(201).json({ message: "Dispatch event logged" });
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "POST /api/dispatch-events",
       });
       log.error(
@@ -236,7 +236,7 @@ router.get(
       res.json(rows);
     } catch (error) {
       const log = createChildLogger({
-        correlationId: (req as any).correlationId,
+        correlationId: req.correlationId,
         route: "GET /api/dashboard/cards",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/dashboard/cards]");
