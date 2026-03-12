@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS ifta_trips_audit (
     trip_date DATE NOT NULL,
     start_odometer DECIMAL(10,2),
     end_odometer DECIMAL(10,2),
-    total_total_miles DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+    total_miles DECIMAL(10,3) NOT NULL DEFAULT 0.000,
     method ENUM('ACTUAL_GPS','ROUTES','MANUAL','ELD_ODOMETER') NOT NULL DEFAULT 'MANUAL',
     confidence_level ENUM('HIGH','MEDIUM','LOW') NOT NULL DEFAULT 'MEDIUM',
     jurisdiction_miles JSON,

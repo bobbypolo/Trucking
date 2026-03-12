@@ -185,7 +185,7 @@ export async function linkSqlUserToFirebaseUid(
   const [result]: any = await pool.query(
     `UPDATE users
         SET firebase_uid = ?
-      WHERE LOWER(email) = ?
+      WHERE email = ?
         AND (firebase_uid IS NULL OR firebase_uid = '')
       LIMIT 1`,
     [firebaseUid, normalizedEmail],
@@ -301,28 +301,31 @@ export async function mirrorUserToFirestore(
 ): Promise<void> {
   try {
     const { default: db } = await import("../firestore");
-    await db.collection("users").doc(input.id).set(
-      {
-        id: input.id,
-        company_id: input.companyId,
-        email: input.email,
-        name: input.name,
-        role: input.role,
-        pay_model: input.payModel ?? null,
-        pay_rate: input.payRate ?? null,
-        onboarding_status: input.onboardingStatus ?? "Completed",
-        safety_score: input.safetyScore ?? 100,
-        managed_by_user_id: input.managedByUserId ?? null,
-        compliance_status: input.complianceStatus ?? "Eligible",
-        restriction_reason: input.restrictionReason ?? null,
-        primary_workspace: input.primaryWorkspace ?? null,
-        duty_mode: input.dutyMode ?? null,
-        phone: input.phone ?? null,
-        firebase_uid: input.firebaseUid ?? null,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
+    await db
+      .collection("users")
+      .doc(input.id)
+      .set(
+        {
+          id: input.id,
+          company_id: input.companyId,
+          email: input.email,
+          name: input.name,
+          role: input.role,
+          pay_model: input.payModel ?? null,
+          pay_rate: input.payRate ?? null,
+          onboarding_status: input.onboardingStatus ?? "Completed",
+          safety_score: input.safetyScore ?? 100,
+          managed_by_user_id: input.managedByUserId ?? null,
+          compliance_status: input.complianceStatus ?? "Eligible",
+          restriction_reason: input.restrictionReason ?? null,
+          primary_workspace: input.primaryWorkspace ?? null,
+          duty_mode: input.dutyMode ?? null,
+          phone: input.phone ?? null,
+          firebase_uid: input.firebaseUid ?? null,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
   } catch (error) {
     logger.warn(
       { err: error, userId: input.id },

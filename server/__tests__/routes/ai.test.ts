@@ -19,6 +19,7 @@ const {
   mockExtractEquipmentFromImage,
   mockGenerateTrainingFromImage,
   mockAnalyzeSafetyCompliance,
+  mockResolveSqlPrincipalByFirebaseUid,
 } = vi.hoisted(() => {
   return {
     mockExtractLoadInfo: vi.fn(),
@@ -26,6 +27,7 @@ const {
     mockExtractEquipmentFromImage: vi.fn(),
     mockGenerateTrainingFromImage: vi.fn(),
     mockAnalyzeSafetyCompliance: vi.fn(),
+    mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
   };
 });
 
@@ -83,20 +85,16 @@ vi.mock("firebase-admin", () => {
 });
 
 vi.mock("../../lib/sql-auth", () => ({
-  resolveSqlPrincipalByFirebaseUid: vi.fn().mockResolvedValue({
-    id: "1",
-    tenantId: "company-aaa",
-    companyId: "company-aaa",
-    role: "admin",
-    email: "test@test.com",
-    firebaseUid: "firebase-uid-1",
-  }),
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import aiRouter from "../../routes/ai";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 // Build a minimal Express app with the AI router
 function buildApp() {

@@ -3,14 +3,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-P5-02-AC3, R-P5-02-AC4
 
 // Hoisted mocks
-const { mockFindByCompany, mockFindById, mockCreate, mockDelete } = vi.hoisted(
-  () => ({
-    mockFindByCompany: vi.fn(),
-    mockFindById: vi.fn(),
-    mockCreate: vi.fn(),
-    mockDelete: vi.fn(),
-  }),
-);
+const {
+  mockFindByCompany,
+  mockFindById,
+  mockCreate,
+  mockDelete,
+  mockResolveSqlPrincipalByFirebaseUid,
+} = vi.hoisted(() => ({
+  mockFindByCompany: vi.fn(),
+  mockFindById: vi.fn(),
+  mockCreate: vi.fn(),
+  mockDelete: vi.fn(),
+  mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
+}));
 
 vi.mock("../../repositories/message.repository", () => ({
   messageRepository: {
@@ -66,20 +71,16 @@ vi.mock("firebase-admin", () => {
 });
 
 vi.mock("../../lib/sql-auth", () => ({
-  resolveSqlPrincipalByFirebaseUid: vi.fn().mockResolvedValue({
-    id: "1",
-    tenantId: "company-aaa",
-    companyId: "company-aaa",
-    role: "admin",
-    email: "test@test.com",
-    firebaseUid: "firebase-uid-1",
-  }),
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import messagesRouter from "../../routes/messages";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();

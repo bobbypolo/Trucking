@@ -162,3 +162,4 @@ VITE_API_URL=https://api.loadpilot.com/api  # Build-time, not runtime
 3. **GEMINI_API_KEY** was previously exposed as `VITE_GEMINI_API_KEY` (security issue fixed in Phase 1). The key must only be in server-side `.env`.
 4. **GOOGLE_APPLICATION_CREDENTIALS** in Cloud Run should use Workload Identity Federation instead of a key file where possible.
 5. **CORS_ORIGIN** is fail-closed in staging/prod — the server will refuse to start if it is unset.
+6. **Pre-production key rotation required**: `JWT_SECRET` and `GOOGLE_MAPS_API_KEY` were previously committed to git history (now deleted and `.gitignore`d). Both must be rotated to new values before any production deployment. Generate a cryptographically random JWT_SECRET (min 32 bytes) and regenerate the Google Maps API key in the GCP console with appropriate referrer restrictions.
