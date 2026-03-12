@@ -60,7 +60,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     status: "ok",
     message: "LoadPilot API is running",
-    database: "Firestore",
+    database: "MySQL + Firebase",
   });
 });
 

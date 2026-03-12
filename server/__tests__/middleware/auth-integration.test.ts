@@ -10,9 +10,9 @@ import { errorHandler } from '../../middleware/errorHandler';
 // Tests R-P1-05-AC4
 
 // Use vi.hoisted so mock fns are available before vi.mock factory runs
-const { mockVerifyIdToken, mockCollection, mockApp } = vi.hoisted(() => ({
+const { mockVerifyIdToken, mockResolvePrincipal, mockApp } = vi.hoisted(() => ({
     mockVerifyIdToken: vi.fn(),
-    mockCollection: vi.fn(),
+    mockResolvePrincipal: vi.fn(),
     mockApp: vi.fn(),
 }));
 
@@ -23,12 +23,13 @@ vi.mock('firebase-admin', () => {
             auth: () => ({
                 verifyIdToken: mockVerifyIdToken,
             }),
-            firestore: () => ({
-                collection: mockCollection,
-            }),
         },
     };
 });
+
+vi.mock('../../lib/sql-auth', () => ({
+    resolveSqlPrincipalByFirebaseUid: mockResolvePrincipal,
+}));
 
 import { requireAuth, AuthenticatedRequest } from '../../middleware/requireAuth';
 import { requireTenant } from '../../middleware/requireTenant';
@@ -144,24 +145,13 @@ describe('R-P1-05: Auth Integration Tests', () => {
                 email: 'user@company-a.com',
             });
 
-            const mockUserDoc = {
-                id: 'doc-1',
-                data: () => ({
-                    id: 'user-1',
-                    company_id: 'company-A',
-                    role: 'dispatcher',
-                    email: 'user@company-a.com',
-                }),
-            };
-            mockCollection.mockReturnValue({
-                where: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockReturnValue({
-                        get: vi.fn().mockResolvedValue({
-                            empty: false,
-                            docs: [mockUserDoc],
-                        }),
-                    }),
-                }),
+            mockResolvePrincipal.mockResolvedValue({
+                id: 'user-1',
+                tenantId: 'company-A',
+                companyId: 'company-A',
+                role: 'dispatcher',
+                email: 'user@company-a.com',
+                firebaseUid: 'fb-uid-1',
             });
 
             const req = createReq({
@@ -188,24 +178,13 @@ describe('R-P1-05: Auth Integration Tests', () => {
                 email: 'user@company-a.com',
             });
 
-            const mockUserDoc = {
-                id: 'doc-2',
-                data: () => ({
-                    id: 'user-2',
-                    company_id: 'company-A',
-                    role: 'dispatcher',
-                    email: 'user@company-a.com',
-                }),
-            };
-            mockCollection.mockReturnValue({
-                where: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockReturnValue({
-                        get: vi.fn().mockResolvedValue({
-                            empty: false,
-                            docs: [mockUserDoc],
-                        }),
-                    }),
-                }),
+            mockResolvePrincipal.mockResolvedValue({
+                id: 'user-2',
+                tenantId: 'company-A',
+                companyId: 'company-A',
+                role: 'dispatcher',
+                email: 'user@company-a.com',
+                firebaseUid: 'fb-uid-2',
             });
 
             const req = createReq({

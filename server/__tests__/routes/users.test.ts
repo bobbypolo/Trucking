@@ -1,16 +1,44 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import express from "express";
+import request from "supertest";
+import usersRouter from "../../routes/users";
+import { errorHandler } from "../../middleware/errorHandler";
 
-// Tests R-FS-05-06, R-FS-05-07
-
-// Hoisted mocks for Firestore operations
-const { mockFirestoreGet, mockFirestoreSet, mockFirestoreWhere } = vi.hoisted(
-  () => {
-    const mockFirestoreGet = vi.fn();
-    const mockFirestoreSet = vi.fn().mockResolvedValue(undefined);
-    const mockFirestoreWhere = vi.fn();
-    return { mockFirestoreGet, mockFirestoreSet, mockFirestoreWhere };
-  },
-);
+const {
+  mockVerifyIdToken,
+  mockApp,
+  mockFindSqlCompanyById,
+  mockFindSqlUserById,
+  mockFindSqlUsersByCompany,
+  mockLinkSqlUserToFirebaseUid,
+  mockMapCompanyRowToApiCompany,
+  mockMapUserRowToApiUser,
+  mockMirrorUserToFirestore,
+  mockResolveSqlPrincipalByFirebaseUid,
+  mockUpsertSqlUser,
+} = vi.hoisted(() => ({
+  mockVerifyIdToken: vi.fn(),
+  mockApp: vi.fn(),
+  mockFindSqlCompanyById: vi.fn(),
+  mockFindSqlUserById: vi.fn(),
+  mockFindSqlUsersByCompany: vi.fn(),
+  mockLinkSqlUserToFirebaseUid: vi.fn(),
+  mockMapCompanyRowToApiCompany: vi.fn((row) => row),
+  mockMapUserRowToApiUser: vi.fn((row) => {
+    if (!row) return row;
+    const { password, ...rest } = row;
+    return {
+      ...rest,
+      companyId: row.company_id,
+      onboardingStatus: row.onboarding_status,
+      safetyScore: row.safety_score,
+      firebaseUid: row.firebase_uid,
+    };
+  }),
+  mockMirrorUserToFirestore: vi.fn().mockResolvedValue(undefined),
+  mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
+  mockUpsertSqlUser: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("../../lib/logger", () => ({
   logger: {
@@ -28,27 +56,36 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Mock Firestore used by users.ts
-vi.mock("../../firestore", () => ({
+vi.mock("firebase-admin", () => ({
   default: {
-    collection: vi.fn().mockReturnValue({
-      doc: vi.fn().mockReturnValue({
-        get: mockFirestoreGet,
-        set: mockFirestoreSet,
-      }),
-      where: vi
-        .fn()
-        .mockImplementation((_field: string, _op: string, _val: string) => ({
-          get: mockFirestoreWhere,
-          limit: vi.fn().mockReturnValue({
-            get: vi.fn().mockResolvedValue({ empty: true, docs: [] }),
-          }),
-        })),
+    app: mockApp,
+    auth: () => ({
+      verifyIdToken: mockVerifyIdToken,
     }),
   },
 }));
 
-// Control user context per-test
+vi.mock("../../auth", () => ({
+  default: {
+    app: mockApp,
+    auth: () => ({
+      verifyIdToken: mockVerifyIdToken,
+    }),
+  },
+}));
+
+vi.mock("../../lib/sql-auth", () => ({
+  findSqlCompanyById: mockFindSqlCompanyById,
+  findSqlUserById: mockFindSqlUserById,
+  findSqlUsersByCompany: mockFindSqlUsersByCompany,
+  linkSqlUserToFirebaseUid: mockLinkSqlUserToFirebaseUid,
+  mapCompanyRowToApiCompany: mockMapCompanyRowToApiCompany,
+  mapUserRowToApiUser: mockMapUserRowToApiUser,
+  mirrorUserToFirestore: mockMirrorUserToFirestore,
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+  upsertSqlUser: mockUpsertSqlUser,
+}));
+
 let mockUserRole = "dispatcher";
 let mockUserTenantId = "company-aaa";
 let mockUserId = "user-1";
@@ -58,6 +95,7 @@ vi.mock("../../middleware/requireAuth", () => ({
     req.user = {
       uid: mockUserId,
       tenantId: mockUserTenantId,
+      companyId: mockUserTenantId,
       role: mockUserRole,
       email: "test@loadpilot.com",
       firebaseUid: "firebase-uid-1",
@@ -71,11 +109,6 @@ vi.mock("../../middleware/requireTenant", () => ({
     next();
   },
 }));
-
-import express from "express";
-import request from "supertest";
-import usersRouter from "../../routes/users";
-import { errorHandler } from "../../middleware/errorHandler";
 
 function buildApp() {
   const app = express();
@@ -96,8 +129,6 @@ function buildUnauthApp() {
 
 const COMPANY_ID = "company-aaa";
 
-// ── Auth enforcement ──────────────────────────────────────────────────────────
-
 describe("POST /api/auth/register — auth enforcement (validation)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -115,11 +146,9 @@ describe("POST /api/auth/login — auth enforcement (validation)", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 400 when email is missing", async () => {
+  it("returns 400 when firebaseUid is missing", async () => {
     const app = buildApp();
-    const res = await request(app)
-      .post("/api/auth/login")
-      .send({ password: "secret" });
+    const res = await request(app).post("/api/auth/login").send({ email: "u@test.com" });
     expect(res.status).toBe(400);
   });
 });
@@ -148,14 +177,12 @@ describe("GET /api/users/:companyId — auth enforcement", () => {
   });
 });
 
-// ── Tenant enforcement ────────────────────────────────────────────────────────
-
 describe("GET /api/users/:companyId — tenant enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
     mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
+    mockUserTenantId = COMPANY_ID;
     mockUserId = "user-1";
     app = buildApp();
     vi.clearAllMocks();
@@ -166,25 +193,21 @@ describe("GET /api/users/:companyId — tenant enforcement", () => {
       .get("/api/users/company-zzz")
       .set("Authorization", "Bearer valid-token");
 
-    // Route-level check: tenantId !== companyId for non-admin → 403
     expect(res.status).toBe(403);
   });
 
   it("allows access to own company's users", async () => {
-    mockFirestoreWhere.mockResolvedValueOnce({
-      docs: [
-        {
-          id: "user-1",
-          data: () => ({
-            id: "user-1",
-            company_id: COMPANY_ID,
-            role: "dispatcher",
-            email: "test@test.com",
-            name: "Test User",
-          }),
-        },
-      ],
-    });
+    mockFindSqlUsersByCompany.mockResolvedValueOnce([
+      {
+        id: "user-1",
+        company_id: COMPANY_ID,
+        role: "dispatcher",
+        email: "test@test.com",
+        name: "Test User",
+        onboarding_status: "Completed",
+        safety_score: 100,
+      },
+    ]);
 
     const res = await request(app)
       .get(`/api/users/${COMPANY_ID}`)
@@ -192,10 +215,9 @@ describe("GET /api/users/:companyId — tenant enforcement", () => {
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
+    expect(mockFindSqlUsersByCompany).toHaveBeenCalledWith(COMPANY_ID);
   });
 });
-
-// ── Validation errors ─────────────────────────────────────────────────────────
 
 describe("POST /api/auth/register — validation errors", () => {
   let app: ReturnType<typeof buildApp>;
@@ -220,19 +242,17 @@ describe("POST /api/auth/register — validation errors", () => {
   });
 });
 
-// ── Success path ──────────────────────────────────────────────────────────────
-
 describe("POST /api/auth/register — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
     app = buildApp();
     vi.clearAllMocks();
+    mockUpsertSqlUser.mockResolvedValue(undefined);
+    mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("registers user and returns 201", async () => {
-    mockFirestoreSet.mockResolvedValueOnce(undefined);
-
     const res = await request(app).post("/api/auth/register").send({
       id: "new-user",
       email: "newuser@test.com",
@@ -240,10 +260,13 @@ describe("POST /api/auth/register — success", () => {
       role: "driver",
       company_id: COMPANY_ID,
       password: "securepass123",
+      firebaseUid: "fb-new-user",
     });
 
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("User registered successfully");
+    expect(mockUpsertSqlUser).toHaveBeenCalledOnce();
+    expect(mockMirrorUserToFirestore).toHaveBeenCalledOnce();
   });
 });
 
@@ -253,26 +276,27 @@ describe("POST /api/users — success (sync)", () => {
   beforeEach(() => {
     app = buildApp();
     vi.clearAllMocks();
+    mockUpsertSqlUser.mockResolvedValue(undefined);
+    mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("syncs user and returns 201", async () => {
-    mockFirestoreSet.mockResolvedValueOnce(undefined);
-
     const res = await request(app).post("/api/users").send({
       email: "driver@test.com",
       name: "John Driver",
       role: "driver",
       company_id: COMPANY_ID,
+      firebaseUid: "fb-driver",
     });
 
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("User updated/created");
+    expect(mockUpsertSqlUser).toHaveBeenCalledOnce();
+    expect(mockMirrorUserToFirestore).toHaveBeenCalledOnce();
   });
 
   it("returns 400 when email is missing from user sync", async () => {
-    const res = await request(app)
-      .post("/api/users")
-      .send({ name: "No Email" }); // missing email
+    const res = await request(app).post("/api/users").send({ name: "No Email" });
     expect(res.status).toBe(400);
   });
 });
@@ -288,31 +312,29 @@ describe("GET /api/users/me — success", () => {
   });
 
   it("returns current user profile with 200 (password excluded)", async () => {
-    const userDoc = {
-      exists: true,
-      data: () => ({
-        id: "user-1",
-        company_id: COMPANY_ID,
-        role: "dispatcher",
-        email: "test@test.com",
-        name: "Test User",
-        password: "hashed",
-      }),
-    };
-    mockFirestoreGet.mockResolvedValueOnce(userDoc);
+    mockFindSqlUserById.mockResolvedValueOnce({
+      id: "user-1",
+      company_id: COMPANY_ID,
+      role: "dispatcher",
+      email: "test@test.com",
+      name: "Test User",
+      password: "hashed",
+      onboarding_status: "Completed",
+      safety_score: 100,
+      firebase_uid: "firebase-uid-1",
+    });
 
     const res = await request(app)
       .get("/api/users/me")
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(200);
-    // Password must not be returned
     expect(res.body).not.toHaveProperty("password");
+    expect(mockFindSqlUserById).toHaveBeenCalledWith("user-1");
   });
 
-  it("returns 404 when user profile not found in Firestore", async () => {
-    // Firestore .doc().get() returns doc with null data
-    mockFirestoreGet.mockResolvedValueOnce({ exists: true, data: () => null });
+  it("returns 404 when user profile is not found in SQL", async () => {
+    mockFindSqlUserById.mockResolvedValueOnce(null);
 
     const res = await request(app)
       .get("/api/users/me")

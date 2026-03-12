@@ -2,6 +2,7 @@
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import { logger } from './lib/logger';
+import { resolveSqlPrincipalByFirebaseUid } from './lib/sql-auth';
 
 dotenv.config();
 
@@ -10,28 +11,38 @@ dotenv.config();
 // 2. Click "Generate new private key"
 // 3. Save the JSON file as 'server/serviceAccount.json' (DO NOT COMMIT THIS FILE)
 
+let authReady = false;
 let serviceAccount: any;
 try {
     serviceAccount = require('./serviceAccount.json');
 } catch (e) {
-    logger.warn('Firebase Service Account not found. Backend security is running in BYPASS mode.');
+    logger.warn('Firebase Service Account not found at server/serviceAccount.json. Falling back to application default credentials if available.');
 }
 
-
-
-if (serviceAccount) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    logger.info('Firebase Admin initialized successfully.');
+try {
+    if (serviceAccount) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        authReady = true;
+        logger.info('Firebase Admin initialized successfully from serviceAccount.json.');
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_PROJECT_ID) {
+        admin.initializeApp({
+            credential: admin.credential.applicationDefault(),
+            projectId: process.env.FIREBASE_PROJECT_ID,
+        });
+        authReady = true;
+        logger.info('Firebase Admin initialized successfully from application default credentials.');
+    }
+} catch (error) {
+    authReady = false;
+    logger.error({ err: error }, 'Firebase Admin initialization failed. Protected routes will remain blocked.');
 }
 
 export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
-    if (!serviceAccount) {
-        // SECURITY HARDENING: Fail closed if service account is missing.
-        // Was: return next(); // BYPASS MODE
-        logger.error('CRITICAL: Firebase Service Account missing. Rejecting request to enforce security.');
-        return res.status(500).json({ error: 'Server Security Configuration Error: Service Account Missing.' });
+    if (!authReady) {
+        logger.error('CRITICAL: Firebase Admin credentials unavailable. Rejecting request to enforce security.');
+        return res.status(500).json({ error: 'Server Security Configuration Error: Firebase Admin credentials unavailable.' });
     }
 
     const authHeader = req.headers['authorization'];
@@ -41,27 +52,21 @@ export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
 
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
+        const principal = await resolveSqlPrincipalByFirebaseUid(decodedToken.uid);
 
-        // Map Firebase user to Application User (Firestore Scope)
-        // Transition: MySQL query removed in favor of direct Firestore lookup
-        const db = admin.firestore();
-        const usersRef = db.collection('users');
-        const snapshot = await usersRef.where('email', '==', decodedToken.email).limit(1).get();
-
-        if (snapshot.empty) {
-            logger.warn({ email: decodedToken.email }, 'Identity verified but no Firestore User record found');
+        if (!principal) {
+            logger.warn({ firebaseUid: decodedToken.uid }, 'Identity verified but no SQL user record found');
             return res.status(403).json({ error: 'Identity verified but no linked LoadPilot account found.' });
         }
 
-        const userDoc = snapshot.docs[0];
-        const userData = userDoc.data();
-
         req.user = {
-            id: userDoc.id,
-            companyId: userData.company_id, // Firestore uses snake_case or camelCase? Check index.ts writes.
-            role: userData.role,
-            email: decodedToken.email,
-            firebaseUid: decodedToken.uid
+            id: principal.id,
+            uid: principal.id,
+            tenantId: principal.tenantId,
+            companyId: principal.companyId,
+            role: principal.role,
+            email: principal.email,
+            firebaseUid: principal.firebaseUid || decodedToken.uid
         };
         next();
     } catch (error) {

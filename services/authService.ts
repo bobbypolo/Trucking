@@ -62,26 +62,58 @@ const notifyUserChange = (user: User | null) => {
   _userChangeListeners.forEach((c) => c(user));
 };
 
+const upsertCachedUser = (user: User) => {
+  const index = _usersCache.findIndex((u) => u.id === user.id);
+  if (index >= 0) {
+    _usersCache[index] = user;
+  } else {
+    _usersCache.push(user);
+  }
+};
+
+const hydrateSessionFromApi = async (): Promise<User | null> => {
+  const token = await getIdTokenAsync();
+  if (!token) return null;
+
+  const res = await fetch(`${API_URL}/users/me`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) return null;
+
+  const user = (await res.json()) as User;
+  _sessionCache = user;
+  upsertCachedUser(user);
+  return user;
+};
+
 if (!DEMO_MODE) {
   onAuthStateChanged(auth, async (fbUser) => {
     if (fbUser) {
       _idToken = await getIdToken(fbUser);
-      let localUser = getCurrentUser();
+      let resolvedUser: User | null = null;
 
-      if (
-        !localUser ||
-        localUser.email.toLowerCase() !== fbUser.email?.toLowerCase()
-      ) {
+      try {
+        resolvedUser = await hydrateSessionFromApi();
+      } catch (error) {
+        console.warn("[authService] Session hydration fallback:", error);
+      }
+
+      if (!resolvedUser) {
         const users = getStoredUsers();
-        localUser =
+        resolvedUser =
           users.find(
             (u) => u.email.toLowerCase() === fbUser.email?.toLowerCase(),
           ) || null;
-        if (localUser) {
-          _sessionCache = localUser;
+        if (resolvedUser) {
+          _sessionCache = resolvedUser;
         }
       }
-      notifyUserChange(localUser);
+
+      notifyUserChange(resolvedUser);
     } else {
       _idToken = null;
       _sessionCache = null;
@@ -378,7 +410,9 @@ export const getCompany = async (
   companyId: string,
 ): Promise<Company | undefined> => {
   try {
-    const res = await fetch(`${API_URL}/companies/${companyId}`);
+    const res = await fetch(`${API_URL}/companies/${companyId}`, {
+      headers: await getAuthHeaders(),
+    });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("[authService] API fallback:", e);
@@ -390,7 +424,7 @@ export const updateCompany = async (company: Company) => {
   try {
     await fetch(`${API_URL}/companies`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(company),
     });
   } catch (e) {
@@ -412,19 +446,14 @@ export const updateUser = async (user: User) => {
   try {
     await fetch(`${API_URL}/users`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await getAuthHeaders(),
       body: JSON.stringify(user),
     });
   } catch (e) {
     console.warn("[authService] API fallback:", e);
   }
 
-  const index = _usersCache.findIndex((u) => u.id === user.id);
-  if (index >= 0) {
-    _usersCache[index] = user;
-  } else {
-    _usersCache.push(user);
-  }
+  upsertCachedUser(user);
 
   const session = getCurrentUser();
   if (session?.id === user.id) {
@@ -464,29 +493,27 @@ export const login = async (
     );
     const fbUser = userCredential.user;
     _idToken = await getIdToken(fbUser);
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({
+        email: fbUser.email,
+        firebaseUid: fbUser.uid,
+      }),
+    });
 
-    const users = getStoredUsers();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase(),
-    );
-
-    // Fallback: If not in cache, fetch from server
-    if (!user) {
-      const res = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, firebaseUid: fbUser.uid }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        _sessionCache = data.user;
-        return data.user;
-      }
+    if (res.ok) {
+      const data = await res.json();
+      _sessionCache = data.user;
+      upsertCachedUser(data.user);
+      notifyUserChange(data.user);
+      return data.user;
     }
 
-    if (user) {
-      _sessionCache = user;
-      return user;
+    const hydratedUser = await hydrateSessionFromApi();
+    if (hydratedUser) {
+      notifyUserChange(hydratedUser);
+      return hydratedUser;
     }
   } catch (error) {
     // Legacy fallback for development before Firebase is fully configured
@@ -637,11 +664,12 @@ export const registerCompany = async (
   if (!DEMO_MODE) {
     try {
       // Create Firebase User
-      await createUserWithEmailAndPassword(
+      const credential = await createUserWithEmailAndPassword(
         auth,
         adminEmail,
         password || "admin123",
       );
+      newUser.firebaseUid = credential.user.uid;
     } catch (error) {
       console.warn("[authService] Firebase user creation failed:", error);
     }
@@ -873,7 +901,12 @@ export const addDriver = async (
   if (!DEMO_MODE) {
     try {
       // Create Firebase User
-      await createUserWithEmailAndPassword(auth, email, password || "admin123");
+      const credential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password || "admin123",
+      );
+      newUser.firebaseUid = credential.user.uid;
     } catch (error: any) {
       if (error.code === "auth/email-already-in-use") {
         // User already exists in Firebase Auth — skip creation silently

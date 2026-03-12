@@ -105,6 +105,16 @@ router.post(
     // company_id derived from auth context — never trust the request body
     const company_id = req.user.tenantId;
 
+    // Reject if body explicitly provides a company_id that mismatches auth context
+    if (req.body.company_id && req.body.company_id !== company_id) {
+      return res
+        .status(403)
+        .json({
+          error:
+            "Tenant mismatch: company_id in body does not match authenticated tenant",
+        });
+    }
+
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();

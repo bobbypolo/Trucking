@@ -12,6 +12,7 @@ const {
   mockRelease,
   mockGetConnection,
   mockConnection,
+  mockResolveSqlPrincipalByFirebaseUid,
 } = vi.hoisted(() => {
   const mockQuery = vi.fn();
   const mockExecute = vi.fn();
@@ -39,6 +40,7 @@ const {
     mockRelease,
     mockGetConnection,
     mockConnection,
+    mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
   };
 });
 
@@ -104,10 +106,17 @@ vi.mock("firebase-admin", () => {
   };
 });
 
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+}));
+
 import express from "express";
 import request from "supertest";
 import loadRoutes from "../../routes/loads";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 // --- Constants ---
 const COMPANY_A = "company-aaa";

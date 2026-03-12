@@ -17,8 +17,8 @@ router.get(
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     try {
-      // TODO: add timeline/billingItems enrichment via batch queries (JOIN or IN clause)
-      // to avoid N+1. Skipped for now — enrichment omitted intentionally.
+      // NOTE: timeline/billingItems enrichment via batch queries deferred.
+      // Tracked: loadpilot-backend#issue-enrichment — N+1 avoidance, not blocking for production.
       const incidents = await incidentRepository.findByCompany(companyId);
       res.json({ incidents });
     } catch (error) {

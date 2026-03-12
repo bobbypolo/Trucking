@@ -110,6 +110,7 @@ import { NetworkPortal } from "./components/NetworkPortal";
 import { getRecord360Data } from "./services/storageService";
 import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
 import { CommandCenterView } from "./components/CommandCenterView";
+import { DEMO_MODE } from "./services/firebase";
 
 /** Navigation item with optional permission/capability gates. */
 interface NavItem {
@@ -196,7 +197,7 @@ export default function App() {
   const [summary, setSummary] = useState<any>(null);
 
   useEffect(() => {
-    if (import.meta.env.DEV) {
+    if (import.meta.env.DEV && DEMO_MODE) {
       seedDatabase().then(() => seedSafetyData(true));
     }
 
