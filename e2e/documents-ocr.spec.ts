@@ -6,27 +6,23 @@
  * - Upload path validation (request structure validation)
  * - AI proxy auth enforcement (Gemini proxy requires valid auth)
  *
- * NOTE: The AI router is mounted at /api/ai in index.ts, and the route
- * handlers define paths as /api/ai/extract-load. This results in the actual
- * endpoint being at /api/ai/api/ai/extract-load (double prefix). Tests use
- * the actually-routed path.
+ * NOTE: The AI router is mounted at /api/ai in index.ts. STORY-001 fixed the
+ * double-prefix bug — route handlers now define paths as /extract-load (not
+ * /api/ai/extract-load), so the effective path is correctly /api/ai/extract-load.
  *
  * Complements scanner.spec.ts.
  * Runs against real Express API on port 5000.
  */
 
 import { test, expect } from "@playwright/test";
-import {
-  API_BASE,
-  makeAdminRequest,
-} from "./fixtures/auth.fixture";
+import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
 
 /**
- * The AI proxy router is mounted at /api/ai, but the router internally
- * declares paths as /api/ai/extract-load. Express concatenates the mount
- * prefix and route path, yielding /api/ai/api/ai/extract-load.
+ * The AI proxy router is mounted at /api/ai. STORY-001 fixed the double-prefix
+ * bug: route handlers now declare /extract-load (not /api/ai/extract-load),
+ * so the effective endpoint is /api/ai/extract-load.
  */
-const AI_EXTRACT_LOAD = `${API_BASE}/api/ai/api/ai/extract-load`;
+const AI_EXTRACT_LOAD = `${API_BASE}/api/ai/extract-load`;
 
 // ---------------------------------------------------------------------------
 // Document Endpoint Auth Enforcement
@@ -59,9 +55,7 @@ test.describe("DOC — Document Endpoint Auth", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("DOC — Upload Path Validation", () => {
-  test("POST AI proxy without auth returns 401/403", async ({
-    request,
-  }) => {
+  test("POST AI proxy without auth returns 401/403", async ({ request }) => {
     // AI proxy requires authentication — no anonymous access
     const res = await request.post(AI_EXTRACT_LOAD, {
       data: { imageBase64: "data:image/jpeg;base64,/9j/test" },
@@ -106,9 +100,7 @@ test.describe("DOC — AI Proxy Auth Enforcement", () => {
     expect([400, 401, 403]).toContain(res.status());
   });
 
-  test("AI proxy blocks malformed Bearer token", async ({
-    request,
-  }) => {
+  test("AI proxy blocks malformed Bearer token", async ({ request }) => {
     const res = await request.post(AI_EXTRACT_LOAD, {
       data: { imageBase64: "dGVzdA==" },
       headers: { Authorization: "Bearer INVALID_TOKEN_XXXX" },
@@ -127,11 +119,7 @@ test.describe("DOC — AI Proxy Auth Enforcement", () => {
     }
     // With valid token, the AI proxy returns 400 (missing imageBase64) or
     // 500 (Gemini API key not set) — NOT 401/403
-    const res = await auth.post(
-      AI_EXTRACT_LOAD,
-      { imageBase64: "" },
-      request,
-    );
+    const res = await auth.post(AI_EXTRACT_LOAD, { imageBase64: "" }, request);
     // Auth passed — now we get payload validation or Gemini error, not auth error
     expect([400, 500]).toContain(res.status());
   });
