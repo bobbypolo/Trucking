@@ -20,7 +20,7 @@
 #   0 — rehearsal passed (migrations applied cleanly, table count valid)
 #   1 — rehearsal failed (see output for details)
 #
-# Tests R-P3-02, R-P3-05: verifies 015_add_users_phone is the highest migration
+# Tests R-P3-10, R-P3-11: verifies 016_exception_management is the highest migration
 
 set -euo pipefail
 
@@ -39,7 +39,7 @@ TEMP_DB="rehearsal_dryrun_${TIMESTAMP}"
 # Helper: run SQL via node (avoids dependency on mysql CLI binary)
 run_sql() {
   local sql="$1"
-  node -e "
+  SQL_CMD="$sql" node -e "
     const mysql = require('mysql2/promise');
     (async () => {
       const conn = await mysql.createConnection({
@@ -49,7 +49,7 @@ run_sql() {
         password: '${DB_PASSWORD}',
         multipleStatements: true,
       });
-      await conn.query(\`${sql}\`);
+      await conn.query(process.env.SQL_CMD);
       await conn.end();
     })().catch(e => { console.error(e.message); process.exit(1); });
   "
@@ -57,7 +57,7 @@ run_sql() {
 
 echo "[migration-dry-run] ============================================"
 echo "[migration-dry-run] Fresh-DB Replay — Migration Rehearsal"
-echo "[migration-dry-run] Highest expected migration: 015_add_users_phone"
+echo "[migration-dry-run] Highest expected migration: 016_exception_management"
 echo "[migration-dry-run] Temp database: ${TEMP_DB}"
 echo "[migration-dry-run] ============================================"
 
@@ -90,7 +90,7 @@ echo "[migration-dry-run] Temp database dropped — no manual cleanup required"
 echo "[migration-dry-run] ============================================"
 if [[ "${REHEARSAL_EXIT}" -eq 0 ]]; then
   echo "[migration-dry-run] PASS — Migration chain 001-015 validated on fresh DB"
-  echo "[migration-dry-run] 015_add_users_phone coverage: confirmed"
+  echo "[migration-dry-run] 016_exception_management coverage: confirmed"
 else
   echo "[migration-dry-run] FAIL — Migration rehearsal failed (exit ${REHEARSAL_EXIT})" >&2
   echo "[migration-dry-run] Do NOT promote to production until rehearsal passes" >&2

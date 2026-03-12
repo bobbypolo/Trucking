@@ -10,7 +10,8 @@
 --   The loads route (GET /api/loads) calls getVisibilitySettings() on every
 --   request. Without this column the route always returns 500.
 --
--- Idempotency: Uses stored procedure + INFORMATION_SCHEMA check.
+-- Idempotency: Handled by MigrationRunner tracking table (_migrations).
+--   The _migrations table prevents this migration from being re-applied.
 --   MySQL 8.4 does not support ADD COLUMN IF NOT EXISTS syntax.
 --
 -- Author: ralph-story STORY-006
@@ -18,28 +19,10 @@
 
 -- UP
 
-DROP PROCEDURE IF EXISTS add_visibility_settings_column;
-
-DELIMITER $$
-CREATE PROCEDURE add_visibility_settings_column()
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'companies'
-          AND COLUMN_NAME = 'driver_visibility_settings'
-    ) THEN
-        ALTER TABLE companies
-            ADD COLUMN driver_visibility_settings JSON NULL DEFAULT NULL
-            COMMENT 'Per-company driver data redaction settings JSON';
-    END IF;
-END$$
-DELIMITER ;
-
-CALL add_visibility_settings_column();
-DROP PROCEDURE IF EXISTS add_visibility_settings_column;
+ALTER TABLE companies
+    ADD COLUMN driver_visibility_settings JSON NULL DEFAULT NULL
+    COMMENT 'Per-company driver data redaction settings JSON';
 
 -- DOWN
 
--- ALTER TABLE companies DROP COLUMN IF EXISTS driver_visibility_settings;
+ALTER TABLE companies DROP COLUMN driver_visibility_settings;
