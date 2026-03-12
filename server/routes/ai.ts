@@ -37,12 +37,12 @@ function validateImagePayload(body: unknown): string | null {
 }
 
 /**
- * POST /api/ai/extract-load
+ * POST /extract-load  (mounted at /api/ai in index.ts → effective path: /api/ai/extract-load)
  * Extract load and broker info from a document image.
  * Body: { imageBase64: string, mimeType?: string }
  */
 router.post(
-  "/api/ai/extract-load",
+  "/extract-load",
   requireAuth,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
@@ -71,12 +71,12 @@ router.post(
 );
 
 /**
- * POST /api/ai/extract-broker
+ * POST /extract-broker  (mounted at /api/ai in index.ts → effective path: /api/ai/extract-broker)
  * Extract broker profile from a document image.
  * Body: { imageBase64: string, mimeType?: string }
  */
 router.post(
-  "/api/ai/extract-broker",
+  "/extract-broker",
   requireAuth,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
@@ -105,12 +105,12 @@ router.post(
 );
 
 /**
- * POST /api/ai/extract-equipment
+ * POST /extract-equipment  (mounted at /api/ai in index.ts → effective path: /api/ai/extract-equipment)
  * Extract equipment info from a photo.
  * Body: { imageBase64: string, mimeType?: string }
  */
 router.post(
-  "/api/ai/extract-equipment",
+  "/extract-equipment",
   requireAuth,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
@@ -139,12 +139,12 @@ router.post(
 );
 
 /**
- * POST /api/ai/generate-training
+ * POST /generate-training  (mounted at /api/ai in index.ts → effective path: /api/ai/generate-training)
  * Generate a training quiz from a safety document image.
  * Body: { imageBase64: string, mimeType?: string }
  */
 router.post(
-  "/api/ai/generate-training",
+  "/generate-training",
   requireAuth,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
@@ -173,12 +173,12 @@ router.post(
 );
 
 /**
- * POST /api/ai/analyze-safety
+ * POST /analyze-safety  (mounted at /api/ai in index.ts → effective path: /api/ai/analyze-safety)
  * Analyze safety compliance data for a driver.
  * Body: { data: { activityHistory: unknown[], performance: unknown } }
  */
 router.post(
-  "/api/ai/analyze-safety",
+  "/analyze-safety",
   requireAuth,
   async (req: Request, res: Response) => {
     const log = createChildLogger({

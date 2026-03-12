@@ -306,7 +306,8 @@ export function createOcrService(adapter: OcrAdapter) {
       try {
         fields =
           typeof row.fields === "string" ? JSON.parse(row.fields) : row.fields;
-      } catch {
+      } catch (error) {
+        console.error("Failed to parse OCR fields JSON:", error);
         fields = [];
       }
 

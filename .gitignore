@@ -42,6 +42,8 @@ verification-log.jsonl
 
 # Full ADE workflow directory — not tracked in git
 .claude/
+.claude/worktrees/
+.claude/.workflow-state.json
 CLAUDE.md
 WORKFLOW.md
 PROJECT_BRIEF.md

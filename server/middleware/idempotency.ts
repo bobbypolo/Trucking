@@ -174,8 +174,9 @@ export function idempotencyMiddleware() {
       } as typeof res.json;
 
       next();
-    } catch {
+    } catch (error) {
       // If idempotency lookup fails, let the request through
+      console.error("Idempotency middleware error:", error);
       next();
     }
   };
