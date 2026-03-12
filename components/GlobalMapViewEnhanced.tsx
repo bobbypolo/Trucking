@@ -332,7 +332,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               }));
               setRoutePaths((prev) => ({ ...prev, [load.id]: points }));
             }
-          } catch (e) {}
+          } catch (e) {
+            console.warn("Failed to fetch route directions:", e);
+          }
         }
       }
     };
