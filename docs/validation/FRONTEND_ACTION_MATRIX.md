@@ -518,3 +518,56 @@ Present in all admin, dispatcher, safety_manager, and payroll_manager experience
 | audit          | Audit Logs             | AuditLogs                    | AUDIT_LOG_VIEW    |
 | company        | Organization Profile   | CompanyProfile               | ORG_SETTINGS_VIEW |
 | api-tester     | Google Maps API Tester | GoogleMapsAPITester          | None              |
+
+
+---
+
+## Phase 3 E2E Test Coverage Status
+
+**Updated by:** STORY-008 — Consolidated Regression & Main-Agent Revalidation
+**Date:** 2026-03-12
+**E2E Result:** 176 passed / 0 failed / 83 skipped across 23 spec files
+
+---
+
+### Page / Tab Coverage Status
+
+| Tab ID         | Label                  | E2E Coverage Status       | Spec Files                                                  |
+| -------------- | ---------------------- | ------------------------- | ----------------------------------------------------------- |
+| login          | Auth / Login           | TESTED — auth-shell-ui    | auth-shell.spec.ts, auth-shell-ui.spec.ts, auth.spec.ts    |
+| operations-hub | Unified Command Center | COVERED — API surface     | functional-sweep.spec.ts, documents-ui.spec.ts             |
+| dashboard      | Management Console     | COVERED — API endpoints   | users-admin.spec.ts, organization-tenant.spec.ts           |
+| exceptions     | Exception Triage       | COVERED — endpoint auth   | map-exceptions.spec.ts, compliance-secondary.spec.ts       |
+| analytics      | Strategy and Analytics | COVERED — API auth guard  | navigation-guards.spec.ts                                  |
+| loads          | Dispatch Board         | TESTED — full CRUD        | load-lifecycle.spec.ts, dispatch-board.spec.ts             |
+| quotes         | Intake and Quotes      | COVERED — API surface     | dispatch-board.spec.ts                                     |
+| map            | Live Map               | COVERED — tracking auth   | map-exceptions.spec.ts, documents-ui.spec.ts               |
+| calendar       | Schedule               | COVERED — schedule API    | documents-ui.spec.ts                                       |
+| network        | Partner Network Hub    | COVERED — API auth guard  | navigation-guards.spec.ts                                  |
+| finance        | Settlements            | TESTED — settlement flows | settlement.spec.ts, settlements-ui.spec.ts                 |
+| accounting     | Accounting Portal      | TESTED — accounting API   | accounting-financials.spec.ts, settlements-ui.spec.ts      |
+| safety         | Safety and Fleet       | COVERED — compliance API  | compliance-secondary.spec.ts                               |
+| audit          | Audit Logs             | COVERED — admin surface   | users-admin.spec.ts                                        |
+| company        | Organization Profile   | TESTED — user/org API     | users-admin.spec.ts, organization-tenant.spec.ts           |
+| api-tester     | Google Maps API Tester | COVERED — access control  | users-admin-ui.spec.ts                                     |
+
+### Control Coverage Status
+
+| Control Category               | Coverage Status | Spec File(s)                                              |
+| ------------------------------ | --------------- | --------------------------------------------------------- |
+| Login form (email/password)    | TESTED          | auth-shell.spec.ts, auth-shell-ui.spec.ts                |
+| Logout / session teardown      | TESTED          | auth-shell.spec.ts                                        |
+| Load create/edit/delete form   | TESTED          | load-lifecycle.spec.ts, load-lifecycle-ui.spec.ts        |
+| Status transition dropdown     | TESTED          | assignment-status.spec.ts                                |
+| Driver assignment dropdown     | COVERED         | load-lifecycle.spec.ts                                   |
+| Settlement approval button     | TESTED          | settlement.spec.ts                                       |
+| Invoice create button (AR)     | COVERED         | accounting-financials.spec.ts                            |
+| Bill create button (AP)        | COVERED         | accounting-financials.spec.ts                            |
+| Company settings save button   | COVERED         | organization-tenant.spec.ts                              |
+| User edit modal                | COVERED         | users-admin.spec.ts                                      |
+| Exception filter buttons       | COVERED         | map-exceptions.spec.ts                                   |
+| Sidebar navigation buttons     | VERIFIED        | auth-shell-ui.spec.ts, navigation-guards.spec.ts         |
+| Scanner / document upload      | COVERED         | scanner.spec.ts, documents-ocr.spec.ts                  |
+| BOL / AI parse button          | COVERED         | documents-ocr.spec.ts, scanner.spec.ts                  |
+| Global search input            | COVERED         | functional-sweep.spec.ts                                 |
+| Emergency Sign Out button      | VERIFIED        | auth-shell.spec.ts                                       |
