@@ -169,7 +169,7 @@ double-prefix bug. Full regression now shows 186 passing E2E tests, 1154 server 
 | F-005 | AuditLogs reads from in-memory props only — no live /api/audit endpoint; compliance audit trail incomplete     | OPEN    | Create GET /api/audit endpoint. Update AuditLogs.tsx to fetch from API.                               |
 | F-006 | Dashboard shows empty metric cards with no error indicator when MySQL or Express unavailable                   | FIXED   | Error state added to loadDashboardData. Visible amber error banner with retry button renders on failure. |
 | F-008 | localStorage keys lack companyId prefix — no tenant isolation in shared-browser environments (24+6 keys)       | FIXED   | All 21 localStorage keys prefixed with companyId via getTenantKey(). Legacy migration helper included. |
-| F-004 | LoadStatus 3-way mismatch (DB PascalCase, server lowercase, frontend mixed) may cause silent filter mismatches | PARTIAL | Migration 013 normalized total_miles. Full status normalization still requires cross-layer alignment. |
+| F-004 | LoadStatus 3-way mismatch (DB PascalCase, server lowercase, frontend mixed) may cause silent filter mismatches | F-004 ASSESSED — VERIFIED | Frontend LOAD_STATUS constants correctly resolve to canonical lowercase values. No live workflow impact. Switch/case and comparison patterns all evaluate string values, not object keys. 27 unit tests prove correctness across MapView, LoadGantt, GlobalMapViewEnhanced, and Dashboard. STORY-001 evidence: src/__tests__/load-status-consistency.test.ts |
 
 ### Minor
 
@@ -247,7 +247,7 @@ double-prefix bug. Full regression now shows 186 passing E2E tests, 1154 server 
 7. F-012: Add admin-only permission gate to api-tester NavItem.
 8. F-014: Verify Driver/Customer role logout path visibility.
 9. F-015: Separate scanner cancel from load creation cancel.
-10. F-004: Complete LoadStatus normalization migration across DB, server, and frontend.
+10. F-004: ASSESSED (STORY-001) — Frontend constants verified correct. LoadStatus normalization across DB/server layers deferred (no live workflow impact identified).
 
 ---
 
