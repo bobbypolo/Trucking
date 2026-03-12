@@ -44,7 +44,8 @@ export async function geocodeAddress(
       latitude: location.lat,
       longitude: location.lng,
     };
-  } catch {
+  } catch (error) {
+    console.error("Geocoding request failed:", error);
     return null;
   }
 }

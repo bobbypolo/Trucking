@@ -1253,14 +1253,11 @@ const AccountingPortal: React.FC<Props> = ({
           onClose={() => setImportType(null)}
           onImport={async (data) => {
             try {
-              const res = await fetch(
-                "http://localhost:5000/api/accounting/batch-import",
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ type: importType, data }),
-                },
-              );
+              const res = await fetch("/api/accounting/batch-import", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ type: importType, data }),
+              });
               if (res.ok) {
                 showFeedback(`Imported ${data.length} records successfully`);
                 setImportType(null);

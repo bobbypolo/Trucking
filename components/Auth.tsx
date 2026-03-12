@@ -73,7 +73,8 @@ function loadWizardState(): Partial<WizardState> {
     const raw = sessionStorage.getItem(WIZARD_STORAGE_KEY);
     if (!raw) return {};
     return JSON.parse(raw) as Partial<WizardState>;
-  } catch {
+  } catch (error) {
+    console.warn("Failed to read wizard state from sessionStorage:", error);
     return {};
   }
 }
@@ -84,15 +85,17 @@ function saveWizardState(state: Partial<WizardState>): void {
     sessionStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(state));
     // Write a lightweight step-only key for quick recovery checks
     sessionStorage.setItem(WIZARD_STORAGE_KEY + "_step", state.view ?? "login");
-  } catch {
+  } catch (error) {
     // sessionStorage unavailable — proceed without persistence
+    console.warn("Failed to save wizard state to sessionStorage:", error);
   }
 }
 
 function loadWizardStep(): string {
   try {
     return sessionStorage.getItem(WIZARD_STORAGE_KEY + "_step") ?? "login";
-  } catch {
+  } catch (error) {
+    console.warn("Failed to read wizard step from sessionStorage:", error);
     return "login";
   }
 }
@@ -101,8 +104,9 @@ function clearWizardState(): void {
   try {
     sessionStorage.removeItem(WIZARD_STORAGE_KEY);
     sessionStorage.removeItem(WIZARD_STORAGE_KEY + "_step");
-  } catch {
+  } catch (error) {
     // best-effort cleanup
+    console.warn("Failed to clear wizard state from sessionStorage:", error);
   }
 }
 
