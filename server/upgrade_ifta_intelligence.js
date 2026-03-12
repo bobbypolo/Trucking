@@ -1,21 +1,20 @@
+import mysql from "mysql2/promise";
+import dotenv from "dotenv";
 
-import mysql from 'mysql2/promise';
-import dotenv from 'dotenv';
-
-dotenv.config({ path: './server/.env' });
+dotenv.config({ path: "./server/.env" });
 
 async function upgrade() {
-    const connection = await mysql.createConnection({
-        host: process.env.DB_HOST || 'localhost',
-        user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || '',
-        database: process.env.DB_NAME || 'trucklogix'
-    });
+  const connection = await mysql.createConnection({
+    host: process.env.DB_HOST || "localhost",
+    user: process.env.DB_USER || "root",
+    password: process.env.DB_PASSWORD || "",
+    database: process.env.DB_NAME || "trucklogix",
+  });
 
-    console.log('--- STARTING IFTA INTELLIGENCE UPGRADE ---');
+  console.log("--- STARTING IFTA INTELLIGENCE UPGRADE ---");
 
-    // 1. Trip Evidence Timeline
-    await connection.query(`
+  // 1. Trip Evidence Timeline
+  await connection.query(`
         CREATE TABLE IF NOT EXISTS ifta_trip_evidence (
             id VARCHAR(50) PRIMARY KEY,
             truck_id VARCHAR(50),
@@ -32,8 +31,8 @@ async function upgrade() {
         )
     `);
 
-    // 2. IFTA Audit Records (Locked Trips)
-    await connection.query(`
+  // 2. IFTA Audit Records (Locked Trips)
+  await connection.query(`
         CREATE TABLE IF NOT EXISTS ifta_trips_audit (
             id VARCHAR(50) PRIMARY KEY,
             truck_id VARCHAR(50),
@@ -43,7 +42,7 @@ async function upgrade() {
             end_time TIMESTAMP NULL,
             start_odometer DECIMAL(15, 2),
             end_odometer DECIMAL(15, 2),
-            total_total_miles DECIMAL(15, 2),
+            total_miles DECIMAL(15, 2),
             method ENUM('ACTUAL_GPS', 'HYBRID', 'RECONSTRUCTED') DEFAULT 'RECONSTRUCTED',
             confidence_level ENUM('HIGH', 'MEDIUM', 'LOW') DEFAULT 'LOW',
             route_meta JSON,
@@ -55,11 +54,11 @@ async function upgrade() {
         )
     `);
 
-    console.log('--- IFTA INTELLIGENCE UPGRADE COMPLETE ---');
-    process.exit(0);
+  console.log("--- IFTA INTELLIGENCE UPGRADE COMPLETE ---");
+  process.exit(0);
 }
 
-upgrade().catch(err => {
-    console.error(err);
-    process.exit(1);
+upgrade().catch((err) => {
+  console.error(err);
+  process.exit(1);
 });

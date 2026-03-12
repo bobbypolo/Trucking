@@ -511,7 +511,10 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/accounting/settlements",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/settlements]");
+      log.error(
+        { err: error },
+        "SERVER ERROR [GET /api/accounting/settlements]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -736,7 +739,10 @@ router.patch(
         correlationId: req.correlationId,
         route: "PATCH /api/accounting/docs/:id",
       });
-      log.error({ err: error }, "SERVER ERROR [PATCH /api/accounting/docs/:id]");
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/accounting/docs/:id]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -803,7 +809,7 @@ router.post(
     const audit = req.body;
     try {
       await pool.query(
-        "INSERT INTO ifta_trips_audit (id, tenant_id, truck_id, load_id, trip_date, start_odometer, end_odometer, total_total_miles, method, confidence_level, jurisdiction_miles, status, attested_by, attested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+        "INSERT INTO ifta_trips_audit (id, tenant_id, truck_id, load_id, trip_date, start_odometer, end_odometer, total_miles, method, confidence_level, jurisdiction_miles, status, attested_by, attested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
         [
           uuidv4(),
           tenantId,
@@ -915,7 +921,10 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/accounting/ifta-summary",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/ifta-summary]");
+      log.error(
+        { err: error },
+        "SERVER ERROR [GET /api/accounting/ifta-summary]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },
