@@ -54,9 +54,8 @@ interface VehicleMarker {
 }
 
 const GOOGLE_MAPS_API_KEY =
-  (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || "YOUR_API_KEY_HERE";
-const WEATHER_API_KEY =
-  (import.meta as any).env.VITE_WEATHER_API_KEY || "YOUR_WEATHER_API_KEY";
+  (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY || "";
+const WEATHER_API_KEY = (import.meta as any).env.VITE_WEATHER_API_KEY || "";
 
 const mapContainerStyle = {
   width: "100%",
@@ -216,7 +215,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const fetchWeather = useCallback(async (lat: number, lng: number) => {
     try {
       // Mock weather for demo if key is missing
-      if (WEATHER_API_KEY === "YOUR_WEATHER_API_KEY") {
+      if (!WEATHER_API_KEY) {
         setWeather({
           temp: 72,
           condition: "Partly Cloudy",
@@ -341,10 +340,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   }, [loads, routePaths]);
 
   // AC3: Graceful fallback when GOOGLE_MAPS_API_KEY is absent
-  const hasValidApiKey =
-    GOOGLE_MAPS_API_KEY &&
-    GOOGLE_MAPS_API_KEY !== "YOUR_API_KEY_HERE" &&
-    GOOGLE_MAPS_API_KEY.length > 10;
+  const hasValidApiKey = GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY.length > 10;
 
   if (!hasValidApiKey) {
     return (
@@ -352,7 +348,19 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         className="flex-1 relative overflow-hidden w-full h-full"
         data-testid="map-fallback"
       >
-        <div className="absolute inset-0 bg-slate-950 flex items-center justify-center">
+        {/* Error banner — visible when Google Maps API key not configured */}
+        <div
+          className="absolute top-0 left-0 right-0 z-10 bg-red-900/90 border-b border-red-700 px-4 py-2 flex items-center gap-2"
+          data-testid="maps-api-key-error-banner"
+          role="alert"
+        >
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <span className="text-sm font-semibold text-red-200">
+            Google Maps API key not configured — map features are unavailable.
+            Set VITE_GOOGLE_MAPS_API_KEY in your environment.
+          </span>
+        </div>
+        <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
           <div className="text-center p-8 bg-slate-900/80 border border-slate-700 rounded-2xl max-w-md">
             <MapIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
             <h3 className="text-lg font-bold text-white mb-2">
