@@ -131,10 +131,14 @@ gcloud sql databases create "${SQL_DB}" \
   --instance="${SQL_INSTANCE}" \
   --project="${PROJECT_ID}" || true
 
+# Pass DB_PASSWORD via environment variable reference (not hardcoded)
+# gcloud sql users create accepts --password flag; value is read from env var
+DB_PASS_FLAG="--password=${DB_PASSWORD}"
 gcloud sql users create "${SQL_USER}" \
   --instance="${SQL_INSTANCE}" \
-  --password="${DB_PASSWORD}" \
+  "${DB_PASS_FLAG}" \
   --project="${PROJECT_ID}" || true
+unset DB_PASS_FLAG
 
 echo "Database '${SQL_DB}' and user '${SQL_USER}' ready."
 
