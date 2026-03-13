@@ -645,7 +645,7 @@
       "gateCmds": {
         "regression_tier": "story006_staging_evidence"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     }
   ]
