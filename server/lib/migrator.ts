@@ -198,7 +198,8 @@ export class MigrationRunner {
    * Ensure the _migrations tracking table exists.
    */
   private async ensureTable(): Promise<void> {
-    await this.db.execute(CREATE_MIGRATIONS_TABLE);
+    // Use query() not execute() -- CREATE TABLE IF NOT EXISTS is DDL, not supported by prepared statements
+    await this.db.query(CREATE_MIGRATIONS_TABLE);
   }
 
   /**
@@ -265,9 +266,11 @@ export class MigrationRunner {
       await this.db.beginTransaction();
       try {
         // Execute the UP SQL
+        // Use query() instead of execute() for DDL statements:
+        // mysql2 execute() uses prepared statements which don't support DDL.
         const statements = splitStatements(migration.parsed.up);
         for (const stmt of statements) {
-          await this.db.execute(stmt);
+          await this.db.query(stmt);
         }
 
         // Record in tracking table
@@ -320,9 +323,11 @@ export class MigrationRunner {
     await this.db.beginTransaction();
     try {
       // Execute the DOWN SQL
+      // Use query() instead of execute() for DDL statements:
+      // mysql2 execute() uses prepared statements which don't support DDL.
       const statements = splitStatements(migration.parsed.down);
       for (const stmt of statements) {
-        await this.db.execute(stmt);
+        await this.db.query(stmt);
       }
 
       // Remove from tracking table
@@ -347,16 +352,63 @@ export class MigrationRunner {
  * Skips empty statements and comment-only lines.
  */
 function splitStatements(sql: string): string[] {
-  return sql
-    .split(";")
-    .map((s) => s.trim())
-    .filter((s) => {
-      if (!s) return false;
-      // Skip comment-only segments
-      const lines = s
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l && !l.startsWith("--"));
-      return lines.length > 0;
-    });
+  // Split on semicolons that are NOT inside single-quoted strings.
+  // This handles INSERT VALUES with semicolons in description fields.
+  const statements: string[] = [];
+  let current = "";
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+
+    if (escaped) {
+      current += char;
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\" && inString) {
+      escaped = true;
+      current += char;
+      continue;
+    }
+
+    if (char === "'" && !escaped) {
+      inString = !inString;
+      current += char;
+      continue;
+    }
+
+    if (char === ";" && !inString) {
+      const trimmed = current.trim();
+      if (trimmed) {
+        const lines = trimmed
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l && !l.startsWith("--"));
+        if (lines.length > 0) {
+          statements.push(trimmed);
+        }
+      }
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  // Handle trailing content without trailing semicolon
+  const trimmed = current.trim();
+  if (trimmed) {
+    const lines = trimmed
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith("--"));
+    if (lines.length > 0) {
+      statements.push(trimmed);
+    }
+  }
+
+  return statements;
 }

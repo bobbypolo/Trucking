@@ -1367,7 +1367,12 @@ const IntelligenceHub: React.FC<{
             status: "Approved",
           }),
         });
-      } catch (e) {}
+      } catch (e) {
+        console.warn(
+          "Failed to record emergency charge:",
+          e instanceof Error ? e.message : e,
+        );
+      }
     }
 
     await handleActionLogging({

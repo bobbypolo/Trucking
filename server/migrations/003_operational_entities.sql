@@ -9,7 +9,7 @@
 
 -- 1. Add company_id to incidents (tenant scoping)
 ALTER TABLE incidents
-  ADD COLUMN IF NOT EXISTS company_id VARCHAR(36) NULL AFTER id;
+  ADD COLUMN company_id VARCHAR(36) NULL AFTER id;
 
 -- Back-fill company_id from the associated load's company_id
 UPDATE incidents i
@@ -24,7 +24,7 @@ ALTER TABLE incidents
 
 -- 2. Add company_id to messages (tenant scoping)
 ALTER TABLE messages
-  ADD COLUMN IF NOT EXISTS company_id VARCHAR(36) NULL AFTER id;
+  ADD COLUMN company_id VARCHAR(36) NULL AFTER id;
 
 UPDATE messages m
   JOIN loads l ON m.load_id = l.id
@@ -54,6 +54,6 @@ CREATE TABLE IF NOT EXISTS call_sessions (
 );
 
 -- Index for tenant-scoped queries
-CREATE INDEX IF NOT EXISTS idx_call_sessions_company_id ON call_sessions (company_id);
-CREATE INDEX IF NOT EXISTS idx_incidents_company_id ON incidents (company_id);
-CREATE INDEX IF NOT EXISTS idx_messages_company_id ON messages (company_id);
+CREATE INDEX idx_call_sessions_company_id ON call_sessions (company_id);
+CREATE INDEX idx_incidents_company_id ON incidents (company_id);
+CREATE INDEX idx_messages_company_id ON messages (company_id);
