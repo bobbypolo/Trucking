@@ -188,24 +188,40 @@ async function main(): Promise<void> {
 
   logger.info({ dryRun, rollbackTest }, "=== Staging Migration Rehearsal ===");
 
-  if (!process.env.DB_HOST || !process.env.DB_NAME) {
+  const socketPath = process.env.DB_SOCKET_PATH;
+  const hasHost = !!process.env.DB_HOST;
+
+  if (!socketPath && !hasHost) {
     logger.error(
-      "DB_HOST and DB_NAME must be set. Configure staging database credentials in .env",
+      "Either DB_SOCKET_PATH (Cloud SQL Unix socket) or DB_HOST (TCP) must be set. Configure staging database credentials in .env",
     );
     process.exit(1);
   }
 
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
+  if (!process.env.DB_NAME) {
+    logger.error("DB_NAME must be set. Configure staging database credentials in .env");
+    process.exit(1);
+  }
+
+  // Build connection config: prefer Cloud SQL Unix socket (DB_SOCKET_PATH) over TCP (DB_HOST + DB_PORT).
+  const connectionConfig: mysql.ConnectionOptions = {
+    ...(socketPath
+      ? { socketPath }
+      : {
+          host: process.env.DB_HOST,
+          port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+        }),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     multipleStatements: false,
-  });
+  };
+
+  const connection = await mysql.createConnection(connectionConfig);
 
   const report: RehearsalReport = {
     timestamp: new Date().toISOString(),
-    environment: `${process.env.DB_HOST}/${process.env.DB_NAME}`,
+    environment: `${process.env.DB_SOCKET_PATH || process.env.DB_HOST}/${process.env.DB_NAME}`,
     dryRun,
     rollbackTest,
     preMigration: null,
