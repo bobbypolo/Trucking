@@ -223,6 +223,83 @@ router.post(
   },
 );
 
+// Audit — Load Activity Audit endpoint (tenant from auth context, NOT URL param)
+router.get(
+  "/api/audit",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    const tenantId = user.tenantId;
+
+    // Parse optional query params
+    const limit = Math.min(
+      parseInt((req.query.limit as string) || "50", 10),
+      500,
+    );
+    const offset = parseInt((req.query.offset as string) || "0", 10);
+    const eventType = req.query.type as string | undefined;
+    const loadId = req.query.loadId as string | undefined;
+
+    try {
+      // Build WHERE clause — tenant scoped via auth-derived tenantId
+      const conditions: string[] = ["l.company_id = ?"];
+      const params: unknown[] = [tenantId];
+
+      if (eventType) {
+        conditions.push("de.event_type = ?");
+        params.push(eventType);
+      }
+      if (loadId) {
+        conditions.push("de.load_id = ?");
+        params.push(loadId);
+      }
+
+      const whereClause = conditions.join(" AND ");
+
+      const entriesQuery = `
+        SELECT
+          de.id,
+          de.event_type,
+          de.message,
+          de.created_at,
+          de.load_id,
+          l.load_number,
+          COALESCE(u.name, 'System') AS actor_name
+        FROM dispatch_events de
+        JOIN loads l ON de.load_id = l.id
+        LEFT JOIN users u ON de.dispatcher_id = u.id
+        WHERE ${whereClause}
+        ORDER BY de.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      const entryParams = [...params, limit, offset];
+      const [rows] = await pool.query(entriesQuery, entryParams);
+
+      const countQuery = `
+        SELECT COUNT(*) AS total
+        FROM dispatch_events de
+        JOIN loads l ON de.load_id = l.id
+        WHERE ${whereClause}
+      `;
+      const [countRows] = await pool.query(countQuery, params);
+      const total = (countRows as Array<{ total: number }>)[0]?.total ?? 0;
+
+      res.json({ entries: rows, total });
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/audit",
+      });
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [GET /api/audit]",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 // Dashboard
 router.get(
   "/api/dashboard/cards",

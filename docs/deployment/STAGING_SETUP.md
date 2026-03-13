@@ -11,6 +11,69 @@ This document provides sequential setup steps for the LoadPilot staging environm
 
 ---
 
+## Automated Deployment Scripts
+
+All manual commands in this document have been automated into scripts. Run them in order:
+
+```bash
+# Step 1: Provision GCP infrastructure (Cloud SQL, Artifact Registry, Secret Manager, service accounts)
+bash scripts/provision-gcp.sh
+
+# Step 2: Build Docker image, push to Artifact Registry, deploy Cloud Run + Firebase Hosting
+bash scripts/deploy-staging.sh
+
+# Step 3: Run database migrations against staging Cloud SQL via Cloud SQL Auth Proxy
+bash scripts/run-staging-migrations.sh
+
+# Step 4: Verify staging health, auth enforcement, and CORS
+bash scripts/verify-staging.sh
+
+# Step 5: Execute rollback drill
+bash scripts/rollback-drill.sh
+
+# Step 6: Configure Cloud Monitoring alert policies
+bash scripts/setup-monitoring.sh
+```
+
+> **scripts/provision-gcp.sh** provisions Cloud SQL, Artifact Registry
+> (`us-central1-docker.pkg.dev`), Secret Manager secrets (DB_PASSWORD and
+> GEMINI_API_KEY only), and dedicated service account `loadpilot-api-sa`.
+>
+> **scripts/deploy-staging.sh** builds and pushes the Docker image to Artifact
+> Registry, deploys Cloud Run `loadpilot-api` with dedicated service account
+> (`--service-account=loadpilot-api-sa@...`) and sets `DB_SOCKET_PATH=/cloudsql/...`
+> (not DB_HOST overloading), then deploys Firebase Hosting.
+>
+> **scripts/run-staging-migrations.sh** starts Cloud SQL Auth Proxy on port 3307
+> (TCP mode) and runs `staging-rehearsal.ts`.
+>
+> **scripts/verify-staging.sh** runs health checks against both Cloud Run URL and
+> Firebase Hosting URL, verifies auth returns 401/403 (not 500), validates CORS
+> headers, and confirms the frontend bundle does not contain `localhost`.
+
+---
+
+## DB Connection — DB_SOCKET_PATH (Cloud Run)
+
+Cloud Run connects to Cloud SQL via a Unix socket path, NOT via `DB_HOST`. Use
+the dedicated `DB_SOCKET_PATH` environment variable (not an overloaded `DB_HOST`):
+
+```
+DB_SOCKET_PATH=/cloudsql/gen-lang-client-0535844903:us-central1:loadpilot-staging
+```
+
+`server/db.ts` checks `DB_SOCKET_PATH` first. If set, it uses the `socketPath`
+parameter (Cloud SQL socket mode). Otherwise it falls back to `DB_HOST` + `DB_PORT`
+for local TCP connections.
+
+> Do NOT set `DB_HOST=/cloudsql/...` on Cloud Run. Use `DB_SOCKET_PATH` for
+> socket-mode connections and leave `DB_HOST` for local dev only.
+
+---
+
+
+---
+
 ## Prerequisites
 
 - GCP project created (separate from production)
