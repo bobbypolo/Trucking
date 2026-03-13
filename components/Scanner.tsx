@@ -35,12 +35,16 @@ async function aiPost(
 interface Props {
   onDataExtracted: (data: any, secondaryData?: any) => void;
   onCancel: () => void;
+  /** onDismiss closes the scanner overlay without cancelling the parent load
+   *  creation flow. If not provided, falls back to onCancel for backward compatibility. */
+  onDismiss?: () => void;
   mode?: "load" | "broker" | "equipment" | "training";
 }
 
 export const Scanner: React.FC<Props> = ({
   onDataExtracted,
   onCancel,
+  onDismiss,
   mode = "load",
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -195,7 +199,7 @@ export const Scanner: React.FC<Props> = ({
           )}
           <div className="w-full border-t border-slate-700 pt-6 flex justify-center">
             <button
-              onClick={onCancel}
+              onClick={onDismiss ?? onCancel}
               className="text-slate-400 hover:text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 rounded hover:bg-slate-700 transition-colors"
             >
               Cancel Operation

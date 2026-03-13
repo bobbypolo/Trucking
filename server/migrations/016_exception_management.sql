@@ -1,4 +1,5 @@
 -- Migration: Exception Management System V1
+-- UP
 
 -- Reference Tables
 CREATE TABLE IF NOT EXISTS exception_status (
@@ -78,23 +79,23 @@ INSERT IGNORE INTO exception_status (status_code, display_name, is_terminal, sor
 INSERT IGNORE INTO exception_type
 (type_code, display_name, dashboard_group, default_owner_team, default_severity, default_sla_hours, description)
 VALUES
-('DELAY_REPORTED','Delay Reported','Delay Entry','Dispatch',2,2,'Driver/carrier reported delay; requires ETA update + notifications'),
-('CARRIER_DELAY','Carrier Delay','Carrier Delay','Dispatch',3,1,'Confirmed carrier delay; detention risk'),
-('MISSED_APPT','Missed Appointment','Carrier Delay','Dispatch',4,0.5,'Appointment missed; immediate reschedule/notify'),
-('DETENTION_ELIGIBLE','Detention Eligible','Delay Entry','Billing',2,8,'Detention timer suggests eligibility; draft accessorial'),
-('LUMPER_REQUEST','Lumper Request','Delay Entry','Billing',2,12,'Lumper fee submitted; needs receipt + approval'),
-('LAYOVER_REQUEST','Layover Request','Delay Entry','Billing',2,12,'Layover requested; needs approval/docs'),
-('VEHICLE_OOS','Vehicle Out of Service','Maintenance Entry','Fleet/Maint',4,1,'Asset is OOS; blocks dispatch assignment'),
-('BREAKDOWN','Breakdown','Maintenance Entry','Fleet/Maint',3,1,'Road breakdown; roadside + recovery workflow'),
-('PM_OVERDUE','PM Overdue','Maintenance Entry','Fleet/Maint',2,72,'PM overdue; may restrict dispatch by policy'),
-('POD_MISSING','POD Missing','Document Entry','Billing',3,24,'POD not received; invoice hold risk'),
-('DOC_PENDING_48H','Docs Pending 48h','Document Entry','Billing',2,12,'Docs pending >48h; escalation needed'),
+('DELAY_REPORTED','Delay Reported','Delay Entry','Dispatch',2,2,'Driver/carrier reported delay - requires ETA update + notifications'),
+('CARRIER_DELAY','Carrier Delay','Carrier Delay','Dispatch',3,1,'Confirmed carrier delay - detention risk'),
+('MISSED_APPT','Missed Appointment','Carrier Delay','Dispatch',4,0.5,'Appointment missed - immediate reschedule/notify'),
+('DETENTION_ELIGIBLE','Detention Eligible','Delay Entry','Billing',2,8,'Detention timer suggests eligibility - draft accessorial'),
+('LUMPER_REQUEST','Lumper Request','Delay Entry','Billing',2,12,'Lumper fee submitted - needs receipt + approval'),
+('LAYOVER_REQUEST','Layover Request','Delay Entry','Billing',2,12,'Layover requested - needs approval/docs'),
+('VEHICLE_OOS','Vehicle Out of Service','Maintenance Entry','Fleet/Maint',4,1,'Asset is OOS - blocks dispatch assignment'),
+('BREAKDOWN','Breakdown','Maintenance Entry','Fleet/Maint',3,1,'Road breakdown - roadside + recovery workflow'),
+('PM_OVERDUE','PM Overdue','Maintenance Entry','Fleet/Maint',2,72,'PM overdue - may restrict dispatch by policy'),
+('POD_MISSING','POD Missing','Document Entry','Billing',3,24,'POD not received - invoice hold risk'),
+('DOC_PENDING_48H','Docs Pending 48h','Document Entry','Billing',2,12,'Docs pending >48h - escalation needed'),
 ('SIGNATURE_MISSING','Signature Missing','Document Entry','Billing',2,12,'Signature missing on critical doc'),
-('BOL_MISSING','BOL Missing','Document Entry','Dispatch',2,6,'BOL missing; blocks close-out'),
-('RATE_CONFIRM_MISSING','Rate Confirmation Missing','Document Entry','Billing',2,6,'Rate con missing; blocks invoicing'),
-('REROUTE_REQUEST','Reroute Request','System Entry','Dispatch',3,2,'Reroute requested; approve if rate impact'),
-('ADDRESS_CORRECTION','Address Correction','System Entry','Dispatch',2,4,'Address correction needed; updates lane/appt'),
-('RATE_CORRECTION','Rate Correction','System Entry','Billing',3,6,'Change order / rate correction; affects invoice + settlement'),
+('BOL_MISSING','BOL Missing','Document Entry','Dispatch',2,6,'BOL missing - blocks close-out'),
+('RATE_CONFIRM_MISSING','Rate Confirmation Missing','Document Entry','Billing',2,6,'Rate con missing - blocks invoicing'),
+('REROUTE_REQUEST','Reroute Request','System Entry','Dispatch',3,2,'Reroute requested - approve if rate impact'),
+('ADDRESS_CORRECTION','Address Correction','System Entry','Dispatch',2,4,'Address correction needed - updates lane/appt'),
+('RATE_CORRECTION','Rate Correction','System Entry','Billing',3,6,'Change order / rate correction - affects invoice + settlement'),
 ('ACCESSORIAL_CORRECTION','Accessorial Correction','System Entry','Billing',2,12,'Detention/lumper/layover correction'),
 ('INVOICE_HOLD','Invoice Hold','Process All Exceptions','Billing',3,24,'Invoice can’t issue due to missing requirements'),
 ('SETTLEMENT_HOLD','Settlement Hold','Process All Exceptions','Payroll/Settlements',2,24,'Driver pay held pending docs/approvals'),
@@ -127,3 +128,10 @@ INSERT IGNORE INTO dashboard_card (card_code, display_name, sort_order, icon_key
 ('ALL_EXCEPTIONS','Process All Exceptions',80,'inbox','/exceptions',
  '{"status_not_in":["RESOLVED","CLOSED"]}'
 );
+
+-- DOWN
+DROP TABLE IF EXISTS exception_events;
+DROP TABLE IF EXISTS exceptions;
+DROP TABLE IF EXISTS dashboard_card;
+DROP TABLE IF EXISTS exception_type;
+DROP TABLE IF EXISTS exception_status;

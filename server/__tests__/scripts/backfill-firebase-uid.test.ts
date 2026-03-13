@@ -9,11 +9,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { execSync, spawnSync } from "child_process";
 import path from "path";
-import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
 import dotenv from "dotenv";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "../../..");
 const SERVER_DIR = path.resolve(__dirname, "../..");
 

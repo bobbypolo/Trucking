@@ -5,9 +5,6 @@
 
 -- UP
 
-CREATE DATABASE IF NOT EXISTS trucklogix;
-USE trucklogix;
-
 -- 1. Companies
 CREATE TABLE IF NOT EXISTS companies (
   id VARCHAR(36) PRIMARY KEY,

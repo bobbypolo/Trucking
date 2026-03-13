@@ -18,11 +18,11 @@ const MIGRATIONS = [
   "server/migrations/007_ocr_results.sql",
   "server/migrations/008_settlements.sql",
   "server/migrations/009_settlement_adjustments.sql",
-  "server/migrations/exception_management.sql",
   "server/migrations/011_accounting_financial_ledger.sql",
   "server/migrations/012_accounting_v3_extensions.sql",
   "server/migrations/013_ifta_intelligence.sql",
   "server/migrations/015_add_users_phone.sql",
+  "server/migrations/016_exception_management.sql",
 ];
 
 const IGNORABLE_CODES = new Set([
