@@ -33,6 +33,7 @@ dist-ssr/
 
 # Secrets and credentials — never track
 server/.env
+.env.staging
 *.key
 *.pem
 serviceAccount*.json
