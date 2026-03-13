@@ -176,6 +176,44 @@ Return to the relevant checklist item, resolve the issue, and re-run the full ch
 
 ---
 
+
+---
+
+## Operator Execution Guide
+
+Run these scripts in order to complete the GCP staging deployment and satisfy checklist items 2-8:
+
+```bash
+# 1. Provision GCP infrastructure (Cloud SQL, Secret Manager, service accounts)
+bash scripts/provision-gcp.sh
+
+# 2. Build and push Docker image, deploy Cloud Run service
+bash scripts/deploy-staging.sh
+
+# 3. Run database migrations against staging Cloud SQL  (satisfies item 2)
+bash scripts/run-staging-migrations.sh
+
+# 4. Verify staging health, auth enforcement, and CORS headers
+bash scripts/verify-staging.sh
+
+# 5. Execute rollback drill — updates docs/deployment/ROLLBACK_DRILL_EVIDENCE.md (satisfies item 4)
+bash scripts/rollback-drill.sh
+
+# 6. Configure Cloud Monitoring alert policies and notification channel (satisfies item 7)
+NOTIFICATION_EMAIL=oncall@example.com bash scripts/setup-monitoring.sh
+```
+
+### Secret Manager Verification (item 6)
+
+Use `scripts/provision-gcp.sh` to store secrets. After provisioning, verify with:
+
+```bash
+gcloud secrets list --project=$(gcloud config get-value project)
+```
+
+All required secrets (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, FIREBASE_PROJECT_ID,
+GOOGLE_APPLICATION_CREDENTIALS, CORS_ORIGIN) must return OK before checking item 6.
+
 ## Revision History
 
 | Version | Date | Author | Changes |
