@@ -8,7 +8,7 @@
 #   1. Logs gate entry timestamp
 #   2. Identifies the latest revision of loadpilot-api-prod
 #   3. Checks health before routing traffic
-#   4. Routes 10% traffic to latest revision (90% stays on stable revision)
+#   4. Routes 5% traffic to latest revision (95% stays on stable revision)
 #   5. Runs smoke tests against the production URL
 #   6. Auto-rollbacks to 0% on latest if smoke test fails
 #   7. Logs gate exit timestamp and result
@@ -95,7 +95,7 @@ if [[ "${PRE_HEALTH}" != "PASS" ]]; then
   error "Production service not healthy before Gate A. Aborting."
 fi
 
-# ─── Step 3: Route 10% traffic to latest revision ─────────────────────────────
+# ─── Step 3: Route 5% traffic to latest revision ──────────────────────────────
 
 log "Step 3: Routing ${TRAFFIC_PCT}% traffic to ${LATEST_REVISION}..."
 gcloud run services update-traffic "${SERVICE_NAME}" \

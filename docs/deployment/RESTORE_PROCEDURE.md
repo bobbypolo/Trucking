@@ -20,7 +20,7 @@ from Cloud SQL automated backups or via Point-in-Time Recovery (PITR). It covers
 Before starting any restore procedure:
 
 - [ ] Authenticated with gcloud: `gcloud auth login`
-- [ ] Correct project active: `gcloud config set project gen-lang-client-0535844903`
+- [ ] Correct project active: `gcloud config set project $PROD_PROJECT_ID`
 - [ ] Required IAM role: **Cloud SQL Admin** (`roles/cloudsql.admin`)
 - [ ] Incident channel open (notify team before starting)
 - [ ] Note the incident start time and estimated data loss window
@@ -37,7 +37,7 @@ daily backup point.
 ```bash
 gcloud sql backups list \
   --instance=loadpilot-prod \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 Note the `BACKUP_ID` of the backup closest to (but before) the incident.
@@ -47,7 +47,7 @@ Note the `BACKUP_ID` of the backup closest to (but before) the incident.
 ```bash
 gcloud sql backups restore BACKUP_ID \
   --restore-instance=loadpilot-prod \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 > **Warning:** This operation overwrites all data in `loadpilot-prod` with the backup contents.
@@ -59,7 +59,7 @@ Wait for the operation to complete (typically 5-10 minutes for production-sized 
 
 ```bash
 # Connect via Cloud SQL Auth Proxy
-cloud_sql_proxy -instances=gen-lang-client-0535844903:us-central1:loadpilot-prod=tcp:3306
+cloud_sql_proxy -instances=$PROD_PROJECT_ID:us-central1:loadpilot-prod=tcp:3306
 
 # Run integrity checks
 mysql -u root -p -h 127.0.0.1 trucklogix_prod <<'EOF'
@@ -92,7 +92,7 @@ Example: `2026-03-13T14:30:00Z`
 ```bash
 gcloud sql instances clone loadpilot-prod loadpilot-prod-restored \
   --point-in-time=2026-03-13T14:30:00Z \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 This creates a new instance `loadpilot-prod-restored` with data at the specified timestamp.
@@ -101,7 +101,7 @@ The original `loadpilot-prod` instance is **not affected**.
 ### Step 3 — Validate restored data
 
 ```bash
-cloud_sql_proxy -instances=gen-lang-client-0535844903:us-central1:loadpilot-prod-restored=tcp:3307
+cloud_sql_proxy -instances=$PROD_PROJECT_ID:us-central1:loadpilot-prod-restored=tcp:3307
 
 mysql -u root -p -h 127.0.0.1 -P 3307 trucklogix_prod <<'EOF'
 SELECT COUNT(*) AS load_count FROM loads;
@@ -120,13 +120,13 @@ EOF
 gcloud sql export sql loadpilot-prod-restored \
   gs://loadpilot-prod-backups/pitr-restore-$(date +%Y%m%d).sql \
   --database=trucklogix_prod \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 
 # Import into production instance
 gcloud sql import sql loadpilot-prod \
   gs://loadpilot-prod-backups/pitr-restore-$(date +%Y%m%d).sql \
   --database=trucklogix_prod \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 **Option B — Rename and swap (faster, higher risk):**
@@ -134,11 +134,11 @@ gcloud sql import sql loadpilot-prod \
 ```bash
 # Rename production to backup
 gcloud sql instances patch loadpilot-prod --new-name=loadpilot-prod-damaged \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 
 # Rename restored to production
 gcloud sql instances patch loadpilot-prod-restored --new-name=loadpilot-prod \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 ### Step 5 — Clean up restored instance
@@ -147,7 +147,7 @@ After confirming production is healthy:
 
 ```bash
 gcloud sql instances delete loadpilot-prod-restored \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 ---
@@ -162,13 +162,13 @@ or when validating a backup before restoring to production.
 ```bash
 gcloud sql backups restore BACKUP_ID \
   --restore-instance=loadpilot-staging \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 ### Step 2 — Connect to staging and investigate
 
 ```bash
-cloud_sql_proxy -instances=gen-lang-client-0535844903:us-central1:loadpilot-staging=tcp:3307
+cloud_sql_proxy -instances=$PROD_PROJECT_ID:us-central1:loadpilot-staging=tcp:3307
 
 mysql -u root -p -h 127.0.0.1 -P 3307 trucklogix_staging
 ```

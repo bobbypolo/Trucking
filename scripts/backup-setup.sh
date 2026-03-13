@@ -27,9 +27,6 @@ if ! gcloud auth print-access-token --quiet > /dev/null 2>&1; then
   exit 1
 fi
 
-# Set active project
-gcloud config set project "${PROJECT_ID}"
-
 echo "Step 1: Configuring automated backups with PITR on ${INSTANCE}..."
 gcloud sql instances patch "${INSTANCE}" \
   --project="${PROJECT_ID}" \

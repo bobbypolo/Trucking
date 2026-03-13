@@ -1,9 +1,13 @@
 # Deployment Runbook — LoadPilot (Cloud Run + Firebase Hosting)
 
-> Version: 2.0 | Last Updated: 2026-03-13
+> Version: 3.0 | Last Updated: 2026-03-13
 > Deployment Targets: Cloud Run (backend) + Firebase Hosting (frontend)
 
-This runbook covers every step required to deploy LoadPilot to production. Follow it in order. Do not skip steps. Gate 0 of the Controlled Rollout Plan must be GREEN before executing this runbook.
+> **WARNING:** This runbook uses `$PROD_PROJECT_ID` placeholders. Replace with your actual production
+> GCP project ID before executing any commands. Do NOT use the staging project ID.
+> For the authoritative production operator checklist, see `OPERATOR_COMMAND_CHECKLIST.md`.
+
+This runbook covers every step required to deploy LoadPilot to production. Follow it in order. Do not skip steps. All Go/No-Go sections (A-H) must be GREEN before executing this runbook.
 
 ---
 
@@ -11,20 +15,20 @@ This runbook covers every step required to deploy LoadPilot to production. Follo
 
 Complete all items before starting the Deploy Steps. Any NO answer is a hard stop.
 
-| # | Check | Command / Evidence | Pass? |
-|---|-------|-------------------|-------|
-| 1 | All unit + integration tests pass (0 failures) | `cd server && npx vitest run 2>&1 \| grep "Tests"` shows 0 failed | [ ] |
-| 2 | Migration rehearsal passed on staging Cloud SQL | `npx tsx server/scripts/staging-rehearsal.ts` exits 0 with `"overallPassed": true` | [ ] |
-| 3 | Staging E2E functional sweep passed | `npx playwright test e2e/functional-sweep.spec.ts --reporter=list` shows all passing | [ ] |
-| 4 | Staging rollback drill completed with evidence | See `docs/deployment/ROLLBACK_DRILL_EVIDENCE.md` | [ ] |
-| 5 | Runbook reviewed by on-call operator | Sign-off: ______________ Date: ______________ | [ ] |
-| 6 | All required env vars confirmed in GCP Secret Manager | See ENV_INVENTORY.md for full list | [ ] |
-| 7 | Cloud Monitoring dashboard configured | See Post-Deploy Verification section | [ ] |
-| 8 | On-call engineer assigned and available | Name: ______________ Contact: ______________ | [ ] |
-| 9 | Baseline test suite is NOT materially red | **Go/No-Go CANNOT pass while baseline has unresolved failures** | [ ] |
-| 10 | `npm run build` (Vite) completes with 0 errors | `npm run build 2>&1 \| tail -5` shows build success + dist/ populated | [ ] |
-| 11 | Docker container builds and starts successfully | `docker build -t loadpilot-api . && docker run --rm loadpilot-api node -e "require('./dist/index.js')"` | [ ] |
-| 12 | CORS_ORIGIN matches the Firebase Hosting domain | `echo $CORS_ORIGIN` matches the frontend URL | [ ] |
+| #   | Check                                                 | Command / Evidence                                                                                                | Pass? |
+| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----- |
+| 1   | All unit + integration tests pass (0 failures)        | `cd server && npx vitest run 2>&1 \| grep "Tests"` shows 0 failed                                                 | [ ]   |
+| 2   | Migration rehearsal passed on staging Cloud SQL       | `npx tsx server/scripts/staging-rehearsal.ts` exits 0 with `"overallPassed": true`                                | [ ]   |
+| 3   | Staging E2E functional sweep passed                   | `npx playwright test e2e/functional-sweep.spec.ts --reporter=list` shows all passing                              | [ ]   |
+| 4   | Staging rollback drill completed with evidence        | See `docs/deployment/ROLLBACK_DRILL_EVIDENCE.md`                                                                  | [ ]   |
+| 5   | Runbook reviewed by on-call operator                  | Sign-off: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***                                                         | [ ]   |
+| 6   | All required env vars confirmed in GCP Secret Manager | See ENV_INVENTORY.md for full list                                                                                | [ ]   |
+| 7   | Cloud Monitoring dashboard configured                 | See Post-Deploy Verification section                                                                              | [ ]   |
+| 8   | On-call engineer assigned and available               | Name: **\*\***\_\_**\*\*** Contact: **\*\***\_\_**\*\***                                                          | [ ]   |
+| 9   | Baseline test suite is NOT materially red             | **Go/No-Go CANNOT pass while baseline has unresolved failures**                                                   | [ ]   |
+| 10  | `npm run build` (Vite) completes with 0 errors        | `npm run build 2>&1 \| tail -5` shows build success + dist/ populated                                             | [ ]   |
+| 11  | Docker container builds and starts successfully       | `docker build -t loadpilot-api-prod . && docker run --rm loadpilot-api-prod node -e "require('./dist/index.js')"` | [ ]   |
+| 12  | CORS_ORIGIN matches the Firebase Hosting domain       | `echo $CORS_ORIGIN` matches the frontend URL                                                                      | [ ]   |
 
 ---
 
@@ -48,7 +52,7 @@ Use Artifact Registry (not the deprecated `gcr.io` Container Registry):
 ```bash
 # Build Docker image (tag with git SHA for traceability)
 GIT_SHA=$(git rev-parse --short HEAD)
-AR_IMAGE="us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:${GIT_SHA}"
+AR_IMAGE="us-central1-docker.pkg.dev/$PROD_PROJECT_ID/loadpilot/loadpilot-api-prod:${GIT_SHA}"
 docker build -t "${AR_IMAGE}" .
 docker push "${AR_IMAGE}"
 echo "Image pushed to Artifact Registry: ${AR_IMAGE}"
@@ -79,23 +83,23 @@ If exit code is non-0 or `overallPassed` is false: **STOP. Do not proceed. Execu
 
 ### Step 4 — Deploy Backend to Cloud Run
 
-Deploy using Artifact Registry image and dedicated service account `loadpilot-api-sa`:
+Deploy using Artifact Registry image and dedicated service account `loadpilot-api-prod-sa`:
 
 ```bash
 GIT_SHA=$(git rev-parse --short HEAD)
-AR_IMAGE="us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:${GIT_SHA}"
-SA="loadpilot-api-sa@gen-lang-client-0535844903.iam.gserviceaccount.com"
+AR_IMAGE="us-central1-docker.pkg.dev/$PROD_PROJECT_ID/loadpilot/loadpilot-api-prod:${GIT_SHA}"
+SA="loadpilot-api-prod-sa@$PROD_PROJECT_ID.iam.gserviceaccount.com"
 
-gcloud run deploy loadpilot-api \
+gcloud run deploy loadpilot-api-prod \
   --image "${AR_IMAGE}" \
   --region us-central1 \
   --platform managed \
   --allow-unauthenticated \
   --min-instances 0 \
   --service-account="${SA}" \
-  --add-cloudsql-instances=gen-lang-client-0535844903:us-central1:loadpilot-staging \
+  --add-cloudsql-instances=$PROD_PROJECT_ID:us-central1:loadpilot-staging \
   --set-secrets "DB_PASSWORD=DB_PASSWORD:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
-  --set-env-vars "NODE_ENV=staging,DB_SOCKET_PATH=/cloudsql/gen-lang-client-0535844903:us-central1:loadpilot-staging,DB_USER=trucklogix_staging,DB_NAME=trucklogix_staging,FIREBASE_PROJECT_ID=gen-lang-client-0535844903,CORS_ORIGIN=https://gen-lang-client-0535844903-849a7.web.app"
+  --set-env-vars "NODE_ENV=staging,DB_SOCKET_PATH=/cloudsql/$PROD_PROJECT_ID:us-central1:loadpilot-staging,DB_USER=trucklogix_staging,DB_NAME=trucklogix_staging,FIREBASE_PROJECT_ID=$PROD_PROJECT_ID,CORS_ORIGIN=https://$PROD_PROJECT_ID-849a7.web.app"
 
 echo "Cloud Run deploy timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
@@ -103,7 +107,7 @@ echo "Cloud Run deploy timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 Record the Cloud Run revision URL. Verify the service is SERVING:
 
 ```bash
-gcloud run services describe loadpilot-api --region us-central1 --format="value(status.url)"
+gcloud run services describe loadpilot-api-prod --region us-central1 --format="value(status.url)"
 ```
 
 ### Step 5 — Deploy Frontend to Firebase Hosting
@@ -148,7 +152,7 @@ Expected: All smoke tests pass.
 
 ### Cloud Monitoring Dashboard
 
-1. Open GCP Console → Cloud Run → `loadpilot-api` → Metrics
+1. Open GCP Console → Cloud Run → `loadpilot-api-prod` → Metrics
 2. Verify request count is > 0 (health check hits should register)
 3. Verify error rate < 1%
 4. Verify p99 latency < 2000ms
@@ -157,7 +161,7 @@ Expected: All smoke tests pass.
 ### Cloud Logging — Verify Structured Logs
 
 ```bash
-gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=loadpilot-api" \
+gcloud logging read "resource.type=cloud_run_revision AND resource.labels.service_name=loadpilot-api-prod" \
   --limit=20 \
   --format=json | jq '.[0].jsonPayload'
 ```
@@ -172,7 +176,7 @@ See `docs/deployment/ROLLBACK_PROCEDURE.md` for detailed numbered steps.
 
 **Quick Reference** (execute in this order):
 
-1. `gcloud run services update-traffic loadpilot-api --to-revisions=PREVIOUS=100 --region=us-central1`
+1. `gcloud run services update-traffic loadpilot-api-prod --to-revisions=PREVIOUS=100 --region=us-central1`
 2. `firebase hosting:clone SOURCE_SITE:SOURCE_VERSION DEST_SITE:live`
 3. `npx tsx server/scripts/staging-rehearsal.ts --rollback-test` (triggers MigrationRunner.down() if needed)
 4. DNS/traffic reversal if applicable
@@ -182,18 +186,18 @@ See `docs/deployment/ROLLBACK_PROCEDURE.md` for detailed numbered steps.
 
 ## Emergency Contacts
 
-| Role | Contact | Escalation |
-|------|---------|-----------|
-| On-call engineer | See deployment Pre-Deploy Checklist item 8 | — |
-| Firebase Support | https://firebase.google.com/support | GCP Console → Support |
-| Cloud Run / GCP | https://cloud.google.com/support | GCP Console → Support |
-| Database (Cloud SQL) | GCP Console → Cloud SQL → Instance → Connect | DBA lead |
+| Role                 | Contact                                      | Escalation            |
+| -------------------- | -------------------------------------------- | --------------------- |
+| On-call engineer     | See deployment Pre-Deploy Checklist item 8   | —                     |
+| Firebase Support     | https://firebase.google.com/support          | GCP Console → Support |
+| Cloud Run / GCP      | https://cloud.google.com/support             | GCP Console → Support |
+| Database (Cloud SQL) | GCP Console → Cloud SQL → Instance → Connect | DBA lead              |
 
 ---
 
 ## Revision History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-11 | ralph-story STORY-005 | Initial runbook creation |
-| 2.0 | 2026-03-13 | ralph-story STORY-005 (STORY-005) | Updated Step 2 to use Artifact Registry (not deprecated gcr.io). Updated Step 4 to use dedicated service account loadpilot-api-sa and DB_SOCKET_PATH. Added reference to automated scripts. |
+| Version | Date       | Author                            | Changes                                                                                                                                                                                          |
+| ------- | ---------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1.0     | 2026-03-11 | ralph-story STORY-005             | Initial runbook creation                                                                                                                                                                         |
+| 2.0     | 2026-03-13 | ralph-story STORY-005 (STORY-005) | Updated Step 2 to use Artifact Registry (not deprecated gcr.io). Updated Step 4 to use dedicated service account loadpilot-api-prod-sa and DB_SOCKET_PATH. Added reference to automated scripts. |

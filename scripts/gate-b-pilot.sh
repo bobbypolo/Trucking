@@ -113,7 +113,7 @@ if [[ "${PRE_HEALTH}" != "PASS" ]]; then
   error "Production service not healthy before Gate B. Aborting."
 fi
 
-# ─── Step 3: Route 25% traffic to latest revision ─────────────────────────────
+# ─── Step 3: Route 10% traffic to latest revision ─────────────────────────────
 
 log "Step 3: Routing ${TRAFFIC_PCT}% traffic to ${LATEST_REVISION}..."
 gcloud run services update-traffic "${SERVICE_NAME}" \

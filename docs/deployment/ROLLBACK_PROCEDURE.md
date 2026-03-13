@@ -24,12 +24,12 @@ Roll Cloud Run back to the previous stable revision immediately.
 
 ```bash
 # Identify current and previous revisions
-gcloud run revisions list --service=loadpilot-api --region=us-central1 \
+gcloud run revisions list --service=loadpilot-api-prod --region=us-central1 \
   --format="table(metadata.name,status.conditions[0].type,metadata.creationTimestamp)"
 
 # Rollback: send 100% traffic to the previous revision
 # Replace PREVIOUS_REVISION_NAME with the revision name from the list above
-gcloud run services update-traffic loadpilot-api \
+gcloud run services update-traffic loadpilot-api-prod \
   --to-revisions=PREVIOUS_REVISION_NAME=100 \
   --region=us-central1
 
@@ -145,7 +145,7 @@ PLAYWRIGHT_BASE_URL=https://YOUR_HOSTING_URL \
 ```bash
 # Check for errors in the last 15 minutes
 gcloud logging read \
-  "resource.type=cloud_run_revision AND severity>=ERROR AND resource.labels.service_name=loadpilot-api" \
+  "resource.type=cloud_run_revision AND severity>=ERROR AND resource.labels.service_name=loadpilot-api-prod" \
   --freshness=15m \
   --limit=20 \
   --format=json | jq 'length'
@@ -155,6 +155,7 @@ gcloud logging read \
 ### 5d. Declare Recovery
 
 Only declare recovery when:
+
 - Health check returns 200
 - E2E smoke passes
 - Cloud Logging error rate returns to baseline (< 1%)
@@ -195,6 +196,6 @@ Recovery declared: [UTC]
 
 ## Revision History
 
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0 | 2026-03-11 | ralph-story STORY-005 | Initial rollback procedure |
+| Version | Date       | Author                | Changes                    |
+| ------- | ---------- | --------------------- | -------------------------- |
+| 1.0     | 2026-03-11 | ralph-story STORY-005 | Initial rollback procedure |

@@ -87,16 +87,16 @@ describe("File existence", () => {
 // ─── Traffic percentages ──────────────────────────────────────────────────────
 
 describe("Traffic percentages", () => {
-  it("R-P5-07: Gate A routes 10% traffic", () => {
+  it("R-P5-07: Gate A routes 5% traffic", () => {
     // Tests R-P5-07
-    expect(gateA).toContain("10");
-    expect(gateA).toMatch(/TRAFFIC_PCT=10|10%|=10\b/);
+    expect(gateA).toContain("TRAFFIC_PCT=5");
+    expect(gateA).toMatch(/TRAFFIC_PCT=5\b/);
   });
 
-  it("R-P5-08: Gate B routes 25% traffic", () => {
+  it("R-P5-08: Gate B routes 10% traffic", () => {
     // Tests R-P5-08
-    expect(gateB).toContain("25");
-    expect(gateB).toMatch(/TRAFFIC_PCT=25|25%|=25\b/);
+    expect(gateB).toContain("TRAFFIC_PCT=10");
+    expect(gateB).toMatch(/TRAFFIC_PCT=10\b/);
   });
 
   it("R-P5-09: Gate C routes 50% traffic", () => {

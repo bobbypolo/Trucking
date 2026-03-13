@@ -21,9 +21,14 @@ set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-SERVICE_NAME="${SERVICE_NAME:-loadpilot-api}"
+SERVICE_NAME="${SERVICE_NAME:-loadpilot-api-prod}"
 REGION="${REGION:-us-central1}"
-PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  echo "  Example: export PROD_PROJECT_ID='my-loadpilot-prod'" >&2
+  exit 1
+fi
+PROJECT="${PROD_PROJECT_ID}"
 EVIDENCE_FILE="${EVIDENCE_FILE:-docs/deployment/ROLLBACK_DRILL_EVIDENCE.md}"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────

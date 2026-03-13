@@ -497,15 +497,15 @@ gcloud sql instances describe loadpilot-prod \
 - [ ] `docs/deployment/RESTORE_PROCEDURE.md` has been read end-to-end by the on-call engineer
 - [ ] On-call engineer knows the exact commands to initiate a PITR restore
 - [ ] Target recovery time (RTO) and recovery point (RPO) are understood:
-      RTO target: < 2 hours | RPO target: < 1 hour (with PITR)
+      RTO target: < 15 minutes | RPO target: < 5 minutes (with PITR)
 
 ### D.6 Run Database Migrations
 
 ```bash
 # Apply all 16 migrations (001 through 016) to production Cloud SQL
-bash scripts/run-staging-migrations.sh
-# Note: this script targets the environment specified by DB_SOCKET_PATH.
-# Confirm it is pointed at the PRODUCTION instance before running.
+export PROD_PROJECT_ID="$PROD_PROJECT_ID" && bash scripts/run-production-migrations.sh
+# This script requires PROD_PROJECT_ID and DB_PASSWORD_PROD env vars.
+# It uses Cloud SQL Proxy on port 3308 to connect to loadpilot-prod.
 
 # Verify migrations applied
 npx tsx -e "

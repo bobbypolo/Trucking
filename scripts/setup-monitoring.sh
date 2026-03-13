@@ -22,8 +22,13 @@ set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null)}"
-SERVICE_NAME="${SERVICE_NAME:-loadpilot-api}"
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  echo "  Example: export PROD_PROJECT_ID='my-loadpilot-prod'" >&2
+  exit 1
+fi
+PROJECT="${PROD_PROJECT_ID}"
+SERVICE_NAME="${SERVICE_NAME:-loadpilot-api-prod}"
 NOTIFICATION_EMAIL="${NOTIFICATION_EMAIL:-}"
 
 # Thresholds
