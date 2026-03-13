@@ -71,12 +71,13 @@ const LEGACY_STATUSES = [
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "..", "migrations");
 
-// Expected table count after applying all migrations 001–015.
+// Expected table count after applying all migrations 001–016.
 // This is the authoritative count for the full migration chain.
-// Update this when adding new migrations (016+).
-// Verified count as of migration 015_add_users_phone: 48 tables.
-const EXPECTED_TABLE_COUNT = 48;
-const HIGHEST_MIGRATION = "015_add_users_phone";
+// Update this when adding new migrations (017+).
+// Verified count as of migration 016_exception_management: 53 tables
+// (48 from 001-015 + 5 from 016: exception_status, exception_type, dashboard_card, exceptions, exception_events).
+const EXPECTED_TABLE_COUNT = 53;
+const HIGHEST_MIGRATION = "016_exception_management";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

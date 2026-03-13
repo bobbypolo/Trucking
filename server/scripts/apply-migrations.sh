@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# apply-migrations.sh — Apply schema.sql + all migrations 001-015 sequentially.
+# apply-migrations.sh — Apply schema.sql + all migrations 001-016 sequentially.
 # Exits 0 on success, non-zero on any SQL error.
 #
 # Usage:
@@ -47,6 +47,7 @@ MIGRATION_FILES=(
   "${MIGRATIONS_DIR}/013_ifta_intelligence.sql"
   "${MIGRATIONS_DIR}/014_companies_visibility_settings.sql"
   "${MIGRATIONS_DIR}/015_add_users_phone.sql"
+  "${MIGRATIONS_DIR}/016_exception_management.sql"
 )
 
 echo "[apply-migrations] Starting migration run against ${DB_HOST}/${DB_NAME}"
