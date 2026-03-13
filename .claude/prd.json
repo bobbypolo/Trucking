@@ -1,0 +1,650 @@
+{
+  "version": "2.0",
+  "planRef": ".claude/docs/PLAN.md",
+  "conventionsRef": ".claude/docs/knowledge/conventions.md",
+  "plan_hash": "66d9c476aae5fd2e0252fa18e5b27f11aea1c292356c885702b398cf03b3bc3a",
+  "stories": [
+    {
+      "id": "STORY-001",
+      "description": "Cloud SQL Socket Support & Deployment Commands (STORY-001)",
+      "phase": 1,
+      "phase_type": "foundation",
+      "component": "server/",
+      "scope": [
+        "docs/",
+        "server/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P1-01",
+          "criterion": "`cd server && npx vitest run __tests__/unit/db-connection.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 3 passing tests with zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-02",
+          "criterion": "server/db.ts supports Cloud SQL socket \u2014 `grep -c \"socketPath\" server/db.ts` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-03",
+          "criterion": "staging-rehearsal.ts supports Cloud SQL socket \u2014 `grep -c \"socketPath\" server/scripts/staging-rehearsal.ts` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-04",
+          "criterion": "DB_SOCKET_PATH is the socket env var (not DB_HOST overloading) \u2014 `grep -c \"DB_SOCKET_PATH\" server/db.ts` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "DEPLOYMENT_COMMANDS.md exists \u2014 `test -f docs/deployment/DEPLOYMENT_COMMANDS.md && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-06",
+          "criterion": "DEPLOYMENT_COMMANDS.md covers all 9 deployment phases \u2014 `grep -c \"^## Phase\\|^## Step\\|^### Phase\\|^### Step\" docs/deployment/DEPLOYMENT_COMMANDS.md` returns at least 9",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "All existing server tests pass \u2014 `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-08",
+          "criterion": "Verification log contains PASS entry for STORY-001 \u2014 `grep -c \"STORY-001\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "regression_tier": "story001_cloud_sql",
+        "unit": "cd server && npx vitest run __tests__/unit/db-connection.test.ts --reporter=verbose"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-002",
+      "description": "GCP Infrastructure Provisioning Script (STORY-002)",
+      "phase": 2,
+      "phase_type": "foundation",
+      "component": "scripts/",
+      "scope": [
+        ".env.staging",
+        ".gitignore",
+        "scripts/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P2-01",
+          "criterion": "Provisioning script exists \u2014 `test -f scripts/provision-gcp.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-02",
+          "criterion": "Script targets correct GCP project \u2014 `grep -c \"gen-lang-client-0535844903\" scripts/provision-gcp.sh` returns at least 3",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-03",
+          "criterion": "Script enables all 5 required APIs \u2014 `grep -c \"services enable\" scripts/provision-gcp.sh` returns at least 5",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-04",
+          "criterion": "Script uses Artifact Registry (not deprecated GCR) \u2014 `grep -c \"artifacts repositories\\|artifactregistry\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-05",
+          "criterion": "Script creates Cloud SQL instance \u2014 `grep -c \"sql instances create\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-06",
+          "criterion": "Script creates only real secrets in Secret Manager (DB_PASSWORD, GEMINI_API_KEY) \u2014 `grep -c \"secrets create\" scripts/provision-gcp.sh` returns at least 2",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-07",
+          "criterion": "Script creates dedicated service account \u2014 `grep -c \"loadpilot-api-sa\\|iam service-accounts create\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-08",
+          "criterion": "Script grants secretAccessor role to service account \u2014 `grep -c \"secretmanager.secretAccessor\\|secretAccessor\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-09",
+          "criterion": "Script grants cloudsql.client role to service account \u2014 `grep -c \"cloudsql.client\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-10",
+          "criterion": "Script documents db-f1-micro as staging-only \u2014 `grep -c \"staging.only\\|shared.core\\|not.production\\|staging only\\|shared core\\|no SLA\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-11",
+          "criterion": ".env.staging exists \u2014 `test -f .env.staging && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-12",
+          "criterion": ".env.staging sets VITE_API_URL=/api (not empty, not localhost) \u2014 `grep -c \"VITE_API_URL=/api\" .env.staging` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-13",
+          "criterion": ".env.staging is gitignored \u2014 `grep -c \".env.staging\" .gitignore` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-14",
+          "criterion": "Script grants serviceAccountUser on dedicated SA to deployer \u2014 `grep -c \"serviceAccountUser\\|iam.serviceAccountUser\" scripts/provision-gcp.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-15",
+          "criterion": "Syntax tests pass \u2014 `npx vitest run scripts/__tests__/provision-gcp-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 9 passing tests",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-16",
+          "criterion": "All existing server tests pass \u2014 `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-17",
+          "criterion": "Verification log contains PASS entry for STORY-002 \u2014 `grep -c \"STORY-002\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {},
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-003",
+      "description": "Build, Deploy & Migrate Scripts (STORY-003)",
+      "phase": 3,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "scripts/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P3-01",
+          "criterion": "deploy-staging.sh exists \u2014 `test -f scripts/deploy-staging.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-02",
+          "criterion": "run-staging-migrations.sh exists \u2014 `test -f scripts/run-staging-migrations.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-03",
+          "criterion": "verify-staging.sh exists \u2014 `test -f scripts/verify-staging.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "Deploy script uses Artifact Registry \u2014 `grep -c \"docker.pkg.dev\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-05",
+          "criterion": "Deploy script targets loadpilot-api Cloud Run service \u2014 `grep -c \"loadpilot-api\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-06",
+          "criterion": "Deploy script sets NODE_ENV=staging \u2014 `grep -c \"NODE_ENV=staging\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-07",
+          "criterion": "Deploy script uses min-instances=0 for staging cost savings \u2014 `grep -c \"min-instances=0\\|min-instances 0\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-08",
+          "criterion": "Deploy script uses dedicated service account \u2014 `grep -c \"service-account\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-09",
+          "criterion": "Deploy script sets DB_SOCKET_PATH for Cloud Run \u2014 `grep -c \"DB_SOCKET_PATH\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-10",
+          "criterion": "Deploy script builds frontend with VITE_API_URL=/api \u2014 `grep -c \"VITE_API_URL\\|env.staging\" scripts/deploy-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-11",
+          "criterion": "Migration script uses Cloud SQL Auth Proxy in TCP mode \u2014 `grep -c \"cloud-sql-proxy\\|cloud_sql_proxy\" scripts/run-staging-migrations.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-12",
+          "criterion": "Migration script uses port 3307 for proxy \u2014 `grep -c \"3307\" scripts/run-staging-migrations.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-13",
+          "criterion": "Verification script checks health endpoint \u2014 `grep -c \"/api/health\" scripts/verify-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-14",
+          "criterion": "Verification script explicitly rejects 500 as auth success \u2014 `grep -c \"500\" scripts/verify-staging.sh` returns at least 1 (must be in rejection logic, not acceptance)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-15",
+          "criterion": "Verification script checks for localhost in built frontend \u2014 `grep -c \"localhost\" scripts/verify-staging.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-16",
+          "criterion": "Syntax tests pass \u2014 `npx vitest run scripts/__tests__/deploy-staging-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 10 passing tests",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-17",
+          "criterion": "All existing server tests pass \u2014 `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-18",
+          "criterion": "Verification log contains PASS entry for STORY-003 \u2014 `grep -c \"STORY-003\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "regression_tier": "story003_deploy_scripts"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-004",
+      "description": "Rollback Drill Script & Monitoring Setup (STORY-004)",
+      "phase": 4,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-01",
+          "criterion": "rollback-drill.sh exists \u2014 `test -f scripts/rollback-drill.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "setup-monitoring.sh exists \u2014 `test -f scripts/setup-monitoring.sh && echo \"exists\"` returns \"exists\"",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "Rollback script uses traffic update command \u2014 `grep -c \"update-traffic\" scripts/rollback-drill.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "Rollback script checks health before and after \u2014 `grep -c \"/api/health\" scripts/rollback-drill.sh` returns at least 2",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "Monitoring script uses stable CLI for policies (not alpha) \u2014 `grep -c \"gcloud alpha\" scripts/setup-monitoring.sh` returns 0",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-06",
+          "criterion": "Monitoring script uses --policy-from-file \u2014 `grep -c \"policy-from-file\" scripts/setup-monitoring.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "Monitoring script sets error rate threshold \u2014 `grep -c \"error\" scripts/setup-monitoring.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "Monitoring script uses gcloud beta for notification channels \u2014 `grep -c \"gcloud beta monitoring channels create\\|gcloud beta monitoring channels\" scripts/setup-monitoring.sh` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "Syntax tests pass \u2014 `npx vitest run scripts/__tests__/rollback-drill-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 8 passing tests",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-10",
+          "criterion": "Go/No-Go checklist references deployment scripts \u2014 `grep -c \"scripts/\" docs/deployment/GO_NO_GO_CHECKLIST.md` returns at least 3",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-11",
+          "criterion": "Rollback drill evidence has staging template \u2014 `grep -c \"Phase 2\\|Staging\" docs/deployment/ROLLBACK_DRILL_EVIDENCE.md` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-12",
+          "criterion": "All existing server tests pass \u2014 `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-13",
+          "criterion": "Verification log contains PASS entry for STORY-004 \u2014 `grep -c \"STORY-004\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "regression_tier": "story004_rollback_monitoring"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-005",
+      "description": "Full Regression & Go/No-Go Readiness (STORY-005)",
+      "phase": 5,
+      "phase_type": "e2e",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-004"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P5-01",
+          "criterion": "`cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` outputs passing tests with zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-02",
+          "criterion": "`npx vitest run --reporter=list 2>&1 | grep \"passed\"` outputs passing tests with zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-03",
+          "criterion": "`npx playwright test --reporter=list 2>&1 | grep \"passed\"` outputs at least 186 passing tests with zero failures",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-04",
+          "criterion": "STAGING_SETUP.md references automated scripts \u2014 `grep -c \"scripts/provision-gcp\\|scripts/deploy-staging\\|scripts/run-staging-migrations\\|scripts/verify-staging\" docs/deployment/STAGING_SETUP.md` returns at least 4",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-05",
+          "criterion": "GO_NO_GO_CHECKLIST.md has operator execution guide \u2014 `grep -c \"Operator Execution\\|execution guide\\|Script Command\" docs/deployment/GO_NO_GO_CHECKLIST.md` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-06",
+          "criterion": "DEPLOYMENT_RUNBOOK.md references Artifact Registry \u2014 `grep -c \"docker.pkg.dev\\|Artifact Registry\" docs/deployment/DEPLOYMENT_RUNBOOK.md` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-07",
+          "criterion": "DEPLOYMENT_RUNBOOK.md references dedicated service account \u2014 `grep -c \"service-account\\|loadpilot-api-sa\" docs/deployment/DEPLOYMENT_RUNBOOK.md` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-08",
+          "criterion": "STAGING_SETUP.md documents DB_SOCKET_PATH (not DB_HOST overloading) \u2014 `grep -c \"DB_SOCKET_PATH\" docs/deployment/STAGING_SETUP.md` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-09",
+          "criterion": "Docker image builds \u2014 `docker build -t loadpilot-api:regression-test . 2>&1 | grep -c \"successfully\\|exporting to image\\|naming to\"` returns at least 1. If Docker unavailable, document skip in verification log with `\"docker_available\": false`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-10",
+          "criterion": "All 6 deployment scripts exist \u2014 `ls scripts/provision-gcp.sh scripts/deploy-staging.sh scripts/run-staging-migrations.sh scripts/verify-staging.sh scripts/rollback-drill.sh scripts/setup-monitoring.sh 2>/dev/null | wc -l` returns 6",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-11",
+          "criterion": "Staging frontend sanity \u2014 verify-staging.sh includes localhost check \u2014 `grep -c \"localhost\" scripts/verify-staging.sh` returns at least 1 (confirms STORY-003 R-P3-15 persists)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-12",
+          "criterion": "Verification log contains PASS entry for STORY-005 \u2014 `grep -c \"STORY-005\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-13",
+          "criterion": "Verification log completeness \u2014 stories 1-5 logged \u2014 `grep -c \"STORY-00[1-5]\" .claude/docs/verification-log.jsonl` returns at least 5",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "regression_tier": "story005_deploy_prep"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-006",
+      "description": "Live Staging Execution & Evidence Capture (STORY-006)",
+      "phase": 6,
+      "phase_type": "e2e",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-004",
+        "STORY-005"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P6-01",
+          "criterion": "`provision-gcp.sh` executed successfully \u2014 `gcloud artifacts repositories describe loadpilot --location=us-central1 --format='value(name)'` returns the repo name",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-02",
+          "criterion": "Cloud SQL instance exists \u2014 `gcloud sql instances describe loadpilot-staging --format='value(state)'` returns `RUNNABLE`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-03",
+          "criterion": "Dedicated service account exists with correct roles \u2014 `gcloud iam service-accounts describe loadpilot-api-sa@gen-lang-client-0535844903.iam.gserviceaccount.com --format='value(email)'` returns the SA email",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-04",
+          "criterion": "Secrets exist and SA can access them \u2014 `gcloud secrets describe DB_PASSWORD --format='value(name)'` returns the secret name",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-05",
+          "criterion": "`deploy-staging.sh` executed successfully \u2014 Cloud Run service URL returns 200 on `/api/health`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-06",
+          "criterion": "Firebase Hosting URL returns 200 on `/api/health` through the rewrite",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-07",
+          "criterion": "`run-staging-migrations.sh` executed successfully \u2014 migration report shows `overallPassed: true`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-08",
+          "criterion": "`verify-staging.sh` executed successfully \u2014 protected endpoints return 401 or 403 (NOT 500)",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-09",
+          "criterion": "`rollback-drill.sh` executed successfully \u2014 evidence documented with revision names and timestamps",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-10",
+          "criterion": "`setup-monitoring.sh` executed successfully \u2014 monitoring policies and notification channel created",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-11",
+          "criterion": "Evidence document exists \u2014 `test -f docs/deployment/STAGING_EXECUTION_EVIDENCE.md && echo \"exists\"` returns \"exists\"",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-12",
+          "criterion": "Evidence document contains Cloud Run URL \u2014 `grep -c \"run.app\" docs/deployment/STAGING_EXECUTION_EVIDENCE.md` returns at least 1",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-13",
+          "criterion": "Evidence document contains migration report \u2014 `grep -c \"overallPassed\\|migration\" docs/deployment/STAGING_EXECUTION_EVIDENCE.md` returns at least 1",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-14",
+          "criterion": "Go/No-Go checklist items 2-8 completed with actual values \u2014 `grep -c \"GREEN\\|PASS\\|\u2713\\|CHECKED\" docs/deployment/GO_NO_GO_CHECKLIST.md` returns at least 6",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-15",
+          "criterion": "Verification log contains PASS entry for STORY-006 \u2014 `grep -c \"STORY-006\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-16",
+          "criterion": "Verification log completeness \u2014 all 6 stories logged \u2014 `grep -c \"STORY-00[1-6]\" .claude/docs/verification-log.jsonl` returns at least 6",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {},
+      "passed": false,
+      "verificationRef": null
+    }
+  ]
+}
