@@ -21,8 +21,8 @@
 #   - firebase CLI (optional — for Hosting release reference)
 #
 # TARGET:
-#   GCP Project: gen-lang-client-0535844903
-#   Artifact Registry: us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api
+#   GCP Project: Set via PROD_PROJECT_ID env var (production) or GCP_PROJECT (staging)
+#   Artifact Registry: us-central1-docker.pkg.dev/${PROJECT_ID}/loadpilot/loadpilot-api
 # ==============================================================================
 
 set -euo pipefail
@@ -31,7 +31,12 @@ set -euo pipefail
 # Configuration
 # ------------------------------------------------------------------------------
 RC_TAG="rc-1.0.0"
-PROJECT_ID="gen-lang-client-0535844903"
+# Use PROD_PROJECT_ID for production freeze, or GCP_PROJECT as fallback
+if [[ -z "${PROD_PROJECT_ID:-}" ]] && [[ -z "${GCP_PROJECT:-}" ]]; then
+  echo "ERROR: Set PROD_PROJECT_ID (production) or GCP_PROJECT (staging) env var." >&2
+  exit 1
+fi
+PROJECT_ID="${PROD_PROJECT_ID:-${GCP_PROJECT}}"
 REGION="us-central1"
 IMAGE_REPO="us-central1-docker.pkg.dev/${PROJECT_ID}/loadpilot/loadpilot-api"
 EVIDENCE_FILE="docs/deployment/RC_EVIDENCE_BUNDLE.md"

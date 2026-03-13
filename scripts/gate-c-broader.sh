@@ -15,7 +15,8 @@
 #   8. Logs gate exit timestamp and result
 #   9. Prints Gate D instructions
 #
-# Gate sequence: Gate A (10%) → Gate B (25%) → Gate C (50%) → Gate D (100%)
+# Gate sequence: Gate A (5%) → Gate B (10%) → Gate C (50%) → Gate D (100%)
+# Soak schedule: Gate A 2h → Gate B 24h → Gate C 24h → Gate D after 48h at 50%
 
 set -euo pipefail
 
@@ -180,7 +181,13 @@ echo "  Health check:                   PASS"
 echo "  Smoke test:                     PASS"
 echo "  verify-production.sh:           PASS"
 echo ""
+echo "REQUIRED: Allow a 24-hour soak period at ${TRAFFIC_PCT}% before proceeding to Gate D."
+echo "  - Monitor Cloud Logging, dashboards, and user feedback"
+echo "  - Gate D requires 48 hours total clean time at 50% before GA"
+echo "  - Do NOT proceed to Gate D until 48h has elapsed with clean metrics"
+echo ""
 echo "Next step — Gate D (General Availability, 100% traffic):"
+echo "  After 48h clean at 50%:"
 echo "  bash scripts/gate-d-ga.sh"
 echo ""
 

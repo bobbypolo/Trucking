@@ -1,7 +1,9 @@
 # Restore Procedure — LoadPilot Production Database
 
 > **Version:** 1.0 | **Updated:** 2026-03-13
-> **Applies to:** Cloud SQL MySQL instance `loadpilot-prod`, project `gen-lang-client-0535844903`
+> **Applies to:** Cloud SQL MySQL instance `loadpilot-prod`, project `$PROD_PROJECT_ID` (separate from staging)
+>
+> **Note:** Replace `$PROD_PROJECT_ID` with your production GCP project ID in all commands below.
 > **RTO Target:** < 15 minutes | **RPO Target:** < 5 minutes (with PITR)
 
 ## Purpose and Scope
@@ -178,6 +180,7 @@ mysql -u root -p -h 127.0.0.1 -P 3307 trucklogix_staging
 After any restore, verify the following before marking the incident resolved:
 
 1. **Row counts match expectations**
+
    ```sql
    SELECT table_name, table_rows
    FROM information_schema.tables
@@ -186,14 +189,16 @@ After any restore, verify the following before marking the incident resolved:
    ```
 
 2. **Application health check passes**
+
    ```bash
    curl -sf https://loadpilot-api-[HASH]-uc.a.run.app/api/health | jq .
    ```
 
 3. **No 500 errors in Cloud Logging** (check last 15 minutes)
+
    ```bash
    gcloud logging read "resource.type=cloud_run_revision AND severity=ERROR" \
-     --limit=20 --project=gen-lang-client-0535844903
+     --limit=20 --project=$PROD_PROJECT_ID
    ```
 
 4. **Authentication still works** — perform a test login via staging/production URL
@@ -213,8 +218,8 @@ After any restore, verify the following before marking the incident resolved:
 
 ## Recovery Objectives
 
-| Metric | Target | Notes |
-|--------|--------|-------|
-| RTO    | < 15 minutes | From decision to restore to production healthy |
-| RPO    | < 5 minutes  | With PITR + binary logging enabled |
-| RPO (backup only) | < 24 hours | Without PITR, using daily automated backup |
+| Metric            | Target       | Notes                                          |
+| ----------------- | ------------ | ---------------------------------------------- |
+| RTO               | < 15 minutes | From decision to restore to production healthy |
+| RPO               | < 5 minutes  | With PITR + binary logging enabled             |
+| RPO (backup only) | < 24 hours   | Without PITR, using daily automated backup     |

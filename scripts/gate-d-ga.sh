@@ -14,7 +14,9 @@
 #   7. NOTE: No auto-rollback — this is the final GA state.
 #            For rollback after GA, use: bash scripts/rollback-drill.sh
 #
-# Gate sequence: Gate A (10%) → Gate B (25%) → Gate C (50%) → Gate D (100%)
+# Gate sequence: Gate A (5%) → Gate B (10%) → Gate C (50%) → Gate D (100%)
+# Soak schedule: Gate A 2h → Gate B 24h → Gate C 24h → Gate D after 48h at 50%
+# PREREQUISITE: 48 hours of clean metrics at 50% traffic (Gate C)
 
 set -euo pipefail
 
@@ -59,6 +61,7 @@ log "=== Gate D: General Availability (${TRAFFIC_PCT}% traffic) ==="
 log "Entry timestamp: ${GATE_START}"
 log "Service: ${SERVICE_NAME} in ${REGION}"
 log "NOTE: This is the final gate. No auto-rollback after traffic is routed."
+log "PREREQUISITE: 48 hours of clean metrics at 50% traffic (Gate C) required."
 
 if [[ -z "${PROJECT}" ]]; then
   error "GCP project not set. Run: gcloud config set project <PROJECT_ID>"

@@ -10,7 +10,7 @@ management is required.
 ## Prerequisites
 
 - DNS access to the `loadpilot.com` zone (registrar or DNS provider control panel)
-- Firebase project owner role on `gen-lang-client-0535844903`
+- Firebase project owner role on `$PROD_PROJECT_ID` (production project — separate from staging)
 - `firebase` CLI installed and authenticated (`firebase login`)
 - `gcloud` CLI installed and authenticated
 
@@ -42,11 +42,11 @@ Log in to your DNS provider and create the records provided by Firebase.
 
 ### Typical record set (Firebase will provide exact IPs/values)
 
-| Type | Name               | Value                        | TTL  |
-|------|--------------------|------------------------------|------|
-| A    | app.loadpilot.com  | `151.101.x.x` (Firebase IP)  | 3600 |
-| A    | app.loadpilot.com  | `151.101.y.y` (Firebase IP)  | 3600 |
-| TXT  | app.loadpilot.com  | `firebase=<token>`           | 3600 |
+| Type | Name              | Value                       | TTL  |
+| ---- | ----------------- | --------------------------- | ---- |
+| A    | app.loadpilot.com | `151.101.x.x` (Firebase IP) | 3600 |
+| A    | app.loadpilot.com | `151.101.y.y` (Firebase IP) | 3600 |
+| TXT  | app.loadpilot.com | `firebase=<token>`          | 3600 |
 
 > Note: Firebase may provide AAAA (IPv6) records in addition to A records. Add all
 > records that Firebase lists.
@@ -98,6 +98,7 @@ openssl s_client -connect app.loadpilot.com:443 -servername app.loadpilot.com \
 ```
 
 Expected output includes:
+
 - `subject=CN = app.loadpilot.com`
 - `issuer=C = US, O = Let's Encrypt`
 - `Verify return code: 0 (ok)`
@@ -114,7 +115,7 @@ gcloud run domain-mappings create \
   --service=loadpilot-api-prod \
   --domain=api.loadpilot.com \
   --region=us-central1 \
-  --project=gen-lang-client-0535844903
+  --project=$PROD_PROJECT_ID
 ```
 
 Cloud Run will provide DNS records (CNAME or A) to add for `api.loadpilot.com`.
@@ -144,6 +145,7 @@ SSL is also auto-provisioned by Google-managed certificates for Cloud Run mappin
 ### Mixed content warnings
 
 If the browser reports mixed content (HTTP resources on an HTTPS page):
+
 - Verify `VITE_API_URL` is set to `/api` (relative) or `https://...` (absolute).
 - Search the built `dist/assets/` for `http://` references:
   ```bash
@@ -154,5 +156,6 @@ If the browser reports mixed content (HTTP resources on an HTTPS page):
 ### HTTPS redirects not working
 
 Firebase Hosting enforces HTTPS automatically. If HTTP requests are not redirecting:
+
 - Check `firebase.json` for `"redirects"` or `"rewrites"` configuration.
 - Confirm the hosting site is live: `firebase hosting:sites:list`.

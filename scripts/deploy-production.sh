@@ -7,7 +7,7 @@
 #   - --no-traffic: initial deploy receives 0% traffic (manual gate required)
 #   - --min-instances=1: no cold starts in production (staging uses 0)
 #   - NODE_ENV=production
-#   - Cloud SQL: gen-lang-client-0535844903:us-central1:loadpilot-prod
+#   - Cloud SQL: ${PROD_PROJECT_ID}:us-central1:loadpilot-prod
 #   - Service account: loadpilot-api-prod-sa
 #   - Secrets: DB_PASSWORD_PROD:latest, GEMINI_API_KEY_PROD:latest
 #   - DB_USER=trucklogix_prod, DB_NAME=trucklogix_prod
@@ -15,14 +15,19 @@
 # Usage: bash scripts/deploy-production.sh
 # Requires: gcloud auth, Docker, .env.production, firebase CLI
 #
-# GCP Project: gen-lang-client-0535844903
+# GCP Project: Set via PROD_PROJECT_ID env var (separate from staging)
 # Service: loadpilot-api-prod
-# SA: loadpilot-api-prod-sa@gen-lang-client-0535844903.iam.gserviceaccount.com
+# SA: loadpilot-api-prod-sa@${PROD_PROJECT_ID}.iam.gserviceaccount.com
 
 set -euo pipefail
 
-# -- Configuration
-PROJECT_ID="gen-lang-client-0535844903"
+# -- Configuration (requires PROD_PROJECT_ID — separate from staging project)
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  echo "  Example: export PROD_PROJECT_ID='my-loadpilot-prod'" >&2
+  exit 1
+fi
+PROJECT_ID="${PROD_PROJECT_ID}"
 REGION="us-central1"
 IMAGE_REPO="us-central1-docker.pkg.dev/${PROJECT_ID}/loadpilot/loadpilot-api"
 # Production Cloud Run service name — separate from staging (loadpilot-api)

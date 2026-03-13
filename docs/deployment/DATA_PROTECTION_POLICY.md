@@ -2,7 +2,7 @@
 
 > **Version:** 1.0 | **Effective:** 2026-03-13
 > **Owner:** Engineering Lead | **Review cycle:** Quarterly
-> **Applies to:** LoadPilot SaaS production environment (`gen-lang-client-0535844903`)
+> **Applies to:** LoadPilot SaaS production environment (`$PROD_PROJECT_ID` — separate from staging)
 
 ## 1. Purpose
 
@@ -16,24 +16,24 @@ and testing requirements for the Cloud SQL MySQL instance `loadpilot-prod`.
 
 ### 2.1 Automated Daily Backups
 
-| Parameter | Value |
-|-----------|-------|
-| Backup type | Cloud SQL automated backup |
-| Schedule | Daily at **03:00 UTC** (low-traffic window) |
-| Retention | **7 days** (rolling) |
-| Configuration script | `scripts/backup-setup.sh` |
+| Parameter            | Value                                       |
+| -------------------- | ------------------------------------------- |
+| Backup type          | Cloud SQL automated backup                  |
+| Schedule             | Daily at **03:00 UTC** (low-traffic window) |
+| Retention            | **7 days** (rolling)                        |
+| Configuration script | `scripts/backup-setup.sh`                   |
 
 Automated backups capture a consistent snapshot of the entire `loadpilot-prod` instance.
 The 7-day retention window ensures recovery from incidents discovered up to one week later.
 
 ### 2.2 Point-in-Time Recovery (PITR)
 
-| Parameter | Value |
-|-----------|-------|
-| Mechanism | MySQL binary logging (`--enable-bin-log`) |
-| Window | **7 days** of transaction logs retained |
-| Granularity | Per-second recovery within the window |
-| RPO | **< 5 minutes** |
+| Parameter   | Value                                     |
+| ----------- | ----------------------------------------- |
+| Mechanism   | MySQL binary logging (`--enable-bin-log`) |
+| Window      | **7 days** of transaction logs retained   |
+| Granularity | Per-second recovery within the window     |
+| RPO         | **< 5 minutes**                           |
 
 PITR allows recovery to any point within the last 7 days, enabling precise recovery after
 accidental data modifications or deployments with bad migrations.
@@ -45,7 +45,7 @@ Operators may create on-demand backups before major deployments or migrations:
 ```bash
 gcloud sql backups create \
   --instance=loadpilot-prod \
-  --project=gen-lang-client-0535844903 \
+  --project=$PROD_PROJECT_ID \
   --description="Pre-deployment backup: [reason]"
 ```
 
@@ -53,11 +53,11 @@ gcloud sql backups create \
 
 ## 3. Recovery Objectives
 
-| Metric | Target | Mechanism |
-|--------|--------|-----------|
-| **RTO** (Recovery Time Objective) | **< 15 minutes** | Automated restore via gcloud CLI |
-| **RPO** (Recovery Point Objective) | **< 5 minutes** | PITR with binary logging |
-| RPO (backup-only fallback) | < 24 hours | Daily automated backup |
+| Metric                             | Target           | Mechanism                        |
+| ---------------------------------- | ---------------- | -------------------------------- |
+| **RTO** (Recovery Time Objective)  | **< 15 minutes** | Automated restore via gcloud CLI |
+| **RPO** (Recovery Point Objective) | **< 5 minutes**  | PITR with binary logging         |
+| RPO (backup-only fallback)         | < 24 hours       | Daily automated backup           |
 
 These targets apply to the restore procedure documented in `docs/deployment/RESTORE_PROCEDURE.md`.
 
@@ -70,6 +70,7 @@ These targets apply to the restore procedure documented in `docs/deployment/REST
 Frequency: **Monthly** (first Tuesday of each month)
 
 Procedure:
+
 1. List available backups: `gcloud sql backups list --instance=loadpilot-prod`
 2. Restore a recent backup to the staging instance
 3. Run integrity checks (row counts, application health)
@@ -83,6 +84,7 @@ Success criteria: restore completes within RTO target, row counts match producti
 Frequency: **Quarterly** (first month of each quarter)
 
 Scope:
+
 - Full PITR restore drill to a target timestamp
 - Application failover verification
 - RTO/RPO measurement and comparison against targets
@@ -94,12 +96,12 @@ Participants: Engineering Lead, at least one on-call engineer.
 
 ## 5. Responsibilities
 
-| Role | Responsibility |
-|------|---------------|
-| **Engineering Lead** | Policy owner; approves changes; runs quarterly DR drills |
-| **On-call Engineer** | First responder; executes restore procedures during incidents |
-| **DevOps / Release Engineer** | Runs `backup-setup.sh` after provisioning; verifies backup health weekly |
-| **All Engineers** | Report data anomalies immediately; never delete production data without approval |
+| Role                          | Responsibility                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| **Engineering Lead**          | Policy owner; approves changes; runs quarterly DR drills                         |
+| **On-call Engineer**          | First responder; executes restore procedures during incidents                    |
+| **DevOps / Release Engineer** | Runs `backup-setup.sh` after provisioning; verifies backup health weekly         |
+| **All Engineers**             | Report data anomalies immediately; never delete production data without approval |
 
 ### Access Controls
 

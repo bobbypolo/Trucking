@@ -37,9 +37,9 @@
 #   - Service Account: loadpilot-api-prod-sa (NOT loadpilot-api-sa)
 #   - Secrets: DB_PASSWORD_PROD, GEMINI_API_KEY_PROD (NOT DB_PASSWORD, GEMINI_API_KEY)
 #
-# TARGET PROJECT: gen-lang-client-0535844903
-# ARTIFACT REGISTRY: us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot
-# CLOUD SQL: gen-lang-client-0535844903:us-central1:loadpilot-prod
+# TARGET PROJECT: Set via PROD_PROJECT_ID env var (separate from staging)
+# ARTIFACT REGISTRY: us-central1-docker.pkg.dev/${PROD_PROJECT_ID}/loadpilot
+# CLOUD SQL: ${PROD_PROJECT_ID}:us-central1:loadpilot-prod
 # ==============================================================================
 
 set -euo pipefail
@@ -47,7 +47,13 @@ set -euo pipefail
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
-PROJECT_ID="${GCP_PROJECT:-gen-lang-client-0535844903}"
+# Require PROD_PROJECT_ID — no default to prevent cross-environment mistakes
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  echo "  Example: export PROD_PROJECT_ID='my-loadpilot-prod'" >&2
+  exit 1
+fi
+PROJECT_ID="${PROD_PROJECT_ID}"
 REGION="us-central1"
 REGISTRY_REPO="loadpilot"
 # Production resource names — separate from staging to prevent cross-contamination

@@ -56,8 +56,8 @@ describe("backup-setup.sh syntax tests", () => {
     expect(scriptContent).toMatch(/backups create/);
   });
 
-  it("script targets the correct GCP project", () => {
-    expect(scriptContent).toMatch(/gen-lang-client-0535844903/);
+  it("script requires PROD_PROJECT_ID env var", () => {
+    expect(scriptContent).toMatch(/PROD_PROJECT_ID/);
   });
 
   it("script uses set -euo pipefail for safety", () => {

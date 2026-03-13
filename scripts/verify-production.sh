@@ -11,7 +11,7 @@
 #   FIREBASE_URL      — Firebase Hosting URL (default: https://app.loadpilot.com)
 #   PRODUCTION_URL    — alias for FIREBASE_URL (either accepted)
 #   EXPECTED_REVISION — expected Cloud Run revision name (optional, for revision check)
-#   PROJECT_ID        — GCP project (default: gen-lang-client-0535844903)
+#   PROJECT_ID        — GCP project (required via PROD_PROJECT_ID env var)
 #   REGION            — Cloud Run region (default: us-central1)
 #   SERVICE_NAME      — Cloud Run service name (default: loadpilot-api-prod)
 #
@@ -22,7 +22,11 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-PROJECT_ID="${PROJECT_ID:-gen-lang-client-0535844903}"
+PROJECT_ID="${PROJECT_ID:-${PROD_PROJECT_ID:-}}"
+if [[ -z "${PROJECT_ID}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  exit 1
+fi
 REGION="${REGION:-us-central1}"
 SERVICE_NAME="${SERVICE_NAME:-loadpilot-api-prod}"
 # Accept either FIREBASE_URL or PRODUCTION_URL

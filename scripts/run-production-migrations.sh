@@ -3,7 +3,7 @@
 # via Cloud SQL Auth Proxy in TCP mode (port 3308) for Windows compatibility.
 #
 # PRODUCTION DIFFERENCES FROM run-staging-migrations.sh:
-#   - Cloud SQL instance: gen-lang-client-0535844903:us-central1:loadpilot-prod
+#   - Cloud SQL instance: ${PROD_PROJECT_ID}:us-central1:loadpilot-prod
 #   - Port: 3308 (staging uses 3307 to avoid conflicts when running simultaneously)
 #   - DB name: trucklogix_prod
 #   - DB user: trucklogix_prod
@@ -19,7 +19,12 @@ set -euo pipefail
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-PROJECT_ID="gen-lang-client-0535844903"
+# Require PROD_PROJECT_ID — no default to prevent cross-environment mistakes
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  exit 1
+fi
+PROJECT_ID="${PROD_PROJECT_ID}"
 REGION="us-central1"
 INSTANCE_NAME="loadpilot-prod"
 INSTANCE_CONNECTION="${PROJECT_ID}:${REGION}:${INSTANCE_NAME}"

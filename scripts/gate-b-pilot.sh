@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-b-pilot.sh — Gate B: Route 25% traffic to latest production revision.
+# gate-b-pilot.sh — Gate B: Route 10% traffic to latest production revision.
 # Pilot tenant phase. Requires Gate A to have been completed successfully.
 #
 # Usage: bash scripts/gate-b-pilot.sh
@@ -8,13 +8,14 @@
 #   1. Verifies Gate A was previously run (GATE_A_PASSED env flag or checks for evidence)
 #   2. Logs gate entry timestamp
 #   3. Identifies the latest revision of loadpilot-api-prod
-#   4. Routes 25% traffic to latest revision
+#   4. Routes 10% traffic to latest revision
 #   5. Runs smoke tests against the production URL
 #   6. Auto-rollbacks to previous stable split on smoke test failure
 #   7. Logs gate exit timestamp and result
 #   8. Prints 24h soak period recommendation and Gate C instructions
 #
-# Gate sequence: Gate A (10%) → Gate B (25%) → Gate C (50%) → Gate D (100%)
+# Gate sequence: Gate A (5%) → Gate B (10%) → Gate C (50%) → Gate D (100%)
+# Soak schedule: Gate A 2h → Gate B 24h → Gate C 24h → Gate D after 48h at 50%
 
 set -euo pipefail
 
@@ -25,7 +26,7 @@ REGION="${REGION:-us-central1}"
 PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null || echo "")}"
 PRODUCTION_URL="${PRODUCTION_URL:-https://app.loadpilot.com}"
 GATE_NAME="gate-b-pilot"
-TRAFFIC_PCT=25
+TRAFFIC_PCT=10
 ROLLOUT_EVIDENCE="${ROLLOUT_EVIDENCE:-docs/deployment/ROLLOUT_EVIDENCE.md}"
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -179,12 +180,14 @@ echo "  Traffic %:                 ${TRAFFIC_PCT}%"
 echo "  Health check:              PASS"
 echo "  Smoke test:                PASS"
 echo ""
-echo "RECOMMENDED: Allow a 24-hour soak period at ${TRAFFIC_PCT}% before proceeding to Gate C."
+echo "REQUIRED: Allow a 24-hour soak period at ${TRAFFIC_PCT}% before proceeding to Gate C."
 echo "  - Monitor Cloud Logging for errors: gcloud logging read resource.type=cloud_run_revision"
 echo "  - Check Cloud Monitoring dashboards for latency/error rate regressions"
 echo "  - Review pilot tenant feedback"
+echo "  - Do NOT proceed to Gate C until 24h has elapsed with clean metrics"
 echo ""
 echo "Next step — Gate C (Broader Rollout, 50% traffic):"
+echo "  After 24h soak with no issues:"
 echo "  bash scripts/gate-c-broader.sh"
 echo ""
 

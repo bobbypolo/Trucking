@@ -23,7 +23,12 @@ const GATE_B = path.join(SCRIPTS_DIR, "gate-b-pilot.sh");
 const GATE_C = path.join(SCRIPTS_DIR, "gate-c-broader.sh");
 const GATE_D = path.join(SCRIPTS_DIR, "gate-d-ga.sh");
 const MIGRATION_SCRIPT = path.join(SCRIPTS_DIR, "run-production-migrations.sh");
-const ROLLOUT_EVIDENCE = path.join(REPO_ROOT, "docs", "deployment", "ROLLOUT_EVIDENCE.md");
+const ROLLOUT_EVIDENCE = path.join(
+  REPO_ROOT,
+  "docs",
+  "deployment",
+  "ROLLOUT_EVIDENCE.md",
+);
 
 let gateA: string;
 let gateB: string;
@@ -37,8 +42,12 @@ beforeAll(() => {
   gateB = fs.existsSync(GATE_B) ? fs.readFileSync(GATE_B, "utf-8") : "";
   gateC = fs.existsSync(GATE_C) ? fs.readFileSync(GATE_C, "utf-8") : "";
   gateD = fs.existsSync(GATE_D) ? fs.readFileSync(GATE_D, "utf-8") : "";
-  migration = fs.existsSync(MIGRATION_SCRIPT) ? fs.readFileSync(MIGRATION_SCRIPT, "utf-8") : "";
-  evidence = fs.existsSync(ROLLOUT_EVIDENCE) ? fs.readFileSync(ROLLOUT_EVIDENCE, "utf-8") : "";
+  migration = fs.existsSync(MIGRATION_SCRIPT)
+    ? fs.readFileSync(MIGRATION_SCRIPT, "utf-8")
+    : "";
+  evidence = fs.existsSync(ROLLOUT_EVIDENCE)
+    ? fs.readFileSync(ROLLOUT_EVIDENCE, "utf-8")
+    : "";
 });
 
 // ─── File existence ───────────────────────────────────────────────────────────
@@ -174,8 +183,9 @@ describe("run-production-migrations.sh", () => {
     expect(hasBackupCreate).toBe(true);
   });
 
-  it("migration script uses correct instance connection string", () => {
-    expect(migration).toContain("gen-lang-client-0535844903:us-central1:loadpilot-prod");
+  it("migration script requires PROD_PROJECT_ID for instance connection", () => {
+    expect(migration).toContain("PROD_PROJECT_ID");
+    expect(migration).toContain("loadpilot-prod");
   });
 
   it("migration script uses trucklogix_prod database", () => {
@@ -212,12 +222,12 @@ describe("Gate scripts use gcloud run services update-traffic", () => {
 describe("ROLLOUT_EVIDENCE.md structure", () => {
   it("evidence template has Gate A section", () => {
     expect(evidence).toContain("Gate A");
-    expect(evidence).toMatch(/Gate A.*10%|10%.*Gate A/is);
+    expect(evidence).toMatch(/Gate A.*5%|5%.*Gate A/is);
   });
 
   it("evidence template has Gate B section", () => {
     expect(evidence).toContain("Gate B");
-    expect(evidence).toMatch(/Gate B.*25%|25%.*Gate B/is);
+    expect(evidence).toMatch(/Gate B.*10%|10%.*Gate B/is);
   });
 
   it("evidence template has Gate C section", () => {

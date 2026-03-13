@@ -3,7 +3,12 @@
 # Tests R-P3-01, R-P3-02, R-P3-03, R-P3-04, R-P3-05, R-P3-06, R-P3-07, R-P3-08
 set -euo pipefail
 
-PROJECT_ID="gen-lang-client-0535844903"
+# Require PROD_PROJECT_ID — no default to prevent cross-environment mistakes
+if [[ -z "${PROD_PROJECT_ID:-}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  exit 1
+fi
+PROJECT_ID="${PROD_PROJECT_ID}"
 INSTANCE="loadpilot-prod"
 BACKUP_START_TIME="03:00"
 RETAINED_BACKUPS_COUNT=7

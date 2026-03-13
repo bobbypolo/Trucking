@@ -11,7 +11,7 @@
 #   PRODUCTION_URL — base URL to test (default: https://app.loadpilot.com)
 #   CLOUD_RUN_SERVICE — Cloud Run service name (default: loadpilot-api-prod)
 #   REGION — Cloud Run region (default: us-central1)
-#   PROJECT_ID — GCP project (default: gen-lang-client-0535844903)
+#   PROJECT_ID — GCP project (required via PROD_PROJECT_ID env var)
 #
 # Exit code: 0 = all tests passed, 1 = one or more tests failed
 
@@ -23,7 +23,11 @@ set -euo pipefail
 PRODUCTION_URL="${PRODUCTION_URL:-https://app.loadpilot.com}"
 CLOUD_RUN_SERVICE="${CLOUD_RUN_SERVICE:-loadpilot-api-prod}"
 REGION="${REGION:-us-central1}"
-PROJECT_ID="${PROJECT_ID:-gen-lang-client-0535844903}"
+PROJECT_ID="${PROJECT_ID:-${PROD_PROJECT_ID:-}}"
+if [[ -z "${PROJECT_ID}" ]]; then
+  echo "ERROR: PROD_PROJECT_ID env var required. Set to your production GCP project ID." >&2
+  exit 1
+fi
 PASS_COUNT=0
 FAIL_COUNT=0
 

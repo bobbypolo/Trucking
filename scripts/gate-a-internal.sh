@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# gate-a-internal.sh — Gate A: Route 10% traffic to latest production revision.
+# gate-a-internal.sh — Gate A: Route 5% traffic to latest production revision.
 # Internal testing phase. Run after zero-traffic production deploy passes smoke tests.
 #
 # Usage: bash scripts/gate-a-internal.sh
@@ -14,7 +14,8 @@
 #   7. Logs gate exit timestamp and result
 #   8. Prints Gate B instructions
 #
-# Gate sequence: Gate A (10%) → Gate B (25%) → Gate C (50%) → Gate D (100%)
+# Gate sequence: Gate A (5%) → Gate B (10%) → Gate C (50%) → Gate D (100%)
+# Soak schedule: Gate A 2h → Gate B 24h → Gate C 24h → Gate D after 48h at 50%
 
 set -euo pipefail
 
@@ -25,7 +26,7 @@ REGION="${REGION:-us-central1}"
 PROJECT="${PROJECT:-$(gcloud config get-value project 2>/dev/null || echo "")}"
 PRODUCTION_URL="${PRODUCTION_URL:-https://app.loadpilot.com}"
 GATE_NAME="gate-a-internal"
-TRAFFIC_PCT=10
+TRAFFIC_PCT=5
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -161,8 +162,12 @@ echo "  Traffic %:                 ${TRAFFIC_PCT}%"
 echo "  Health check:              PASS"
 echo "  Smoke test:                PASS"
 echo ""
-echo "Next step — Gate B (Pilot Tenant, 25% traffic):"
-echo "  Monitor internal traffic for issues, then:"
+echo "REQUIRED: Allow a 2-hour soak period at ${TRAFFIC_PCT}% before proceeding to Gate B."
+echo "  - Monitor Cloud Logging for errors"
+echo "  - Verify internal test traffic is healthy"
+echo ""
+echo "Next step — Gate B (Pilot Tenant, 10% traffic):"
+echo "  After 2h soak with no issues:"
 echo "  bash scripts/gate-b-pilot.sh"
 echo ""
 
