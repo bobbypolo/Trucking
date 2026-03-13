@@ -1,5 +1,8 @@
 # RC Evidence Bundle — LoadPilot rc-1.0.0
 
+> **NOTE:** Replace `$PROD_PROJECT_ID` with your actual production GCP project ID before use.
+> The staging project `gen-lang-client-0535844903` must NOT be used for production.
+
 > **Generated:** PLACEHOLDER_DATE
 > **Script:** scripts/freeze-rc.sh
 > **Status:** Release Candidate Frozen
@@ -8,14 +11,14 @@
 
 ## 1. Release Metadata
 
-| Field              | Value                                                          |
-|--------------------|----------------------------------------------------------------|
-| Git Tag            | `rc-1.0.0`                                                     |
-| Commit SHA (full)  | `PLACEHOLDER_SHA_FULL`                                         |
-| Commit SHA (short) | `PLACEHOLDER_SHA_SHORT`                                        |
-| Freeze Date        | PLACEHOLDER_DATE                                               |
-| Branch             | `ralph/deployment-preparation-staging-qualification`           |
-| Tag Message        | Release Candidate 1.0.0 — frozen at PLACEHOLDER_DATE          |
+| Field              | Value                                                |
+| ------------------ | ---------------------------------------------------- |
+| Git Tag            | `rc-1.0.0`                                           |
+| Commit SHA (full)  | `PLACEHOLDER_SHA_FULL`                               |
+| Commit SHA (short) | `PLACEHOLDER_SHA_SHORT`                              |
+| Freeze Date        | PLACEHOLDER_DATE                                     |
+| Branch             | `ralph/deployment-preparation-staging-qualification` |
+| Tag Message        | Release Candidate 1.0.0 — frozen at PLACEHOLDER_DATE |
 
 ### Verify Tag
 
@@ -28,35 +31,35 @@ git log --oneline rc-1.0.0 -1
 
 ## 2. Docker Image (Artifact Registry)
 
-| Field               | Value                                                         |
-|---------------------|---------------------------------------------------------------|
-| Registry Path       | `us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:PLACEHOLDER_SHA_SHORT` |
-| Artifact Registry   | `us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot` |
-| Image Digest        | `PLACEHOLDER_DIGEST`                                          |
-| GCP Project         | `gen-lang-client-0535844903`                                  |
+| Field             | Value                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Registry Path     | `us-central1-docker.pkg.dev/$PROD_PROJECT_ID/loadpilot/loadpilot-api:PLACEHOLDER_SHA_SHORT` |
+| Artifact Registry | `us-central1-docker.pkg.dev/$PROD_PROJECT_ID/loadpilot`                                     |
+| Image Digest      | `PLACEHOLDER_DIGEST`                                                                        |
+| GCP Project       | `$PROD_PROJECT_ID (set via environment variable)`                                           |
 
 ### Verify Image
 
 ```bash
 gcloud artifacts docker images describe \
-  us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:PLACEHOLDER_SHA_SHORT \
-  --project=gen-lang-client-0535844903
+  us-central1-docker.pkg.dev/$PROD_PROJECT_ID/loadpilot/loadpilot-api:PLACEHOLDER_SHA_SHORT \
+  --project=$PROD_PROJECT_ID
 ```
 
 ---
 
 ## 3. Firebase Hosting
 
-| Field              | Value                                                          |
-|--------------------|----------------------------------------------------------------|
-| Release ID         | `PLACEHOLDER_FIREBASE_RELEASE_ID`                              |
-| Hosting URL        | https://gen-lang-client-0535844903.web.app                    |
-| GCP Project        | `gen-lang-client-0535844903`                                  |
+| Field       | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Release ID  | `PLACEHOLDER_FIREBASE_RELEASE_ID`                 |
+| Hosting URL | `https://$PROD_PROJECT_ID.web.app`                |
+| GCP Project | `$PROD_PROJECT_ID (set via environment variable)` |
 
 ### Verify Hosting
 
 ```bash
-firebase hosting:releases:list --project=gen-lang-client-0535844903 --limit=5
+firebase hosting:releases:list --project=$PROD_PROJECT_ID --limit=5
 ```
 
 ---
@@ -65,13 +68,13 @@ firebase hosting:releases:list --project=gen-lang-client-0535844903 --limit=5
 
 The following staging evidence documents were reviewed before this RC freeze:
 
-| Document                              | Location                                                       |
-|---------------------------------------|----------------------------------------------------------------|
-| Staging Execution Evidence            | `docs/deployment/STAGING_EXECUTION_EVIDENCE.md`               |
-| Rollback Drill Evidence               | `docs/deployment/ROLLBACK_DRILL_EVIDENCE.md`                  |
-| Go / No-Go Checklist                  | `docs/deployment/GO_NO_GO_CHECKLIST.md`                       |
-| Deployment Runbook                    | `docs/deployment/DEPLOYMENT_RUNBOOK.md`                       |
-| Rollout Plan                          | `docs/deployment/ROLLOUT_PLAN.md`                             |
+| Document                   | Location                                        |
+| -------------------------- | ----------------------------------------------- |
+| Staging Execution Evidence | `docs/deployment/STAGING_EXECUTION_EVIDENCE.md` |
+| Rollback Drill Evidence    | `docs/deployment/ROLLBACK_DRILL_EVIDENCE.md`    |
+| Go / No-Go Checklist       | `docs/deployment/GO_NO_GO_CHECKLIST.md`         |
+| Deployment Runbook         | `docs/deployment/DEPLOYMENT_RUNBOOK.md`         |
+| Rollout Plan               | `docs/deployment/ROLLOUT_PLAN.md`               |
 
 > All staging qualification criteria passed. See STAGING_EXECUTION_EVIDENCE.md for live command output.
 > GO_NO_GO_CHECKLIST.md verdict: GREEN — proceed to production.
@@ -80,12 +83,12 @@ The following staging evidence documents were reviewed before this RC freeze:
 
 ## 5. Test Suite Summary
 
-| Suite            | Count | Status   |
-|------------------|-------|----------|
-| Server (Vitest)  | 1,154 | PASS     |
-| Frontend (Vitest)| 112   | PASS     |
-| E2E (Playwright) | 186   | PASS     |
-| **Total**        | **1,452** | **ALL GREEN** |
+| Suite             | Count     | Status        |
+| ----------------- | --------- | ------------- |
+| Server (Vitest)   | 1,154     | PASS          |
+| Frontend (Vitest) | 112       | PASS          |
+| E2E (Playwright)  | 186       | PASS          |
+| **Total**         | **1,452** | **ALL GREEN** |
 
 ### Reproduce
 
@@ -106,10 +109,10 @@ npx playwright test
 
 The following defects are tracked and do not block this release:
 
-| ID    | Severity | Description                                    | Status           |
-|-------|----------|------------------------------------------------|------------------|
-| F-004 | Major    | LoadStatus 3-way mismatch (risk assessed)      | ASSESSED/DEFERRED|
-| F-005 | Major    | AuditLogs real /api/audit endpoint             | FIXED (PR merged)|
+| ID    | Severity | Description                               | Status            |
+| ----- | -------- | ----------------------------------------- | ----------------- |
+| F-004 | Major    | LoadStatus 3-way mismatch (risk assessed) | ASSESSED/DEFERRED |
+| F-005 | Major    | AuditLogs real /api/audit endpoint        | FIXED (PR merged) |
 
 > F-005 was fixed and merged before this RC freeze.
 > F-004 risk assessment confirms no live workflow impact.
@@ -118,17 +121,17 @@ The following defects are tracked and do not block this release:
 
 ## 7. Sign-Off
 
-| Role            | Name                  | Date       | Signature |
-|-----------------|-----------------------|------------|-----------|
-| Release Manager |                       |            |           |
-| QA Lead         |                       |            |           |
-| Engineering Lead|                       |            |           |
+| Role             | Name | Date | Signature |
+| ---------------- | ---- | ---- | --------- |
+| Release Manager  |      |      |           |
+| QA Lead          |      |      |           |
+| Engineering Lead |      |      |           |
 
 **Decision:** [ ] GO — Proceed to production deployment using scripts/deploy-production.sh
-             [ ] NO-GO — Hold. Document reason below.
+[ ] NO-GO — Hold. Document reason below.
 
 **Reason (if NO-GO):**
 
 ---
 
-*Generated by scripts/freeze-rc.sh | LoadPilot Production Rollout*
+_Generated by scripts/freeze-rc.sh | LoadPilot Production Rollout_
