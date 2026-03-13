@@ -147,3 +147,49 @@ updated with real evidence:
 |------|------|------|
 | Story implementer | ralph-story STORY-005 | 2026-03-12 |
 | Operator review (required before Gate 1) | ______________ | ______________ |
+
+---
+
+## Phase 2 (Staging) — Cloud Run Traffic Rollback Drill Template
+
+> Status: PENDING — requires GCP staging environment
+> Template created by: ralph-story STORY-004 on 2026-03-12
+>
+> When Cloud Run + Cloud SQL staging is provisioned, execute:
+>   bash scripts/rollback-drill.sh
+> The script appends real evidence here automatically.
+
+### Environment
+
+| Field | Value |
+|-------|-------|
+| GCP Project | ______________ |
+| Cloud Run Service | loadpilot-api |
+| Region | us-central1 |
+| Service URL | ______________ |
+
+### Drill Timeline (to be filled by rollback-drill.sh)
+
+| Step | Timestamp (UTC) | Details | Result |
+|------|----------------|---------|--------|
+| 1. Pre-rollback health check | ______________ | GET <SERVICE_URL>/api/health | ______ |
+| 2. Identify revisions | ______________ | Current: _______ / Previous: _______ | ______ |
+| 3. Rollback traffic | ______________ | gcloud run services update-traffic --to-revisions=<PREV>=100 | ______ |
+| 4. Post-rollback health check | ______________ | GET <SERVICE_URL>/api/health | ______ |
+| 5. Restore traffic | ______________ | gcloud run services update-traffic --to-revisions=<CURR>=100 | ______ |
+| 6. Post-restore health check | ______________ | GET <SERVICE_URL>/api/health | ______ |
+
+### Execution Command
+
+```bash
+# Execute the rollback drill against staging:
+SERVICE_NAME=loadpilot-api REGION=us-central1 bash scripts/rollback-drill.sh
+```
+
+### Sign-Off
+
+| Role | Name | Date |
+|------|------|------|
+| Drill executor | ______________ | ______________ |
+| Operator review | ______________ | ______________ |
+

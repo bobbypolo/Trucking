@@ -1,6 +1,6 @@
 # Deployment Runbook — LoadPilot (Cloud Run + Firebase Hosting)
 
-> Version: 1.0 | Last Updated: 2026-03-11
+> Version: 2.0 | Last Updated: 2026-03-13
 > Deployment Targets: Cloud Run (backend) + Firebase Hosting (frontend)
 
 This runbook covers every step required to deploy LoadPilot to production. Follow it in order. Do not skip steps. Gate 0 of the Controlled Rollout Plan must be GREEN before executing this runbook.
@@ -43,14 +43,19 @@ Expected: `dist/index.html` exists, `dist/assets/` contains chunked JS and CSS.
 
 ### Step 2 — Build Backend Container
 
+Use Artifact Registry (not the deprecated `gcr.io` Container Registry):
+
 ```bash
 # Build Docker image (tag with git SHA for traceability)
 GIT_SHA=$(git rev-parse --short HEAD)
-docker build -t gcr.io/YOUR_GCP_PROJECT/loadpilot-api:${GIT_SHA} .
-docker push gcr.io/YOUR_GCP_PROJECT/loadpilot-api:${GIT_SHA}
-echo "Image pushed: gcr.io/YOUR_GCP_PROJECT/loadpilot-api:${GIT_SHA}"
+AR_IMAGE="us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:${GIT_SHA}"
+docker build -t "${AR_IMAGE}" .
+docker push "${AR_IMAGE}"
+echo "Image pushed to Artifact Registry: ${AR_IMAGE}"
 echo "Deploy timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
+
+> Automated: `bash scripts/deploy-staging.sh` performs steps 2-5 automatically.
 
 Record the deploy timestamp in your incident log.
 
@@ -74,15 +79,23 @@ If exit code is non-0 or `overallPassed` is false: **STOP. Do not proceed. Execu
 
 ### Step 4 — Deploy Backend to Cloud Run
 
+Deploy using Artifact Registry image and dedicated service account `loadpilot-api-sa`:
+
 ```bash
+GIT_SHA=$(git rev-parse --short HEAD)
+AR_IMAGE="us-central1-docker.pkg.dev/gen-lang-client-0535844903/loadpilot/loadpilot-api:${GIT_SHA}"
+SA="loadpilot-api-sa@gen-lang-client-0535844903.iam.gserviceaccount.com"
+
 gcloud run deploy loadpilot-api \
-  --image gcr.io/YOUR_GCP_PROJECT/loadpilot-api:${GIT_SHA} \
+  --image "${AR_IMAGE}" \
   --region us-central1 \
   --platform managed \
   --allow-unauthenticated \
-  --min-instances 1 \
-  --set-secrets "DB_HOST=DB_HOST:latest,DB_USER=DB_USER:latest,DB_PASSWORD=DB_PASSWORD:latest,DB_NAME=DB_NAME:latest,FIREBASE_PROJECT_ID=FIREBASE_PROJECT_ID:latest,GOOGLE_APPLICATION_CREDENTIALS=GOOGLE_APPLICATION_CREDENTIALS:latest,CORS_ORIGIN=CORS_ORIGIN:latest" \
-  --set-env-vars "NODE_ENV=production"
+  --min-instances 0 \
+  --service-account="${SA}" \
+  --add-cloudsql-instances=gen-lang-client-0535844903:us-central1:loadpilot-staging \
+  --set-secrets "DB_PASSWORD=DB_PASSWORD:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest" \
+  --set-env-vars "NODE_ENV=staging,DB_SOCKET_PATH=/cloudsql/gen-lang-client-0535844903:us-central1:loadpilot-staging,DB_USER=trucklogix_staging,DB_NAME=trucklogix_staging,FIREBASE_PROJECT_ID=gen-lang-client-0535844903,CORS_ORIGIN=https://gen-lang-client-0535844903-849a7.web.app"
 
 echo "Cloud Run deploy timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 ```
@@ -183,3 +196,4 @@ See `docs/deployment/ROLLBACK_PROCEDURE.md` for detailed numbered steps.
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-03-11 | ralph-story STORY-005 | Initial runbook creation |
+| 2.0 | 2026-03-13 | ralph-story STORY-005 (STORY-005) | Updated Step 2 to use Artifact Registry (not deprecated gcr.io). Updated Step 4 to use dedicated service account loadpilot-api-sa and DB_SOCKET_PATH. Added reference to automated scripts. |

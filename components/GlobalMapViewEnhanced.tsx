@@ -236,7 +236,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         windSpeed: Math.round(data.wind.speed),
         humidity: data.main.humidity,
       });
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Weather fetch failed:", e instanceof Error ? e.message : e);
+    }
   }, []);
 
   const filteredLoads = useMemo(() => {

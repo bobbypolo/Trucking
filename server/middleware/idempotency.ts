@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { createHash, randomUUID } from "crypto";
 import pool from "../db";
 import type { RowDataPacket } from "mysql2/promise";
+import { logger } from "../lib/logger";
 
 /**
  * Idempotency key TTL: 24 hours in milliseconds.
@@ -176,7 +177,7 @@ export function idempotencyMiddleware() {
       next();
     } catch (error) {
       // If idempotency lookup fails, let the request through
-      console.error("Idempotency middleware error:", error);
+      logger.error({ error }, "Idempotency middleware error");
       next();
     }
   };

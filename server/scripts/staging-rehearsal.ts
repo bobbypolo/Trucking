@@ -71,12 +71,13 @@ const LEGACY_STATUSES = [
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "..", "migrations");
 
-// Expected table count after applying all migrations 001–015.
+// Expected table count after applying all migrations 001–016.
 // This is the authoritative count for the full migration chain.
-// Update this when adding new migrations (016+).
-// Verified count as of migration 015_add_users_phone: 48 tables.
-const EXPECTED_TABLE_COUNT = 48;
-const HIGHEST_MIGRATION = "015_add_users_phone";
+// Update this when adding new migrations (017+).
+// Verified count as of migration 016_exception_management: 53 tables
+// (48 from 001-015 + 5 from 016: exception_status, exception_type, dashboard_card, exceptions, exception_events).
+const EXPECTED_TABLE_COUNT = 53;
+const HIGHEST_MIGRATION = "016_exception_management";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -187,24 +188,40 @@ async function main(): Promise<void> {
 
   logger.info({ dryRun, rollbackTest }, "=== Staging Migration Rehearsal ===");
 
-  if (!process.env.DB_HOST || !process.env.DB_NAME) {
+  const socketPath = process.env.DB_SOCKET_PATH;
+  const hasHost = !!process.env.DB_HOST;
+
+  if (!socketPath && !hasHost) {
     logger.error(
-      "DB_HOST and DB_NAME must be set. Configure staging database credentials in .env",
+      "Either DB_SOCKET_PATH (Cloud SQL Unix socket) or DB_HOST (TCP) must be set. Configure staging database credentials in .env",
     );
     process.exit(1);
   }
 
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
+  if (!process.env.DB_NAME) {
+    logger.error("DB_NAME must be set. Configure staging database credentials in .env");
+    process.exit(1);
+  }
+
+  // Build connection config: prefer Cloud SQL Unix socket (DB_SOCKET_PATH) over TCP (DB_HOST + DB_PORT).
+  const connectionConfig: mysql.ConnectionOptions = {
+    ...(socketPath
+      ? { socketPath }
+      : {
+          host: process.env.DB_HOST,
+          port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+        }),
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     multipleStatements: false,
-  });
+  };
+
+  const connection = await mysql.createConnection(connectionConfig);
 
   const report: RehearsalReport = {
     timestamp: new Date().toISOString(),
-    environment: `${process.env.DB_HOST}/${process.env.DB_NAME}`,
+    environment: `${process.env.DB_SOCKET_PATH || process.env.DB_HOST}/${process.env.DB_NAME}`,
     dryRun,
     rollbackTest,
     preMigration: null,

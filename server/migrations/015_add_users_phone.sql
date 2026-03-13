@@ -1,7 +1,8 @@
 -- Migration: 015_add_users_phone
 -- Description: Adds the missing phone column to users so runtime upserts match schema expectations.
 --
--- Idempotency: Uses stored procedure + INFORMATION_SCHEMA check.
+-- Idempotency: Handled by MigrationRunner tracking table (_migrations).
+--   The _migrations table prevents this migration from being re-applied.
 --   MySQL 8.4 does not support ADD COLUMN IF NOT EXISTS syntax.
 --
 -- Author: codex
@@ -9,27 +10,9 @@
 
 -- UP
 
-DROP PROCEDURE IF EXISTS add_users_phone_column;
-
-DELIMITER $$
-CREATE PROCEDURE add_users_phone_column()
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM INFORMATION_SCHEMA.COLUMNS
-        WHERE TABLE_SCHEMA = DATABASE()
-          AND TABLE_NAME = 'users'
-          AND COLUMN_NAME = 'phone'
-    ) THEN
-        ALTER TABLE users
-            ADD COLUMN phone VARCHAR(50) NULL AFTER duty_mode;
-    END IF;
-END$$
-DELIMITER ;
-
-CALL add_users_phone_column();
-DROP PROCEDURE IF EXISTS add_users_phone_column;
+ALTER TABLE users
+    ADD COLUMN phone VARCHAR(50) NULL AFTER duty_mode;
 
 -- DOWN
 
--- ALTER TABLE users DROP COLUMN IF EXISTS phone;
+ALTER TABLE users DROP COLUMN phone;

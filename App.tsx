@@ -129,15 +129,15 @@ interface NavCategory {
 
 /** Valid tab IDs for AccountingPortal. */
 type AccountingPortalTab =
-  | 'DASHBOARD'
-  | 'AR'
-  | 'AP'
-  | 'SETTLEMENTS'
-  | 'GL'
-  | 'IFTA'
-  | 'VAULT'
-  | 'MAINTENANCE'
-  | 'AUTOMATION';
+  | "DASHBOARD"
+  | "AR"
+  | "AP"
+  | "SETTLEMENTS"
+  | "GL"
+  | "IFTA"
+  | "VAULT"
+  | "MAINTENANCE"
+  | "AUTOMATION";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -150,7 +150,9 @@ export default function App() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
 
   const [activeTab, setActiveTab] = useState("operations-hub");
-  const [activeSubTab, setActiveSubTab] = useState<AccountingPortalTab | string | undefined>();
+  const [activeSubTab, setActiveSubTab] = useState<
+    AccountingPortalTab | string | undefined
+  >();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isIssueSidebarOpen, setIsIssueSidebarOpen] = useState(false);
 
@@ -508,7 +510,12 @@ export default function App() {
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        { id: "api-tester", label: "API Tester", icon: Zap },
+        {
+          id: "api-tester",
+          permission: "ORG_SETTINGS_VIEW",
+          label: "API Tester",
+          icon: Zap,
+        },
       ],
     },
   ];

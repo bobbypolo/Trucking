@@ -44,7 +44,7 @@ describe("R-PV-04: Migration Inventory", () => {
       "007_ocr_results.sql",
       "008_settlements.sql",
       "009_settlement_adjustments.sql",
-      "exception_management.sql",
+      "016_exception_management.sql",
     ];
 
     for (const file of expectedFiles) {
@@ -86,14 +86,14 @@ describe("R-PV-04: Migration Execution Order", () => {
     expect(first).toBe("001_baseline.sql");
   });
 
-  it("Tests R-PV-04 — users_phone (015) is the highest numbered migration", () => {
+  it("Tests R-PV-04 — exception_management (016) is the highest numbered migration", () => {
     const numberedFiles = listMigrationFiles()
       .filter((f) => /^\d{3}_/.test(f))
       .filter((f) => !f.includes("rollback"));
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(15);
+    expect(maxPrefix).toBe(16);
   });
 });
 
@@ -350,7 +350,7 @@ describe("R-PV-04: FK Relationships — Schema Structure", () => {
   });
 
   it("Tests R-PV-04 — exception_management defines FK: exceptions.status → exception_status", () => {
-    const sql = readMigrationFile("exception_management.sql");
+    const sql = readMigrationFile("016_exception_management.sql");
     expect(sql).toContain(
       "FOREIGN KEY (status) REFERENCES exception_status(status_code)",
     );
@@ -386,7 +386,7 @@ describe("R-PV-04: DECIMAL(10,2) Monetary Precision", () => {
   });
 
   it("Tests R-PV-04 — exception_management uses DECIMAL(10,2) for financial_impact_est", () => {
-    const sql = readMigrationFile("exception_management.sql");
+    const sql = readMigrationFile("016_exception_management.sql");
     expect(sql).toContain("financial_impact_est DECIMAL(10, 2)");
   });
 });
