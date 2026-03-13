@@ -40,6 +40,10 @@
       "story005_deploy_prep": {
         "cmd": "python -m pytest .claude/hooks/tests/test_r_p5_deployment.py .claude/hooks/tests/test_r_p5_story005.py .claude/hooks/tests/test_r_p5_deploy_prep_story005.py -v --tb=short -q",
         "max_duration_s": 120
+      },
+      "story006_staging_evidence": {
+        "cmd": "python -m pytest .claude/hooks/tests/test_r_p6_staging_story006.py -v --tb=short -q",
+        "max_duration_s": 60
       }
     },
     "coverage": ""

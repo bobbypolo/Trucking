@@ -642,7 +642,9 @@
           "testFile": null
         }
       ],
-      "gateCmds": {},
+      "gateCmds": {
+        "regression_tier": "story006_staging_evidence"
+      },
       "passed": false,
       "verificationRef": null
     }
