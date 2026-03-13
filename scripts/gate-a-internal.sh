@@ -100,7 +100,7 @@ gcloud run services update-traffic "${SERVICE_NAME}" \
 log "Traffic update complete. Waiting 15s for propagation..."
 sleep 15
 
-log "Traffic config: ${TRAFFIC_PCT}% to ${LATEST_REVISION} (${$((100 - TRAFFIC_PCT))}% to stable revision)"
+log "Traffic config: ${TRAFFIC_PCT}% to ${LATEST_REVISION} ($((100 - TRAFFIC_PCT))% to stable revision)"
 
 # ─── Step 4: Run smoke tests ──────────────────────────────────────────────────
 

@@ -133,8 +133,23 @@ echo "Frontend built with VITE_API_URL=${VITE_API_URL}"
 
 # -- Step 7: Deploy to Firebase Hosting
 echo "[7/7] Deploying frontend to Firebase Hosting..."
+
+# Temporarily patch firebase.json to point /api/** rewrite at production Cloud Run service
+# This is necessary because firebase.json defaults to staging service (loadpilot-api)
+FIREBASE_JSON="firebase.json"
+FIREBASE_BACKUP="${FIREBASE_JSON}.staging-backup"
+cp "${FIREBASE_JSON}" "${FIREBASE_BACKUP}"
+
+# Replace staging service ID with production service ID in the rewrite rule
+sed -i 's/"serviceId": "loadpilot-api"/"serviceId": "loadpilot-api-prod"/' "${FIREBASE_JSON}"
+echo "Patched firebase.json: /api/** -> ${SERVICE_NAME} (production)"
+
 firebase deploy --only hosting --project="${PROJECT_ID}"
-echo "Firebase Hosting deployed."
+
+# Restore original firebase.json (staging default)
+mv "${FIREBASE_BACKUP}" "${FIREBASE_JSON}"
+echo "Restored firebase.json to staging default."
+echo "Firebase Hosting deployed with production rewrite."
 
 echo ""
 echo "=== Production deployment complete (ZERO TRAFFIC) ==="
