@@ -34,6 +34,8 @@ const SEED_COMPANY_ID = "iscope-authority-001";
 const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
 /** Demo-mode master password sourced from fixtures/test-users.json. Never hardcoded. */
 const DEMO_MASTER_PASSWORD: string = seedFixtures.admin.password;
+/** Demo-mode fallback password sourced from fixtures/test-users.json. Never hardcoded. */
+const DEMO_FALLBACK_PASSWORD: string = seedFixtures.demoFallbackPassword;
 
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
@@ -480,7 +482,7 @@ export const login = async (
     if (
       user &&
       (password === DEMO_MASTER_PASSWORD ||
-        password === "12345" ||
+        password === DEMO_FALLBACK_PASSWORD ||
         user.password === password)
     ) {
       _sessionCache = user;
@@ -530,7 +532,7 @@ export const login = async (
     if (
       user &&
       (password === DEMO_MASTER_PASSWORD ||
-        password === "12345" ||
+        password === DEMO_FALLBACK_PASSWORD ||
         user.password === password)
     ) {
       _sessionCache = user;
