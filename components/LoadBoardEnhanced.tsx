@@ -16,9 +16,12 @@ import {
   Printer,
   Columns,
   Database,
+  Truck,
+  Plus,
 } from "lucide-react";
 import { LoadList } from "./LoadList";
 import { LoadData, User, Broker } from "../types";
+import { EmptyState } from "./EmptyState";
 
 interface LoadBoardExpandedProps {
   loads: LoadData[];
@@ -29,6 +32,7 @@ interface LoadBoardExpandedProps {
   onDelete: (id: string) => void;
   canViewRates: boolean;
   onOpenHub?: (tab: "messaging", startCall?: boolean) => void;
+  onCreateLoad?: () => void;
 }
 
 export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
@@ -40,6 +44,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   onDelete,
   canViewRates,
   onOpenHub,
+  onCreateLoad,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGridViewOpen, setIsGridViewOpen] = useState(false);
@@ -95,15 +100,30 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
       <div className="flex-1 flex overflow-hidden">
         {/* Main Card View (Original Component) */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          <LoadList
-            loads={loads}
-            onView={onView}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            users={users}
-            canViewRates={canViewRates}
-            onOpenHub={onOpenHub}
-          />
+          {loads.length === 0 ? (
+            <div className="flex-1 flex items-center justify-center">
+              <EmptyState
+                icon={<Truck className="w-16 h-16" />}
+                title="No loads"
+                description="Create your first load to get started."
+                action={
+                  onCreateLoad
+                    ? { label: "Create Load", onClick: onCreateLoad }
+                    : undefined
+                }
+              />
+            </div>
+          ) : (
+            <LoadList
+              loads={loads}
+              onView={onView}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              users={users}
+              canViewRates={canViewRates}
+              onOpenHub={onOpenHub}
+            />
+          )}
         </div>
 
         {/* Customize View Sidebar */}

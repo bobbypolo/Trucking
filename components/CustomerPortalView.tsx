@@ -21,11 +21,18 @@ import {
 import { User, LoadData } from "../types";
 // Shared messaging to be integrated via IntelligenceHub or a dedicated shared component
 
+interface QuoteFormData {
+  origin: string;
+  destination: string;
+  equipment: string;
+}
+
 interface Props {
   user: User;
   loads: LoadData[];
   onOpenHub?: (tab?: "feed" | "messaging" | "intelligence" | "reports") => void;
   onLogout?: () => void;
+  onSubmitQuote?: (data: QuoteFormData) => void;
 }
 
 export const CustomerPortalView: React.FC<Props> = ({
@@ -33,10 +40,15 @@ export const CustomerPortalView: React.FC<Props> = ({
   loads,
   onOpenHub,
   onLogout,
+  onSubmitQuote,
 }) => {
   const [activeView, setActiveView] = useState("shipments");
   const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [quoteOrigin, setQuoteOrigin] = useState("");
+  const [quoteDestination, setQuoteDestination] = useState("");
+  const [quoteEquipment, setQuoteEquipment] = useState("Dry Van 53'");
+  const [quoteSubmitted, setQuoteSubmitted] = useState(false);
 
   const customerLoads = loads.filter(
     (l) => l.customerUserId === user.id || l.brokerId === user.id,
@@ -193,7 +205,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                         </div>
                         <div className="flex justify-between items-center text-[8px] font-black text-slate-600 uppercase">
                           <span>En Route</span>
-                          <span>ETA: 4h 32m</span>
+                          <span>
+                            {load.dropoffDate
+                              ? `ETA: ${load.dropoffDate}`
+                              : "In Transit"}
+                          </span>
                         </div>
                       </div>
 
@@ -250,11 +266,12 @@ export const CustomerPortalView: React.FC<Props> = ({
                             <MapPin className="w-4 h-4 text-blue-500" />
                           </div>
                           <span className="text-[10px] font-black text-slate-500 uppercase">
-                            Location
+                            Origin
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          Syracuse, NY
+                          {selectedLoad.pickup.city},{" "}
+                          {selectedLoad.pickup.state}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -263,11 +280,12 @@ export const CustomerPortalView: React.FC<Props> = ({
                             <Clock className="w-4 h-4 text-indigo-500" />
                           </div>
                           <span className="text-[10px] font-black text-slate-500 uppercase">
-                            Distance left
+                            Destination
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          142 Miles
+                          {selectedLoad.dropoff.city},{" "}
+                          {selectedLoad.dropoff.state}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -276,11 +294,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                             <CheckCircle2 className="w-4 h-4 text-green-500" />
                           </div>
                           <span className="text-[10px] font-black text-slate-500 uppercase">
-                            Condition
+                            Status
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          In Optimal SLA
+                          {selectedLoad.status}
                         </div>
                       </div>
                     </div>
@@ -288,12 +306,21 @@ export const CustomerPortalView: React.FC<Props> = ({
                     <div className="space-y-4">
                       <div className="flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
                         <span>Delivery Progress</span>
-                        <span className="text-blue-500">78% Complete</span>
+                        <span className="text-blue-500">
+                          {selectedLoad.status === "delivered"
+                            ? "100% Complete"
+                            : "In Progress"}
+                        </span>
                       </div>
                       <div className="h-3 w-full bg-slate-950 rounded-full border border-white/5 overflow-hidden">
                         <div
                           className="h-full bg-blue-600 rounded-full shadow-[0_0_20px_#2563eb]"
-                          style={{ width: "78%" }}
+                          style={{
+                            width:
+                              selectedLoad.status === "delivered"
+                                ? "100%"
+                                : "50%",
+                          }}
                         />
                       </div>
                     </div>
@@ -311,76 +338,86 @@ export const CustomerPortalView: React.FC<Props> = ({
               </div>
             )}
 
-            {activeView === "invoices" && (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-2xl font-black text-white uppercase">
-                    Invoice History
-                  </h3>
-                  <button className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                    <Download className="w-4 h-4" /> Export Statement
-                  </button>
-                </div>
+            {activeView === "invoices" &&
+              (() => {
+                const invoiceLoads = customerLoads.filter(
+                  (l) => l.status === "delivered" || l.isInvoiced,
+                );
+                return (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-2xl font-black text-white uppercase">
+                        Invoice History
+                      </h3>
+                      <button className="px-6 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                        <Download className="w-4 h-4" /> Export Statement
+                      </button>
+                    </div>
 
-                <div className="bg-[#0a0f1e] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-white/5 bg-slate-950/50">
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          Invoice #
-                        </th>
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          Load #
-                        </th>
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          Date
-                        </th>
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          Amount
-                        </th>
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                          Status
-                        </th>
-                        <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <tr
-                          key={i}
-                          className="hover:bg-white/[0.02] transition-colors group"
-                        >
-                          <td className="px-8 py-5 text-[10px] font-black text-white">
-                            INV-8409{i}
-                          </td>
-                          <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
-                            TRK-491{i}
-                          </td>
-                          <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
-                            2023-12-1{i}
-                          </td>
-                          <td className="px-8 py-5 text-[10px] font-black text-white">
-                            $4,250.00
-                          </td>
-                          <td className="px-8 py-5">
-                            <span className="px-2 py-0.5 bg-green-500/20 text-green-500 rounded-lg text-[8px] font-black uppercase border border-green-500/20">
-                              Paid
-                            </span>
-                          </td>
-                          <td className="px-8 py-5 text-right">
-                            <button className="p-2 text-slate-600 hover:text-blue-500 transition-colors">
-                              <Download className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                    {invoiceLoads.length === 0 ? (
+                      <div className="py-20 text-center bg-[#0a0f1e]/40 rounded-[2rem] border border-dashed border-white/5">
+                        <FileText className="w-12 h-12 text-slate-800 mx-auto mb-4" />
+                        <p className="text-xs font-black text-slate-600 uppercase tracking-[0.2em]">
+                          No invoices
+                        </p>
+                        <p className="text-[10px] text-slate-700 font-bold uppercase mt-2">
+                          Invoices will appear once loads are delivered
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-[#0a0f1e] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr className="border-b border-white/5 bg-slate-950/50">
+                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                Load #
+                              </th>
+                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                Route
+                              </th>
+                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                Date
+                              </th>
+                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                Amount
+                              </th>
+                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                Status
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/5">
+                            {invoiceLoads.map((l) => (
+                              <tr
+                                key={l.id}
+                                className="hover:bg-white/[0.02] transition-colors group"
+                              >
+                                <td className="px-8 py-5 text-[10px] font-black text-white">
+                                  {l.loadNumber}
+                                </td>
+                                <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
+                                  {l.pickup.city} → {l.dropoff.city}
+                                </td>
+                                <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
+                                  {l.dropoffDate || l.pickupDate}
+                                </td>
+                                <td className="px-8 py-5 text-[10px] font-black text-white">
+                                  ${(l.carrierRate || 0).toLocaleString()}
+                                </td>
+                                <td className="px-8 py-5">
+                                  <span className="px-2 py-0.5 bg-green-500/20 text-green-500 rounded-lg text-[8px] font-black uppercase border border-green-500/20">
+                                    {l.isInvoiced ? "Invoiced" : "Delivered"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
             {activeView === "quotes" && (
               <div className="max-w-2xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4">
@@ -396,38 +433,75 @@ export const CustomerPortalView: React.FC<Props> = ({
                   </p>
                 </div>
 
-                <form className="bg-[#0a0f1e] border border-white/10 rounded-[2.5rem] p-10 space-y-8 shadow-2xl">
-                  <div className="grid grid-cols-2 gap-8">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
-                        Origin City
-                      </label>
-                      <input className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all" />
-                    </div>
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
-                        Destination City
-                      </label>
-                      <input className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all" />
-                    </div>
+                {quoteSubmitted ? (
+                  <div className="bg-[#0a0f1e] border border-white/10 rounded-[2.5rem] p-10 text-center space-y-6 shadow-2xl">
+                    <CheckCircle2 className="w-16 h-16 text-emerald-500 mx-auto" />
+                    <h4 className="text-xl font-black text-white uppercase">
+                      Quote Request Received
+                    </h4>
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-widest">
+                      Contact dispatch to confirm your rate
+                    </p>
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
-                      Equipment Type
-                    </label>
-                    <select className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all appearance-none">
-                      <option>Dry Van 53'</option>
-                      <option>Reefer 53'</option>
-                      <option>Flatbed</option>
-                    </select>
-                  </div>
-                  <button
-                    type="button"
-                    className="w-full py-5 bg-blue-600 text-white rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 hover:bg-blue-500 transition-all active:scale-95"
+                ) : (
+                  <form
+                    className="bg-[#0a0f1e] border border-white/10 rounded-[2.5rem] p-10 space-y-8 shadow-2xl"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (onSubmitQuote) {
+                        onSubmitQuote({
+                          origin: quoteOrigin,
+                          destination: quoteDestination,
+                          equipment: quoteEquipment,
+                        });
+                      }
+                      setQuoteSubmitted(true);
+                    }}
                   >
-                    Submit Priority Request
-                  </button>
-                </form>
+                    <div className="grid grid-cols-2 gap-8">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                          Origin City
+                        </label>
+                        <input
+                          value={quoteOrigin}
+                          onChange={(e) => setQuoteOrigin(e.target.value)}
+                          className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                          Destination City
+                        </label>
+                        <input
+                          value={quoteDestination}
+                          onChange={(e) => setQuoteDestination(e.target.value)}
+                          className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                        Equipment Type
+                      </label>
+                      <select
+                        value={quoteEquipment}
+                        onChange={(e) => setQuoteEquipment(e.target.value)}
+                        className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all appearance-none"
+                      >
+                        <option>Dry Van 53&apos;</option>
+                        <option>Reefer 53&apos;</option>
+                        <option>Flatbed</option>
+                      </select>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-5 bg-blue-600 text-white rounded-3xl text-sm font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-900/40 hover:bg-blue-500 transition-all active:scale-95"
+                    >
+                      Submit Priority Request
+                    </button>
+                  </form>
+                )}
               </div>
             )}
 

@@ -225,10 +225,11 @@ export const DriverMobileHome: React.FC<Props> = ({
                     <div className="text-[10px] font-bold text-slate-400 uppercase">
                       Load #: {selectedLoad.loadNumber}
                     </div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">
-                      Instructions:{" "}
-                      {selectedLoad.specialInstructions || "Check in at Gate 2"}
-                    </div>
+                    {selectedLoad.specialInstructions && (
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">
+                        Instructions: {selectedLoad.specialInstructions}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -244,7 +245,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
                     <div className="text-[10px] font-bold text-slate-400 uppercase">
-                      Wait time expected: 2h
+                      Destination: {selectedLoad.dropoff.city},{" "}
+                      {selectedLoad.dropoff.state}
                     </div>
                   </div>
                 </div>

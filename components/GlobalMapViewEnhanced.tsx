@@ -181,10 +181,6 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           (inc) => inc.driverId === driver.id && inc.status !== "Closed",
         );
 
-        const seed = driver.id
-          .split("-")
-          .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
         // Use DB-stored coordinates from load legs when available
         let lat = defaultCenter.lat;
         let lng = defaultCenter.lng;
@@ -199,13 +195,20 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           }
         }
 
+        // Online status and ping time from real load data — no mock seed generation
+        const isOnline = !!activeLoad;
+        const lastPing = activeLoad
+          ? new Date().toISOString()
+          : (driver as any).lastSeenAt || new Date(0).toISOString();
+        const heading = (activeLoad as any)?.heading ?? 0;
+
         return {
           driver,
           activeLoad,
-          isOnline: seed % 10 > 2,
-          lastPing: new Date(Date.now() - (seed % 60) * 60000).toISOString(),
+          isOnline,
+          lastPing,
           coords: { lat, lng },
-          heading: seed % 360,
+          heading,
           speed: activeLoad ? 65 : 0,
           hasIncident,
         };
