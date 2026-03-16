@@ -34,6 +34,55 @@ const REQUIRED_DB_VARS = [
 /** Environments that require fail-closed validation */
 const STRICT_ENVIRONMENTS = new Set(["staging", "production"]);
 
+/** Safe localhost origins allowed in development/test mode */
+const DEV_ALLOWED_ORIGINS = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:5000",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5000",
+];
+
+/**
+ * Returns the CORS origin configuration for the Express cors() middleware.
+ *
+ * - In staging/production: uses CORS_ORIGIN from env (validated by validateEnv).
+ *   If CORS_ORIGIN contains commas, splits into an array.
+ * - In development/test/undefined: if CORS_ORIGIN is set, uses it;
+ *   otherwise restricts to localhost origins only.
+ * - Never returns "*" when credentials are enabled (CORS spec violation).
+ */
+export function getCorsOrigin(): string | string[] {
+  const corsOrigin = process.env.CORS_ORIGIN;
+  const nodeEnv = process.env.NODE_ENV;
+  const isStrict = nodeEnv !== undefined && STRICT_ENVIRONMENTS.has(nodeEnv);
+
+  if (corsOrigin && corsOrigin.trim() !== "") {
+    // If the value contains commas, treat as multiple origins
+    if (corsOrigin.includes(",")) {
+      return corsOrigin.split(",").map((o) => o.trim());
+    }
+    return corsOrigin;
+  }
+
+  if (isStrict) {
+    // This should not be reached because validateEnv() throws first,
+    // but defend in depth.
+    throw new Error(
+      `CORS_ORIGIN is required in ${nodeEnv} but was not set. ` +
+        "Cannot start server without explicit CORS origin.",
+    );
+  }
+
+  // Development/test: allow only localhost origins
+  logger.info(
+    { origins: DEV_ALLOWED_ORIGINS },
+    "CORS_ORIGIN not set — restricting to localhost origins for development",
+  );
+  return DEV_ALLOWED_ORIGINS;
+}
+
 /**
  * Validates that all required environment variables are set.
  * Throws an Error with a descriptive message listing ALL missing vars.
@@ -96,7 +145,7 @@ export function validateEnv(): void {
     const corsOrigin = process.env.CORS_ORIGIN;
     if (!corsOrigin || corsOrigin.trim() === "") {
       logger.warn(
-        "CORS_ORIGIN is not set — defaulting to permissive CORS (*). " +
+        "CORS_ORIGIN is not set — restricting to localhost origins only. " +
           "Configure CORS_ORIGIN before staging/production deployment.",
       );
     }

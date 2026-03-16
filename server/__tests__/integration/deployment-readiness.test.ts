@@ -94,6 +94,7 @@ vi.mock("../../lib/logger", () => ({
 import { errorHandler } from "../../middleware/errorHandler";
 import loadsRouter from "../../routes/loads";
 import { AuthError } from "../../errors/AppError";
+import { getCorsOrigin } from "../../lib/env";
 
 // ---------------------------------------------------------------------------
 // Build a minimal test Express app matching production middleware stack
@@ -103,9 +104,10 @@ function buildDeploymentTestApp() {
 
   // Production middleware chain
   app.use(helmet());
+  // Use getCorsOrigin() for safe CORS — never wildcard with credentials
   app.use(
     cors({
-      origin: process.env.CORS_ORIGIN || "*",
+      origin: getCorsOrigin(),
       credentials: true,
     }),
   );
