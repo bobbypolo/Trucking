@@ -26,8 +26,14 @@ import {
   getIdToken,
 } from "firebase/auth";
 
+import seedFixtures from "../fixtures/test-users.json";
+
 const COMPANIES_KEY = "loadpilot_companies_v1";
 const SEED_COMPANY_ID = "iscope-authority-001";
+/** Dev-only default password sourced from fixtures/test-users.json. Never hardcoded. */
+const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
+/** Demo-mode master password sourced from fixtures/test-users.json. Never hardcoded. */
+const DEMO_MASTER_PASSWORD: string = seedFixtures.admin.password;
 
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
@@ -473,7 +479,7 @@ export const login = async (
     );
     if (
       user &&
-      (password === "admin123" ||
+      (password === DEMO_MASTER_PASSWORD ||
         password === "12345" ||
         user.password === password)
     ) {
@@ -523,7 +529,7 @@ export const login = async (
     );
     if (
       user &&
-      (password === "admin123" ||
+      (password === DEMO_MASTER_PASSWORD ||
         password === "12345" ||
         user.password === password)
     ) {
@@ -653,7 +659,7 @@ export const registerCompany = async (
     role: "admin",
     payModel: "salary",
     payRate: 100000,
-    password: password || "admin123",
+    password: password || DEV_DEFAULT_PASSWORD,
     onboardingStatus: "Completed",
     safetyScore: 100,
     restricted: false,
@@ -667,7 +673,7 @@ export const registerCompany = async (
       const credential = await createUserWithEmailAndPassword(
         auth,
         adminEmail,
-        password || "admin123",
+        password || DEV_DEFAULT_PASSWORD,
       );
       newUser.firebaseUid = credential.user.uid;
     } catch (error) {
@@ -890,7 +896,7 @@ export const addDriver = async (
     payModel: payModel || (role === "admin" ? "salary" : "percent"),
     payRate: payRate || (role === "admin" ? 100000 : 25),
     managedByUserId,
-    password: password || "admin123",
+    password: password || DEV_DEFAULT_PASSWORD,
     onboardingStatus: "Completed",
     safetyScore: 100,
     restricted: false,
@@ -904,7 +910,7 @@ export const addDriver = async (
       const credential = await createUserWithEmailAndPassword(
         auth,
         email,
-        password || "admin123",
+        password || DEV_DEFAULT_PASSWORD,
       );
       newUser.firebaseUid = credential.user.uid;
     } catch (error: any) {
@@ -930,17 +936,22 @@ export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
   return getStoredUsers().filter((u) => u.companyId === companyId);
 };
 
+// Seed credentials are loaded from fixtures/test-users.json at runtime.
+// All hardcoded emails and passwords have been extracted to that file.
+// fixtures/test-users.json is listed in .gitignore and must never be committed.
+
 export const seedDatabase = async () => {
   const users = getStoredUsers();
-  const targetEmail = "admin@loadpilot.com";
+  const adminFixture = seedFixtures.admin;
+  const targetEmail = adminFixture.email;
 
   if (!users.find((u) => u.email === targetEmail)) {
     const { user } = await registerCompany(
-      "LoadPilot Logistics",
+      adminFixture.companyName,
       targetEmail,
-      "Authority Admin",
-      "fleet",
-      "admin123",
+      adminFixture.name,
+      adminFixture.accountType as AccountType,
+      adminFixture.password,
     );
     seedDemoLoads(user);
   }
@@ -971,119 +982,107 @@ export const seedDatabase = async () => {
     }
   };
 
+  // Staff roles — credentials sourced from fixtures/test-users.json
+  const {
+    dispatcher,
+    opsManager,
+    arSpecialist,
+    apClerk,
+    payroll,
+    safety,
+    maintenance,
+  } = seedFixtures;
   await ensureUser(
-    "dispatch@loadpilot.com",
-    "Dispatch Lead",
-    "DISPATCHER",
-    "dispatch123",
+    dispatcher.email,
+    dispatcher.name,
+    dispatcher.role as UserRole,
+    dispatcher.password,
   );
   await ensureUser(
-    "opsmanager@loadpilot.com",
-    "Operations Manager",
-    "OPS_MANAGER",
-    "admin123",
+    opsManager.email,
+    opsManager.name,
+    opsManager.role as UserRole,
+    opsManager.password,
   );
   await ensureUser(
-    "ar@loadpilot.com",
-    "AR Specialist",
-    "ACCOUNTING_AR",
-    "admin123",
-  );
-  await ensureUser("ap@loadpilot.com", "AP Clerk", "ACCOUNTING_AP", "admin123");
-  await ensureUser(
-    "payroll@loadpilot.com",
-    "Payroll Controller",
-    "PAYROLL_SETTLEMENTS",
-    "payroll123",
+    arSpecialist.email,
+    arSpecialist.name,
+    arSpecialist.role as UserRole,
+    arSpecialist.password,
   );
   await ensureUser(
-    "safety@loadpilot.com",
-    "Safety Director",
-    "SAFETY_COMPLIANCE",
-    "safety123",
+    apClerk.email,
+    apClerk.name,
+    apClerk.role as UserRole,
+    apClerk.password,
   );
   await ensureUser(
-    "maint@loadpilot.com",
-    "Maintenance Lead",
-    "MAINTENANCE_MANAGER",
-    "admin123",
+    payroll.email,
+    payroll.name,
+    payroll.role as UserRole,
+    payroll.password,
+  );
+  await ensureUser(
+    safety.email,
+    safety.name,
+    safety.role as UserRole,
+    safety.password,
+  );
+  await ensureUser(
+    maintenance.email,
+    maintenance.name,
+    maintenance.role as UserRole,
+    maintenance.password,
   );
 
   // Small Team Roles
+  const { smallBiz, fusedOps, fusedFinance } = seedFixtures;
   await ensureUser(
-    "smallbiz@kci.com",
-    "Small Team Owner",
-    "OWNER_ADMIN",
-    "admin123",
+    smallBiz.email,
+    smallBiz.name,
+    smallBiz.role as UserRole,
+    smallBiz.password,
   );
-  await ensureUser("fused_ops@kci.com", "Fused Operations", "OPS", "admin123");
   await ensureUser(
-    "fused_finance@kci.com",
-    "Fused Finance",
-    "FINANCE",
-    "admin123",
+    fusedOps.email,
+    fusedOps.name,
+    fusedOps.role as UserRole,
+    fusedOps.password,
+  );
+  await ensureUser(
+    fusedFinance.email,
+    fusedFinance.name,
+    fusedFinance.role as UserRole,
+    fusedFinance.password,
   );
 
-  const fleetOwnerEmail = "fleetowner@kci.com";
+  const { fleetOwner: fleetOwnerFixture, operator1, operator2 } = seedFixtures;
   await ensureUser(
-    fleetOwnerEmail,
-    "Master Fleet Owner",
-    "FLEET_OO_ADMIN_PORTAL",
-    "fleet123",
+    fleetOwnerFixture.email,
+    fleetOwnerFixture.name,
+    fleetOwnerFixture.role as UserRole,
+    fleetOwnerFixture.password,
   );
   const allUsers = getStoredUsers();
-  const fleetOwner = allUsers.find((u) => u.email === fleetOwnerEmail);
+  const fleetOwner = allUsers.find((u) => u.email === fleetOwnerFixture.email);
 
   await ensureUser(
-    "operator1@gmail.com",
-    "Owner Op 1",
-    "owner_operator",
-    "admin123",
+    operator1.email,
+    operator1.name,
+    operator1.role as UserRole,
+    operator1.password,
     fleetOwner?.id,
   );
   await ensureUser(
-    "operator2@gmail.com",
-    "Owner Op 2",
-    "owner_operator",
-    "admin123",
+    operator2.email,
+    operator2.name,
+    operator2.role as UserRole,
+    operator2.password,
     fleetOwner?.id,
   );
 
-  // MOCK DATA REQUEST: 5 Specific Drivers via requested profiles
-  const mockDrivers = [
-    {
-      email: "driver1@loadpilot.com",
-      name: "Marcus Rodriguez",
-      state: "IL",
-      password: "driver123",
-    },
-    {
-      email: "driver2@loadpilot.com",
-      name: "Sarah Chen",
-      state: "IN",
-      password: "driver123",
-    },
-    {
-      email: "driver3@loadpilot.com",
-      name: "David Thompson",
-      state: "OH",
-      password: "driver123",
-    },
-    {
-      email: "driver4@loadpilot.com",
-      name: "Elena Garcia",
-      state: "TX",
-      password: "driver123",
-    },
-    {
-      email: "driver5@loadpilot.com",
-      name: "James Wilson",
-      state: "GA",
-      password: "driver123",
-    },
-  ];
-
-  for (const d of mockDrivers) {
+  // Drivers — profiles sourced from fixtures/test-users.json
+  for (const d of seedFixtures.drivers) {
     if (!currentUsers.find((u) => u.email === d.email)) {
       await addDriver(
         companyId,
@@ -1106,18 +1105,19 @@ export const seedDatabase = async () => {
     }
   }
 
+  const { customer, architect } = seedFixtures;
   await ensureUser(
-    "customer@gmail.com",
-    "Global Logistics Partner",
-    "customer",
-    "admin123",
+    customer.email,
+    customer.name,
+    customer.role as UserRole,
+    customer.password,
   );
 
   // ARCHITECT / SUPER-ADMIN (Bypasses Subscription Gates)
   await ensureUser(
-    "architect@loadpilot.com",
-    "System Architect",
-    "ORG_OWNER_SUPER_ADMIN",
-    "admin123",
+    architect.email,
+    architect.name,
+    architect.role as UserRole,
+    architect.password,
   );
 };

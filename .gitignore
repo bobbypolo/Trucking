@@ -68,3 +68,6 @@ CLAUDE.md
 WORKFLOW.md
 PROJECT_BRIEF.md
 .mcp.json.example
+
+# Test seed fixtures — contains dev credentials, never commit
+fixtures/test-users.json
