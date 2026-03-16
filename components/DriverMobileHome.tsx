@@ -1,11 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   User,
   LoadData,
   LoadStatus,
   Company,
   ChangeRequest,
-  VisibilityLevel,
   VaultDoc,
   LOAD_STATUS,
 } from "../types";
@@ -32,8 +31,11 @@ import {
   ArrowLeft,
   Map as MapIcon,
   Navigation,
+  Phone,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
+import { Scanner } from "./Scanner";
+import { Toast } from "./Toast";
 import { v4 as uuidv4 } from "uuid";
 
 interface Props {
@@ -45,6 +47,19 @@ interface Props {
   onOpenHub?: (tab?: "feed" | "messaging" | "intelligence" | "reports") => void;
 }
 
+type ActiveTab =
+  | "today"
+  | "loads"
+  | "documents"
+  | "changes"
+  | "profile"
+  | "map";
+
+interface ToastState {
+  message: string;
+  type: "success" | "error" | "info";
+}
+
 export const DriverMobileHome: React.FC<Props> = ({
   user,
   company,
@@ -53,12 +68,67 @@ export const DriverMobileHome: React.FC<Props> = ({
   onSaveLoad,
   onOpenHub,
 }) => {
-  const [activeTab, setActiveTab] = useState<
-    "today" | "loads" | "documents" | "changes" | "profile" | "map"
-  >("today");
-  const [selectedLoadId, setSelectedLoadId] = useState<string | null>(null);
+  // --- localStorage persistence (R-P4-09, R-P4-10) ---
+  const tabKey = `driver_${user.id}_activeTab`;
+  const loadKey = `driver_${user.id}_selectedLoadId`;
+
+  const getStoredTab = (): ActiveTab => {
+    try {
+      const val = localStorage.getItem(tabKey);
+      if (
+        val === "today" ||
+        val === "loads" ||
+        val === "documents" ||
+        val === "changes" ||
+        val === "profile" ||
+        val === "map"
+      ) {
+        return val;
+      }
+    } catch {
+      // quota or security error — fall through
+    }
+    return "today";
+  };
+
+  const getStoredLoadId = (): string | null => {
+    try {
+      return localStorage.getItem(loadKey);
+    } catch {
+      return null;
+    }
+  };
+
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(getStoredTab);
+  const [selectedLoadId, setSelectedLoadIdState] = useState<string | null>(
+    getStoredLoadId,
+  );
   const [isCapturingDoc, setIsCapturingDoc] = useState(false);
   const [isCreatingChange, setIsCreatingChange] = useState(false);
+  const [toast, setToast] = useState<ToastState | null>(null);
+
+  // Wrap setters to persist to localStorage (R-P4-10)
+  const setActiveTab = (tab: ActiveTab) => {
+    try {
+      localStorage.setItem(tabKey, tab);
+    } catch {
+      // quota error — ignore
+    }
+    setActiveTabState(tab);
+  };
+
+  const setSelectedLoadId = (id: string | null) => {
+    try {
+      if (id === null) {
+        localStorage.removeItem(loadKey);
+      } else {
+        localStorage.setItem(loadKey, id);
+      }
+    } catch {
+      // quota error — ignore
+    }
+    setSelectedLoadIdState(id);
+  };
 
   // Mock Change Requests & Docs for MVP
   const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
@@ -86,9 +156,40 @@ export const DriverMobileHome: React.FC<Props> = ({
     rateCon: company?.driverVisibilitySettings?.allowRateCon,
   };
 
+  // Status update with toast feedback (R-P4-05, R-P4-06)
   const handleStatusUpdate = async (newStatus: LoadStatus) => {
     if (!selectedLoad) return;
-    await onSaveLoad({ ...selectedLoad, status: newStatus });
+    try {
+      await onSaveLoad({ ...selectedLoad, status: newStatus });
+      setToast({
+        message: `Status updated to ${newStatus}`,
+        type: "success",
+      });
+    } catch {
+      setToast({ message: "Failed to update status", type: "error" });
+    }
+  };
+
+  // Scanner data extracted handler (R-P4-03)
+  const handleDataExtracted = (data: unknown) => {
+    if (!selectedLoad) return;
+    // Attach extracted document metadata to the load
+    const docMeta = data as { docType?: string; confidence?: number };
+    const updatedLoad: LoadData = {
+      ...selectedLoad,
+      bolUrls: [
+        ...(selectedLoad.bolUrls || []),
+        ...(docMeta.docType === "BOL" ? [`scanned_${Date.now()}`] : []),
+      ],
+      podUrls: [
+        ...(selectedLoad.podUrls || []),
+        ...(docMeta.docType === "POD" ? [`scanned_${Date.now()}`] : []),
+      ],
+    };
+    onSaveLoad(updatedLoad).catch(() => {
+      setToast({ message: "Failed to save document", type: "error" });
+    });
+    setIsCapturingDoc(false);
   };
 
   const createChangeRequest = (type: ChangeRequest["type"]) => {
@@ -117,11 +218,11 @@ export const DriverMobileHome: React.FC<Props> = ({
       className="bg-[#0a0f1e] border border-white/10 rounded-3xl p-6 space-y-4 shadow-xl active:scale-95 transition-all"
     >
       <div className="flex justify-between items-start">
-        <span className="bg-blue-600/10 text-blue-500 text-[9px] font-black px-2 py-0.5 rounded border border-blue-500/20 uppercase">
+        <span className="bg-blue-600/10 text-blue-500 text-xs font-black px-2 py-0.5 rounded border border-blue-500/20 uppercase">
           ID: {load.loadNumber}
         </span>
         <div className="text-right">
-          <div className="text-[10px] font-black text-slate-500 uppercase">
+          <div className="text-xs font-black text-slate-500 uppercase">
             Status
           </div>
           <div className="text-xs font-black text-blue-400 uppercase">
@@ -133,10 +234,10 @@ export const DriverMobileHome: React.FC<Props> = ({
         {load.pickup.city} → {load.dropoff.city}
       </h3>
       <div className="flex items-center gap-4 py-2 border-t border-white/5">
-        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+        <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
           <Calendar className="w-3 h-3" /> {load.pickupDate}
         </div>
-        <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase">
+        <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
           <Truck className="w-3 h-3" /> {load.freightType}
         </div>
       </div>
@@ -154,7 +255,7 @@ export const DriverMobileHome: React.FC<Props> = ({
             className="flex items-center gap-2 text-slate-400 hover:text-white"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-[10px] font-black uppercase tracking-widest">
+            <span className="text-xs font-black uppercase tracking-widest">
               Back
             </span>
           </button>
@@ -187,7 +288,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[#0a0f1e] p-4 rounded-3xl border border-white/5">
-              <div className="text-[8px] font-black text-slate-500 uppercase mb-1">
+              <div className="text-xs font-black text-slate-500 uppercase mb-1">
                 Appointment
               </div>
               <div className="text-xs font-black text-white">
@@ -195,7 +296,7 @@ export const DriverMobileHome: React.FC<Props> = ({
               </div>
             </div>
             <div className="bg-[#0a0f1e] p-4 rounded-3xl border border-white/5">
-              <div className="text-[8px] font-black text-slate-500 uppercase mb-1">
+              <div className="text-xs font-black text-slate-500 uppercase mb-1">
                 Unit #
               </div>
               <div className="text-xs font-black text-white">
@@ -206,7 +307,7 @@ export const DriverMobileHome: React.FC<Props> = ({
 
           {/* Stops Timeline */}
           <div className="space-y-6">
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <MapPin className="w-3 h-3" /> Stop Route
             </h3>
             <div className="relative pl-6 space-y-12">
@@ -217,16 +318,16 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <div className="space-y-4">
                   <div className="text-sm font-black text-white uppercase flex justify-between">
                     Pickup
-                    <span className="text-[10px] text-blue-500">
+                    <span className="text-xs text-blue-500">
                       Scheduled: {selectedLoad.pickupDate}
                     </span>
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5 space-y-2">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="text-xs font-bold text-slate-400 uppercase">
                       Load #: {selectedLoad.loadNumber}
                     </div>
                     {selectedLoad.specialInstructions && (
-                      <div className="text-[10px] font-bold text-slate-400 uppercase">
+                      <div className="text-xs font-bold text-slate-400 uppercase">
                         Instructions: {selectedLoad.specialInstructions}
                       </div>
                     )}
@@ -239,12 +340,12 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <div className="space-y-4">
                   <div className="text-sm font-black text-white uppercase flex justify-between">
                     Dropoff
-                    <span className="text-[10px] text-slate-600">
+                    <span className="text-xs text-slate-600">
                       ETA: {selectedLoad.pickupDate}
                     </span>
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="text-xs font-bold text-slate-400 uppercase">
                       Destination: {selectedLoad.dropoff.city},{" "}
                       {selectedLoad.dropoff.state}
                     </div>
@@ -257,12 +358,12 @@ export const DriverMobileHome: React.FC<Props> = ({
           {/* Documents Checklist */}
           <section className="space-y-4">
             <div className="flex justify-between items-center">
-              <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <FileText className="w-3 h-3" /> Required Documents
               </h3>
               <button
                 onClick={() => setIsCapturingDoc(true)}
-                className="flex items-center gap-2 text-[9px] font-black text-blue-500 uppercase"
+                className="flex items-center gap-2 text-xs font-black text-blue-500 uppercase"
               >
                 <Plus className="w-3 h-3" /> Upload
               </button>
@@ -286,7 +387,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           {v.pay && (
             <section className="bg-emerald-600/5 rounded-3xl p-6 border border-emerald-500/20">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
+                <h3 className="text-xs font-black text-emerald-500 uppercase tracking-widest">
                   Est. Trip Pay
                 </h3>
                 <DollarSign className="w-4 h-4 text-emerald-500" />
@@ -294,7 +395,7 @@ export const DriverMobileHome: React.FC<Props> = ({
               <div className="text-3xl font-black text-white">
                 ${selectedLoad.driverPay || "0.00"}
               </div>
-              <p className="text-[8px] text-emerald-700 font-bold uppercase mt-2">
+              <p className="text-xs text-emerald-700 font-bold uppercase mt-2">
                 Calculated by {user.payModel || "Percentage"}
               </p>
             </section>
@@ -304,14 +405,14 @@ export const DriverMobileHome: React.FC<Props> = ({
         <div className="fixed bottom-0 left-0 right-0 p-6 bg-slate-950/80 backdrop-blur-xl border-t border-white/5 flex gap-4">
           <button
             onClick={() => setIsCreatingChange(true)}
-            className="flex-1 py-4 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 transition-all"
+            className="flex-1 py-4 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-white/5 transition-all"
           >
             Report Issue
           </button>
           {selectedLoad.status === "planned" && (
             <button
               onClick={() => handleStatusUpdate(LOAD_STATUS.Active)}
-              className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/40 transition-all"
+              className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-900/40 transition-all"
             >
               Start Trip
             </button>
@@ -319,12 +420,46 @@ export const DriverMobileHome: React.FC<Props> = ({
           {selectedLoad.status === "in_transit" && (
             <button
               onClick={() => handleStatusUpdate(LOAD_STATUS.Arrived)}
-              className="flex-[2] py-4 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-green-900/40 transition-all"
+              className="flex-[2] py-4 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-green-900/40 transition-all"
             >
               Arrived At Stop
             </button>
           )}
         </div>
+
+        {/* Toast notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onDismiss={() => setToast(null)}
+          />
+        )}
+
+        {/* Scanner Modal Overlay (R-P4-02) */}
+        {isCapturingDoc && (
+          <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+            <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+              <div className="flex justify-between items-center p-6 border-b border-white/5">
+                <h2 className="text-base font-black text-white uppercase tracking-tight">
+                  Scan Document
+                </h2>
+                <button
+                  onClick={() => setIsCapturingDoc(false)}
+                  className="text-slate-500 hover:text-white"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <Scanner
+                onDataExtracted={handleDataExtracted}
+                onCancel={() => setIsCapturingDoc(false)}
+                onDismiss={() => setIsCapturingDoc(false)}
+                mode="load"
+              />
+            </div>
+          </div>
+        )}
 
         {/* Change Request Modal */}
         {isCreatingChange && (
@@ -345,7 +480,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                     onClick={() =>
                       createChangeRequest(type as ChangeRequest["type"])
                     }
-                    className="p-4 bg-slate-900 border border-white/5 rounded-2xl text-[10px] font-black text-slate-300 hover:bg-blue-600 hover:text-white transition-all uppercase"
+                    className="p-4 bg-slate-900 border border-white/5 rounded-2xl text-xs font-black text-slate-300 hover:bg-blue-600 hover:text-white transition-all uppercase"
                   >
                     {type}
                   </button>
@@ -353,7 +488,7 @@ export const DriverMobileHome: React.FC<Props> = ({
               </div>
 
               <div className="pt-4 border-t border-white/5 space-y-3">
-                <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                <h3 className="text-xs font-black text-red-500 uppercase tracking-widest">
                   Emergency / Breakdown
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -393,7 +528,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                         );
                       }
                     }}
-                    className="w-full p-4 bg-red-600/10 border border-red-500/20 rounded-2xl text-[10px] font-black text-red-500 hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-between"
+                    className="w-full p-4 bg-red-600/10 border border-red-500/20 rounded-2xl text-xs font-black text-red-500 hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-between"
                   >
                     Report Breakdown
                     <AlertTriangle className="w-4 h-4" />
@@ -419,12 +554,22 @@ export const DriverMobileHome: React.FC<Props> = ({
             <h1 className="text-lg font-black tracking-tighter uppercase leading-none">
               LoadPilot
             </h1>
-            <p className="text-[8px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">
+            <p className="text-xs text-slate-500 font-black uppercase tracking-[0.2em] mt-1">
               Driver
             </p>
           </div>
         </div>
-        <div className="flex gap-4">
+        <div className="flex gap-4 items-center">
+          {/* Phone link (R-P4-08) */}
+          {company?.phone && (
+            <a
+              href={`tel:${company.phone}`}
+              aria-label="Call Dispatch"
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-600/10 text-emerald-500 border border-emerald-500/20"
+            >
+              <Phone className="w-4 h-4" />
+            </a>
+          )}
           <button onClick={() => onOpenHub?.("messaging")} className="relative">
             <MessageSquare className="w-5 h-5 text-slate-400" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0a0f1e]" />
@@ -445,7 +590,7 @@ export const DriverMobileHome: React.FC<Props> = ({
             {/* Today Status Bar */}
             <div className="bg-[#0a0f1e] p-6 rounded-[2.5rem] border border-white/5 flex items-center justify-between">
               <div>
-                <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest">
                   Active Dispatch
                 </h2>
                 <p className="text-lg font-black text-white uppercase mt-1">
@@ -458,6 +603,17 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <Clock className="w-6 h-6 text-blue-500" />
               </div>
             </div>
+
+            {/* Message Dispatch button (R-P4-07) */}
+            {activeLoads.length > 0 && (
+              <button
+                onClick={() => onOpenHub?.("messaging")}
+                className="w-full py-3 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-500/20 transition-all flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Message Dispatch
+              </button>
+            )}
 
             {/* Active Load List */}
             <div className="space-y-4">
@@ -497,13 +653,13 @@ export const DriverMobileHome: React.FC<Props> = ({
             <div className="grid grid-cols-2 gap-4">
               <button className="h-32 bg-[#0a0f1e] border border-blue-500/20 rounded-[2rem] flex flex-col items-center justify-center gap-3">
                 <Camera className="w-6 h-6 text-blue-500" />
-                <span className="text-[10px] font-black text-white uppercase">
+                <span className="text-xs font-black text-white uppercase">
                   Scan New
                 </span>
               </button>
               <button className="h-32 bg-slate-900 border border-white/5 rounded-[2rem] flex flex-col items-center justify-center gap-3">
                 <FileText className="w-6 h-6 text-slate-500" />
-                <span className="text-[10px] font-black text-white uppercase">
+                <span className="text-xs font-black text-white uppercase">
                   Vault Access
                 </span>
               </button>
@@ -534,12 +690,12 @@ export const DriverMobileHome: React.FC<Props> = ({
                     <div className="text-xs font-black text-white uppercase tracking-tight">
                       {req.type}
                     </div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                    <div className="text-xs text-slate-500 font-bold uppercase mt-1">
                       {new Date(req.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   <span
-                    className={`px-2 py-1 rounded text-[8px] font-black uppercase ${req.status === "PENDING" ? "bg-orange-500/10 text-orange-500" : "bg-green-500/10 text-green-500"}`}
+                    className={`px-2 py-1 rounded text-xs font-black uppercase ${req.status === "PENDING" ? "bg-orange-500/10 text-orange-500" : "bg-green-500/10 text-green-500"}`}
                   >
                     {req.status}
                   </span>
@@ -572,10 +728,10 @@ export const DriverMobileHome: React.FC<Props> = ({
                     <Truck className="w-5 h-5 text-slate-500" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black text-white uppercase">
+                    <div className="text-xs font-black text-white uppercase">
                       Assigned Truck
                     </div>
-                    <div className="text-[9px] text-slate-600 font-bold uppercase">
+                    <div className="text-xs text-slate-600 font-bold uppercase">
                       Unit: 4022A
                     </div>
                   </div>
@@ -588,10 +744,10 @@ export const DriverMobileHome: React.FC<Props> = ({
                     <CheckCircle2 className="w-5 h-5 text-slate-500" />
                   </div>
                   <div>
-                    <div className="text-[10px] font-black text-white uppercase">
+                    <div className="text-xs font-black text-white uppercase">
                       Compliance Tasks
                     </div>
-                    <div className="text-[9px] text-emerald-500 font-bold uppercase">
+                    <div className="text-xs text-emerald-500 font-bold uppercase">
                       All Records Pass
                     </div>
                   </div>
@@ -602,7 +758,7 @@ export const DriverMobileHome: React.FC<Props> = ({
 
             <button
               onClick={onLogout}
-              className="w-full py-5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-600 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] border border-red-500/20 transition-all"
+              className="w-full py-5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-600 rounded-3xl text-xs font-black uppercase tracking-[0.2em] border border-red-500/20 transition-all"
             >
               Sign Out
             </button>
@@ -617,10 +773,10 @@ export const DriverMobileHome: React.FC<Props> = ({
             />
             <div className="absolute top-4 left-4 right-4 p-4 bg-[#0a0f1e]/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between">
               <div>
-                <h3 className="text-[10px] font-black text-white uppercase tracking-widest">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">
                   Live Asset Tracking
                 </h3>
-                <p className="text-[8px] text-emerald-500 font-bold uppercase mt-1 flex items-center gap-1">
+                <p className="text-xs text-emerald-500 font-bold uppercase mt-1 flex items-center gap-1">
                   <Zap className="w-2.5 h-2.5 fill-emerald-500" />
                   GPS Connection Stable
                 </p>
@@ -630,6 +786,15 @@ export const DriverMobileHome: React.FC<Props> = ({
           </div>
         )}
       </main>
+
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
 
       {/* Global Sticky Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[#0a0f1e]/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-4">
@@ -641,7 +806,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           className={`flex flex-col items-center gap-1 transition-all ${activeTab === "today" ? "text-blue-500" : "text-slate-500"}`}
         >
           <Clock className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Today
           </span>
         </button>
@@ -653,7 +818,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           className={`flex flex-col items-center gap-1 transition-all ${activeTab === "loads" ? "text-blue-500" : "text-slate-500"}`}
         >
           <Truck className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Loads
           </span>
         </button>
@@ -669,7 +834,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           >
             <MapIcon className="w-6 h-6" />
           </div>
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Live Map
           </span>
         </button>
@@ -681,7 +846,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           className={`flex flex-col items-center gap-1 transition-all ${activeTab === "documents" ? "text-blue-500" : "text-slate-500"}`}
         >
           <FileText className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Docs
           </span>
         </button>
@@ -693,7 +858,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           className={`flex flex-col items-center gap-1 transition-all ${activeTab === "changes" ? "text-blue-500" : "text-slate-500"}`}
         >
           <Zap className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Alerts
           </span>
         </button>
@@ -705,7 +870,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           className={`flex flex-col items-center gap-1 transition-all ${activeTab === "profile" ? "text-blue-500" : "text-slate-500"}`}
         >
           <UserIcon className="w-6 h-6" />
-          <span className="text-[8px] font-black uppercase tracking-widest">
+          <span className="text-xs font-black uppercase tracking-widest">
             Me
           </span>
         </button>
