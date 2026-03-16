@@ -426,30 +426,30 @@ export default function App() {
       items: [
         {
           id: "operations-hub",
-          label: "Unified Command Center",
+          label: "Operations Center",
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        { id: "dashboard", label: "Management Console", icon: LayoutDashboard },
-        { id: "exceptions", label: "Exception Triage", icon: AlertTriangle },
-        { id: "analytics", label: "Strategy & Analytics", icon: BarChart3 },
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
+        { id: "analytics", label: "Reports", icon: BarChart3 },
         {
           id: "loads",
-          label: "Dispatch Board",
+          label: "Load Board",
           icon: Truck,
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
         {
           id: "quotes",
-          label: "Intake & Quotes",
+          label: "Quotes & Booking",
           icon: ClipboardList,
           permission: "LOAD_CREATE",
           capability: "QUOTE_CREATE",
         },
         {
           id: "map",
-          label: "Live Map",
+          label: "Fleet Map",
           icon: MapIcon,
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
@@ -465,14 +465,14 @@ export default function App() {
     },
     {
       title: "NETWORK",
-      items: [{ id: "network", label: "Partner Network Hub", icon: Globe }],
+      items: [{ id: "network", label: "Broker Network", icon: Globe }],
     },
     {
       title: "FINANCIALS",
       items: [
         {
           id: "finance",
-          label: "Settlements",
+          label: "Driver Pay",
           icon: Wallet,
           permission: "SETTLEMENT_VIEW",
         },
@@ -489,24 +489,24 @@ export default function App() {
       items: [
         {
           id: "safety",
-          label: "Safety / Fleet",
+          label: "Safety & Compliance",
           icon: ShieldCheck,
           permission: "SAFETY_EVENT_VIEW",
         },
         {
           id: "audit",
-          label: "Audit Logs",
+          label: "Activity Log",
           icon: FileText,
           permission: "AUDIT_LOG_VIEW",
         },
       ],
     },
     {
-      title: "ENTERPRISE",
+      title: "SETTINGS",
       items: [
         {
           id: "company",
-          label: "Organization",
+          label: "Company Settings",
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
@@ -822,7 +822,7 @@ export default function App() {
                 <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 transition-colors group-focus-within:text-blue-500" />
                 <input
                   type="text"
-                  placeholder="Unified Command Center: Search Loads, Teams, or Data (Ctrl+K)"
+                  placeholder="Search Loads, Teams, or Data (Ctrl+K)"
                   className="w-full bg-[#020617] border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-[12px] text-white outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-700"
                   onFocus={(e) => {
                     e.target.blur();
@@ -841,7 +841,7 @@ export default function App() {
                   className={`w-4 h-4 ${showIntelligenceHub ? "fill-white" : "group-hover:fill-blue-400"}`}
                 />
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] hidden lg:block">
-                  Unified Command Center
+                  Operations Center
                 </span>
               </button>
             </div>
@@ -934,7 +934,7 @@ export default function App() {
                 <div className="h-full flex flex-col">
                   <div className="flex justify-between items-center mb-6 shrink-0">
                     <h1 className="text-2xl font-bold text-white tracking-tighter uppercase">
-                      Dispatch Board
+                      Load Board
                     </h1>
                     {permissions.createLoads && (
                       <button

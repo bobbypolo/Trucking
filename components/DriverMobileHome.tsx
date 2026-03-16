@@ -415,10 +415,10 @@ export const DriverMobileHome: React.FC<Props> = ({
           </div>
           <div>
             <h1 className="text-lg font-black tracking-tighter uppercase leading-none">
-              TruckLogix
+              LoadPilot
             </h1>
             <p className="text-[8px] text-slate-500 font-black uppercase tracking-[0.2em] mt-1">
-              Fleet Connect v1.0
+              Driver
             </p>
           </div>
         </div>
@@ -466,7 +466,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <div className="p-12 text-center bg-slate-900/20 rounded-[3rem] border border-dashed border-white/5">
                   <Shield className="w-12 h-12 text-white/5 mx-auto mb-4" />
                   <p className="text-xs font-black text-slate-600 uppercase tracking-widest">
-                    Standby Mode Initialized
+                    No loads assigned
                   </p>
                 </div>
               )}
@@ -602,7 +602,7 @@ export const DriverMobileHome: React.FC<Props> = ({
               onClick={onLogout}
               className="w-full py-5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-600 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] border border-red-500/20 transition-all"
             >
-              Sign Out Authority
+              Sign Out
             </button>
           </div>
         )}

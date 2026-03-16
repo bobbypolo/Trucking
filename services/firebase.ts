@@ -16,10 +16,22 @@ const firebaseConfig = {
 };
 
 /**
- * Demo mode activates when Firebase credentials are missing in DEV.
+ * Demo mode activates when Firebase credentials are missing in DEV,
+ * and only when the build mode is not 'production'.
  * All auth is handled locally via localStorage — no Firebase calls.
  */
-export const DEMO_MODE = import.meta.env.DEV && !firebaseConfig.apiKey;
+export const DEMO_MODE =
+  import.meta.env.DEV &&
+  !firebaseConfig.apiKey &&
+  import.meta.env.MODE !== "production";
+
+// Production guard: crash at startup with a clear message if somehow
+// DEMO_MODE is active in a production build (defense-in-depth).
+if (import.meta.env.PROD && DEMO_MODE) {
+  throw new Error(
+    "DEMO_MODE cannot be active in production. Set VITE_FIREBASE_API_KEY.",
+  );
+}
 
 let app: FirebaseApp | null = null;
 let _auth: Auth | null = null;

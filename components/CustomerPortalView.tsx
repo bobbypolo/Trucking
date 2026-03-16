@@ -225,7 +225,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                     <div className="flex justify-between items-start">
                       <div className="space-y-3">
                         <span className="px-3 py-1 bg-blue-600/10 text-blue-500 rounded-full text-[10px] font-black border border-blue-500/20 uppercase tracking-widest">
-                          Tracking Master-ID: {selectedLoad.loadNumber}
+                          Tracking ID: {selectedLoad.loadNumber}
                         </span>
                         <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
                           {selectedLoad.pickup.city}{" "}
@@ -287,7 +287,7 @@ export const CustomerPortalView: React.FC<Props> = ({
 
                     <div className="space-y-4">
                       <div className="flex items-center justify-between text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                        <span>Voyage Progress</span>
+                        <span>Delivery Progress</span>
                         <span className="text-blue-500">78% Complete</span>
                       </div>
                       <div className="h-3 w-full bg-slate-950 rounded-full border border-white/5 overflow-hidden">

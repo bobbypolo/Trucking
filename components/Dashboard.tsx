@@ -178,13 +178,13 @@ export const Dashboard: React.FC<Props> = ({
             onClick={() => onNavigate("analytics")}
             className="px-6 py-2.5 bg-slate-900 border border-white/5 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2"
           >
-            <TrendingUp className="w-3.5 h-3.5" /> Strategy & Analytics
+            <TrendingUp className="w-3.5 h-3.5" /> Reports
           </button>
           <button
             onClick={() => onNavigate("operations-hub")}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-500 transition-all flex items-center gap-2"
           >
-            <Zap className="w-3.5 h-3.5 fill-white" /> Unified Command Center
+            <Zap className="w-3.5 h-3.5 fill-white" /> Operations Center
           </button>
         </div>
       </div>
@@ -392,8 +392,7 @@ export const Dashboard: React.FC<Props> = ({
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-500" /> Functional Response
-              Queues
+              <Shield className="w-4 h-4 text-blue-500" /> Action Items
             </h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -464,7 +463,7 @@ export const Dashboard: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                Master Triage Feed
+                Active Issues
               </h3>
               <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest mt-0.5">
                 High Severity Actions
@@ -521,7 +520,7 @@ export const Dashboard: React.FC<Props> = ({
         <div className="lg:col-span-2 bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between">
           <div>
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              Fleet Situational Awareness
+              Fleet Overview
             </h4>
             <div className="flex items-center gap-4 mt-4">
               <div className="text-2xl font-black text-white">

@@ -294,7 +294,7 @@ export const CommandCenterView: React.FC<Props> = ({
         timestamp,
         actorName: currentUser.name,
         action: "RECOVERY_INITIATED",
-        notes: "Asset recovery team activated",
+        notes: "Tow service dispatched",
       });
       await saveIncident(updatedIncident);
     } else if (actionType === "NOTIFY") {
@@ -374,10 +374,10 @@ export const CommandCenterView: React.FC<Props> = ({
                 <div className="flex justify-between items-end">
                   <div>
                     <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] mb-2">
-                      Operations Rack
+                      Dispatch Center
                     </div>
                     <h2 className="text-3xl font-black text-white uppercase tracking-tighter italic">
-                      Triage Inbox
+                      Issue Queue
                     </h2>
                   </div>
                   <div className="flex gap-2">
@@ -480,7 +480,7 @@ export const CommandCenterView: React.FC<Props> = ({
                           action: () => {
                             if (setSuccessMessage) {
                               setSuccessMessage(
-                                "WORKFLOW: Attachment protocol initiating - selecting operational target...",
+                                "Connecting record - select which item to link...",
                               );
                               setTimeout(() => setSuccessMessage(null), 3000);
                             }
