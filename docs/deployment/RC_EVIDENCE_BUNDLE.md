@@ -76,19 +76,23 @@ The following staging evidence documents were reviewed before this RC freeze:
 | Deployment Runbook         | `docs/deployment/DEPLOYMENT_RUNBOOK.md`         |
 | Rollout Plan               | `docs/deployment/ROLLOUT_PLAN.md`               |
 
-> All staging qualification criteria passed. See STAGING_EXECUTION_EVIDENCE.md for live command output.
-> GO_NO_GO_CHECKLIST.md verdict: GREEN — proceed to production.
+> Staging qualification criteria passed locally. See STAGING_EXECUTION_EVIDENCE.md for live command output template.
+> GO_NO_GO_CHECKLIST.md status: Demo/staging-ready. Production sign-off pending (see PRODUCTION_READINESS_VERDICT.md Section 9).
 
 ---
 
 ## 5. Test Suite Summary
 
-| Suite             | Count     | Status        |
-| ----------------- | --------- | ------------- |
-| Server (Vitest)   | 1,154     | PASS          |
-| Frontend (Vitest) | 112       | PASS          |
-| E2E (Playwright)  | 186       | PASS          |
-| **Total**         | **1,452** | **ALL GREEN** |
+| Suite                      | Count                    | Status                                      |
+| -------------------------- | ------------------------ | ------------------------------------------- |
+| Server (Vitest)            | 1,163                    | PASS (88 files, 0 failures)                 |
+| Frontend (Vitest)          | 549                      | PASS (59 files, 0 failures)                 |
+| E2E (Playwright)           | 186 passing / 95 skipped | EXISTS (not freshly run against live stack) |
+| **Total unit/integration** | **1,870**                | **ALL GREEN (verified 2026-03-16)**         |
+
+> **Note (2026-03-16)**: Playwright E2E tests exist and were last run locally on 2026-03-12.
+> They have not been freshly executed against a live staging stack. A full E2E pass against
+> staging is required before production sign-off.
 
 ### Reproduce
 

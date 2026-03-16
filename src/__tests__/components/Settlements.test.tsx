@@ -32,6 +32,10 @@ vi.mock("../../../services/syncService", () => ({
   exportToCSV: vi.fn(),
 }));
 
+vi.mock("../../../services/firebase", () => ({
+  DEMO_MODE: false,
+}));
+
 const mockUser: User = {
   id: "driver-1",
   companyId: "company-1",

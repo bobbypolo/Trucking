@@ -45,7 +45,7 @@ import {
   VaultDocType,
   VaultDocStatus,
 } from "../types";
-import { storage } from "./firebase";
+import { storage, DEMO_MODE } from "./firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   getCompany,
@@ -116,17 +116,12 @@ const migrateKey = (legacyKey: string, newKey: string): void => {
 };
 
 // Tenant-scoped localStorage key accessors (replaces static STORAGE_KEY_* constants)
-const STORAGE_KEY_INCIDENTS = (): string =>
-  getTenantKey("incidents_v1");
-const STORAGE_KEY_MESSAGES = (): string =>
-  getTenantKey("messages_v1");
-const STORAGE_KEY_REQUESTS = (): string =>
-  getTenantKey("requests_v1");
+const STORAGE_KEY_INCIDENTS = (): string => getTenantKey("incidents_v1");
+const STORAGE_KEY_MESSAGES = (): string => getTenantKey("messages_v1");
+const STORAGE_KEY_REQUESTS = (): string => getTenantKey("requests_v1");
 const STORAGE_KEY_CALLS = (): string => getTenantKey("calls_v1");
-const STORAGE_KEY_PROVIDERS = (): string =>
-  getTenantKey("providers_v1");
-const STORAGE_KEY_CONTACTS = (): string =>
-  getTenantKey("contacts_v1");
+const STORAGE_KEY_PROVIDERS = (): string => getTenantKey("providers_v1");
+const STORAGE_KEY_CONTACTS = (): string => getTenantKey("contacts_v1");
 const STORAGE_KEY_TASKS = (): string => getTenantKey("tasks_v1");
 const STORAGE_KEY_CRISIS = (): string => getTenantKey("crisis_v1");
 const STORAGE_KEY_SERVICE_TICKETS = (): string =>
@@ -134,13 +129,10 @@ const STORAGE_KEY_SERVICE_TICKETS = (): string =>
 const STORAGE_KEY_NOTIFICATION_JOBS = (): string =>
   getTenantKey("notification_jobs_v1");
 const STORAGE_KEY_QUOTES = (): string => getTenantKey("quotes_v1");
-const STORAGE_KEY_BOOKINGS = (): string =>
-  getTenantKey("bookings_v1");
+const STORAGE_KEY_BOOKINGS = (): string => getTenantKey("bookings_v1");
 const STORAGE_KEY_LEADS = (): string => getTenantKey("leads_v1");
-const STORAGE_KEY_WORK_ITEMS = (): string =>
-  getTenantKey("work_items_v1");
-const STORAGE_KEY_VAULT_DOCS = (): string =>
-  getTenantKey("vault_docs_v1");
+const STORAGE_KEY_WORK_ITEMS = (): string => getTenantKey("work_items_v1");
+const STORAGE_KEY_VAULT_DOCS = (): string => getTenantKey("vault_docs_v1");
 
 // In-memory cache for API-fetched data (browser storage removed)
 let _cachedLoads: LoadData[] = [];
@@ -976,7 +968,8 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
 export const getOperationalTrends = async (
   companyId: string,
 ): Promise<OperationalTrend[]> => {
-  // Static placeholder for ERP demonstration
+  // Demo mode: return sample ERP trends for demonstration purposes
+  if (!DEMO_MODE) return [];
   return [
     {
       id: "t1",
@@ -1004,8 +997,8 @@ export const getMessages = async (loadId?: string): Promise<Message[]> => {
     const data = localStorage.getItem(STORAGE_KEY_MESSAGES());
     let messages: Message[] = data ? JSON.parse(data) : [];
 
-    if (messages.length === 0) {
-      // Seed initial mock messages
+    if (messages.length === 0 && DEMO_MODE) {
+      // Demo mode: seed sample messages for demonstration
       messages = [
         {
           id: "1",
@@ -1067,7 +1060,7 @@ export const getThreads = async (
     const threads: OperationalThread[] = JSON.parse(data);
     return threads.filter(
       (t) => t.id.includes(companyId) || t.ownerId === companyId,
-    ); // Loose filter for now
+    ); // Broad tenant filter — matches thread ID or owner
   } catch (e) {
     return [];
   }

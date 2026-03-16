@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-import { validateEnv } from "./lib/env";
+import { validateEnv, getCorsOrigin } from "./lib/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { correlationId } from "./middleware/correlationId";
 import { metricsMiddleware } from "./middleware/metrics";
@@ -45,7 +45,7 @@ app.set("trust proxy", 1);
 
 app.use(helmet());
 app.use(compression());
-app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));
+app.use(cors({ origin: getCorsOrigin(), credentials: true }));
 app.use(express.json());
 app.use(correlationId);
 app.use(metricsMiddleware);

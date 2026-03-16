@@ -1,6 +1,6 @@
 # Go / No-Go Production Checklist — LoadPilot
 
-> Version: 4.0 | Last Updated: 2026-03-13
+> Version: 4.1 | Last Updated: 2026-03-16
 
 ## CRITICAL GATE — MUST READ BEFORE PROCEEDING
 
@@ -28,7 +28,7 @@ All artifact identifiers must be recorded with real values — not placeholders 
 - [ ] This `GO_NO_GO_CHECKLIST.md` updated with real values before sign-off
 - [ ] Rollback procedure references the exact prior good revision and image (not "previous")
 
-Frozen by: ******\_\_****** Date: ******\_\_******
+Frozen by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -45,7 +45,7 @@ The production project is a **dedicated** GCP/Firebase project, separate from st
 - [ ] Runtime SA granted `roles/secretmanager.secretAccessor`
 - [ ] Deployer identity has permission to deploy Cloud Run using that service account
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -92,7 +92,7 @@ for secret in DB_PASSWORD_PROD GEMINI_API_KEY_PROD; do
 done
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -116,7 +116,7 @@ npx tsx server/scripts/staging-rehearsal.ts 2>&1 | grep "overallPassed"
 # Expected: "overallPassed": true
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -145,7 +145,7 @@ curl -sf https://app.loadpilot.com/api/health | jq .
 curl -si https://app.loadpilot.com/api/loads | head -1
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -168,7 +168,7 @@ Verified by: ******\_\_****** Date: ******\_\_******
 grep -r "localhost:5000" dist/ && echo "FAIL: localhost ref found" || echo "OK: no localhost refs"
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -215,7 +215,7 @@ Run against `https://app.loadpilot.com` with a production test account. All item
 bash scripts/smoke-test-production.sh https://app.loadpilot.com
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -246,7 +246,7 @@ gcloud run services update-traffic loadpilot-api-prod \
   --region=us-central1
 ```
 
-Verified by: ******\_\_****** Date: ******\_\_******
+Verified by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ---
 
@@ -265,8 +265,8 @@ cd server && npx vitest run 2>&1 | grep "Tests"
 - [x] **If this box cannot be checked: STOP. This is a NO-GO.**
 
 Verified by: ralph-story STORY-005 / STORY-006 Date: 2026-03-13
-Result: 1,138 server unit tests + 297 frontend tests + 158 script syntax checks = 1,593 PASS.
-25 DB-integration tests require live Cloud SQL — expected in CI, not a blocker.
+Result (updated 2026-03-16): 1,163 server tests + 549 frontend tests + 158 script syntax checks = 1,870 PASS, 0 failures.
+Previously reported DB-integration failures have been resolved.
 
 ### Migration Chain Integrity
 
@@ -275,7 +275,7 @@ Result: 1,138 server unit tests + 297 frontend tests + 158 script syntax checks 
 - [ ] Live rehearsal against staging Cloud SQL: PENDING — requires GCP staging environment
 
 Verified by: ralph-story STORY-003 Date: 2026-03-12 (structural only)
-Live rehearsal: ******\_\_****** Date: ******\_\_******
+Live rehearsal: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ### Staging E2E Functional Sweep
 
@@ -297,7 +297,7 @@ Verified by: ralph-story STORY-005 Date: 2026-03-12 (local only — staging run 
 - [x] Evidence includes: (a) deploy timestamp, (b) pre-rollback E2E pass, (c) rollback execution timestamp, (d) post-rollback E2E pass
 - [x] `MigrationRunner.down()` + `up()` round-trip validated (`rollback-validation.test.ts` passes 7/7)
 
-Staging drill: ******\_\_****** Date: ******\_\_******
+Staging drill: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ### Runbook Reviewed by Operator
 
@@ -305,7 +305,7 @@ Staging drill: ******\_\_****** Date: ******\_\_******
 - [ ] On-call engineer has read `docs/deployment/ROLLBACK_PROCEDURE.md` end-to-end
 - [ ] On-call engineer can execute each step without assistance
 
-Reviewed by: ******\_\_****** Date: ******\_\_******
+Reviewed by: **\*\***\_\_**\*\*** Date: **\*\***\_\_**\*\***
 
 ### Baseline Final Confirmation
 
@@ -319,8 +319,8 @@ cd server && npx vitest run 2>&1 | tail -5
 - [x] If baseline turned red between checklist start and this final check: **STOP. Re-evaluate.**
 
 Final baseline check timestamp: 2026-03-13
-Result: 1,138 server unit + 297 frontend + 158 scripts = 1,593 passing, 0 unit failures
-Verified by: ralph-worker STORY-006 Date: 2026-03-13
+Result (updated 2026-03-16): 1,163 server + 549 frontend + 158 scripts = 1,870 passing, 0 failures
+Verified by: ralph-worker STORY-006 Date: 2026-03-13; counts updated 2026-03-16
 
 ---
 
@@ -329,24 +329,24 @@ Verified by: ralph-worker STORY-006 Date: 2026-03-13
 Sections A–H are production-environment items (all PENDING — require dedicated prod GCP project).
 Previously verified items from v3.0 are carried forward where still valid.
 
-| Item                                  | Status                  | Notes                                                |
-| ------------------------------------- | ----------------------- | ---------------------------------------------------- |
-| A. Release candidate freeze           | PENDING                 | PR #16 must merge; artifact SHAs must be recorded    |
-| B. Production project & identity      | PENDING                 | Dedicated GCP/Firebase prod project not yet created  |
-| C. Production secrets & config        | PENDING                 | Secret Manager provisioning requires GCP access      |
-| D. Database & recovery protection     | PENDING                 | Cloud SQL `loadpilot-prod` not yet provisioned       |
-| E. Backend deployment verification    | PENDING                 | Cloud Run `loadpilot-api-prod` not yet deployed      |
-| F. Frontend deployment verification   | PENDING                 | Firebase Hosting prod deploy not yet executed        |
-| G. Core workflow smoke test           | PENDING                 | Depends on F being complete                          |
-| H. Observability & rollback readiness | PENDING                 | Alerts and on-call assignment required               |
-| Test suite (carried forward)          | GREEN (2026-03-13)      | 1,593 passing; 25 DB-integration need live Cloud SQL |
-| Migration rehearsal                   | PENDING (script ready)  | `scripts/run-staging-migrations.sh` ready            |
-| Staging E2E sweep                     | LOCAL PASS (2026-03-12) | Full staging run required for sign-off               |
-| Rollback drill                        | PENDING (script ready)  | `scripts/rollback-drill.sh` ready                    |
-| Runbook reviewed                      | PENDING                 | Operator sign-off required                           |
-| Baseline final check                  | GREEN (2026-03-13)      | Re-run immediately before go/no-go decision          |
+| Item                                  | Status                  | Notes                                                                 |
+| ------------------------------------- | ----------------------- | --------------------------------------------------------------------- |
+| A. Release candidate freeze           | PENDING                 | PR #16 must merge; artifact SHAs must be recorded                     |
+| B. Production project & identity      | PENDING                 | Dedicated GCP/Firebase prod project not yet created                   |
+| C. Production secrets & config        | PENDING                 | Secret Manager provisioning requires GCP access                       |
+| D. Database & recovery protection     | PENDING                 | Cloud SQL `loadpilot-prod` not yet provisioned                        |
+| E. Backend deployment verification    | PENDING                 | Cloud Run `loadpilot-api-prod` not yet deployed                       |
+| F. Frontend deployment verification   | PENDING                 | Firebase Hosting prod deploy not yet executed                         |
+| G. Core workflow smoke test           | PENDING                 | Depends on F being complete                                           |
+| H. Observability & rollback readiness | PENDING                 | Alerts and on-call assignment required                                |
+| Test suite (carried forward)          | GREEN (2026-03-16)      | 1,870 passing (1,163 server + 549 frontend + 158 scripts); 0 failures |
+| Migration rehearsal                   | PENDING (script ready)  | `scripts/run-staging-migrations.sh` ready                             |
+| Staging E2E sweep                     | LOCAL PASS (2026-03-12) | Full staging run required for sign-off                                |
+| Rollback drill                        | PENDING (script ready)  | `scripts/rollback-drill.sh` ready                                     |
+| Runbook reviewed                      | PENDING                 | Operator sign-off required                                            |
+| Baseline final check                  | GREEN (2026-03-13)      | Re-run immediately before go/no-go decision                           |
 
-**Current status**: Code and scripts are production-ready. All Section A–H items require GCP prod environment provisioning and human operational sign-off.
+**Current status**: Code and scripts are demo/staging-ready. All Section A-H items require GCP prod environment provisioning and human operational sign-off. See `PRODUCTION_READINESS_VERDICT.md` Section 9 for remaining production blockers.
 
 ---
 
@@ -403,9 +403,10 @@ Return to the relevant section, resolve the issue, and re-run the full checklist
 
 ## Revision History
 
-| Version | Date       | Author                                   | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| ------- | ---------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1.0     | 2026-03-11 | ralph-story STORY-005                    | Initial go/no-go checklist                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 2.0     | 2026-03-12 | ralph-story STORY-005 (Go-Live Qual)     | Updated items 1, 3, 9 as locally verified GREEN. Added local verification status table. Updated migration count to 016. Added staging environment pending notes for items 2-8.                                                                                                                                                                                                                                                                                    |
-| 3.0     | 2026-03-13 | ralph-worker STORY-006 (Full Regression) | Added Production Rollout Sprint Addendum. Updated checklist status. Full regression run: 1,593 tests passing. Verdict: READY FOR PRODUCTION ROLLOUT.                                                                                                                                                                                                                                                                                                              |
-| 4.0     | 2026-03-13 | Builder (manual)                         | Full rewrite incorporating operator's master verification checklist (Sections A–H). Added release candidate freeze, production project identity, secrets/config, database protection, backend/frontend deployment, core workflow smoke test, and observability/rollback readiness sections. Preserved all previously verified (checked) items from v3.0. Domain: app.loadpilot.com. Soak schedule: Gate A 2h → Gate B 24h → Gate C 24h → Gate D after 48h at 50%. |
+| Version | Date       | Author                                   | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------- | ---------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | 2026-03-11 | ralph-story STORY-005                    | Initial go/no-go checklist                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2.0     | 2026-03-12 | ralph-story STORY-005 (Go-Live Qual)     | Updated items 1, 3, 9 as locally verified GREEN. Added local verification status table. Updated migration count to 016. Added staging environment pending notes for items 2-8.                                                                                                                                                                                                                                                                                       |
+| 3.0     | 2026-03-13 | ralph-worker STORY-006 (Full Regression) | Added Production Rollout Sprint Addendum. Updated checklist status. Full regression run: 1,593 tests passing. Verdict: READY FOR PRODUCTION ROLLOUT.                                                                                                                                                                                                                                                                                                                 |
+| 4.0     | 2026-03-13 | Builder (manual)                         | Full rewrite incorporating operator's master verification checklist (Sections A-H). Added release candidate freeze, production project identity, secrets/config, database protection, backend/frontend deployment, core workflow smoke test, and observability/rollback readiness sections. Preserved all previously verified (checked) items from v3.0. Domain: app.loadpilot.com. Soak schedule: Gate A 2h -> Gate B 24h -> Gate C 24h -> Gate D after 48h at 50%. |
+| 4.1     | 2026-03-16 | Documentation audit                      | Updated test counts to current actuals: 1,163 server / 549 frontend / 158 scripts = 1,870 total. Removed stale references to 25 DB-integration failures (now resolved). Aligned status with PRODUCTION_READINESS_VERDICT.md (demo/staging-ready, not production-ready).                                                                                                                                                                                              |

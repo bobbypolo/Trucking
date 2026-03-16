@@ -524,20 +524,10 @@ export const login = async (
       return hydratedUser;
     }
   } catch (error) {
-    // Legacy fallback for development before Firebase is fully configured
-    const users = getStoredUsers();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase(),
-    );
-    if (
-      user &&
-      (password === DEMO_MASTER_PASSWORD ||
-        password === DEMO_FALLBACK_PASSWORD ||
-        user.password === password)
-    ) {
-      _sessionCache = user;
-      return user;
-    }
+    // Fail-closed: never fall back to local/fixture credentials in production.
+    // Demo mode has its own early-return path above; this catch must not
+    // bypass Firebase authentication.
+    console.error("[authService] Firebase sign-in failed:", error);
   }
   return null;
 };

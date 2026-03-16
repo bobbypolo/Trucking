@@ -266,4 +266,77 @@ describe("R-P1-09: Environment Validation on Boot", () => {
       }
     });
   });
+
+  describe("getCorsOrigin: safe CORS origin resolution", () => {
+    it("returns CORS_ORIGIN when set", async () => {
+      process.env.CORS_ORIGIN = "https://app.loadpilot.com";
+      process.env.NODE_ENV = "production";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      expect(getCorsOrigin()).toBe("https://app.loadpilot.com");
+    });
+
+    it("splits comma-separated CORS_ORIGIN into array", async () => {
+      process.env.CORS_ORIGIN =
+        "https://app.loadpilot.com, https://admin.loadpilot.com";
+      process.env.NODE_ENV = "production";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual([
+        "https://app.loadpilot.com",
+        "https://admin.loadpilot.com",
+      ]);
+    });
+
+    it("returns localhost origins array when CORS_ORIGIN is not set in development", async () => {
+      delete process.env.CORS_ORIGIN;
+      process.env.NODE_ENV = "development";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toContain("http://localhost:5173");
+      expect(result).toContain("http://localhost:3000");
+    });
+
+    it("returns localhost origins array when CORS_ORIGIN is not set and NODE_ENV is undefined", async () => {
+      delete process.env.CORS_ORIGIN;
+      delete process.env.NODE_ENV;
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toContain("http://localhost:5173");
+    });
+
+    it("throws in production when CORS_ORIGIN is missing (defense in depth)", async () => {
+      delete process.env.CORS_ORIGIN;
+      process.env.NODE_ENV = "production";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      expect(() => getCorsOrigin()).toThrow(/CORS_ORIGIN/);
+    });
+
+    it("throws in staging when CORS_ORIGIN is missing (defense in depth)", async () => {
+      delete process.env.CORS_ORIGIN;
+      process.env.NODE_ENV = "staging";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      expect(() => getCorsOrigin()).toThrow(/CORS_ORIGIN/);
+    });
+
+    it("never returns wildcard '*'", async () => {
+      delete process.env.CORS_ORIGIN;
+      process.env.NODE_ENV = "development";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(result).not.toBe("*");
+      if (Array.isArray(result)) {
+        expect(result).not.toContain("*");
+      }
+    });
+  });
 });
