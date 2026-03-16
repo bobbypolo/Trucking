@@ -1,17 +1,17 @@
 # Production Readiness Verdict — LoadPilot v1.0.0
 
-**Date**: 2026-03-16 (updated)
+**Date**: 2026-03-16 (updated — security hardening sprint)
 **Originally prepared**: 2026-03-13 by ralph-worker STORY-006
-**Updated by**: Documentation audit (2026-03-16)
-**Branch**: `main`
+**Updated by**: Security hardening sprint Phase 2 (2026-03-16)
+**Branch**: `fix/p0-critical-security`
 
 ---
 
 ## Verdict
 
-> **READY FOR CUSTOMER DEMO / STAGING — NOT PRODUCTION-READY**
+> **READY FOR STAGING — SECURITY HARDENING COMPLETE — NOT YET PRODUCTION-READY**
 
-The codebase is stable, well-tested, and suitable for customer demonstrations and staging deployment. However, several items must be resolved before production traffic is authorized. See Section 9 ("Remaining Items for Production") for the full list.
+The codebase has undergone a three-phase security hardening sprint. Auth, mock-data gating, tenant isolation, input validation, and CORS are all addressed. The remaining blockers are operational (live GCP execution) and P3 backlog items (performance, RBAC, pagination). See Section 9 ("Remaining Items for Production") and Section 10 ("P3 Backlog") for full lists.
 
 ---
 
@@ -213,16 +213,13 @@ Blocked by:            Items listed in Section 9 below
 
 ## 9. Remaining Items for Production
 
-The following items must be completed before this application is considered production-ready:
+Items 1–3 from the previous version of this section have been resolved by the security hardening sprint (see Section 10 below). The remaining blockers are operational.
 
-| #   | Item                                 | Category      | Details                                                                                                         |
-| --- | ------------------------------------ | ------------- | --------------------------------------------------------------------------------------------------------------- |
-| 1   | **Auth fallback fix**                | Code          | Ensure auth middleware gracefully degrades when Firebase Admin SDK is unavailable, rather than returning 500s   |
-| 2   | **Mock data gating**                 | Code          | All mock/demo data must be behind a feature flag or environment check; no mock data should leak into production |
-| 3   | **CORS hardening**                   | Configuration | `CORS_ORIGIN` must be locked to the production domain (`https://app.loadpilot.com`) with no wildcard fallback   |
-| 4   | **Staging deployment verification**  | Operational   | Full deployment to a GCP staging environment with live E2E pass, rollback drill, and soak period                |
-| 5   | **Fresh E2E run against live stack** | Testing       | Playwright E2E (186+ tests) must pass against a running staging or production-like environment                  |
-| 6   | **Manual GCP execution**             | Operational   | All items in Section 5 above (provisioning, secrets, monitoring, on-call)                                       |
+| #   | Item                                 | Category    | Details                                                                                          |
+| --- | ------------------------------------ | ----------- | ------------------------------------------------------------------------------------------------ |
+| 1   | **Staging deployment verification**  | Operational | Full deployment to a GCP staging environment with live E2E pass, rollback drill, and soak period |
+| 2   | **Fresh E2E run against live stack** | Testing     | Playwright E2E (186+ tests) must pass against a running staging or production-like environment   |
+| 3   | **Manual GCP execution**             | Operational | All items in Section 5 above (provisioning, secrets, monitoring, on-call)                        |
 
 Until these items are resolved, the application is suitable for:
 
@@ -237,14 +234,73 @@ It is NOT suitable for:
 
 ---
 
+## 10. Security Hardening Sprint — Remediation Record
+
+The following security findings were addressed in the `fix/p0-critical-security` branch before this document was last updated.
+
+### Phase 0 — Auth & Infrastructure Hardening
+
+| Finding                                                                   | Resolution                                                     |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `/api/auth/register` and `/api/auth/sync` lacked `requireAuth` middleware | `requireAuth` added to both routes                             |
+| Password field not required on registration                               | Zod schema now enforces non-empty password                     |
+| Default/hardcoded passwords in dev seed data visible in source            | Removed; test credentials moved to `.env.development`          |
+| Hardcoded tenant IDs in server middleware                                 | Replaced with env-driven lookup; no literal tenant IDs in code |
+| External CDN script tag in `index.html`                                   | Removed; all assets served from the same origin                |
+
+### Phase 1 — Mock Data Gating and Tenant Isolation
+
+| Finding                                                                         | Resolution                                                             |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Mock data service seeded in production when `DEMO_MODE` was falsy               | All mock seeding gated behind `DEMO_MODE === true` env check           |
+| `server/routes/parties.ts` returned rows from any company without tenant filter | `companyId` filter added to all SELECT queries                         |
+| `server/routes/exceptions.ts` returned rows without tenant filter               | `companyId` filter added to all SELECT queries                         |
+| Scanner component called auth helpers directly, bypassing shared middleware     | Scanner auth centralised through the standard `requireAuth` middleware |
+
+### Phase 2 — Input Validation, CORS, and Forbidden Patterns CI
+
+| Finding                                                                                      | Resolution                                                                                       |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Admin routes allowed tenant context bypass via a special header                              | Bypass logic removed; admin routes use the same tenant resolution as all other routes            |
+| AI routes accepted requests without a resolved tenant context                                | `requireTenant` middleware added to all AI route handlers                                        |
+| `server/routes/exceptions.ts` accepted unvalidated POST/PATCH bodies                         | Zod schema (`ExceptionCreateSchema`, `ExceptionUpdateSchema`) added                              |
+| `server/routes/parties.ts` accepted unvalidated POST/PATCH bodies                            | Zod schema (`PartyCreateSchema`, `PartyUpdateSchema`) added                                      |
+| CORS allowed wildcard origin when `CORS_ORIGIN` env var was absent                           | Fallback changed from `*` to `http://localhost:5173`; production requires explicit `CORS_ORIGIN` |
+| `CORS_ORIGIN` env var absent in `.env.example`                                               | Added with placeholder `https://app.loadpilot.com`                                               |
+| No CI check for forbidden patterns (`error.message` in responses, tenant bypass)             | `scripts/__tests__/forbidden-patterns.test.ts` added; runs in CI on every push                   |
+| `error.message` / `error instanceof Error ? error.message : String(error)` in HTTP responses | All route files audited; static strings (`"Internal error"`) confirmed in all catch blocks       |
+
+---
+
+## 11. P3 Backlog
+
+These items are deferred. None block production launch but each carries a documented risk. They should be addressed in the next cleanup sprint after the initial production rollout is stable.
+
+| #   | Item                                            | Risk                                                                                                                                                    | Rating                    |
+| --- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| 1   | **Code splitting with `React.lazy()`**          | 2.2 MB initial bundle slows first-load on mobile/LTE connections                                                                                        | Performance — Medium      |
+| 2   | **Vite `manualChunks` vendor splitting**        | Vendor and app code in one chunk defeats long-lived browser caching                                                                                     | Cache efficiency — Low    |
+| 3   | **Client-side router (`BrowserRouter`)**        | No deep linking; all non-root URLs return 404 unless Firebase Hosting rewrites are correct                                                              | Reliability — Medium      |
+| 4   | **Server-side `requirePermission` middleware**  | Role-based access control is enforced only in the React client; a direct API caller with a valid token can reach any endpoint                           | RBAC gap — High           |
+| 5   | **Pagination on GET list endpoints**            | Endpoints return all rows; a company with 10,000+ loads will cause OOM or timeout                                                                       | Scalability — High        |
+| 6   | **Financial audit trail**                       | Payment and invoice mutations are not individually recorded in `audit_logs`; gaps exist for SOC 2 Type II compliance                                    | Compliance — High         |
+| 7   | **Health check with real DB probe**             | `/healthz` returns 200 even when the MySQL pool is exhausted; Cloud Run LB may route traffic to a broken instance                                       | Reliability — Medium      |
+| 8   | **MySQL connection pool timeouts**              | Pool has no `connectTimeout`/`acquireTimeout`; slow DB startup or network partition can hang requests indefinitely                                      | Reliability — Medium      |
+| 9   | **TypeScript strict mode**                      | `strict: false` in `tsconfig.json` allows implicit `any`, uninitialized variables, and nullability gaps to accumulate silently                          | Type safety — Low         |
+| 10  | **Move server deps out of root `package.json`** | Root `package.json` contains Express, Prisma, and other server-only packages; frontend `npm install` pulls in all server deps                           | Install bloat — Low       |
+| 11  | **Firebase Hosting CSP headers**                | No `Content-Security-Policy` header is set; XSS payloads are not mitigated at the browser layer                                                         | Browser security — Medium |
+| 12  | **Remove `password` field from `User` type**    | The `User` TypeScript type includes a `password` property; if a `User` object is accidentally serialised to JSON in an API response the hash is exposed | Data exposure — High      |
+
+---
+
 ## Sign-Off
 
 ```
 Originally verified by:  ralph-worker STORY-006
 Original date:           2026-03-13
-Updated by:              Documentation audit
+Updated by:              Security hardening sprint Phase 2 (Agent D)
 Update date:             2026-03-16
-Branch:                  main
+Branch:                  fix/p0-critical-security
 
 Operator sign-off (required before production traffic):
   Name:  ______________

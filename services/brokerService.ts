@@ -1,6 +1,7 @@
 import { API_URL } from "./config";
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
+import { DEMO_MODE } from "./firebase";
 
 const BROKERS_KEY = "loadpilot_brokers_v1";
 
@@ -8,7 +9,7 @@ export const getRawBrokers = (): Broker[] => {
   try {
     const data = localStorage.getItem(BROKERS_KEY);
     let brokers = data ? JSON.parse(data) : [];
-    if (brokers.length === 0) {
+    if (brokers.length === 0 && DEMO_MODE) {
       // Seed initial brokers
       brokers = [
         {
@@ -177,8 +178,9 @@ export const saveContract = async (contract: Contract) => {
   }
 };
 
-// Simulate checking FMCSA safety score
-export const checkSafetyScore = (mcNumber: string): number => {
+// Simulate checking FMCSA safety score (demo only)
+export const checkSafetyScore = (mcNumber: string): number | null => {
+  if (!DEMO_MODE) return null;
   // Deterministic "random" score based on MC number for demo consistency
   const seed = mcNumber
     .split("")

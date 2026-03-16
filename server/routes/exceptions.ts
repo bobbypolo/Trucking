@@ -2,6 +2,11 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import {
+  createExceptionSchema,
+  patchExceptionSchema,
+} from "../schemas/exceptions";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 
@@ -55,6 +60,7 @@ router.post(
   "/api/exceptions",
   requireAuth,
   requireTenant,
+  validateBody(createExceptionSchema),
   async (req: any, res) => {
     const ex = req.body;
     const id = uuidv4();
@@ -100,14 +106,15 @@ router.patch(
   "/api/exceptions/:id",
   requireAuth,
   requireTenant,
+  validateBody(patchExceptionSchema),
   async (req: any, res) => {
     const { id } = req.params;
     const { status, ownerUserId, workflowStep, severity, notes, actorName } =
       req.body;
     try {
       const [old]: any = await pool.query(
-        "SELECT * FROM exceptions WHERE id = ?",
-        [id],
+        "SELECT * FROM exceptions WHERE id = ? AND tenant_id = ?",
+        [id, req.user!.tenantId],
       );
       if (old.length === 0) return res.status(404).json({ error: "Not found" });
 
@@ -133,8 +140,8 @@ router.patch(
         query += ", resolved_at = CURRENT_TIMESTAMP";
       }
 
-      query += " WHERE id = ?";
-      params.push(id);
+      query += " WHERE id = ? AND tenant_id = ?";
+      params.push(id, req.user!.tenantId);
 
       await pool.query(query, params);
 
@@ -191,8 +198,8 @@ router.get(
   async (req: any, res) => {
     try {
       const [rows] = await pool.query(
-        "SELECT * FROM exception_events WHERE exception_id = ? ORDER BY timestamp DESC",
-        [req.params.id],
+        "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.tenant_id = ? ORDER BY ee.timestamp DESC",
+        [req.params.id, req.user!.tenantId],
       );
       res.json(rows);
     } catch (error) {

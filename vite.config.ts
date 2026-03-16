@@ -1,6 +1,7 @@
 import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(() => {
   return {
@@ -8,7 +9,7 @@ export default defineConfig(() => {
       port: 3000,
       host: "0.0.0.0",
     },
-    plugins: [react()],
+    plugins: [tailwindcss(), react()],
     define: {
       // Gemini API key removed from client bundle — proxied via server /api/ai/*
     },

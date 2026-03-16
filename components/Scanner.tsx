@@ -8,6 +8,7 @@ import {
   Truck,
   BookOpen,
 } from "lucide-react";
+import { getIdTokenAsync } from "../services/authService";
 // AI calls proxied through server — no client-side Gemini SDK
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
 
@@ -16,7 +17,7 @@ async function aiPost(
   imageBase64: string,
   mimeType: string,
 ): Promise<unknown> {
-  const token = (localStorage.getItem("authToken") as string | null) ?? "";
+  const token = (await getIdTokenAsync()) ?? "";
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
     headers: {

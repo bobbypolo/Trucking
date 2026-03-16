@@ -209,7 +209,7 @@ export default function App() {
       if (updatedUser) {
         await refreshData(updatedUser);
         const l = await getLoads(updatedUser);
-        if (l.length > 0) await seedIncidents(l);
+        if (DEMO_MODE && l.length > 0) await seedIncidents(l);
       }
     });
 

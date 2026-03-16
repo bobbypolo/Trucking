@@ -143,7 +143,10 @@ describe("POST /api/contracts — validation", () => {
   });
 
   it("returns 201 with minimal valid payload (no Zod schema on contracts POST)", async () => {
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    // First query: customer ownership check; second: REPLACE INTO
+    mockQuery
+      .mockResolvedValueOnce([[{ id: CUSTOMER_ID }], []])
+      .mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const res = await request(app)
       .post("/api/contracts")
@@ -156,6 +159,24 @@ describe("POST /api/contracts — validation", () => {
       });
 
     expect(res.status).toBe(201);
+  });
+
+  it("returns 404 when customer does not belong to the tenant (TENANT-05)", async () => {
+    // Customer ownership check returns no rows → customer not found
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .post("/api/contracts")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        id: "contract-001",
+        customer_id: "foreign-customer-id",
+        contract_name: "Annual 2026",
+        status: "active",
+      });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Customer not found");
   });
 });
 
@@ -224,7 +245,10 @@ describe("POST /api/contracts — success", () => {
   });
 
   it("creates contract and returns 201", async () => {
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    // First query: customer ownership check; second: REPLACE INTO
+    mockQuery
+      .mockResolvedValueOnce([[{ id: CUSTOMER_ID }], []])
+      .mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const res = await request(app)
       .post("/api/contracts")
@@ -244,7 +268,10 @@ describe("POST /api/contracts — success", () => {
   });
 
   it("returns 500 on database error for POST", async () => {
-    mockQuery.mockRejectedValueOnce(new Error("DB insert failed"));
+    // Customer check passes, then the REPLACE INTO throws
+    mockQuery
+      .mockResolvedValueOnce([[{ id: CUSTOMER_ID }], []])
+      .mockRejectedValueOnce(new Error("DB insert failed"));
 
     const res = await request(app)
       .post("/api/contracts")
