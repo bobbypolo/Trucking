@@ -83,7 +83,6 @@ vi.mock("../../middleware/requireTenant", () => ({
         .status(403)
         .json({ error: "Tenant verification requires authentication." });
     }
-    if (user.role === "admin") return next();
 
     // Check :companyId param
     const paramCompanyId = req.params.companyId;
@@ -180,10 +179,8 @@ describe("GET /api/clients/:companyId — tenant enforcement", () => {
     expect(res.status).toBe(403);
   });
 
-  it("returns 403 for route-level RBAC check when user companyId mismatches (non-admin)", async () => {
-    // Even if requireTenant passes (matching tenantId),
-    // the route itself has: if (req.user.companyId !== req.params.companyId && role !== 'admin')
-    // Set tenantId to match but companyId to mismatch to isolate route-level check
+  it("returns 403 when user tenantId mismatches requested companyId (requireTenant enforcement)", async () => {
+    // requireTenant rejects when tenantId does not match the :companyId param.
     mockUserTenantId = "company-zzz";
     mockUserCompanyId = "company-zzz";
     app = buildApp();

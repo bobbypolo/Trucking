@@ -1,5 +1,30 @@
 import { z } from "zod";
 
+export const validRoles = [
+  "admin",
+  "driver",
+  "owner_operator",
+  "safety_manager",
+  "dispatcher",
+  "payroll_manager",
+  "customer",
+  "OWNER_ADMIN",
+  "OPS",
+  "SAFETY_MAINT",
+  "FINANCE",
+  "SALES_CS",
+  "ORG_OWNER_SUPER_ADMIN",
+  "OPS_MANAGER",
+  "SAFETY_COMPLIANCE",
+  "MAINTENANCE_MANAGER",
+  "ACCOUNTING_AR",
+  "ACCOUNTING_AP",
+  "PAYROLL_SETTLEMENTS",
+  "DRIVER_PORTAL",
+  "FLEET_OO_ADMIN_PORTAL",
+  "SALES_CUSTOMER_SERVICE",
+] as const;
+
 /**
  * Schema for POST /api/auth/register — user registration.
  */
@@ -10,7 +35,7 @@ export const registerUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1),
-  role: z.string().min(1),
+  role: z.enum(validRoles),
   pay_model: z.string().optional(),
   payModel: z.string().optional(),
   pay_rate: z.number().optional(),
@@ -29,7 +54,7 @@ export const syncUserSchema = z.object({
   email: z.string().email(),
   password: z.string().optional(),
   name: z.string().min(1).optional(),
-  role: z.string().optional(),
+  role: z.enum(validRoles).optional(),
   pay_model: z.string().optional(),
   payModel: z.string().optional(),
   pay_rate: z.number().optional(),

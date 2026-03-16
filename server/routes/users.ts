@@ -52,14 +52,6 @@ async function loadCompanyConfig(companyId: string) {
   }
 }
 
-function resolveBodyCompanyId(body: Record<string, unknown>): string | null {
-  const value = body.company_id || body.companyId;
-  if (typeof value === "string" && value.trim() && value !== "null") {
-    return value;
-  }
-  return null;
-}
-
 function resolveString(...values: Array<unknown>): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -81,6 +73,7 @@ function resolveNumber(...values: Array<unknown>): number | null {
 router.post(
   "/api/auth/register",
   requireAuth,
+  requireTenant,
   validateBody(registerUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
@@ -101,7 +94,7 @@ router.post(
     try {
       const userInput = {
         id: resolveString(req.body.id) || uuidv4(),
-        companyId: resolveBodyCompanyId(req.body) || authReq.user.tenantId,
+        companyId: authReq.user.tenantId,
         email: req.body.email,
         name: req.body.name,
         role: req.body.role,
@@ -130,6 +123,7 @@ router.post(
 router.post(
   "/api/users",
   requireAuth,
+  requireTenant,
   validateBody(syncUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
@@ -147,10 +141,7 @@ router.post(
         .json({ error: "Forbidden: cannot sync another user." });
     }
 
-    const companyId = resolveBodyCompanyId(req.body) || authReq.user.tenantId;
-    if (!companyId) {
-      return res.status(400).json({ error: "company_id is required." });
-    }
+    const companyId = authReq.user.tenantId;
 
     log.info({ data: { email: req.body.email } }, "User sync request received");
 
@@ -293,13 +284,6 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    if (
-      req.user.tenantId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({ error: "Resource unauthorized" });
-    }
-
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));

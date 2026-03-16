@@ -17,12 +17,6 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    if (
-      req.user.companyId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({ error: "Unauthorized company access" });
-    }
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
@@ -59,9 +53,6 @@ router.post(
       company_id,
       chassis_requirements,
     } = req.body;
-    if (req.user.companyId !== company_id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Unauthorized company access" });
-    }
     try {
       await pool.query(
         "REPLACE INTO customers (id, name, type, mc_number, dot_number, email, phone, address, payment_terms, company_id, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",

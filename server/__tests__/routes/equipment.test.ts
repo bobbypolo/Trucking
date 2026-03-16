@@ -61,7 +61,6 @@ vi.mock("../../middleware/requireTenant", () => ({
       return res
         .status(403)
         .json({ error: "Tenant verification requires authentication." });
-    if (user.role === "admin") return next();
 
     const paramCompanyId = req.params.companyId;
     if (paramCompanyId && paramCompanyId !== user.tenantId) {
@@ -124,14 +123,12 @@ describe("POST /api/equipment — auth enforcement", () => {
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
     const app = buildUnauthApp();
-    const res = await request(app)
-      .post("/api/equipment")
-      .send({
-        company_id: COMPANY_ID,
-        unit_number: "T-001",
-        type: "truck",
-        status: "active",
-      });
+    const res = await request(app).post("/api/equipment").send({
+      company_id: COMPANY_ID,
+      unit_number: "T-001",
+      type: "truck",
+      status: "active",
+    });
     expect(res.status).toBe(401);
   });
 });

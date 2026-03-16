@@ -40,7 +40,7 @@ export function requireTenant(
     return next(
       new ForbiddenError(
         "Access denied: tenant mismatch.",
-        { requested: paramCompanyId, userTenant: userTenantId },
+        {},
         "TENANT_MISMATCH_001",
       ),
     );
@@ -53,7 +53,7 @@ export function requireTenant(
       return next(
         new ForbiddenError(
           "Access denied: tenant mismatch.",
-          { requested: bodyCompanyId, userTenant: userTenantId },
+          {},
           "TENANT_MISMATCH_001",
         ),
       );

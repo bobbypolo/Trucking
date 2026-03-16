@@ -229,7 +229,7 @@ export async function updatePostedSettlement(
 
   throw new ForbiddenError(
     `Settlement '${settlementId}' is immutable — posted settlements cannot be modified. Use adjustments to record corrections.`,
-    { settlementId, currentStatus: settlement.status },
+    {},
     "FORBIDDEN_SETTLEMENT_IMMUTABLE",
   );
 }
@@ -261,7 +261,7 @@ export async function deleteSettlement(
 
   throw new ForbiddenError(
     `Settlement '${settlementId}' cannot be deleted — no hard-delete path exists for settlements. All records are retained for audit compliance.`,
-    { settlementId, currentStatus: settlement.status },
+    {},
     "FORBIDDEN_SETTLEMENT_NO_DELETE",
   );
 }
