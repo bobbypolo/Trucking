@@ -111,6 +111,7 @@ import { getRecord360Data } from "./services/storageService";
 import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
 import { CommandCenterView } from "./components/CommandCenterView";
 import { DEMO_MODE } from "./services/firebase";
+import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
 interface NavItem {
@@ -199,7 +200,7 @@ export default function App() {
   const [summary, setSummary] = useState<any>(null);
 
   useEffect(() => {
-    if (import.meta.env.DEV && DEMO_MODE) {
+    if (features.seedSystem && DEMO_MODE) {
       seedDatabase().then(() => seedSafetyData(true));
     }
 
@@ -510,12 +511,16 @@ export default function App() {
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        {
-          id: "api-tester",
-          permission: "ORG_SETTINGS_VIEW",
-          label: "API Tester",
-          icon: Zap,
-        },
+        ...(features.apiTester
+          ? [
+              {
+                id: "api-tester",
+                permission: "ORG_SETTINGS_VIEW" as PermissionCode,
+                label: "API Tester",
+                icon: Zap,
+              },
+            ]
+          : []),
       ],
     },
   ];
@@ -1060,7 +1065,9 @@ export default function App() {
                   users={companyUsers}
                 />
               )}
-              {activeTab === "api-tester" && <GoogleMapsAPITester />}
+              {features.apiTester && activeTab === "api-tester" && (
+                <GoogleMapsAPITester />
+              )}
             </div>
           </div>
         </main>
