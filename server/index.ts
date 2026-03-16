@@ -40,6 +40,9 @@ import callSessionsRouter from "./routes/call-sessions";
 const app = express();
 const port = process.env.PORT || 5000;
 
+// Trust proxy headers (X-Forwarded-For) when behind reverse proxies (Cloud Run, Cloudflare Tunnel)
+app.set("trust proxy", 1);
+
 app.use(helmet());
 app.use(compression());
 app.use(cors({ origin: process.env.CORS_ORIGIN || "*", credentials: true }));

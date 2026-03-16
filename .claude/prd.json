@@ -2,706 +2,442 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "000a77bb4e23c4be82a3c624afd3e84fbb7a428f468d4ab2b7c5ee7609d2de9b",
+  "plan_hash": "158733ff830ea5c2a37a07c6656014598b3ca538606f16b8c582a2332165a7d1",
   "stories": [
     {
       "id": "STORY-001",
-      "description": "Release Candidate Freeze — git tag, freeze script, evidence bundle (STORY-001)",
+      "description": "Plain-Language Labels, Feature Flags, and DEMO_MODE Hardening",
       "phase": 1,
       "phase_type": "foundation",
-      "component": "scripts/",
+      "component": "components/",
       "scope": [
-        "scripts/",
-        "docs/deployment/"
+        "App.tsx",
+        "components/",
+        "config/",
+        "services/"
       ],
-      "complexity": "medium",
-      "maxTurns": 150,
+      "complexity": "complex",
+      "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": 1,
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "freeze-rc.sh exists — `test -f scripts/freeze-rc.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "All 13 navigation labels in App.tsx `categories[]` array match the renamed values specified in the Changes table, verified by unit test asserting each label string",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-02",
-          "criterion": "Script creates annotated git tag — `grep -c \"git tag\" scripts/freeze-rc.sh` returns at least 1",
+          "criterion": "`config/features.ts` exports a `features` object with 5 boolean keys (`simulateActions`, `apiTester`, `seedSystem`, `injectRecord`, `debugPanels`) that return `true` when `import.meta.env.DEV` is true and `false` otherwise, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-03",
-          "criterion": "Script captures git SHA — `grep -c \"rev-parse\" scripts/freeze-rc.sh` returns at least 1",
+          "criterion": "`DEMO_MODE` in `services/firebase.ts` includes `import.meta.env.MODE !== 'production'` in its condition AND a production guard that throws an Error if `import.meta.env.PROD && DEMO_MODE`, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-04",
-          "criterion": "Script references Artifact Registry — `grep -c \"docker.pkg.dev\\|artifacts docker\" scripts/freeze-rc.sh` returns at least 1",
+          "criterion": "CompanyProfile.tsx contains zero instances of ANY of these strings: \"Authority DNA\", \"Logic Seed\", \"Identity Matrix\", \"Duty Cockpit\", \"Global Authority Profile\", \"Synchronize Matrix\", \"Terminate Duty Cycle\", \"Cargo Unit Telemetry\", \"Active Duty Engine\", \"Terminal Nodes\", \"Authority Structure\", \"Load Numbering Matrix\", \"Access Decision Matrix\", \"Acknowledge Exit\", \"Duty Cycle Terminated\", \"Legal Entity Entity\", \"Establishing Authority Connection\", \"Personnel Registry\", \"Hierarchy Permissions\", \"Compliance Governance\", \"Financial Protocols\", \"Secure File Download\", \"Authority Global State Synchronized\", \"Initial Duty Acknowledge\", \"Finalizing Cargo\", \"Operational DNA\", \"Authority ID\", verified by grep returning 0 matches across ALL listed strings",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-05",
-          "criterion": "Script generates evidence bundle — `grep -c \"RC_EVIDENCE_BUNDLE\" scripts/freeze-rc.sh` returns at least 1",
+          "criterion": "DriverMobileHome.tsx contains zero instances of \"TruckLogix\", \"Fleet Connect\", \"Standby Mode Initialized\", \"Sign Out Authority\", verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-06",
-          "criterion": "Script validates clean working tree — `grep -c \"git status\\|git diff\\|porcelain\" scripts/freeze-rc.sh` returns at least 1",
+          "criterion": "Dashboard.tsx contains zero instances of \"Unified Command Center\", \"Strategy & Analytics\", \"Master Triage Feed\", \"Functional Response Queues\", \"Fleet Situational Awareness\", verified by grep",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-07",
-          "criterion": "RC evidence bundle template exists — `test -f docs/deployment/RC_EVIDENCE_BUNDLE.md && echo \"exists\"` returns \"exists\"",
+          "criterion": "ExceptionConsole.tsx contains zero instances of \"Master Triage Console\", \"Unified Exception Management\", \"View 360\", \"SLA targets are within safe margins\", verified by grep",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-08",
-          "criterion": "Evidence bundle references staging evidence — `grep -c \"STAGING_EXECUTION_EVIDENCE\\|ROLLBACK_DRILL_EVIDENCE\\|GO_NO_GO_CHECKLIST\" docs/deployment/RC_EVIDENCE_BUNDLE.md` returns at least 3",
+          "criterion": "LoadBoardEnhanced.tsx contains zero instances of \"SQL Matrix View\", \"Manifest #\", \"Yield\" (as a column label), \"IFTA INTEL\", \"Grid Visibility\", \"View Tailoring\", verified by grep",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-09",
-          "criterion": "Syntax tests pass — `npx vitest run scripts/__tests__/freeze-rc-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 6 passing tests",
+          "criterion": "GlobalMapViewEnhanced.tsx contains zero instances of \"Execute Intervention\", \"RED CIRCLED\", \"Regional Intelligence\", \"Operational Weather\", verified by grep",
           "testType": "unit",
-          "testFile": "scripts/__tests__/freeze-rc-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P1-10",
-          "criterion": "All existing server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "criterion": "NetworkPortal.tsx contains zero instances of \"Registry PK\", \"A/P Engine\", \"Constraint Sets\", \"Commercial Catalog\", \"Operational freedom enabled\", \"authorized personnel registered for this node\", \"Compliance vault is empty\", verified by grep",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-11",
-          "criterion": "Verification log contains PASS entry for STORY-001 — `grep -c \"STORY-001\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "criterion": "CommandCenterView.tsx contains zero instances of \"Attachment protocol\", \"operational target\", \"Operations Rack\", \"Triage Inbox\", \"Asset recovery team activated\", verified by grep",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-12",
+          "criterion": "SafetyView.tsx contains zero instances of \"Custody Events\", \"Service Tickets In Matrix\", verified by grep",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-13",
+          "criterion": "QuoteManager.tsx contains zero instances of \"Queue Empty\", verified by grep",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-14",
+          "criterion": "CustomerPortalView.tsx contains zero instances of \"Voyage Progress\", \"Tracking Master-ID\", verified by grep",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-15",
+          "criterion": "All 15 root dev scripts exist in `scripts/dev/` and zero `.cjs`/`.js` dev scripts remain in the project root (excluding node_modules, config files like vite.config.ts, tailwind.config.js, postcss.config.js), verified by ls",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-16",
+          "criterion": "All 23 server dev scripts exist in `scripts/dev/server/` and zero seed_*/test_*/migrate_exceptions*/upgrade_*/check_billing*/check_db*/repair_* scripts remain in `server/` root, verified by ls",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "regression_tier": "story001_rc_freeze",
-        "unit": "npx vitest run scripts/__tests__/freeze-rc-syntax.test.ts --reporter=verbose"
+        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/config/features.test.ts src/__tests__/services/firebase.test.ts src/__tests__/components/App.navigation.test.tsx src/__tests__/components/CompanyProfile.test.tsx src/__tests__/components/DriverMobileHome.labels.test.tsx src/__tests__/components/Dashboard.labels.test.tsx src/__tests__/components/ExceptionConsole.labels.test.tsx src/__tests__/components/LoadBoardEnhanced.labels.test.tsx src/__tests__/components/GlobalMapViewEnhanced.labels.test.tsx src/__tests__/components/NetworkPortal.labels.test.tsx src/__tests__/components/CommandCenterView.labels.test.tsx src/__tests__/components/SafetyView.labels.test.tsx src/__tests__/components/QuoteManager.labels.test.tsx src/__tests__/components/CustomerPortalView.labels.test.tsx --reporter=verbose"
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
       "id": "STORY-002",
-      "description": "Production Environment Scripts — provision-production.sh, deploy-production.sh (STORY-002)",
+      "description": "Remove Dev Artifacts from Production UI",
       "phase": 2,
-      "phase_type": "foundation",
-      "component": "scripts/",
+      "phase_type": "module",
+      "component": "components/",
       "scope": [
-        "scripts/",
-        ".env.production",
-        ".gitignore"
+        "App.tsx",
+        "components/"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P2-01",
-          "criterion": "provision-production.sh exists — `test -f scripts/provision-production.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "IntelligenceHub SIMULATE ActionGroup is not rendered when `features.simulateActions` is `false`, verified by unit test that mocks `features.simulateActions = false` and asserts \"SIMULATE\" label is absent from the DOM",
           "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P2-02",
-          "criterion": "Script uses dedicated-core tier — `grep -c \"db-custom\" scripts/provision-production.sh` returns at least 1",
+          "criterion": "App.tsx does not render the `api-tester` navigation item or `GoogleMapsAPITester` component when `features.apiTester` is `false`, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P2-03",
-          "criterion": "Script does NOT use db-f1-micro — `grep -c \"db-f1-micro\" scripts/provision-production.sh` returns 0",
+          "criterion": "App.tsx does not call `seedDatabase()` when `features.seedSystem` is `false`, verified by unit test with mock spy on seedDatabase",
           "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P2-04",
-          "criterion": "Script creates loadpilot-prod instance — `grep -c \"loadpilot-prod\" scripts/provision-production.sh` returns at least 1",
+          "criterion": "IntelligenceHub \"Inject Record\" action is not rendered when `features.injectRecord` is `false`, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P2-05",
-          "criterion": "Script creates trucklogix_prod database — `grep -c \"trucklogix_prod\" scripts/provision-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-06",
-          "criterion": "Script creates production service account — `grep -c \"loadpilot-api-prod-sa\" scripts/provision-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-07",
-          "criterion": "Script grants secretAccessor role — `grep -c \"secretmanager.secretAccessor\\|secretAccessor\" scripts/provision-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-08",
-          "criterion": "Script grants cloudsql.client role — `grep -c \"cloudsql.client\" scripts/provision-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-09",
-          "criterion": "Script enables automated backups — `grep -c \"backup\\|enable-bin-log\" scripts/provision-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-10",
-          "criterion": "deploy-production.sh exists — `test -f scripts/deploy-production.sh && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-11",
-          "criterion": "Deploy script uses --no-traffic — `grep -c \"no-traffic\" scripts/deploy-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-12",
-          "criterion": "Deploy script sets NODE_ENV=production — `grep -c \"NODE_ENV=production\" scripts/deploy-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-13",
-          "criterion": "Deploy script uses min-instances=1 — `grep -c \"min-instances=1\\|min-instances 1\" scripts/deploy-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-14",
-          "criterion": "Deploy script uses production service account — `grep -c \"loadpilot-api-prod-sa\" scripts/deploy-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-15",
-          "criterion": ".env.production exists — `test -f .env.production && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-16",
-          "criterion": ".env.production is gitignored — `grep -c \".env.production\" .gitignore` returns at least 1",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-17",
-          "criterion": "Provisioning syntax tests pass — `npx vitest run scripts/__tests__/provision-production-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 9 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/provision-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-18",
-          "criterion": "Deploy syntax tests pass — `npx vitest run scripts/__tests__/deploy-production-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 8 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/deploy-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P2-19",
-          "criterion": "All existing server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-20",
-          "criterion": "Verification log contains PASS entry for STORY-002 — `grep -c \"STORY-002\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "criterion": "IntelligenceHub \"Work\" ActionGroup label reads \"Quick Actions\", verified by unit test DOM text assertion",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "regression_tier": "story002_prod_env",
-        "unit": "npx vitest run scripts/__tests__/provision-production-syntax.test.ts scripts/__tests__/deploy-production-syntax.test.ts --reporter=verbose"
+        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/IntelligenceHub.devtools.test.tsx src/__tests__/components/App.devtools.test.tsx --reporter=verbose"
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
       "id": "STORY-003",
-      "description": "Production Data Protection — backup setup script, PITR config, restore procedure (STORY-003)",
+      "description": "Replace Hardcoded Mock Data with Real Calculations or Empty States",
       "phase": 3,
       "phase_type": "module",
-      "component": "scripts/",
+      "component": "components/",
       "scope": [
-        "scripts/",
-        "docs/deployment/"
+        "components/"
       ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P3-01",
-          "criterion": "backup-setup.sh exists — `test -f scripts/backup-setup.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "`EmptyState` component renders an icon, title, description, and optional action button, verified by unit test asserting all elements present in the DOM",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-02",
-          "criterion": "Script enables automated backups — `grep -c \"instances patch\\|backup-start-time\" scripts/backup-setup.sh` returns at least 1",
+          "criterion": "`AnalyticsDashboard.tsx` contains zero instances of \"Global Logistics\", \"FastTrack Freight\", \"Blue Sky Carriers\", \"Midwest Brokerage\", \"Chicago, IL -> Detroit, MI\", \"4.2% increase in Midwest reefer demand\", verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-03",
-          "criterion": "Script enables binary logging for PITR — `grep -c \"enable-bin-log\\|enable_bin_log\" scripts/backup-setup.sh` returns at least 1",
+          "criterion": "`AnalyticsDashboard` renders EmptyState with message containing \"completed loads\" when given an empty loads array, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-04",
-          "criterion": "Script sets transaction log retention — `grep -c \"transaction-log-retention\\|retained-transaction-log-days\" scripts/backup-setup.sh` returns at least 1",
+          "criterion": "`AnalyticsDashboard` calculates RPM as `carrierRate / totalMiles` from real load data when given 10+ loads with known values, verified by unit test asserting displayed value matches expected calculation",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-05",
-          "criterion": "Script creates on-demand baseline backup — `grep -c \"backups create\" scripts/backup-setup.sh` returns at least 1",
+          "criterion": "`Dashboard.tsx` contains zero instances of \"$2.45\", \"72% Done\", \"14 missing receipts\", \"412 mi\", \"Insurance Expiry\", \"12 days\", \"Broker Logistics Group\", \"94%\", \"SLA: 14m\", verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-06",
-          "criterion": "Script targets production instance — `grep -c \"loadpilot-prod\" scripts/backup-setup.sh` returns at least 1",
+          "criterion": "`CustomerPortalView.tsx` contains zero instances of \"INV-8409\", \"$4,250.00\", \"TRK-491\", \"Syracuse, NY\", \"142 Miles\", \"78% Complete\", \"4h 32m\", verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P3-07",
-          "criterion": "Restore procedure exists — `test -f docs/deployment/RESTORE_PROCEDURE.md && echo \"exists\"` returns \"exists\"",
+          "criterion": "`CustomerPortalView` renders EmptyState with \"No invoices\" message when given zero delivered loads, verified by unit test",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-08",
-          "criterion": "Restore procedure covers PITR — `grep -c \"point-in-time\\|PITR\\|clone.*--point-in-time\" docs/deployment/RESTORE_PROCEDURE.md` returns at least 1",
+          "criterion": "`CustomerPortalView` quote form submit button either calls `onSubmitQuote` callback with form data OR the form is replaced with a \"Contact dispatch\" message — the submit button MUST NOT exist as a no-op, verified by unit test that clicks submit and asserts either callback is called or \"Contact\" text is visible",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-09",
-          "criterion": "Restore procedure covers full backup restore — `grep -c \"backups restore\\|restore-backup\\|restoreBackup\" docs/deployment/RESTORE_PROCEDURE.md` returns at least 1",
+          "criterion": "`DriverMobileHome.tsx` contains zero instances of \"Wait time expected: 2h\" and \"Check in at Gate 2\", verified by grep",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-10",
-          "criterion": "Data protection policy exists — `test -f docs/deployment/DATA_PROTECTION_POLICY.md && echo \"exists\"` returns \"exists\"",
+          "criterion": "`DriverMobileHome` renders `selectedLoad.specialInstructions` when present (test with load that has specialInstructions=\"Dock 7\", assert \"Dock 7\" appears), verified by unit test",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-11",
-          "criterion": "Data protection policy documents RPO/RTO — `grep -c \"RPO\\|RTO\" docs/deployment/DATA_PROTECTION_POLICY.md` returns at least 2",
+          "criterion": "`GlobalMapViewEnhanced.tsx` contains zero instances of `seed % 10` or `seed %` patterns used to generate fake isOnline/lastPing/heading data, verified by grep returning 0 matches for `seed %` in the file",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-12",
-          "criterion": "Syntax tests pass — `npx vitest run scripts/__tests__/backup-setup-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 6 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/backup-setup-syntax.test.ts"
-        },
-        {
-          "id": "R-P3-13",
-          "criterion": "All existing server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "criterion": "`LoadBoardEnhanced` renders EmptyState with \"No loads\" message and a CTA button when given an empty loads array, verified by unit test",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-P3-14",
-          "criterion": "Verification log contains PASS entry for STORY-003 — `grep -c \"STORY-003\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "id": "R-P3-13",
+          "criterion": "`CalendarView` renders EmptyState with \"No loads scheduled\" message when given an empty loads array, verified by unit test",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "regression_tier": "story003_data_protection",
-        "unit": "npx vitest run scripts/__tests__/backup-setup-syntax.test.ts --reporter=verbose"
+        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/EmptyState.test.tsx src/__tests__/components/AnalyticsDashboard.test.tsx src/__tests__/components/Dashboard.mockdata.test.tsx src/__tests__/components/CustomerPortalView.test.tsx src/__tests__/components/DriverMobileHome.mockdata.test.tsx src/__tests__/components/GlobalMapViewEnhanced.mockdata.test.tsx src/__tests__/components/LoadBoardEnhanced.empty.test.tsx src/__tests__/components/CalendarView.empty.test.tsx --reporter=verbose"
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
       "id": "STORY-004",
-      "description": "Production Domain & SSL Setup Documentation + Zero-Traffic Deploy Verification Scripts (STORY-004)",
+      "description": "Fix Driver Mobile Experience",
       "phase": 4,
-      "phase_type": "module",
-      "component": "scripts/",
+      "phase_type": "integration",
+      "component": "components/",
       "scope": [
-        "scripts/",
-        "docs/deployment/"
+        "components/"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-003"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "Domain/SSL setup doc exists — `test -f docs/deployment/DOMAIN_SSL_SETUP.md && echo \"exists\"` returns \"exists\"",
+          "criterion": "`Toast` component renders a message string, auto-dismisses after the specified duration (default 3000ms), and applies green/red/blue styling based on type prop, verified by unit test",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-02",
-          "criterion": "Doc covers Firebase Hosting custom domain — `grep -c \"Firebase Hosting\\|firebase hosting\" docs/deployment/DOMAIN_SSL_SETUP.md` returns at least 1",
+          "criterion": "Tapping the \"Upload\" button on DriverMobileHome's document checklist opens a Scanner modal overlay, verified by integration test that simulates click and asserts Scanner component is rendered",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-03",
-          "criterion": "Doc covers DNS configuration — `grep -c \"DNS\\|A record\\|AAAA\\|CNAME\\|TXT\" docs/deployment/DOMAIN_SSL_SETUP.md` returns at least 2",
+          "criterion": "When Scanner calls `onDataExtracted`, the document metadata is passed to `onSaveLoad` with the updated load, verified by integration test with onSaveLoad spy",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-04",
-          "criterion": "Doc covers SSL certificates — `grep -c \"SSL\\|certificate\\|HTTPS\" docs/deployment/DOMAIN_SSL_SETUP.md` returns at least 2",
+          "criterion": "All body text in DriverMobileHome uses `text-xs` (12px) or larger -- zero instances of `text-[8px]`, `text-[9px]`, or `text-[10px]` remain for content text, verified by grep on the component file returning 0 matches for `text-[8px]`, `text-[9px]`, `text-[10px]`",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-05",
-          "criterion": "smoke-test-production.sh exists — `test -f scripts/smoke-test-production.sh && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "Smoke test checks health endpoint — `grep -c \"/api/health\" scripts/smoke-test-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-07",
-          "criterion": "Smoke test checks auth enforcement — `grep -c \"401\\|403\\|auth\" scripts/smoke-test-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-08",
-          "criterion": "Smoke test rejects 500 — `grep -c \"500\" scripts/smoke-test-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-09",
-          "criterion": "Smoke test discovers revision URL — `grep -c \"revisions list\\|revision\" scripts/smoke-test-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-10",
-          "criterion": "verify-production.sh exists — `test -f scripts/verify-production.sh && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/verify-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-11",
-          "criterion": "Production verify checks health — `grep -c \"/api/health\" scripts/verify-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/verify-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-12",
-          "criterion": "Production verify checks CORS — `grep -c \"CORS\\|access-control\\|Access-Control\" scripts/verify-production.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/verify-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-13",
-          "criterion": "Smoke test syntax tests pass — `npx vitest run scripts/__tests__/smoke-test-production-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 6 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/smoke-test-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-14",
-          "criterion": "Verify production syntax tests pass — `npx vitest run scripts/__tests__/verify-production-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 5 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/verify-production-syntax.test.ts"
-        },
-        {
-          "id": "R-P4-15",
-          "criterion": "All existing server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
+          "criterion": "After a successful status update, a Toast with \"Status updated to {status}\" and type=\"success\" appears, verified by unit test",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-P4-16",
-          "criterion": "Verification log contains PASS entry for STORY-004 — `grep -c \"STORY-004\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "id": "R-P4-06",
+          "criterion": "After a failed status update, a Toast with \"Failed to update status\" and type=\"error\" appears, verified by unit test",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "A \"Message Dispatch\" button is visible on Today tab when `activeLoads.length > 0`, clicking it calls `onOpenHub('messaging')`, verified by unit test",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "A phone icon button with `tel:` link is visible when company dispatch phone is available, verified by unit test",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "On component mount, `activeTab` and `selectedLoadId` are restored from localStorage keys `driver_{user.id}_activeTab` and `driver_{user.id}_selectedLoadId`, verified by unit test",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-10",
+          "criterion": "On tab change, the new tab value is written to localStorage key `driver_{user.id}_activeTab`, verified by unit test",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "regression_tier": "story004_domain_smoke",
-        "unit": "npx vitest run scripts/__tests__/smoke-test-production-syntax.test.ts scripts/__tests__/verify-production-syntax.test.ts --reporter=verbose"
+        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/Toast.test.tsx src/__tests__/components/DriverMobileHome.scanner.test.tsx src/__tests__/components/DriverMobileHome.accessibility.test.tsx src/__tests__/components/DriverMobileHome.toast.test.tsx src/__tests__/components/DriverMobileHome.messaging.test.tsx src/__tests__/components/DriverMobileHome.persistence.test.tsx --reporter=verbose"
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
       "id": "STORY-005",
-      "description": "Controlled Rollout Gate Scripts (A/B/C/D) + Production Migration Script (STORY-005)",
+      "description": "Architecture Polish -- Console.log Cleanup, Trucking Glossary, and Test Credential Extraction",
       "phase": 5,
       "phase_type": "module",
-      "component": "scripts/",
+      "component": "services/",
       "scope": [
-        "scripts/",
-        "docs/deployment/"
+        "components/",
+        "data/",
+        "fixtures/",
+        "services/",
+        "utils/"
       ],
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-004"
+        "STORY-001",
+        "STORY-003"
       ],
       "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P5-01",
-          "criterion": "gate-a-internal.sh exists — `test -f scripts/gate-a-internal.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "`utils/logger.ts` exports a `log` object where `log.info` is a no-op when `import.meta.env.DEV` is false and passes through to `console.log` when true, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-02",
-          "criterion": "gate-b-pilot.sh exists — `test -f scripts/gate-b-pilot.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "`storageService.ts` contains zero `console.log()` calls, verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-03",
-          "criterion": "gate-c-broader.sh exists — `test -f scripts/gate-c-broader.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "`services/authService.ts`, `services/brokerService.ts`, `components/Auth.tsx`, `components/GlobalMapViewEnhanced.tsx` contain zero `console.log()` calls, verified by grep across all 4 files returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-04",
-          "criterion": "gate-d-ga.sh exists — `test -f scripts/gate-d-ga.sh && echo \"exists\"` returns \"exists\"",
+          "criterion": "`data/truckingGlossary.ts` exports a glossary object with at least 25 entries including IFTA, BOL, POD, RPM, HOS, ELD, MC, DOT, TONU, LUMPER, DETENTION, DEADHEAD, ACCESSORIAL, verified by unit test counting keys and checking specific entries",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-05",
-          "criterion": "Gate A routes 10% traffic — `grep -c \"=10\\b\\|=10%\" scripts/gate-a-internal.sh` returns at least 1",
+          "criterion": "`GlossaryTooltip` component renders a tooltip with the definition text when hovering over a known term, and renders children without a tooltip for unknown terms, verified by unit test",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-06",
-          "criterion": "Gate B routes 25% traffic — `grep -c \"=25\\b\\|=25%\" scripts/gate-b-pilot.sh` returns at least 1",
+          "criterion": "Zero `console.log()` calls exist in any `.ts` or `.tsx` file under `services/` or `components/` directories (excluding test files and node_modules), verified by grep returning 0 matches",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-07",
-          "criterion": "Gate C routes 50% traffic — `grep -c \"=50\\b\\|=50%\" scripts/gate-c-broader.sh` returns at least 1",
+          "criterion": "`services/authService.ts` seedDatabase() function contains zero hardcoded email addresses or passwords (no \"admin@loadpilot.com\", no \"admin123\", no \"dispatch@loadpilot.com\", no \"dispatch123\"), verified by grep returning 0 matches for these strings in authService.ts",
           "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
+          "testFile": null
         },
         {
           "id": "R-P5-08",
-          "criterion": "Gate D routes 100% traffic — `grep -c \"=100\\b\\|=100%\" scripts/gate-d-ga.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-09",
-          "criterion": "All gate scripts use update-traffic — `for f in scripts/gate-{a-internal,b-pilot,c-broader,d-ga}.sh; do grep -c \"update-traffic\" \"$f\"; done | paste -sd+ | bc` returns at least 4",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-10",
-          "criterion": "All gate scripts check health after routing — `for f in scripts/gate-{a-internal,b-pilot,c-broader,d-ga}.sh; do grep -c \"/api/health\\|verify-production\\|smoke-test\" \"$f\"; done | paste -sd+ | bc` returns at least 4",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-11",
-          "criterion": "All gate scripts support auto-rollback — `for f in scripts/gate-{a-internal,b-pilot,c-broader,d-ga}.sh; do grep -c \"AUTO_ROLLBACK\\|rollback\\|ROLLBACK\" \"$f\"; done | paste -sd+ | bc` returns at least 4",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-12",
-          "criterion": "run-production-migrations.sh exists — `test -f scripts/run-production-migrations.sh && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-13",
-          "criterion": "Production migrations target loadpilot-prod — `grep -c \"loadpilot-prod\" scripts/run-production-migrations.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-14",
-          "criterion": "Production migrations use port 3308 — `grep -c \"3308\" scripts/run-production-migrations.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-15",
-          "criterion": "Production migrations require DB_PASSWORD_PROD — `grep -c \"DB_PASSWORD_PROD\" scripts/run-production-migrations.sh` returns at least 1",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-16",
-          "criterion": "Rollout evidence template exists — `test -f docs/deployment/ROLLOUT_EVIDENCE.md && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-17",
-          "criterion": "Rollout evidence covers all 4 gates — `grep -c \"Gate A\\|Gate B\\|Gate C\\|Gate D\" docs/deployment/ROLLOUT_EVIDENCE.md` returns at least 4",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-18",
-          "criterion": "Gate scripts syntax tests pass — `npx vitest run scripts/__tests__/gate-scripts-syntax.test.ts --reporter=list 2>&1 | grep \"passed\"` outputs at least 10 passing tests",
-          "testType": "unit",
-          "testFile": "scripts/__tests__/gate-scripts-syntax.test.ts"
-        },
-        {
-          "id": "R-P5-19",
-          "criterion": "All existing server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows zero failures",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-20",
-          "criterion": "Verification log contains PASS entry for STORY-005 — `grep -c \"STORY-005\" .claude/docs/verification-log.jsonl` returns at least 1",
+          "criterion": "`fixtures/test-users.json` exists and is listed in `.gitignore`, verified by file existence check and gitignore grep",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "regression_tier": "story005_gate_scripts",
-        "unit": "npx vitest run scripts/__tests__/gate-scripts-syntax.test.ts --reporter=verbose"
+        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/utils/logger.test.ts src/__tests__/data/truckingGlossary.test.ts src/__tests__/components/GlossaryTooltip.test.tsx src/__tests__/services/authService.seed.test.ts --reporter=verbose"
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-006",
-      "description": "Full Regression & Production Readiness Verdict (STORY-006)",
-      "phase": 6,
-      "phase_type": "e2e",
-      "component": "docs/",
-      "scope": [
-        "docs/deployment/"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "STORY-005"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-01",
-          "criterion": "Server tests pass — `cd server && npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows passing tests with zero failures",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-02",
-          "criterion": "Frontend tests pass — `npx vitest run --reporter=list 2>&1 | grep \"passed\"` shows passing tests with zero failures",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-03",
-          "criterion": "E2E tests pass — `npx playwright test --reporter=list 2>&1 | grep \"passed\"` shows at least 186 passing tests with zero failures",
-          "testType": "e2e",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-04",
-          "criterion": "All 11 production scripts exist — `for f in scripts/freeze-rc.sh scripts/provision-production.sh scripts/deploy-production.sh scripts/backup-setup.sh scripts/smoke-test-production.sh scripts/verify-production.sh scripts/gate-a-internal.sh scripts/gate-b-pilot.sh scripts/gate-c-broader.sh scripts/gate-d-ga.sh scripts/run-production-migrations.sh; do test -f \"$f\" && echo \"1\"; done | wc -l | tr -d ' '` returns 11",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-05",
-          "criterion": "All 4 new production docs exist — `for f in docs/deployment/RC_EVIDENCE_BUNDLE.md docs/deployment/RESTORE_PROCEDURE.md docs/deployment/DATA_PROTECTION_POLICY.md docs/deployment/DOMAIN_SSL_SETUP.md; do test -f \"$f\" && echo \"1\"; done | wc -l | tr -d ' '` returns 4",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-06",
-          "criterion": "Production readiness verdict exists — `test -f docs/deployment/PRODUCTION_READINESS_VERDICT.md && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-07",
-          "criterion": "Verdict document contains GO or NO-GO decision — `grep -c \"GO\\|NO-GO\\|VERDICT\" docs/deployment/PRODUCTION_READINESS_VERDICT.md` returns at least 2",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-08",
-          "criterion": "Verdict document lists all scripts — `grep -c \"freeze-rc\\|provision-production\\|deploy-production\\|backup-setup\\|smoke-test-production\\|verify-production\\|gate-a\\|gate-b\\|gate-c\\|gate-d\\|run-production-migrations\" docs/deployment/PRODUCTION_READINESS_VERDICT.md` returns at least 10",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-09",
-          "criterion": "Go/No-Go checklist updated with production items — `grep -c \"dedicated.core\\|backup.*PITR\\|custom domain\\|zero.traffic\\|Gate A\\|Gate B\\|Gate C\\|Gate D\" docs/deployment/GO_NO_GO_CHECKLIST.md` returns at least 4",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-10",
-          "criterion": "Rollout evidence template exists — `test -f docs/deployment/ROLLOUT_EVIDENCE.md && echo \"exists\"` returns \"exists\"",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-11",
-          "criterion": "Verification log contains PASS entry for STORY-006 — `grep -c \"STORY-006\" .claude/docs/verification-log.jsonl` returns at least 1",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-12",
-          "criterion": "Verification log completeness — all 6 stories logged — `grep -c \"STORY-00[1-6]\" .claude/docs/verification-log.jsonl` returns at least 6",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "regression_tier": "story006_prod_verdict"
-      },
-      "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     }
   ]
 }

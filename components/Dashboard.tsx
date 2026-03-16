@@ -108,6 +108,24 @@ export const Dashboard: React.FC<Props> = ({
       .filter((ex) => ex.type === "DETENTION_ELIGIBLE")
       .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
 
+    const totalMiles = loads.reduce((sum, l) => sum + (l.miles || 0), 0);
+    const avgRPM = totalMiles > 0 ? grossRevenue / totalMiles : 0;
+
+    const deliveredLoads = loads.filter(
+      (l) => l.status === LOAD_STATUS.Delivered,
+    ).length;
+    const slaHealth =
+      loads.length > 0
+        ? Math.round(((loads.length - slaBreaches) / loads.length) * 100)
+        : 100;
+
+    // IFTA: count loads with IFTA data
+    const loadsWithIfta = loads.filter(
+      (l) => l.iftaBreakdown && l.iftaBreakdown.length > 0,
+    ).length;
+    const iftaPct =
+      loads.length > 0 ? Math.round((loadsWithIfta / loads.length) * 100) : 0;
+
     return {
       grossRevenue,
       operatingMargin,
@@ -116,6 +134,9 @@ export const Dashboard: React.FC<Props> = ({
       slaBreaches,
       docHoldRevenue,
       accruingDetention,
+      avgRPM,
+      slaHealth,
+      iftaPct,
     };
   }, [loads, exceptions]);
 
@@ -178,13 +199,13 @@ export const Dashboard: React.FC<Props> = ({
             onClick={() => onNavigate("analytics")}
             className="px-6 py-2.5 bg-slate-900 border border-white/5 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-slate-800 transition-all flex items-center gap-2"
           >
-            <TrendingUp className="w-3.5 h-3.5" /> Strategy & Analytics
+            <TrendingUp className="w-3.5 h-3.5" /> Reports
           </button>
           <button
             onClick={() => onNavigate("operations-hub")}
             className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-900/20 hover:bg-blue-500 transition-all flex items-center gap-2"
           >
-            <Zap className="w-3.5 h-3.5 fill-white" /> Unified Command Center
+            <Zap className="w-3.5 h-3.5 fill-white" /> Operations Center
           </button>
         </div>
       </div>
@@ -280,30 +301,16 @@ export const Dashboard: React.FC<Props> = ({
                 <div className="text-[10px] font-bold text-slate-500 uppercase">
                   RPM (Avg)
                 </div>
-                <div className="text-2xl font-black text-white">$2.45</div>
+                <div className="text-2xl font-black text-white">
+                  ${stats.avgRPM.toFixed(2)}
+                </div>
               </div>
               <div className="flex justify-between items-end border-b border-white/5 pb-4">
                 <div className="text-[10px] font-bold text-slate-500 uppercase">
-                  Profit per Load
+                  Operating Margin
                 </div>
-                <div className="text-2xl font-black text-emerald-400">$840</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div>
-                  <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
-                    Top Lane
-                  </div>
-                  <div className="text-[10px] font-black text-white uppercase tracking-tight">
-                    CHI → ATL
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
-                    Fuel Trend
-                  </div>
-                  <div className="text-[10px] font-black text-red-400 uppercase tracking-tight">
-                    ↑ +4% WoW
-                  </div>
+                <div className="text-2xl font-black text-emerald-400">
+                  ${stats.operatingMargin.toLocaleString()}
                 </div>
               </div>
             </div>
@@ -320,24 +327,24 @@ export const Dashboard: React.FC<Props> = ({
             <div className="space-y-6">
               <div className="flex justify-between items-center bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20">
                 <div className="text-[10px] font-black text-orange-300 uppercase">
-                  Current Quarter
+                  IFTA Coverage
                 </div>
                 <div className="text-xs font-black text-white px-2 py-1 bg-orange-600 rounded-md uppercase">
-                  72% Done
+                  {stats.iftaPct}% Mapped
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center px-1">
                   <div className="text-[9px] font-bold text-slate-500 uppercase">
-                    Missing Receipts
+                    Loads with IFTA Data
                   </div>
-                  <div className="text-xs font-black text-red-500">14</div>
-                </div>
-                <div className="flex justify-between items-center px-1">
-                  <div className="text-[9px] font-bold text-slate-500 uppercase">
-                    Unmapped Miles
+                  <div className="text-xs font-black text-white">
+                    {
+                      loads.filter(
+                        (l) => l.iftaBreakdown && l.iftaBreakdown.length > 0,
+                      ).length
+                    }
                   </div>
-                  <div className="text-xs font-black text-white">412 mi</div>
                 </div>
               </div>
             </div>
@@ -353,31 +360,28 @@ export const Dashboard: React.FC<Props> = ({
             </h3>
             <div className="space-y-4">
               <div className="p-4 bg-slate-950 rounded-2xl border border-white/5 flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center text-red-500">
-                  <FileText className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500">
+                  <Shield className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
                   <div className="text-[9px] font-black text-white uppercase">
-                    Insurance Expiry
+                    SLA Health
                   </div>
-                  <div className="text-[8px] text-red-500 font-bold uppercase">
-                    Expires in 12 days
+                  <div className="text-[8px] text-blue-400 font-bold uppercase">
+                    {stats.slaHealth}% On-Time
                   </div>
                 </div>
-                <button className="text-[8px] font-black text-blue-400 uppercase hover:underline">
-                  Update
-                </button>
               </div>
               <div className="p-4 bg-slate-950 rounded-2xl border border-white/5 flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                  <Truck className="w-4 h-4" />
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
                 <div className="flex-1">
                   <div className="text-[9px] font-black text-white uppercase">
-                    Truck Registration
+                    Active Loads
                   </div>
                   <div className="text-[8px] text-emerald-500 font-bold uppercase">
-                    Valid until 2026-11-20
+                    {stats.activeLoads} In Progress
                   </div>
                 </div>
               </div>
@@ -392,8 +396,7 @@ export const Dashboard: React.FC<Props> = ({
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-              <Shield className="w-4 h-4 text-blue-500" /> Functional Response
-              Queues
+              <Shield className="w-4 h-4 text-blue-500" /> Action Items
             </h3>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -464,7 +467,7 @@ export const Dashboard: React.FC<Props> = ({
             </div>
             <div>
               <h3 className="text-sm font-black text-white uppercase tracking-widest">
-                Master Triage Feed
+                Active Issues
               </h3>
               <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest mt-0.5">
                 High Severity Actions
@@ -489,7 +492,7 @@ export const Dashboard: React.FC<Props> = ({
                 </div>
                 <div className="text-right">
                   <div className="text-[9px] font-black text-red-500 uppercase">
-                    SLA: 14m
+                    Sev {ex.severity || "—"}
                   </div>
                   <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                     ${(ex.financialImpactEst || 0).toLocaleString()}
@@ -521,7 +524,7 @@ export const Dashboard: React.FC<Props> = ({
         <div className="lg:col-span-2 bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between">
           <div>
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-              Fleet Situational Awareness
+              Fleet Overview
             </h4>
             <div className="flex items-center gap-4 mt-4">
               <div className="text-2xl font-black text-white">
@@ -532,7 +535,7 @@ export const Dashboard: React.FC<Props> = ({
               </div>
               <div className="w-px h-8 bg-white/10" />
               <div className="text-2xl font-black text-white">
-                94%{" "}
+                {stats.slaHealth}%{" "}
                 <span className="text-slate-600 text-[10px] font-bold">
                   SLA Health
                 </span>
@@ -549,14 +552,20 @@ export const Dashboard: React.FC<Props> = ({
 
         <div className="bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex flex-col justify-between">
           <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-            Top Risk Broker
+            Open Doc Exceptions
           </div>
           <div className="mt-2">
             <div className="text-sm font-black text-red-500 uppercase">
-              Broker Logistics Group
+              {
+                exceptions.filter(
+                  (ex) =>
+                    ex.type === "POD_MISSING" || ex.type === "DOC_PENDING_48H",
+                ).length
+              }{" "}
+              Pending
             </div>
             <div className="text-[10px] text-slate-600 font-bold uppercase mt-1">
-              4 Open Doc Exceptions
+              Revenue on hold
             </div>
           </div>
         </div>

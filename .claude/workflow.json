@@ -6,47 +6,30 @@
     "test_hooks": "python -m pytest .claude/hooks/tests/ -v",
     "lint": "ruff check .",
     "format": "ruff format .",
-    "regression": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose --exclude=\"__tests__/routes/messages.test.ts\" --exclude=\"__tests__/routes/dispatch-flow.test.ts\" --exclude=\"__tests__/routes/load-crud.test.ts\" --exclude=\"__tests__/routes/incidents-crud.test.ts\" --exclude=\"__tests__/routes/ai.test.ts\" --exclude=\"__tests__/routes/call-sessions.test.ts\"",
+    "regression": "python -m pytest .claude/hooks/tests/ -v --tb=short",
     "regression_default_tier": "unit",
     "regression_tiers": {
       "smoke": {
-        "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short --ignore=.claude/hooks/tests/test_qa_runner.py --ignore=.claude/hooks/tests/test_story007_hardening.py -q -x",
-        "max_duration_s": 120
+        "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short -x -q",
+        "max_duration_s": 60
       },
       "unit": {
-        "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short --ignore=.claude/hooks/tests/test_qa_runner.py --ignore=.claude/hooks/tests/test_story007_hardening.py --ignore=.claude/hooks/tests/test_r_p2_story002.py -q --ignore=.claude/hooks/tests/test_r_p3_deploy_staging_scripts.py",
-        "max_duration_s": 600
+        "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short",
+        "max_duration_s": 1800
       },
       "full": {
         "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=long",
         "max_duration_s": 600
       },
-      "story005_docs": {
-        "cmd": "python -m pytest .claude/hooks/tests/test_r_p4_golive_story005.py -v --tb=short -q",
-        "max_duration_s": 60
-      },
-      "story001_cloud_sql": {
-        "cmd": "cd server && npx vitest run __tests__/unit/db-connection.test.ts --reporter=verbose",
-        "max_duration_s": 60
-      },
-      "story003_deploy_scripts": {
-        "cmd": "python -m pytest .claude/hooks/tests/test_r_p3_deploy_staging_scripts.py -v --tb=short -q",
+      "docs": {
+        "cmd": "python -m pytest .claude/hooks/tests/test_r_p4_01.py -v --tb=short",
         "max_duration_s": 120
-      },
-      "story004_rollback_monitoring": {
-        "cmd": "python -m pytest .claude/hooks/tests/test_r_p4_rollback_monitoring.py -v --tb=short -q",
-        "max_duration_s": 90
-      },
-      "story005_deploy_prep": {
-        "cmd": "python -m pytest .claude/hooks/tests/test_r_p5_deployment.py .claude/hooks/tests/test_r_p5_story005.py .claude/hooks/tests/test_r_p5_deploy_prep_story005.py -v --tb=short -q",
-        "max_duration_s": 120
-      },
-      "story006_staging_evidence": {
-        "cmd": "python -m pytest .claude/hooks/tests/test_r_p6_staging_story006.py -v --tb=short -q",
-        "max_duration_s": 60
       }
     },
-    "coverage": ""
+    "coverage": "",
+    "coverage_timeout_s": 1200,
+    "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
+    "unit_timeout_s": 600
   },
   "test_patterns": [
     "vitest",
@@ -62,7 +45,8 @@
         "*_test.*"
       ]
     },
-    "custom_steps": []
+    "custom_steps": [],
+    "evidence_max_chars": 500
   },
   "test_quality": {
     "min_assertions_per_test": 1,
@@ -81,7 +65,7 @@
   "external_scanners": {
     "bandit": {
       "cmd": "bandit -r {changed_dir} -f json -q",
-      "enabled": false,
+      "enabled": true,
       "strict_mode": false
     },
     "semgrep": {
@@ -96,7 +80,7 @@
   },
   "agent_config": {
     "ralph_worker": {
-      "maxTurns": 150
+      "maxTurns": 250
     },
     "complexity_thresholds": {
       "simple": {
@@ -108,7 +92,7 @@
         "maxTurns": 150
       },
       "complex": {
-        "maxTurns": 200
+        "maxTurns": 250
       }
     }
   },
@@ -119,7 +103,7 @@
         2,
         6
       ],
-      "description": "Fast structural check \u00e2\u20ac\u201d PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
+      "description": "Fast structural check — PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
     },
     "delivery": {
       "sections": [
@@ -128,7 +112,7 @@
         3,
         4
       ],
-      "description": "Production-relevant surfaces for release gating \u00e2\u20ac\u201d plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
+      "description": "Production-relevant surfaces for release gating — plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
     },
     "full": {
       "sections": [
@@ -142,7 +126,7 @@
         8,
         9
       ],
-      "description": "Exhaustive audit \u00e2\u20ac\u201d all 9 sections. Current default behavior, unchanged."
+      "description": "Exhaustive audit — all 9 sections. Current default behavior, unchanged."
     }
   },
   "languages": {
@@ -176,5 +160,10 @@
         "test_server": "cd server && npx vitest run --reporter=verbose"
       }
     }
-  }
+  },
+  "ralph": {
+    "circuit_breaker_threshold": 3,
+    "drift_threshold": 3
+  },
+  "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands."
 }

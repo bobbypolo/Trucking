@@ -136,7 +136,7 @@ export const CompanyProfile: React.FC<Props> = ({
       setClockInTime(null);
       setShowClockOutModal(false);
       setClockNotes("");
-      setMsg("Duty Cycle Terminated.");
+      setMsg("Shift ended.");
       setTimeout(() => setMsg(""), 3000);
     }
   };
@@ -144,7 +144,7 @@ export const CompanyProfile: React.FC<Props> = ({
   const handleSaveCompany = async () => {
     if (company && isAdmin) {
       await updateCompany(company);
-      setMsg("Authority Global State Synchronized.");
+      setMsg("Save Changes.");
       setTimeout(() => setMsg(""), 4000);
     }
   };
@@ -200,7 +200,7 @@ export const CompanyProfile: React.FC<Props> = ({
   if (!company)
     return (
       <div className="p-12 text-center text-slate-700 font-black uppercase tracking-[0.3em] animate-pulse text-[10px]">
-        Establishing Authority Connection...
+        Loading company settings...
       </div>
     );
 
@@ -238,7 +238,7 @@ export const CompanyProfile: React.FC<Props> = ({
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">
                 {isDriver
                   ? `${user.role.replace("_", " ")} unit`
-                  : "Global Authority Profile"}
+                  : "Company Profile"}
               </p>
             </div>
           </div>
@@ -247,7 +247,7 @@ export const CompanyProfile: React.FC<Props> = ({
               onClick={handleSaveCompany}
               className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all"
             >
-              <Save className="w-4 h-4" /> Synchronize Matrix
+              <Save className="w-4 h-4" /> Save Changes
             </button>
           )}
         </div>
@@ -258,7 +258,7 @@ export const CompanyProfile: React.FC<Props> = ({
               onClick={() => setActiveTab("driver_cockpit")}
               className={`pb-5 text-[10px] font-black uppercase tracking-[0.2em] border-b-2 transition-all flex items-center gap-3 whitespace-nowrap ${activeTab === "driver_cockpit" ? "border-blue-500 text-blue-500" : "border-transparent text-slate-600 hover:text-slate-400"}`}
             >
-              <Clock className="w-4 h-4" /> Duty Cockpit
+              <Clock className="w-4 h-4" /> Time Clock
             </button>
           )}
           {isAdmin &&
@@ -298,7 +298,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   className={`absolute top-0 right-0 w-32 h-32 blur-3xl opacity-20 transition-colors ${isClockedIn ? "bg-green-500" : "bg-blue-500"}`}
                 />
                 <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-10 flex items-center gap-3">
-                  <Clock className="w-4 h-4" /> Active Duty Engine
+                  <Clock className="w-4 h-4" /> Time Tracker
                 </div>
                 <div className="flex flex-col items-center text-center py-6">
                   <div
@@ -325,14 +325,14 @@ export const CompanyProfile: React.FC<Props> = ({
                       onClick={handleClockIn}
                       className="w-full py-6 bg-blue-600 hover:bg-blue-500 text-white rounded-[2rem] font-black uppercase tracking-[0.3em] text-xs shadow-2xl shadow-blue-500/30 active:scale-95 transition-all flex items-center justify-center gap-3"
                     >
-                      <Play className="w-4 h-4" /> Initial Duty Acknowledge
+                      <Play className="w-4 h-4" /> Clock In
                     </button>
                   ) : (
                     <button
                       onClick={() => setShowClockOutModal(true)}
                       className="w-full py-6 bg-red-600 hover:bg-red-500 text-white rounded-[2rem] font-black uppercase tracking-[0.3em] text-xs shadow-2xl shadow-red-500/30 active:scale-95 transition-all flex items-center justify-center gap-3"
                     >
-                      <Square className="w-4 h-4" /> Terminate Duty Cycle
+                      <Square className="w-4 h-4" /> Clock Out
                     </button>
                   )}
                 </div>
@@ -404,13 +404,13 @@ export const CompanyProfile: React.FC<Props> = ({
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <FileText className="w-5 h-5 text-blue-500" /> Identity Matrix
+                <FileText className="w-5 h-5 text-blue-500" /> Company Info
               </h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
-                      Authority ID
+                      MC #
                     </label>
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
                       {company.mcNumber || "UNSET"}
@@ -418,7 +418,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
-                      Logic Seed
+                      DOT #
                     </label>
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
                       {company.dotNumber || "UNSET"}
@@ -427,7 +427,7 @@ export const CompanyProfile: React.FC<Props> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] text-slate-500 uppercase font-black px-1">
-                    Legal Entity Entity
+                    Legal Name
                   </label>
                   <input
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black uppercase tracking-tight"
@@ -439,7 +439,7 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-indigo-500" /> Terminal Nodes
+                <MapPin className="w-5 h-5 text-indigo-500" /> Office Address
               </h3>
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -481,7 +481,7 @@ export const CompanyProfile: React.FC<Props> = ({
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <Zap className="w-5 h-5 text-yellow-500" /> Operational DNA
+                <Zap className="w-5 h-5 text-yellow-500" /> Fleet Configuration
               </h3>
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -509,7 +509,7 @@ export const CompanyProfile: React.FC<Props> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] text-slate-500 uppercase font-black px-1">
-                    Authority Structure
+                    Company Structure
                   </label>
                   <select
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase outline-none focus:border-blue-500 transition-all"
@@ -578,8 +578,7 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <Truck className="w-5 h-5 text-blue-500" /> Load Numbering
-                Matrix
+                <Truck className="w-5 h-5 text-blue-500" /> Load Number Settings
               </h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -631,11 +630,10 @@ export const CompanyProfile: React.FC<Props> = ({
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl">
               <div className="flex justify-between items-center mb-10">
                 <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                  <Users className="w-5 h-5 text-indigo-500" /> Active Personnel
-                  Registry
+                  <Users className="w-5 h-5 text-indigo-500" /> Team Members
                 </h3>
                 <button className="bg-blue-600/10 text-blue-500 border border-blue-500/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
-                  Secure File Download
+                  Export CSV
                 </button>
               </div>
               <div className="space-y-4">
@@ -674,8 +672,7 @@ export const CompanyProfile: React.FC<Props> = ({
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <Scale className="w-5 h-5 text-blue-500" /> Compliance
-                Governance
+                <Scale className="w-5 h-5 text-blue-500" /> Safety Rules
               </h3>
               <div className="space-y-6">
                 <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl border border-slate-800">
@@ -748,8 +745,8 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
-                <DollarSign className="w-5 h-5 text-green-500" /> Financial
-                Protocols
+                <DollarSign className="w-5 h-5 text-green-500" /> Billing
+                Settings
               </h3>
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
@@ -803,7 +800,7 @@ export const CompanyProfile: React.FC<Props> = ({
           <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3 mb-10">
-                <Lock className="w-5 h-5 text-red-500" /> Hierarchy Permissions
+                <Lock className="w-5 h-5 text-red-500" /> Role Permissions
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-6">
@@ -857,7 +854,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   {[
                     { id: "manageSafety", label: "Manage Fleet Safety" },
                     { id: "createLoads", label: "Authorized Load Creation" },
-                    { id: "viewIntelligence", label: "Access Decision Matrix" },
+                    { id: "viewIntelligence", label: "Permission Settings" },
                   ].map((perm) => (
                     <div
                       key={perm.id}
@@ -911,10 +908,10 @@ export const CompanyProfile: React.FC<Props> = ({
                 </div>
                 <div>
                   <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                    Duty Log Exit
+                    End Shift
                   </h2>
                   <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">
-                    Finalizing Cargo Unit Telemetry
+                    Saving shift notes
                   </p>
                 </div>
               </div>
@@ -948,7 +945,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   onClick={handleClockOut}
                   className="flex-1 py-5 bg-red-600 hover:bg-red-500 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-red-500/30"
                 >
-                  Acknowledge Exit
+                  Confirm End Shift
                 </button>
               </div>
             </div>

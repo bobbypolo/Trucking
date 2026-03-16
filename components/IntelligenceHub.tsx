@@ -121,6 +121,7 @@ import { FuelCardService } from "../services/fuelService";
 import { DetentionService } from "../services/detentionService";
 import { checkCapability } from "../services/authService";
 import { Company as CompanyType } from "../types";
+import { features } from "../config/features";
 
 interface Thread {
   id: string;
@@ -2194,45 +2195,51 @@ const IntelligenceHub: React.FC<{
             className={`${isHighObstruction ? "h-11 px-6" : "h-14 px-8"} flex items-center justify-between bg-slate-900/40 border-b border-white/5 transition-all`}
           >
             <div className="flex items-center gap-2">
-              <ActionGroup
-                label="SIMULATE"
-                color="purple"
-                icon={Activity}
-                actions={[
-                  {
-                    label: "Inbound Call",
-                    icon: PhoneCall,
-                    action: handleInitiateGlobalInbound,
-                  },
-                  { label: "Seed System", icon: Zap, action: handleSystemSeed },
-                  {
-                    label: "Financial Auth",
-                    icon: Lock,
-                    action: () => {
-                      handleActionLogging({
-                        id: uuidv4(),
-                        type: "REQUEST",
-                        timestamp: new Date().toISOString(),
-                        actorId: user.id,
-                        actorName: user.name,
-                        message:
-                          "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
-                        payload: {
-                          category: "Financial",
-                          action: "AuthOverride",
-                          status: "AUTHORIZED",
-                        },
-                      });
-                      setSuccessMessage(
-                        "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
-                      );
-                      setTimeout(() => setSuccessMessage(null), 4000);
+              {features.simulateActions && (
+                <ActionGroup
+                  label="SIMULATE"
+                  color="purple"
+                  icon={Activity}
+                  actions={[
+                    {
+                      label: "Inbound Call",
+                      icon: PhoneCall,
+                      action: handleInitiateGlobalInbound,
                     },
-                  },
-                ]}
-              />
+                    {
+                      label: "Seed System",
+                      icon: Zap,
+                      action: handleSystemSeed,
+                    },
+                    {
+                      label: "Financial Auth",
+                      icon: Lock,
+                      action: () => {
+                        handleActionLogging({
+                          id: uuidv4(),
+                          type: "REQUEST",
+                          timestamp: new Date().toISOString(),
+                          actorId: user.id,
+                          actorName: user.name,
+                          message:
+                            "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
+                          payload: {
+                            category: "Financial",
+                            action: "AuthOverride",
+                            status: "AUTHORIZED",
+                          },
+                        });
+                        setSuccessMessage(
+                          "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
+                        );
+                        setTimeout(() => setSuccessMessage(null), 4000);
+                      },
+                    },
+                  ]}
+                />
+              )}
               <ActionGroup
-                label="Work"
+                label="Quick Actions"
                 color="orange"
                 icon={Zap}
                 actions={[
@@ -2311,11 +2318,15 @@ const IntelligenceHub: React.FC<{
                     icon: AlertTriangle,
                     action: () => setShowIssueForm(true),
                   },
-                  {
-                    label: "Inject Record",
-                    icon: FileText,
-                    action: () => setShowDocForm(true),
-                  },
+                  ...(features.injectRecord
+                    ? [
+                        {
+                          label: "Inject Record",
+                          icon: FileText,
+                          action: () => setShowDocForm(true),
+                        },
+                      ]
+                    : []),
                 ]}
               />
             </div>

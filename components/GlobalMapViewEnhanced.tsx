@@ -181,10 +181,6 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           (inc) => inc.driverId === driver.id && inc.status !== "Closed",
         );
 
-        const seed = driver.id
-          .split("-")
-          .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-
         // Use DB-stored coordinates from load legs when available
         let lat = defaultCenter.lat;
         let lng = defaultCenter.lng;
@@ -199,13 +195,20 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           }
         }
 
+        // Online status and ping time from real load data — no mock seed generation
+        const isOnline = !!activeLoad;
+        const lastPing = activeLoad
+          ? new Date().toISOString()
+          : (driver as any).lastSeenAt || new Date(0).toISOString();
+        const heading = (activeLoad as any)?.heading ?? 0;
+
         return {
           driver,
           activeLoad,
-          isOnline: seed % 10 > 2,
-          lastPing: new Date(Date.now() - (seed % 60) * 60000).toISOString(),
+          isOnline,
+          lastPing,
           coords: { lat, lng },
-          heading: seed % 360,
+          heading,
           speed: activeLoad ? 65 : 0,
           hasIncident,
         };
@@ -512,7 +515,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                     onClick={() => setSelectedDriverOverlay(selectedVehicle)}
                     className="w-full py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
                   >
-                    Execute Intervention
+                    Contact Driver
                   </button>
                 </div>
               </InfoWindow>
@@ -526,7 +529,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         <div className="absolute top-8 right-8 z-20 bg-[#0a0f1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl animate-in slide-in-from-right duration-500">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-              Operational Weather
+              Current Weather
             </span>
             {getWeatherIcon()}
           </div>
@@ -551,7 +554,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       )}
 
-      {/* RED CIRCLED: Regional Intelligence & Active Incidents (Restored for Live Map) */}
+      {/* Active Incidents overlay (left panel) */}
       {localOverlaysVisible && (
         <div
           className={`absolute top-8 left-8 z-20 space-y-4 transition-all duration-500 transform ${isHighObstruction ? "-translate-x-[110%] opacity-0" : "translate-x-0 opacity-100"} w-80`}
@@ -618,7 +621,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       )}
 
-      {/* RED CIRCLED: Driver/Truck List (Restored for Live Map) */}
+      {/* Driver/Truck List panel */}
       {localOverlaysVisible && (
         <div
           className={`absolute top-8 right-8 z-20 space-y-4 transition-all duration-500 transform ${rightPanelCollapsed || (isHighObstruction && !searchTerm) ? "translate-x-[110%] opacity-0" : "translate-x-0 opacity-100"} ${isHighObstruction ? "w-64" : "w-80"} ${weather ? "mt-32" : ""}`}

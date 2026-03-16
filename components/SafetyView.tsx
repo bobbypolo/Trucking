@@ -350,7 +350,7 @@ export const SafetyView: React.FC<Props> = ({
                     ))
                   ) : (
                     <div className="p-8 text-center text-[10px] font-black text-slate-600 uppercase tracking-widest opacity-30">
-                      No Active Custody Events
+                      No active incidents
                     </div>
                   )}
                 </div>
@@ -835,7 +835,7 @@ export const SafetyView: React.FC<Props> = ({
                             <Wrench className="w-16 h-16" />
                           </div>
                           <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-                            No Active Service Tickets In Matrix
+                            No open service tickets
                           </span>
                         </td>
                       </tr>
