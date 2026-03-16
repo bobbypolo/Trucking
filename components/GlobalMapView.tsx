@@ -49,7 +49,7 @@ export const GlobalMapView: React.FC<Props> = ({
       const seed = driver.id
         .split("-")
         .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const isOnline = seed % 10 > 2;
+      const isOnline = !!activeLoad;
 
       // Use DB-stored coordinates from load legs instead of random positions
       let posX = 15 + ((idx * 12) % 70);
@@ -79,7 +79,7 @@ export const GlobalMapView: React.FC<Props> = ({
         lastPing: new Date(Date.now() - (seed % 60) * 60000).toISOString(),
         coords: { x: posX, y: posY },
         heading: seed % 360,
-        speed: activeLoad ? 65 : 0,
+        speed: null as number | null,
         hasIncident: incidents.some(
           (inc) => inc.loadId === activeLoad?.id && inc.status !== "Closed",
         ),

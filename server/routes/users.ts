@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import admin from "../auth";
 import { requireAuth } from "../middleware/requireAuth";
+import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import db from "../firestore";
 import { validateBody } from "../middleware/validate";
@@ -23,7 +24,6 @@ import {
 } from "../lib/sql-auth";
 
 const router = Router();
-const DEFAULT_COMPANY_ID = "iscope-authority-001";
 
 function getBearerToken(req: any): string | null {
   const authHeader = req.headers?.authorization;
@@ -52,12 +52,12 @@ async function loadCompanyConfig(companyId: string) {
   }
 }
 
-function resolveCompanyId(body: Record<string, unknown>): string {
+function resolveBodyCompanyId(body: Record<string, unknown>): string | null {
   const value = body.company_id || body.companyId;
   if (typeof value === "string" && value.trim() && value !== "null") {
     return value;
   }
-  return DEFAULT_COMPANY_ID;
+  return null;
 }
 
 function resolveString(...values: Array<unknown>): string | null {
@@ -80,12 +80,19 @@ function resolveNumber(...values: Array<unknown>): number | null {
 
 router.post(
   "/api/auth/register",
+  requireAuth,
   validateBody(registerUserSchema),
   async (req, res) => {
+    const authReq = req as AuthenticatedRequest;
     const log = createChildLogger({
       correlationId: req.correlationId,
       route: "POST /api/auth/register",
     });
+
+    if (authReq.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin role required." });
+    }
+
     log.info(
       { data: { email: req.body.email } },
       "Registration request received",
@@ -94,11 +101,11 @@ router.post(
     try {
       const userInput = {
         id: resolveString(req.body.id) || uuidv4(),
-        companyId: resolveCompanyId(req.body),
+        companyId: resolveBodyCompanyId(req.body) || authReq.user.tenantId,
         email: req.body.email,
         name: req.body.name,
         role: req.body.role,
-        passwordHash: await bcrypt.hash(req.body.password || "admin123", 10),
+        passwordHash: await bcrypt.hash(req.body.password, 10),
         payModel: resolveString(req.body.pay_model, req.body.payModel),
         payRate: resolveNumber(req.body.pay_rate, req.body.payRate),
         onboardingStatus: "Completed" as const,
@@ -114,59 +121,80 @@ router.post(
       log.error({ err: error }, "Registration failed");
       res.status(500).json({
         error: "Registration failed",
-        details: error instanceof Error ? error.message : String(error),
+        details: "Internal error",
       });
     }
   },
 );
 
-router.post("/api/users", validateBody(syncUserSchema), async (req, res) => {
-  const log = createChildLogger({
-    correlationId: req.correlationId,
-    route: "POST /api/users",
-  });
-  log.info({ data: { email: req.body.email } }, "User sync request received");
-
-  try {
-    const userInput = {
-      id: resolveString(req.body.id) || uuidv4(),
-      companyId: resolveCompanyId(req.body),
-      email: req.body.email,
-      name: resolveString(req.body.name) || req.body.email,
-      role: resolveString(req.body.role) || "driver",
-      passwordHash: req.body.password
-        ? await bcrypt.hash(req.body.password, 10)
-        : null,
-      payModel: resolveString(req.body.pay_model, req.body.payModel),
-      payRate: resolveNumber(req.body.pay_rate, req.body.payRate),
-      onboardingStatus: "Completed" as const,
-      safetyScore:
-        resolveNumber(req.body.safety_score, req.body.safetyScore) ?? 100,
-      managedByUserId: resolveString(
-        req.body.managed_by_user_id,
-        req.body.managedByUserId,
-      ),
-      primaryWorkspace: resolveString(
-        req.body.primary_workspace,
-        req.body.primaryWorkspace,
-      ),
-      dutyMode: resolveString(req.body.duty_mode, req.body.dutyMode),
-      phone: resolveString(req.body.phone),
-      firebaseUid: resolveString(req.body.firebaseUid, req.body.firebase_uid),
-    };
-
-    await upsertSqlUser(userInput);
-    await mirrorUserToFirestore(userInput);
-
-    res.status(201).json({ message: "User updated/created" });
-  } catch (error) {
-    log.error({ err: error }, "User sync failed");
-    res.status(500).json({
-      error: "User sync failed",
-      details: error instanceof Error ? error.message : String(error),
+router.post(
+  "/api/users",
+  requireAuth,
+  validateBody(syncUserSchema),
+  async (req, res) => {
+    const authReq = req as AuthenticatedRequest;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/users",
     });
-  }
-});
+
+    const isAdmin = authReq.user.role === "admin";
+    const isSelfSync = authReq.user.email === req.body.email;
+
+    if (!isAdmin && !isSelfSync) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: cannot sync another user." });
+    }
+
+    const companyId = resolveBodyCompanyId(req.body) || authReq.user.tenantId;
+    if (!companyId) {
+      return res.status(400).json({ error: "company_id is required." });
+    }
+
+    log.info({ data: { email: req.body.email } }, "User sync request received");
+
+    try {
+      const userInput = {
+        id: resolveString(req.body.id) || uuidv4(),
+        companyId,
+        email: req.body.email,
+        name: resolveString(req.body.name) || req.body.email,
+        role: resolveString(req.body.role) || "driver",
+        passwordHash: req.body.password
+          ? await bcrypt.hash(req.body.password, 10)
+          : null,
+        payModel: resolveString(req.body.pay_model, req.body.payModel),
+        payRate: resolveNumber(req.body.pay_rate, req.body.payRate),
+        onboardingStatus: "Completed" as const,
+        safetyScore:
+          resolveNumber(req.body.safety_score, req.body.safetyScore) ?? 100,
+        managedByUserId: resolveString(
+          req.body.managed_by_user_id,
+          req.body.managedByUserId,
+        ),
+        primaryWorkspace: resolveString(
+          req.body.primary_workspace,
+          req.body.primaryWorkspace,
+        ),
+        dutyMode: resolveString(req.body.duty_mode, req.body.dutyMode),
+        phone: resolveString(req.body.phone),
+        firebaseUid: resolveString(req.body.firebaseUid, req.body.firebase_uid),
+      };
+
+      await upsertSqlUser(userInput);
+      await mirrorUserToFirestore(userInput);
+
+      res.status(201).json({ message: "User updated/created" });
+    } catch (error) {
+      log.error({ err: error }, "User sync failed");
+      res.status(500).json({
+        error: "User sync failed",
+        details: "Internal error",
+      });
+    }
+  },
+);
 
 router.post(
   "/api/auth/login",
@@ -237,7 +265,6 @@ router.post(
       log.error({ err: error }, "Login failed");
       res.status(401).json({
         error: "Invalid or expired authentication token.",
-        details: error instanceof Error ? error.message : String(error),
       });
     }
   },

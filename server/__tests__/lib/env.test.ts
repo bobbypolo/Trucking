@@ -338,5 +338,33 @@ describe("R-P1-09: Environment Validation on Boot", () => {
         expect(result).not.toContain("*");
       }
     });
+
+    it("CORS-01: trailing comma in comma-separated origins produces no empty strings", async () => {
+      // Tests CORS-01 — filter(Boolean) removes empty string from trailing comma
+      process.env.CORS_ORIGIN =
+        "https://app.loadpilot.com,https://admin.loadpilot.com,";
+      process.env.NODE_ENV = "production";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual([
+        "https://app.loadpilot.com",
+        "https://admin.loadpilot.com",
+      ]);
+      if (Array.isArray(result)) {
+        expect(result.every((o) => o.length > 0)).toBe(true);
+      }
+    });
+
+    it("CORS-02: whitespace-padded single origin is trimmed", async () => {
+      // Tests CORS-02 — .trim() on single-value origin
+      process.env.CORS_ORIGIN = "  https://app.loadpilot.com  ";
+      process.env.NODE_ENV = "production";
+
+      const { getCorsOrigin } = await import("../../lib/env");
+      const result = getCorsOrigin();
+      expect(result).toBe("https://app.loadpilot.com");
+    });
   });
 });

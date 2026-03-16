@@ -2,6 +2,8 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createPartySchema } from "../schemas/parties";
 import pool from "../db";
 import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
@@ -108,7 +110,7 @@ router.get(
       log.error({ err: error }, "SERVER ERROR [GET /api/companies]");
       res.status(500).json({
         error: "Database error",
-        details: error instanceof Error ? error.message : String(error),
+        details: "Internal error",
       });
     }
   },
@@ -186,7 +188,7 @@ router.get(
     try {
       const [parties]: any = await pool.query(
         "SELECT * FROM parties WHERE company_id = ?",
-        [req.query.companyId],
+        [req.user!.tenantId],
       );
       const enrichedParties = await Promise.all(
         parties.map(async (p: any) => {
@@ -312,6 +314,7 @@ router.post(
   "/api/parties",
   requireAuth,
   requireTenant,
+  validateBody(createPartySchema),
   async (req: any, res) => {
     const {
       id,
@@ -486,7 +489,7 @@ router.post(
       log.error({ err: error }, "SERVER ERROR [POST /api/parties]");
       res.status(500).json({
         error: "Database error",
-        details: error instanceof Error ? error.message : String(error),
+        details: "Internal error",
       });
     } finally {
       connection.release();

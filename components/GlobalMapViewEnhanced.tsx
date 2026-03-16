@@ -49,7 +49,7 @@ interface VehicleMarker {
   lastPing: string;
   coords: { lat: number; lng: number };
   heading: number;
-  speed: number;
+  speed: number | null;
   hasIncident: boolean;
 }
 
@@ -209,7 +209,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           lastPing,
           coords: { lat, lng },
           heading,
-          speed: activeLoad ? 65 : 0,
+          speed: null as number | null,
           hasIncident,
         };
       });
@@ -217,15 +217,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
   const fetchWeather = useCallback(async (lat: number, lng: number) => {
     try {
-      // Mock weather for demo if key is missing
       if (!WEATHER_API_KEY) {
-        setWeather({
-          temp: 72,
-          condition: "Partly Cloudy",
-          icon: "03d",
-          windSpeed: 12,
-          humidity: 45,
-        });
+        setWeather(null);
         return;
       }
       const res = await fetch(

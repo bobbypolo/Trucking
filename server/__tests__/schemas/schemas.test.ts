@@ -60,6 +60,7 @@ describe("R-P1-03: Zod Schemas", () => {
         email: "user@example.com",
         name: "John Doe",
         role: "driver",
+        password: "securepass123",
       };
       const result = registerUserSchema.safeParse(valid);
       expect(result.success).toBe(true);

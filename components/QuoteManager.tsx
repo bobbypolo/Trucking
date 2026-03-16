@@ -1049,41 +1049,43 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     {selectedQuote?.version || 1}
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    setSelectedQuote({
-                      id: uuidv4(),
-                      companyId: user.companyId,
-                      status: "Draft",
-                      version: 1,
-                      ownerId: user.id,
-                      validUntil: new Date(
-                        Date.now() + 7 * 24 * 3600000,
-                      ).toISOString(),
-                      createdAt: new Date().toISOString(),
-                      pickup: {
-                        city: "Chicago",
-                        state: "IL",
-                        facilityName: "Logistics Hub A",
-                      },
-                      dropoff: {
-                        city: "Dallas",
-                        state: "TX",
-                        facilityName: "Distribution Center B",
-                      },
-                      equipmentType: "Dry Van",
-                      linehaul: 2400,
-                      fuelSurcharge: 450,
-                      accessorials: [],
-                      totalRate: 2850,
-                      notes:
-                        "Urgent move. Customer requesting team drivers if possible.",
-                    })
-                  }
-                  className="px-6 py-3 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-lg shadow-blue-500/5 flex items-center gap-2"
-                >
-                  <Sparkles className="w-3.5 h-3.5" /> Seed Intelligence Demo
-                </button>
+                {import.meta.env.DEV && (
+                  <button
+                    onClick={() =>
+                      setSelectedQuote({
+                        id: uuidv4(),
+                        companyId: user.companyId,
+                        status: "Draft",
+                        version: 1,
+                        ownerId: user.id,
+                        validUntil: new Date(
+                          Date.now() + 7 * 24 * 3600000,
+                        ).toISOString(),
+                        createdAt: new Date().toISOString(),
+                        pickup: {
+                          city: "Chicago",
+                          state: "IL",
+                          facilityName: "Logistics Hub A",
+                        },
+                        dropoff: {
+                          city: "Dallas",
+                          state: "TX",
+                          facilityName: "Distribution Center B",
+                        },
+                        equipmentType: "Dry Van",
+                        linehaul: 2400,
+                        fuelSurcharge: 450,
+                        accessorials: [],
+                        totalRate: 2850,
+                        notes:
+                          "Urgent move. Customer requesting team drivers if possible.",
+                      })
+                    }
+                    className="px-6 py-3 bg-blue-600/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-lg shadow-blue-500/5 flex items-center gap-2"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" /> Seed Intelligence Demo
+                  </button>
+                )}
               </div>
 
               {/* Main Form Body */}

@@ -61,9 +61,12 @@ export function getCorsOrigin(): string | string[] {
   if (corsOrigin && corsOrigin.trim() !== "") {
     // If the value contains commas, treat as multiple origins
     if (corsOrigin.includes(",")) {
-      return corsOrigin.split(",").map((o) => o.trim());
+      return corsOrigin
+        .split(",")
+        .map((o) => o.trim())
+        .filter(Boolean);
     }
-    return corsOrigin;
+    return corsOrigin.trim();
   }
 
   if (isStrict) {

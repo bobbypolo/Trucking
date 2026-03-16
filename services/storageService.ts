@@ -677,6 +677,7 @@ export const getIncidents = async (): Promise<Incident[]> => {
 };
 
 export const seedIncidents = async (loads: LoadData[]) => {
+  if (!DEMO_MODE) return;
   if (loads.length === 0) return;
   const existing = await getIncidents();
   if (existing.length > 0) return;
@@ -1831,7 +1832,7 @@ export const getTriageQueues = async () => {
   const calls = getRawCalls();
   const loads = getRawLoads();
 
-  if (calls.length === 0) {
+  if (calls.length === 0 && DEMO_MODE) {
     const seedCalls: CallSession[] = [
       {
         id: "CALL-INT-101",
@@ -1855,7 +1856,7 @@ export const getTriageQueues = async () => {
   }
 
   const workItems = await getWorkItems();
-  if (workItems.length === 0) {
+  if (workItems.length === 0 && DEMO_MODE) {
     const seedWorkItems: WorkItem[] = [
       {
         id: "WI-5001",
@@ -1934,7 +1935,7 @@ export const getRawContacts = (): Contact[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY_CONTACTS());
     const parsed = data ? JSON.parse(data) : [];
-    if (parsed.length === 0) {
+    if (parsed.length === 0 && DEMO_MODE) {
       const seed: Contact[] = [
         {
           id: "c1",
@@ -1960,6 +1961,7 @@ export const getRawContacts = (): Contact[] => {
       localStorage.setItem(STORAGE_KEY_CONTACTS(), JSON.stringify(seed));
       return seed;
     }
+    if (parsed.length === 0) return [];
     return parsed;
   } catch (e) {
     return [];
@@ -1968,7 +1970,7 @@ export const getRawContacts = (): Contact[] => {
 
 export const getProviders = async (): Promise<Provider[]> => {
   const providers = getRawProviders();
-  if (providers.length === 0) {
+  if (providers.length === 0 && DEMO_MODE) {
     const seed: Provider[] = [
       {
         id: "p1",

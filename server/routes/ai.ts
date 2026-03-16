@@ -8,6 +8,7 @@
 
 import { Router, Request, Response } from "express";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireTenant } from "../middleware/requireTenant";
 import {
   extractLoadInfo,
   extractBrokerFromImage,
@@ -44,6 +45,7 @@ function validateImagePayload(body: unknown): string | null {
 router.post(
   "/extract-load",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -78,6 +80,7 @@ router.post(
 router.post(
   "/extract-broker",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -112,6 +115,7 @@ router.post(
 router.post(
   "/extract-equipment",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -146,6 +150,7 @@ router.post(
 router.post(
   "/generate-training",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -180,6 +185,7 @@ router.post(
 router.post(
   "/analyze-safety",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,

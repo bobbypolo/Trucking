@@ -307,8 +307,10 @@ router.get(
   requireTenant,
   async (req: Request, res: Response) => {
     try {
+      const { user } = req as AuthenticatedRequest;
       const [rows] = await pool.query(
-        "SELECT * FROM dashboard_card ORDER BY sort_order ASC",
+        "SELECT * FROM dashboard_card WHERE company_id = ? OR company_id IS NULL ORDER BY sort_order ASC",
+        [user.tenantId],
       );
       res.json(rows);
     } catch (error) {
