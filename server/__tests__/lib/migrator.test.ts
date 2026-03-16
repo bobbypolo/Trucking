@@ -167,11 +167,10 @@ describe("R-P1-08: Database Migration Framework", () => {
       const migrations = await scanMigrationFiles(migrationsDir);
       const first = migrations[0];
 
-      // Verify checksum manually
-      const content = fs.readFileSync(
-        path.join(migrationsDir, first.filename),
-        "utf-8",
-      );
+      // Verify checksum manually (normalize \r\n like scanMigrationFiles does)
+      const content = fs
+        .readFileSync(path.join(migrationsDir, first.filename), "utf-8")
+        .replace(/\r\n/g, "\n");
       const expected = crypto
         .createHash("sha256")
         .update(content)

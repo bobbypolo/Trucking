@@ -1,4 +1,4 @@
-# BEGIN ADE MANAGED — do not edit this section
+# BEGIN ADE MANAGED â€” do not edit this section
 __pycache__/
 *.pyc
 .claude/errors/*.json
@@ -14,6 +14,7 @@ research/
 .claude/docs/verification-log.md
 .claude/docs/verification-log.jsonl
 .claude/verification-log.jsonl
+verification-log.jsonl
 .claude/docs/progress.md
 .claude/.workflow-state.json
 # Prevent nested .claude dirs from accidental CWD-drift hook runs
@@ -22,6 +23,7 @@ research/
 .claude/.file-manifest.json
 .claude/runtime/
 .coverage*
+!.coveragerc
 # END ADE MANAGED
 
 # Project-specific patterns below this line
@@ -31,7 +33,7 @@ dist-ssr/
 *.local
 *-firebase-adminsdk-*.json
 
-# Secrets and credentials — never track
+# Secrets and credentials Ã¢â‚¬â€ never track
 server/.env
 .env.staging
 .env.production
@@ -39,7 +41,7 @@ server/.env
 *.pem
 serviceAccount*.json
 
-# Files with embedded API keys — untracked, kept local only
+# Files with embedded API keys Ã¢â‚¬â€ untracked, kept local only
 API_CONFIGURATION_AUDIT.md
 API_QUICK_REFERENCE.md
 API_SETUP_CHECKLIST.md
@@ -55,10 +57,10 @@ test_google_maps_api.html
 test-results/
 playwright-results/
 
-# Workflow artifacts — canonical copy is in .claude/docs/
+# Workflow artifacts Ã¢â‚¬â€ canonical copy is in .claude/docs/
 verification-log.jsonl
 
-# Full ADE workflow directory — not tracked in git
+# Full ADE workflow directory Ã¢â‚¬â€ not tracked in git
 .claude/
 .claude/worktrees/
 .claude/.workflow-state.json

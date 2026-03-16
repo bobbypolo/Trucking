@@ -157,7 +157,7 @@ export async function scanMigrationFiles(
 
   return entries.map((filename) => {
     const filepath = path.join(dir, filename);
-    const content = fs.readFileSync(filepath, "utf-8");
+    const content = fs.readFileSync(filepath, "utf-8").replace(/\r\n/g, "\n");
     return {
       filename,
       content,
@@ -352,15 +352,26 @@ export class MigrationRunner {
  * Skips empty statements and comment-only lines.
  */
 function splitStatements(sql: string): string[] {
-  // Split on semicolons that are NOT inside single-quoted strings.
-  // This handles INSERT VALUES with semicolons in description fields.
+  // Split on semicolons that are NOT inside single-quoted strings or -- comments.
+  // Handles INSERT VALUES with semicolons in description fields,
+  // and apostrophes inside SQL comments (e.g., "-- the load's company_id").
   const statements: string[] = [];
   let current = "";
   let inString = false;
+  let inLineComment = false;
   let escaped = false;
 
   for (let i = 0; i < sql.length; i++) {
     const char = sql[i];
+
+    // End of line comment on newline
+    if (inLineComment) {
+      current += char;
+      if (char === "\n") {
+        inLineComment = false;
+      }
+      continue;
+    }
 
     if (escaped) {
       current += char;
@@ -370,6 +381,13 @@ function splitStatements(sql: string): string[] {
 
     if (char === "\\" && inString) {
       escaped = true;
+      current += char;
+      continue;
+    }
+
+    // Detect -- line comment start (only outside strings)
+    if (char === "-" && !inString && i + 1 < sql.length && sql[i + 1] === "-") {
+      inLineComment = true;
       current += char;
       continue;
     }
