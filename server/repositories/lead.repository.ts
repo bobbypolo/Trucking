@@ -1,5 +1,19 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const LEAD_UPDATABLE_COLUMNS = [
+  "status",
+  "source",
+  "contact_name",
+  "contact_email",
+  "contact_phone",
+  "company_name",
+  "notes",
+  "estimated_value",
+  "lane",
+  "equipment_needed",
+] as const;
 
 export const leadRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -44,26 +58,18 @@ export const leadRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
-
-    await pool.query(
-      `UPDATE leads SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+    const result = buildSafeUpdate(
+      data,
+      LEAD_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
     );
+    if (!result) return this.findById(id);
+
+    await pool.query(`UPDATE leads SET ${result.setClause} WHERE id = ?`, [
+      ...result.values,
+      id,
+    ]);
     return this.findById(id);
   },
 

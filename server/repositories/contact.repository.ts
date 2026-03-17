@@ -1,5 +1,18 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const CONTACT_UPDATABLE_COLUMNS = [
+  "name",
+  "email",
+  "phone",
+  "title",
+  "type",
+  "organization",
+  "preferred_channel",
+  "normalized_phone",
+  "notes",
+] as const;
 
 export const contactRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -45,26 +58,18 @@ export const contactRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
-
-    await pool.query(
-      `UPDATE contacts SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+    const result = buildSafeUpdate(
+      data,
+      CONTACT_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
     );
+    if (!result) return this.findById(id);
+
+    await pool.query(`UPDATE contacts SET ${result.setClause} WHERE id = ?`, [
+      ...result.values,
+      id,
+    ]);
     return this.findById(id);
   },
 

@@ -1,5 +1,30 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const TASK_UPDATABLE_COLUMNS = [
+  "type",
+  "title",
+  "description",
+  "status",
+  "priority",
+  "assignee_id",
+  "assigned_to",
+  "due_date",
+  "links",
+] as const;
+
+const WORK_ITEM_UPDATABLE_COLUMNS = [
+  "type",
+  "label",
+  "description",
+  "priority",
+  "status",
+  "sla_deadline",
+  "assignee_id",
+  "entity_type",
+  "entity_id",
+] as const;
 
 export const taskRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -46,25 +71,22 @@ export const taskRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
+    // Pre-serialize JSON fields before passing to buildSafeUpdate
+    const safeCopy = { ...data };
+    if (safeCopy.links !== undefined)
+      safeCopy.links = JSON.stringify(safeCopy.links);
 
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(key === "links" ? JSON.stringify(value) : value);
-      }
-    }
-
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
+    const result = buildSafeUpdate(
+      safeCopy,
+      TASK_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
+    );
+    if (!result) return this.findById(id);
 
     await pool.query(
-      `UPDATE operational_tasks SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+      `UPDATE operational_tasks SET ${result.setClause} WHERE id = ?`,
+      [...result.values, id],
     );
     return this.findById(id);
   },
@@ -121,26 +143,18 @@ export const workItemRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
-
-    await pool.query(
-      `UPDATE work_items SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+    const result = buildSafeUpdate(
+      data,
+      WORK_ITEM_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
     );
+    if (!result) return this.findById(id);
+
+    await pool.query(`UPDATE work_items SET ${result.setClause} WHERE id = ?`, [
+      ...result.values,
+      id,
+    ]);
     return this.findById(id);
   },
 

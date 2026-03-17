@@ -1,5 +1,17 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const CRISIS_ACTION_UPDATABLE_COLUMNS = [
+  "type",
+  "status",
+  "incident_id",
+  "load_id",
+  "operator_id",
+  "location",
+  "timeline",
+  "description",
+] as const;
 
 export const crisisActionRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -45,27 +57,24 @@ export const crisisActionRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    const jsonFields = ["location", "timeline"];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(jsonFields.includes(key) ? JSON.stringify(value) : value);
-      }
+    // Pre-serialize JSON fields before passing to buildSafeUpdate
+    const safeCopy = { ...data };
+    for (const key of ["location", "timeline"] as const) {
+      if (safeCopy[key] !== undefined)
+        safeCopy[key] = JSON.stringify(safeCopy[key]);
     }
 
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
+    const result = buildSafeUpdate(
+      safeCopy,
+      CRISIS_ACTION_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
+    );
+    if (!result) return this.findById(id);
 
     await pool.query(
-      `UPDATE crisis_actions SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+      `UPDATE crisis_actions SET ${result.setClause} WHERE id = ?`,
+      [...result.values, id],
     );
     return this.findById(id);
   },

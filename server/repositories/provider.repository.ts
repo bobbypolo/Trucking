@@ -1,5 +1,20 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const PROVIDER_UPDATABLE_COLUMNS = [
+  "name",
+  "type",
+  "status",
+  "phone",
+  "email",
+  "coverage",
+  "capabilities",
+  "contacts",
+  "after_hours_contacts",
+  "is_247",
+  "notes",
+] as const;
 
 export const providerRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -49,33 +64,30 @@ export const providerRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    const jsonFields = [
+    // Pre-serialize JSON fields before passing to buildSafeUpdate
+    const safeCopy = { ...data };
+    for (const key of [
       "coverage",
       "capabilities",
       "contacts",
       "after_hours_contacts",
-    ];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(jsonFields.includes(key) ? JSON.stringify(value) : value);
-      }
+    ] as const) {
+      if (safeCopy[key] !== undefined)
+        safeCopy[key] = JSON.stringify(safeCopy[key]);
     }
 
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
-
-    await pool.query(
-      `UPDATE providers SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+    const result = buildSafeUpdate(
+      safeCopy,
+      PROVIDER_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
     );
+    if (!result) return this.findById(id);
+
+    await pool.query(`UPDATE providers SET ${result.setClause} WHERE id = ?`, [
+      ...result.values,
+      id,
+    ]);
     return this.findById(id);
   },
 

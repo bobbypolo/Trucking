@@ -1,5 +1,15 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const SERVICE_TICKET_UPDATABLE_COLUMNS = [
+  "type",
+  "status",
+  "vendor",
+  "cost",
+  "equipment_id",
+  "description",
+] as const;
 
 export const serviceTicketRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -42,25 +52,17 @@ export const serviceTicketRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
+    const result = buildSafeUpdate(
+      data,
+      SERVICE_TICKET_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
+    );
+    if (!result) return this.findById(id);
 
     await pool.query(
-      `UPDATE service_tickets SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+      `UPDATE service_tickets SET ${result.setClause} WHERE id = ?`,
+      [...result.values, id],
     );
     return this.findById(id);
   },

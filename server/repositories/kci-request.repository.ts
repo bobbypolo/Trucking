@@ -1,5 +1,29 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import { buildSafeUpdate } from "../lib/safe-update";
+
+const KCI_REQUEST_UPDATABLE_COLUMNS = [
+  "type",
+  "status",
+  "priority",
+  "requested_amount",
+  "approved_amount",
+  "currency",
+  "load_id",
+  "driver_id",
+  "source",
+  "requires_docs",
+  "open_record_id",
+  "requested_at",
+  "due_at",
+  "approved_by",
+  "approved_at",
+  "denied_by",
+  "denied_at",
+  "denial_reason",
+  "decision_log",
+  "links",
+] as const;
 
 export const kciRequestRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
@@ -52,27 +76,24 @@ export const kciRequestRepository = {
   },
 
   async update(id: string, data: any, userId: string) {
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    const jsonFields = ["decision_log", "links"];
-
-    for (const [key, value] of Object.entries(data)) {
-      if (key !== "id" && key !== "company_id" && value !== undefined) {
-        fields.push(`${key} = ?`);
-        values.push(jsonFields.includes(key) ? JSON.stringify(value) : value);
-      }
+    // Pre-serialize JSON fields before passing to buildSafeUpdate
+    const safeCopy = { ...data };
+    for (const key of ["decision_log", "links"] as const) {
+      if (safeCopy[key] !== undefined)
+        safeCopy[key] = JSON.stringify(safeCopy[key]);
     }
 
-    if (fields.length === 0) return this.findById(id);
-
-    fields.push("updated_by = ?");
-    values.push(userId);
-    values.push(id);
+    const result = buildSafeUpdate(
+      safeCopy,
+      KCI_REQUEST_UPDATABLE_COLUMNS,
+      ["updated_by = ?"],
+      [userId],
+    );
+    if (!result) return this.findById(id);
 
     await pool.query(
-      `UPDATE kci_requests SET ${fields.join(", ")} WHERE id = ?`,
-      values,
+      `UPDATE kci_requests SET ${result.setClause} WHERE id = ?`,
+      [...result.values, id],
     );
     return this.findById(id);
   },
