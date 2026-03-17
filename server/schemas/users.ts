@@ -73,6 +73,13 @@ export const syncUserSchema = z.object({
 });
 
 /**
+ * Schema for POST /api/auth/reset-password — password reset request.
+ */
+export const resetPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+/**
  * Schema for POST /api/auth/login — login request.
  */
 export const loginUserSchema = z

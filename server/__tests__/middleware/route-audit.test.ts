@@ -26,6 +26,7 @@ const DEV_STAGING_PUBLIC_ROUTES = new Set([
   "GET /api/health",
   "POST /api/auth/register",
   "POST /api/auth/login",
+  "POST /api/auth/reset-password",
   "POST /api/users",
 ]);
 

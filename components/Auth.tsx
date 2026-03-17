@@ -30,6 +30,7 @@ import {
   Zap,
 } from "lucide-react";
 import { login, registerCompany, updateCompany } from "../services/authService";
+import { InputDialog } from "./ui/InputDialog";
 import {
   User as UserType,
   AccountType,
@@ -162,6 +163,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
 
   const [showPassword, setShowPassword] = useState(false);
 
+  // Forgot password dialog state
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
+
   // Automation Pro (Tier 2) Specific States
   const [expenseCategories, setExpenseCategories] = useState<string[]>([
     "Fuel",
@@ -221,6 +226,22 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     const user = await login(email, password);
     if (user) onLogin(user);
     else setError("Invalid credentials.");
+  };
+
+  const handleForgotPassword = async (emailInput: string) => {
+    setForgotPasswordOpen(false);
+    try {
+      await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput }),
+      });
+    } catch (_err) {
+      // Ignore network errors — server always returns 200
+    }
+    setForgotPasswordMessage(
+      "If an account exists for this email, a reset link has been sent.",
+    );
   };
 
   const handleSignupIdentity = (e: React.FormEvent) => {
@@ -457,6 +478,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
 
         {/* Right Form Panel */}
         <div className="md:w-7/12 p-10 bg-slate-900/50 relative">
+          <InputDialog
+            open={forgotPasswordOpen}
+            title="Reset Password"
+            message="Enter your email address. If an account exists, you will receive a reset link."
+            placeholder="you@company.com"
+            submitLabel="Send Reset Link"
+            cancelLabel="Cancel"
+            onSubmit={handleForgotPassword}
+            onCancel={() => setForgotPasswordOpen(false)}
+          />
+
           {view === "login" && (
             <form
               onSubmit={handleLogin}
@@ -513,6 +545,22 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               >
                 Sign In
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotPasswordMessage("");
+                  setForgotPasswordOpen(true);
+                }}
+                className="w-full text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
+                data-testid="forgot-password-link"
+              >
+                Forgot Password?
+              </button>
+              {forgotPasswordMessage && (
+                <p className="text-green-400 text-xs font-bold text-center">
+                  {forgotPasswordMessage}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setView("signup")}

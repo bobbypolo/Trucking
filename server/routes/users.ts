@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "../auth";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
@@ -11,6 +11,7 @@ import { validateBody } from "../middleware/validate";
 import {
   loginUserSchema,
   registerUserSchema,
+  resetPasswordSchema,
   syncUserSchema,
 } from "../schemas/users";
 import { createChildLogger } from "../lib/logger";
@@ -31,8 +32,23 @@ const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   keyGenerator: (req) =>
-    req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+    ipKeyGenerator(
+      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+    ),
   message: { error: "Too many login attempts. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for password reset endpoint: 3 requests per 15-minute window per IP
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) =>
+    ipKeyGenerator(
+      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+    ),
+  message: { error: "Too many password reset requests. Try again later." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -271,6 +287,39 @@ router.post(
         error: "Invalid or expired authentication token.",
       });
     }
+  },
+);
+
+router.post(
+  "/api/auth/reset-password",
+  resetPasswordLimiter,
+  validateBody(resetPasswordSchema),
+  async (req, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/auth/reset-password",
+    });
+
+    const { email } = req.body as { email: string };
+
+    try {
+      if (firebaseAdminReady()) {
+        await admin.auth().generatePasswordResetLink(email);
+        log.info({ data: { email } }, "Password reset link generated");
+      }
+    } catch (_error: unknown) {
+      // Silently swallow errors — do not reveal whether the account exists
+      log.info(
+        { data: { email } },
+        "Password reset attempted (account may not exist)",
+      );
+    }
+
+    // Always return 200 to prevent account enumeration
+    return res.status(200).json({
+      message:
+        "If an account exists for this email, a reset link has been sent.",
+    });
   },
 );
 
