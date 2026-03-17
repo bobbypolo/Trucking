@@ -39,7 +39,7 @@ const _seedMockDataImpl = async (user: User) => {
       type: "Broker",
       status: "Preferred",
       location: "Chicago, IL",
-      contactPhone: "312-555-0199",
+      contactPhone: "312-555-0100",
       rating: 4.8,
     },
     {

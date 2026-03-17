@@ -321,7 +321,7 @@ export const seedSafetyData = (force = false) => {
         {
           id: "c1",
           name: "Bill",
-          phone: "312-555-0199",
+          phone: "312-555-0100",
           email: "bill@elitetruck.com",
           type: "Provider",
           preferredChannel: "Phone",
