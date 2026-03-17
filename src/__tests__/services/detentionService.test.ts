@@ -1,86 +1,111 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { DetentionService } from "../../../services/detentionService";
 
+// Mock uuid to get deterministic IDs
 vi.mock("uuid", () => ({
-  v4: vi.fn(() => "abcdef-1234-5678-90ab-cdef12345678"),
+  v4: vi.fn(() => "abcdef-1234-5678-9abc-def012345678"),
 }));
 
-import { DetentionService } from "../../../services/detentionService";
-import type { LoadData } from "../../../types";
-
 describe("DetentionService", () => {
-  const makeLoad = (overrides: Partial<LoadData> = {}): LoadData =>
-    ({
-      id: "load-001",
-      loadNumber: "LD-1234",
-      ...overrides,
-    }) as LoadData;
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockLoad = {
+    id: "LOAD-001",
+    companyId: "COMP-1",
+    driverId: "DRV-1",
+    loadNumber: "LN-001",
+    status: "in_transit" as const,
+    carrierRate: 2500,
+    driverPay: 1800,
+    pickupDate: "2026-03-15",
+    pickup: { city: "Chicago", state: "IL" },
+    dropoff: { city: "Milwaukee", state: "WI" },
+  };
 
   describe("processGeofenceEvent", () => {
-    it("returns isBillable=false for ENTRY events", async () => {
+    it("returns isBillable: false for ENTRY events", async () => {
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad(),
+        mockLoad as any,
         "ENTRY",
         new Date().toISOString(),
       );
-      expect(result.isBillable).toBe(false);
-      expect(result.request).toBeUndefined();
+
+      expect(result).toEqual({ isBillable: false });
     });
 
-    it("returns isBillable=true for EXIT events when dwell time exceeds free time", async () => {
-      // The service mocks 3.5h dwell time, free time is 2h
+    it("returns billable detention when dwell time exceeds free time", async () => {
+      // The mock inside the service creates a 3.5 hour dwell time
+      // Free time is 2h, so billable hours = ceil(3.5 - 2) = 2
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad(),
+        mockLoad as any,
         "EXIT",
         new Date().toISOString(),
       );
+
       expect(result.isBillable).toBe(true);
-      expect(result.dwellTime).toBeCloseTo(3.5, 0);
+      expect(result.request).toBeDefined();
+      expect(result.request.loadId).toBe("LOAD-001");
+      expect(result.request.type).toBe("DETENTION");
+      expect(result.request.status).toBe("PENDING_APPROVAL");
+      expect(result.request.createdBy).toBe("Detention-Bot");
     });
 
-    it("generates a detention request with correct structure", async () => {
+    it("calculates correct billable amount", async () => {
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad({ id: "load-999" }),
+        mockLoad as any,
         "EXIT",
         new Date().toISOString(),
       );
-      const request = result.request;
-      expect(request).toBeDefined();
-      expect(request.id).toMatch(/^DET-/);
-      expect(request.loadId).toBe("load-999");
-      expect(request.type).toBe("DETENTION");
-      expect(request.status).toBe("PENDING_APPROVAL");
-      expect(request.createdBy).toBe("Detention-Bot");
-      expect(request.createdAt).toBeTruthy();
+
+      // Dwell: ~3.5h, free: 2h, billable: ceil(1.5) = 2h, rate: $50/h
+      expect(result.request.requestedAmount).toBe(100); // 2 * 50
     });
 
-    it("calculates billable amount correctly (ceiling of excess hours * rate)", async () => {
-      // 3.5h dwell - 2h free = 1.5h excess, ceil = 2h, rate $50/h = $100
+    it("generates detention request with correct ID format", async () => {
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad(),
+        mockLoad as any,
         "EXIT",
         new Date().toISOString(),
       );
-      expect(result.request.requestedAmount).toBe(100);
+
+      expect(result.request.id).toMatch(/^DET-[A-Z0-9]{6}$/);
     });
 
-    it("includes descriptive notes with dwell time and free time info", async () => {
+    it("includes dwell time in response", async () => {
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad(),
+        mockLoad as any,
         "EXIT",
         new Date().toISOString(),
       );
+
+      expect(result.dwellTime).toBeGreaterThan(3);
+      expect(result.dwellTime).toBeLessThan(4);
+    });
+
+    it("includes automated detection note", async () => {
+      const result = await DetentionService.processGeofenceEvent(
+        mockLoad as any,
+        "EXIT",
+        new Date().toISOString(),
+      );
+
       expect(result.request.notes).toContain("Automated detection");
       expect(result.request.notes).toContain("dwell time");
       expect(result.request.notes).toContain("free time exceeded");
     });
 
-    it("handles different load IDs correctly", async () => {
+    it("includes createdAt timestamp in ISO format", async () => {
       const result = await DetentionService.processGeofenceEvent(
-        makeLoad({ id: "load-XYZ" }),
+        mockLoad as any,
         "EXIT",
         new Date().toISOString(),
       );
-      expect(result.request.loadId).toBe("load-XYZ");
+
+      expect(result.request.createdAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+      );
     });
   });
 });
