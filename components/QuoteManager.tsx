@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { Toast } from "./Toast";
 import {
   User,
   Company,
@@ -68,6 +71,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
 
   useEffect(() => {
     loadData();
@@ -75,6 +83,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [q, l, b, w] = await Promise.all([
         getQuotes(),
@@ -87,6 +96,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
       setBookings(b);
       setWorkItems(w);
     } catch (error) {
+      setError("Unable to load pipeline data. Please retry.");
     } finally {
       setLoading(false);
     }
@@ -185,7 +195,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
     setSelectedQuote(null);
     setActiveView("pipeline");
     // In a real app, this would navigate to the Dispatch Board or booking details
-    alert("Quote Converted to Booking! Ready for Dispatch.");
+    setToast({
+      message: "Quote Converted to Booking! Ready for Dispatch.",
+      type: "success",
+    });
   };
 
   const handleEnterIntake = () => {
@@ -245,6 +258,13 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* Header */}
       <div className="px-8 py-6 bg-slate-900 border-b border-white/5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-6">
@@ -295,7 +315,17 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
       {/* Main Workspace */}
       <div className="flex-1 overflow-hidden">
-        {activeView === "pipeline" && (
+        {/* Loading skeleton while fetching */}
+        {loading && (
+          <div className="p-8">
+            <LoadingSkeleton variant="list" count={6} />
+          </div>
+        )}
+
+        {/* Error state with retry */}
+        {!loading && error && <ErrorState message={error} onRetry={loadData} />}
+
+        {activeView === "pipeline" && !loading && !error && (
           <div className="h-full flex gap-6 p-8 overflow-x-auto no-scrollbar">
             {statuses.map((status) => (
               <div key={status} className="w-80 shrink-0 flex flex-col gap-4">
