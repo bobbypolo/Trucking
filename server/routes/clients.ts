@@ -20,10 +20,11 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     try {
-      const [rows]: any = await pool.query(
-        "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
-        [req.params.companyId],
-      );
+      const includeArchived = req.query.include_archived === "true";
+      const sql = includeArchived
+        ? "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC"
+        : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
+      const [rows]: any = await pool.query(sql, [req.params.companyId]);
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
@@ -32,6 +33,92 @@ router.get(
         route: "GET /api/clients",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/clients]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+const ARCHIVE_ALLOWED_ROLES = ["admin", "dispatcher"];
+
+// PATCH /api/clients/:id/archive — soft-delete a customer
+router.patch(
+  "/api/clients/:id/archive",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/clients/:id/archive",
+    });
+
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+      res.status(403).json({ error: "Forbidden: insufficient role" });
+      return;
+    }
+
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE customers SET archived_at = NOW(), archived_by = ? WHERE id = ? AND company_id = ?",
+        [req.user.uid, id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      log.info({ clientId: id, archivedBy: req.user.uid }, "Client archived");
+      res.json({ message: "Client archived" });
+    } catch (error) {
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/clients/:id/archive]",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// PATCH /api/clients/:id/unarchive — restore an archived customer
+router.patch(
+  "/api/clients/:id/unarchive",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/clients/:id/unarchive",
+    });
+
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+      res.status(403).json({ error: "Forbidden: insufficient role" });
+      return;
+    }
+
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE customers SET archived_at = NULL, archived_by = NULL WHERE id = ? AND company_id = ?",
+        [id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      log.info({ clientId: id }, "Client unarchived");
+      res.json({ message: "Client unarchived" });
+    } catch (error) {
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/clients/:id/unarchive]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },

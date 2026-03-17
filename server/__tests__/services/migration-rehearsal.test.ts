@@ -93,7 +93,7 @@ describe("R-PV-04: Migration Execution Order", () => {
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(21);
+    expect(maxPrefix).toBe(22);
   });
 });
 
