@@ -1,10 +1,13 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommsOverlay } from "../../../components/CommsOverlay";
 import type { WorkspaceSession, CallSession } from "../../../types";
 
-const makeSession = (overrides: Partial<WorkspaceSession> = {}): WorkspaceSession => ({
+const makeSession = (
+  overrides: Partial<WorkspaceSession> = {},
+): WorkspaceSession => ({
   primaryContext: {
     id: "load-1",
     type: "LOAD",
@@ -18,7 +21,9 @@ const makeSession = (overrides: Partial<WorkspaceSession> = {}): WorkspaceSessio
   ...overrides,
 });
 
-const makeCallSession = (overrides: Partial<CallSession> = {}): CallSession => ({
+const makeCallSession = (
+  overrides: Partial<CallSession> = {},
+): CallSession => ({
   id: "CALL-ABC12345",
   startTime: new Date().toISOString(),
   status: "ACTIVE",
@@ -50,6 +55,8 @@ const defaultProps = {
 };
 
 describe("CommsOverlay component", () => {
+  const user = userEvent.setup();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -62,9 +69,9 @@ describe("CommsOverlay component", () => {
       expect(btn).toBeInTheDocument();
     });
 
-    it("calls setOverlayState when collapsed button is clicked", () => {
+    it("calls setOverlayState when collapsed button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} overlayState="collapsed" />);
-      fireEvent.click(screen.getByRole("button"));
+      await user.click(screen.getByRole("button"));
       expect(defaultProps.setOverlayState).toHaveBeenCalledWith("floating");
     });
 
@@ -126,9 +133,9 @@ describe("CommsOverlay component", () => {
       expect(screen.getByText("Start Interaction")).toBeInTheDocument();
     });
 
-    it("starts a call session when Start Interaction is clicked", () => {
+    it("starts a call session when Start Interaction is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      fireEvent.click(screen.getByText("Start Interaction"));
+      await user.click(screen.getByText("Start Interaction"));
       expect(defaultProps.setActiveCallSession).toHaveBeenCalledWith(
         expect.objectContaining({
           status: "ACTIVE",
@@ -154,36 +161,36 @@ describe("CommsOverlay component", () => {
       expect(screen.getByText("UNLINKED INTERACTION")).toBeInTheDocument();
     });
 
-    it("toggles dock/float when layout button is clicked", () => {
+    it("toggles dock/float when layout button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} overlayState="floating" />);
-      // Find the dock/float toggle button (Maximize2 icon)
+      // Find the dock/float toggle button by its aria-label or title
       const buttons = screen.getAllByRole("button");
-      // The layout toggle button is one of the header buttons
       const toggleBtn = buttons.find(
         (b) => b.querySelector("svg") && b.closest(".flex.items-center.gap-2"),
       );
-      if (toggleBtn) {
-        fireEvent.click(toggleBtn);
-        expect(defaultProps.setOverlayState).toHaveBeenCalledWith("docked");
-      }
+      expect(toggleBtn).toBeDefined();
+      await user.click(toggleBtn!);
+      expect(defaultProps.setOverlayState).toHaveBeenCalledWith("docked");
     });
 
-    it("collapses when minimize button is clicked", () => {
+    it("collapses when minimize button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      // The collapse button is the one with Minus icon
-      const buttons = screen.getAllByRole("button");
-      // Find button that triggers collapsed state
-      for (const btn of buttons) {
-        fireEvent.click(btn);
+      // Find all buttons and click each until we find the one that sets collapsed
+      const allButtons = screen.getAllByRole("button");
+      let found = false;
+      for (const btn of allButtons) {
+        await user.click(btn);
         if (
           defaultProps.setOverlayState.mock.calls.some(
             (c: unknown[]) => c[0] === "collapsed",
           )
         ) {
+          found = true;
           break;
         }
         defaultProps.setOverlayState.mockClear();
       }
+      expect(found).toBe(true);
       expect(defaultProps.setOverlayState).toHaveBeenCalledWith("collapsed");
     });
   });
@@ -219,8 +226,9 @@ describe("CommsOverlay component", () => {
         />,
       );
       const textarea = screen.getByPlaceholderText("Type operational note...");
-      fireEvent.change(textarea, { target: { value: "Test note content" } });
-      fireEvent.click(screen.getByText("Log Note"));
+      await user.clear(textarea);
+      await user.type(textarea, "Test note content");
+      await user.click(screen.getByText("Log Note"));
 
       await waitFor(() => {
         expect(defaultProps.onRecordAction).toHaveBeenCalledWith(
@@ -242,8 +250,9 @@ describe("CommsOverlay component", () => {
       const textarea = screen.getByPlaceholderText(
         "Type operational note...",
       ) as HTMLTextAreaElement;
-      fireEvent.change(textarea, { target: { value: "Test note" } });
-      fireEvent.click(screen.getByText("Log Note"));
+      await user.clear(textarea);
+      await user.type(textarea, "Test note");
+      await user.click(screen.getByText("Log Note"));
 
       await waitFor(() => {
         expect(textarea.value).toBe("");
@@ -257,7 +266,7 @@ describe("CommsOverlay component", () => {
           activeCallSession={makeCallSession()}
         />,
       );
-      fireEvent.click(screen.getByText("Log Note"));
+      await user.click(screen.getByText("Log Note"));
       expect(defaultProps.onRecordAction).not.toHaveBeenCalled();
     });
 
@@ -269,7 +278,7 @@ describe("CommsOverlay component", () => {
         />,
       );
       // Switch to requests tab
-      fireEvent.click(screen.getByText("Requests"));
+      await user.click(screen.getByText("Requests"));
 
       await waitFor(() => {
         expect(screen.getByText("Detention")).toBeInTheDocument();
@@ -286,13 +295,13 @@ describe("CommsOverlay component", () => {
           activeCallSession={makeCallSession()}
         />,
       );
-      fireEvent.click(screen.getByText("Requests"));
+      await user.click(screen.getByText("Requests"));
 
       await waitFor(() => {
         expect(screen.getByText("Detention")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("Detention"));
+      await user.click(screen.getByText("Detention"));
 
       await waitFor(() => {
         expect(defaultProps.onRecordAction).toHaveBeenCalledWith(
@@ -314,14 +323,14 @@ describe("CommsOverlay component", () => {
       expect(screen.getByText("End Interaction")).toBeInTheDocument();
     });
 
-    it("ends call session when End Interaction is clicked", () => {
+    it("ends call session when End Interaction is clicked", async () => {
       render(
         <CommsOverlay
           {...defaultProps}
           activeCallSession={makeCallSession()}
         />,
       );
-      fireEvent.click(screen.getByText("End Interaction"));
+      await user.click(screen.getByText("End Interaction"));
       expect(defaultProps.setActiveCallSession).toHaveBeenCalledWith(null);
     });
   });
@@ -335,36 +344,32 @@ describe("CommsOverlay component", () => {
       expect(screen.getByText("Customer")).toBeInTheDocument();
     });
 
-    it("calls onNavigate when jump button is clicked", () => {
+    it("calls onNavigate when jump button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      fireEvent.click(screen.getByText("Safety"));
+      await user.click(screen.getByText("Safety"));
       expect(defaultProps.onNavigate).toHaveBeenCalledWith("safety");
     });
 
-    it("navigates to booking tab", () => {
+    it("navigates to booking tab", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      fireEvent.click(screen.getByText("Booking"));
+      await user.click(screen.getByText("Booking"));
       expect(defaultProps.onNavigate).toHaveBeenCalledWith("booking");
     });
   });
 
   describe("attach search", () => {
-    it("shows search input when attach button is clicked", () => {
+    it("shows search input when attach button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      // Find and click the link/attach button (LinkIcon)
-      const buttons = screen.getAllByRole("button");
-      // The attach button has a LinkIcon inside - find it by looking near "Primary Evidence"
+      // Find and click the link/attach button (LinkIcon) near "Primary Evidence"
       const evidenceText = screen.getByText("Primary Evidence");
       const container = evidenceText.closest("div.flex");
-      if (container) {
-        const attachBtn = container.parentElement?.querySelector("button");
-        if (attachBtn) {
-          fireEvent.click(attachBtn);
-          expect(
-            screen.getByPlaceholderText("Search records to link..."),
-          ).toBeInTheDocument();
-        }
-      }
+      expect(container).not.toBeNull();
+      const attachBtn = container!.parentElement?.querySelector("button");
+      expect(attachBtn).not.toBeNull();
+      await user.click(attachBtn!);
+      expect(
+        screen.getByPlaceholderText("Search records to link..."),
+      ).toBeInTheDocument();
     });
   });
 });

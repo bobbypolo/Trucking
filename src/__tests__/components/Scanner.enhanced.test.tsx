@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Scanner } from "../../../components/Scanner";
 
@@ -21,6 +22,7 @@ afterEach(() => {
 });
 
 describe("Scanner component — enhanced coverage", () => {
+  const user = userEvent.setup();
   const defaultProps = {
     onDataExtracted: vi.fn(),
     onCancel: vi.fn(),
@@ -73,9 +75,7 @@ describe("Scanner component — enhanced coverage", () => {
 
     it("renders Harvest Training Content in training mode", () => {
       render(<Scanner {...defaultProps} mode="training" />);
-      expect(
-        screen.getByText("Harvest Training Content"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Harvest Training Content")).toBeInTheDocument();
     });
 
     it("renders correct description in training mode", () => {
@@ -111,9 +111,7 @@ describe("Scanner component — enhanced coverage", () => {
 
     it("accepts image/* on camera input", () => {
       render(<Scanner {...defaultProps} />);
-      const cameraInput = document.querySelector(
-        'input[type="file"][capture]',
-      );
+      const cameraInput = document.querySelector('input[type="file"][capture]');
       expect(cameraInput).toHaveAttribute("accept", "image/*");
     });
 
@@ -136,6 +134,8 @@ describe("Scanner component — enhanced coverage", () => {
       const invalidFile = new File(["test"], "test.txt", {
         type: "text/plain",
       });
+      // Use fireEvent for file input change as userEvent.upload has issues
+      // with accept attribute filtering in JSDOM
       Object.defineProperty(fileInput, "files", {
         value: [invalidFile],
         configurable: true,
@@ -148,36 +148,67 @@ describe("Scanner component — enhanced coverage", () => {
         ).toBeInTheDocument();
       });
     });
+
+    it("accepts valid image file upload without showing error", async () => {
+      // Mock a successful AI parse response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            data: { docType: "BOL", loadNumber: "LD-999" },
+          }),
+      });
+
+      render(<Scanner {...defaultProps} />);
+      const fileInput = document.querySelector(
+        'input[type="file"]:not([capture])',
+      ) as HTMLInputElement;
+
+      const validFile = new File(["fake-image-data"], "bol-scan.jpg", {
+        type: "image/jpeg",
+      });
+      Object.defineProperty(fileInput, "files", {
+        value: [validFile],
+        configurable: true,
+      });
+      fireEvent.change(fileInput);
+
+      // The component should not show the invalid file error
+      expect(
+        screen.queryByText("Please select a valid file (JPG, PNG, PDF)."),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("cancel button", () => {
     it("renders a cancel/skip button", () => {
       render(<Scanner {...defaultProps} />);
       // Look for Skip or Cancel text
-      const skipBtn = screen.queryByText(/Skip/i) || screen.queryByText(/Cancel/i);
+      const skipBtn =
+        screen.queryByText(/Skip/i) || screen.queryByText(/Cancel/i);
       expect(skipBtn).not.toBeNull();
     });
   });
 
   describe("onCancel and onDismiss behavior", () => {
-    it("renders skip/cancel button that calls onCancel", () => {
+    it("renders skip/cancel button that calls onCancel", async () => {
       render(<Scanner {...defaultProps} />);
       const skipBtn =
         screen.queryByText(/Skip/i) || screen.queryByText(/Cancel/i);
-      if (skipBtn) {
-        fireEvent.click(skipBtn);
-        expect(defaultProps.onCancel).toHaveBeenCalled();
-      }
+      expect(skipBtn).not.toBeNull();
+      await user.click(skipBtn!);
+      expect(defaultProps.onCancel).toHaveBeenCalled();
     });
 
-    it("calls onDismiss when provided and dismiss button is clicked", () => {
+    it("calls onDismiss when provided and dismiss button is clicked", async () => {
       const onDismiss = vi.fn();
       render(<Scanner {...defaultProps} onDismiss={onDismiss} />);
       // The component should have a dismiss/skip path
       const skipBtn =
         screen.queryByText(/Skip/i) || screen.queryByText(/later/i);
       if (skipBtn) {
-        fireEvent.click(skipBtn);
+        await user.click(skipBtn);
       }
     });
   });

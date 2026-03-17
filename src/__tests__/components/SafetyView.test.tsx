@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SafetyView } from "../../../components/SafetyView";
 import type { User } from "../../../types";
@@ -14,7 +15,12 @@ vi.mock("../../../services/safetyService", () => ({
     totalScore: 85,
     grade: "Solid",
     status: "Active",
-    metrics: { safetyScore: 90, onTimeRate: 80, paperworkScore: 75, loadCount: 10 },
+    metrics: {
+      safetyScore: 90,
+      onTimeRate: 80,
+      paperworkScore: 75,
+      loadCount: 10,
+    },
   }),
   logSafetyActivity: vi.fn().mockResolvedValue(undefined),
   getStoredQuizzes: vi.fn().mockResolvedValue([]),
@@ -89,6 +95,8 @@ const mockUser: User = {
 };
 
 describe("SafetyView component", () => {
+  const user = userEvent.setup();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -167,7 +175,7 @@ describe("SafetyView component", () => {
 
   it("switches to Roster tab when clicked", async () => {
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Roster"));
+    await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       // Roster tab should show operator cards after loading
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -176,35 +184,36 @@ describe("SafetyView component", () => {
 
   it("renders operator cards on roster tab", async () => {
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Roster"));
+    await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
     });
     expect(screen.getByText("Test Admin")).toBeInTheDocument();
   });
 
-  it("switches to Assets tab when clicked", async () => {
+  it("switches to Assets tab when clicked and shows asset content", async () => {
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Assets"));
-    // Assets tab should be visible (equipment section)
+    await user.click(screen.getByText("Assets"));
     await waitFor(() => {
-      expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
+      // Positively assert new content appears (not just old disappears)
+      expect(screen.getByText("Assets")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
   });
 
-  it("switches to Service tab when clicked", async () => {
+  it("switches to Service tab when clicked and shows service content", async () => {
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Service"));
+    await user.click(screen.getByText("Service"));
     await waitFor(() => {
-      expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
+      // Positively assert new content appears (not just old disappears)
+      expect(screen.getByText("Service")).toBeInTheDocument();
     });
+    expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
   });
 
   it("shows Logic Plane synchronized indicator", async () => {
     render(<SafetyView user={mockUser} />);
-    expect(
-      screen.getByText("Logic Plane: Synchronized"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Logic Plane: Synchronized")).toBeInTheDocument();
   });
 
   it("shows Global Fleet Governance Matrix subtitle", async () => {
@@ -223,9 +232,7 @@ describe("SafetyView component", () => {
     render(<SafetyView user={mockUser} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Logic Sync Interrupted/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Logic Sync Interrupted/)).toBeInTheDocument();
     });
   });
 
@@ -238,21 +245,21 @@ describe("SafetyView component", () => {
     render(<SafetyView user={mockUser} />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Logic Sync Interrupted/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Logic Sync Interrupted/)).toBeInTheDocument();
     });
 
-    // Click the X button to dismiss feedback
-    const feedback = screen.getByText(/Logic Sync Interrupted/).closest("div")!;
-    const closeBtn = feedback.querySelector("button");
-    if (closeBtn) {
-      fireEvent.click(closeBtn);
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/Logic Sync Interrupted/),
-        ).not.toBeInTheDocument();
-      });
-    }
+    // Click the X button to dismiss feedback - the button is in the parent container
+    const feedbackText = screen.getByText(/Logic Sync Interrupted/);
+    // The dismiss button is a sibling of the text container, both inside a fixed div
+    const feedbackContainer = feedbackText.closest("div.fixed")!;
+    expect(feedbackContainer).not.toBeNull();
+    const closeBtn = feedbackContainer.querySelector("button");
+    expect(closeBtn).not.toBeNull();
+    await user.click(closeBtn!);
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Logic Sync Interrupted/),
+      ).not.toBeInTheDocument();
+    });
   });
 });

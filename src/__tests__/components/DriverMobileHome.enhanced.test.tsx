@@ -1,10 +1,6 @@
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
@@ -84,6 +80,7 @@ const mockCompany = {
 } as unknown as Company;
 
 describe("DriverMobileHome — enhanced coverage", () => {
+  const user = userEvent.setup();
   let onSaveLoad: ReturnType<typeof vi.fn>;
   let onLogout: ReturnType<typeof vi.fn>;
   let onOpenHub: ReturnType<typeof vi.fn>;
@@ -126,7 +123,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
       expect(screen.getByText("Docs")).toBeInTheDocument();
     });
 
-    it("calls onLogout when sign out is clicked", () => {
+    it("navigates to profile tab when Me button is clicked", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -136,13 +133,14 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      // Navigate to profile tab first
-      const profileBtn = screen.getAllByRole("button").find(
-        (b) => b.textContent?.includes("Profile"),
-      );
-      if (profileBtn) {
-        fireEvent.click(profileBtn);
-      }
+      // Navigate to profile tab - the nav button text is exactly "Me"
+      // Use nav element's buttons to avoid matching other "Me" text
+      const navButtons = screen
+        .getAllByRole("button")
+        .filter((b) => b.textContent?.trim() === "Me");
+      expect(navButtons.length).toBeGreaterThan(0);
+      await user.click(navButtons[0]);
+      expect(screen.getByText("Test Driver")).toBeInTheDocument();
     });
   });
 
@@ -266,7 +264,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
   });
 
   describe("load detail view", () => {
-    it("navigates to detail view when load card is clicked", () => {
+    it("navigates to detail view when load card is clicked", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -276,11 +274,11 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Job Detail")).toBeInTheDocument();
     });
 
-    it("shows Back button in detail view", () => {
+    it("shows Back button in detail view", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -290,11 +288,11 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Back")).toBeInTheDocument();
     });
 
-    it("returns to list when Back is clicked", () => {
+    it("returns to list when Back is clicked", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -304,13 +302,13 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Job Detail")).toBeInTheDocument();
-      fireEvent.click(screen.getByText("Back"));
+      await user.click(screen.getByText("Back"));
       expect(screen.getByText("Active Dispatch")).toBeInTheDocument();
     });
 
-    it("shows Stop Route with Pickup and Dropoff", () => {
+    it("shows Stop Route with Pickup and Dropoff", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -320,13 +318,13 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Stop Route")).toBeInTheDocument();
       expect(screen.getByText("Pickup")).toBeInTheDocument();
       expect(screen.getByText("Dropoff")).toBeInTheDocument();
     });
 
-    it("shows Required Documents section", () => {
+    it("shows Required Documents section", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -336,14 +334,14 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Required Documents")).toBeInTheDocument();
       expect(screen.getByText("BOL (Pickup)")).toBeInTheDocument();
       expect(screen.getByText("Weight Scale")).toBeInTheDocument();
       expect(screen.getByText("POD (Delivery)")).toBeInTheDocument();
     });
 
-    it("shows Start Trip button for planned loads", () => {
+    it("shows Start Trip button for planned loads", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -353,11 +351,11 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Start Trip")).toBeInTheDocument();
     });
 
-    it("shows Arrived At Stop button for in_transit loads", () => {
+    it("shows Arrived At Stop button for in_transit loads", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -367,7 +365,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Arrived At Stop")).toBeInTheDocument();
     });
 
@@ -381,8 +379,8 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
-      fireEvent.click(screen.getByText("Start Trip"));
+      await user.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Start Trip"));
 
       await waitFor(() => {
         expect(onSaveLoad).toHaveBeenCalledWith(
@@ -401,8 +399,8 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
-      fireEvent.click(screen.getByText("Arrived At Stop"));
+      await user.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Arrived At Stop"));
 
       await waitFor(() => {
         expect(onSaveLoad).toHaveBeenCalledWith(
@@ -411,7 +409,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
       });
     });
 
-    it("shows Report Issue button in detail view", () => {
+    it("shows Report Issue button in detail view", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -421,7 +419,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Report Issue")).toBeInTheDocument();
     });
 
@@ -435,8 +433,8 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
-      fireEvent.click(screen.getByText("Report Issue"));
+      await user.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Report Issue"));
 
       await waitFor(() => {
         expect(screen.getByText("Request Extra")).toBeInTheDocument();
@@ -457,8 +455,8 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
-      fireEvent.click(screen.getByText("Report Issue"));
+      await user.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Report Issue"));
 
       await waitFor(() => {
         expect(screen.getByText("Report Breakdown")).toBeInTheDocument();
@@ -467,7 +465,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
   });
 
   describe("tabs navigation", () => {
-    it("switches to Loads tab and shows Load History", () => {
+    it("switches to Loads tab and shows Load History", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -477,11 +475,11 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Loads"));
+      await user.click(screen.getByText("Loads"));
       expect(screen.getByText("Load History")).toBeInTheDocument();
     });
 
-    it("switches to Docs tab and shows My Documents", () => {
+    it("switches to Docs tab and shows My Documents", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -491,13 +489,13 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Docs"));
+      await user.click(screen.getByText("Docs"));
       expect(screen.getByText("My Documents")).toBeInTheDocument();
       expect(screen.getByText("Scan New")).toBeInTheDocument();
       expect(screen.getByText("Vault Access")).toBeInTheDocument();
     });
 
-    it("switches to Live Map tab and shows map", () => {
+    it("switches to Live Map tab and shows map", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -507,14 +505,14 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Live Map"));
+      await user.click(screen.getByText("Live Map"));
       expect(screen.getByTestId("map-mock")).toBeInTheDocument();
       expect(screen.getByText("Fleet Tracking")).toBeInTheDocument();
     });
   });
 
   describe("driver pay visibility", () => {
-    it("shows driver pay when company settings allow", () => {
+    it("shows driver pay when company settings allow", async () => {
       const companyWithPay = {
         ...mockCompany,
         driverVisibilitySettings: { showDriverPay: true },
@@ -530,12 +528,12 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.getByText("Est. Trip Pay")).toBeInTheDocument();
       expect(screen.getByText("$1500")).toBeInTheDocument();
     });
 
-    it("hides driver pay when company settings disallow", () => {
+    it("hides driver pay when company settings disallow", async () => {
       const companyNoPay = {
         ...mockCompany,
         driverVisibilitySettings: { showDriverPay: false },
@@ -551,13 +549,13 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      fireEvent.click(screen.getByText("Dallas → Houston"));
+      await user.click(screen.getByText("Dallas → Houston"));
       expect(screen.queryByText("Est. Trip Pay")).not.toBeInTheDocument();
     });
   });
 
   describe("change requests tab", () => {
-    it("navigates to changes tab from bottom nav", () => {
+    it("navigates to changes tab from bottom nav", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -567,20 +565,19 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      // Find and click the changes/extras button in nav
+      // Find and click the Alerts button in nav (shows change requests)
       const navButtons = screen.getAllByRole("button");
-      const extrasBtn = navButtons.find(
-        (b) => b.textContent?.includes("Extras"),
+      const alertsBtn = navButtons.find((b) =>
+        b.textContent?.includes("Alerts"),
       );
-      if (extrasBtn) {
-        fireEvent.click(extrasBtn);
-        expect(screen.getByText("Change Requests")).toBeInTheDocument();
-      }
+      expect(alertsBtn).toBeDefined();
+      await user.click(alertsBtn!);
+      expect(screen.getByText("Change Requests")).toBeInTheDocument();
     });
   });
 
   describe("profile tab", () => {
-    it("shows user name and role on profile tab", () => {
+    it("shows user name and role on profile tab", async () => {
       render(
         <DriverMobileHome
           user={mockUser}
@@ -590,15 +587,13 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      // Find and click profile tab
-      const navButtons = screen.getAllByRole("button");
-      const profileBtn = navButtons.find(
-        (b) => b.textContent?.includes("Profile"),
-      );
-      if (profileBtn) {
-        fireEvent.click(profileBtn);
-        expect(screen.getByText("Test Driver")).toBeInTheDocument();
-      }
+      // Find and click profile tab - the nav button text is exactly "Me"
+      const meButtons = screen
+        .getAllByRole("button")
+        .filter((b) => b.textContent?.trim() === "Me");
+      expect(meButtons.length).toBeGreaterThan(0);
+      await user.click(meButtons[0]);
+      expect(screen.getByText("Test Driver")).toBeInTheDocument();
     });
   });
 
