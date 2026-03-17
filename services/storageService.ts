@@ -82,15 +82,12 @@ export {
   saveThread,
 } from "./storage/messages";
 export {
-  STORAGE_KEY_CALLS,
   getRawCalls,
   saveCallSession,
   attachToRecord,
   linkSessionToRecord,
 } from "./storage/calls";
 export {
-  STORAGE_KEY_TASKS,
-  STORAGE_KEY_WORK_ITEMS,
   getRawTasks,
   saveTask,
   getRawWorkItems,
@@ -143,12 +140,10 @@ import {
 import { getMessages as _getMessages } from "./storage/messages";
 import {
   getRawCalls as _getRawCalls,
-  STORAGE_KEY_CALLS as _STORAGE_KEY_CALLS,
 } from "./storage/calls";
 import {
   getRawTasks as _getRawTasks,
   getWorkItems as _getWorkItems,
-  STORAGE_KEY_WORK_ITEMS as _STORAGE_KEY_WORK_ITEMS,
 } from "./storage/tasks";
 import {
   getRawCrisisActions as _getRawCrisisActions,
@@ -1053,7 +1048,7 @@ export const getUnifiedEvents = async (
   });
 
   // 4. Add Tasks
-  const tasks = _getRawTasks();
+  const tasks = await _getRawTasks();
   tasks.forEach((task) => {
     events.push({
       id: task.id,
@@ -1117,7 +1112,7 @@ export const getLoadSummary = async (
   const unresolved = requests.filter((r) =>
     ["NEW", "PENDING_APPROVAL", "NEEDS_INFO"].includes(r.status),
   );
-  const calls = _getRawCalls().filter((c) =>
+  const calls = (await _getRawCalls()).filter((c) =>
     c.links.some((l) => l.entityId === loadId),
   );
   const messages = (await _getMessages()).filter((m) => m.loadId === loadId);
@@ -1187,7 +1182,7 @@ export const getBrokerSummary = async (brokerId: string) => {
         "",
     ),
   );
-  const calls = _getRawCalls().filter((c) =>
+  const calls = (await _getRawCalls()).filter((c) =>
     c.links.some(
       (l) => l.entityId === brokerId || loadIds.includes(l.entityId),
     ),
@@ -1342,10 +1337,10 @@ export const globalSearch = async (
 export const getRecord360Data = async (type: EntityType, id: string) => {
   const loads = getRawLoads();
   const requests = _getRawRequests();
-  const calls = _getRawCalls();
+  const calls = await _getRawCalls();
   const messages = await _getMessages();
   const incidents = await getIncidents();
-  const tasks = _getRawTasks();
+  const tasks = await _getRawTasks();
   const contacts = _getRawContacts();
 
   const buildTimeline = (events: any[]) => {
@@ -1579,68 +1574,14 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
 export const getTriageQueues = async () => {
   const requests = await _getUnresolvedRequests();
   const incidents = await getIncidents();
-  const tasks = _getRawTasks();
-  const calls = _getRawCalls();
+  const tasks = await _getRawTasks();
+  const calls = await _getRawCalls();
   const loads = getRawLoads();
 
-  if (calls.length === 0 && DEMO_MODE) {
-    const seedCalls: CallSession[] = [
-      {
-        id: "CALL-INT-101",
-        startTime: new Date(Date.now() - 300000).toISOString(),
-        status: "WAITING",
-        participants: [{ id: "D-22", name: "Robert Miller", role: "DRIVER" }],
-        lastActivityAt: new Date().toISOString(),
-        links: [
-          {
-            id: uuidv4(),
-            entityType: "LOAD",
-            entityId: "L-1001",
-            isPrimary: true,
-            createdAt: new Date().toISOString(),
-            createdBy: "System",
-          },
-        ],
-      },
-    ];
-    localStorage.setItem(_STORAGE_KEY_CALLS(), JSON.stringify(seedCalls));
-  }
+  // DEMO_MODE seed calls removed -- data comes from API (STORY-016)
 
   const workItems = await _getWorkItems();
-  if (workItems.length === 0 && DEMO_MODE) {
-    const seedWorkItems: WorkItem[] = [
-      {
-        id: "WI-5001",
-        companyId: "iscope-authority-001",
-        type: "Detention_Review",
-        label: "Detention: Load LP-9001",
-        description:
-          "Driver Alex R. has been at receiver for 3.5 hours. Automated detention trigger.",
-        priority: "High",
-        status: "Pending",
-        entityType: "LOAD",
-        entityId: "L-1001",
-        createdAt: new Date().toISOString(),
-      },
-      {
-        id: "WI-5002",
-        companyId: "iscope-authority-001",
-        type: "Document_Issue",
-        label: "Missing BOL: Load LP-9002",
-        description:
-          "Load delivered but no BOL artifact uploaded. SLA breach in 45m.",
-        priority: "Critical",
-        status: "Pending",
-        entityType: "LOAD",
-        entityId: "L-1002",
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    localStorage.setItem(
-      _STORAGE_KEY_WORK_ITEMS(),
-      JSON.stringify(seedWorkItems),
-    );
-  }
+  // DEMO_MODE seed work items removed -- data comes from API (STORY-016)
 
   const finalWorkItems = workItems.filter((wi) => wi.status !== "Resolved");
 
@@ -1650,7 +1591,7 @@ export const getTriageQueues = async () => {
     ),
     incidents: incidents.filter((i) => i.status !== "Closed"),
     tasks: tasks.filter((t) => t.status === "OPEN"),
-    calls: _getRawCalls().filter(
+    calls: (await _getRawCalls()).filter(
       (c) => !["RESOLVED", "COMPLETED"].includes(c.status),
     ),
     atRiskLoads: loads.filter(

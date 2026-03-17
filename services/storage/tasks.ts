@@ -1,52 +1,123 @@
 /**
- * Tasks & Work Items domain — localStorage CRUD.
- * Owner: STORY-016 (Phase 2 migration to server).
+ * Tasks & Work Items domain -- API-backed CRUD.
+ * Owner: STORY-016 (Phase 2 migration to server complete).
  */
 import { OperationalTask, WorkItem } from "../../types";
-import { getTenantKey } from "./core";
+import { API_URL } from "../config";
+import { getAuthHeaders } from "../authService";
 
-export const STORAGE_KEY_TASKS = (): string => getTenantKey("tasks_v1");
-export const STORAGE_KEY_WORK_ITEMS = (): string =>
-  getTenantKey("work_items_v1");
-
-export const getRawTasks = (): OperationalTask[] => {
+export const getRawTasks = async (): Promise<OperationalTask[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_TASKS());
-    return data ? JSON.parse(data) : [];
+    const res = await fetch(`${API_URL}/tasks`, {
+      headers: await getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items: any[] = Array.isArray(data) ? data : data.tasks || [];
+    return items.map((t: any) => ({
+      id: t.id,
+      type: t.type,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      priority: t.priority,
+      assignedTo: t.assigned_to || t.assignedTo,
+      dueDate: t.due_date || t.dueDate,
+      links: t.links || [],
+      createdAt: t.created_at || t.createdAt,
+      createdBy: t.created_by || t.createdBy,
+    }));
   } catch (e) {
+    console.warn("[tasks] getRawTasks API error:", e);
     return [];
   }
 };
 
-export const saveTask = async (task: OperationalTask) => {
-  const tasks = getRawTasks();
-  const idx = tasks.findIndex((t) => t.id === task.id);
-  if (idx >= 0) tasks[idx] = task;
-  else tasks.unshift(task);
-  localStorage.setItem(STORAGE_KEY_TASKS(), JSON.stringify(tasks));
+export const saveTask = async (
+  task: OperationalTask,
+): Promise<OperationalTask> => {
+  const body = {
+    type: task.type,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    assigned_to: task.assignedTo,
+    due_date: task.dueDate,
+    links: task.links,
+  };
+
+  const patchRes = await fetch(`${API_URL}/tasks/${task.id}`, {
+    method: "PATCH",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!patchRes.ok) {
+    await fetch(`${API_URL}/tasks`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ...body, id: task.id }),
+    });
+  }
   return task;
 };
 
-export const getRawWorkItems = (): WorkItem[] => {
+export const getRawWorkItems = async (): Promise<WorkItem[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_WORK_ITEMS());
-    return data ? JSON.parse(data) : [];
+    const res = await fetch(`${API_URL}/work-items`, {
+      headers: await getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const items: any[] = Array.isArray(data)
+      ? data
+      : data.workItems || data.items || [];
+    return items.map((wi: any) => ({
+      id: wi.id,
+      companyId: wi.company_id || wi.companyId,
+      type: wi.type,
+      label: wi.label,
+      description: wi.description,
+      priority: wi.priority,
+      status: wi.status,
+      entityType: wi.entity_type || wi.entityType,
+      entityId: wi.entity_id || wi.entityId,
+      createdAt: wi.created_at || wi.createdAt,
+    }));
   } catch (e) {
+    console.warn("[tasks] getRawWorkItems API error:", e);
     return [];
   }
 };
 
 export const getWorkItems = async (companyId?: string): Promise<WorkItem[]> => {
-  const items = getRawWorkItems();
+  const items = await getRawWorkItems();
   if (companyId) return items.filter((i) => i.companyId === companyId);
   return items;
 };
 
-export const saveWorkItem = async (item: WorkItem) => {
-  const items = getRawWorkItems();
-  const idx = items.findIndex((i) => i.id === item.id);
-  if (idx >= 0) items[idx] = item;
-  else items.unshift(item);
-  localStorage.setItem(STORAGE_KEY_WORK_ITEMS(), JSON.stringify(items));
+export const saveWorkItem = async (item: WorkItem): Promise<WorkItem> => {
+  const body = {
+    type: item.type,
+    label: item.label,
+    description: item.description,
+    priority: item.priority,
+    status: item.status,
+    entity_type: item.entityType,
+    entity_id: item.entityId,
+  };
+
+  const patchRes = await fetch(`${API_URL}/work-items/${item.id}`, {
+    method: "PATCH",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(body),
+  });
+  if (!patchRes.ok) {
+    await fetch(`${API_URL}/work-items`, {
+      method: "POST",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify({ ...body, id: item.id }),
+    });
+  }
   return item;
 };

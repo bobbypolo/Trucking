@@ -7,24 +7,14 @@ export { getTenantKey, migrateKey } from "./core";
 export { getQuotes, saveQuote } from "./quotes";
 export { getLeads, saveLead } from "./leads";
 export { getBookings, saveBooking } from "./bookings";
+export { getMessages, saveMessage } from "./messages";
 export {
-  STORAGE_KEY_MESSAGES,
-  STORAGE_KEY_THREADS,
-  getMessages,
-  saveMessage,
-  getThreads,
-  saveThread,
-} from "./messages";
-export {
-  STORAGE_KEY_CALLS,
   getRawCalls,
   saveCallSession,
   attachToRecord,
   linkSessionToRecord,
 } from "./calls";
 export {
-  STORAGE_KEY_TASKS,
-  STORAGE_KEY_WORK_ITEMS,
   getRawTasks,
   saveTask,
   getRawWorkItems,
