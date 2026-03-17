@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConnectionBanner from "./components/ui/ConnectionBanner";
 import {
@@ -52,21 +52,59 @@ import {
   ContextRecord,
   EntityType,
 } from "./types";
-import { Auth } from "./components/Auth";
-import { Dashboard } from "./components/Dashboard";
+const Auth = React.lazy(() =>
+  import("./components/Auth").then((m) => ({ default: m.Auth })),
+);
+const Dashboard = React.lazy(() =>
+  import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
+);
 import { LoadList } from "./components/LoadList";
-import { LoadBoardEnhanced } from "./components/LoadBoardEnhanced";
-import { EditLoadForm } from "./components/EditLoadForm";
-import { CalendarView } from "./components/CalendarView";
-import { CompanyProfile } from "./components/CompanyProfile";
-import { BrokerManager } from "./components/BrokerManager";
-import { SafetyView } from "./components/SafetyView";
+const LoadBoardEnhanced = React.lazy(() =>
+  import("./components/LoadBoardEnhanced").then((m) => ({
+    default: m.LoadBoardEnhanced,
+  })),
+);
+const EditLoadForm = React.lazy(() =>
+  import("./components/EditLoadForm").then((m) => ({
+    default: m.EditLoadForm,
+  })),
+);
+const CalendarView = React.lazy(() =>
+  import("./components/CalendarView").then((m) => ({
+    default: m.CalendarView,
+  })),
+);
+const CompanyProfile = React.lazy(() =>
+  import("./components/CompanyProfile").then((m) => ({
+    default: m.CompanyProfile,
+  })),
+);
+const BrokerManager = React.lazy(() =>
+  import("./components/BrokerManager").then((m) => ({
+    default: m.BrokerManager,
+  })),
+);
+const SafetyView = React.lazy(() =>
+  import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
+);
 import { Intelligence } from "./components/Intelligence";
 import { Settlements } from "./components/Settlements";
-import { LoadDetailView } from "./components/LoadDetailView";
+const LoadDetailView = React.lazy(() =>
+  import("./components/LoadDetailView").then((m) => ({
+    default: m.LoadDetailView,
+  })),
+);
 import { LoadSetupModal } from "./components/LoadSetupModal";
-import { QuoteManager } from "./components/QuoteManager";
-import { IssueSidebar } from "./components/IssueSidebar";
+const QuoteManager = React.lazy(() =>
+  import("./components/QuoteManager").then((m) => ({
+    default: m.QuoteManager,
+  })),
+);
+const IssueSidebar = React.lazy(() =>
+  import("./components/IssueSidebar").then((m) => ({
+    default: m.IssueSidebar,
+  })),
+);
 import {
   LayoutDashboard,
   Calendar,
@@ -97,17 +135,54 @@ import {
 } from "lucide-react";
 import { seedSafetyData } from "./services/safetyService";
 import { v4 as uuidv4 } from "uuid";
-import { Scanner } from "./components/Scanner";
-import { DriverMobileHome } from "./components/DriverMobileHome";
-import { CustomerPortalView } from "./components/CustomerPortalView";
-import { GlobalMapViewEnhanced } from "./components/GlobalMapViewEnhanced";
-import { AuditLogs } from "./components/AuditLogs";
-import AccountingPortal from "./components/AccountingPortal";
-import IntelligenceHub from "./components/IntelligenceHub";
-import { ExceptionConsole } from "./components/ExceptionConsole";
-import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
-import { CommsOverlay } from "./components/CommsOverlay";
-import { NetworkPortal } from "./components/NetworkPortal";
+const Scanner = React.lazy(() =>
+  import("./components/Scanner").then((m) => ({ default: m.Scanner })),
+);
+const DriverMobileHome = React.lazy(() =>
+  import("./components/DriverMobileHome").then((m) => ({
+    default: m.DriverMobileHome,
+  })),
+);
+const CustomerPortalView = React.lazy(() =>
+  import("./components/CustomerPortalView").then((m) => ({
+    default: m.CustomerPortalView,
+  })),
+);
+const GlobalMapViewEnhanced = React.lazy(() =>
+  import("./components/GlobalMapViewEnhanced").then((m) => ({
+    default: m.GlobalMapViewEnhanced,
+  })),
+);
+const AuditLogs = React.lazy(() =>
+  import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
+);
+import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
+const AccountingPortal = React.lazy(
+  () => import("./components/AccountingPortal"),
+);
+const IntelligenceHub = React.lazy(
+  () => import("./components/IntelligenceHub"),
+);
+const ExceptionConsole = React.lazy(() =>
+  import("./components/ExceptionConsole").then((m) => ({
+    default: m.ExceptionConsole,
+  })),
+);
+const AnalyticsDashboard = React.lazy(() =>
+  import("./components/AnalyticsDashboard").then((m) => ({
+    default: m.AnalyticsDashboard,
+  })),
+);
+const CommsOverlay = React.lazy(() =>
+  import("./components/CommsOverlay").then((m) => ({
+    default: m.CommsOverlay,
+  })),
+);
+const NetworkPortal = React.lazy(() =>
+  import("./components/NetworkPortal").then((m) => ({
+    default: m.NetworkPortal,
+  })),
+);
 import { getRecord360Data } from "./services/storageService";
 import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
 import { CommandCenterView } from "./components/CommandCenterView";
@@ -420,7 +495,12 @@ export default function App() {
     }
   };
 
-  if (!user) return <Auth onLogin={handleLogin} />;
+  if (!user)
+    return (
+      <Suspense fallback={null}>
+        <Auth onLogin={handleLogin} />
+      </Suspense>
+    );
 
   const categories: NavCategory[] = [
     {
@@ -555,19 +635,21 @@ export default function App() {
   // 4. Global Overlay Elements (Accessible everywhere)
   const globalOverlays = (
     <>
-      <IssueSidebar
-        isOpen={isIssueSidebarOpen}
-        onClose={() => setIsIssueSidebarOpen(false)}
-        loads={loads}
-        currentUser={user}
-        onViewLoad={(load) => {
-          setViewingLoad(null);
-          setEditingLoad(load);
-          setIsAdding(false);
-          setIsIssueSidebarOpen(false);
-        }}
-        onRefresh={() => refreshData(user)}
-      />
+      <Suspense fallback={null}>
+        <IssueSidebar
+          isOpen={isIssueSidebarOpen}
+          onClose={() => setIsIssueSidebarOpen(false)}
+          loads={loads}
+          currentUser={user}
+          onViewLoad={(load) => {
+            setViewingLoad(null);
+            setEditingLoad(load);
+            setIsAdding(false);
+            setIsIssueSidebarOpen(false);
+          }}
+          onRefresh={() => refreshData(user)}
+        />
+      </Suspense>
 
       {showLoadSetup && (
         <LoadSetupModal
@@ -593,18 +675,20 @@ export default function App() {
       {(isAdding || editingLoad) && scanMode && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
           <div className="w-full max-w-lg relative">
-            <Scanner
-              onDataExtracted={(d, b) => {
-                setScanMode(false);
-                setEditingLoad((prev) => ({
-                  ...prev,
-                  ...d,
-                  brokerId: prev?.brokerId || d.brokerId,
-                }));
-                setPotentialBroker(b);
-              }}
-              onCancel={() => setScanMode(false)}
-            />
+            <Suspense fallback={null}>
+              <Scanner
+                onDataExtracted={(d, b) => {
+                  setScanMode(false);
+                  setEditingLoad((prev) => ({
+                    ...prev,
+                    ...d,
+                    brokerId: prev?.brokerId || d.brokerId,
+                  }));
+                  setPotentialBroker(b);
+                }}
+                onCancel={() => setScanMode(false)}
+              />
+            </Suspense>
             <button
               onClick={() => {
                 setIsAdding(false);
@@ -621,53 +705,57 @@ export default function App() {
       {(isAdding || editingLoad) && !scanMode && (
         <div className="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full h-full max-w-7xl">
-            <EditLoadForm
-              initialData={editingLoad || {}}
-              onSave={handleSaveLoad}
-              onCancel={() => {
-                setIsAdding(false);
-                setEditingLoad(null);
-              }}
-              currentUser={user}
-              users={companyUsers}
-              existingLoads={loads}
-              canViewRates={permissions.showRates}
-              canManageLegs={permissions.manageLegs}
-              showBrokerDetails={permissions.showBrokerDetails}
-              canCreateBroker={permissions.createBrokers}
-              isRestrictedDriver={
-                !permissions.editCompletedLoads &&
-                (editingLoad?.status === "delivered" ||
-                  editingLoad?.status === "completed")
-              }
-              potentialBroker={potentialBroker}
-              onOpenHub={(tab, call) => {
-                setHubInitialTab(tab);
-                setHubInitialShowCallForm(!!call);
-                setShowIntelligenceHub(true);
-              }}
-            />
+            <Suspense fallback={null}>
+              <EditLoadForm
+                initialData={editingLoad || {}}
+                onSave={handleSaveLoad}
+                onCancel={() => {
+                  setIsAdding(false);
+                  setEditingLoad(null);
+                }}
+                currentUser={user}
+                users={companyUsers}
+                existingLoads={loads}
+                canViewRates={permissions.showRates}
+                canManageLegs={permissions.manageLegs}
+                showBrokerDetails={permissions.showBrokerDetails}
+                canCreateBroker={permissions.createBrokers}
+                isRestrictedDriver={
+                  !permissions.editCompletedLoads &&
+                  (editingLoad?.status === "delivered" ||
+                    editingLoad?.status === "completed")
+                }
+                potentialBroker={potentialBroker}
+                onOpenHub={(tab, call) => {
+                  setHubInitialTab(tab);
+                  setHubInitialShowCallForm(!!call);
+                  setShowIntelligenceHub(true);
+                }}
+              />
+            </Suspense>
           </div>
         </div>
       )}
 
       {viewingLoad && (
-        <LoadDetailView
-          load={viewingLoad}
-          onClose={() => setViewingLoad(null)}
-          onEdit={(l) => {
-            setViewingLoad(null);
-            setEditingLoad(l);
-            setIsAdding(false);
-          }}
-          users={companyUsers}
-          brokers={brokers}
-          canViewRates={permissions.showRates}
-          onOpenHub={(tab) => {
-            setHubInitialTab(tab);
-            setShowIntelligenceHub(true);
-          }}
-        />
+        <Suspense fallback={null}>
+          <LoadDetailView
+            load={viewingLoad}
+            onClose={() => setViewingLoad(null)}
+            onEdit={(l) => {
+              setViewingLoad(null);
+              setEditingLoad(l);
+              setIsAdding(false);
+            }}
+            users={companyUsers}
+            brokers={brokers}
+            canViewRates={permissions.showRates}
+            onOpenHub={(tab) => {
+              setHubInitialTab(tab);
+              setShowIntelligenceHub(true);
+            }}
+          />
+        </Suspense>
       )}
     </>
   );
@@ -678,31 +766,35 @@ export default function App() {
   // 1. Driver Mobile Experience
   if (user.role === "driver") {
     mainContent = (
-      <DriverMobileHome
-        user={user}
-        company={company || undefined}
-        loads={loads}
-        onLogout={handleLogout}
-        onSaveLoad={handleSaveLoad}
-        onOpenHub={(tab) => {
-          if (tab) setHubInitialTab(tab);
-          setShowIntelligenceHub(true);
-        }}
-      />
+      <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
+        <DriverMobileHome
+          user={user}
+          company={company || undefined}
+          loads={loads}
+          onLogout={handleLogout}
+          onSaveLoad={handleSaveLoad}
+          onOpenHub={(tab) => {
+            if (tab) setHubInitialTab(tab);
+            setShowIntelligenceHub(true);
+          }}
+        />
+      </Suspense>
     );
   }
 
   // 2. Customer Portal Experience
   else if (user.role === "customer") {
     mainContent = (
-      <CustomerPortalView
-        user={user}
-        loads={loads}
-        onOpenHub={(tab) => {
-          if (tab) setHubInitialTab(tab);
-          setShowIntelligenceHub(true);
-        }}
-      />
+      <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
+        <CustomerPortalView
+          user={user}
+          loads={loads}
+          onOpenHub={(tab) => {
+            if (tab) setHubInitialTab(tab);
+            setShowIntelligenceHub(true);
+          }}
+        />
+      </Suspense>
     );
   }
 
@@ -882,59 +974,79 @@ export default function App() {
 
             <div className="flex-1 min-h-0 w-full overflow-y-auto no-scrollbar">
               {activeTab === "operations-hub" && (
-                <IntelligenceHub
-                  show={true}
-                  user={user}
-                  company={company || undefined}
-                  loads={loads}
-                  incidents={incidents}
-                  users={companyUsers}
-                  brokers={brokers}
-                  session={session}
-                  setSession={setSession}
-                  onClose={() => handleNavigate("dashboard")}
-                  onRecordAction={handleRecordAction}
-                  initialTab={hubInitialTab}
-                  initialShowCallForm={hubInitialShowCallForm}
-                  initialCallSession={activeCallSession}
-                  initialOverlayState={overlayState}
-                  onNavigate={handleNavigate}
-                  openRecordWorkspace={openRecordWorkspace}
-                  onCloseContext={handleCloseContext}
-                  onLinkSessionToRecord={handleLinkSessionToRecord}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <IntelligenceHub
+                    show={true}
+                    user={user}
+                    company={company || undefined}
+                    loads={loads}
+                    incidents={incidents}
+                    users={companyUsers}
+                    brokers={brokers}
+                    session={session}
+                    setSession={setSession}
+                    onClose={() => handleNavigate("dashboard")}
+                    onRecordAction={handleRecordAction}
+                    initialTab={hubInitialTab}
+                    initialShowCallForm={hubInitialShowCallForm}
+                    initialCallSession={activeCallSession}
+                    initialOverlayState={overlayState}
+                    onNavigate={handleNavigate}
+                    openRecordWorkspace={openRecordWorkspace}
+                    onCloseContext={handleCloseContext}
+                    onLinkSessionToRecord={handleLinkSessionToRecord}
+                  />
+                </Suspense>
               )}
               {activeTab === "dashboard" && (
-                <Dashboard
-                  user={user}
-                  loads={loads}
-                  brokers={brokers}
-                  onViewLoad={(load) => {
-                    setEditingLoad(load);
-                    handleNavigate("loads");
-                  }}
-                  onNavigate={handleNavigate}
-                  users={companyUsers}
-                  onOpenIssues={() => setIsIssueSidebarOpen(true)}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <Dashboard
+                    user={user}
+                    loads={loads}
+                    brokers={brokers}
+                    onViewLoad={(load) => {
+                      setEditingLoad(load);
+                      handleNavigate("loads");
+                    }}
+                    onNavigate={handleNavigate}
+                    users={companyUsers}
+                    onOpenIssues={() => setIsIssueSidebarOpen(true)}
+                  />
+                </Suspense>
               )}
               {activeTab === "exceptions" && (
-                <ExceptionConsole
-                  currentUser={user}
-                  initialView={activeSubTab}
-                  onViewDetail={openRecordWorkspace}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="list" count={3} />}
+                >
+                  <ExceptionConsole
+                    currentUser={user}
+                    initialView={activeSubTab}
+                    onViewDetail={openRecordWorkspace}
+                  />
+                </Suspense>
               )}
               {activeTab === "analytics" && (
-                <AnalyticsDashboard
-                  user={user}
-                  loads={loads}
-                  brokers={brokers}
-                  onNavigate={handleNavigate}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <AnalyticsDashboard
+                    user={user}
+                    loads={loads}
+                    brokers={brokers}
+                    onNavigate={handleNavigate}
+                  />
+                </Suspense>
               )}
               {activeTab === "quotes" && user && (
-                <QuoteManager user={user} company={company} />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <QuoteManager user={user} company={company} />
+                </Suspense>
               )}
               {activeTab === "loads" && (
                 <div className="h-full flex flex-col">
@@ -952,119 +1064,159 @@ export default function App() {
                     )}
                   </div>
                   <div className="flex-1 min-h-0">
-                    <LoadBoardEnhanced
-                      loads={loads}
-                      onView={(l) => {
-                        setViewingLoad(l);
-                        openRecordWorkspace("LOAD", l.id);
-                      }}
-                      onEdit={(load) => {
-                        setEditingLoad(load);
-                        setIsAdding(false);
-                      }}
-                      onDelete={async (id) => {
-                        await deleteLoad(id);
-                        await refreshData(user);
-                      }}
-                      canViewRates={checkCapability(
-                        user,
-                        "QUOTE_VIEW_MARGIN",
-                        undefined,
-                        company,
-                      )}
-                      onOpenHub={(tab, startCall) => {
-                        setHubInitialTab(tab);
-                        setHubInitialShowCallForm(!!startCall);
-                        setShowIntelligenceHub(true);
-                      }}
-                      users={companyUsers}
-                      brokers={brokers}
-                    />
+                    <Suspense
+                      fallback={<LoadingSkeleton variant="list" count={5} />}
+                    >
+                      <LoadBoardEnhanced
+                        loads={loads}
+                        onView={(l) => {
+                          setViewingLoad(l);
+                          openRecordWorkspace("LOAD", l.id);
+                        }}
+                        onEdit={(load) => {
+                          setEditingLoad(load);
+                          setIsAdding(false);
+                        }}
+                        onDelete={async (id) => {
+                          await deleteLoad(id);
+                          await refreshData(user);
+                        }}
+                        canViewRates={checkCapability(
+                          user,
+                          "QUOTE_VIEW_MARGIN",
+                          undefined,
+                          company,
+                        )}
+                        onOpenHub={(tab, startCall) => {
+                          setHubInitialTab(tab);
+                          setHubInitialShowCallForm(!!startCall);
+                          setShowIntelligenceHub(true);
+                        }}
+                        users={companyUsers}
+                        brokers={brokers}
+                      />
+                    </Suspense>
                   </div>
                 </div>
               )}
               {activeTab === "map" && (
-                <GlobalMapViewEnhanced
-                  loads={loads}
-                  users={companyUsers}
-                  incidents={incidents}
-                  onViewLoad={(l) => {
-                    setViewingLoad(l);
-                    openRecordWorkspace("LOAD", l.id);
-                  }}
-                  onSelectIncident={(incId) =>
-                    openRecordWorkspace("INCIDENT", incId)
-                  }
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <GlobalMapViewEnhanced
+                    loads={loads}
+                    users={companyUsers}
+                    incidents={incidents}
+                    onViewLoad={(l) => {
+                      setViewingLoad(l);
+                      openRecordWorkspace("LOAD", l.id);
+                    }}
+                    onSelectIncident={(incId) =>
+                      openRecordWorkspace("INCIDENT", incId)
+                    }
+                  />
+                </Suspense>
               )}
               {activeTab === "calendar" && (
-                <CalendarView
-                  loads={loads}
-                  onEdit={(l) => {
-                    setEditingLoad(l);
-                    setIsAdding(false);
-                  }}
-                  users={companyUsers}
-                  selectedDriverId={selectedDriverId}
-                  onSelectDriver={setSelectedDriverId}
-                  onMoveLoad={(id, date) => {
-                    const l = loads.find((x) => x.id === id);
-                    if (l) handleSaveLoad({ ...l, pickupDate: date });
-                  }}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <CalendarView
+                    loads={loads}
+                    onEdit={(l) => {
+                      setEditingLoad(l);
+                      setIsAdding(false);
+                    }}
+                    users={companyUsers}
+                    selectedDriverId={selectedDriverId}
+                    onSelectDriver={setSelectedDriverId}
+                    onMoveLoad={(id, date) => {
+                      const l = loads.find((x) => x.id === id);
+                      if (l) handleSaveLoad({ ...l, pickupDate: date });
+                    }}
+                  />
+                </Suspense>
               )}
               {activeTab === "network" && user && (
-                <NetworkPortal companyId={user.companyId} />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <NetworkPortal companyId={user.companyId} />
+                </Suspense>
               )}
               {activeTab === "brokers" && (
-                <BrokerManager
-                  brokers={brokers}
-                  onUpdate={() => refreshData(user)}
-                  onSave={async (b) => {
-                    await saveBroker(b);
-                    refreshData(user);
-                  }}
-                  onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="list" count={5} />}
+                >
+                  <BrokerManager
+                    brokers={brokers}
+                    onUpdate={() => refreshData(user)}
+                    onSave={async (b) => {
+                      await saveBroker(b);
+                      refreshData(user);
+                    }}
+                    onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
+                  />
+                </Suspense>
               )}
               {activeTab === "safety" && (
-                <SafetyView
-                  user={user}
-                  loads={loads}
-                  incidents={incidents}
-                  onSaveIncident={async (inc) => {
-                    await createIncident(inc);
-                    refreshData(user);
-                  }}
-                  onRecordAction={handleRecordAction}
-                  openRecordWorkspace={openRecordWorkspace}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <SafetyView
+                    user={user}
+                    loads={loads}
+                    incidents={incidents}
+                    onSaveIncident={async (inc) => {
+                      await createIncident(inc);
+                      refreshData(user);
+                    }}
+                    onRecordAction={handleRecordAction}
+                    openRecordWorkspace={openRecordWorkspace}
+                  />
+                </Suspense>
               )}
               {activeTab === "finance" && (
-                <AccountingPortal
-                  loads={loads}
-                  users={companyUsers}
-                  currentUser={user!}
-                  onUserUpdate={() => refreshData(user!)}
-                  initialTab={activeSubTab as AccountingPortalTab | undefined}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <AccountingPortal
+                    loads={loads}
+                    users={companyUsers}
+                    currentUser={user!}
+                    onUserUpdate={() => refreshData(user!)}
+                    initialTab={activeSubTab as AccountingPortalTab | undefined}
+                  />
+                </Suspense>
               )}
               {activeTab === "accounting" && (
-                <AccountingPortal
-                  loads={loads}
-                  users={companyUsers}
-                  currentUser={user!}
-                  onUserUpdate={() => refreshData(user!)}
-                  initialTab={activeSubTab as AccountingPortalTab | undefined}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <AccountingPortal
+                    loads={loads}
+                    users={companyUsers}
+                    currentUser={user!}
+                    onUserUpdate={() => refreshData(user!)}
+                    initialTab={activeSubTab as AccountingPortalTab | undefined}
+                  />
+                </Suspense>
               )}
-              {activeTab === "audit" && <AuditLogs user={user} />}
+              {activeTab === "audit" && (
+                <Suspense fallback={null}>
+                  <AuditLogs user={user} />
+                </Suspense>
+              )}
               {activeTab === "company" && company && (
-                <CompanyProfile
-                  company={company}
-                  user={user}
-                  users={companyUsers}
-                />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <CompanyProfile
+                    company={company}
+                    user={user}
+                    users={companyUsers}
+                  />
+                </Suspense>
               )}
               {features.apiTester && activeTab === "api-tester" && (
                 <GoogleMapsAPITester />
@@ -1083,21 +1235,23 @@ export default function App() {
         {mainContent}
         {globalOverlays}
         {user && (
-          <CommsOverlay
-            session={session}
-            activeCallSession={activeCallSession}
-            setActiveCallSession={setActiveCallSession}
-            onRecordAction={handleRecordAction}
-            openRecordWorkspace={openRecordWorkspace}
-            onNavigate={(tab) => {
-              handleNavigate("operations-hub");
-            }}
-            overlayState={overlayState}
-            setOverlayState={setOverlayState}
-            user={user}
-            allLoads={loads}
-            onLinkSessionToRecord={handleLinkSessionToRecord}
-          />
+          <Suspense fallback={null}>
+            <CommsOverlay
+              session={session}
+              activeCallSession={activeCallSession}
+              setActiveCallSession={setActiveCallSession}
+              onRecordAction={handleRecordAction}
+              openRecordWorkspace={openRecordWorkspace}
+              onNavigate={(tab) => {
+                handleNavigate("operations-hub");
+              }}
+              overlayState={overlayState}
+              setOverlayState={setOverlayState}
+              user={user}
+              allLoads={loads}
+              onLinkSessionToRecord={handleLinkSessionToRecord}
+            />
+          </Suspense>
         )}
       </div>
     </ErrorBoundary>

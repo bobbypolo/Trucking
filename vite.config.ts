@@ -18,5 +18,18 @@ export default defineConfig(() => {
         "@": path.resolve(__dirname, "."),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ["react", "react-dom"],
+            maps: ["@react-google-maps/api"],
+            pdf: ["jspdf", "jspdf-autotable"],
+            charts: ["recharts"],
+            capture: ["html2canvas"],
+          },
+        },
+      },
+    },
   };
 });
