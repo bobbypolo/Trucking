@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
+import rateLimit from "express-rate-limit";
 import admin from "../auth";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
@@ -24,6 +25,17 @@ import {
 } from "../lib/sql-auth";
 
 const router = Router();
+
+// Rate limiter for login endpoint: 10 requests per 15-minute window per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) =>
+    req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+  message: { error: "Too many login attempts. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 function getBearerToken(req: any): string | null {
   const authHeader = req.headers?.authorization;
@@ -189,6 +201,7 @@ router.post(
 
 router.post(
   "/api/auth/login",
+  loginLimiter,
   validateBody(loginUserSchema),
   async (req, res) => {
     const log = createChildLogger({

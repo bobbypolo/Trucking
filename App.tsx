@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import ConnectionBanner from "./components/ui/ConnectionBanner";
 import {
   onUserChange,
   logout,
@@ -1078,6 +1079,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="h-screen w-screen overflow-hidden bg-slate-950">
+        <ConnectionBanner onRetry={() => user && refreshData(user)} />
         {mainContent}
         {globalOverlays}
         {user && (

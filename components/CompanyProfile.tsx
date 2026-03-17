@@ -17,7 +17,7 @@ import {
   checkCapability,
   CAPABILITY_PRESETS,
 } from "../services/authService";
-import { logTime } from "../services/storageService";
+import { logTime, getTimeLogs } from "../services/storageService";
 import {
   Building2,
   Save,
@@ -86,6 +86,10 @@ export const CompanyProfile: React.FC<Props> = ({
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockNotes, setClockNotes] = useState("");
   const [showClockOutModal, setShowClockOutModal] = useState(false);
+  const [timeLogs, setTimeLogs] = useState<
+    { type: string; time: string; date: string; status: string }[]
+  >([]);
+  const [timeLogsLoading, setTimeLogsLoading] = useState(false);
 
   const isAdmin =
     user.role === "admin" ||
@@ -109,13 +113,41 @@ export const CompanyProfile: React.FC<Props> = ({
     load();
   }, [user]);
 
+  useEffect(() => {
+    if (!isDriver) return;
+    const fetchLogs = async () => {
+      setTimeLogsLoading(true);
+      try {
+        const logs = await getTimeLogs(user.id);
+        const recent = logs.slice(0, 5).map((log) => ({
+          type: log.clockOut ? "ClockOut" : "ClockIn",
+          time: new Date(log.clockOut || log.clockIn || "").toLocaleTimeString(
+            [],
+            { hour: "2-digit", minute: "2-digit" },
+          ),
+          date: new Date(log.clockOut || log.clockIn || "").toLocaleDateString(
+            [],
+            { month: "short", day: "numeric" },
+          ),
+          status: log.clockOut ? "Completed" : "Active",
+        }));
+        setTimeLogs(recent);
+      } catch {
+        setTimeLogs([]);
+      } finally {
+        setTimeLogsLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [user.id, isDriver, isClockedIn]);
+
   const handleClockIn = async () => {
     const now = new Date().toISOString();
     const success = await logTime({
       userId: user.id,
       activityType: "Driving/Active Duty",
       clockIn: now,
-      location: { lat: 39.1031, lng: -94.5812 }, // Kansas City Hub
+      location: undefined,
     });
     if (success !== undefined) {
       setIsClockedIn(true);
@@ -342,58 +374,49 @@ export const CompanyProfile: React.FC<Props> = ({
                   <History className="w-4 h-4" /> Recent Transitions
                 </div>
                 <div className="space-y-6">
-                  {[
-                    {
-                      type: "ClockIn",
-                      time: "08:00 AM",
-                      date: "Dec 18",
-                      status: "Active",
-                    },
-                    {
-                      type: "ClockOut",
-                      time: "04:30 PM",
-                      date: "Dec 17",
-                      status: "Completed",
-                    },
-                    {
-                      type: "ClockIn",
-                      time: "07:45 AM",
-                      date: "Dec 17",
-                      status: "Completed",
-                    },
-                  ].map((log, i) => (
-                    <div
-                      key={i}
-                      className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${log.type === "ClockIn" ? "bg-blue-600/10 text-blue-500" : "bg-red-600/10 text-red-500"}`}
-                        >
-                          {log.type === "ClockIn" ? (
-                            <Play className="w-4 h-4" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="text-xs font-black text-white uppercase tracking-tight">
-                            {log.type === "ClockIn"
-                              ? "Began Duty"
-                              : "Duty Cycle Exit"}
-                          </div>
-                          <div className="text-[9px] text-slate-500 font-bold uppercase">
-                            {log.date} @ {log.time}
-                          </div>
-                        </div>
-                      </div>
-                      <span
-                        className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${log.status === "Active" ? "bg-green-600/20 text-green-400" : "text-slate-600"}`}
-                      >
-                        {log.status}
-                      </span>
+                  {timeLogsLoading ? (
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center py-8 animate-pulse">
+                      Loading time entries...
                     </div>
-                  ))}
+                  ) : timeLogs.length === 0 ? (
+                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center py-8">
+                      No time entries yet
+                    </div>
+                  ) : (
+                    timeLogs.map((log, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center ${log.type === "ClockIn" ? "bg-blue-600/10 text-blue-500" : "bg-red-600/10 text-red-500"}`}
+                          >
+                            {log.type === "ClockIn" ? (
+                              <Play className="w-4 h-4" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-xs font-black text-white uppercase tracking-tight">
+                              {log.type === "ClockIn"
+                                ? "Began Duty"
+                                : "Duty Cycle Exit"}
+                            </div>
+                            <div className="text-[9px] text-slate-500 font-bold uppercase">
+                              {log.date} @ {log.time}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${log.status === "Active" ? "bg-green-600/20 text-green-400" : "text-slate-600"}`}
+                        >
+                          {log.status}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -413,7 +436,7 @@ export const CompanyProfile: React.FC<Props> = ({
                       MC #
                     </label>
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
-                      {company.mcNumber || "UNSET"}
+                      {company.mcNumber || "Not provided"}
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -421,7 +444,7 @@ export const CompanyProfile: React.FC<Props> = ({
                       DOT #
                     </label>
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
-                      {company.dotNumber || "UNSET"}
+                      {company.dotNumber || "Not provided"}
                     </div>
                   </div>
                 </div>

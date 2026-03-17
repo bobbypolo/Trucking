@@ -318,3 +318,53 @@ describe("POST /api/clients — success", () => {
     expect(res.status).toBe(500);
   });
 });
+
+// STORY-006: Server-side company_id enforcement
+describe("POST /api/clients — company_id enforcement (STORY-006)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("succeeds when body has no company_id (server injects from auth)", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ name: "No CompanyId Client" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.message).toBe("Client saved");
+    // Verify the SQL was called with the auth tenant's company_id
+    const insertCall = mockQuery.mock.calls[0];
+    const params = insertCall[1];
+    // company_id is the 10th parameter (index 9)
+    expect(params[9]).toBe("company-aaa");
+  });
+
+  it("succeeds when body company_id matches auth tenant (stripped/ignored)", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ name: "Matching Client", company_id: "company-aaa" });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("returns 400 when name is missing (Zod validation)", async () => {
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ type: "Broker" });
+
+    expect(res.status).toBe(400);
+  });
+});

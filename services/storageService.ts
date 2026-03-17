@@ -67,72 +67,113 @@ import {
   searchLoadsApi,
 } from "./loadService";
 
+// --- Re-export domain modules for backward compatibility ---
+// Consumers can import from storageService or directly from domain modules.
+export { getTenantKey, migrateKey } from "./storage/core";
+export { STORAGE_KEY_QUOTES, getQuotes, saveQuote } from "./storage/quotes";
+export { STORAGE_KEY_LEADS, getLeads, saveLead } from "./storage/leads";
+export {
+  STORAGE_KEY_BOOKINGS,
+  getBookings,
+  saveBooking,
+} from "./storage/bookings";
+export {
+  STORAGE_KEY_MESSAGES,
+  STORAGE_KEY_THREADS,
+  getMessages,
+  saveMessage,
+  getThreads,
+  saveThread,
+} from "./storage/messages";
+export {
+  STORAGE_KEY_CALLS,
+  getRawCalls,
+  saveCallSession,
+  attachToRecord,
+  linkSessionToRecord,
+} from "./storage/calls";
+export {
+  STORAGE_KEY_TASKS,
+  STORAGE_KEY_WORK_ITEMS,
+  getRawTasks,
+  saveTask,
+  getRawWorkItems,
+  getWorkItems,
+  saveWorkItem,
+} from "./storage/tasks";
+export {
+  STORAGE_KEY_CRISIS,
+  STORAGE_KEY_REQUESTS,
+  STORAGE_KEY_SERVICE_TICKETS,
+  getRawCrisisActions,
+  saveCrisisAction,
+  getRawRequests,
+  getRequests,
+  saveRequest,
+  updateRequestStatus,
+  getUnresolvedRequests,
+  getRawServiceTickets,
+  saveServiceTicket,
+} from "./storage/recovery";
+export {
+  STORAGE_KEY_CONTACTS,
+  STORAGE_KEY_PROVIDERS,
+  getRawProviders,
+  saveProvider,
+  getProviders,
+  getRawContacts,
+  getContacts,
+  saveContact,
+  getDirectory,
+} from "./storage/directory";
+export {
+  STORAGE_KEY_VAULT_DOCS,
+  getRawVaultDocs,
+  saveVaultDoc,
+  uploadVaultDoc,
+} from "./storage/vault";
+export {
+  STORAGE_KEY_NOTIFICATION_JOBS,
+  getRawNotificationJobs,
+  saveNotificationJob,
+} from "./storage/notifications";
+
+// --- Internal imports from domain modules (used by aggregators below) ---
+import { getQuotes as _getQuotes } from "./storage/quotes";
+import {
+  getBookings as _getBookings,
+  saveBooking as _saveBooking,
+} from "./storage/bookings";
+import { getMessages as _getMessages } from "./storage/messages";
+import {
+  getRawCalls as _getRawCalls,
+  STORAGE_KEY_CALLS as _STORAGE_KEY_CALLS,
+} from "./storage/calls";
+import {
+  getRawTasks as _getRawTasks,
+  getWorkItems as _getWorkItems,
+  STORAGE_KEY_WORK_ITEMS as _STORAGE_KEY_WORK_ITEMS,
+} from "./storage/tasks";
+import {
+  getRawCrisisActions as _getRawCrisisActions,
+  getRawRequests as _getRawRequests,
+  getUnresolvedRequests as _getUnresolvedRequests,
+  saveRequest as _saveRequest,
+} from "./storage/recovery";
+import {
+  getRawProviders as _getRawProviders,
+  getRawContacts as _getRawContacts,
+} from "./storage/directory";
+import { getRawVaultDocs as _getRawVaultDocs } from "./storage/vault";
+import { saveTask as _saveTask } from "./storage/tasks";
+import { getTenantKey as _getTenantKey } from "./storage/core";
+
 // STORAGE_KEY for loads removed — load data comes from backend API only
 // API endpoint paths for tenant-scoped operational entities
 const API_PATH_INCIDENTS = "/api/incidents"; // used by fetch calls in getIncidents / saveIncident
 
-/**
- * Tenant-scoped localStorage key builder (F-008 fix).
- *
- * Returns `loadpilot_{companyId}_{baseName}` when a companyId is available,
- * or the legacy `{baseName}` key as graceful degradation when no session exists.
- *
- * On first access, checks for data stored under the legacy unprefixed key and
- * migrates it to the new tenant-scoped key so existing user data is not lost.
- *
- * @param baseName - The short key name (e.g. "incidents_v1")
- */
-export const getTenantKey = (baseName: string): string => {
-  const companyId = getCurrentUser()?.companyId;
-  const legacyKey = `loadpilot_${baseName}`;
-  if (!companyId) return legacyKey; // graceful degradation — returns legacy key format
-  const tenantKey = `loadpilot_${companyId}_${baseName}`;
-  // Migrate legacy unprefixed key data to tenant-scoped key on first access
-  migrateKey(legacyKey, tenantKey);
-  return tenantKey;
-};
-
-/**
- * One-shot legacy key migration helper.
- * Copies data from `legacyKey` to `newKey` if legacy data exists and new key is empty.
- * Removes the legacy key after a successful migration.
- */
-const migrateKey = (legacyKey: string, newKey: string): void => {
-  try {
-    const legacyData = localStorage.getItem(legacyKey);
-    if (!legacyData) return; // nothing to migrate
-    const newData = localStorage.getItem(newKey);
-    if (newData) {
-      // new key already has data — legacy key is stale, remove it
-      localStorage.removeItem(legacyKey);
-      return;
-    }
-    // migrate: copy legacy data to tenant key then remove old key
-    localStorage.setItem(newKey, legacyData);
-    localStorage.removeItem(legacyKey);
-  } catch (_error: unknown) {
-    // non-fatal — migration failure means data stays at legacy key
-  }
-};
-
-// Tenant-scoped localStorage key accessors (replaces static STORAGE_KEY_* constants)
-const STORAGE_KEY_INCIDENTS = (): string => getTenantKey("incidents_v1");
-const STORAGE_KEY_MESSAGES = (): string => getTenantKey("messages_v1");
-const STORAGE_KEY_REQUESTS = (): string => getTenantKey("requests_v1");
-const STORAGE_KEY_CALLS = (): string => getTenantKey("calls_v1");
-const STORAGE_KEY_PROVIDERS = (): string => getTenantKey("providers_v1");
-const STORAGE_KEY_CONTACTS = (): string => getTenantKey("contacts_v1");
-const STORAGE_KEY_TASKS = (): string => getTenantKey("tasks_v1");
-const STORAGE_KEY_CRISIS = (): string => getTenantKey("crisis_v1");
-const STORAGE_KEY_SERVICE_TICKETS = (): string =>
-  getTenantKey("service_tickets_v1");
-const STORAGE_KEY_NOTIFICATION_JOBS = (): string =>
-  getTenantKey("notification_jobs_v1");
-const STORAGE_KEY_QUOTES = (): string => getTenantKey("quotes_v1");
-const STORAGE_KEY_BOOKINGS = (): string => getTenantKey("bookings_v1");
-const STORAGE_KEY_LEADS = (): string => getTenantKey("leads_v1");
-const STORAGE_KEY_WORK_ITEMS = (): string => getTenantKey("work_items_v1");
-const STORAGE_KEY_VAULT_DOCS = (): string => getTenantKey("vault_docs_v1");
+// Tenant-scoped localStorage key accessor for incidents (stays here — incidents are API-primary)
+const STORAGE_KEY_INCIDENTS = (): string => _getTenantKey("incidents_v1");
 
 // In-memory cache for API-fetched data (browser storage removed)
 let _cachedLoads: LoadData[] = [];
@@ -211,29 +252,6 @@ export const updateLoadStatus = async (
   const idx = _cachedLoads.findIndex((l) => l.id === loadId);
   if (idx >= 0) {
     _cachedLoads[idx].status = status;
-  }
-};
-
-export const linkSessionToRecord = async (
-  sessionId: string,
-  recordId: string,
-  recordType: EntityType,
-) => {
-  const data = localStorage.getItem(STORAGE_KEY_CALLS());
-  if (!data) return;
-  let sessions: CallSession[] = JSON.parse(data);
-  const idx = sessions.findIndex((s) => s.id === sessionId);
-  if (idx >= 0) {
-    const link: RecordLink = {
-      id: uuidv4(),
-      entityType: recordType,
-      entityId: recordId,
-      isPrimary: true,
-      createdAt: new Date().toISOString(),
-      createdBy: "SYSTEM",
-    };
-    sessions[idx].links = [...(sessions[idx].links || []), link];
-    localStorage.setItem(STORAGE_KEY_CALLS(), JSON.stringify(sessions));
   }
 };
 
@@ -341,61 +359,15 @@ export const settleLoad = async (loadId: string) => {
   }
 };
 
-// --- NEW QUOTE / BOOKING / LEAD SERVICE ---
-
-export const getLeads = async (companyId: string): Promise<Lead[]> => {
-  const data = localStorage.getItem(STORAGE_KEY_LEADS());
-  const leads: Lead[] = data ? JSON.parse(data) : [];
-  return leads.filter((l) => l.companyId === companyId);
-};
-
-export const saveLead = async (lead: Lead) => {
-  const leads = await getLeads(lead.companyId);
-  const idx = leads.findIndex((l) => l.id === lead.id);
-  if (idx >= 0) leads[idx] = lead;
-  else leads.unshift(lead);
-  localStorage.setItem(STORAGE_KEY_LEADS(), JSON.stringify(leads));
-};
-
-export const getQuotes = async (companyId: string): Promise<Quote[]> => {
-  const data = localStorage.getItem(STORAGE_KEY_QUOTES());
-  const quotes: Quote[] = data ? JSON.parse(data) : [];
-  return quotes.filter((q) => q.companyId === companyId);
-};
-
-export const saveQuote = async (quote: Quote) => {
-  const data = localStorage.getItem(STORAGE_KEY_QUOTES());
-  let quotes: Quote[] = data ? JSON.parse(data) : [];
-  const idx = quotes.findIndex((q) => q.id === quote.id);
-  if (idx >= 0) quotes[idx] = quote;
-  else quotes.unshift(quote);
-  localStorage.setItem(STORAGE_KEY_QUOTES(), JSON.stringify(quotes));
-};
-
-export const getBookings = async (companyId: string): Promise<Booking[]> => {
-  const data = localStorage.getItem(STORAGE_KEY_BOOKINGS());
-  const bookings: Booking[] = data ? JSON.parse(data) : [];
-  return bookings.filter((b) => b.companyId === companyId);
-};
-
-export const saveBooking = async (booking: Booking) => {
-  const data = localStorage.getItem(STORAGE_KEY_BOOKINGS());
-  let bookings: Booking[] = data ? JSON.parse(data) : [];
-  const idx = bookings.findIndex((b) => b.id === booking.id);
-  if (idx >= 0) bookings[idx] = booking;
-  else bookings.unshift(booking);
-  localStorage.setItem(STORAGE_KEY_BOOKINGS(), JSON.stringify(bookings));
-};
-
 export const convertBookingToLoad = async (
   bookingId: string,
   user: User,
 ): Promise<LoadData | null> => {
-  const bookings = await getBookings(user.companyId);
+  const bookings = await _getBookings(user.companyId);
   const booking = bookings.find((b) => b.id === bookingId);
   if (!booking) return null;
 
-  const quotes = await getQuotes(user.companyId);
+  const quotes = await _getQuotes(user.companyId);
   const quote = quotes.find((q) => q.id === booking.quoteId);
   if (!quote) return null;
 
@@ -421,7 +393,7 @@ export const convertBookingToLoad = async (
   // Link back
   booking.loadId = newLoad.id;
   booking.status = "Ready_for_Dispatch";
-  await saveBooking(booking);
+  await _saveBooking(booking);
 
   return newLoad;
 };
@@ -993,99 +965,14 @@ export const getOperationalTrends = async (
   ];
 };
 
-export const getMessages = async (loadId?: string): Promise<Message[]> => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_MESSAGES());
-    let messages: Message[] = data ? JSON.parse(data) : [];
-
-    if (messages.length === 0 && DEMO_MODE) {
-      // Demo mode: seed sample messages for demonstration
-      messages = [
-        {
-          id: "1",
-          loadId: "L-1001",
-          senderId: "driver-123",
-          senderName: "Alex Rivera",
-          text: "Stuck at terminal gates. Long wait time today.",
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: "2",
-          loadId: "L-1001",
-          senderId: "dispatcher-1",
-          senderName: "Dispatcher",
-          text: "Acknowledged. Log detention after 2 hours.",
-          timestamp: new Date(Date.now() - 3000000).toISOString(),
-        },
-      ];
-      localStorage.setItem(STORAGE_KEY_MESSAGES(), JSON.stringify(messages));
-    }
-
-    if (loadId) {
-      return messages.filter((m) => m.loadId === loadId);
-    }
-    return messages;
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveMessage = async (message: Message) => {
-  try {
-    const messages = await getMessages();
-    messages.push(message);
-    localStorage.setItem(STORAGE_KEY_MESSAGES(), JSON.stringify(messages));
-
-    // Attempt remote sync if API is available
-    try {
-      await fetch(`${API_URL}/messages`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(message),
-      });
-    } catch (e) {
-      console.warn("[storageService] API fallback:", e);
-    }
-  } catch (e) {
-    console.error("[storageService] saveMessage failed:", e);
-  }
-};
-const STORAGE_KEY_THREADS = (): string => getTenantKey("threads_v1");
-
-export const getThreads = async (
-  companyId: string,
-): Promise<OperationalThread[]> => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_THREADS());
-    if (!data) return [];
-    const threads: OperationalThread[] = JSON.parse(data);
-    return threads.filter(
-      (t) => t.id.includes(companyId) || t.ownerId === companyId,
-    ); // Broad tenant filter — matches thread ID or owner
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveThread = async (thread: OperationalThread) => {
-  try {
-    const threads = await getThreads(""); // Get all
-    const idx = threads.findIndex((t) => t.id === thread.id);
-    if (idx >= 0) threads[idx] = thread;
-    else threads.unshift(thread);
-    localStorage.setItem(STORAGE_KEY_THREADS(), JSON.stringify(threads));
-  } catch (e) {
-    console.error("[storageService] saveThread failed:", e);
-  }
-};
-
 export const getUnifiedEvents = async (
   selectedThreadId?: string,
 ): Promise<OperationalEvent[]> => {
   // 1. Get native events from threads if selected
   let events: OperationalEvent[] = [];
   if (selectedThreadId) {
-    const threads = await getThreads("");
+    const { getThreads: _getThreads } = await import("./storage/messages");
+    const threads = await _getThreads("");
     const thread = threads.find((t) => t.id === selectedThreadId);
     if (thread) events = [...thread.events];
   }
@@ -1093,7 +980,7 @@ export const getUnifiedEvents = async (
   // 2. Wrap legacy data as events for transition
   const rawLoads = getRawLoads();
   const rawIncidents = await getIncidents();
-  const rawMessages = await getMessages();
+  const rawMessages = await _getMessages();
 
   rawIncidents.forEach((inc) => {
     events.push({
@@ -1150,7 +1037,7 @@ export const getUnifiedEvents = async (
     });
   });
   // 3. Add Requests
-  const requests = getRawRequests();
+  const requests = _getRawRequests();
   requests.forEach((req) => {
     events.push({
       id: req.id,
@@ -1170,7 +1057,7 @@ export const getUnifiedEvents = async (
   });
 
   // 4. Add Tasks
-  const tasks = getRawTasks();
+  const tasks = _getRawTasks();
   tasks.forEach((task) => {
     events.push({
       id: task.id,
@@ -1185,7 +1072,7 @@ export const getUnifiedEvents = async (
   });
 
   // 5. Add Crisis Actions
-  const crisisActions = getRawCrisisActions();
+  const crisisActions = _getRawCrisisActions();
   crisisActions.forEach((ca) => {
     events.push({
       id: ca.id,
@@ -1223,138 +1110,6 @@ export const searchLoads = async (query: string): Promise<LoadData[]> => {
   }
 };
 
-export const getRawCalls = (): CallSession[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_CALLS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveCallSession = async (session: CallSession) => {
-  const sessions = getRawCalls();
-  const idx = sessions.findIndex((s) => s.id === session.id);
-  if (idx >= 0) sessions[idx] = session;
-  else sessions.unshift(session);
-  localStorage.setItem(STORAGE_KEY_CALLS(), JSON.stringify(sessions));
-};
-
-export const attachToRecord = async (
-  callId: string,
-  entityType: string,
-  entityId: string,
-  actorName: string,
-) => {
-  const sessions = getRawCalls();
-  const idx = sessions.findIndex((s) => s.id === callId);
-  if (idx >= 0) {
-    const session = sessions[idx];
-    const newLink: RecordLink = {
-      id: uuidv4(),
-      entityType: entityType as any,
-      entityId,
-      isPrimary: session.links.length === 0,
-      createdAt: new Date().toISOString(),
-      createdBy: actorName,
-    };
-    session.links.push(newLink);
-    localStorage.setItem(STORAGE_KEY_CALLS(), JSON.stringify(sessions));
-    return session;
-  }
-  return null;
-};
-
-const getRawRequests = (): KCIRequest[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_REQUESTS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const getRequests = async (filters?: {
-  loadId?: string;
-  driverId?: string;
-  openRecordId?: string;
-}): Promise<KCIRequest[]> => {
-  let requests = getRawRequests();
-  if (filters) {
-    if (filters.loadId)
-      requests = requests.filter((r) => r.loadId === filters.loadId);
-    if (filters.driverId)
-      requests = requests.filter((r) => r.driverId === filters.driverId);
-    if (filters.openRecordId)
-      requests = requests.filter(
-        (r) => r.openRecordId === filters.openRecordId,
-      );
-  }
-  return requests;
-};
-
-export const saveRequest = async (request: KCIRequest) => {
-  const requests = getRawRequests();
-  const idx = requests.findIndex((r) => r.id === request.id);
-  if (idx >= 0) requests[idx] = request;
-  else requests.unshift(request);
-  localStorage.setItem(STORAGE_KEY_REQUESTS(), JSON.stringify(requests));
-  return request;
-};
-
-export const updateRequestStatus = async (
-  requestId: string,
-  status: RequestStatus,
-  actor: { id: string; name: string },
-  note?: string,
-  approvedAmount?: number,
-) => {
-  const requests = getRawRequests();
-  const idx = requests.findIndex((r) => r.id === requestId);
-  if (idx >= 0) {
-    const req = requests[idx];
-    const before = req.status;
-    req.status = status;
-    if (status === "APPROVED") {
-      req.approvedBy = actor.name;
-      req.approvedAt = new Date().toISOString();
-      if (approvedAmount !== undefined) req.approvedAmount = approvedAmount;
-    } else if (status === "DENIED") {
-      req.deniedBy = actor.name;
-      req.deniedAt = new Date().toISOString();
-      req.denialReason = note;
-    }
-    req.decisionLog.push({
-      timestamp: new Date().toISOString(),
-      actorId: actor.id,
-      actorName: actor.name,
-      action: `Status changed to ${status}`,
-      beforeState: before,
-      afterState: status,
-      note,
-    });
-    localStorage.setItem(STORAGE_KEY_REQUESTS(), JSON.stringify(requests));
-    return req;
-  }
-  return null;
-};
-
-export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
-  const requests = getRawRequests();
-  return requests
-    .filter((r) =>
-      ["NEW", "PENDING_APPROVAL", "NEEDS_INFO", "DEFERRED"].includes(r.status),
-    )
-    .sort((a, b) => {
-      // High priority first
-      if (a.priority === "HIGH" && b.priority !== "HIGH") return -1;
-      if (a.priority !== "HIGH" && b.priority === "HIGH") return 1;
-      // Then Overdue (not implemented strictly here, but could use dueAt)
-      // Then Oldest
-      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    });
-};
-
 export const getLoadSummary = async (
   loadId: string,
 ): Promise<LoadSummary | null> => {
@@ -1362,14 +1117,14 @@ export const getLoadSummary = async (
   const load = loads.find((l) => l.id === loadId);
   if (!load) return null;
 
-  const requests = getRawRequests().filter((r) => r.loadId === loadId);
+  const requests = _getRawRequests().filter((r) => r.loadId === loadId);
   const unresolved = requests.filter((r) =>
     ["NEW", "PENDING_APPROVAL", "NEEDS_INFO"].includes(r.status),
   );
-  const calls = getRawCalls().filter((c) =>
+  const calls = _getRawCalls().filter((c) =>
     c.links.some((l) => l.entityId === loadId),
   );
-  const messages = (await getMessages()).filter((m) => m.loadId === loadId);
+  const messages = (await _getMessages()).filter((m) => m.loadId === loadId);
   const incidents = (await getIncidents()).filter((i) => i.loadId === loadId);
 
   return {
@@ -1429,14 +1184,14 @@ export const getBrokerSummary = async (brokerId: string) => {
 
   const loads = getRawLoads().filter((l) => l.brokerId === brokerId);
   const loadIds = loads.map((l) => l.id);
-  const requests = getRawRequests().filter((r) =>
+  const requests = _getRawRequests().filter((r) =>
     loadIds.includes(
       r.loadId ||
         r.links.find((lk) => lk.entityType === "LOAD")?.entityId ||
         "",
     ),
   );
-  const calls = getRawCalls().filter((c) =>
+  const calls = _getRawCalls().filter((c) =>
     c.links.some(
       (l) => l.entityId === brokerId || loadIds.includes(l.entityId),
     ),
@@ -1543,8 +1298,8 @@ export const globalSearch = async (
     });
 
   // 3. Search Requests
-  const requests = getRawRequests();
-  requests
+  const srchRequests = _getRawRequests();
+  srchRequests
     .filter(
       (r) => r.id.toLowerCase().includes(q) || r.type.toLowerCase().includes(q),
     )
@@ -1590,12 +1345,12 @@ export const globalSearch = async (
 
 export const getRecord360Data = async (type: EntityType, id: string) => {
   const loads = getRawLoads();
-  const requests = getRawRequests();
-  const calls = getRawCalls();
-  const messages = await getMessages();
+  const requests = _getRawRequests();
+  const calls = _getRawCalls();
+  const messages = await _getMessages();
   const incidents = await getIncidents();
-  const tasks = getRawTasks();
-  const contacts = getRawContacts();
+  const tasks = _getRawTasks();
+  const contacts = _getRawContacts();
 
   const buildTimeline = (events: any[]) => {
     return events.sort(
@@ -1623,7 +1378,7 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
     const driver = getStoredUsers().find((u) => u.id === load?.driverId);
     const broker = getRawBrokers().find((b) => b.id === load?.brokerId);
 
-    const vaultDocs = getRawVaultDocs().filter((d) => d.entityId === id);
+    const vaultDocs = _getRawVaultDocs().filter((d) => d.entityId === id);
 
     const timeline = buildTimeline([
       ...linkedRequests.map((r) => ({
@@ -1778,7 +1533,7 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
     const linkedCalls = calls.filter((c) =>
       c.links.some((l) => l.entityId === id || l.entityId === incident?.loadId),
     );
-    const vaultDocs = getRawVaultDocs().filter(
+    const vaultDocs = _getRawVaultDocs().filter(
       (d) => d.entityId === id || d.entityId === incident?.loadId,
     );
 
@@ -1826,10 +1581,10 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
 };
 
 export const getTriageQueues = async () => {
-  const requests = await getUnresolvedRequests();
+  const requests = await _getUnresolvedRequests();
   const incidents = await getIncidents();
-  const tasks = getRawTasks();
-  const calls = getRawCalls();
+  const tasks = _getRawTasks();
+  const calls = _getRawCalls();
   const loads = getRawLoads();
 
   if (calls.length === 0 && DEMO_MODE) {
@@ -1852,10 +1607,10 @@ export const getTriageQueues = async () => {
         ],
       },
     ];
-    localStorage.setItem(STORAGE_KEY_CALLS(), JSON.stringify(seedCalls));
+    localStorage.setItem(_STORAGE_KEY_CALLS(), JSON.stringify(seedCalls));
   }
 
-  const workItems = await getWorkItems();
+  const workItems = await _getWorkItems();
   if (workItems.length === 0 && DEMO_MODE) {
     const seedWorkItems: WorkItem[] = [
       {
@@ -1886,7 +1641,7 @@ export const getTriageQueues = async () => {
       },
     ];
     localStorage.setItem(
-      STORAGE_KEY_WORK_ITEMS(),
+      _STORAGE_KEY_WORK_ITEMS(),
       JSON.stringify(seedWorkItems),
     );
   }
@@ -1899,7 +1654,7 @@ export const getTriageQueues = async () => {
     ),
     incidents: incidents.filter((i) => i.status !== "Closed"),
     tasks: tasks.filter((t) => t.status === "OPEN"),
-    calls: (await getRawCalls()).filter(
+    calls: _getRawCalls().filter(
       (c) => !["RESOLVED", "COMPLETED"].includes(c.status),
     ),
     atRiskLoads: loads.filter(
@@ -1909,163 +1664,6 @@ export const getTriageQueues = async () => {
     ),
     workItems: finalWorkItems,
   };
-};
-
-// --- Centralized Directory & Tasks ---
-
-export const getRawProviders = (): Provider[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_PROVIDERS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveProvider = async (provider: Provider) => {
-  const providers = getRawProviders();
-  const idx = providers.findIndex((p) => p.id === provider.id);
-  if (idx >= 0) providers[idx] = provider;
-  else providers.unshift(provider);
-  localStorage.setItem(STORAGE_KEY_PROVIDERS(), JSON.stringify(providers));
-  return provider;
-};
-
-export const getRawContacts = (): Contact[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_CONTACTS());
-    const parsed = data ? JSON.parse(data) : [];
-    if (parsed.length === 0 && DEMO_MODE) {
-      const seed: Contact[] = [
-        {
-          id: "c1",
-          name: "John Dispatcher",
-          title: "Senior Operator",
-          phone: "555-0199",
-          email: "john@asset.com",
-          type: "Internal",
-          preferredChannel: "Phone",
-          normalizedPhone: "5550199",
-        },
-        {
-          id: "c2",
-          name: "Sarah Broker",
-          title: "Agent",
-          phone: "555-0288",
-          email: "sarah@choptank.com",
-          type: "Broker",
-          preferredChannel: "SMS",
-          normalizedPhone: "5550288",
-        },
-      ];
-      localStorage.setItem(STORAGE_KEY_CONTACTS(), JSON.stringify(seed));
-      return seed;
-    }
-    if (parsed.length === 0) return [];
-    return parsed;
-  } catch (e) {
-    return [];
-  }
-};
-
-export const getProviders = async (): Promise<Provider[]> => {
-  const providers = getRawProviders();
-  if (providers.length === 0 && DEMO_MODE) {
-    const seed: Provider[] = [
-      {
-        id: "p1",
-        name: "Titan Recovery Specialists",
-        type: "Recovery",
-        status: "Preferred",
-        is247: true,
-        coverage: { regions: ["Northeast", "Mid-Atlantic"] },
-        capabilities: ["Heavy Tow", "Recovery", "Transload"],
-        contacts: [
-          {
-            id: "pc1",
-            name: "Mike Titan",
-            phone: "800-555-9000",
-            email: "mike@titan.com",
-            type: "Provider",
-            preferredChannel: "Phone",
-          },
-        ],
-        afterHoursContacts: [],
-      },
-      {
-        id: "p2",
-        name: "Rapid Tire & Service",
-        type: "Tire",
-        status: "Approved",
-        is247: true,
-        coverage: { regions: ["National"] },
-        capabilities: ["Tire", "Mobile Mechanic"],
-        contacts: [
-          {
-            id: "pc2",
-            name: "Dispatch",
-            phone: "800-RAPID-NOW",
-            email: "service@rapid.com",
-            type: "Provider",
-            preferredChannel: "Phone",
-          },
-        ],
-        afterHoursContacts: [],
-      },
-    ];
-    localStorage.setItem(STORAGE_KEY_PROVIDERS(), JSON.stringify(seed));
-    return seed;
-  }
-  return providers;
-};
-
-export const getContacts = async (): Promise<Contact[]> => {
-  return getRawContacts();
-};
-
-export const saveContact = async (contact: Contact) => {
-  const contacts = getRawContacts();
-  const idx = contacts.findIndex((c) => c.id === contact.id);
-  if (idx >= 0) contacts[idx] = contact;
-  else contacts.unshift(contact);
-  localStorage.setItem(STORAGE_KEY_CONTACTS(), JSON.stringify(contacts));
-  return contact;
-};
-
-export const getRawTasks = (): OperationalTask[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_TASKS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveTask = async (task: OperationalTask) => {
-  const tasks = getRawTasks();
-  const idx = tasks.findIndex((t) => t.id === task.id);
-  if (idx >= 0) tasks[idx] = task;
-  else tasks.unshift(task);
-  localStorage.setItem(STORAGE_KEY_TASKS(), JSON.stringify(tasks));
-  return task;
-};
-
-export const getRawCrisisActions = (): CrisisAction[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_CRISIS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveCrisisAction = async (action: CrisisAction) => {
-  const actions = getRawCrisisActions();
-  const idx = actions.findIndex((a) => a.id === action.id);
-  if (idx >= 0) actions[idx] = action;
-  else actions.unshift(action);
-  localStorage.setItem(STORAGE_KEY_CRISIS(), JSON.stringify(actions));
-  return action;
 };
 
 export const initiateRepowerWorkflow = async (
@@ -2099,7 +1697,7 @@ export const initiateRepowerWorkflow = async (
     dueAt: new Date(Date.now() + 3600000).toISOString(),
     decisionLog: [],
   };
-  await saveRequest(request);
+  await _saveRequest(request);
 
   // 2. Create Task for Dispatch
   const task: OperationalTask = {
@@ -2124,7 +1722,7 @@ export const initiateRepowerWorkflow = async (
     createdAt: new Date().toISOString(),
     createdBy: user.name,
   };
-  await saveTask(task);
+  await _saveTask(task);
 
   // 3. Mark shipment as At Risk (in-memory cache only)
   const idx = _cachedLoads.findIndex((l) => l.id === loadId);
@@ -2171,149 +1769,4 @@ export const verifyTrailerDrop = async (
     }
     _cachedLoads[tvIdx].legs = legs;
   }
-};
-
-export const getDirectory = async () => {
-  return {
-    providers: getRawProviders(),
-    contacts: getRawContacts(),
-  };
-};
-
-export const getRawWorkItems = (): WorkItem[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_WORK_ITEMS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const getWorkItems = async (companyId?: string): Promise<WorkItem[]> => {
-  const items = getRawWorkItems();
-  if (companyId) return items.filter((i) => i.companyId === companyId);
-  return items;
-};
-
-export const saveWorkItem = async (item: WorkItem) => {
-  const items = getRawWorkItems();
-  const idx = items.findIndex((i) => i.id === item.id);
-  if (idx >= 0) items[idx] = item;
-  else items.unshift(item);
-  localStorage.setItem(STORAGE_KEY_WORK_ITEMS(), JSON.stringify(items));
-  return item;
-};
-
-export const getRawServiceTickets = (): ServiceTicket[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_SERVICE_TICKETS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveServiceTicket = async (ticket: ServiceTicket) => {
-  const tickets = getRawServiceTickets();
-  const idx = tickets.findIndex((t) => t.id === ticket.id);
-  if (idx >= 0) tickets[idx] = ticket;
-  else tickets.unshift(ticket);
-  localStorage.setItem(STORAGE_KEY_SERVICE_TICKETS(), JSON.stringify(tickets));
-
-  // Sync to API
-  try {
-    await fetch(`${API_URL}/service-tickets`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(ticket),
-    });
-  } catch (e) {
-    console.warn("[storageService] API fallback:", e);
-  }
-
-  return ticket;
-};
-
-export const getRawNotificationJobs = (): NotificationJob[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_NOTIFICATION_JOBS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveNotificationJob = async (job: NotificationJob) => {
-  const jobs = getRawNotificationJobs();
-  const idx = jobs.findIndex((j) => j.id === job.id);
-  if (idx >= 0) jobs[idx] = job;
-  else jobs.unshift(job);
-  localStorage.setItem(STORAGE_KEY_NOTIFICATION_JOBS(), JSON.stringify(jobs));
-
-  // Sync to API
-  try {
-    await fetch(`${API_URL}/notification-jobs`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(job),
-    });
-  } catch (e) {
-    console.warn("[storageService] API fallback:", e);
-  }
-
-  return job;
-};
-
-// --- Vault / Depository System ---
-
-export const getRawVaultDocs = (): VaultDoc[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_VAULT_DOCS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
-  }
-};
-
-export const saveVaultDoc = async (doc: VaultDoc) => {
-  const docs = getRawVaultDocs();
-  const idx = docs.findIndex((d) => d.id === doc.id);
-  if (idx >= 0) docs[idx] = doc;
-  else docs.unshift(doc);
-  localStorage.setItem(STORAGE_KEY_VAULT_DOCS(), JSON.stringify(docs));
-  return doc;
-};
-
-export const uploadVaultDoc = async (
-  file: File,
-  docType: VaultDocType,
-  tenantId: string,
-  metadata: any = {},
-): Promise<VaultDoc> => {
-  const id = uuidv4();
-  const filename = `${id}_${file.name}`;
-  const storageRef = ref(
-    storage,
-    `tenants/${tenantId}/docs/${docType}/${filename}`,
-  );
-
-  // Upload to Firebase Storage
-  await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(storageRef);
-
-  const doc: VaultDoc = {
-    id,
-    tenantId,
-    type: docType,
-    url,
-    filename: file.name,
-    mimeType: file.type,
-    fileSize: file.size,
-    status: "Submitted",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...metadata,
-  };
-
-  return await saveVaultDoc(doc);
 };

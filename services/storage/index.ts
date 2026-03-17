@@ -1,0 +1,69 @@
+/**
+ * Barrel export for all storage domain modules.
+ * Re-exports everything so consumers can import from "services/storage"
+ * or individual domain modules for reduced coupling.
+ */
+export { getTenantKey, migrateKey } from "./core";
+export { STORAGE_KEY_QUOTES, getQuotes, saveQuote } from "./quotes";
+export { STORAGE_KEY_LEADS, getLeads, saveLead } from "./leads";
+export { STORAGE_KEY_BOOKINGS, getBookings, saveBooking } from "./bookings";
+export {
+  STORAGE_KEY_MESSAGES,
+  STORAGE_KEY_THREADS,
+  getMessages,
+  saveMessage,
+  getThreads,
+  saveThread,
+} from "./messages";
+export {
+  STORAGE_KEY_CALLS,
+  getRawCalls,
+  saveCallSession,
+  attachToRecord,
+  linkSessionToRecord,
+} from "./calls";
+export {
+  STORAGE_KEY_TASKS,
+  STORAGE_KEY_WORK_ITEMS,
+  getRawTasks,
+  saveTask,
+  getRawWorkItems,
+  getWorkItems,
+  saveWorkItem,
+} from "./tasks";
+export {
+  STORAGE_KEY_CRISIS,
+  STORAGE_KEY_REQUESTS,
+  STORAGE_KEY_SERVICE_TICKETS,
+  getRawCrisisActions,
+  saveCrisisAction,
+  getRawRequests,
+  getRequests,
+  saveRequest,
+  updateRequestStatus,
+  getUnresolvedRequests,
+  getRawServiceTickets,
+  saveServiceTicket,
+} from "./recovery";
+export {
+  STORAGE_KEY_CONTACTS,
+  STORAGE_KEY_PROVIDERS,
+  getRawProviders,
+  saveProvider,
+  getProviders,
+  getRawContacts,
+  getContacts,
+  saveContact,
+  getDirectory,
+} from "./directory";
+export {
+  STORAGE_KEY_VAULT_DOCS,
+  getRawVaultDocs,
+  saveVaultDoc,
+  uploadVaultDoc,
+} from "./vault";
+export {
+  STORAGE_KEY_NOTIFICATION_JOBS,
+  getRawNotificationJobs,
+  saveNotificationJob,
+} from "./notifications";

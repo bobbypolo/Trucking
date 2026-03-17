@@ -153,7 +153,7 @@ export const Settlements: React.FC<Props> = ({
 
     const settlement: Partial<DriverSettlement> = {
       id: uuidv4(),
-      tenantId: "KCI-USA",
+      tenantId: currentUser?.companyId || "",
       driverId: user.id,
       settlementDate: new Date().toISOString(),
       periodStart: dateRange.start,
@@ -201,7 +201,7 @@ export const Settlements: React.FC<Props> = ({
     // in demo mode a placeholder URL is used for illustration.
     await uploadToVault({
       id: docId,
-      tenantId: "KCI-USA",
+      tenantId: currentUser?.companyId || "",
       type: "Statement",
       filename: `Statement_${user.name.replace(" ", "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
       url: DEMO_MODE ? "https://example.com/demo-statement.pdf" : "",

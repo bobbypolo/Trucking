@@ -4,10 +4,12 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createPartySchema } from "../schemas/parties";
+import { createClientSchema } from "../schemas/client";
 import pool from "../db";
 import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
+import { ForbiddenError } from "../errors/AppError";
 
 const router = Router();
 
@@ -39,7 +41,27 @@ router.post(
   "/api/clients",
   requireAuth,
   requireTenant,
+  validateBody(createClientSchema),
   async (req: any, res) => {
+    const tenantId = req.user!.tenantId;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/clients",
+    });
+
+    // Security: reject body with foreign company_id
+    if (req.body.company_id && req.body.company_id !== tenantId) {
+      log.warn(
+        {
+          bodyCompanyId: req.body.company_id,
+          authTenantId: tenantId,
+        },
+        "Cross-tenant client creation attempt blocked",
+      );
+      res.status(403).json({ error: "company_id mismatch" });
+      return;
+    }
+
     const {
       id,
       name,
@@ -50,14 +72,17 @@ router.post(
       phone,
       address,
       payment_terms,
-      company_id,
       chassis_requirements,
     } = req.body;
+
+    // Server derives company_id exclusively from auth context
+    const companyId = tenantId;
+
     try {
       await pool.query(
         "REPLACE INTO customers (id, name, type, mc_number, dot_number, email, phone, address, payment_terms, company_id, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-          id,
+          id || uuidv4(),
           name,
           type,
           mc_number,
@@ -66,16 +91,12 @@ router.post(
           phone,
           address,
           payment_terms,
-          company_id,
+          companyId,
           JSON.stringify(chassis_requirements),
         ],
       );
       res.status(201).json({ message: "Client saved" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/clients",
-      });
       log.error({ err: error }, "SERVER ERROR [POST /api/clients]");
       res.status(500).json({ error: "Database error" });
     }

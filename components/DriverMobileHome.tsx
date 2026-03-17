@@ -300,7 +300,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 Unit #
               </div>
               <div className="text-xs font-black text-white">
-                {selectedLoad.truckNumber || "Default-01"}
+                {selectedLoad.truckNumber || "Unassigned"}
               </div>
             </div>
           </div>
@@ -732,7 +732,9 @@ export const DriverMobileHome: React.FC<Props> = ({
                       Assigned Truck
                     </div>
                     <div className="text-xs text-slate-600 font-bold uppercase">
-                      Unit: 4022A
+                      {activeLoads.length > 0 && activeLoads[0].truckNumber
+                        ? `Unit: ${activeLoads[0].truckNumber}`
+                        : "No truck assigned"}
                     </div>
                   </div>
                 </div>
