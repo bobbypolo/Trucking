@@ -1,4 +1,4 @@
-// Tests R-P1-14
+// Tests R-P1-14, R-S31-01, R-S31-02
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
@@ -15,5 +15,15 @@ describe("CustomerPortalView.tsx jargon removal (R-P1-14)", () => {
 
   it('does not contain "Tracking Master-ID"', () => {
     expect(source).not.toContain("Tracking Master-ID");
+  });
+});
+
+describe("CustomerPortalView.tsx honest tracking labels (R-S31-01, R-S31-02)", () => {
+  it('does not contain misleading "View Live Track" button label', () => {
+    expect(source).not.toContain("View Live Track");
+  });
+
+  it('uses honest "View Tracking" label instead', () => {
+    expect(source).toContain("View Tracking");
   });
 });
