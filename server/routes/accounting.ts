@@ -779,6 +779,15 @@ router.post(
   async (req: any, res) => {
     const { pings, mode } = req.body; // mode: 'GPS' | 'ROUTES'
 
+    if (!Array.isArray(pings) || pings.length > 10_000) {
+      res.status(400).json({
+        error:
+          "pings must be an array with at most 10,000 items. Received: " +
+          (Array.isArray(pings) ? pings.length + " items" : typeof pings),
+      });
+      return;
+    }
+
     if (mode === "GPS") {
       const jurisdictionMiles: any = {};
       for (let i = 1; i < pings.length; i++) {
@@ -1149,30 +1158,15 @@ router.post(
   },
 );
 
-// QB Sync Placeholder
+// QB Sync — not yet implemented
 router.post(
   "/api/accounting/sync-qb",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const tenantId = req.user.tenantId;
-    const { entityType, entityId } = req.body;
-    try {
-      const syncId = uuidv4();
-      await pool.query(
-        "INSERT INTO sync_qb_log (id, tenant_id, entity_type, entity_id, status, error_message) VALUES (?, ?, ?, ?, ?, ?)",
-        [syncId, tenantId, entityType, entityId, "Pending", null],
-      );
-      // In a real scenario, we would trigger the QB SDK/API here
-      res.json({ message: "Sync queued", syncId });
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/accounting/sync-qb",
-      });
-      log.error({ err: error }, "SERVER ERROR [POST /api/accounting/sync-qb]");
-      res.status(500).json({ error: "Database error" });
-    }
+  (_req: any, res: any) => {
+    res
+      .status(501)
+      .json({ error: "QuickBooks integration is not yet available." });
   },
 );
 
