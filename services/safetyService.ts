@@ -9,8 +9,6 @@ import {
   Company,
   FleetEquipment,
   ActivityLogEntry,
-  RemovalReason,
-  QuizQuestion,
   ServiceTicket,
   Provider,
 } from "../types";
@@ -309,163 +307,10 @@ export const updateEquipmentStatus = (
   updateCompany({ ...company, equipmentRegistry: registry });
 };
 
-export const seedSafetyData = (force = false) => {
-  if (!force && localStorage.getItem(QUIZZES_KEY())) return;
-
-  // Seed Vendors
-  const initialVendors: Provider[] = [
-    {
-      id: "v-101",
-      name: "Elite Truck & Trailer Repair",
-      type: "Mobile Mechanic",
-      coverage: { regions: ["Midwest"], radius: 100 },
-      capabilities: ["Engine", "Electrical", "Reefer"],
-      contacts: [
-        {
-          id: "c1",
-          name: "Bill",
-          phone: "312-555-0100",
-          email: "bill@elitetruck.com",
-          type: "Provider",
-          preferredChannel: "Phone",
-          normalizedPhone: "3125550199",
-        },
-      ],
-      afterHoursContacts: [],
-      status: "Preferred",
-      notes: "Fast response in Chicago area.",
-    },
-    {
-      id: "v-102",
-      name: "Roadside Recovery Pros",
-      type: "Tow",
-      coverage: { regions: ["National"], radius: 500 },
-      capabilities: ["Heavy Tow", "Recovery", "Hazmat"],
-      contacts: [
-        {
-          id: "c2",
-          name: "Scheduling",
-          phone: "800-555-9000",
-          email: "ops@roadside.com",
-          type: "Provider",
-          preferredChannel: "Phone",
-          normalizedPhone: "8005559000",
-        },
-      ],
-      afterHoursContacts: [],
-      status: "Approved",
-    },
-    {
-      id: "v-103",
-      name: "Salina Heavy Towing",
-      type: "Tow",
-      coverage: { regions: ["Kansas", "Nebraska"], radius: 200 },
-      capabilities: ["Heavy Tow", "Recovery"],
-      contacts: [
-        {
-          id: "c3",
-          name: "Mike",
-          phone: "785-555-0122",
-          email: "mike@salinatow.com",
-          type: "Provider",
-          preferredChannel: "Phone",
-          normalizedPhone: "7855550122",
-        },
-      ],
-      afterHoursContacts: [],
-      status: "Preferred",
-    },
-  ];
-  localStorage.setItem(VENDORS_KEY(), JSON.stringify(initialVendors));
-
-  // Seed Quizzes
-  const initialQuizzes: SafetyQuiz[] = [
-    {
-      id: "quiz-winter-2025",
-      title: "Winter Operations 2025",
-      description: "Chaining procedures and low-temp air brake maintenance.",
-      isMandatory: true,
-      assignedTo: ["all"],
-      createdAt: new Date().toISOString(),
-      questions: [
-        {
-          id: "q1",
-          text: "At what temperature should you begin cold-weather air tank draining?",
-          options: [
-            "Below 32°F",
-            "Below 0°F",
-            "Every trip",
-            "Only during blizzards",
-          ],
-          correctIndex: 0,
-        },
-        {
-          id: "q2",
-          text: "Which axle should chains be applied to first on a single-drive tractor?",
-          options: ["Steer", "Drive", "Trailer", "None"],
-          correctIndex: 1,
-        },
-      ],
-    },
-    {
-      id: "quiz-hos-refresher",
-      title: "HOS Compliance Refresher",
-      description: "Recent changes to split-sleeper berth rules.",
-      isMandatory: true,
-      assignedTo: ["all"],
-      createdAt: new Date().toISOString(),
-      questions: [
-        {
-          id: "q1",
-          text: "What is the minimum hours required in the sleeper berth for a 7/3 split?",
-          options: ["2 hours", "7 hours", "8 hours", "10 hours"],
-          correctIndex: 1,
-        },
-      ],
-    },
-  ];
-  localStorage.setItem(QUIZZES_KEY(), JSON.stringify(initialQuizzes));
-
-  // Seed Quiz Results (Academy Data)
-  const initialResults: QuizResult[] = [
-    {
-      id: uuidv4(),
-      quizId: "quiz-winter-2025",
-      driverId: "drv-001",
-      score: 100,
-      passed: true,
-      completedAt: new Date().toISOString(),
-    },
-  ];
-  localStorage.setItem(QUIZ_RESULTS_KEY(), JSON.stringify(initialResults));
-
-  // Seed Service Tickets
-  const initialTickets: ServiceTicket[] = [
-    {
-      id: uuidv4(),
-      unitId: "TR-101",
-      type: "Breakdown",
-      status: "In_Progress",
-      priority: "Critical",
-      description: "Engine derated. Active fault code: SPN 641 FMI 9.",
-      estimatedCost: 1200,
-      assignedVendorId: "v-101",
-      eta: "45 mins",
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: uuidv4(),
-      unitId: "Trailer 5001",
-      type: "Tire",
-      status: "Open",
-      priority: "High",
-      description: "Flat tire reported by driver during pre-trip.",
-      estimatedCost: 450,
-      assignedVendorId: "v-103",
-      createdAt: new Date(Date.now() - 7200000).toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
-  localStorage.setItem(TICKETS_KEY(), JSON.stringify(initialTickets));
+/**
+ * @deprecated No-op. Seed data removed — safety module starts empty until
+ * real vendors, quizzes, and tickets are created by users.
+ */
+export const seedSafetyData = (_force = false) => {
+  // Intentionally empty — no seed data should be injected.
 };
