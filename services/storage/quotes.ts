@@ -1,23 +1,53 @@
 /**
- * Quotes domain — localStorage CRUD.
- * Owner: STORY-012 (Phase 2 migration to server).
+ * Quotes domain — server-backed CRUD via /api/quotes.
+ * STORY-012: browser storage removed. All reads/writes go through the API.
  */
 import { Quote } from "../../types";
-import { getTenantKey } from "./core";
+import { API_URL } from "../config";
+import { getAuthHeaders } from "../authService";
 
-export const STORAGE_KEY_QUOTES = (): string => getTenantKey("quotes_v1");
-
-export const getQuotes = async (companyId: string): Promise<Quote[]> => {
-  const data = localStorage.getItem(STORAGE_KEY_QUOTES());
-  const quotes: Quote[] = data ? JSON.parse(data) : [];
-  return quotes.filter((q) => q.companyId === companyId);
+/**
+ * Fetch all quotes for the current tenant from GET /api/quotes.
+ */
+export const getQuotes = async (): Promise<Quote[]> => {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/quotes`, { headers });
+  if (!res.ok) {
+    throw new Error(`GET /api/quotes failed: ${res.status}`);
+  }
+  return res.json();
 };
 
-export const saveQuote = async (quote: Quote) => {
-  const data = localStorage.getItem(STORAGE_KEY_QUOTES());
-  let quotes: Quote[] = data ? JSON.parse(data) : [];
-  const idx = quotes.findIndex((q) => q.id === quote.id);
-  if (idx >= 0) quotes[idx] = quote;
-  else quotes.unshift(quote);
-  localStorage.setItem(STORAGE_KEY_QUOTES(), JSON.stringify(quotes));
+/**
+ * Create or update a quote via POST (new) or PATCH (existing).
+ * The server owns the source of truth; we pass the full payload.
+ */
+export const saveQuote = async (quote: Quote): Promise<Quote> => {
+  const headers = await getAuthHeaders();
+
+  // Try PATCH first; server returns 404 if not found, then we POST.
+  const patchRes = await fetch(`${API_URL}/quotes/${quote.id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(quote),
+  });
+
+  if (patchRes.ok) {
+    return patchRes.json();
+  }
+
+  // If 404 (not found on server), create via POST
+  if (patchRes.status === 404) {
+    const postRes = await fetch(`${API_URL}/quotes`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(quote),
+    });
+    if (!postRes.ok) {
+      throw new Error(`POST /api/quotes failed: ${postRes.status}`);
+    }
+    return postRes.json();
+  }
+
+  throw new Error(`PATCH /api/quotes/${quote.id} failed: ${patchRes.status}`);
 };

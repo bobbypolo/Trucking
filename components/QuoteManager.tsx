@@ -77,7 +77,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
     setLoading(true);
     try {
       const [q, l, b, w] = await Promise.all([
-        getQuotes(user.companyId),
+        getQuotes(),
         getLeads(user.companyId),
         getBookings(user.companyId),
         getWorkItems(user.companyId),
