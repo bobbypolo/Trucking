@@ -138,6 +138,12 @@ describe("GET /api/providers — success", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
+
+    // Verify SQL query includes tenant isolation
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("company_id"),
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns empty array when no providers exist", async () => {
@@ -228,6 +234,13 @@ describe("POST /api/providers — creation", () => {
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("pv-new");
     expect(res.body.name).toBe("New Provider");
+
+    // Verify INSERT received tenant ID and field values
+    const insertCall = mockQuery.mock.calls[0];
+    expect(insertCall[0]).toMatch(/INSERT/i);
+    expect(insertCall[1]).toEqual(
+      expect.arrayContaining(["company-aaa", "New Provider"]),
+    );
   });
 
   it("returns 201 with all optional fields including JSON data", async () => {
@@ -461,6 +474,13 @@ describe("PATCH /api/providers/:id — update", () => {
       });
 
     expect(res.status).toBe(200);
+    // Verify response body contains updated JSON fields
+    expect(res.body.coverage).toBe('["TX","OK"]');
+    expect(res.body.capabilities).toBe('["heavy-duty"]');
+
+    // Verify UPDATE query was issued
+    const updateCall = mockQuery.mock.calls[1];
+    expect(updateCall[0]).toMatch(/UPDATE/i);
   });
 
   it("returns 500 on database error during update", async () => {

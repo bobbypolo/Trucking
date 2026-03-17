@@ -203,15 +203,18 @@ describe("GET /api/tasks — success", () => {
   it("supports pagination via page and limit query params", async () => {
     mockQuery.mockResolvedValueOnce([[], []]);
 
+    // Use page=3, limit=15 so offset=30 — distinct values for unambiguous assertions
     const res = await request(app)
-      .get("/api/tasks?page=2&limit=10")
+      .get("/api/tasks?page=3&limit=15")
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(200);
-    // Verify query uses correct offset (page 2, limit 10 => offset 10)
     const queryCall = mockQuery.mock.calls[0];
-    expect(queryCall[1]).toContain(10); // limit
-    expect(queryCall[1]).toContain(10); // offset = (2-1)*10
+    const params = queryCall[1] as unknown[];
+    expect(queryCall[0]).toMatch(/LIMIT/i);
+    expect(params).toContain("company-aaa"); // tenant isolation
+    expect(params).toContain(15); // limit
+    expect(params).toContain(30); // offset = (3-1)*15
   });
 
   it("returns 500 on database error", async () => {

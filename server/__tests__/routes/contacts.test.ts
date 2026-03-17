@@ -138,6 +138,12 @@ describe("GET /api/contacts — success", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
+
+    // Verify SQL query includes tenant isolation
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("company_id"),
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns empty array when no contacts exist", async () => {
@@ -228,6 +234,13 @@ describe("POST /api/contacts — creation", () => {
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("ct-new");
     expect(res.body.name).toBe("New Contact");
+
+    // Verify INSERT received tenant ID and field values
+    const insertCall = mockQuery.mock.calls[0];
+    expect(insertCall[0]).toMatch(/INSERT/i);
+    expect(insertCall[1]).toEqual(
+      expect.arrayContaining(["company-aaa", "New Contact"]),
+    );
   });
 
   it("returns 201 with all optional fields", async () => {
@@ -373,6 +386,10 @@ describe("PATCH /api/contacts/:id — update", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.name).toBe("New Name");
+
+    // Verify UPDATE query received correct parameters
+    const updateCall = mockQuery.mock.calls[1];
+    expect(updateCall[0]).toMatch(/UPDATE/i);
   });
 
   it("returns 404 for cross-tenant update attempt (conceals existence)", async () => {

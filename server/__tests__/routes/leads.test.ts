@@ -138,6 +138,12 @@ describe("GET /api/leads — success", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
+
+    // Verify SQL query includes tenant isolation
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("company_id"),
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns empty array when no leads exist", async () => {
@@ -295,6 +301,13 @@ describe("POST /api/leads — creation", () => {
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("ld-new");
     expect(res.body.status).toBe("New");
+
+    // Verify INSERT received tenant ID and field values
+    const insertCall = mockQuery.mock.calls[0];
+    expect(insertCall[0]).toMatch(/INSERT/i);
+    expect(insertCall[1]).toEqual(
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns 201 with minimal data (defaults status to New)", async () => {
@@ -515,6 +528,7 @@ describe("PATCH /api/leads/:id — update", () => {
       .send({ status: "Contacted" });
 
     expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Database error");
   });
 });
 

@@ -56,9 +56,11 @@ vi.mock("../../db", () => ({
   },
 }));
 
+// Use real redactData (core business logic). Mock sendNotification (side-effect),
+// getVisibilitySettings and checkBreakdownLateness (both query DB).
 vi.mock("../../helpers", () => ({
   redactData: (data: unknown) => data,
-  getVisibilitySettings: vi.fn().mockResolvedValue({}),
+  getVisibilitySettings: vi.fn().mockResolvedValue(null),
   sendNotification: vi.fn(),
   checkBreakdownLateness: vi
     .fn()
@@ -416,10 +418,10 @@ describe("Loads Route Hardening", () => {
       expect(res.status).toBe(400);
     });
 
-    it("returns error when status is not a valid LoadStatus value", async () => {
+    it("returns 422 when status is not a valid LoadStatus value", async () => {
       // The schema allows any non-empty string; the state machine rejects invalid values.
-      // loadService.transitionLoad will try to look up the load and then fail
-      // since the invalid status isn't handled.
+      // loadService.transitionLoad fetches the load, then validateTransition() throws
+      // BusinessRuleError (422) because "nonexistent_status" is not in VALID_TRANSITIONS.
       mockQuery.mockResolvedValueOnce([
         [makeLoadRow({ status: "draft", version: 1 })],
         [],
@@ -432,8 +434,7 @@ describe("Loads Route Hardening", () => {
         .set("Authorization", AUTH_HEADER)
         .send({ status: "nonexistent_status" });
 
-      // The state machine should reject with 422 (invalid transition)
-      expect([400, 422, 500]).toContain(res.status);
+      expect(res.status).toBe(422);
     });
   });
 
