@@ -1,7 +1,6 @@
 import { API_URL } from "./config";
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
-import { DEMO_MODE } from "./firebase";
 
 const BROKERS_KEY = "loadpilot_brokers_v1";
 
@@ -116,13 +115,7 @@ export const saveContract = async (contract: Contract) => {
   }
 };
 
-// Simulate checking FMCSA safety score (demo only)
-export const checkSafetyScore = (mcNumber: string): number | null => {
-  if (!DEMO_MODE) return null;
-  // Deterministic "random" score based on MC number for demo consistency
-  const seed = mcNumber
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  // Generate a score between 65 and 99
-  return 65 + (seed % 35);
+// FMCSA safety score lookup — returns null until real integration is built
+export const checkSafetyScore = (_mcNumber: string): null => {
+  return null;
 };

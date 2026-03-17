@@ -249,7 +249,7 @@ export const BrokerManager: React.FC<Props> = ({
                     </span>
                     <span className="flex items-center gap-1 text-blue-500/80">
                       <ShieldCheck className="w-3 h-3" /> Score:{" "}
-                      {broker.safetyScore || 85}
+                      {broker.safetyScore ?? "N/A"}
                     </span>
                   </div>
                 </div>
