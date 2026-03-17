@@ -1,6 +1,7 @@
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConnectionBanner from "./components/ui/ConnectionBanner";
+import { Toast } from "./components/Toast";
 import {
   onUserChange,
   logout,
@@ -274,6 +275,10 @@ export default function App() {
     splitView: { enabled: false },
   });
   const [summary, setSummary] = useState<any>(null);
+  const [refreshToast, setRefreshToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
 
   useEffect(() => {
     if (features.seedSystem && DEMO_MODE) {
@@ -303,16 +308,8 @@ export default function App() {
     };
   }, []);
 
-  const refreshData = async (currentUser: User) => {
-    const [
-      fetchedLoads,
-      fetchedBrokers,
-      fetchedUsers,
-      fetchedCompany,
-      fetchedEvents,
-      fetchedLogs,
-      fetchedIncidents,
-    ] = await Promise.all([
+  const refreshData = useCallback(async (currentUser: User) => {
+    const results = await Promise.allSettled([
       getLoads(currentUser),
       getBrokers(currentUser.companyId),
       getCompanyUsers(currentUser.companyId),
@@ -322,22 +319,56 @@ export default function App() {
       getIncidents(),
     ]);
 
-    setLoads(fetchedLoads);
-    setBrokers(fetchedBrokers);
-    setCompany(fetchedCompany || null);
-    setDispatchEvents(fetchedEvents);
-    setTimeLogs(fetchedLogs);
-    setIncidents(fetchedIncidents);
+    const [
+      loadsResult,
+      brokersResult,
+      usersResult,
+      companyResult,
+      eventsResult,
+      logsResult,
+      incidentsResult,
+    ] = results;
+
+    // Apply each result, falling back to current state on failure
+    setLoads((prev) =>
+      loadsResult.status === "fulfilled" ? loadsResult.value : prev,
+    );
+    setBrokers((prev) =>
+      brokersResult.status === "fulfilled" ? brokersResult.value : prev,
+    );
+    setCompany((prev) =>
+      companyResult.status === "fulfilled" ? companyResult.value || null : prev,
+    );
+    setDispatchEvents((prev) =>
+      eventsResult.status === "fulfilled" ? eventsResult.value : prev,
+    );
+    setTimeLogs((prev) =>
+      logsResult.status === "fulfilled" ? logsResult.value : prev,
+    );
+    setIncidents((prev) =>
+      incidentsResult.status === "fulfilled" ? incidentsResult.value : prev,
+    );
     if (
       ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
         currentUser.role,
       )
     ) {
-      setCompanyUsers(fetchedUsers);
+      setCompanyUsers((prev) =>
+        usersResult.status === "fulfilled" ? usersResult.value : prev,
+      );
     } else {
       setCompanyUsers([currentUser]);
     }
-  };
+
+    // Show toast if any calls failed
+    const failures = results.filter((r) => r.status === "rejected");
+    if (failures.length > 0) {
+      setRefreshToast({
+        message: "Some data could not be loaded. Please retry.",
+        type: "error",
+      });
+    }
+  }, []);
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
@@ -1232,6 +1263,14 @@ export default function App() {
     <ErrorBoundary>
       <div className="h-screen w-screen overflow-hidden bg-slate-950">
         <ConnectionBanner onRetry={() => user && refreshData(user)} />
+        {refreshToast && (
+          <Toast
+            message={refreshToast.message}
+            type={refreshToast.type}
+            onDismiss={() => setRefreshToast(null)}
+            duration={6000}
+          />
+        )}
         {mainContent}
         {globalOverlays}
         {user && (
