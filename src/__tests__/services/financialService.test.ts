@@ -54,7 +54,9 @@ describe("financialService", () => {
       const pl = await getLoadProfitLoss("load-1");
       expect(pl.revenue).toBe(5000);
       expect(pl.costs).toBe(3000);
-      expect((globalThis.fetch as any).mock.calls[0][0]).toContain("load-pl/load-1");
+      expect((globalThis.fetch as any).mock.calls[0][0]).toContain(
+        "load-pl/load-1",
+      );
     });
   });
 
@@ -66,7 +68,9 @@ describe("financialService", () => {
 
       const settlements = await getSettlements();
       expect(settlements).toHaveLength(1);
-      expect((globalThis.fetch as any).mock.calls[0][0]).not.toContain("driverId");
+      expect((globalThis.fetch as any).mock.calls[0][0]).not.toContain(
+        "driverId",
+      );
     });
 
     it("fetches driver-specific settlements", async () => {
@@ -76,7 +80,9 @@ describe("financialService", () => {
 
       const settlements = await getSettlements("d1");
       expect(settlements).toHaveLength(1);
-      expect((globalThis.fetch as any).mock.calls[0][0]).toContain("driverId=d1");
+      expect((globalThis.fetch as any).mock.calls[0][0]).toContain(
+        "driverId=d1",
+      );
     });
   });
 
@@ -144,7 +150,9 @@ describe("financialService", () => {
       } as any);
 
       await getMileageEntries("t1");
-      expect((globalThis.fetch as any).mock.calls[0][0]).toContain("truckId=t1");
+      expect((globalThis.fetch as any).mock.calls[0][0]).toContain(
+        "truckId=t1",
+      );
     });
   });
 
@@ -156,7 +164,9 @@ describe("financialService", () => {
 
       const evidence = await getIFTAEvidence("l1");
       expect(evidence).toHaveLength(1);
-      expect((globalThis.fetch as any).mock.calls[0][0]).toContain("ifta-evidence/l1");
+      expect((globalThis.fetch as any).mock.calls[0][0]).toContain(
+        "ifta-evidence/l1",
+      );
     });
   });
 
@@ -168,7 +178,10 @@ describe("financialService", () => {
         json: () => Promise.resolve(mockInvoice),
       } as any);
 
-      const result = await createARInvoice({ loadId: "l1", totalAmount: 3000 } as any);
+      const result = await createARInvoice({
+        loadId: "l1",
+        totalAmount: 3000,
+      } as any);
       expect(result.id).toBe("inv-new");
 
       const fetchCall = (globalThis.fetch as any).mock.calls[0];
@@ -193,7 +206,9 @@ describe("financialService", () => {
         json: () => Promise.resolve({ id: "je-1" }),
       } as any);
 
-      const result = await createJournalEntry({ description: "Test entry" } as any);
+      const result = await createJournalEntry({
+        description: "Test entry",
+      } as any);
       expect(result.id).toBe("je-1");
     });
   });
@@ -211,7 +226,9 @@ describe("financialService", () => {
 
   describe("importFuelPurchases", () => {
     it("posts fuel purchase array", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({} as any);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue({} as any);
 
       await importFuelPurchases([
         { gallons: 100, amount: 350, state: "IL" },
@@ -247,7 +264,9 @@ describe("financialService", () => {
 
   describe("postIFTAToLedger", () => {
     it("posts IFTA data to ledger", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({} as any);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue({} as any);
 
       await postIFTAToLedger({ quarter: 1, year: 2026, netTaxDue: 250 });
 
@@ -279,10 +298,113 @@ describe("financialService", () => {
     });
   });
 
+  // ─── Error handling ──────────────────────────────────────────────────
+  describe("error handling", () => {
+    describe("network errors (fetch throws TypeError)", () => {
+      it("propagates network error from getGLAccounts", async () => {
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(
+          new TypeError("Failed to fetch"),
+        );
+
+        await expect(getGLAccounts()).rejects.toThrow("Failed to fetch");
+      });
+
+      it("propagates network error from createARInvoice", async () => {
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(
+          new TypeError("Network request failed"),
+        );
+
+        await expect(
+          createARInvoice({ loadId: "l1", totalAmount: 3000 } as any),
+        ).rejects.toThrow("Network request failed");
+      });
+
+      it("propagates network error from getSettlements", async () => {
+        vi.spyOn(globalThis, "fetch").mockRejectedValue(
+          new TypeError("ERR_CONNECTION_REFUSED"),
+        );
+
+        await expect(getSettlements()).rejects.toThrow(
+          "ERR_CONNECTION_REFUSED",
+        );
+      });
+    });
+
+    describe("HTTP error responses (non-2xx status)", () => {
+      it("does not throw on 500 response from getInvoices (no status check)", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ error: "Internal Server Error" }),
+        } as any);
+
+        // financialService does not check response.ok, so it returns the body
+        const result = await getInvoices();
+        expect(result).toEqual({ error: "Internal Server Error" });
+      });
+
+      it("does not throw on 403 response from getLoadProfitLoss (no status check)", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          ok: false,
+          status: 403,
+          json: () => Promise.resolve({ error: "Forbidden" }),
+        } as any);
+
+        const result = await getLoadProfitLoss("load-1");
+        expect(result).toEqual({ error: "Forbidden" });
+      });
+
+      it("does not throw on 404 response from getIFTAEvidence (no status check)", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          ok: false,
+          status: 404,
+          json: () => Promise.resolve({ error: "Not Found" }),
+        } as any);
+
+        const result = await getIFTAEvidence("nonexistent");
+        expect(result).toEqual({ error: "Not Found" });
+      });
+    });
+
+    describe("malformed JSON responses", () => {
+      it("throws when getGLAccounts response has invalid JSON", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          json: () => Promise.reject(new SyntaxError("Unexpected token")),
+        } as any);
+
+        await expect(getGLAccounts()).rejects.toThrow("Unexpected token");
+      });
+
+      it("throws when createSettlement response has invalid JSON", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          json: () =>
+            Promise.reject(new SyntaxError("Unexpected end of JSON input")),
+        } as any);
+
+        await expect(
+          createSettlement({ driverId: "d1" } as any),
+        ).rejects.toThrow("Unexpected end of JSON input");
+      });
+
+      it("throws when analyzeIFTA response has invalid JSON", async () => {
+        vi.spyOn(globalThis, "fetch").mockResolvedValue({
+          json: () =>
+            Promise.reject(new SyntaxError("JSON.parse: unexpected character")),
+        } as any);
+
+        await expect(analyzeIFTA({ pings: [], mode: "GPS" })).rejects.toThrow(
+          "JSON.parse: unexpected character",
+        );
+      });
+    });
+  });
+
   // ─── PATCH endpoints ─────────────────────────────────────────────────
   describe("updateDocStatus", () => {
     it("patches doc status", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({} as any);
+      const fetchSpy = vi
+        .spyOn(globalThis, "fetch")
+        .mockResolvedValue({} as any);
 
       await updateDocStatus("doc-1", "approved", true, "admin");
 
