@@ -45,6 +45,7 @@ import tasksRouter from "./routes/tasks";
 import kciRequestsRouter from "./routes/kci-requests";
 import crisisActionsRouter from "./routes/crisis-actions";
 import serviceTicketsRouter from "./routes/service-tickets";
+import healthRouter from "./routes/health";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -59,6 +60,10 @@ app.use(express.json());
 app.use(correlationId);
 app.use(metricsMiddleware);
 
+// Health check — unauthenticated, used by load balancers; registered before rate limiter
+// so high-frequency polling from GCP/ALB does not consume rate-limit budget.
+app.use(healthRouter);
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
@@ -67,14 +72,6 @@ const apiLimiter = rateLimit({
   message: { message: "Too many requests, please try again later." },
 });
 app.use("/api", apiLimiter);
-
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    message: "LoadPilot API is running",
-    database: "MySQL + Firebase",
-  });
-});
 
 app.use(usersRouter);
 app.use(loadsRouter);
