@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS operational_tasks (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
+  archived_at DATETIME NULL,
   INDEX idx_tasks_company (company_id),
   INDEX idx_tasks_status (company_id, status),
   FOREIGN KEY (company_id) REFERENCES companies(id)
@@ -35,6 +37,9 @@ CREATE TABLE IF NOT EXISTS work_items (
   entity_id VARCHAR(36),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  created_by VARCHAR(36),
+  updated_by VARCHAR(36),
+  archived_at DATETIME NULL,
   INDEX idx_work_items_company (company_id),
   INDEX idx_work_items_status (company_id, status),
   FOREIGN KEY (company_id) REFERENCES companies(id)

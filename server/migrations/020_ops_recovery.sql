@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS crisis_actions (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
   INDEX idx_crisis_company (company_id),
   FOREIGN KEY (company_id) REFERENCES companies(id)
   -- NOTE: crisis_actions are NEVER deletable per retention policy
@@ -46,6 +47,7 @@ CREATE TABLE IF NOT EXISTS kci_requests (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
   INDEX idx_kci_company (company_id),
   INDEX idx_kci_status (company_id, status),
   FOREIGN KEY (company_id) REFERENCES companies(id)
@@ -65,6 +67,8 @@ CREATE TABLE IF NOT EXISTS service_tickets (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
+  archived_at DATETIME NULL,
   INDEX idx_service_tickets_company (company_id),
   FOREIGN KEY (company_id) REFERENCES companies(id)
 );

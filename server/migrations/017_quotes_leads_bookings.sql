@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
   updated_by VARCHAR(36),
+  archived_at DATETIME NULL,
   INDEX idx_bookings_company (company_id),
   INDEX idx_bookings_status (company_id, status),
   FOREIGN KEY (company_id) REFERENCES companies(id)

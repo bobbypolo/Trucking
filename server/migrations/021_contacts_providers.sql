@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS contacts (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
   archived_at DATETIME NULL,
   INDEX idx_contacts_company (company_id),
   FOREIGN KEY (company_id) REFERENCES companies(id)
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS providers (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   created_by VARCHAR(36),
+  updated_by VARCHAR(36),
   archived_at DATETIME NULL,
   INDEX idx_providers_company (company_id),
   FOREIGN KEY (company_id) REFERENCES companies(id)
