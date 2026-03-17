@@ -122,6 +122,9 @@ import { DetentionService } from "../services/detentionService";
 import { checkCapability } from "../services/authService";
 import { Company as CompanyType } from "../types";
 import { features } from "../config/features";
+import { Toast } from "./Toast";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { InputDialog } from "./ui/InputDialog";
 
 interface Thread {
   id: string;
@@ -547,6 +550,33 @@ const IntelligenceHub: React.FC<{
     GlobalSearchResult[]
   >([]);
   const [isSearchingAttachment, setIsSearchingAttachment] = useState(false);
+  // Dialog state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [inputDialogState, setInputDialogState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    resolve?: (v: string | null) => void;
+  }>({ open: false, title: "", message: "" });
+  const [confirmDialogState, setConfirmDialogState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    resolve?: (v: boolean) => void;
+  }>({ open: false, title: "", message: "" });
+
+  const showInputDialog = (title: string, message: string) =>
+    new Promise<string | null>((resolve) =>
+      setInputDialogState({ open: true, title, message, resolve }),
+    );
+
+  const showConfirmDialog = (title: string, message: string) =>
+    new Promise<boolean>((resolve) =>
+      setConfirmDialogState({ open: true, title, message, resolve }),
+    );
 
   // Interaction State Engine
   const [interactionState, setInteractionState] = useState<
@@ -611,7 +641,10 @@ const IntelligenceHub: React.FC<{
     const sessionToWrap = currentCallSession || activeCallSession;
     if (!sessionToWrap) return;
 
-    const callNotes = prompt("Enter summary of call for the permanent record:");
+    const callNotes = await showInputDialog(
+      "Call Wrap-Up",
+      "Enter summary of call for the permanent record:",
+    );
     if (!callNotes) return; // Force notes for audit compliance
 
     const updatedSession = {
@@ -1058,7 +1091,13 @@ const IntelligenceHub: React.FC<{
     }
 
     // 2. Secondary: Attach to currently viewed record (Workspace)
-    if (!activeRecord) return alert("No active record or call to attach to");
+    if (!activeRecord) {
+      setToast({
+        message: "No active record or call to attach to",
+        type: "error",
+      });
+      return;
+    }
 
     await onRecordAction({
       id: uuidv4(),
@@ -1462,12 +1501,11 @@ const IntelligenceHub: React.FC<{
   };
 
   const handleFullLockdown = async () => {
-    if (
-      !window.confirm(
-        "CRITICAL: Initiating Full Operational Lockdown for this record. Confirm?",
-      )
-    )
-      return;
+    const confirmed = await showConfirmDialog(
+      "Full Operational Lockdown",
+      "CRITICAL: Initiating Full Operational Lockdown for this record. Confirm?",
+    );
+    if (!confirmed) return;
 
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
@@ -2070,6 +2108,41 @@ const IntelligenceHub: React.FC<{
 
   return (
     <div className="flex h-full w-full bg-[#0a0c10] overflow-hidden text-slate-300 font-inter relative">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
+      <InputDialog
+        open={inputDialogState.open}
+        title={inputDialogState.title}
+        message={inputDialogState.message}
+        multiline
+        onSubmit={(v) => {
+          setInputDialogState((s) => ({ ...s, open: false }));
+          inputDialogState.resolve?.(v);
+        }}
+        onCancel={() => {
+          setInputDialogState((s) => ({ ...s, open: false }));
+          inputDialogState.resolve?.(null);
+        }}
+      />
+      <ConfirmDialog
+        open={confirmDialogState.open}
+        title={confirmDialogState.title}
+        message={confirmDialogState.message}
+        danger
+        onConfirm={() => {
+          setConfirmDialogState((s) => ({ ...s, open: false }));
+          confirmDialogState.resolve?.(true);
+        }}
+        onCancel={() => {
+          setConfirmDialogState((s) => ({ ...s, open: false }));
+          confirmDialogState.resolve?.(false);
+        }}
+      />
       {/* CENTER WORKSPACE: THE 360 TRUTH PANEL */}
       <div
         className={`flex-1 flex flex-col min-w-0 bg-[#0a0c10] overflow-hidden relative transition-all duration-300 ${rightRailCollapsed ? "mr-16" : "mr-96"}`}
@@ -2782,8 +2855,13 @@ const IntelligenceHub: React.FC<{
               ></textarea>
               <button
                 onClick={async () => {
-                  if (!handoffData.assignedTo)
-                    return alert("Select an operator for handoff");
+                  if (!handoffData.assignedTo) {
+                    setToast({
+                      message: "Select an operator for handoff",
+                      type: "error",
+                    });
+                    return;
+                  }
                   const assignedUser = propUsers.find(
                     (u) => u.id === handoffData.assignedTo,
                   ) || { name: handoffData.assignedTo };
@@ -2997,7 +3075,10 @@ const IntelligenceHub: React.FC<{
               </div>
               <button
                 onClick={async () => {
-                  if (!taskData.title) return alert("Title required");
+                  if (!taskData.title) {
+                    setToast({ message: "Title required", type: "error" });
+                    return;
+                  }
                   await onRecordAction({
                     id: uuidv4(),
                     type: "TASK",
@@ -3072,8 +3153,13 @@ const IntelligenceHub: React.FC<{
               </div>
               <button
                 onClick={async () => {
-                  if (!issueData.description)
-                    return alert("Description required");
+                  if (!issueData.description) {
+                    setToast({
+                      message: "Description required",
+                      type: "error",
+                    });
+                    return;
+                  }
                   await onRecordAction({
                     id: uuidv4(),
                     type: "ISSUE",

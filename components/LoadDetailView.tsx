@@ -39,6 +39,8 @@ import { getVaultDocs, createARInvoice } from "../services/financialService";
 import { saveLoad } from "../services/storageService";
 import { getCurrentUser } from "../services/authService";
 import { v4 as uuidv4 } from "uuid";
+import { Toast } from "./Toast";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 
 interface Props {
   load: LoadData;
@@ -67,6 +69,11 @@ export const LoadDetailView: React.FC<Props> = ({
   const [vaultDocs, setVaultDocs] = useState<any[]>([]);
   const [showUtilities, setShowUtilities] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [confirmClose, setConfirmClose] = useState(false);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -118,27 +125,30 @@ export const LoadDetailView: React.FC<Props> = ({
           },
         ],
       });
-      alert("Invoice Generated and posted to GL");
+      setToast({
+        message: "Invoice Generated and posted to GL",
+        type: "success",
+      });
     } catch (error) {
-      alert("Failed to generate invoice");
+      setToast({ message: "Failed to generate invoice", type: "error" });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleCloseLoad = async () => {
+  const handleCloseLoad = () => {
     const hasPOD = vaultDocs.some(
       (d) => d.type === "POD" || d.type === "Bill of Lading",
     );
     if (!hasPOD) {
-      if (
-        !confirm(
-          "WARNING: No Proof of Delivery (POD) found in Vault. Close anyway?",
-        )
-      )
-        return;
+      setConfirmClose(true);
+      return;
     }
+    doCloseLoad();
+  };
 
+  const doCloseLoad = async () => {
+    setConfirmClose(false);
     setIsClosing(true);
     try {
       const updatedLoad = {
@@ -148,10 +158,13 @@ export const LoadDetailView: React.FC<Props> = ({
         financialStatus: "Unbilled" as const,
       };
       await saveLoad(updatedLoad, currentUser!);
-      alert("Load Closed and Locked for Settlement");
+      setToast({
+        message: "Load Closed and Locked for Settlement",
+        type: "success",
+      });
       onClose();
     } catch (e) {
-      alert("Failed to close load");
+      setToast({ message: "Failed to close load", type: "error" });
     } finally {
       setIsClosing(false);
     }
@@ -159,6 +172,23 @@ export const LoadDetailView: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
+      <ConfirmDialog
+        open={confirmClose}
+        title="Close Load Without POD"
+        message="WARNING: No Proof of Delivery (POD) found in Vault. Close anyway?"
+        confirmLabel="Close Load"
+        cancelLabel="Cancel"
+        danger
+        onConfirm={doCloseLoad}
+        onCancel={() => setConfirmClose(false)}
+      />
       <div
         className={`w-full max-w-[1400px] h-[90vh] bg-[#0a0f18] border border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col transition-all duration-700 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
       >

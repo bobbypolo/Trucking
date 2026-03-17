@@ -3,7 +3,7 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QuoteManager } from "../../../components/QuoteManager";
-import { User, Company } from "../../../types";
+import { User } from "../../../types";
 import * as storageService from "../../../services/storageService";
 
 vi.mock("../../../services/storageService", () => ({
@@ -31,20 +31,6 @@ const mockUser: User = {
   safetyScore: 100,
 };
 
-const mockCompany: Company = {
-  id: "company-1",
-  name: "Test Carrier",
-  mcNumber: "MC-123456",
-  dotNumber: "DOT-789",
-  address: "123 Main St",
-  city: "Chicago",
-  state: "IL",
-  zip: "60601",
-  phone: "312-555-0100",
-  email: "ops@testcarrier.com",
-  onboardingStatus: "Completed",
-};
-
 describe("QuoteManager loading/error states (R-S22-03, R-S22-04)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,7 +47,7 @@ describe("QuoteManager loading/error states (R-S22-03, R-S22-04)", () => {
     vi.mocked(storageService.getWorkItems).mockReturnValue(pending as any);
 
     const { container } = render(
-      <QuoteManager user={mockUser} company={mockCompany} />,
+      <QuoteManager user={mockUser} company={null} />,
     );
 
     // While loading: skeleton should appear
@@ -89,7 +75,7 @@ describe("QuoteManager loading/error states (R-S22-03, R-S22-04)", () => {
       new Error("API error"),
     );
 
-    render(<QuoteManager user={mockUser} company={mockCompany} />);
+    render(<QuoteManager user={mockUser} company={null} />);
 
     await waitFor(() => {
       const retryBtn = screen.getByRole("button", { name: /retry/i });
@@ -107,7 +93,7 @@ describe("QuoteManager loading/error states (R-S22-03, R-S22-04)", () => {
     vi.mocked(storageService.getWorkItems).mockResolvedValue([]);
 
     const { container } = render(
-      <QuoteManager user={mockUser} company={mockCompany} />,
+      <QuoteManager user={mockUser} company={null} />,
     );
 
     await waitFor(() => {

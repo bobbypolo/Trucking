@@ -36,6 +36,8 @@ import {
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
 import { Scanner } from "./Scanner";
 import { Toast } from "./Toast";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { InputDialog } from "./ui/InputDialog";
 import { v4 as uuidv4 } from "uuid";
 
 interface Props {
@@ -106,6 +108,12 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [isCapturingDoc, setIsCapturingDoc] = useState(false);
   const [isCreatingChange, setIsCreatingChange] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  // Breakdown modal flow state
+  const [breakdownStep, setBreakdownStep] = useState<
+    "idle" | "notes" | "tow" | "cargo"
+  >("idle");
+  const [breakdownNotes, setBreakdownNotes] = useState("");
+  const [breakdownNeedsTow, setBreakdownNeedsTow] = useState(false);
 
   // Wrap setters to persist to localStorage (R-P4-10)
   const setActiveTab = (tab: ActiveTab) => {
@@ -436,6 +444,96 @@ export const DriverMobileHome: React.FC<Props> = ({
           />
         )}
 
+        {/* Breakdown flow — step 1: describe issue */}
+        <InputDialog
+          open={breakdownStep === "notes"}
+          title="Report Breakdown"
+          message="Describe the breakdown (Engine, Tire, Reefer, etc):"
+          placeholder="e.g. Right rear tire blow-out on I-40"
+          onSubmit={(notes) => {
+            setBreakdownNotes(notes);
+            setBreakdownStep("tow");
+          }}
+          onCancel={() => setBreakdownStep("idle")}
+          submitLabel="Next"
+        />
+        {/* Breakdown flow — step 2: tow needed? */}
+        <ConfirmDialog
+          open={breakdownStep === "tow"}
+          title="Tow Truck Required?"
+          message="Is a TOW TRUCK required immediately?"
+          confirmLabel="Yes — Tow Needed"
+          cancelLabel="No Tow"
+          danger
+          onConfirm={() => {
+            setBreakdownNeedsTow(true);
+            setBreakdownStep("cargo");
+          }}
+          onCancel={() => {
+            setBreakdownNeedsTow(false);
+            setBreakdownStep("cargo");
+          }}
+        />
+        {/* Breakdown flow — step 3: cargo at risk? */}
+        <ConfirmDialog
+          open={breakdownStep === "cargo"}
+          title="Cargo at Risk?"
+          message="Is the CARGO at risk (Temp/Security)?"
+          confirmLabel="Yes — High Risk"
+          cancelLabel="No Risk"
+          danger
+          onConfirm={() => {
+            onSaveLoad({
+              ...selectedLoad,
+              status: LOAD_STATUS.Active,
+              issues: [
+                ...(selectedLoad.issues || []),
+                {
+                  id: uuidv4(),
+                  category: "Maintenance",
+                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
+                  status: "Open",
+                  reportedBy: user?.id || "driver",
+                  reportedAt: new Date().toISOString(),
+                },
+              ],
+              isActionRequired: true,
+            });
+            setIsCreatingChange(false);
+            setBreakdownStep("idle");
+            setToast({
+              message:
+                "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
+              type: "error",
+            });
+          }}
+          onCancel={() => {
+            onSaveLoad({
+              ...selectedLoad,
+              status: LOAD_STATUS.Active,
+              issues: [
+                ...(selectedLoad.issues || []),
+                {
+                  id: uuidv4(),
+                  category: "Maintenance",
+                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
+                  status: "Open",
+                  reportedBy: user?.id || "driver",
+                  reportedAt: new Date().toISOString(),
+                },
+              ],
+              isActionRequired: true,
+            });
+            setIsCreatingChange(false);
+            setBreakdownStep("idle");
+            setToast({
+              message:
+                "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
+              type: "error",
+            });
+          }}
+        />
+
         {/* Scanner Modal Overlay (R-P4-02) */}
         {isCapturingDoc && (
           <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
@@ -493,41 +591,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 </h3>
                 <div className="grid grid-cols-1 gap-2">
                   <button
-                    onClick={() => {
-                      // Trigger breakdown flow
-                      const issueNotes = prompt(
-                        "Describe the breakdown (Engine, Tire, Reefer, etc):",
-                      );
-                      if (issueNotes) {
-                        const needsTow = window.confirm(
-                          "Is a TOW TRUCK required immediately?",
-                        );
-                        const isLoadAtRisk = window.confirm(
-                          "Is the CARGO at risk (Temp/Security)?",
-                        );
-
-                        onSaveLoad({
-                          ...selectedLoad,
-                          status: LOAD_STATUS.Active,
-                          issues: [
-                            ...(selectedLoad.issues || []),
-                            {
-                              id: uuidv4(),
-                              category: "Maintenance",
-                              description: `BREAKDOWN: ${issueNotes} | Tow: ${needsTow ? "YES" : "NO"} | Risk: ${isLoadAtRisk ? "HIGH" : "LOW"}`,
-                              status: "Open",
-                              reportedBy: user?.id || "driver",
-                              reportedAt: new Date().toISOString(),
-                            },
-                          ],
-                          isActionRequired: true,
-                        });
-                        setIsCreatingChange(false);
-                        alert(
-                          "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
-                        );
-                      }
-                    }}
+                    onClick={() => setBreakdownStep("notes")}
                     className="w-full p-4 bg-red-600/10 border border-red-500/20 rounded-2xl text-xs font-black text-red-500 hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-between"
                   >
                     Report Breakdown
@@ -797,6 +861,98 @@ export const DriverMobileHome: React.FC<Props> = ({
           onDismiss={() => setToast(null)}
         />
       )}
+
+      {/* Breakdown flow modals (used from overlay too) */}
+      <InputDialog
+        open={breakdownStep === "notes"}
+        title="Report Breakdown"
+        message="Describe the breakdown (Engine, Tire, Reefer, etc):"
+        placeholder="e.g. Right rear tire blow-out on I-40"
+        onSubmit={(notes) => {
+          setBreakdownNotes(notes);
+          setBreakdownStep("tow");
+        }}
+        onCancel={() => setBreakdownStep("idle")}
+        submitLabel="Next"
+      />
+      <ConfirmDialog
+        open={breakdownStep === "tow"}
+        title="Tow Truck Required?"
+        message="Is a TOW TRUCK required immediately?"
+        confirmLabel="Yes — Tow Needed"
+        cancelLabel="No Tow"
+        danger
+        onConfirm={() => {
+          setBreakdownNeedsTow(true);
+          setBreakdownStep("cargo");
+        }}
+        onCancel={() => {
+          setBreakdownNeedsTow(false);
+          setBreakdownStep("cargo");
+        }}
+      />
+      <ConfirmDialog
+        open={breakdownStep === "cargo"}
+        title="Cargo at Risk?"
+        message="Is the CARGO at risk (Temp/Security)?"
+        confirmLabel="Yes — High Risk"
+        cancelLabel="No Risk"
+        danger
+        onConfirm={() => {
+          if (selectedLoad) {
+            onSaveLoad({
+              ...selectedLoad,
+              status: LOAD_STATUS.Active,
+              issues: [
+                ...(selectedLoad.issues || []),
+                {
+                  id: uuidv4(),
+                  category: "Maintenance",
+                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
+                  status: "Open",
+                  reportedBy: user?.id || "driver",
+                  reportedAt: new Date().toISOString(),
+                },
+              ],
+              isActionRequired: true,
+            });
+          }
+          setIsCreatingChange(false);
+          setBreakdownStep("idle");
+          setToast({
+            message:
+              "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
+            type: "error",
+          });
+        }}
+        onCancel={() => {
+          if (selectedLoad) {
+            onSaveLoad({
+              ...selectedLoad,
+              status: LOAD_STATUS.Active,
+              issues: [
+                ...(selectedLoad.issues || []),
+                {
+                  id: uuidv4(),
+                  category: "Maintenance",
+                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
+                  status: "Open",
+                  reportedBy: user?.id || "driver",
+                  reportedAt: new Date().toISOString(),
+                },
+              ],
+              isActionRequired: true,
+            });
+          }
+          setIsCreatingChange(false);
+          setBreakdownStep("idle");
+          setToast({
+            message:
+              "EMERGENCY PROTOCOL ACTIVATED. Safety and Dispatch have been alerted.",
+            type: "error",
+          });
+        }}
+      />
 
       {/* Global Sticky Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[#0a0f1e]/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-4">
