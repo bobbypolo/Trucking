@@ -31,7 +31,6 @@ import {
   Plus,
   Phone,
   Activity,
-  Download,
   Scissors,
 } from "lucide-react";
 import { generateInvoicePDF, settleLoad } from "../services/storageService";
@@ -42,7 +41,6 @@ import {
   getSettlements,
   getBills,
 } from "../services/financialService";
-import { generateQBSummaryJournal, exportToCSV } from "../services/syncService";
 import { v4 as uuidv4 } from "uuid";
 import { DEMO_MODE } from "../services/firebase";
 
@@ -216,20 +214,7 @@ export const Settlements: React.FC<Props> = ({
     );
   };
 
-  const handleQBSync = () => {
-    const journals = generateQBSummaryJournal(
-      dateRange,
-      loads,
-      settlements,
-      bills,
-    );
-    if (journals.length === 0) {
-      showFeedback("No financial data available for the selected period sync.");
-      return;
-    }
-    exportToCSV(journals);
-    showFeedback("QuickBooks Summary Journal (CSV) generated successfully.");
-  };
+
   const pnlStats = useMemo(() => {
     const totalRev = loads.reduce((sum, l) => sum + (l.carrierRate || 0), 0);
     const driverPay = users.reduce(
@@ -287,13 +272,7 @@ export const Settlements: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleQBSync}
-              className="px-4 py-3 bg-green-600/10 hover:bg-green-600 text-green-500 hover:text-white rounded-xl border border-green-500/20 transition-all shadow-lg flex items-center gap-2 text-[10px] font-black uppercase tracking-widest"
-              title="Export Summary to QuickBooks"
-            >
-              <Download className="w-4 h-4" /> QB Export
-            </button>
+
             <button
               onClick={() => onUserUpdate?.()}
               className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all shadow-lg"
