@@ -22,9 +22,6 @@ export {
   saveWorkItem,
 } from "./tasks";
 export {
-  STORAGE_KEY_CRISIS,
-  STORAGE_KEY_REQUESTS,
-  STORAGE_KEY_SERVICE_TICKETS,
   getRawCrisisActions,
   saveCrisisAction,
   getRawRequests,
@@ -36,12 +33,8 @@ export {
   saveServiceTicket,
 } from "./recovery";
 export {
-  STORAGE_KEY_CONTACTS,
-  STORAGE_KEY_PROVIDERS,
-  getRawProviders,
   saveProvider,
   getProviders,
-  getRawContacts,
   getContacts,
   saveContact,
   getDirectory,

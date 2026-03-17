@@ -1,6 +1,6 @@
 /**
- * Recovery domain — Crisis Actions, Service Tickets, KCI Requests.
- * Owner: STORY-017 (Phase 2 migration to server).
+ * Recovery domain -- Crisis Actions, Service Tickets, KCI Requests.
+ * Owner: STORY-017 (Phase 2 migration to server -- all storage migrated to API).
  */
 import {
   CrisisAction,
@@ -10,40 +10,58 @@ import {
 } from "../../types";
 import { API_URL } from "../config";
 import { getAuthHeaders } from "../authService";
-import { getTenantKey } from "./core";
 
-export const STORAGE_KEY_CRISIS = (): string => getTenantKey("crisis_v1");
-export const STORAGE_KEY_REQUESTS = (): string => getTenantKey("requests_v1");
-export const STORAGE_KEY_SERVICE_TICKETS = (): string =>
-  getTenantKey("service_tickets_v1");
+// STORAGE_KEY_CRISIS, STORAGE_KEY_REQUESTS, STORAGE_KEY_SERVICE_TICKETS removed (STORY-017)
 
 // --- Crisis Actions ---
 
-export const getRawCrisisActions = (): CrisisAction[] => {
+export const getRawCrisisActions = async (): Promise<CrisisAction[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_CRISIS());
-    return data ? JSON.parse(data) : [];
+    const res = await fetch(API_URL + "/api/crisis-actions", {
+      headers: await getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (e) {
+    console.warn("[recovery] getRawCrisisActions failed:", e);
     return [];
   }
 };
 
-export const saveCrisisAction = async (action: CrisisAction) => {
-  const actions = getRawCrisisActions();
-  const idx = actions.findIndex((a) => a.id === action.id);
-  if (idx >= 0) actions[idx] = action;
-  else actions.unshift(action);
-  localStorage.setItem(STORAGE_KEY_CRISIS(), JSON.stringify(actions));
-  return action;
+export const saveCrisisAction = async (action: CrisisAction): Promise<CrisisAction> => {
+  // Try PATCH first (update), then POST (create)
+  try {
+    const patchRes = await fetch(API_URL + "/api/crisis-actions/" + action.id, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(action),
+    });
+    if (patchRes.ok) return patchRes.json();
+  } catch (_) {
+    // fall through to create
+  }
+  const res = await fetch(API_URL + "/api/crisis-actions", {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(action),
+  });
+  if (!res.ok) throw new Error("Failed to save crisis action");
+  return res.json();
 };
 
 // --- KCI Requests ---
 
-export const getRawRequests = (): KCIRequest[] => {
+export const getRawRequests = async (): Promise<KCIRequest[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_REQUESTS());
-    return data ? JSON.parse(data) : [];
+    const res = await fetch(API_URL + "/api/kci-requests", {
+      headers: await getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (e) {
+    console.warn("[recovery] getRawRequests failed:", e);
     return [];
   }
 };
@@ -53,7 +71,7 @@ export const getRequests = async (filters?: {
   driverId?: string;
   openRecordId?: string;
 }): Promise<KCIRequest[]> => {
-  let requests = getRawRequests();
+  let requests = await getRawRequests();
   if (filters) {
     if (filters.loadId)
       requests = requests.filter((r) => r.loadId === filters.loadId);
@@ -67,13 +85,25 @@ export const getRequests = async (filters?: {
   return requests;
 };
 
-export const saveRequest = async (request: KCIRequest) => {
-  const requests = getRawRequests();
-  const idx = requests.findIndex((r) => r.id === request.id);
-  if (idx >= 0) requests[idx] = request;
-  else requests.unshift(request);
-  localStorage.setItem(STORAGE_KEY_REQUESTS(), JSON.stringify(requests));
-  return request;
+export const saveRequest = async (request: KCIRequest): Promise<KCIRequest> => {
+  // Try PATCH first (update), then POST (create)
+  try {
+    const patchRes = await fetch(API_URL + "/api/kci-requests/" + request.id, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(request),
+    });
+    if (patchRes.ok) return patchRes.json();
+  } catch (_) {
+    // fall through to create
+  }
+  const res = await fetch(API_URL + "/api/kci-requests", {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(request),
+  });
+  if (!res.ok) throw new Error("Failed to save KCI request");
+  return res.json();
 };
 
 export const updateRequestStatus = async (
@@ -82,39 +112,51 @@ export const updateRequestStatus = async (
   actor: { id: string; name: string },
   note?: string,
   approvedAmount?: number,
-) => {
-  const requests = getRawRequests();
-  const idx = requests.findIndex((r) => r.id === requestId);
-  if (idx >= 0) {
-    const req = requests[idx];
-    const before = req.status;
-    req.status = status;
-    if (status === "APPROVED") {
-      req.approvedBy = actor.name;
-      req.approvedAt = new Date().toISOString();
-      if (approvedAmount !== undefined) req.approvedAmount = approvedAmount;
-    } else if (status === "DENIED") {
-      req.deniedBy = actor.name;
-      req.deniedAt = new Date().toISOString();
-      req.denialReason = note;
-    }
-    req.decisionLog.push({
-      timestamp: new Date().toISOString(),
-      actorId: actor.id,
-      actorName: actor.name,
-      action: `Status changed to ${status}`,
-      beforeState: before,
-      afterState: status,
-      note,
-    });
-    localStorage.setItem(STORAGE_KEY_REQUESTS(), JSON.stringify(requests));
-    return req;
+): Promise<KCIRequest | null> => {
+  const now = new Date().toISOString();
+  const decisionLogEntry = {
+    timestamp: now,
+    actorId: actor.id,
+    actorName: actor.name,
+    action: `Status changed to ${status}`,
+    afterState: status,
+    note,
+  };
+
+  const patch: Record<string, unknown> = {
+    status,
+    decision_log: [decisionLogEntry],
+  };
+
+  if (status === "APPROVED") {
+    patch.approved_by = actor.name;
+    patch.approved_at = now;
+    if (approvedAmount !== undefined) patch.approved_amount = approvedAmount;
+  } else if (status === "DENIED") {
+    patch.denied_by = actor.name;
+    patch.denied_at = now;
+    patch.denial_reason = note;
   }
-  return null;
+
+  try {
+    const res = await fetch(API_URL + "/api/kci-requests/" + requestId, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      console.error("[recovery] updateRequestStatus failed:", res.status);
+      return null;
+    }
+    return res.json();
+  } catch (e) {
+    console.error("[recovery] updateRequestStatus error:", e);
+    return null;
+  }
 };
 
 export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
-  const requests = getRawRequests();
+  const requests = await getRawRequests();
   return requests
     .filter((r) =>
       ["NEW", "PENDING_APPROVAL", "NEEDS_INFO", "DEFERRED"].includes(r.status),
@@ -130,32 +172,37 @@ export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
 
 // --- Service Tickets ---
 
-export const getRawServiceTickets = (): ServiceTicket[] => {
+export const getRawServiceTickets = async (): Promise<ServiceTicket[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_SERVICE_TICKETS());
-    return data ? JSON.parse(data) : [];
+    const res = await fetch(API_URL + "/api/service-tickets", {
+      headers: await getAuthHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
   } catch (e) {
+    console.warn("[recovery] getRawServiceTickets failed:", e);
     return [];
   }
 };
 
-export const saveServiceTicket = async (ticket: ServiceTicket) => {
-  const tickets = getRawServiceTickets();
-  const idx = tickets.findIndex((t) => t.id === ticket.id);
-  if (idx >= 0) tickets[idx] = ticket;
-  else tickets.unshift(ticket);
-  localStorage.setItem(STORAGE_KEY_SERVICE_TICKETS(), JSON.stringify(tickets));
-
-  // Sync to API
+export const saveServiceTicket = async (ticket: ServiceTicket): Promise<ServiceTicket> => {
+  // Try PATCH first (update), then POST (create)
   try {
-    await fetch(`${API_URL}/service-tickets`, {
-      method: "POST",
+    const patchRes = await fetch(API_URL + "/api/service-tickets/" + ticket.id, {
+      method: "PATCH",
       headers: await getAuthHeaders(),
       body: JSON.stringify(ticket),
     });
-  } catch (e) {
-    console.warn("[storageService] API fallback:", e);
+    if (patchRes.ok) return patchRes.json();
+  } catch (_) {
+    // fall through to create
   }
-
-  return ticket;
+  const res = await fetch(API_URL + "/api/service-tickets", {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(ticket),
+  });
+  if (!res.ok) throw new Error("Failed to save service ticket");
+  return res.json();
 };
