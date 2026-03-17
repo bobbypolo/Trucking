@@ -19,5 +19,5 @@
     "noEmit": true
   },
   "include": ["**/*.ts", "**/*.tsx", "vite-env.d.ts"],
-  "exclude": ["server", "node_modules"]
+  "exclude": ["server", "node_modules", "scripts/dev"]
 }

@@ -15,7 +15,9 @@ vi.mock("../../../services/storageService", () => ({
   getLoads: vi.fn().mockResolvedValue([]),
   getTenantKey: vi.fn((baseName: string) => {
     // Mock implementation: returns tenant-scoped key
-    const user = (getCurrentUser as ReturnType<typeof vi.fn>)();
+    const user = (
+      getCurrentUser as unknown as () => { companyId?: string } | null
+    )();
     if (!user?.companyId) return `loadpilot_${baseName}`;
     return `loadpilot_${user.companyId}_${baseName}`;
   }),
@@ -26,7 +28,12 @@ vi.mock("../../../services/firebase", () => ({
   DEMO_MODE: false,
 }));
 
-import { getStoredQuizzes, saveQuiz, getMaintenanceRecords, saveMaintenanceRecord } from "../../../services/safetyService";
+import {
+  getStoredQuizzes,
+  saveQuiz,
+  getMaintenanceRecords,
+  saveMaintenanceRecord,
+} from "../../../services/safetyService";
 import { getCurrentUser } from "../../../services/authService";
 
 const mockGetCurrentUser = getCurrentUser as ReturnType<typeof vi.fn>;

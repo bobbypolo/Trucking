@@ -102,7 +102,7 @@ describe("MapView switch/case pattern correctness (F-004 assessment)", () => {
    */
 
   it("switch against canonical DB value 'in_transit' matches LOAD_STATUS.Active", () => {
-    const dbStatus = "in_transit"; // as returned from DB or server API
+    const dbStatus: string = "in_transit"; // as returned from DB or server API
     let matched = "none";
     switch (dbStatus) {
       case LOAD_STATUS.Active:
@@ -121,7 +121,7 @@ describe("MapView switch/case pattern correctness (F-004 assessment)", () => {
   });
 
   it("switch against canonical DB value 'planned' matches LOAD_STATUS.Booked and LOAD_STATUS.Planned", () => {
-    const dbStatus = "planned";
+    const dbStatus: string = "planned";
     let matched = "none";
     switch (dbStatus) {
       case LOAD_STATUS.Active:
@@ -209,7 +209,7 @@ describe("GlobalMapViewEnhanced switch/case pattern correctness (F-004 assessmen
    */
 
   it("switch against canonical DB value 'in_transit' matches LOAD_STATUS.In_Transit", () => {
-    const dbStatus = "in_transit";
+    const dbStatus: string = "in_transit";
     let iconName = "none";
     switch (dbStatus) {
       case LOAD_STATUS.In_Transit:
@@ -231,7 +231,7 @@ describe("GlobalMapViewEnhanced switch/case pattern correctness (F-004 assessmen
   });
 
   it("switch against canonical DB value 'delivered' matches LOAD_STATUS.Delivered", () => {
-    const dbStatus = "delivered";
+    const dbStatus: string = "delivered";
     let iconName = "none";
     switch (dbStatus) {
       case LOAD_STATUS.In_Transit:

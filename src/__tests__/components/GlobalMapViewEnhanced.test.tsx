@@ -66,7 +66,7 @@ vi.mock("../../../services/directionsService", () => ({
  * and error-banner rendering, without the heavy google-maps dependencies.
  */
 const MapWithMissingKey: React.FC = () => {
-  const apiKey = ""; // simulates VITE_GOOGLE_MAPS_API_KEY missing
+  const apiKey: string = ""; // simulates VITE_GOOGLE_MAPS_API_KEY missing
   const hasValidApiKey = apiKey && apiKey.length > 10;
   if (!hasValidApiKey) {
     return (

@@ -37,11 +37,17 @@ test.describe("localStorage Tenant Isolation — Key Namespacing", () => {
 
       // Tenant A writes data under a tenant-scoped key
       const keyA = `loadpilot_${tenantAId}_incidents_v1`;
-      localStorage.setItem(keyA, JSON.stringify([{ id: "inc-a-1", description: "Tenant A incident" }]));
+      localStorage.setItem(
+        keyA,
+        JSON.stringify([{ id: "inc-a-1", description: "Tenant A incident" }]),
+      );
 
       // Tenant B writes data under a different tenant-scoped key
       const keyB = `loadpilot_${tenantBId}_incidents_v1`;
-      localStorage.setItem(keyB, JSON.stringify([{ id: "inc-b-1", description: "Tenant B incident" }]));
+      localStorage.setItem(
+        keyB,
+        JSON.stringify([{ id: "inc-b-1", description: "Tenant B incident" }]),
+      );
     });
 
     const result = await page.evaluate(() => {
@@ -57,9 +63,13 @@ test.describe("localStorage Tenant Isolation — Key Namespacing", () => {
       return {
         keyA,
         keyB,
-        keysAreDifferent: keyA !== keyB,
-        tenantADataIsIsolated: dataA[0]?.id === "inc-a-1" && !dataA.some((d: any) => d.id === "inc-b-1"),
-        tenantBDataIsIsolated: dataB[0]?.id === "inc-b-1" && !dataB.some((d: any) => d.id === "inc-a-1"),
+        keysAreDifferent: (keyA as string) !== (keyB as string),
+        tenantADataIsIsolated:
+          dataA[0]?.id === "inc-a-1" &&
+          !dataA.some((d: any) => d.id === "inc-b-1"),
+        tenantBDataIsIsolated:
+          dataB[0]?.id === "inc-b-1" &&
+          !dataB.some((d: any) => d.id === "inc-a-1"),
       };
     });
 
@@ -83,7 +93,9 @@ test.describe("localStorage Tenant Isolation — Key Namespacing", () => {
       // Simulate legacy unprefixed key with existing data
       const legacyKey = `loadpilot_${baseName}`;
       const tenantKey = `loadpilot_${companyId}_${baseName}`;
-      const legacyData = JSON.stringify([{ id: "msg-legacy", text: "Old message" }]);
+      const legacyData = JSON.stringify([
+        { id: "msg-legacy", text: "Old message" },
+      ]);
       localStorage.setItem(legacyKey, legacyData);
 
       // Simulate what getTenantKey migration does:
@@ -117,9 +129,7 @@ test.describe("localStorage Tenant Isolation — Key Namespacing", () => {
       const baseName = "calls_v1";
       const legacyKey = `loadpilot_${baseName}`;
 
-      const key = companyId
-        ? `loadpilot_${companyId}_${baseName}`
-        : legacyKey;
+      const key = companyId ? `loadpilot_${companyId}_${baseName}` : legacyKey;
 
       localStorage.setItem(key, JSON.stringify([{ id: "call-1" }]));
       const data = JSON.parse(localStorage.getItem(key) || "[]");

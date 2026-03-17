@@ -1,5 +1,5 @@
 // Tests R-P4-05, R-P4-06
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
@@ -65,14 +65,14 @@ const makeLoad = (overrides: Partial<LoadData> = {}): LoadData => ({
 });
 
 describe("DriverMobileHome status update toasts (R-P4-05, R-P4-06)", () => {
-  let onSaveLoad: ReturnType<typeof vi.fn>;
-  let onLogout: ReturnType<typeof vi.fn>;
-  let onOpenHub: ReturnType<typeof vi.fn>;
+  let onSaveLoad: MockedFunction<(load: LoadData) => Promise<void>>;
+  let onLogout: MockedFunction<() => void>;
+  let onOpenHub: MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
 
   beforeEach(() => {
     onSaveLoad = vi.fn();
-    onLogout = vi.fn();
-    onOpenHub = vi.fn();
+    onLogout = vi.fn() as unknown as MockedFunction<() => void>;
+    onOpenHub = vi.fn() as unknown as MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
     localStorage.clear();
   });
 
