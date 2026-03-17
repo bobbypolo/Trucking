@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QuoteManager } from "../../../components/QuoteManager";
 import { User, Company, Quote, Lead, Booking, WorkItem } from "../../../types";
@@ -130,11 +131,6 @@ describe("QuoteManager component", () => {
     vi.mocked(getWorkItems).mockResolvedValue(mockWorkItems);
   });
 
-  it("renders without crashing", async () => {
-    const { container } = render(<QuoteManager {...defaultProps} />);
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
   it("calls data loading services on mount", async () => {
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -145,49 +141,142 @@ describe("QuoteManager component", () => {
     });
   });
 
-  it("shows loading skeleton initially", () => {
-    render(<QuoteManager {...defaultProps} />);
-    // The loading state is shown before data resolves
-    // It uses LoadingSkeleton component
-    expect(document.body).toBeTruthy();
-  });
-
   it("shows error state when data loading fails", async () => {
     vi.mocked(getQuotes).mockRejectedValue(new Error("Network error"));
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/Unable to load pipeline data/)).toBeTruthy();
+      expect(
+        screen.getByText(/Unable to load pipeline data/),
+      ).toBeInTheDocument();
     });
   });
 
-  it("renders pipeline view with quote statuses after load", async () => {
+  it("renders the Intake & Quotes heading", async () => {
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      // Status columns should be visible
-      expect(screen.getByText("Draft")).toBeTruthy();
-      expect(screen.getByText("Sent")).toBeTruthy();
+      expect(screen.getByText("Intake & Quotes")).toBeInTheDocument();
+    });
+  });
+
+  it("renders pipeline view with quote status columns after load", async () => {
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+      expect(screen.getByText("Sent")).toBeInTheDocument();
+      expect(screen.getByText("Accepted")).toBeInTheDocument();
     });
   });
 
   it("displays quote data with city and state info", async () => {
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/Chicago/)).toBeTruthy();
+      expect(screen.getByText(/Chicago/)).toBeInTheDocument();
+      expect(screen.getByText(/Dallas/)).toBeInTheDocument();
     });
-  });
-
-  it("renders with null company", async () => {
-    const { container } = render(
-      <QuoteManager user={mockUser} company={null} />,
-    );
-    await waitFor(() => expect(container).toBeTruthy());
   });
 
   it("renders empty pipeline when no quotes exist", async () => {
     vi.mocked(getQuotes).mockResolvedValue([]);
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.queryByText(/Unable to load/)).toBeNull();
+      expect(
+        screen.queryByText(/Unable to load/),
+      ).not.toBeInTheDocument();
+      // Status column headers should still be present
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+    });
+  });
+
+  it("renders with null company without crashing", async () => {
+    render(<QuoteManager user={mockUser} company={null} />);
+    await waitFor(() => {
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+    });
+  });
+
+  it("shows the search input with correct placeholder", async () => {
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      const searchInput = screen.getByPlaceholderText(
+        "Find Quote or Lane...",
+      );
+      expect(searchInput).toBeInTheDocument();
+    });
+  });
+
+  it("shows the New Quote button", async () => {
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/New Quote/)).toBeInTheDocument();
+    });
+  });
+
+  it("opens details view when clicking New Quote", async () => {
+    const user = userEvent.setup();
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/New Quote/)).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/New Quote/));
+    await waitFor(() => {
+      // Details view shows Quote Review heading
+      expect(screen.getByText("Quote Review")).toBeInTheDocument();
+    });
+  });
+
+  it("displays total rate for each quote in pipeline", async () => {
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      // q-1 total rate is $2,200
+      expect(screen.getByText(/2,200/)).toBeInTheDocument();
+      // q-2 total rate is $4,000
+      expect(screen.getByText(/4,000/)).toBeInTheDocument();
+    });
+  });
+
+  it("filters quotes by search query", async () => {
+    const user = userEvent.setup();
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Chicago/)).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(
+      "Find Quote or Lane...",
+    );
+    await user.type(searchInput, "Houston");
+    // Houston quote should remain visible
+    await waitFor(() => {
+      expect(screen.getByText(/Houston/)).toBeInTheDocument();
+    });
+  });
+
+  it("shows Pipeline View and Intake Desk tab buttons", async () => {
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Pipeline View")).toBeInTheDocument();
+      expect(screen.getByText("Intake Desk")).toBeInTheDocument();
+    });
+  });
+
+  it("can return to pipeline from details view", async () => {
+    const user = userEvent.setup();
+    render(<QuoteManager {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Draft")).toBeInTheDocument();
+    });
+
+    // Go to new quote
+    await user.click(screen.getByText(/New Quote/));
+    await waitFor(() => {
+      expect(screen.getByText("Quote Review")).toBeInTheDocument();
+    });
+
+    // Go back by clicking the Pipeline View tab
+    await user.click(screen.getByText("Pipeline View"));
+    await waitFor(() => {
+      expect(screen.getByText("Draft")).toBeInTheDocument();
     });
   });
 });

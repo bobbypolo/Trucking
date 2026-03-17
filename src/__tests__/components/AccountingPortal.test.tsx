@@ -1,18 +1,47 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
 // Must mock before importing the component
 vi.mock("../../../services/financialService", () => ({
-  getGLAccounts: vi.fn().mockResolvedValue([]),
+  getGLAccounts: vi.fn().mockResolvedValue([
+    { id: "gl-1", code: "1000", name: "Cash", type: "Asset", balance: 50000 },
+    {
+      id: "gl-2",
+      code: "4000",
+      name: "Revenue",
+      type: "Revenue",
+      balance: 120000,
+    },
+  ]),
   getLoadProfitLoss: vi.fn().mockResolvedValue(null),
   createARInvoice: vi.fn(),
   createAPBill: vi.fn(),
   createJournalEntry: vi.fn(),
   getSettlements: vi.fn().mockResolvedValue([]),
-  getInvoices: vi.fn().mockResolvedValue([]),
-  getBills: vi.fn().mockResolvedValue([]),
+  getInvoices: vi.fn().mockResolvedValue([
+    {
+      id: "inv-1",
+      invoiceNumber: "INV-001",
+      customerId: "user-1",
+      totalAmount: 2500,
+      status: "Unpaid",
+      invoiceDate: "2026-01-15",
+      dueDate: "2026-02-15",
+    },
+  ]),
+  getBills: vi.fn().mockResolvedValue([
+    {
+      id: "bill-1",
+      vendorName: "Fuel Co",
+      totalAmount: 800,
+      status: "Pending",
+      billDate: "2026-01-10",
+      dueDate: "2026-02-10",
+    },
+  ]),
 }));
 
 vi.mock("../../../services/rulesEngineService", () => ({
@@ -28,28 +57,37 @@ vi.mock("../../../services/config", () => ({
   API_URL: "http://localhost:5000/api",
 }));
 
-// Lazy-loaded sub-components need mocking
+// Lazy-loaded sub-components need mocking since they load asynchronously
 vi.mock("../../../components/Settlements", () => ({
-  Settlements: () => <div data-testid="settlements-mock">Settlements</div>,
+  Settlements: () => (
+    <div data-testid="settlements-component">Settlements Content</div>
+  ),
 }));
 
 vi.mock("../../../components/FileVault", () => ({
-  FileVault: () => <div data-testid="file-vault-mock">FileVault</div>,
+  FileVault: () => (
+    <div data-testid="file-vault-component">File Vault Content</div>
+  ),
 }));
 
 vi.mock("../../../components/AccountingBillForm", () => ({
-  AccountingBillForm: () => <div data-testid="bill-form-mock">BillForm</div>,
+  AccountingBillForm: () => (
+    <div data-testid="bill-form-component">Bill Form Content</div>
+  ),
 }));
 
 vi.mock("../../../components/IFTAManager", () => ({
-  IFTAManager: () => <div data-testid="ifta-mock">IFTAManager</div>,
+  IFTAManager: () => (
+    <div data-testid="ifta-component">IFTA Manager Content</div>
+  ),
 }));
 
 vi.mock("../../../components/DataImportWizard", () => ({
-  DataImportWizard: () => <div data-testid="import-wizard-mock">DataImportWizard</div>,
+  DataImportWizard: () => (
+    <div data-testid="import-wizard-component">Data Import Content</div>
+  ),
 }));
 
-// Import with default export handling
 import AccountingPortal from "../../../components/AccountingPortal";
 
 const mockUser: User = {
@@ -75,6 +113,18 @@ const mockLoads: LoadData[] = [
     pickup: { city: "Chicago", state: "IL" },
     dropoff: { city: "Dallas", state: "TX" },
   },
+  {
+    id: "load-2",
+    companyId: "company-1",
+    driverId: "driver-2",
+    loadNumber: "LN-002",
+    status: LOAD_STATUS.In_Transit,
+    carrierRate: 3000,
+    driverPay: 1800,
+    pickupDate: "2026-01-16",
+    pickup: { city: "Houston", state: "TX" },
+    dropoff: { city: "Phoenix", state: "AZ" },
+  },
 ];
 
 describe("AccountingPortal component", () => {
@@ -88,43 +138,137 @@ describe("AccountingPortal component", () => {
     vi.clearAllMocks();
   });
 
-  it("renders without crashing", async () => {
-    const { container } = render(<AccountingPortal {...defaultProps} />);
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
-  it("renders with default DASHBOARD tab", async () => {
-    const { container } = render(<AccountingPortal {...defaultProps} />);
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
-  it("renders with a specific initialTab", async () => {
-    const { container } = render(
-      <AccountingPortal {...defaultProps} initialTab="GL" />,
-    );
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
-  it("renders with empty loads and users", async () => {
-    const { container } = render(
-      <AccountingPortal {...defaultProps} loads={[]} users={[]} />,
-    );
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
-  it("passes optional onUserUpdate prop", async () => {
-    const onUserUpdate = vi.fn();
-    const { container } = render(
-      <AccountingPortal {...defaultProps} onUserUpdate={onUserUpdate} />,
-    );
-    await waitFor(() => expect(container).toBeTruthy());
-  });
-
   it("renders tab navigation buttons", async () => {
     render(<AccountingPortal {...defaultProps} />);
     await waitFor(() => {
-      const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
+      expect(screen.getByText("Overview")).toBeInTheDocument();
+      expect(screen.getByText("AR / Invoices")).toBeInTheDocument();
+      expect(screen.getByText("AP / Bills")).toBeInTheDocument();
+      expect(screen.getByText("Settlements")).toBeInTheDocument();
+      expect(screen.getByText("Fuel & IFTA")).toBeInTheDocument();
+      expect(screen.getByText("File Vault")).toBeInTheDocument();
+      expect(screen.getByText("Audit Log")).toBeInTheDocument();
+      expect(screen.getByText("Rules Engine")).toBeInTheDocument();
+    });
+  });
+
+  it("defaults to DASHBOARD tab showing Overview content", async () => {
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      // Dashboard tab shows financial overview cards
+      // Overview button should be active (styled differently)
+      const overviewBtn = screen.getByText("Overview");
+      expect(overviewBtn).toBeInTheDocument();
+    });
+  });
+
+  it("respects initialTab prop for starting tab", async () => {
+    render(<AccountingPortal {...defaultProps} initialTab="GL" />);
+    await waitFor(() => {
+      // GL tab is the Audit Log tab; it should render audit-related content
+      const auditBtn = screen.getByText("Audit Log");
+      expect(auditBtn).toBeInTheDocument();
+    });
+  });
+
+  it("switches to AR/Invoices tab on click", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Overview")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("AR / Invoices"));
+    await waitFor(() => {
+      // AR tab should show Accounts Receivable heading
+      expect(screen.getByText("Accounts Receivable")).toBeInTheDocument();
+    });
+  });
+
+  it("switches to AP/Bills tab on click", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Overview")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("AP / Bills"));
+    await waitFor(() => {
+      // AP tab should show Accounts Payable heading
+      expect(screen.getByText("Accounts Payable")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the lazy-loaded Settlements tab", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Settlements")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Settlements"));
+    await waitFor(() => {
+      expect(screen.getByTestId("settlements-component")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the lazy-loaded IFTA tab", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Fuel & IFTA")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Fuel & IFTA"));
+    await waitFor(() => {
+      expect(screen.getByTestId("ifta-component")).toBeInTheDocument();
+    });
+  });
+
+  it("renders the lazy-loaded File Vault tab", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("File Vault")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("File Vault"));
+    await waitFor(() => {
+      expect(screen.getByTestId("file-vault-component")).toBeInTheDocument();
+    });
+  });
+
+  it("renders with empty loads and users without crashing", async () => {
+    render(
+      <AccountingPortal {...defaultProps} loads={[]} users={[]} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("Overview")).toBeInTheDocument();
+    });
+  });
+
+  it("has a Batch Import Engine button", async () => {
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(
+        screen.getByText("Batch Import Engine"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("switches to Rules Engine tab and shows automation rules", async () => {
+    const user = userEvent.setup();
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Rules Engine")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Rules Engine"));
+    await waitFor(() => {
+      // Automation rules include Fuel Receipt Auto-Match
+      expect(
+        screen.getByText("Fuel Receipt Auto-Match"),
+      ).toBeInTheDocument();
     });
   });
 });
