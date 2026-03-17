@@ -24,7 +24,7 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
   const companyId = req.user.tenantId;
   try {
     const [rows]: any = await pool.query(
-      "SELECT * FROM loads WHERE company_id = ?",
+      "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL",
       [companyId],
     );
     const settings = await getVisibilitySettings(companyId);
@@ -107,12 +107,10 @@ router.post(
 
     // Reject if body explicitly provides a company_id that mismatches auth context
     if (req.body.company_id && req.body.company_id !== company_id) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Tenant mismatch: company_id in body does not match authenticated tenant",
-        });
+      return res.status(403).json({
+        error:
+          "Tenant mismatch: company_id in body does not match authenticated tenant",
+      });
     }
 
     const connection = await pool.getConnection();
@@ -305,7 +303,7 @@ router.get(
     const companyId = req.user.tenantId;
     try {
       const [rows]: any = await pool.query(
-        "SELECT status, COUNT(*) as count FROM loads WHERE company_id = ? GROUP BY status",
+        "SELECT status, COUNT(*) as count FROM loads WHERE company_id = ? AND deleted_at IS NULL GROUP BY status",
         [companyId],
       );
 
@@ -361,6 +359,54 @@ router.patch(
       );
 
       res.json(result);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// Statuses that allow deletion (soft-delete).
+// Active loads (dispatched, in_transit, arrived, delivered, completed) cannot be deleted.
+const DELETABLE_STATUSES: string[] = [
+  LoadStatus.DRAFT,
+  LoadStatus.PLANNED,
+  LoadStatus.CANCELLED,
+];
+
+// Soft-delete a load — sets deleted_at timestamp instead of removing the row
+router.delete(
+  "/api/loads/:id",
+  requireAuth,
+  requireTenant,
+  async (req: any, res, next) => {
+    const loadId = req.params.id;
+    const companyId = req.user.tenantId;
+
+    try {
+      // Look up the load, scoped to the requesting tenant and not already deleted
+      const [rows]: any = await pool.query(
+        "SELECT id, status FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        [loadId, companyId],
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      const load = rows[0];
+
+      if (!DELETABLE_STATUSES.includes(load.status)) {
+        return res.status(422).json({
+          error: `Cannot delete load in "${load.status}" status. Only loads in draft, planned, or cancelled status can be deleted.`,
+        });
+      }
+
+      await pool.query(
+        "UPDATE loads SET deleted_at = NOW() WHERE id = ? AND company_id = ?",
+        [loadId, companyId],
+      );
+
+      res.json({ message: "Load deleted" });
     } catch (error) {
       next(error);
     }

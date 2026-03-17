@@ -65,6 +65,7 @@ import {
   createLoad as apiCreateLoad,
   updateLoadStatusApi,
   searchLoadsApi,
+  deleteLoadApi,
 } from "./loadService";
 
 // --- Re-export domain modules for backward compatibility ---
@@ -209,7 +210,9 @@ export const saveLoad = async (load: LoadData, user: User) => {
 };
 
 export const deleteLoad = async (id: string) => {
-  // Remove from in-memory cache; backend delete not yet implemented
+  await deleteLoadApi(id);
+
+  // Remove from in-memory cache after successful backend delete
   _cachedLoads = _cachedLoads.filter((l) => l.id !== id);
 };
 

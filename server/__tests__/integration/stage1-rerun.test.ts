@@ -167,6 +167,24 @@ beforeAll(async () => {
     // Non-fatal: if we cannot add the column, the loads route may still 500.
     // The test will capture the real status and report it.
   }
+
+  // Ensure deleted_at column exists in loads table for soft-delete support.
+  // Added by migration 023_add_loads_deleted_at.sql.
+  try {
+    const [delCols]: any = await pool.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'loads'
+         AND COLUMN_NAME = 'deleted_at'`,
+    );
+    if (delCols.length === 0) {
+      await pool.query(
+        "ALTER TABLE loads ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL",
+      );
+    }
+  } catch {
+    // Non-fatal: test will capture the real status.
+  }
 }, 20000);
 
 // ---------------------------------------------------------------------------
