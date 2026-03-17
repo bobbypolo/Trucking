@@ -45,7 +45,7 @@ import {
   VaultDocType,
   VaultDocStatus,
 } from "../types";
-import { storage, DEMO_MODE } from "./firebase";
+import { storage } from "./firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import {
   getCompany,
@@ -88,9 +88,6 @@ export {
   saveWorkItem,
 } from "./storage/tasks";
 export {
-  STORAGE_KEY_CRISIS,
-  STORAGE_KEY_REQUESTS,
-  STORAGE_KEY_SERVICE_TICKETS,
   getRawCrisisActions,
   saveCrisisAction,
   getRawRequests,
@@ -102,12 +99,8 @@ export {
   saveServiceTicket,
 } from "./storage/recovery";
 export {
-  STORAGE_KEY_CONTACTS,
-  STORAGE_KEY_PROVIDERS,
-  getRawProviders,
   saveProvider,
   getProviders,
-  getRawContacts,
   getContacts,
   saveContact,
   getDirectory,
@@ -131,9 +124,7 @@ import {
   saveBooking as _saveBooking,
 } from "./storage/bookings";
 import { getMessages as _getMessages } from "./storage/messages";
-import {
-  getRawCalls as _getRawCalls,
-} from "./storage/calls";
+import { getRawCalls as _getRawCalls } from "./storage/calls";
 import {
   getRawTasks as _getRawTasks,
   getWorkItems as _getWorkItems,
@@ -145,8 +136,7 @@ import {
   saveRequest as _saveRequest,
 } from "./storage/recovery";
 import {
-  getRawProviders as _getRawProviders,
-  getRawContacts as _getRawContacts,
+  getContacts as _getContacts,
 } from "./storage/directory";
 import { getRawVaultDocs as _getRawVaultDocs } from "./storage/vault";
 import { saveTask as _saveTask } from "./storage/tasks";
@@ -632,96 +622,9 @@ export const getIncidents = async (): Promise<Incident[]> => {
   return getRawIncidents();
 };
 
-export const seedIncidents = async (loads: LoadData[]) => {
-  if (!DEMO_MODE) return;
-  if (loads.length === 0) return;
-  const existing = await getIncidents();
-  if (existing.length > 0) return;
-
-  const incidents: Incident[] = [
-    {
-      id: "inc-desc-001",
-      loadId: loads[0].id,
-      type: "Motor Breakdown",
-      severity: "Critical",
-      status: "Open",
-      reportedAt: new Date(Date.now() - 3600000 * 4).toISOString(), // 4h ago
-      slaDeadline: new Date(Date.now() + 3600000).toISOString(), // 1h left
-      description:
-        "Engine failure on I-90 EB. Smoke reported from engine bay. Vehicle stationary on shoulder.",
-      location: { lat: 41.8781, lng: -87.6298 },
-      timeline: [
-        {
-          id: uuidv4(),
-          timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-          actorName: "System",
-          action: "INCIDENT_REPORTED",
-          notes: "Automated breakdown detection via ELD telemetry.",
-        },
-      ],
-      billingItems: [],
-      serviceTickets: [],
-      isAtRisk: true,
-    },
-    {
-      id: "inc-desc-002",
-      loadId: (loads[1] || loads[0]).id,
-      type: "Hours of Service Risk",
-      severity: "High",
-      status: "Open",
-      reportedAt: new Date(Date.now() - 3600000).toISOString(), // 1h ago
-      slaDeadline: new Date(Date.now() + 3600000 * 3).toISOString(), // 3h left
-      description:
-        "Driver nearing 11-hour driving limit while 80 miles from destination. High risk of violation.",
-      location: { lat: 40.0, lng: -83.0 },
-      timeline: [
-        {
-          id: uuidv4(),
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          actorName: "Safety Bot",
-          action: "RISK_DETECTED",
-          notes: "ELD analysis predicts violation in 45 minutes.",
-        },
-      ],
-      billingItems: [],
-      serviceTickets: [],
-      isAtRisk: true,
-    },
-  ];
-
-  for (const inc of incidents) {
-    try {
-      await fetch(`${API_URL}/incidents`, {
-        method: "POST",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify({
-          ...inc,
-          load_id: inc.loadId,
-          sla_deadline: inc.slaDeadline,
-        }),
-      });
-
-      for (const t of inc.timeline || []) {
-        await fetch(`${API_URL}/incidents/${inc.id}/actions`, {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            ...t,
-            actor_name: t.actorName,
-          }),
-        });
-      }
-    } catch (e) {
-      console.error("[storageService] seedIncidents sync failed:", e);
-    }
-  }
-
-  const currentLocal = getRawIncidents();
-  localStorage.setItem(
-    STORAGE_KEY_INCIDENTS(),
-    JSON.stringify([...incidents, ...currentLocal]),
-  );
-};
+// seedIncidents: kept as no-op for backward compatibility (STORY-019)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export const seedIncidents = async (_loads: LoadData[]): Promise<void> => {};
 
 export const createIncident = async (incident: Partial<Incident>) => {
   const incToSave = {
@@ -923,30 +826,11 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
 };
 
 export const getOperationalTrends = async (
-  companyId: string,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _companyId: string,
 ): Promise<OperationalTrend[]> => {
-  // Demo mode: return sample ERP trends for demonstration purposes
-  if (!DEMO_MODE) return [];
-  return [
-    {
-      id: "t1",
-      entityType: "Driver",
-      entityId: "d1",
-      trendType: "Consistent_Late",
-      severity: "Critical",
-      observationCount: 4,
-      lastOccurrence: new Date().toISOString(),
-    },
-    {
-      id: "t2",
-      entityType: "Broker",
-      entityId: "b1",
-      trendType: "Contract_Risk",
-      severity: "Warning",
-      observationCount: 2,
-      lastOccurrence: new Date().toISOString(),
-    },
-  ];
+  // Trends are server-computed — no client-side seed data (STORY-019)
+  return [];
 };
 
 export const getUnifiedEvents = async (
@@ -1015,7 +899,7 @@ export const getUnifiedEvents = async (
     });
   });
   // 3. Add Requests
-  const requests = _getRawRequests();
+  const requests = await _getRawRequests();
   requests.forEach((req) => {
     events.push({
       id: req.id,
@@ -1050,7 +934,7 @@ export const getUnifiedEvents = async (
   });
 
   // 5. Add Crisis Actions
-  const crisisActions = _getRawCrisisActions();
+  const crisisActions = await _getRawCrisisActions();
   crisisActions.forEach((ca) => {
     events.push({
       id: ca.id,
@@ -1095,7 +979,7 @@ export const getLoadSummary = async (
   const load = loads.find((l) => l.id === loadId);
   if (!load) return null;
 
-  const requests = _getRawRequests().filter((r) => r.loadId === loadId);
+  const requests = (await _getRawRequests()).filter((r) => r.loadId === loadId);
   const unresolved = requests.filter((r) =>
     ["NEW", "PENDING_APPROVAL", "NEEDS_INFO"].includes(r.status),
   );
@@ -1162,7 +1046,7 @@ export const getBrokerSummary = async (brokerId: string) => {
 
   const loads = getRawLoads().filter((l) => l.brokerId === brokerId);
   const loadIds = loads.map((l) => l.id);
-  const requests = _getRawRequests().filter((r) =>
+  const requests = (await _getRawRequests()).filter((r) =>
     loadIds.includes(
       r.loadId ||
         r.links.find((lk) => lk.entityType === "LOAD")?.entityId ||
@@ -1276,7 +1160,7 @@ export const globalSearch = async (
     });
 
   // 3. Search Requests
-  const srchRequests = _getRawRequests();
+  const srchRequests = await _getRawRequests();
   srchRequests
     .filter(
       (r) => r.id.toLowerCase().includes(q) || r.type.toLowerCase().includes(q),
@@ -1323,12 +1207,12 @@ export const globalSearch = async (
 
 export const getRecord360Data = async (type: EntityType, id: string) => {
   const loads = getRawLoads();
-  const requests = _getRawRequests();
+  const requests = await _getRawRequests();
   const calls = await _getRawCalls();
   const messages = await _getMessages();
   const incidents = await getIncidents();
   const tasks = await _getRawTasks();
-  const contacts = _getRawContacts();
+  const contacts = await _getContacts();
 
   const buildTimeline = (events: any[]) => {
     return events.sort(
