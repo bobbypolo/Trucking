@@ -4,6 +4,14 @@ import path from "path";
 
 // Tests R-P1-02-AC1, R-P1-02-AC2, R-P1-02-AC3
 
+// TODO(test-coverage): This file is a source-inspection / structural test that
+// reads .ts files from disk and checks for string patterns (e.g., "Router()",
+// "export default router"). It does not exercise any runtime behavior.
+// Per test policy, it should be supplemented (not replaced) with integration
+// tests that actually import and mount routes, verifying correct HTTP responses.
+// These structural checks remain useful as a lint-like gate but should not
+// count toward behavioral coverage.
+
 const ROUTE_MODULES = [
   "loads",
   "users",
