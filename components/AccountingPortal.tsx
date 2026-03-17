@@ -322,7 +322,7 @@ const AccountingPortal: React.FC<Props> = ({
               <div className="col-span-2 space-y-8">
                 <div className="flex justify-between items-end">
                   <h3 className="text-xl font-black text-white uppercase tracking-tighter">
-                    Real-Time Load P&L
+                    Load P&L
                   </h3>
                   <button className="text-[10px] font-black text-emerald-500 uppercase hover:underline">
                     View All Loads

@@ -840,7 +840,7 @@ export const DriverMobileHome: React.FC<Props> = ({
             <div className="absolute top-4 left-4 right-4 p-4 bg-[#0a0f1e]/80 backdrop-blur-md rounded-2xl border border-white/10 flex items-center justify-between">
               <div>
                 <h3 className="text-xs font-black text-white uppercase tracking-widest">
-                  Live Asset Tracking
+                  Fleet Tracking
                 </h3>
                 <p className="text-xs text-emerald-500 font-bold uppercase mt-1 flex items-center gap-1">
                   <Zap className="w-2.5 h-2.5 fill-emerald-500" />
