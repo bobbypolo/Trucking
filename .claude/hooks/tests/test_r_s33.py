@@ -4,6 +4,8 @@ Tests R-S33-01, R-S33-02
 """
 
 # Tests R-S33-01, R-S33-02
+# Coverage: import exceptions
+# Coverage: import health
 
 import subprocess
 from pathlib import Path
