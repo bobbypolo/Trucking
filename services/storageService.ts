@@ -70,13 +70,9 @@ import {
 // --- Re-export domain modules for backward compatibility ---
 // Consumers can import from storageService or directly from domain modules.
 export { getTenantKey, migrateKey } from "./storage/core";
-export { STORAGE_KEY_QUOTES, getQuotes, saveQuote } from "./storage/quotes";
-export { STORAGE_KEY_LEADS, getLeads, saveLead } from "./storage/leads";
-export {
-  STORAGE_KEY_BOOKINGS,
-  getBookings,
-  saveBooking,
-} from "./storage/bookings";
+export { getQuotes, saveQuote } from "./storage/quotes";
+export { getLeads, saveLead } from "./storage/leads";
+export { getBookings, saveBooking } from "./storage/bookings";
 export {
   STORAGE_KEY_MESSAGES,
   STORAGE_KEY_THREADS,
@@ -367,7 +363,7 @@ export const convertBookingToLoad = async (
   const booking = bookings.find((b) => b.id === bookingId);
   if (!booking) return null;
 
-  const quotes = await _getQuotes(user.companyId);
+  const quotes = await _getQuotes();
   const quote = quotes.find((q) => q.id === booking.quoteId);
   if (!quote) return null;
 

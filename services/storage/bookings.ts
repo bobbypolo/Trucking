@@ -1,23 +1,37 @@
 /**
- * Bookings domain — localStorage CRUD.
- * Owner: STORY-014 (Phase 2 migration to server).
+ * Bookings domain — API-backed CRUD.
+ * Owner: STORY-014 (Phase 2 migration complete — local browser storage removed).
+ * All reads/writes go through /api/bookings.
  */
 import { Booking } from "../../types";
-import { getTenantKey } from "./core";
+import { API_URL } from "../config";
+import { getAuthHeaders } from "../authService";
 
-export const STORAGE_KEY_BOOKINGS = (): string => getTenantKey("bookings_v1");
-
-export const getBookings = async (companyId: string): Promise<Booking[]> => {
-  const data = localStorage.getItem(STORAGE_KEY_BOOKINGS());
-  const bookings: Booking[] = data ? JSON.parse(data) : [];
-  return bookings.filter((b) => b.companyId === companyId);
+export const getBookings = async (companyId?: string): Promise<Booking[]> => {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/api/bookings`, { headers });
+  if (!res.ok) throw new Error(`Failed to fetch bookings: ${res.status}`);
+  const data = await res.json();
+  // Server already scopes by tenant; companyId filter is a no-op safety guard
+  if (companyId) {
+    return (data as Booking[]).filter((b) => b.companyId === companyId);
+  }
+  return data as Booking[];
 };
 
-export const saveBooking = async (booking: Booking) => {
-  const data = localStorage.getItem(STORAGE_KEY_BOOKINGS());
-  let bookings: Booking[] = data ? JSON.parse(data) : [];
-  const idx = bookings.findIndex((b) => b.id === booking.id);
-  if (idx >= 0) bookings[idx] = booking;
-  else bookings.unshift(booking);
-  localStorage.setItem(STORAGE_KEY_BOOKINGS(), JSON.stringify(bookings));
+export const saveBooking = async (booking: Booking): Promise<Booking> => {
+  const headers = await getAuthHeaders();
+  // Use PATCH if id already exists on server, POST for new records
+  const isUpdate = Boolean(booking.id);
+  const url = isUpdate
+    ? `${API_URL}/api/bookings/${booking.id}`
+    : `${API_URL}/api/bookings`;
+  const method = isUpdate ? "PATCH" : "POST";
+  const res = await fetch(url, {
+    method,
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(booking),
+  });
+  if (!res.ok) throw new Error(`Failed to save booking: ${res.status}`);
+  return res.json();
 };

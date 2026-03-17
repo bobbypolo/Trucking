@@ -4,9 +4,9 @@
  * or individual domain modules for reduced coupling.
  */
 export { getTenantKey, migrateKey } from "./core";
-export { STORAGE_KEY_QUOTES, getQuotes, saveQuote } from "./quotes";
-export { STORAGE_KEY_LEADS, getLeads, saveLead } from "./leads";
-export { STORAGE_KEY_BOOKINGS, getBookings, saveBooking } from "./bookings";
+export { getQuotes, saveQuote } from "./quotes";
+export { getLeads, saveLead } from "./leads";
+export { getBookings, saveBooking } from "./bookings";
 export {
   STORAGE_KEY_MESSAGES,
   STORAGE_KEY_THREADS,
