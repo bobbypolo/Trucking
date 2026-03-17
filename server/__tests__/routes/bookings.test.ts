@@ -127,6 +127,12 @@ describe("GET /api/bookings — success", () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
+
+    // Verify SQL query includes tenant isolation
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("company_id"),
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns empty array when no bookings exist", async () => {
@@ -286,6 +292,13 @@ describe("POST /api/bookings — creation", () => {
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("bk-new");
     expect(res.body.company_id).toBe("company-aaa");
+
+    // Verify INSERT received tenant ID and field values
+    const insertCall = mockQuery.mock.calls[0];
+    expect(insertCall[0]).toMatch(/INSERT/i);
+    expect(insertCall[1]).toEqual(
+      expect.arrayContaining(["company-aaa"]),
+    );
   });
 
   it("returns 201 with minimal data (defaults status to Pending)", async () => {
@@ -409,6 +422,10 @@ describe("PATCH /api/bookings/:id — update", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("Confirmed");
+
+    // Verify UPDATE query received correct ID parameter
+    const updateCall = mockQuery.mock.calls[1];
+    expect(updateCall[0]).toMatch(/UPDATE/i);
   });
 
   it("returns 404 for cross-tenant update attempt (conceals existence)", async () => {

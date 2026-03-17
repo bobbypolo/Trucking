@@ -130,6 +130,15 @@ describe("POST /api/service-tickets — creation", () => {
     expect(res.status).toBe(201);
   });
 
+  it("returns 400 when cost is not a number (schema validation)", async () => {
+    const res = await request(app)
+      .post("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token")
+      .send({ cost: "not-a-number" });
+
+    expect(res.status).toBe(400);
+  });
+
   it("returns 500 on database error during creation", async () => {
     mockQuery.mockRejectedValueOnce(new Error("DB insert failed"));
     const res = await request(app).post("/api/service-tickets").set("Authorization", "Bearer valid-token").send({ type: "Tire Rotation" });

@@ -160,7 +160,7 @@ describe("POST /api/exceptions — validation and edge cases", () => {
     });
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("Exception recorded");
-    expect(res.body.id).toBeDefined();
+    expect(res.body.id).toMatch(/^[a-f0-9-]{36}$/);
   });
 
   it("uses default values for optional fields", async () => {
