@@ -73,14 +73,7 @@ export { getTenantKey, migrateKey } from "./storage/core";
 export { getQuotes, saveQuote } from "./storage/quotes";
 export { getLeads, saveLead } from "./storage/leads";
 export { getBookings, saveBooking } from "./storage/bookings";
-export {
-  STORAGE_KEY_MESSAGES,
-  STORAGE_KEY_THREADS,
-  getMessages,
-  saveMessage,
-  getThreads,
-  saveThread,
-} from "./storage/messages";
+export { getMessages, saveMessage } from "./storage/messages";
 export {
   getRawCalls,
   saveCallSession,
@@ -959,14 +952,8 @@ export const getOperationalTrends = async (
 export const getUnifiedEvents = async (
   selectedThreadId?: string,
 ): Promise<OperationalEvent[]> => {
-  // 1. Get native events from threads if selected
+  // 1. Thread events — threads are now server-managed (STORY-015)
   let events: OperationalEvent[] = [];
-  if (selectedThreadId) {
-    const { getThreads: _getThreads } = await import("./storage/messages");
-    const threads = await _getThreads("");
-    const thread = threads.find((t) => t.id === selectedThreadId);
-    if (thread) events = [...thread.events];
-  }
 
   // 2. Wrap legacy data as events for transition
   const rawLoads = getRawLoads();

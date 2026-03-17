@@ -72,7 +72,7 @@ export const OperationalMessaging: React.FC<Props> = ({
 
     const handleSendMessage = async () => {
         if (!messageText.trim() || !selectedThreadId) return;
-        const newMsg: Message = {
+        const draft: Message = {
             id: Math.random().toString(36).substr(2, 9),
             loadId: String(selectedThreadId).replace('inc-', ''),
             senderId: user.id,
@@ -80,9 +80,14 @@ export const OperationalMessaging: React.FC<Props> = ({
             text: messageText,
             timestamp: new Date().toISOString()
         };
-        await saveMessage(newMsg);
-        setMessages(prev => [...prev, newMsg]);
-        setMessageText('');
+        try {
+            const saved = await saveMessage(draft);
+            setMessages(prev => [...prev, saved]);
+            setMessageText('');
+        } catch (err) {
+            console.error('[OperationalMessaging] Message send failed:', err);
+            alert('Message could not be delivered. Please try again.');
+        }
     };
 
     useEffect(() => {
