@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SafetyView } from "../../../components/SafetyView";
 import type { User } from "../../../types";
@@ -183,21 +184,30 @@ describe("SafetyView component", () => {
     expect(screen.getByText("Test Admin")).toBeInTheDocument();
   });
 
-  it("switches to Assets tab when clicked", async () => {
+  it("switches to Assets tab and shows Fleet Registry heading", async () => {
+    const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Assets"));
-    // Assets tab should be visible (equipment section)
+    await user.click(screen.getByText("Assets"));
+    // Positive assertion: Assets tab shows "Fleet Registry" heading and "Register Asset" button
     await waitFor(() => {
-      expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
+      expect(screen.getByText("Fleet Registry")).toBeInTheDocument();
     });
+    expect(screen.getByText(/Register Asset/)).toBeInTheDocument();
+    // Negative: overview content should be gone
+    expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
   });
 
-  it("switches to Service tab when clicked", async () => {
+  it("switches to Service tab and shows Maintenance & Service Tickets heading", async () => {
+    const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
-    fireEvent.click(screen.getByText("Service"));
+    await user.click(screen.getByText("Service"));
+    // Positive assertion: Service tab shows "Maintenance & Service Tickets" heading
     await waitFor(() => {
-      expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
+      expect(screen.getByText("Maintenance & Service Tickets")).toBeInTheDocument();
     });
+    expect(screen.getByText(/Open Service Ticket/)).toBeInTheDocument();
+    // Negative: overview content should be gone
+    expect(screen.queryByText("Fleet Safety Score")).not.toBeInTheDocument();
   });
 
   it("shows Logic Plane synchronized indicator", async () => {
@@ -243,16 +253,19 @@ describe("SafetyView component", () => {
       ).toBeInTheDocument();
     });
 
-    // Click the X button to dismiss feedback
-    const feedback = screen.getByText(/Logic Sync Interrupted/).closest("div")!;
-    const closeBtn = feedback.querySelector("button");
-    if (closeBtn) {
-      fireEvent.click(closeBtn);
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/Logic Sync Interrupted/),
-        ).not.toBeInTheDocument();
-      });
-    }
+    // Click the X button to dismiss feedback — the button is a sibling of the
+    // text's grandparent div, inside the fixed-position feedback container.
+    const feedbackText = screen.getByText(/Logic Sync Interrupted/);
+    // Walk up to the fixed container (the outermost feedback div)
+    const feedbackContainer = feedbackText.closest('[class*="fixed"]');
+    expect(feedbackContainer).toBeTruthy();
+    const closeBtn = feedbackContainer!.querySelector("button");
+    expect(closeBtn).toBeTruthy();
+    fireEvent.click(closeBtn!);
+    await waitFor(() => {
+      expect(
+        screen.queryByText(/Logic Sync Interrupted/),
+      ).not.toBeInTheDocument();
+    });
   });
 });
