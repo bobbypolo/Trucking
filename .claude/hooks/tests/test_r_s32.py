@@ -192,8 +192,7 @@ def test_r_s32_error_missing_lazy_wrapper_detection():
     # Find the operations-hub render block
     assert 'operations-hub' in content, 'App.tsx must have operations-hub tab'
     # The IntelligenceHub render must be inside a Suspense block
-    idx_ih = content.find('IntelligenceHub
-') 
+    idx_ih = content.find('IntelligenceHub') 
     if idx_ih == -1:
         idx_ih = content.find('<IntelligenceHub')
     # Check that Suspense appears before this usage
