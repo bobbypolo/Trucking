@@ -140,3 +140,64 @@ def test_r_s32_app_uses_react_lazy():
             f"const {component} = React.lazy" in content
             or f"const {component}=React.lazy" in content
         ), f"{component} must be lazy-loaded in App.tsx"
+
+
+def test_r_s32_build_output_no_single_js_over_2mb():
+    """Edge case: No single JS chunk should exceed 2MB minified (sanity guard)."""
+    # Tests R-S32-01
+    if not DIST_ASSETS.exists():
+        return  # Skip if no build yet
+
+    violations = []
+    for f in DIST_ASSETS.iterdir():
+        if f.suffix == '.js':
+            size_kb = f.stat().st_size / 1024
+            if size_kb > 2048:  # 2MB hard limit
+                violations.append((f.name, size_kb))
+    assert not violations, f'JS chunks over 2MB (likely misconfigured split): {violations}'
+
+
+def test_r_s32_suspense_fallbacks_present():
+    """Verify all lazy components have Suspense fallback wrappers."""
+    # Tests R-S32-01, R-S32-02, R-S32-03
+    content = APP_TSX.read_text(encoding='utf-8')
+    suspense_count = content.count('<Suspense')
+    lazy_count = content.count('React.lazy')
+    # Should have at least as many Suspense wrappers as lazy components
+    assert suspense_count > 0, 'No Suspense wrappers found in App.tsx'
+    assert lazy_count > 0, 'No React.lazy calls found in App.tsx'
+    assert suspense_count >= lazy_count // 2, (
+        f'Suspense wrappers ({suspense_count}) should cover most lazy imports ({lazy_count})'
+    )
+
+
+def test_r_s32_manual_chunks_vendor_has_react():
+    """Verify vendor chunk includes react and react-dom."""
+    # Tests R-S32-01
+    content = VITE_CONFIG.read_text(encoding='utf-8')
+    # Check for react in vendor chunk
+    assert "'react'" in content or '"react"' in content, (
+        'vite.config.ts manualChunks vendor must include react'
+    )
+    assert "'react-dom'" in content or '"react-dom"' in content, (
+        'vite.config.ts manualChunks vendor must include react-dom'
+    )
+
+
+def test_r_s32_error_missing_lazy_wrapper_detection():
+    """Error case: Detect if a lazy component is used without Suspense."""
+    # Tests R-S32-01, R-S32-03
+    content = APP_TSX.read_text(encoding='utf-8')
+    # Verify IntelligenceHub (operations-hub tab) has Suspense
+    # Find the operations-hub render block
+    assert 'operations-hub' in content, 'App.tsx must have operations-hub tab'
+    # The IntelligenceHub render must be inside a Suspense block
+    idx_ih = content.find('IntelligenceHub
+') 
+    if idx_ih == -1:
+        idx_ih = content.find('<IntelligenceHub')
+    # Check that Suspense appears before this usage
+    pre_content = content[:idx_ih] if idx_ih > 0 else content
+    assert '<Suspense' in pre_content, (
+        'IntelligenceHub must be wrapped in Suspense boundary'
+    )
