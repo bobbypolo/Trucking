@@ -1,0 +1,631 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+/**
+ * Exceptions Route Hardening Tests
+ *
+ * Covers previously uncovered lines and branches in exceptions.ts:
+ * - GET /api/exceptions: all filter query params (type, severity, entityType, entityId, ownerId)
+ * - POST /api/exceptions: validation failures, DB errors
+ * - PATCH /api/exceptions/:id: RESOLVED status triggers, CLOSED status triggers, multiple field updates
+ * - GET /api/exceptions/:id/events: success, DB error, tenant isolation
+ * - GET /api/exception-types: success, DB error
+ */
+
+const { mockQuery } = vi.hoisted(() => {
+  const mockQuery = vi.fn();
+  return { mockQuery };
+});
+
+vi.mock("../../db", () => ({
+  default: {
+    query: mockQuery,
+  },
+}));
+
+vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
+  createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+let mockUserRole = "dispatcher";
+let mockUserTenantId = "company-aaa";
+
+vi.mock("../../middleware/requireAuth", () => ({
+  requireAuth: (req: any, _res: any, next: any) => {
+    req.user = {
+      uid: "user-1",
+      tenantId: mockUserTenantId,
+      role: mockUserRole,
+      email: "test@loadpilot.com",
+      firebaseUid: "firebase-uid-1",
+    };
+    next();
+  },
+}));
+
+vi.mock("../../middleware/requireTenant", () => ({
+  requireTenant: (_req: any, _res: any, next: any) => {
+    next();
+  },
+}));
+
+import express from "express";
+import request from "supertest";
+import exceptionsRouter from "../../routes/exceptions";
+import { errorHandler } from "../../middleware/errorHandler";
+
+function buildApp() {
+  const app = express();
+  app.use(express.json());
+  app.use(exceptionsRouter);
+  app.use(errorHandler);
+  return app;
+}
+
+const makeException = (overrides: Record<string, unknown> = {}) => ({
+  id: "ex-001",
+  tenant_id: "company-aaa",
+  type: "DELAY",
+  status: "OPEN",
+  severity: 2,
+  entity_type: "LOAD",
+  entity_id: "load-001",
+  owner_user_id: "user-1",
+  team: "dispatch",
+  sla_due_at: null,
+  workflow_step: "triage",
+  financial_impact_est: 0,
+  description: "Driver delayed",
+  links: "{}",
+  ...overrides,
+});
+
+// ── GET /api/exceptions — all filter paths ──────────────────────────
+
+describe("GET /api/exceptions — filter query params", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("filters by type query param", async () => {
+    mockQuery.mockResolvedValueOnce([[makeException()], []]);
+
+    const res = await request(app)
+      .get("/api/exceptions?type=DELAY")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("type = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toContain("DELAY");
+  });
+
+  it("filters by severity query param", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions?severity=1")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("severity = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toContain("1");
+  });
+
+  it("filters by entityType query param", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions?entityType=LOAD")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("entity_type = ?");
+  });
+
+  it("filters by entityId query param", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions?entityId=load-001")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("entity_id = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toContain("load-001");
+  });
+
+  it("filters by ownerId query param", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions?ownerId=user-1")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("owner_user_id = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toContain("user-1");
+  });
+
+  it("applies multiple filters simultaneously", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get(
+        "/api/exceptions?status=OPEN&type=DELAY&severity=2&entityType=LOAD&entityId=load-001&ownerId=user-1",
+      )
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("status = ?");
+    expect(sql).toContain("type = ?");
+    expect(sql).toContain("severity = ?");
+    expect(sql).toContain("entity_type = ?");
+    expect(sql).toContain("entity_id = ?");
+    expect(sql).toContain("owner_user_id = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toHaveLength(7); // tenantId + 6 filters
+  });
+
+  it("query orders by severity DESC, sla_due_at ASC", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("ORDER BY severity DESC, sla_due_at ASC");
+  });
+});
+
+// ── POST /api/exceptions — validation and DB paths ──────────────────
+
+describe("POST /api/exceptions — validation and edge cases", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when type is missing (schema validation)", async () => {
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({ entityType: "LOAD", entityId: "load-001" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when entityType is missing", async () => {
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({ type: "DELAY", entityId: "load-001" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when entityId is missing", async () => {
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({ type: "DELAY", entityType: "LOAD" });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("creates exception with all optional fields", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT exception
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        type: "DELAY",
+        status: "OPEN",
+        severity: 1,
+        entityType: "LOAD",
+        entityId: "load-001",
+        ownerUserId: "user-1",
+        team: "dispatch",
+        slaDueAt: "2026-03-20T12:00:00Z",
+        workflowStep: "investigation",
+        financialImpactEst: 5000,
+        description: "Late delivery due to weather",
+        links: { url: "https://example.com" },
+        createdBy: "dispatcher-1",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.message).toBe("Exception recorded");
+    expect(res.body.id).toBeDefined();
+  });
+
+  it("uses default values for optional fields", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        type: "POD_MISSING",
+        entityType: "LOAD",
+        entityId: "load-002",
+      });
+
+    expect(res.status).toBe(201);
+
+    // Verify INSERT params use defaults
+    const insertParams = mockQuery.mock.calls[0][1] as unknown[];
+    // status defaults to "OPEN"
+    expect(insertParams[3]).toBe("OPEN");
+    // severity defaults to 2
+    expect(insertParams[4]).toBe(2);
+    // workflowStep defaults to "triage"
+    expect(insertParams[10]).toBe("triage");
+    // financialImpactEst defaults to 0
+    expect(insertParams[11]).toBe(0);
+  });
+
+  it("returns 500 on DB error during INSERT", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .post("/api/exceptions")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        type: "DELAY",
+        entityType: "LOAD",
+        entityId: "load-001",
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Database error");
+  });
+});
+
+// ── PATCH /api/exceptions/:id — RESOLVED/CLOSED paths ───────────────
+
+describe("PATCH /api/exceptions/:id — resolution and closure paths", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("RESOLVED status triggers resolved_at timestamp and resolution hooks", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT existing
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([[makeException({ status: "RESOLVED" })], []]); // SELECT for hooks
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        status: "RESOLVED",
+        notes: "Issue resolved",
+        actorName: "manager-1",
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Exception updated");
+
+    // Verify UPDATE query includes resolved_at
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("resolved_at = CURRENT_TIMESTAMP");
+  });
+
+  it("CLOSED status triggers resolved_at timestamp", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT existing
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        status: "CLOSED",
+        notes: "No longer relevant",
+        actorName: "admin-1",
+      });
+
+    expect(res.status).toBe(200);
+
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("resolved_at = CURRENT_TIMESTAMP");
+  });
+
+  it("updates ownerUserId field", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        ownerUserId: "user-new-owner",
+        actorName: "admin",
+      });
+
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("owner_user_id = ?");
+  });
+
+  it("updates workflowStep field", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        workflowStep: "investigation",
+        actorName: "dispatcher",
+      });
+
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("workflow_step = ?");
+  });
+
+  it("updates severity field", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        severity: "1",
+        actorName: "admin",
+      });
+
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("severity = ?");
+  });
+
+  it("updates multiple fields at once", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        status: "IN_PROGRESS",
+        ownerUserId: "user-2",
+        workflowStep: "investigation",
+        severity: "1",
+        notes: "Escalated",
+        actorName: "manager",
+      });
+
+    expect(res.status).toBe(200);
+    const updateSql = mockQuery.mock.calls[1][0] as string;
+    expect(updateSql).toContain("status = ?");
+    expect(updateSql).toContain("owner_user_id = ?");
+    expect(updateSql).toContain("workflow_step = ?");
+    expect(updateSql).toContain("severity = ?");
+  });
+
+  it("returns 404 for cross-tenant exception update", async () => {
+    // SELECT returns empty (tenant_id mismatch filtered out)
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .patch("/api/exceptions/ex-cross-tenant")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "RESOLVED" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when no fields are provided (schema refine)", async () => {
+    const res = await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  it("logs event with before_state and after_state", async () => {
+    const existing = makeException();
+    mockQuery.mockResolvedValueOnce([[existing], []]); // SELECT
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // UPDATE
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]); // INSERT event
+
+    await request(app)
+      .patch("/api/exceptions/ex-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        status: "IN_PROGRESS",
+        notes: "Working on it",
+        actorName: "dispatcher-1",
+      });
+
+    // Verify the event INSERT includes before_state and after_state
+    const eventInsertCall = mockQuery.mock.calls[2];
+    const eventSql = eventInsertCall[0] as string;
+    expect(eventSql).toContain("before_state");
+    expect(eventSql).toContain("after_state");
+    const eventParams = eventInsertCall[1] as unknown[];
+    // before_state should be JSON of old exception
+    expect(eventParams[5]).toContain("ex-001");
+    // after_state should be JSON of update fields
+    expect(eventParams[6]).toContain("IN_PROGRESS");
+  });
+});
+
+// ── GET /api/exceptions/:id/events — coverage ───────────────────────
+
+describe("GET /api/exceptions/:id/events — hardening", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns empty array when no events exist", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .get("/api/exceptions/ex-001/events")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(0);
+  });
+
+  it("returns multiple events with correct structure", async () => {
+    const events = [
+      {
+        id: "evt-001",
+        exception_id: "ex-001",
+        action: "Exception Created",
+        notes: "Initial",
+        actor_name: "System",
+        timestamp: "2026-03-15T10:00:00Z",
+      },
+      {
+        id: "evt-002",
+        exception_id: "ex-001",
+        action: "Status/Owner Updated",
+        notes: "Assigned to team",
+        actor_name: "Manager",
+        timestamp: "2026-03-15T11:00:00Z",
+      },
+    ];
+    mockQuery.mockResolvedValueOnce([events, []]);
+
+    const res = await request(app)
+      .get("/api/exceptions/ex-001/events")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].action).toBe("Exception Created");
+  });
+
+  it("returns 500 on DB error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .get("/api/exceptions/ex-001/events")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Database error");
+  });
+
+  it("tenant-scopes the events query via INNER JOIN", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/exceptions/ex-001/events")
+      .set("Authorization", "Bearer valid-token");
+
+    const sql = mockQuery.mock.calls[0][0] as string;
+    expect(sql).toContain("INNER JOIN exceptions");
+    expect(sql).toContain("tenant_id = ?");
+    const params = mockQuery.mock.calls[0][1] as unknown[];
+    expect(params).toContain("company-aaa");
+  });
+});
+
+// ── GET /api/exception-types — coverage ─────────────────────────────
+
+describe("GET /api/exception-types — success and error", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns exception types list with 200", async () => {
+    const types = [
+      { id: 1, display_name: "Delay", slug: "DELAY" },
+      { id: 2, display_name: "POD Missing", slug: "POD_MISSING" },
+    ];
+    mockQuery.mockResolvedValueOnce([types, []]);
+
+    const res = await request(app)
+      .get("/api/exception-types")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].display_name).toBe("Delay");
+  });
+
+  it("returns empty array when no exception types exist", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .get("/api/exception-types")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(0);
+  });
+
+  it("returns 500 on DB error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .get("/api/exception-types")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Database error");
+  });
+});

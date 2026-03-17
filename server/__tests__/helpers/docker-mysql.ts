@@ -30,10 +30,19 @@ const MIGRATION_ORDER = [
   "008_settlements.sql",
   "009_settlement_adjustments.sql",
   "010_add_firebase_uid_to_users.sql",
-  "exception_management.sql",
   "011_accounting_financial_ledger.sql",
   "012_accounting_v3_extensions.sql",
   "013_ifta_intelligence.sql",
+  "014_companies_visibility_settings.sql",
+  "015_add_users_phone.sql",
+  "016_exception_management.sql",
+  "017_quotes_leads_bookings.sql",
+  "018_messages_threads.sql",
+  "019_tasks_workitems.sql",
+  "020_ops_recovery.sql",
+  "021_contacts_providers.sql",
+  "022_client_archive.sql",
+  "023_add_loads_deleted_at.sql",
 ];
 
 export function isContainerRunning(): boolean {

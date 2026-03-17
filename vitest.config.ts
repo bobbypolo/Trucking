@@ -15,5 +15,21 @@ export default defineConfig({
     setupFiles: ["src/__tests__/setup.ts"],
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "scripts/**/*.test.ts"],
     exclude: ["node_modules", "server", ".claude"],
+    coverage: {
+      provider: "v8",
+      include: [
+        "components/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "types.ts",
+        "data/**/*.ts",
+      ],
+      exclude: [
+        "node_modules/**",
+        "src/__tests__/**",
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
+        "src/vite-env.d.ts",
+      ],
+    },
   },
 });
