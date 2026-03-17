@@ -423,7 +423,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
       id: "owner_operator",
       icon: User,
       title: "Owner Operator",
-      desc: "Manage your own authority and equipment.",
+      desc: "Manage your own operations and equipment.",
     },
     {
       id: "fleet",

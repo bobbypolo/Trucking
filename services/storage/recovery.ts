@@ -11,8 +11,6 @@ import {
 import { API_URL } from "../config";
 import { getAuthHeaders } from "../authService";
 
-// STORAGE_KEY_CRISIS, STORAGE_KEY_REQUESTS, STORAGE_KEY_SERVICE_TICKETS removed (STORY-017)
-
 // --- Crisis Actions ---
 
 export const getRawCrisisActions = async (): Promise<CrisisAction[]> => {
@@ -29,7 +27,9 @@ export const getRawCrisisActions = async (): Promise<CrisisAction[]> => {
   }
 };
 
-export const saveCrisisAction = async (action: CrisisAction): Promise<CrisisAction> => {
+export const saveCrisisAction = async (
+  action: CrisisAction,
+): Promise<CrisisAction> => {
   // Try PATCH first (update), then POST (create)
   try {
     const patchRes = await fetch(API_URL + "/api/crisis-actions/" + action.id, {
@@ -186,14 +186,19 @@ export const getRawServiceTickets = async (): Promise<ServiceTicket[]> => {
   }
 };
 
-export const saveServiceTicket = async (ticket: ServiceTicket): Promise<ServiceTicket> => {
+export const saveServiceTicket = async (
+  ticket: ServiceTicket,
+): Promise<ServiceTicket> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/api/service-tickets/" + ticket.id, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(ticket),
-    });
+    const patchRes = await fetch(
+      API_URL + "/api/service-tickets/" + ticket.id,
+      {
+        method: "PATCH",
+        headers: await getAuthHeaders(),
+        body: JSON.stringify(ticket),
+      },
+    );
     if (patchRes.ok) return patchRes.json();
   } catch (_) {
     // fall through to create
