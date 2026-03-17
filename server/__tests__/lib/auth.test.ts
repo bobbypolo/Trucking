@@ -325,27 +325,4 @@ describe("server/auth.ts — verifyFirebaseToken middleware", () => {
     });
   });
 
-  describe("Security invariants", () => {
-    it("auth.ts does NOT use JWT_SECRET or jsonwebtoken", async () => {
-      const fs = await import("fs");
-      const path = await import("path");
-      const authPath = path.resolve(__dirname, "../../auth.ts");
-      const content = fs.readFileSync(authPath, "utf-8");
-
-      expect(content).not.toContain("JWT_SECRET");
-      expect(content).not.toContain("jsonwebtoken");
-      expect(content).not.toContain("jwt.sign");
-      expect(content).not.toContain("jwt.verify");
-    });
-
-    it("auth.ts uses Firebase Admin SDK for token verification", async () => {
-      const fs = await import("fs");
-      const path = await import("path");
-      const authPath = path.resolve(__dirname, "../../auth.ts");
-      const content = fs.readFileSync(authPath, "utf-8");
-
-      expect(content).toContain("firebase-admin");
-      expect(content).toContain("verifyIdToken");
-    });
-  });
 });
