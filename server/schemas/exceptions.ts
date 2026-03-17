@@ -12,7 +12,7 @@ export const createExceptionSchema = z.object({
   workflowStep: z.string().optional(),
   financialImpactEst: z.number().optional(),
   description: z.string().optional(),
-  links: z.union([z.string(), z.record(z.unknown())]).optional(),
+  links: z.union([z.string(), z.object({}).passthrough()]).optional(),
   createdBy: z.string().optional(),
 });
 
