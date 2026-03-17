@@ -36,6 +36,15 @@ import metricsRouter from "./routes/metrics";
 import aiRouter from "./routes/ai";
 import messagesRouter from "./routes/messages";
 import callSessionsRouter from "./routes/call-sessions";
+import quotesRouter from "./routes/quotes";
+import leadsRouter from "./routes/leads";
+import bookingsRouter from "./routes/bookings";
+import contactsRouter from "./routes/contacts";
+import providersRouter from "./routes/providers";
+import tasksRouter from "./routes/tasks";
+import kciRequestsRouter from "./routes/kci-requests";
+import crisisActionsRouter from "./routes/crisis-actions";
+import serviceTicketsRouter from "./routes/service-tickets";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -80,9 +89,18 @@ app.use(exceptionsRouter);
 app.use(trackingRouter);
 app.use(weatherRouter);
 app.use(metricsRouter);
-app.use("/api/ai", express.json({ limit: "15mb" }), aiRouter);
+app.use("/api/ai", express.json({ limit: "5mb" }), aiRouter);
 app.use(messagesRouter);
 app.use(callSessionsRouter);
+app.use(quotesRouter);
+app.use(leadsRouter);
+app.use(bookingsRouter);
+app.use(contactsRouter);
+app.use(providersRouter);
+app.use(tasksRouter);
+app.use(kciRequestsRouter);
+app.use(crisisActionsRouter);
+app.use(serviceTicketsRouter);
 
 app.use(errorHandler);
 
