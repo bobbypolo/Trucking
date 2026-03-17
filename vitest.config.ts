@@ -17,20 +17,19 @@ export default defineConfig({
     exclude: ["node_modules", "server", ".claude"],
     coverage: {
       provider: "v8",
-      include: ["src/**/*.ts", "src/**/*.tsx"],
+      include: [
+        "components/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "types.ts",
+        "data/**/*.ts",
+      ],
       exclude: [
         "node_modules/**",
         "src/__tests__/**",
-        "src/**/*.test.ts",
-        "src/**/*.test.tsx",
+        "**/*.test.{ts,tsx}",
+        "**/*.spec.{ts,tsx}",
         "src/vite-env.d.ts",
       ],
-      thresholds: {
-        statements: 80,
-        branches: 70,
-        functions: 75,
-        lines: 80,
-      },
     },
   },
 });

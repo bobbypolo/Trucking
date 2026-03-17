@@ -75,10 +75,24 @@ describe("server/auth.ts — verifyFirebaseToken middleware", () => {
       vi.clearAllMocks();
       vi.resetModules();
 
-      // No serviceAccount.json and no env vars → authReady stays false
-      // The module will try to require serviceAccount.json and fail
+      // Clear env vars so authReady stays false
+      const savedProjectId = process.env.FIREBASE_PROJECT_ID;
+      const savedGoogleCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      delete process.env.FIREBASE_PROJECT_ID;
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+      // Make initializeApp throw so authReady stays false
+      mockInitializeApp.mockImplementation(() => {
+        throw new Error("no credentials");
+      });
+
       const mod = await import("../../auth");
       verifyFirebaseToken = mod.verifyFirebaseToken;
+
+      // Restore env vars
+      if (savedProjectId) process.env.FIREBASE_PROJECT_ID = savedProjectId;
+      if (savedGoogleCreds)
+        process.env.GOOGLE_APPLICATION_CREDENTIALS = savedGoogleCreds;
     });
 
     it("returns 500 when Firebase Admin is not initialized", async () => {
@@ -114,6 +128,9 @@ describe("server/auth.ts — verifyFirebaseToken middleware", () => {
       vi.clearAllMocks();
       vi.resetModules();
 
+      // Ensure initializeApp succeeds (reset any prior throw mock)
+      mockInitializeApp.mockImplementation(() => {});
+
       // Set env vars so the app credentials branch runs
       process.env.FIREBASE_PROJECT_ID = "test-project";
 
@@ -138,7 +155,9 @@ describe("server/auth.ts — verifyFirebaseToken middleware", () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ error: expect.stringContaining("Token missing") }),
+        expect.objectContaining({
+          error: expect.stringContaining("Token missing"),
+        }),
       );
     });
 
