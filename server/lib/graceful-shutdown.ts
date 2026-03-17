@@ -26,6 +26,10 @@ export async function registerShutdownHandlers(
     });
   });
 
-  await closePool();
+  try {
+    await closePool();
+  } catch (err) {
+    logger.error({ err }, "Error closing database pool");
+  }
   process.exit(0);
 }

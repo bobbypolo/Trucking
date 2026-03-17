@@ -139,30 +139,24 @@ describe("migrator.ts — hardening tests", () => {
     });
 
     it("throws when migration has no DOWN section", async () => {
-      const { MigrationRunner, scanMigrationFiles, parseMigrationFile } =
+      const { MigrationRunner, scanMigrationFiles } =
         await import("../../lib/migrator");
       const migrationsDir = path.resolve(__dirname, "..", "..", "migrations");
 
-      // Find a migration and check if it has a DOWN section
-      // If all have DOWN sections, we can test by simulating one without
       const db = createMockDb();
       const runner = new MigrationRunner(db as any, migrationsDir);
 
-      // Create a scenario: find a migration, mark it as applied, then
-      // mock scanMigrationFiles to return it with empty down section
-      // Since we can't easily mock the filesystem for this specific test,
-      // verify that the error message format is correct
       const available = await scanMigrationFiles(migrationsDir);
-      const firstWithDown = available.find((m) => m.parsed.down);
       const firstWithoutDown = available.find((m) => !m.parsed.down);
 
       if (firstWithoutDown) {
         db.simulateApply(firstWithoutDown.filename, firstWithoutDown.checksum);
         await expect(runner.down()).rejects.toThrow(/no DOWN section/);
+      } else {
+        // All real migration files have DOWN sections — verify at least one exists
+        const withDown = available.filter((m) => m.parsed.down);
+        expect(withDown.length).toBeGreaterThan(0);
       }
-      // If all migrations have DOWN sections, this edge case can't be triggered
-      // from real migration files. Test passes as the path exists in code.
-      expect(true).toBe(true);
     });
 
     it("rolls back and throws when DOWN SQL execution fails", async () => {

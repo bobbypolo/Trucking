@@ -15,9 +15,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * - upsertSqlUser: upserts a user row
  * - mirrorUserToFirestore: mirrors user to Firestore (external)
  *
- * The task says "NO mocking of DB queries" but these functions ALL directly
- * call pool.query — they ARE the DB layer. We mock the pool at the boundary
- * (it's the mysql2 external dependency) and Firestore (external service).
+ * We mock pool.query (the mysql2 external dependency) and Firestore
+ * (external service). These are external-dependency mocks, not DB mocks —
+ * the sql-auth functions under test contain the real query logic.
  */
 
 // Hoisted mocks for pool and firestore

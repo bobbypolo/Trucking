@@ -99,6 +99,25 @@ describe("graceful-shutdown.ts", () => {
     expect(exitSpy).toHaveBeenCalledWith(0);
   });
 
+  it("logs error and still exits 0 when closePool() throws", async () => {
+    const server = createMockServer();
+    mockClosePool.mockRejectedValue(new Error("Pool close failed"));
+
+    await registerShutdownHandlers(server as any, "SIGTERM");
+
+    // Server should still have been closed
+    expect(server.close).toHaveBeenCalled();
+    // closePool was called (and threw)
+    expect(mockClosePool).toHaveBeenCalled();
+    // Error should be logged
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({ err: expect.any(Error) }),
+      "Error closing database pool",
+    );
+    // Should still exit with 0 (graceful)
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
   it("sets a 10-second force-exit timeout", async () => {
     const server = createMockServer();
     mockClosePool.mockResolvedValue(undefined);

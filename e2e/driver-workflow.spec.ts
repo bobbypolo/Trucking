@@ -104,15 +104,8 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
     });
 
     const res = await driver.post(`${API_BASE}/api/loads`, payload, request);
-    // Drivers should NOT be able to create loads
-    // Accept 403 (forbidden) or 201 if the system allows it (document behavior)
-    if (res.status() === 403) {
-      // Expected: driver cannot create loads
-      expect(res.status()).toBe(403);
-    } else {
-      // If allowed, document this as a potential access control gap
-      expect([200, 201, 400]).toContain(res.status());
-    }
+    // Drivers must NOT be able to create loads — only 403 is acceptable
+    expect(res.status()).toBe(403);
   });
 
   test("Step 5: Driver cannot access user management (admin-only)", async ({
