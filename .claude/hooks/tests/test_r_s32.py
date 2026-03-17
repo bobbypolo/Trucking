@@ -187,16 +187,15 @@ def test_r_s32_manual_chunks_vendor_has_react():
 def test_r_s32_error_missing_lazy_wrapper_detection():
     """Error case: Detect if a lazy component is used without Suspense."""
     # Tests R-S32-01, R-S32-03
-    content = APP_TSX.read_text(encoding='utf-8')
+    content = APP_TSX.read_text(encoding="utf-8")
     # Verify IntelligenceHub (operations-hub tab) has Suspense
-    # Find the operations-hub render block
-    assert 'operations-hub' in content, 'App.tsx must have operations-hub tab'
-    # The IntelligenceHub render must be inside a Suspense block
-    idx_ih = content.find('IntelligenceHub') 
-    if idx_ih == -1:
-        idx_ih = content.find('<IntelligenceHub')
-    # Check that Suspense appears before this usage
-    pre_content = content[:idx_ih] if idx_ih > 0 else content
-    assert '<Suspense' in pre_content, (
-        'IntelligenceHub must be wrapped in Suspense boundary'
+    assert "operations-hub" in content, "App.tsx must have operations-hub tab"
+    # The IntelligenceHub JSX usage must appear inside a Suspense block
+    # Find the JSX usage of IntelligenceHub (not the lazy declaration)
+    jsx_idx = content.find("<IntelligenceHub")
+    assert jsx_idx > 0, "IntelligenceHub JSX not found in App.tsx"
+    # Check that Suspense appears before this JSX usage
+    pre_content = content[:jsx_idx]
+    assert "<Suspense" in pre_content, (
+        "IntelligenceHub must be wrapped in a Suspense boundary"
     )
