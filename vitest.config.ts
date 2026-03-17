@@ -30,6 +30,7 @@ export default defineConfig({
         "**/*.spec.{ts,tsx}",
         "src/vite-env.d.ts",
       ],
+      thresholds: { statements: 40, branches: 33, functions: 32, lines: 41 },
     },
   },
 });

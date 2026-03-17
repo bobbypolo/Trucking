@@ -17,8 +17,7 @@ export default defineConfig({
         "vitest.config.ts",
         "types/**",
       ],
-      // Thresholds to be enforced in CI once campaign targets are met
-      // thresholds: { statements: 90, branches: 85, functions: 90, lines: 90 },
+      thresholds: { statements: 75, branches: 65, functions: 78, lines: 75 },
     },
   },
 });
