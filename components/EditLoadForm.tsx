@@ -271,7 +271,7 @@ export const EditLoadForm: React.FC<Props> = ({
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-bold text-slate-500 uppercase">
-                Commodity
+                Commodity <span className="text-red-500">*</span>
               </label>
               <input
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
@@ -331,7 +331,7 @@ export const EditLoadForm: React.FC<Props> = ({
             </h3>
             <div className="space-y-1">
               <label className="text-[9px] font-bold text-slate-500 uppercase">
-                Customer / Broker
+                Customer / Broker <span className="text-red-500">*</span>
               </label>
               <select
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"

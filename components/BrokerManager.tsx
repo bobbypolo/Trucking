@@ -403,7 +403,7 @@ export const BrokerManager: React.FC<Props> = ({
                   </label>
                   <input
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
-                    placeholder="e.g. MC123456"
+                    placeholder="e.g., MC-123456"
                     value={editingBroker.mcNumber}
                     onChange={(e) =>
                       setEditingBroker({
@@ -419,7 +419,7 @@ export const BrokerManager: React.FC<Props> = ({
                   </label>
                   <input
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
-                    placeholder="e.g. 1928374"
+                    placeholder="e.g., 1234567"
                     value={editingBroker.dotNumber}
                     onChange={(e) =>
                       setEditingBroker({

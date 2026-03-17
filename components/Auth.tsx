@@ -134,6 +134,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
   const [name, setName] = useState(_saved.name ?? "");
   const [companyName, setCompanyName] = useState(_saved.companyName ?? "");
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   // Regulatory & Address States
   const [mcNumber, setMcNumber] = useState(_saved.mcNumber ?? "");
@@ -209,6 +210,11 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     state,
     zip,
   ]);
+
+  const validateEmail = (val: string) => {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    setEmailError(ok || val === "" ? "" : "Enter a valid email address.");
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -472,9 +478,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => validateEmail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="you@company.com"
+                    autoComplete="email"
                   />
+                  {emailError && (
+                    <p className="text-red-400 text-xs font-bold mt-1 ml-1">
+                      {emailError}
+                    </p>
+                  )}
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
@@ -485,6 +498,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="••••••••"
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -554,38 +568,66 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  required
-                  placeholder="Legal Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
-                <input
-                  required
-                  placeholder="Company Name"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Legal Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    placeholder="Legal Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    placeholder="Company Name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  required
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
-                <input
-                  required
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => validateEmail(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                    autoComplete="email"
+                  />
+                  {emailError && (
+                    <p className="text-red-400 text-xs font-bold ml-1">
+                      {emailError}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                    autoComplete="new-password"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
@@ -698,7 +740,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     MC Number (Optional)
                   </label>
                   <input
-                    placeholder="MC-123456"
+                    placeholder="e.g., MC-123456"
                     value={mcNumber}
                     onChange={(e) => setMcNumber(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono"
