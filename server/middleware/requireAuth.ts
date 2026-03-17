@@ -69,16 +69,11 @@ export async function requireAuth(
 
     try {
       principal = await resolveSqlPrincipalByFirebaseUid(decodedToken.uid);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unknown SQL auth resolution error";
-
+    } catch (_error: unknown) {
       return next(
         new InternalError(
           "Failed to resolve authenticated user from SQL.",
-          { reason: message },
+          {},
           "AUTH_RESOLVE_001",
         ),
       );
@@ -88,7 +83,7 @@ export async function requireAuth(
       return next(
         new AuthError(
           "Identity verified but no linked account found.",
-          { firebaseUid: decodedToken.uid },
+          {},
           "AUTH_NO_PROFILE_001",
         ),
       );
@@ -105,14 +100,11 @@ export async function requireAuth(
     };
 
     next();
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error ? error.message : "Token verification failed";
-
+  } catch (_error: unknown) {
     return next(
       new AuthError(
         "Invalid or expired authentication token.",
-        { reason: message },
+        {},
         "AUTH_INVALID_001",
       ),
     );

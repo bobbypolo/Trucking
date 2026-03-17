@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_URL } from "../services/config";
 import {
   Truck,
   User,
@@ -30,6 +31,7 @@ import {
   Zap,
 } from "lucide-react";
 import { login, registerCompany, updateCompany } from "../services/authService";
+import { InputDialog } from "./ui/InputDialog";
 import {
   User as UserType,
   AccountType,
@@ -134,6 +136,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
   const [name, setName] = useState(_saved.name ?? "");
   const [companyName, setCompanyName] = useState(_saved.companyName ?? "");
   const [error, setError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   // Regulatory & Address States
   const [mcNumber, setMcNumber] = useState(_saved.mcNumber ?? "");
@@ -160,6 +163,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
   const [additionalSeats, setAdditionalSeats] = useState(0);
 
   const [showPassword, setShowPassword] = useState(false);
+
+  // Forgot password dialog state
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
 
   // Automation Pro (Tier 2) Specific States
   const [expenseCategories, setExpenseCategories] = useState<string[]>([
@@ -210,11 +217,32 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     zip,
   ]);
 
+  const validateEmail = (val: string) => {
+    const ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+    setEmailError(ok || val === "" ? "" : "Enter a valid email address.");
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const user = await login(email, password);
     if (user) onLogin(user);
     else setError("Invalid credentials.");
+  };
+
+  const handleForgotPassword = async (emailInput: string) => {
+    setForgotPasswordOpen(false);
+    try {
+      await fetch(`${API_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailInput }),
+      });
+    } catch (_err) {
+      // Ignore network errors — server always returns 200
+    }
+    setForgotPasswordMessage(
+      "If an account exists for this email, a reset link has been sent.",
+    );
   };
 
   const handleSignupIdentity = (e: React.FormEvent) => {
@@ -396,7 +424,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
       id: "owner_operator",
       icon: User,
       title: "Owner Operator",
-      desc: "Manage your own authority and equipment.",
+      desc: "Manage your own operations and equipment.",
     },
     {
       id: "fleet",
@@ -429,10 +457,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <Truck className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase">
-              LoadPilot Authority
+              LoadPilot
             </h1>
             <p className="text-slate-400 text-sm leading-relaxed font-bold">
-              The Hub of Authority for modern freight logistics.
+              Dispatch management for trucking operations.
             </p>
           </div>
           <div className="space-y-6">
@@ -451,6 +479,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
 
         {/* Right Form Panel */}
         <div className="md:w-7/12 p-10 bg-slate-900/50 relative">
+          <InputDialog
+            open={forgotPasswordOpen}
+            title="Reset Password"
+            message="Enter your email address. If an account exists, you will receive a reset link."
+            placeholder="you@company.com"
+            submitLabel="Send Reset Link"
+            cancelLabel="Cancel"
+            onSubmit={handleForgotPassword}
+            onCancel={() => setForgotPasswordOpen(false)}
+          />
+
           {view === "login" && (
             <form
               onSubmit={handleLogin}
@@ -458,7 +497,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
             >
               <div>
                 <h2 className="text-3xl font-black text-white uppercase tracking-tight">
-                  Authority Access
+                  Sign In
                 </h2>
                 <p className="text-slate-500 text-sm font-bold mt-1">
                   Sign in to your hub.
@@ -472,9 +511,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => validateEmail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
-                    placeholder="authority@logistics.com"
+                    placeholder="you@company.com"
+                    autoComplete="email"
                   />
+                  {emailError && (
+                    <p className="text-red-400 text-xs font-bold mt-1 ml-1">
+                      {emailError}
+                    </p>
+                  )}
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
@@ -485,6 +531,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="••••••••"
+                    autoComplete="current-password"
                   />
                 </div>
               </div>
@@ -497,14 +544,30 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
               >
-                Open Hub
+                Sign In
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForgotPasswordMessage("");
+                  setForgotPasswordOpen(true);
+                }}
+                className="w-full text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
+                data-testid="forgot-password-link"
+              >
+                Forgot Password?
+              </button>
+              {forgotPasswordMessage && (
+                <p className="text-green-400 text-xs font-bold text-center">
+                  {forgotPasswordMessage}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => setView("signup")}
                 className="w-full text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
               >
-                Apply for New Authority
+                Create Account
               </button>
             </form>
           )}
@@ -554,38 +617,66 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 ))}
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  required
-                  placeholder="Legal Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
-                <input
-                  required
-                  placeholder="Company Name"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Legal Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    placeholder="Legal Name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Company Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    placeholder="Company Name"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  required
-                  type="email"
-                  placeholder="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
-                <input
-                  required
-                  type="password"
-                  placeholder="Password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
-                />
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Email <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => validateEmail(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                    autoComplete="email"
+                  />
+                  {emailError && (
+                    <p className="text-red-400 text-xs font-bold ml-1">
+                      {emailError}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                    Password <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white font-black"
+                    autoComplete="new-password"
+                  />
+                </div>
               </div>
               <button
                 type="submit"
@@ -685,7 +776,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </button>
                 <div>
                   <h2 className="text-2xl font-black text-white uppercase">
-                    Step 2: Authority & Billing
+                    Step 2: Company Details
                   </h2>
                   <p className="text-slate-500 text-xs font-black mt-1 uppercase tracking-widest">
                     Verify legal and tax credentials
@@ -698,7 +789,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     MC Number (Optional)
                   </label>
                   <input
-                    placeholder="MC-123456"
+                    placeholder="e.g., MC-123456"
                     value={mcNumber}
                     onChange={(e) => setMcNumber(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono"
@@ -1109,13 +1200,13 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   Secure Hub
                 </h2>
                 <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-1">
-                  Finalize Authority Subscription
+                  Complete Setup
                 </p>
               </div>
               <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800">
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-sm font-black text-white uppercase tracking-widest">
-                    Authority License
+                    Subscription Plan
                   </span>
                   <span className="text-2xl font-black text-blue-400 font-mono">
                     $49.00<span className="text-xs text-slate-600">/mo</span>
@@ -1150,7 +1241,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 ) : (
                   <ShieldCheck />
                 )}{" "}
-                Initialize Authority
+                Get Started
               </button>
             </form>
           )}

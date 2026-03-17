@@ -166,6 +166,14 @@ export async function updateLoadStatusApi(
 }
 
 /**
+ * Delete a load (soft-delete on backend).
+ * DELETE /api/loads/:id — tenant isolation enforced server-side.
+ */
+export async function deleteLoadApi(loadId: string): Promise<void> {
+  await api.delete(`/loads/${loadId}`);
+}
+
+/**
  * Search loads (client-side filter over API results).
  * Falls back to fetching all loads and filtering.
  */

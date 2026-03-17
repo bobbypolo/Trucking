@@ -206,3 +206,68 @@ describe("POST /api/incidents", () => {
     expect(res.body.message).toBe("Incident created");
   });
 });
+
+// STORY-005: Cross-tenant charge tests
+describe("POST /api/incidents/:id/charges — tenant isolation", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    app = buildApp();
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+  });
+
+  it("returns 401 without Authorization header", async () => {
+    const res = await request(app)
+      .post("/api/incidents/inc-001/charges")
+      .send({ category: "Tow", amount: 500 });
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 404 when incident does not exist", async () => {
+    // SELECT company_id FROM incidents WHERE id = ? → empty
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .post("/api/incidents/nonexistent/charges")
+      .set("Authorization", AUTH_HEADER)
+      .send({ category: "Tow", amount: 500 });
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 404 for cross-tenant charge attempt (conceals existence)", async () => {
+    // SELECT company_id FROM incidents WHERE id = ? → belongs to different tenant
+    mockQuery.mockResolvedValueOnce([
+      [{ company_id: "company-DIFFERENT" }],
+      [],
+    ]);
+
+    const res = await request(app)
+      .post("/api/incidents/inc-001/charges")
+      .set("Authorization", AUTH_HEADER)
+      .send({ category: "Tow", amount: 500 });
+    expect(res.status).toBe(404);
+    expect(res.body.error).toBe("Incident not found");
+  });
+
+  it("returns 201 for same-tenant charge", async () => {
+    // SELECT company_id FROM incidents WHERE id = ? → same tenant
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }], []]);
+    // INSERT INTO emergency_charges
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/incidents/inc-001/charges")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        category: "Tow",
+        amount: 500,
+        provider_vendor: "AAA Towing",
+        status: "approved",
+      });
+    expect(res.status).toBe(201);
+    expect(res.body.message).toBe("Charge recorded");
+  });
+});

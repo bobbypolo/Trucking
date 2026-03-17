@@ -477,19 +477,18 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
     expect(allInsertParams).not.toContain("DEFAULT");
   });
 
-  it("POST /api/accounting/sync-qb — INSERT uses req.user.tenantId, NOT hardcoded DEFAULT", async () => {
+  it("POST /api/accounting/sync-qb — returns 501 (QuickBooks not yet available)", async () => {
+    // R-S30-02: sync-qb endpoint must return 501, not insert into DB
     const app = buildApp();
-    await request(app).post("/api/accounting/sync-qb").send({
+    const res = await request(app).post("/api/accounting/sync-qb").send({
       entityType: "Invoice",
       entityId: "inv-001",
     });
 
-    expect(mockPoolQuery).toHaveBeenCalled();
-    const allParams = mockPoolQuery.mock.calls
-      .map((call: any[]) => call[1])
-      .flat();
-    expect(allParams).toContain(TEST_TENANT_ID);
-    expect(allParams).not.toContain("DEFAULT");
+    expect(res.status).toBe(501);
+    expect(res.body.error).toBe("QuickBooks integration is not yet available.");
+    // Must NOT touch the database
+    expect(mockPoolQuery).not.toHaveBeenCalled();
   });
 });
 

@@ -6,6 +6,7 @@ import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
+import { NotFoundError } from "../errors/AppError";
 
 const router = Router();
 
@@ -167,7 +168,28 @@ router.post(
       receipt_url,
     } = req.body;
     const incidentId = req.params.id;
+    const tenantId = req.user!.tenantId;
+    const chargeLog = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/incidents/charges",
+    });
     try {
+      // Verify incident belongs to the requesting tenant
+      const [rows] = await pool.query(
+        "SELECT company_id FROM incidents WHERE id = ?",
+        [incidentId],
+      );
+      const incident = (rows as any[])[0];
+      if (!incident || incident.company_id !== tenantId) {
+        if (incident && incident.company_id !== tenantId) {
+          chargeLog.warn(
+            { incidentId, attemptedTenantId: tenantId },
+            "Cross-tenant charge attempt blocked",
+          );
+        }
+        throw new NotFoundError("Incident not found");
+      }
+
       await pool.query(
         "INSERT INTO emergency_charges (id, incident_id, category, amount, provider_vendor, status, approved_by, receipt_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
@@ -183,6 +205,10 @@ router.post(
       );
       res.status(201).json({ message: "Charge recorded" });
     } catch (error) {
+      if (error instanceof NotFoundError) {
+        res.status(404).json({ error: error.message });
+        return;
+      }
       res.status(500).json({ error: "Failed to process incident" });
     }
   },

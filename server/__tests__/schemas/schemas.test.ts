@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { createLoadSchema, updateLoadStatusSchema } from "../../schemas/loads";
-import { registerUserSchema, syncUserSchema } from "../../schemas/users";
+import {
+  registerUserSchema,
+  syncUserSchema,
+  validRoles,
+} from "../../schemas/users";
 import { createEquipmentSchema } from "../../schemas/equipment";
 import { createSettlementSchema } from "../../schemas/settlements";
 
@@ -71,8 +75,45 @@ describe("R-P1-03: Zod Schemas", () => {
         email: "not-email",
         name: "John",
         role: "driver",
+        password: "securepass123",
       };
       const result = registerUserSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it("AC2: registerUserSchema rejects invalid role enum", () => {
+      /** Tests Issue 7 — role enum enforcement on registration. */
+      const invalid = {
+        email: "user@example.com",
+        name: "John",
+        role: "superadmin",
+        password: "securepass123",
+      };
+      const result = registerUserSchema.safeParse(invalid);
+      expect(result.success).toBe(false);
+    });
+
+    it("AC1: registerUserSchema accepts all valid roles", () => {
+      /** Tests Issue 7 — validRoles covers every accepted role value. */
+      for (const role of validRoles) {
+        const valid = {
+          email: "user@example.com",
+          name: "John",
+          role,
+          password: "securepass123",
+        };
+        const result = registerUserSchema.safeParse(valid);
+        expect(result.success, `role "${role}" should be valid`).toBe(true);
+      }
+    });
+
+    it("AC2: syncUserSchema rejects invalid role enum", () => {
+      /** Tests Issue 7 — role enum enforcement on user sync. */
+      const invalid = {
+        email: "user@example.com",
+        role: "superadmin",
+      };
+      const result = syncUserSchema.safeParse(invalid);
       expect(result.success).toBe(false);
     });
 

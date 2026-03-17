@@ -60,11 +60,7 @@ export const assignmentService = {
     if (driver.company_id !== companyId) {
       throw new ForbiddenError(
         "Cross-tenant driver assignment is not allowed",
-        {
-          driverId,
-          driverCompanyId: driver.company_id,
-          requestingCompanyId: companyId,
-        },
+        {},
         "FORBIDDEN_CROSS_TENANT",
       );
     }
@@ -137,11 +133,7 @@ export const assignmentService = {
     if (equipment.company_id !== companyId) {
       throw new ForbiddenError(
         "Cross-tenant equipment assignment is not allowed",
-        {
-          equipmentId,
-          equipmentCompanyId: equipment.company_id,
-          requestingCompanyId: companyId,
-        },
+        {},
         "FORBIDDEN_CROSS_TENANT",
       );
     }

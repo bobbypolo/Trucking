@@ -11,6 +11,7 @@ import {
   getExceptionTypes,
   updateException,
 } from "../services/exceptionService";
+import { ConfirmDialog } from "./ui/ConfirmDialog";
 import {
   AlertCircle,
   Clock,
@@ -45,6 +46,7 @@ export const ExceptionConsole: React.FC<Props> = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState(initialView || "all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
@@ -176,18 +178,31 @@ export const ExceptionConsole: React.FC<Props> = ({
     }
   };
 
-  const handleResolve = async (id: string) => {
-    if (confirm("Mark this exception as resolved?")) {
-      const success = await updateException(id, {
-        status: "RESOLVED",
-        actorName: currentUser.name,
-      });
-      if (success) loadData();
-    }
+  const handleResolve = (id: string) => {
+    setConfirmResolveId(id);
+  };
+
+  const doResolve = async () => {
+    if (!confirmResolveId) return;
+    const id = confirmResolveId;
+    setConfirmResolveId(null);
+    const success = await updateException(id, {
+      status: "RESOLVED",
+      actorName: currentUser.name,
+    });
+    if (success) loadData();
   };
 
   return (
     <div className="flex flex-col h-full bg-[#0a0f18]">
+      <ConfirmDialog
+        open={confirmResolveId !== null}
+        title="Resolve Exception"
+        message="Mark this exception as resolved?"
+        confirmLabel="Resolve"
+        onConfirm={doResolve}
+        onCancel={() => setConfirmResolveId(null)}
+      />
       {/* Header & Controls */}
       <div className="p-6 border-b border-white/5 space-y-4">
         <div className="flex items-center justify-between">

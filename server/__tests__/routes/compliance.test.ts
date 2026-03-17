@@ -165,6 +165,7 @@ describe("GET /api/compliance/:userId — success", () => {
   beforeEach(() => {
     mockUserRole = "dispatcher";
     mockUserId = "user-1";
+    mockUserTenantId = "company-aaa";
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -189,6 +190,22 @@ describe("GET /api/compliance/:userId — success", () => {
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(1);
     expect(res.body[0].type).toBe("CDL");
+  });
+
+  it("query is tenant-scoped: SQL includes JOIN users and both userId and tenantId params", async () => {
+    // Tests R-FS-05-02: tenant scoping via JOIN through users table
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get(`/api/compliance/${USER_ID}`)
+      .set("Authorization", "Bearer valid-token");
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain("JOIN users");
+    expect(sql).toContain("company_id");
+    expect(params).toContain(USER_ID);
+    expect(params).toContain("company-aaa");
   });
 
   it("allows driver to access their own compliance record", async () => {

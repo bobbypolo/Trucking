@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Tests R-FS-05-04, R-FS-05-07
+// Tests R-FS-05-04, R-FS-05-07, R-S25-01, R-S25-02, R-S25-03, R-S25-04
 
 // Hoisted mocks
 const { mockQuery } = vi.hoisted(() => {
@@ -61,7 +61,6 @@ vi.mock("../../middleware/requireTenant", () => ({
       return res
         .status(403)
         .json({ error: "Tenant verification requires authentication." });
-    if (user.role === "admin") return next();
 
     const paramCompanyId = req.params.companyId;
     if (paramCompanyId && paramCompanyId !== user.tenantId) {
@@ -124,14 +123,12 @@ describe("POST /api/equipment — auth enforcement", () => {
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
     const app = buildUnauthApp();
-    const res = await request(app)
-      .post("/api/equipment")
-      .send({
-        company_id: COMPANY_ID,
-        unit_number: "T-001",
-        type: "truck",
-        status: "active",
-      });
+    const res = await request(app).post("/api/equipment").send({
+      company_id: COMPANY_ID,
+      unit_number: "T-001",
+      type: "truck",
+      status: "active",
+    });
     expect(res.status).toBe(401);
   });
 });
@@ -297,3 +294,210 @@ describe("POST /api/equipment — success", () => {
     expect(res.status).toBe(500);
   });
 });
+
+// ── PATCH /api/equipment/:id ──────────────────────────────────────────────────
+// Tests R-S25-01, R-S25-02, R-S25-03, R-S25-04
+
+const EQUIP_ROW = {
+  id: "eq-001",
+  company_id: COMPANY_ID,
+  unit_number: "T-001",
+  type: "truck",
+  status: "active",
+  version: 1,
+  assigned_load_id: null,
+};
+
+describe("PATCH /api/equipment/:id — role enforcement (R-S25-03)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    app = buildApp();
+  });
+
+  it("returns 403 when role is driver", async () => {
+    mockUserRole = "driver";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+
+    const res = await request(app)
+      .patch("/api/equipment/eq-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "maintenance" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 when role is customer", async () => {
+    mockUserRole = "customer";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+
+    const res = await request(app)
+      .patch("/api/equipment/eq-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "maintenance" });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("PATCH /api/equipment/:id — cross-tenant returns 404 (R-S25-02)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+  });
+
+  it("returns 404 when equipment belongs to a different tenant", async () => {
+    // findById with company-aaa finds nothing (cross-tenant)
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .patch("/api/equipment/eq-other")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "maintenance" });
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+  });
+
+  it("updates status field and returns 200 with updated row", async () => {
+    const updatedRow = { ...EQUIP_ROW, status: "maintenance" };
+    // findById (pre-check)
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+    // UPDATE query
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    // findById (post-update)
+    mockQuery.mockResolvedValueOnce([[updatedRow], []]);
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "maintenance" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("maintenance");
+  });
+
+  it("updates maintenance_date, mileage, and notes fields", async () => {
+    const updatedRow = {
+      ...EQUIP_ROW,
+      maintenance_date: "2026-04-01",
+      mileage: 120000,
+      notes: "Oil change done",
+    };
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    mockQuery.mockResolvedValueOnce([[updatedRow], []]);
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ maintenance_date: "2026-04-01", mileage: 120000, notes: "Oil change done" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.maintenance_date).toBe("2026-04-01");
+    expect(res.body.mileage).toBe(120000);
+    expect(res.body.notes).toBe("Oil change done");
+  });
+
+  it("admin role can also update equipment", async () => {
+    mockUserRole = "admin";
+    app = buildApp();
+    const updatedRow = { ...EQUIP_ROW, status: "inactive" };
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    mockQuery.mockResolvedValueOnce([[updatedRow], []]);
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "inactive" });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("safety_manager role can update equipment", async () => {
+    mockUserRole = "safety_manager";
+    app = buildApp();
+    const updatedRow = { ...EQUIP_ROW, notes: "Brake inspection" };
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    mockQuery.mockResolvedValueOnce([[updatedRow], []]);
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ notes: "Brake inspection" });
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 400 when body contains no patchable fields", async () => {
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ unknown_field: "value" });
+
+    // Zod strips unknown fields; schema allows all-optional so empty body
+    // passes validation — buildSafeUpdate returns null => 400
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 500 on database error during update", async () => {
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .patch(`/api/equipment/${EQUIP_ROW.id}`)
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "maintenance" });
+
+    expect(res.status).toBe(500);
+  });
+});
+
+describe("PATCH /api/equipment/:id — existing GET tests unaffected (R-S25-04)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+  });
+
+  it("GET /api/equipment/:companyId still returns 200 with equipment list", async () => {
+    mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
+
+    const res = await request(app)
+      .get(`/api/equipment/${COMPANY_ID}`)
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+});
+

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "../auth";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
@@ -10,6 +11,7 @@ import { validateBody } from "../middleware/validate";
 import {
   loginUserSchema,
   registerUserSchema,
+  resetPasswordSchema,
   syncUserSchema,
 } from "../schemas/users";
 import { createChildLogger } from "../lib/logger";
@@ -24,6 +26,32 @@ import {
 } from "../lib/sql-auth";
 
 const router = Router();
+
+// Rate limiter for login endpoint: 10 requests per 15-minute window per IP
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req) =>
+    ipKeyGenerator(
+      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+    ),
+  message: { error: "Too many login attempts. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limiter for password reset endpoint: 3 requests per 15-minute window per IP
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) =>
+    ipKeyGenerator(
+      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
+    ),
+  message: { error: "Too many password reset requests. Try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 function getBearerToken(req: any): string | null {
   const authHeader = req.headers?.authorization;
@@ -52,14 +80,6 @@ async function loadCompanyConfig(companyId: string) {
   }
 }
 
-function resolveBodyCompanyId(body: Record<string, unknown>): string | null {
-  const value = body.company_id || body.companyId;
-  if (typeof value === "string" && value.trim() && value !== "null") {
-    return value;
-  }
-  return null;
-}
-
 function resolveString(...values: Array<unknown>): string | null {
   for (const value of values) {
     if (typeof value === "string" && value.trim()) {
@@ -81,6 +101,7 @@ function resolveNumber(...values: Array<unknown>): number | null {
 router.post(
   "/api/auth/register",
   requireAuth,
+  requireTenant,
   validateBody(registerUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
@@ -101,7 +122,7 @@ router.post(
     try {
       const userInput = {
         id: resolveString(req.body.id) || uuidv4(),
-        companyId: resolveBodyCompanyId(req.body) || authReq.user.tenantId,
+        companyId: authReq.user.tenantId,
         email: req.body.email,
         name: req.body.name,
         role: req.body.role,
@@ -130,6 +151,7 @@ router.post(
 router.post(
   "/api/users",
   requireAuth,
+  requireTenant,
   validateBody(syncUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
@@ -147,10 +169,7 @@ router.post(
         .json({ error: "Forbidden: cannot sync another user." });
     }
 
-    const companyId = resolveBodyCompanyId(req.body) || authReq.user.tenantId;
-    if (!companyId) {
-      return res.status(400).json({ error: "company_id is required." });
-    }
+    const companyId = authReq.user.tenantId;
 
     log.info({ data: { email: req.body.email } }, "User sync request received");
 
@@ -198,6 +217,7 @@ router.post(
 
 router.post(
   "/api/auth/login",
+  loginLimiter,
   validateBody(loginUserSchema),
   async (req, res) => {
     const log = createChildLogger({
@@ -270,6 +290,39 @@ router.post(
   },
 );
 
+router.post(
+  "/api/auth/reset-password",
+  resetPasswordLimiter,
+  validateBody(resetPasswordSchema),
+  async (req, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/auth/reset-password",
+    });
+
+    const { email } = req.body as { email: string };
+
+    try {
+      if (firebaseAdminReady()) {
+        await admin.auth().generatePasswordResetLink(email);
+        log.info({ data: { email } }, "Password reset link generated");
+      }
+    } catch (_error: unknown) {
+      // Silently swallow errors — do not reveal whether the account exists
+      log.info(
+        { data: { email } },
+        "Password reset attempted (account may not exist)",
+      );
+    }
+
+    // Always return 200 to prevent account enumeration
+    return res.status(200).json({
+      message:
+        "If an account exists for this email, a reset link has been sent.",
+    });
+  },
+);
+
 router.get("/api/users/me", requireAuth, async (req: any, res) => {
   try {
     const user = await findSqlUserById(req.user.uid);
@@ -293,13 +346,6 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    if (
-      req.user.tenantId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({ error: "Resource unauthorized" });
-    }
-
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));

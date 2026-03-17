@@ -32,10 +32,6 @@ const COMPANIES_KEY = "loadpilot_companies_v1";
 const SEED_COMPANY_ID = "iscope-authority-001";
 /** Dev-only default password sourced from fixtures/test-users.json. Never hardcoded. */
 const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
-/** Demo-mode master password sourced from fixtures/test-users.json. Never hardcoded. */
-const DEMO_MASTER_PASSWORD: string = seedFixtures.admin.password;
-/** Demo-mode fallback password sourced from fixtures/test-users.json. Never hardcoded. */
-const DEMO_FALLBACK_PASSWORD: string = seedFixtures.demoFallbackPassword;
 
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
@@ -47,7 +43,6 @@ let _usersCache: User[] = [];
 let _idToken: string | null = null;
 
 export const getIdTokenAsync = async (): Promise<string | null> => {
-  if (DEMO_MODE) return _idToken || "demo-token";
   if (_idToken) return _idToken;
   if (auth.currentUser) {
     _idToken = await getIdToken(auth.currentUser);
@@ -473,26 +468,6 @@ export const login = async (
   email: string,
   password?: string,
 ): Promise<User | null> => {
-  // Demo mode: skip Firebase, authenticate against localStorage users
-  if (DEMO_MODE) {
-    const users = getStoredUsers();
-    const user = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase(),
-    );
-    if (
-      user &&
-      (password === DEMO_MASTER_PASSWORD ||
-        password === DEMO_FALLBACK_PASSWORD ||
-        user.password === password)
-    ) {
-      _sessionCache = user;
-      _idToken = "demo-token";
-      notifyUserChange(user);
-      return user;
-    }
-    return null;
-  }
-
   try {
     const userCredential = await signInWithEmailAndPassword(
       auth,
@@ -524,9 +499,8 @@ export const login = async (
       return hydratedUser;
     }
   } catch (error) {
-    // Fail-closed: never fall back to local/fixture credentials in production.
-    // Demo mode has its own early-return path above; this catch must not
-    // bypass Firebase authentication.
+    // Fail-closed: never fall back to local/fixture credentials.
+    // Firebase authentication is the only accepted auth path.
     console.error("[authService] Firebase sign-in failed:", error);
   }
   return null;

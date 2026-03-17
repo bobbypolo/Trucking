@@ -21,6 +21,8 @@ import {
   Globe,
   AlertCircle,
 } from "lucide-react";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
 import {
   LoadData,
   User,
@@ -165,23 +167,12 @@ export const Dashboard: React.FC<Props> = ({
 
   return (
     <div className="p-8 space-y-8 bg-[#0a0f18] min-h-full">
-      {/* ERROR BANNER */}
-      {error && (
-        <div
-          role="alert"
-          className="flex items-center justify-between bg-red-900/40 border border-red-500/40 text-red-300 px-6 py-4 rounded-2xl"
-        >
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <span className="text-sm font-bold">{error}</span>
-          </div>
-          <button
-            onClick={loadDashboardData}
-            className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all"
-          >
-            retry
-          </button>
-        </div>
+      {/* LOADING SKELETON */}
+      {loading && <LoadingSkeleton variant="card" count={4} />}
+
+      {/* ERROR STATE */}
+      {!loading && error && (
+        <ErrorState message={error} onRetry={loadDashboardData} />
       )}
 
       {/* OPERATIONS DASHBOARD (NOW / VOLUME MANAGEMENT) */}

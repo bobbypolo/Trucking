@@ -53,6 +53,7 @@ import {
   EquipmentAsset,
 } from "../types";
 import { getParties, saveParty } from "../services/networkService";
+import { Toast } from "./Toast";
 
 interface Props {
   companyId: string;
@@ -67,6 +68,10 @@ export const NetworkPortal: React.FC<Props> = ({
   const [view, setView] = useState<"dashboard" | "wizard" | "profile">(
     "dashboard",
   );
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success" | "info";
+  } | null>(null);
   const [selectedParty, setSelectedParty] = useState<NetworkParty | null>(null);
   const [activeProfileTab, setActiveProfileTab] = useState<
     "IDENTITY" | "CONTACTS" | "RATES" | "CONSTRAINTS" | "DOCS" | "CATALOG"
@@ -119,7 +124,7 @@ export const NetworkPortal: React.FC<Props> = ({
       setView("dashboard");
       setWizardStep(1);
     } catch (e) {
-      alert("Failed to save party");
+      setToast({ message: "Failed to save party", type: "error" });
     }
   };
 
@@ -157,6 +162,13 @@ export const NetworkPortal: React.FC<Props> = ({
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter overflow-hidden">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* GLOBAL HEADER */}
       <div className="bg-[#0a0f1e]/80 backdrop-blur-md border-b border-white/5 px-10 py-8 shrink-0">
         <div className="flex justify-between items-center mb-8">
@@ -1144,7 +1156,7 @@ export const NetworkPortal: React.FC<Props> = ({
                   <div className="space-y-10 animate-in fade-in slide-in-from-left-4">
                     <div>
                       <h2 className="text-3xl font-black text-white uppercase tracking-tighter mb-4">
-                        Authority Matrix & Preferred Network
+                        Broker Network
                       </h2>
                       <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
                         Establish authoritative contacts and link preferred

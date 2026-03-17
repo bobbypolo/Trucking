@@ -139,7 +139,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                     <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                    <h2 className="text-xl font-black text-white tracking-tighter uppercase leading-none">Authority Intelligence</h2>
+                    <h2 className="text-xl font-black text-white tracking-tighter uppercase leading-none">Business Insights</h2>
                     <div className="flex gap-2 mt-1.5">
                         <span className="text-slate-500 text-[8px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">Operational DNA</span>
                         <span className="text-slate-500 text-[8px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">Market IQ Active</span>
@@ -264,7 +264,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                             <div>
                                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">{selectedEntity.data.name}</h2>
                                 <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">
-                                    {selectedEntity.type === 'facility' ? `${selectedEntity.data.city}, ${selectedEntity.data.state}` : `Authority MC: ${selectedEntity.data.mcNumber}`}
+                                    {selectedEntity.type === 'facility' ? `${selectedEntity.data.city}, ${selectedEntity.data.state}` : `MC#: ${selectedEntity.data.mcNumber}`}
                                 </p>
                             </div>
                         </div>

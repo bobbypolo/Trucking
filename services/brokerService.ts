@@ -1,76 +1,13 @@
 import { API_URL } from "./config";
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
-import { DEMO_MODE } from "./firebase";
 
 const BROKERS_KEY = "loadpilot_brokers_v1";
 
 export const getRawBrokers = (): Broker[] => {
   try {
     const data = localStorage.getItem(BROKERS_KEY);
-    let brokers = data ? JSON.parse(data) : [];
-    if (brokers.length === 0 && DEMO_MODE) {
-      // Seed initial brokers
-      brokers = [
-        {
-          id: "B-101",
-          name: "Global Logistics Partner",
-          mcNumber: "MC22910",
-          email: "ops@globallogistics.com",
-          phone: "312-555-0101",
-          address: "Chicago, IL",
-          clientType: "Broker",
-          creditScore: 92,
-          approvedChassis: ["STD40", "TRI20"],
-        },
-        {
-          id: "B-102",
-          name: "Intermodal Direct",
-          mcNumber: "MC44892",
-          email: "bookings@idirect.com",
-          phone: "713-555-0102",
-          address: "Houston, TX",
-          clientType: "Forwarder",
-          creditScore: 88,
-          approvedChassis: ["STD40"],
-        },
-        {
-          id: "B-103",
-          name: "CH Robinson (Regional)",
-          mcNumber: "MC66120",
-          email: "dispatch@chrobinson.com",
-          phone: "952-555-0103",
-          address: "Eden Prairie, MN",
-          clientType: "Broker",
-          creditScore: 95,
-          approvedChassis: ["STD40", "TRI20", "TRI40"],
-        },
-        {
-          id: "B-104",
-          name: "JB Hunt Intermodal",
-          mcNumber: "MC88301",
-          email: "support@jbhunt.com",
-          phone: "479-555-0104",
-          address: "Lowell, AR",
-          clientType: "Carrier",
-          creditScore: 98,
-          approvedChassis: ["ALL"],
-        },
-        {
-          id: "B-105",
-          name: "Coyote Logistics",
-          mcNumber: "MC11200",
-          email: "loadboard@coyote.com",
-          phone: "877-626-9683",
-          address: "Chicago, IL",
-          clientType: "Broker",
-          creditScore: 91,
-          approvedChassis: ["STD40", "TRI20"],
-        },
-      ];
-      localStorage.setItem(BROKERS_KEY, JSON.stringify(brokers));
-    }
-    return brokers;
+    return data ? JSON.parse(data) : [];
   } catch (e) {
     console.warn(
       "[brokerService] Failed to parse brokers from localStorage:",
@@ -178,13 +115,7 @@ export const saveContract = async (contract: Contract) => {
   }
 };
 
-// Simulate checking FMCSA safety score (demo only)
-export const checkSafetyScore = (mcNumber: string): number | null => {
-  if (!DEMO_MODE) return null;
-  // Deterministic "random" score based on MC number for demo consistency
-  const seed = mcNumber
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  // Generate a score between 65 and 99
-  return 65 + (seed % 35);
+// FMCSA safety score lookup — returns null until real integration is built
+export const checkSafetyScore = (_mcNumber: string): null => {
+  return null;
 };

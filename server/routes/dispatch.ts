@@ -36,11 +36,25 @@ router.post(
       return res.status(403).json({ error: "Access denied" });
     }
     try {
-      if (clock_out) {
-        await pool.query(
-          "UPDATE driver_time_logs SET clock_out = ? WHERE id = ?",
-          [clock_out, id],
+      // Validate user_id belongs to caller's tenant (4a: cross-tenant INSERT prevention)
+      if (user_id !== user.uid) {
+        const [targetUser]: any = await pool.query(
+          "SELECT company_id FROM users WHERE id = ?",
+          [user_id],
         );
+        if (!targetUser.length || targetUser[0].company_id !== user.tenantId) {
+          return res.status(404).json({ error: "User not found" });
+        }
+      }
+      if (clock_out) {
+        // 4b: tenant-scoped clock-out UPDATE via JOIN
+        const [result]: any = await pool.query(
+          "UPDATE driver_time_logs t JOIN users u ON t.user_id = u.id SET t.clock_out = ? WHERE t.id = ? AND u.company_id = ?",
+          [clock_out, id, user.tenantId],
+        );
+        if (!result.affectedRows) {
+          return res.status(404).json({ error: "Time log not found" });
+        }
       } else {
         await pool.query(
           "INSERT INTO driver_time_logs (id, user_id, load_id, activity_type, location_lat, location_lng) VALUES (?, ?, ?, ?, ?, ?)",
@@ -79,9 +93,10 @@ router.get(
       return res.status(403).json({ error: "Unauthorized profile access" });
     }
     try {
+      // 4c: tenant-scoped SELECT via JOIN
       const [rows] = await pool.query(
-        "SELECT * FROM driver_time_logs WHERE user_id = ? ORDER BY clock_in DESC LIMIT 50",
-        [req.params.userId],
+        "SELECT t.* FROM driver_time_logs t JOIN users u ON t.user_id = u.id WHERE t.user_id = ? AND u.company_id = ? ORDER BY t.clock_in DESC LIMIT 50",
+        [req.params.userId, user.tenantId],
       );
       res.json(rows);
     } catch (error) {
@@ -104,9 +119,6 @@ router.get(
   requireTenant,
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
-    if (user.tenantId !== req.params.companyId && user.role !== "admin") {
-      return res.status(403).json({ error: "Resource unauthorized" });
-    }
     try {
       const [rows] = await pool.query(
         "SELECT t.* FROM driver_time_logs t JOIN users u ON t.user_id = u.id WHERE u.company_id = ? ORDER BY t.clock_in DESC LIMIT 500",
@@ -134,9 +146,6 @@ router.get(
   requireTenant,
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
-    if (user.tenantId !== req.params.companyId && user.role !== "admin") {
-      return res.status(403).json({ error: "Resource unauthorized" });
-    }
     try {
       const [rows] = await pool.query(
         "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",

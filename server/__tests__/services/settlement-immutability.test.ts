@@ -102,7 +102,9 @@ describe("R-P4-02-AC1: Settlement Immutability and Posting Rules", () => {
       ).rejects.toThrow(ForbiddenError);
     });
 
-    it("ForbiddenError includes settlement ID in details", async () => {
+    it("ForbiddenError has empty details (no internal IDs leaked)", async () => {
+      // Issue 5 fix: details no longer contain settlementId or currentStatus
+      // to prevent leaking internal identifiers in HTTP responses.
       const posted = mockSettlement({
         status: SettlementStatus.POSTED,
         version: 3,
@@ -118,7 +120,7 @@ describe("R-P4-02-AC1: Settlement Immutability and Posting Rules", () => {
         expect(err).toBeInstanceOf(ForbiddenError);
         const forbidden = err as ForbiddenError;
         expect(forbidden.statusCode).toBe(403);
-        expect(forbidden.details).toHaveProperty("settlementId", SETTLEMENT_ID);
+        expect(forbidden.details).toEqual({});
       }
     });
   });

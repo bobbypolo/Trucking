@@ -51,7 +51,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                             onClick={() => setActiveTab(tab as any)}
                             className={`flex-1 py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-b-4 ${activeTab === tab ? 'bg-blue-900/10 border-blue-500 text-blue-400' : 'border-transparent text-slate-600 hover:text-slate-300'}`}
                         >
-                            {tab === 'info' ? 'Identity' : tab === 'financials' ? 'Pay Profile' : 'Authority Access'}
+                            {tab === 'info' ? 'Identity' : tab === 'financials' ? 'Pay Profile' : 'Access'}
                         </button>
                     ))}
                 </div>
@@ -176,7 +176,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
 
                 <div className="p-8 bg-slate-900 border-t border-slate-800 flex flex-col gap-4 shrink-0">
                     <button onClick={handleSubmit} className="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-3xl font-black uppercase tracking-[0.2em] text-xs shadow-2xl active:scale-95 transition-all">
-                        Update Authority Profile
+                        Save Changes
                     </button>
                     <button onClick={onCancel} className="w-full py-2 text-slate-600 font-black uppercase text-[10px] tracking-widest hover:text-slate-300 transition-colors">Discard Modifications</button>
                 </div>

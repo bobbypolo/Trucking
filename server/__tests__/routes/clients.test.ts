@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Tests R-FS-05-01, R-FS-05-07
+// Tests R-FS-05-01, R-FS-05-07, R-S27-01, R-S27-02, R-S27-03, R-S27-04
 
 // Hoisted mocks
 const { mockQuery } = vi.hoisted(() => {
@@ -83,7 +83,6 @@ vi.mock("../../middleware/requireTenant", () => ({
         .status(403)
         .json({ error: "Tenant verification requires authentication." });
     }
-    if (user.role === "admin") return next();
 
     // Check :companyId param
     const paramCompanyId = req.params.companyId;
@@ -180,10 +179,8 @@ describe("GET /api/clients/:companyId — tenant enforcement", () => {
     expect(res.status).toBe(403);
   });
 
-  it("returns 403 for route-level RBAC check when user companyId mismatches (non-admin)", async () => {
-    // Even if requireTenant passes (matching tenantId),
-    // the route itself has: if (req.user.companyId !== req.params.companyId && role !== 'admin')
-    // Set tenantId to match but companyId to mismatch to isolate route-level check
+  it("returns 403 when user tenantId mismatches requested companyId (requireTenant enforcement)", async () => {
+    // requireTenant rejects when tenantId does not match the :companyId param.
     mockUserTenantId = "company-zzz";
     mockUserCompanyId = "company-zzz";
     app = buildApp();
@@ -319,5 +316,290 @@ describe("POST /api/clients — success", () => {
       .send({ name: "ACME Freight", company_id: COMPANY_ID });
 
     expect(res.status).toBe(500);
+  });
+});
+
+// ── STORY-027: GET with include_archived ─────────────────────────────────────
+
+describe("GET /api/clients/:companyId — archived filtering (R-S27-02)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("excludes archived customers from default response (no include_archived param)", async () => {
+    const activeClients = [
+      { id: "c-001", name: "Active Corp", archived_at: null },
+    ];
+    mockQuery.mockResolvedValueOnce([activeClients, []]);
+
+    const res = await request(app)
+      .get(`/api/clients/${COMPANY_ID}`)
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    // Verify SQL contained the archived_at IS NULL filter
+    const sqlCall = mockQuery.mock.calls[0][0] as string;
+    expect(sqlCall).toContain("archived_at IS NULL");
+  });
+
+  it("includes archived customers when include_archived=true", async () => {
+    const allClients = [
+      { id: "c-001", name: "Active Corp", archived_at: null },
+      { id: "c-002", name: "Old Corp", archived_at: "2024-01-01T00:00:00Z" },
+    ];
+    mockQuery.mockResolvedValueOnce([allClients, []]);
+
+    const res = await request(app)
+      .get(`/api/clients/${COMPANY_ID}?include_archived=true`)
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    // Verify SQL did NOT contain the archived_at IS NULL filter
+    const sqlCall = mockQuery.mock.calls[0][0] as string;
+    expect(sqlCall).not.toContain("archived_at IS NULL");
+  });
+});
+
+// ── STORY-027: PATCH /api/clients/:id/archive ─────────────────────────────────
+
+describe("PATCH /api/clients/:id/archive — archive endpoint (R-S27-01)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("sets archived_at timestamp on customer record and returns 200", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Client archived");
+
+    // Verify NOW() used in query
+    const sqlCall = mockQuery.mock.calls[0][0] as string;
+    expect(sqlCall).toContain("archived_at = NOW()");
+    expect(sqlCall).toContain("archived_by");
+  });
+
+  it("returns 404 when client does not exist in tenant", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/nonexistent/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(500);
+  });
+});
+
+// ── STORY-027: PATCH /api/clients/:id/unarchive ───────────────────────────────
+
+describe("PATCH /api/clients/:id/unarchive — unarchive endpoint (R-S27-03)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("clears archived_at and returns 200", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/unarchive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Client unarchived");
+
+    // Verify NULL is set for archived_at
+    const sqlCall = mockQuery.mock.calls[0][0] as string;
+    expect(sqlCall).toContain("archived_at = NULL");
+    expect(sqlCall).toContain("archived_by = NULL");
+  });
+
+  it("returns 404 when client does not exist in tenant", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/nonexistent/unarchive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/unarchive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(500);
+  });
+});
+
+// ── STORY-027: Role-based access control (R-S27-04) ──────────────────────────
+
+describe("PATCH /api/clients/:id/archive — role enforcement (R-S27-04)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("allows admin to archive a client", async () => {
+    mockUserRole = "admin";
+    app = buildApp();
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+  });
+
+  it("allows dispatcher to archive a client", async () => {
+    mockUserRole = "dispatcher";
+    app = buildApp();
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 403 for driver role attempting to archive", async () => {
+    mockUserRole = "driver";
+    app = buildApp();
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("Forbidden");
+  });
+
+  it("returns 403 for customer role attempting to archive", async () => {
+    mockUserRole = "customer";
+    app = buildApp();
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for driver role attempting to unarchive", async () => {
+    mockUserRole = "driver";
+    app = buildApp();
+
+    const res = await request(app)
+      .patch("/api/clients/c-001/unarchive")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(res.status).toBe(403);
+  });
+
+  it("verifies tenant isolation — update query uses tenant company_id", async () => {
+    mockUserRole = "admin";
+    mockUserTenantId = "company-aaa";
+    app = buildApp();
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    await request(app)
+      .patch("/api/clients/c-001/archive")
+      .set("Authorization", "Bearer valid-token");
+
+    // company_id is always drawn from req.user.tenantId, not URL/body
+    const params = mockQuery.mock.calls[0][1] as any[];
+    // params: [archived_by (uid), id, tenantId]
+    expect(params[2]).toBe("company-aaa");
+  });
+});
+
+// ── STORY-006: Server-side company_id enforcement
+describe("POST /api/clients — company_id enforcement (STORY-006)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "dispatcher";
+    mockUserTenantId = "company-aaa";
+    mockUserCompanyId = "company-aaa";
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("succeeds when body has no company_id (server injects from auth)", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ name: "No CompanyId Client" });
+
+    expect(res.status).toBe(201);
+    expect(res.body.message).toBe("Client saved");
+    // Verify the SQL was called with the auth tenant's company_id
+    const insertCall = mockQuery.mock.calls[0];
+    const params = insertCall[1];
+    // company_id is the 10th parameter (index 9)
+    expect(params[9]).toBe("company-aaa");
+  });
+
+  it("succeeds when body company_id matches auth tenant (stripped/ignored)", async () => {
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ name: "Matching Client", company_id: "company-aaa" });
+
+    expect(res.status).toBe(201);
+  });
+
+  it("returns 400 when name is missing (Zod validation)", async () => {
+    const res = await request(app)
+      .post("/api/clients")
+      .set("Authorization", "Bearer valid-token")
+      .send({ type: "Broker" });
+
+    expect(res.status).toBe(400);
   });
 });

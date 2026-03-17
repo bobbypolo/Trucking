@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { API_URL } from "../services/config";
 import {
   DollarSign,
   Receipt,
@@ -51,11 +52,23 @@ import {
   User as UserType,
   VaultDoc,
 } from "../types";
-import { Settlements } from "./Settlements";
-import { FileVault } from "./FileVault";
-import { AccountingBillForm } from "./AccountingBillForm";
-import { IFTAManager } from "./IFTAManager";
-import { DataImportWizard } from "./DataImportWizard";
+const Settlements = React.lazy(() =>
+  import("./Settlements").then((m) => ({ default: m.Settlements })),
+);
+const FileVault = React.lazy(() =>
+  import("./FileVault").then((m) => ({ default: m.FileVault })),
+);
+const AccountingBillForm = React.lazy(() =>
+  import("./AccountingBillForm").then((m) => ({
+    default: m.AccountingBillForm,
+  })),
+);
+const IFTAManager = React.lazy(() =>
+  import("./IFTAManager").then((m) => ({ default: m.IFTAManager })),
+);
+const DataImportWizard = React.lazy(() =>
+  import("./DataImportWizard").then((m) => ({ default: m.DataImportWizard })),
+);
 import { executeFuelMatchingRule } from "../services/rulesEngineService";
 import { exportToExcel, exportToPDF } from "../services/exportService";
 
@@ -322,7 +335,7 @@ const AccountingPortal: React.FC<Props> = ({
               <div className="col-span-2 space-y-8">
                 <div className="flex justify-between items-end">
                   <h3 className="text-xl font-black text-white uppercase tracking-tighter">
-                    Real-Time Load P&L
+                    Load P&L
                   </h3>
                   <button className="text-[10px] font-black text-emerald-500 uppercase hover:underline">
                     View All Loads
@@ -723,18 +736,24 @@ const AccountingPortal: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "IFTA" && <IFTAManager loads={loads} />}
+        {activeTab === "IFTA" && (
+          <Suspense fallback={null}>
+            <IFTAManager loads={loads} />
+          </Suspense>
+        )}
 
         {activeTab === "SETTLEMENTS" && (
           <div className="h-full -m-10">
-            <Settlements
-              loads={loads}
-              users={users}
-              onUserUpdate={onUserUpdate}
-              onNavigate={(tab) => {
-                // Navigation handled by parent tab state
-              }}
-            />
+            <Suspense fallback={null}>
+              <Settlements
+                loads={loads}
+                users={users}
+                onUserUpdate={onUserUpdate}
+                onNavigate={(tab) => {
+                  // Navigation handled by parent tab state
+                }}
+              />
+            </Suspense>
           </div>
         )}
 
@@ -931,7 +950,9 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "VAULT" && (
-          <FileVault currentUser={currentUser} loads={loads} />
+          <Suspense fallback={null}>
+            <FileVault currentUser={currentUser} loads={loads} />
+          </Suspense>
         )}
 
         {activeTab === "GL" && (
@@ -1231,43 +1252,47 @@ const AccountingPortal: React.FC<Props> = ({
       </div>
 
       {showBillForm && (
-        <AccountingBillForm
-          loads={loads}
-          onClose={() => setShowBillForm(false)}
-          onSave={async (bill) => {
-            try {
-              await createAPBill(bill);
-              showFeedback("Bill submitted for approval");
-              setShowBillForm(false);
-              loadData();
-            } catch (e) {
-              showFeedback("Failed to save bill");
-            }
-          }}
-        />
+        <Suspense fallback={null}>
+          <AccountingBillForm
+            loads={loads}
+            onClose={() => setShowBillForm(false)}
+            onSave={async (bill) => {
+              try {
+                await createAPBill(bill);
+                showFeedback("Bill submitted for approval");
+                setShowBillForm(false);
+                loadData();
+              } catch (e) {
+                showFeedback("Failed to save bill");
+              }
+            }}
+          />
+        </Suspense>
       )}
 
       {importType && (
-        <DataImportWizard
-          type={importType}
-          onClose={() => setImportType(null)}
-          onImport={async (data) => {
-            try {
-              const res = await fetch("/api/accounting/batch-import", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ type: importType, data }),
-              });
-              if (res.ok) {
-                showFeedback(`Imported ${data.length} records successfully`);
-                setImportType(null);
-                loadData();
+        <Suspense fallback={null}>
+          <DataImportWizard
+            type={importType}
+            onClose={() => setImportType(null)}
+            onImport={async (data) => {
+              try {
+                const res = await fetch(`${API_URL}/accounting/batch-import`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ type: importType, data }),
+                });
+                if (res.ok) {
+                  showFeedback(`Imported ${data.length} records successfully`);
+                  setImportType(null);
+                  loadData();
+                }
+              } catch (e) {
+                showFeedback("Import failed");
               }
-            } catch (e) {
-              showFeedback("Import failed");
-            }
-          }}
-        />
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

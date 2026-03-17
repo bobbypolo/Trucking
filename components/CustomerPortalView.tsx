@@ -214,7 +214,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                       </div>
 
                       <button className="w-full py-3 bg-slate-950 text-slate-500 group-hover:bg-blue-600 group-hover:text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all">
-                        View Live Track
+                        View Tracking
                       </button>
                     </div>
                   ))}

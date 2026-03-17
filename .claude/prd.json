@@ -2,439 +2,991 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "158733ff830ea5c2a37a07c6656014598b3ca538606f16b8c582a2332165a7d1",
+  "plan_hash": "888c5e18b0b96a7208af89296fc9873b65381908d972b88d2a5cebd5721cc8d1",
   "stories": [
     {
-      "id": "STORY-001",
-      "description": "Plain-Language Labels, Feature Flags, and DEMO_MODE Hardening",
-      "phase": 1,
-      "phase_type": "foundation",
+      "id": "STORY-012",
+      "description": "Frontend Cutover - Quotes",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/quotes.ts",
+      "scope": [
+        "services/storage/quotes.ts",
+        "components/QuoteManager.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-a",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S12-01",
+          "criterion": "grep localStorage quotes services/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S12-02",
+          "criterion": "STORAGE_KEY_QUOTES removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S12-03",
+          "criterion": "QuoteManager fetches from API",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S12-04",
+          "criterion": "Quote CRUD calls API",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S12-05",
+          "criterion": "No localStorage for quotes",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-013",
+      "description": "Frontend Cutover - Leads",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/leads.ts",
+      "scope": [
+        "services/storage/leads.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-a",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S13-01",
+          "criterion": "grep localStorage leads services/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S13-02",
+          "criterion": "STORAGE_KEY_LEADS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S13-03",
+          "criterion": "Lead CRUD uses API",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-014",
+      "description": "Frontend Cutover - Bookings",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/bookings.ts",
+      "scope": [
+        "services/storage/bookings.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-a",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S14-01",
+          "criterion": "grep localStorage bookings services/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S14-02",
+          "criterion": "STORAGE_KEY_BOOKINGS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S14-03",
+          "criterion": "Booking CRUD uses API",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-015",
+      "description": "Frontend Cutover - Messages Threads",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/messages.ts",
+      "scope": [
+        "services/storage/messages.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-b",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S15-01",
+          "criterion": "STORAGE_KEY_MESSAGES and THREADS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S15-02",
+          "criterion": "Writes confirm server ack",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S15-03",
+          "criterion": "No fire-and-forget sync",
+          "testType": "grep"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-016",
+      "description": "Frontend Cutover - Calls Tasks WorkItems",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/calls.ts",
+      "scope": [
+        "services/storage/calls.ts",
+        "services/storage/tasks.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-b",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S16-01",
+          "criterion": "STORAGE_KEY_CALLS TASKS WORK_ITEMS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S16-02",
+          "criterion": "All three use server API",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S16-03",
+          "criterion": "No DEMO_MODE seed data",
+          "testType": "grep"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-017",
+      "description": "Frontend Cutover - Crisis KCI ServiceTickets",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/recovery.ts",
+      "scope": [
+        "services/storage/recovery.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-c",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S17-01",
+          "criterion": "STORAGE_KEY_CRISIS REQUESTS SERVICE_TICKETS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S17-02",
+          "criterion": "All use server API",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S17-03",
+          "criterion": "Append-only audit trails",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-018",
+      "description": "Frontend Cutover - Contacts Providers",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storage/directory.ts",
+      "scope": [
+        "services/storage/directory.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-c",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S18-01",
+          "criterion": "STORAGE_KEY_CONTACTS PROVIDERS removed",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S18-02",
+          "criterion": "No DEMO_MODE seed data",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S18-03",
+          "criterion": "grep Titan Recovery returns 0",
+          "testType": "grep"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-019",
+      "description": "Remove All DEMO_MODE Seed Data",
+      "phase": 2,
+      "phase_type": "persistence",
+      "component": "services/storageService.ts",
+      "scope": [
+        "services/storageService.ts",
+        "services/storage/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "persistence-c",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S19-01",
+          "criterion": "grep DEMO_MODE return [ services/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S19-02",
+          "criterion": "grep DEMO_MODE setItem services/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S19-03",
+          "criterion": "grep inc-desc-001 CALL-INT-101 WI-5001 returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S19-04",
+          "criterion": "seedIncidents is a no-op",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S19-05",
+          "criterion": "All tests still pass",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run && cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-020",
+      "description": "Replace All Authority Jargon",
+      "phase": 3,
+      "phase_type": "ux",
       "component": "components/",
       "scope": [
-        "App.tsx",
-        "components/",
-        "config/",
-        "services/"
+        "components/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "ux",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S20-01",
+          "criterion": "grep -ri Authority components/ returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S20-02",
+          "criterion": "grep Emergency Sign Out returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S20-03",
+          "criterion": "Login uses plain language",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S20-04",
+          "criterion": "All replacements match audit table",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-021",
+      "description": "Replace All Browser Dialogs",
+      "phase": 3,
+      "phase_type": "ux",
+      "component": "components/",
+      "scope": [
+        "components/"
       ],
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": null,
+      "parallelGroup": "ux",
       "acceptanceCriteria": [
         {
-          "id": "R-P1-01",
-          "criterion": "All 13 navigation labels in App.tsx `categories[]` array match the renamed values specified in the Changes table, verified by unit test asserting each label string",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S21-01",
+          "criterion": "grep alert( components/ excluding tests returns 0",
+          "testType": "grep"
         },
         {
-          "id": "R-P1-02",
-          "criterion": "`config/features.ts` exports a `features` object with 5 boolean keys (`simulateActions`, `apiTester`, `seedSystem`, `injectRecord`, `debugPanels`) that return `true` when `import.meta.env.DEV` is true and `false` otherwise, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S21-02",
+          "criterion": "grep window.confirm( excluding tests returns 0",
+          "testType": "grep"
         },
         {
-          "id": "R-P1-03",
-          "criterion": "`DEMO_MODE` in `services/firebase.ts` includes `import.meta.env.MODE !== 'production'` in its condition AND a production guard that throws an Error if `import.meta.env.PROD && DEMO_MODE`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S21-03",
+          "criterion": "grep prompt( excluding tests returns 0",
+          "testType": "grep"
         },
         {
-          "id": "R-P1-04",
-          "criterion": "CompanyProfile.tsx contains zero instances of ANY of these strings: \"Authority DNA\", \"Logic Seed\", \"Identity Matrix\", \"Duty Cockpit\", \"Global Authority Profile\", \"Synchronize Matrix\", \"Terminate Duty Cycle\", \"Cargo Unit Telemetry\", \"Active Duty Engine\", \"Terminal Nodes\", \"Authority Structure\", \"Load Numbering Matrix\", \"Access Decision Matrix\", \"Acknowledge Exit\", \"Duty Cycle Terminated\", \"Legal Entity Entity\", \"Establishing Authority Connection\", \"Personnel Registry\", \"Hierarchy Permissions\", \"Compliance Governance\", \"Financial Protocols\", \"Secure File Download\", \"Authority Global State Synchronized\", \"Initial Duty Acknowledge\", \"Finalizing Cargo\", \"Operational DNA\", \"Authority ID\", verified by grep returning 0 matches across ALL listed strings",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S21-04",
+          "criterion": "ConfirmDialog component exists",
+          "testType": "unit"
         },
         {
-          "id": "R-P1-05",
-          "criterion": "DriverMobileHome.tsx contains zero instances of \"TruckLogix\", \"Fleet Connect\", \"Standby Mode Initialized\", \"Sign Out Authority\", verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-06",
-          "criterion": "Dashboard.tsx contains zero instances of \"Unified Command Center\", \"Strategy & Analytics\", \"Master Triage Feed\", \"Functional Response Queues\", \"Fleet Situational Awareness\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-07",
-          "criterion": "ExceptionConsole.tsx contains zero instances of \"Master Triage Console\", \"Unified Exception Management\", \"View 360\", \"SLA targets are within safe margins\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-08",
-          "criterion": "LoadBoardEnhanced.tsx contains zero instances of \"SQL Matrix View\", \"Manifest #\", \"Yield\" (as a column label), \"IFTA INTEL\", \"Grid Visibility\", \"View Tailoring\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-09",
-          "criterion": "GlobalMapViewEnhanced.tsx contains zero instances of \"Execute Intervention\", \"RED CIRCLED\", \"Regional Intelligence\", \"Operational Weather\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-10",
-          "criterion": "NetworkPortal.tsx contains zero instances of \"Registry PK\", \"A/P Engine\", \"Constraint Sets\", \"Commercial Catalog\", \"Operational freedom enabled\", \"authorized personnel registered for this node\", \"Compliance vault is empty\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-11",
-          "criterion": "CommandCenterView.tsx contains zero instances of \"Attachment protocol\", \"operational target\", \"Operations Rack\", \"Triage Inbox\", \"Asset recovery team activated\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-12",
-          "criterion": "SafetyView.tsx contains zero instances of \"Custody Events\", \"Service Tickets In Matrix\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-13",
-          "criterion": "QuoteManager.tsx contains zero instances of \"Queue Empty\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-14",
-          "criterion": "CustomerPortalView.tsx contains zero instances of \"Voyage Progress\", \"Tracking Master-ID\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-15",
-          "criterion": "All 15 root dev scripts exist in `scripts/dev/` and zero `.cjs`/`.js` dev scripts remain in the project root (excluding node_modules, config files like vite.config.ts, tailwind.config.js, postcss.config.js), verified by ls",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-16",
-          "criterion": "All 23 server dev scripts exist in `scripts/dev/server/` and zero seed_*/test_*/migrate_exceptions*/upgrade_*/check_billing*/check_db*/repair_* scripts remain in `server/` root, verified by ls",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S21-05",
+          "criterion": "Breakdown flow uses styled modal",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/config/features.test.ts src/__tests__/services/firebase.test.ts src/__tests__/components/App.navigation.test.tsx src/__tests__/components/CompanyProfile.test.tsx src/__tests__/components/DriverMobileHome.labels.test.tsx src/__tests__/components/Dashboard.labels.test.tsx src/__tests__/components/ExceptionConsole.labels.test.tsx src/__tests__/components/LoadBoardEnhanced.labels.test.tsx src/__tests__/components/GlobalMapViewEnhanced.labels.test.tsx src/__tests__/components/NetworkPortal.labels.test.tsx src/__tests__/components/CommandCenterView.labels.test.tsx src/__tests__/components/SafetyView.labels.test.tsx src/__tests__/components/QuoteManager.labels.test.tsx src/__tests__/components/CustomerPortalView.labels.test.tsx --reporter=verbose"
+        "unit": "npx vitest run"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-002",
-      "description": "Remove Dev Artifacts from Production UI",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "App.tsx",
-        "components/"
-      ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [
-        "STORY-001"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P2-01",
-          "criterion": "IntelligenceHub SIMULATE ActionGroup is not rendered when `features.simulateActions` is `false`, verified by unit test that mocks `features.simulateActions = false` and asserts \"SIMULATE\" label is absent from the DOM",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-02",
-          "criterion": "App.tsx does not render the `api-tester` navigation item or `GoogleMapsAPITester` component when `features.apiTester` is `false`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-03",
-          "criterion": "App.tsx does not call `seedDatabase()` when `features.seedSystem` is `false`, verified by unit test with mock spy on seedDatabase",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-04",
-          "criterion": "IntelligenceHub \"Inject Record\" action is not rendered when `features.injectRecord` is `false`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-05",
-          "criterion": "IntelligenceHub \"Work\" ActionGroup label reads \"Quick Actions\", verified by unit test DOM text assertion",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/IntelligenceHub.devtools.test.tsx src/__tests__/components/App.devtools.test.tsx --reporter=verbose"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-003",
-      "description": "Replace Hardcoded Mock Data with Real Calculations or Empty States",
+      "id": "STORY-022",
+      "description": "Standardize Loading Error Empty States",
       "phase": 3,
-      "phase_type": "module",
+      "phase_type": "ux",
       "component": "components/",
       "scope": [
         "components/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "ux",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S22-01",
+          "criterion": "LoadingSkeleton exists with variants",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S22-02",
+          "criterion": "ErrorState exists with retry",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S22-03",
+          "criterion": "Dashboard shows skeleton while loading",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S22-04",
+          "criterion": "API errors show ErrorState",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-023",
+      "description": "Form Validation and Autocomplete",
+      "phase": 3,
+      "phase_type": "ux",
+      "component": "components/",
+      "scope": [
+        "components/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "ux",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S23-01",
+          "criterion": "Required fields show asterisk",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S23-02",
+          "criterion": "Email validates on blur",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S23-03",
+          "criterion": "Password inputs have autocomplete",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S23-04",
+          "criterion": "MC DOT fields show hints",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-024",
+      "description": "Connection Banner Wiring",
+      "phase": 3,
+      "phase_type": "ux",
+      "component": "App.tsx",
+      "scope": [
+        "App.tsx"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "ux",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S24-01",
+          "criterion": "Banner appears within 30s",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S24-02",
+          "criterion": "Banner auto-clears on health 200",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S24-03",
+          "criterion": "Retry calls refreshData",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S24-04",
+          "criterion": "Sticky top z-index 100",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run"
+      },
+      "passed": true,
+      "verificationRef": "Already implemented"
+    },
+    {
+      "id": "STORY-025",
+      "description": "Implement Equipment PATCH",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "server/routes/equipment.ts",
+      "scope": [
+        "server/routes/equipment.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S25-01",
+          "criterion": "PATCH updates status maintenance_date mileage notes",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S25-02",
+          "criterion": "Cross-tenant returns 404",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S25-03",
+          "criterion": "Unauthorized role returns 403",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S25-04",
+          "criterion": "Existing equipment tests pass",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-026",
+      "description": "Implement File Upload",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "server/routes/uploads.ts",
+      "scope": [
+        "server/routes/uploads.ts"
       ],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [
-        "STORY-001"
-      ],
-      "parallelGroup": null,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
       "acceptanceCriteria": [
         {
-          "id": "R-P3-01",
-          "criterion": "`EmptyState` component renders an icon, title, description, and optional action button, verified by unit test asserting all elements present in the DOM",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S26-01",
+          "criterion": "Upload works with progress",
+          "testType": "unit"
         },
         {
-          "id": "R-P3-02",
-          "criterion": "`AnalyticsDashboard.tsx` contains zero instances of \"Global Logistics\", \"FastTrack Freight\", \"Blue Sky Carriers\", \"Midwest Brokerage\", \"Chicago, IL -> Detroit, MI\", \"4.2% increase in Midwest reefer demand\", verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S26-02",
+          "criterion": "Over 10MB rejected 413",
+          "testType": "unit"
         },
         {
-          "id": "R-P3-03",
-          "criterion": "`AnalyticsDashboard` renders EmptyState with message containing \"completed loads\" when given an empty loads array, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S26-03",
+          "criterion": "Invalid MIME rejected 400",
+          "testType": "unit"
         },
         {
-          "id": "R-P3-04",
-          "criterion": "`AnalyticsDashboard` calculates RPM as `carrierRate / totalMiles` from real load data when given 10+ loads with known values, verified by unit test asserting displayed value matches expected calculation",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S26-04",
+          "criterion": "Cross-tenant returns 404",
+          "testType": "unit"
         },
         {
-          "id": "R-P3-05",
-          "criterion": "`Dashboard.tsx` contains zero instances of \"$2.45\", \"72% Done\", \"14 missing receipts\", \"412 mi\", \"Insurance Expiry\", \"12 days\", \"Broker Logistics Group\", \"94%\", \"SLA: 14m\", verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-06",
-          "criterion": "`CustomerPortalView.tsx` contains zero instances of \"INV-8409\", \"$4,250.00\", \"TRK-491\", \"Syracuse, NY\", \"142 Miles\", \"78% Complete\", \"4h 32m\", verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-07",
-          "criterion": "`CustomerPortalView` renders EmptyState with \"No invoices\" message when given zero delivered loads, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-08",
-          "criterion": "`CustomerPortalView` quote form submit button either calls `onSubmitQuote` callback with form data OR the form is replaced with a \"Contact dispatch\" message — the submit button MUST NOT exist as a no-op, verified by unit test that clicks submit and asserts either callback is called or \"Contact\" text is visible",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-09",
-          "criterion": "`DriverMobileHome.tsx` contains zero instances of \"Wait time expected: 2h\" and \"Check in at Gate 2\", verified by grep",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-10",
-          "criterion": "`DriverMobileHome` renders `selectedLoad.specialInstructions` when present (test with load that has specialInstructions=\"Dock 7\", assert \"Dock 7\" appears), verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-11",
-          "criterion": "`GlobalMapViewEnhanced.tsx` contains zero instances of `seed % 10` or `seed %` patterns used to generate fake isOnline/lastPing/heading data, verified by grep returning 0 matches for `seed %` in the file",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-12",
-          "criterion": "`LoadBoardEnhanced` renders EmptyState with \"No loads\" message and a CTA button when given an empty loads array, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-13",
-          "criterion": "`CalendarView` renders EmptyState with \"No loads scheduled\" message when given an empty loads array, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S26-05",
+          "criterion": "Content-Disposition attachment",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/EmptyState.test.tsx src/__tests__/components/AnalyticsDashboard.test.tsx src/__tests__/components/Dashboard.mockdata.test.tsx src/__tests__/components/CustomerPortalView.test.tsx src/__tests__/components/DriverMobileHome.mockdata.test.tsx src/__tests__/components/GlobalMapViewEnhanced.mockdata.test.tsx src/__tests__/components/LoadBoardEnhanced.empty.test.tsx src/__tests__/components/CalendarView.empty.test.tsx --reporter=verbose"
+        "unit": "cd server && npx vitest run"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-004",
-      "description": "Fix Driver Mobile Experience",
+      "id": "STORY-027",
+      "description": "Customer Soft Delete Archive",
       "phase": 4,
-      "phase_type": "integration",
-      "component": "components/",
+      "phase_type": "feature",
+      "component": "server/routes/clients.ts",
       "scope": [
-        "components/"
+        "server/routes/clients.ts"
       ],
-      "complexity": "medium",
+      "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [
-        "STORY-001",
-        "STORY-003"
-      ],
-      "parallelGroup": null,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
       "acceptanceCriteria": [
         {
-          "id": "R-P4-01",
-          "criterion": "`Toast` component renders a message string, auto-dismisses after the specified duration (default 3000ms), and applies green/red/blue styling based on type prop, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S27-01",
+          "criterion": "Archive sets archived_at",
+          "testType": "unit"
         },
         {
-          "id": "R-P4-02",
-          "criterion": "Tapping the \"Upload\" button on DriverMobileHome's document checklist opens a Scanner modal overlay, verified by integration test that simulates click and asserts Scanner component is rendered",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S27-02",
+          "criterion": "Archived hidden from defaults",
+          "testType": "unit"
         },
         {
-          "id": "R-P4-03",
-          "criterion": "When Scanner calls `onDataExtracted`, the document metadata is passed to `onSaveLoad` with the updated load, verified by integration test with onSaveLoad spy",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S27-03",
+          "criterion": "Un-archive endpoint exists",
+          "testType": "unit"
         },
         {
-          "id": "R-P4-04",
-          "criterion": "All body text in DriverMobileHome uses `text-xs` (12px) or larger -- zero instances of `text-[8px]`, `text-[9px]`, or `text-[10px]` remain for content text, verified by grep on the component file returning 0 matches for `text-[8px]`, `text-[9px]`, `text-[10px]`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-05",
-          "criterion": "After a successful status update, a Toast with \"Status updated to {status}\" and type=\"success\" appears, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "After a failed status update, a Toast with \"Failed to update status\" and type=\"error\" appears, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-07",
-          "criterion": "A \"Message Dispatch\" button is visible on Today tab when `activeLoads.length > 0`, clicking it calls `onOpenHub('messaging')`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-08",
-          "criterion": "A phone icon button with `tel:` link is visible when company dispatch phone is available, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-09",
-          "criterion": "On component mount, `activeTab` and `selectedLoadId` are restored from localStorage keys `driver_{user.id}_activeTab` and `driver_{user.id}_selectedLoadId`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-10",
-          "criterion": "On tab change, the new tab value is written to localStorage key `driver_{user.id}_activeTab`, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S27-04",
+          "criterion": "Unauthorized role returns 403",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/components/Toast.test.tsx src/__tests__/components/DriverMobileHome.scanner.test.tsx src/__tests__/components/DriverMobileHome.accessibility.test.tsx src/__tests__/components/DriverMobileHome.toast.test.tsx src/__tests__/components/DriverMobileHome.messaging.test.tsx src/__tests__/components/DriverMobileHome.persistence.test.tsx --reporter=verbose"
+        "unit": "cd server && npx vitest run"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-005",
-      "description": "Architecture Polish -- Console.log Cleanup, Trucking Glossary, and Test Credential Extraction",
-      "phase": 5,
-      "phase_type": "module",
-      "component": "services/",
+      "id": "STORY-028",
+      "description": "Password Reset Flow",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "server/routes/users.ts",
+      "scope": [
+        "server/routes/users.ts",
+        "components/Auth.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S28-01",
+          "criterion": "Forgot Password link visible",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S28-02",
+          "criterion": "Rate limited 3 per 15min",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S28-03",
+          "criterion": "Always returns 200",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S28-04",
+          "criterion": "Works on mobile",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-029",
+      "description": "Endpoint Hardening",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "server/routes/accounting.ts",
+      "scope": [
+        "server/routes/accounting.ts",
+        "server/routes/ai.ts"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S29-01",
+          "criterion": "pings over 10000 returns 400",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S29-02",
+          "criterion": "AI over 5MB returns 413",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S29-03",
+          "criterion": "Invalid MIME returns 400",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S29-04",
+          "criterion": "Each boundary has a test",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-030",
+      "description": "Remove Unimplemented Features",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "components/",
       "scope": [
         "components/",
-        "data/",
-        "fixtures/",
-        "services/",
-        "utils/"
+        "server/routes/accounting.ts"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "STORY-001",
-        "STORY-003"
-      ],
-      "parallelGroup": null,
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
       "acceptanceCriteria": [
         {
-          "id": "R-P5-01",
-          "criterion": "`utils/logger.ts` exports a `log` object where `log.info` is a no-op when `import.meta.env.DEV` is false and passes through to `console.log` when true, verified by unit test",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S30-01",
+          "criterion": "QB Sync hidden",
+          "testType": "unit"
         },
         {
-          "id": "R-P5-02",
-          "criterion": "`storageService.ts` contains zero `console.log()` calls, verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S30-02",
+          "criterion": "sync-qb returns 501",
+          "testType": "unit"
         },
         {
-          "id": "R-P5-03",
-          "criterion": "`services/authService.ts`, `services/brokerService.ts`, `components/Auth.tsx`, `components/GlobalMapViewEnhanced.tsx` contain zero `console.log()` calls, verified by grep across all 4 files returning 0 matches",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S30-03",
+          "criterion": "grep Sync queued returns 0",
+          "testType": "grep"
         },
         {
-          "id": "R-P5-04",
-          "criterion": "`data/truckingGlossary.ts` exports a glossary object with at least 25 entries including IFTA, BOL, POD, RPM, HOS, ELD, MC, DOT, TONU, LUMPER, DETENTION, DEADHEAD, ACCESSORIAL, verified by unit test counting keys and checking specific entries",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-05",
-          "criterion": "`GlossaryTooltip` component renders a tooltip with the definition text when hovering over a known term, and renders children without a tooltip for unknown terms, verified by unit test",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-06",
-          "criterion": "Zero `console.log()` calls exist in any `.ts` or `.tsx` file under `services/` or `components/` directories (excluding test files and node_modules), verified by grep returning 0 matches",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-07",
-          "criterion": "`services/authService.ts` seedDatabase() function contains zero hardcoded email addresses or passwords (no \"admin@loadpilot.com\", no \"admin123\", no \"dispatch@loadpilot.com\", no \"dispatch123\"), verified by grep returning 0 matches for these strings in authService.ts",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-08",
-          "criterion": "`fixtures/test-users.json` exists and is listed in `.gitignore`, verified by file existence check and gitignore grep",
-          "testType": "unit",
-          "testFile": null
+          "id": "R-S30-04",
+          "criterion": "No coming soon in UI",
+          "testType": "grep"
         }
       ],
       "gateCmds": {
-        "unit": "cd \"F:/Trucking/DisbatchMe\" && npx vitest run src/__tests__/utils/logger.test.ts src/__tests__/data/truckingGlossary.test.ts src/__tests__/components/GlossaryTooltip.test.tsx src/__tests__/services/authService.seed.test.ts --reporter=verbose"
+        "unit": "npx vitest run && cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-031",
+      "description": "Relabel Tracking Honestly",
+      "phase": 4,
+      "phase_type": "feature",
+      "component": "components/",
+      "scope": [
+        "components/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "feature-reality",
+      "acceptanceCriteria": [
+        {
+          "id": "R-S31-01",
+          "criterion": "grep Real-Time Live-Track returns 0",
+          "testType": "grep"
+        },
+        {
+          "id": "R-S31-02",
+          "criterion": "Tracking still works",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-032",
+      "description": "Bundle Code Splitting",
+      "phase": 5,
+      "phase_type": "hardening",
+      "component": "vite.config.ts",
+      "scope": [
+        "vite.config.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-S32-01",
+          "criterion": "No chunk over 500KB gzipped",
+          "testType": "build"
+        },
+        {
+          "id": "R-S32-02",
+          "criterion": "Login under 150KB gzipped",
+          "testType": "build"
+        },
+        {
+          "id": "R-S32-03",
+          "criterion": "Build no warnings",
+          "testType": "build"
+        }
+      ],
+      "gateCmds": {
+        "build": "npm run build"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-033",
+      "description": "Fix TypeScript Errors",
+      "phase": 5,
+      "phase_type": "hardening",
+      "component": "tests",
+      "scope": [
+        "src/__tests__/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-S33-01",
+          "criterion": "Frontend tsc 0 errors",
+          "testType": "typecheck"
+        },
+        {
+          "id": "R-S33-02",
+          "criterion": "Server tsc 0 errors",
+          "testType": "typecheck"
+        }
+      ],
+      "gateCmds": {
+        "typecheck": "npx tsc --noEmit && cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-034",
+      "description": "Forbidden Pattern CI Guard",
+      "phase": 5,
+      "phase_type": "hardening",
+      "component": "server/__tests__/",
+      "scope": [
+        "server/__tests__/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-S34-01",
+          "criterion": "CI test scans forbidden patterns",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S34-02",
+          "criterion": "Adding forbidden pattern fails test",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-035",
+      "description": "Operational Readiness",
+      "phase": 5,
+      "phase_type": "hardening",
+      "component": "server/routes/health.ts",
+      "scope": [
+        "server/routes/health.ts",
+        "docs/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-S35-01",
+          "criterion": "Health returns dependency status",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S35-02",
+          "criterion": "Rollback procedure documented",
+          "testType": "docs"
+        },
+        {
+          "id": "R-S35-03",
+          "criterion": "Ops readiness checklist complete",
+          "testType": "docs"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-036",
+      "description": "Regression and Release Evidence",
+      "phase": 5,
+      "phase_type": "hardening",
+      "component": "docs/",
+      "scope": [
+        "docs/remediation/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-S36-01",
+          "criterion": "Server tests >= 1268",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S36-02",
+          "criterion": "Frontend tests >= 549",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S36-03",
+          "criterion": "TypeScript 0 errors",
+          "testType": "typecheck"
+        },
+        {
+          "id": "R-S36-04",
+          "criterion": "Forbidden pattern scan passes",
+          "testType": "unit"
+        },
+        {
+          "id": "R-S36-05",
+          "criterion": "Release evidence generated",
+          "testType": "docs"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run && cd server && npx vitest run"
       },
       "passed": false,
       "verificationRef": null

@@ -4,10 +4,12 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createPartySchema } from "../schemas/parties";
+import { createClientSchema } from "../schemas/client";
 import pool from "../db";
 import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
+import { ForbiddenError } from "../errors/AppError";
 
 const router = Router();
 
@@ -17,17 +19,12 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    if (
-      req.user.companyId !== req.params.companyId &&
-      req.user.role !== "admin"
-    ) {
-      return res.status(403).json({ error: "Unauthorized company access" });
-    }
     try {
-      const [rows]: any = await pool.query(
-        "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
-        [req.params.companyId],
-      );
+      const includeArchived = req.query.include_archived === "true";
+      const sql = includeArchived
+        ? "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC"
+        : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
+      const [rows]: any = await pool.query(sql, [req.params.companyId]);
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
@@ -41,11 +38,117 @@ router.get(
   },
 );
 
+const ARCHIVE_ALLOWED_ROLES = ["admin", "dispatcher"];
+
+// PATCH /api/clients/:id/archive — soft-delete a customer
+router.patch(
+  "/api/clients/:id/archive",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/clients/:id/archive",
+    });
+
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+      res.status(403).json({ error: "Forbidden: insufficient role" });
+      return;
+    }
+
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE customers SET archived_at = NOW(), archived_by = ? WHERE id = ? AND company_id = ?",
+        [req.user.uid, id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      log.info({ clientId: id, archivedBy: req.user.uid }, "Client archived");
+      res.json({ message: "Client archived" });
+    } catch (error) {
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/clients/:id/archive]",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// PATCH /api/clients/:id/unarchive — restore an archived customer
+router.patch(
+  "/api/clients/:id/unarchive",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/clients/:id/unarchive",
+    });
+
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+      res.status(403).json({ error: "Forbidden: insufficient role" });
+      return;
+    }
+
+    const { id } = req.params;
+    const tenantId = req.user.tenantId;
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE customers SET archived_at = NULL, archived_by = NULL WHERE id = ? AND company_id = ?",
+        [id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      log.info({ clientId: id }, "Client unarchived");
+      res.json({ message: "Client unarchived" });
+    } catch (error) {
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/clients/:id/unarchive]",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 router.post(
   "/api/clients",
   requireAuth,
   requireTenant,
+  validateBody(createClientSchema),
   async (req: any, res) => {
+    const tenantId = req.user!.tenantId;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/clients",
+    });
+
+    // Security: reject body with foreign company_id
+    if (req.body.company_id && req.body.company_id !== tenantId) {
+      log.warn(
+        {
+          bodyCompanyId: req.body.company_id,
+          authTenantId: tenantId,
+        },
+        "Cross-tenant client creation attempt blocked",
+      );
+      res.status(403).json({ error: "company_id mismatch" });
+      return;
+    }
+
     const {
       id,
       name,
@@ -56,17 +159,17 @@ router.post(
       phone,
       address,
       payment_terms,
-      company_id,
       chassis_requirements,
     } = req.body;
-    if (req.user.companyId !== company_id && req.user.role !== "admin") {
-      return res.status(403).json({ error: "Unauthorized company access" });
-    }
+
+    // Server derives company_id exclusively from auth context
+    const companyId = tenantId;
+
     try {
       await pool.query(
         "REPLACE INTO customers (id, name, type, mc_number, dot_number, email, phone, address, payment_terms, company_id, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-          id,
+          id || uuidv4(),
           name,
           type,
           mc_number,
@@ -75,16 +178,12 @@ router.post(
           phone,
           address,
           payment_terms,
-          company_id,
+          companyId,
           JSON.stringify(chassis_requirements),
         ],
       );
       res.status(201).json({ message: "Client saved" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/clients",
-      });
       log.error({ err: error }, "SERVER ERROR [POST /api/clients]");
       res.status(500).json({ error: "Database error" });
     }

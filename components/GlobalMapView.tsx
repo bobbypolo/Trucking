@@ -196,7 +196,9 @@ export const GlobalMapView: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="text-[8px] font-black text-slate-600 uppercase bg-slate-950 px-1.5 py-0.5 rounded border border-white/5">
-                  {vehicle.driver.safetyScore}%
+                  {vehicle.driver.safetyScore != null
+                    ? `${vehicle.driver.safetyScore}%`
+                    : "N/A"}
                 </div>
               </div>
 

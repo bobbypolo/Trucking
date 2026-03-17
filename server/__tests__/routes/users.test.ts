@@ -107,7 +107,19 @@ vi.mock("../../middleware/requireAuth", () => ({
 }));
 
 vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
+  requireTenant: (req: any, res: any, next: any) => {
+    const userTenantId = req.user?.tenantId;
+    if (req.params?.companyId && req.params.companyId !== userTenantId) {
+      return res.status(403).json({ error: "Access denied: tenant mismatch." });
+    }
+    if (req.body) {
+      const bodyCompanyId = req.body.company_id || req.body.companyId;
+      if (bodyCompanyId && bodyCompanyId !== userTenantId) {
+        return res
+          .status(403)
+          .json({ error: "Access denied: tenant mismatch." });
+      }
+    }
     next();
   },
 }));
@@ -235,26 +247,22 @@ describe("POST /api/auth/register — validation errors", () => {
   });
 
   it("returns 400 when email format is invalid", async () => {
-    const res = await request(app)
-      .post("/api/auth/register")
-      .send({
-        email: "not-an-email",
-        name: "Test User",
-        role: "driver",
-        password: "securepass123",
-      });
+    const res = await request(app).post("/api/auth/register").send({
+      email: "not-an-email",
+      name: "Test User",
+      role: "driver",
+      password: "securepass123",
+    });
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when name is empty string", async () => {
-    const res = await request(app)
-      .post("/api/auth/register")
-      .send({
-        email: "user@test.com",
-        name: "",
-        role: "driver",
-        password: "securepass123",
-      });
+    const res = await request(app).post("/api/auth/register").send({
+      email: "user@test.com",
+      name: "",
+      role: "driver",
+      password: "securepass123",
+    });
     expect(res.status).toBe(400);
   });
 });
@@ -375,17 +383,36 @@ describe("POST /api/auth/register — company resolution (AUTH-03)", () => {
     );
   });
 
-  it("uses explicit company_id from body when provided", async () => {
+  it("returns 403 when company_id in body does not match auth tenant (tenant lock)", async () => {
+    /**
+     * Tests Issue 1 — admin cross-tenant user creation prevention.
+     * Body company_id from a foreign tenant must be rejected.
+     */
     const res = await request(app).post("/api/auth/register").send({
       email: "newuser@test.com",
       name: "New User",
       role: "driver",
       password: "securepass123",
-      company_id: "custom-company",
+      company_id: "foreign-company",
+    });
+    expect(res.status).toBe(403);
+    expect(mockUpsertSqlUser).not.toHaveBeenCalled();
+  });
+
+  it("always uses auth tenant even when matching company_id provided in body", async () => {
+    /**
+     * Tests Issue 1 — companyId is always sourced from auth token, not body.
+     */
+    const res = await request(app).post("/api/auth/register").send({
+      email: "newuser@test.com",
+      name: "New User",
+      role: "driver",
+      password: "securepass123",
+      company_id: COMPANY_ID,
     });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
-      expect.objectContaining({ companyId: "custom-company" }),
+      expect.objectContaining({ companyId: COMPANY_ID }),
     );
   });
 });
@@ -417,6 +444,31 @@ describe("POST /api/auth/register — success", () => {
     expect(res.body.message).toBe("User registered successfully");
     expect(mockUpsertSqlUser).toHaveBeenCalledOnce();
     expect(mockMirrorUserToFirestore).toHaveBeenCalledOnce();
+  });
+});
+
+describe("POST /api/auth/register — role enum enforcement (Issue 7)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockUserRole = "admin";
+    mockUserTenantId = COMPANY_ID;
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns 400 when role is not in the valid enum (e.g. superadmin)", async () => {
+    /**
+     * Tests Issue 7 — invalid role values rejected at schema validation.
+     */
+    const res = await request(app).post("/api/auth/register").send({
+      email: "newuser@test.com",
+      name: "New User",
+      role: "superadmin",
+      password: "securepass123",
+    });
+    expect(res.status).toBe(400);
+    expect(mockUpsertSqlUser).not.toHaveBeenCalled();
   });
 });
 
@@ -515,14 +567,30 @@ describe("POST /api/users — company resolution (AUTH-03)", () => {
     );
   });
 
-  it("uses explicit company_id from body when provided", async () => {
+  it("returns 403 when company_id in body does not match auth tenant (tenant lock)", async () => {
+    /**
+     * Tests Issue 1 — admin cross-tenant sync prevention.
+     * A foreign company_id in the body must be rejected.
+     */
     const res = await request(app).post("/api/users").send({
       email: "driver@test.com",
-      company_id: "other-company",
+      company_id: "foreign-company",
+    });
+    expect(res.status).toBe(403);
+    expect(mockUpsertSqlUser).not.toHaveBeenCalled();
+  });
+
+  it("always uses auth tenant even when matching company_id provided in body", async () => {
+    /**
+     * Tests Issue 1 — companyId is always sourced from auth token, not body.
+     */
+    const res = await request(app).post("/api/users").send({
+      email: "driver@test.com",
+      company_id: COMPANY_ID,
     });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
-      expect.objectContaining({ companyId: "other-company" }),
+      expect.objectContaining({ companyId: COMPANY_ID }),
     );
   });
 });

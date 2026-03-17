@@ -51,14 +51,20 @@ const companyNoPhone = {
 } as unknown as Company;
 
 describe("DriverMobileHome messaging (R-P4-07, R-P4-08)", () => {
-  let onSaveLoad: ReturnType<typeof vi.fn>;
-  let onLogout: ReturnType<typeof vi.fn>;
-  let onOpenHub: ReturnType<typeof vi.fn>;
+  let onSaveLoad: (load: LoadData) => Promise<void>;
+  let onLogout: () => void;
+  let onOpenHub: (
+    tab?: "feed" | "messaging" | "intelligence" | "reports",
+  ) => void;
 
   beforeEach(() => {
-    onSaveLoad = vi.fn().mockResolvedValue(undefined);
-    onLogout = vi.fn();
-    onOpenHub = vi.fn();
+    onSaveLoad = vi.fn().mockResolvedValue(undefined) as unknown as (
+      load: LoadData,
+    ) => Promise<void>;
+    onLogout = vi.fn() as unknown as () => void;
+    onOpenHub = vi.fn() as unknown as (
+      tab?: "feed" | "messaging" | "intelligence" | "reports",
+    ) => void;
     localStorage.clear();
   });
 

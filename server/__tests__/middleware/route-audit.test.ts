@@ -26,6 +26,7 @@ const DEV_STAGING_PUBLIC_ROUTES = new Set([
   "GET /api/health",
   "POST /api/auth/register",
   "POST /api/auth/login",
+  "POST /api/auth/reset-password",
   "POST /api/users",
 ]);
 
@@ -76,12 +77,11 @@ function extractRoutesFromContent(
     "g",
   );
 
-  let match: RegExpExecArray | null;
-  while ((match = methodRe.exec(content)) !== null) {
+  for (const match of content.matchAll(methodRe)) {
     const method = match[1].toUpperCase();
     const routePath = match[2];
     // Capture ~300 chars after the path to detect middleware
-    const contextStart = match.index;
+    const contextStart = match.index ?? 0;
     const contextEnd = Math.min(content.length, contextStart + 400);
     const block = content.slice(contextStart, contextEnd);
 

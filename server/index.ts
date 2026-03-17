@@ -36,6 +36,16 @@ import metricsRouter from "./routes/metrics";
 import aiRouter from "./routes/ai";
 import messagesRouter from "./routes/messages";
 import callSessionsRouter from "./routes/call-sessions";
+import quotesRouter from "./routes/quotes";
+import leadsRouter from "./routes/leads";
+import bookingsRouter from "./routes/bookings";
+import contactsRouter from "./routes/contacts";
+import providersRouter from "./routes/providers";
+import tasksRouter from "./routes/tasks";
+import kciRequestsRouter from "./routes/kci-requests";
+import crisisActionsRouter from "./routes/crisis-actions";
+import serviceTicketsRouter from "./routes/service-tickets";
+import healthRouter from "./routes/health";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -50,6 +60,10 @@ app.use(express.json());
 app.use(correlationId);
 app.use(metricsMiddleware);
 
+// Health check — unauthenticated, used by load balancers; registered before rate limiter
+// so high-frequency polling from GCP/ALB does not consume rate-limit budget.
+app.use(healthRouter);
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX || "100", 10),
@@ -58,14 +72,6 @@ const apiLimiter = rateLimit({
   message: { message: "Too many requests, please try again later." },
 });
 app.use("/api", apiLimiter);
-
-app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
-    message: "LoadPilot API is running",
-    database: "MySQL + Firebase",
-  });
-});
 
 app.use(usersRouter);
 app.use(loadsRouter);
@@ -80,9 +86,18 @@ app.use(exceptionsRouter);
 app.use(trackingRouter);
 app.use(weatherRouter);
 app.use(metricsRouter);
-app.use("/api/ai", express.json({ limit: "15mb" }), aiRouter);
+app.use("/api/ai", express.json({ limit: "5mb" }), aiRouter);
 app.use(messagesRouter);
 app.use(callSessionsRouter);
+app.use(quotesRouter);
+app.use(leadsRouter);
+app.use(bookingsRouter);
+app.use(contactsRouter);
+app.use(providersRouter);
+app.use(tasksRouter);
+app.use(kciRequestsRouter);
+app.use(crisisActionsRouter);
+app.use(serviceTicketsRouter);
 
 app.use(errorHandler);
 

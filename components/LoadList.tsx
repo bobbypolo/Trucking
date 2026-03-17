@@ -171,7 +171,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                     <div className="py-32 text-center space-y-6">
                         <div className="w-24 h-24 bg-slate-900 rounded-[3rem] border border-slate-800 flex items-center justify-center mx-auto shadow-2xl"><Layers className="w-12 h-12 text-slate-800 animate-pulse" /></div>
                         <div className="space-y-2">
-                            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-xs">Authority Bridge Offline</p>
+                            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-xs">No loads to show</p>
                             <p className="text-slate-700 text-[10px] font-bold uppercase tracking-widest">No active manifests detected in local subspace</p>
                         </div>
                     </div>

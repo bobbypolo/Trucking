@@ -20,6 +20,13 @@ import { createChildLogger } from "../lib/logger";
 
 const router = Router();
 
+const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+] as const;
+
 /**
  * Validate that imageBase64 is present and is a non-empty string.
  * Returns an error message or null if valid.
@@ -33,6 +40,30 @@ function validateImagePayload(body: unknown): string | null {
     (body as Record<string, unknown>).imageBase64 === ""
   ) {
     return "imageBase64 is required and must be a non-empty string";
+  }
+  return null;
+}
+
+/**
+ * Validate the mimeType field when provided.
+ * Returns an error message or null if valid.
+ */
+function validateMimeType(body: Record<string, unknown>): string | null {
+  if (!("mimeType" in body) || body.mimeType === undefined) {
+    // mimeType is optional — defaults handled at call site
+    return null;
+  }
+  if (
+    !ALLOWED_MIME_TYPES.includes(
+      body.mimeType as (typeof ALLOWED_MIME_TYPES)[number],
+    )
+  ) {
+    return (
+      "Invalid mimeType '" +
+      body.mimeType +
+      "'. Allowed values: " +
+      ALLOWED_MIME_TYPES.join(", ")
+    );
   }
   return null;
 }
@@ -54,6 +85,11 @@ router.post(
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
+      return;
+    }
+    const mimeError = validateMimeType(req.body as Record<string, unknown>);
+    if (mimeError) {
+      res.status(400).json({ error: mimeError });
       return;
     }
 
@@ -91,6 +127,11 @@ router.post(
       res.status(400).json({ error: validationError });
       return;
     }
+    const mimeError = validateMimeType(req.body as Record<string, unknown>);
+    if (mimeError) {
+      res.status(400).json({ error: mimeError });
+      return;
+    }
 
     const { imageBase64, mimeType = "image/jpeg" } = req.body as {
       imageBase64: string;
@@ -126,6 +167,11 @@ router.post(
       res.status(400).json({ error: validationError });
       return;
     }
+    const mimeError = validateMimeType(req.body as Record<string, unknown>);
+    if (mimeError) {
+      res.status(400).json({ error: mimeError });
+      return;
+    }
 
     const { imageBase64, mimeType = "image/jpeg" } = req.body as {
       imageBase64: string;
@@ -159,6 +205,11 @@ router.post(
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
+      return;
+    }
+    const mimeError = validateMimeType(req.body as Record<string, unknown>);
+    if (mimeError) {
+      res.status(400).json({ error: mimeError });
       return;
     }
 
