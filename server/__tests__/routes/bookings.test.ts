@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Hoisted mocks for pool.query
-const { mockQuery } = vi.hoisted(() => {
+// Hoisted mocks for pool.query and sql-auth
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid };
 });
 
 vi.mock("../../db", () => ({
@@ -28,48 +29,30 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Directly mock auth middleware to control user context per-test
-let mockUserRole = "admin";
-let mockUserTenantId = "company-aaa";
-let mockUserCompanyId = "company-aaa";
-let mockUserUid = "user-1";
-let mockAuthEnabled = true;
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, res: any, next: any) => {
-    if (!mockAuthEnabled) {
-      return res
-        .status(401)
-        .json({ error: "Authentication required." });
-    }
-    req.user = {
-      uid: mockUserUid,
-      tenantId: mockUserTenantId,
-      companyId: mockUserCompanyId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (req: any, res: any, next: any) => {
-    const user = req.user;
-    if (!user) {
-      return res
-        .status(403)
-        .json({ error: "Tenant verification requires authentication." });
-    }
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import bookingsRouter from "../../routes/bookings";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -83,17 +66,24 @@ function buildApp() {
 
 describe("GET /api/bookings — auth enforcement", () => {
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockAuthEnabled = true;
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
-  it("returns 401 when auth middleware rejects (no token path)", async () => {
-    mockAuthEnabled = false;
+  it("returns 401 when no auth token is provided", async () => {
     const app = buildApp();
     const res = await request(app).get("/api/bookings");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 401 when user has no linked SQL account", async () => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(null);
+    const app = buildApp();
+    const res = await request(app)
+      .get("/api/bookings")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(401);
   });
 });
@@ -104,12 +94,11 @@ describe("GET /api/bookings — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockAuthEnabled = true;
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
   });
 
   it("returns bookings list with 200", async () => {
@@ -197,12 +186,11 @@ describe("GET /api/bookings/:id — single booking", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockAuthEnabled = true;
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
   });
 
   it("returns 200 for same-tenant booking", async () => {
@@ -266,13 +254,11 @@ describe("POST /api/bookings — creation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockUserUid = "user-1";
-    mockAuthEnabled = true;
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
   });
 
   it("returns 201 with valid data", async () => {
@@ -375,7 +361,6 @@ describe("POST /api/bookings — creation", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    mockAuthEnabled = false;
     const app2 = buildApp();
 
     const res = await request(app2)
@@ -392,13 +377,11 @@ describe("PATCH /api/bookings/:id — update", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockUserUid = "user-1";
-    mockAuthEnabled = true;
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
   });
 
   it("returns 200 for same-tenant update", async () => {
@@ -509,12 +492,11 @@ describe("DELETE /api/bookings/:id — no endpoint exists", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    mockAuthEnabled = true;
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
   });
 
   it("returns 404 — DELETE endpoint does not exist", async () => {
@@ -530,13 +512,15 @@ describe("DELETE /api/bookings/:id — no endpoint exists", () => {
 
 describe("Bookings — tenant isolation across operations", () => {
   beforeEach(() => {
-    mockAuthEnabled = true;
     vi.clearAllMocks();
   });
 
   it("tenant B cannot list tenant A bookings", async () => {
-    mockUserTenantId = "company-bbb";
-    mockUserCompanyId = "company-bbb";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: "company-bbb",
+      companyId: "company-bbb",
+    });
     const app = buildApp();
 
     // Returns empty because query filters by company_id = company-bbb
@@ -555,8 +539,11 @@ describe("Bookings — tenant isolation across operations", () => {
   });
 
   it("tenant B cannot read tenant A booking by ID", async () => {
-    mockUserTenantId = "company-bbb";
-    mockUserCompanyId = "company-bbb";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: "company-bbb",
+      companyId: "company-bbb",
+    });
     const app = buildApp();
 
     // findById returns a booking belonging to tenant A
@@ -574,8 +561,11 @@ describe("Bookings — tenant isolation across operations", () => {
   });
 
   it("tenant B cannot update tenant A booking", async () => {
-    mockUserTenantId = "company-bbb";
-    mockUserCompanyId = "company-bbb";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: "company-bbb",
+      companyId: "company-bbb",
+    });
     const app = buildApp();
 
     mockQuery.mockResolvedValueOnce([
