@@ -44,7 +44,7 @@ export const SidebarTree: React.FC<Props> = ({ activeTab, setActiveTab, permissi
             label: 'Enterprise',
             items: [
                 { id: 'finance', label: 'Financials', icon: Wallet },
-                { id: 'company', label: 'Authority Profile', icon: Building2 },
+                { id: 'company', label: 'Company Profile', icon: Building2 },
                 { id: 'profile', label: 'User Settings', icon: Settings },
             ]
         }

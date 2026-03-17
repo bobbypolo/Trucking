@@ -228,7 +228,7 @@ export const BookingPortal: React.FC<Props> = ({ user, company, onBookingComplet
                                             />
                                         </div>
                                         <div>
-                                            <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">Client Authority</label>
+                                            <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">Client</label>
                                             <select
                                                 className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:border-blue-500 outline-none transition-all font-bold appearance-none"
                                                 onChange={(e) => setSelectedBroker(brokers.find(b => b.id === e.target.value) || null)}

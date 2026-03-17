@@ -429,10 +429,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <Truck className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-4xl font-black text-white tracking-tighter mb-4 uppercase">
-              LoadPilot Authority
+              LoadPilot
             </h1>
             <p className="text-slate-400 text-sm leading-relaxed font-bold">
-              The Hub of Authority for modern freight logistics.
+              Dispatch management for trucking operations.
             </p>
           </div>
           <div className="space-y-6">
@@ -458,7 +458,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
             >
               <div>
                 <h2 className="text-3xl font-black text-white uppercase tracking-tight">
-                  Authority Access
+                  Sign In
                 </h2>
                 <p className="text-slate-500 text-sm font-bold mt-1">
                   Sign in to your hub.
@@ -473,7 +473,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
-                    placeholder="authority@logistics.com"
+                    placeholder="you@company.com"
                   />
                 </div>
                 <div className="relative">
@@ -497,14 +497,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
               >
-                Open Hub
+                Sign In
               </button>
               <button
                 type="button"
                 onClick={() => setView("signup")}
                 className="w-full text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
               >
-                Apply for New Authority
+                Create Account
               </button>
             </form>
           )}
@@ -685,7 +685,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </button>
                 <div>
                   <h2 className="text-2xl font-black text-white uppercase">
-                    Step 2: Authority & Billing
+                    Step 2: Company Details
                   </h2>
                   <p className="text-slate-500 text-xs font-black mt-1 uppercase tracking-widest">
                     Verify legal and tax credentials
@@ -1109,13 +1109,13 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   Secure Hub
                 </h2>
                 <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-1">
-                  Finalize Authority Subscription
+                  Complete Setup
                 </p>
               </div>
               <div className="bg-slate-950 p-6 rounded-3xl border border-slate-800">
                 <div className="flex justify-between items-center mb-6">
                   <span className="text-sm font-black text-white uppercase tracking-widest">
-                    Authority License
+                    Subscription Plan
                   </span>
                   <span className="text-2xl font-black text-blue-400 font-mono">
                     $49.00<span className="text-xs text-slate-600">/mo</span>
@@ -1150,7 +1150,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 ) : (
                   <ShieldCheck />
                 )}{" "}
-                Initialize Authority
+                Get Started
               </button>
             </form>
           )}

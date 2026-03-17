@@ -69,7 +69,7 @@ export const CompanyProfile: React.FC<Props> = ({
   const [users, setUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<
     | "identity"
-    | "authority_dna"
+    | "company_profile"
     | "registry"
     | "permissions"
     | "policy"
@@ -296,7 +296,7 @@ export const CompanyProfile: React.FC<Props> = ({
           {isAdmin &&
             [
               { id: "identity", label: "Identity", icon: FileText },
-              { id: "authority_dna", label: "Operations", icon: Zap },
+              { id: "company_profile", label: "Operations", icon: Zap },
               { id: "registry", label: "Personnel", icon: Users },
               { id: "permissions", label: "Security", icon: Lock },
               { id: "policy", label: "Governance", icon: Scale },
@@ -307,7 +307,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   setActiveTab(
                     tab.id as
                       | "identity"
-                      | "authority_dna"
+                      | "company_profile"
                       | "registry"
                       | "permissions"
                       | "policy",
@@ -500,7 +500,7 @@ export const CompanyProfile: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "authority_dna" && (
+        {activeTab === "company_profile" && (
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 animate-fade-in">
             <div className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8">
               <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">

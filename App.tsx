@@ -809,7 +809,7 @@ export default function App() {
               className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all ${sidebarCollapsed ? "justify-center px-0" : ""}`}
             >
               <LogOut className="w-3 h-3 shrink-0" />
-              {!sidebarCollapsed && <span>Emergency Sign Out</span>}
+              {!sidebarCollapsed && <span>Sign Out</span>}
             </button>
           </div>
         </aside>
