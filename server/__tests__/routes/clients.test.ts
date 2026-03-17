@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Tests R-FS-05-01, R-FS-05-07, R-S27-01, R-S27-02, R-S27-03, R-S27-04
 
+// TODO(test-coverage): This file mocks the DB (vi.mock("../../db")), Firestore,
+// auth middleware (requireAuth, requireTenant), logger, and helpers. Per the
+// non-negotiable test policy, these should be replaced with integration tests
+// using real MySQL in Docker, real Express app via test-app.ts factory, and
+// real middleware. Keep these mock-based tests as a safety net until the
+// integration replacements are written and passing.
+
 // Hoisted mocks
 const { mockQuery } = vi.hoisted(() => {
   const mockQuery = vi.fn();
