@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IFTAManager } from "../../../components/IFTAManager";
 import { LoadData, LOAD_STATUS, IFTASummary, MileageEntry } from "../../../types";
@@ -88,23 +89,23 @@ describe("IFTAManager component", () => {
 
   it("renders without crashing", async () => {
     const { container } = render(<IFTAManager loads={mockDeliveredLoads} />);
-    await waitFor(() => expect(container).toBeTruthy());
+    await waitFor(() => expect(container).toBeInTheDocument());
   });
 
   it("renders the IFTA Multi-State Compliance header", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText(/IFTA Multi-State Compliance/)).toBeTruthy();
+      expect(screen.getByText(/IFTA Multi-State Compliance/)).toBeInTheDocument();
     });
   });
 
   it("renders quarter selector buttons", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("Q1")).toBeTruthy();
-      expect(screen.getByText("Q2")).toBeTruthy();
-      expect(screen.getByText("Q3")).toBeTruthy();
-      expect(screen.getByText("Q4")).toBeTruthy();
+      expect(screen.getByText("Q1")).toBeInTheDocument();
+      expect(screen.getByText("Q2")).toBeInTheDocument();
+      expect(screen.getByText("Q3")).toBeInTheDocument();
+      expect(screen.getByText("Q4")).toBeInTheDocument();
     });
   });
 
@@ -125,24 +126,24 @@ describe("IFTAManager component", () => {
   it("displays KPI cards when summary is loaded", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("Total Fleet Miles")).toBeTruthy();
-      expect(screen.getByText("Fuel Consumed")).toBeTruthy();
-      expect(screen.getByText("Fleet Average MPG")).toBeTruthy();
-      expect(screen.getByText("Net Tax Position")).toBeTruthy();
+      expect(screen.getByText("Total Fleet Miles")).toBeInTheDocument();
+      expect(screen.getByText("Fuel Consumed")).toBeInTheDocument();
+      expect(screen.getByText("Fleet Average MPG")).toBeInTheDocument();
+      expect(screen.getByText("Net Tax Position")).toBeInTheDocument();
     });
   });
 
   it("displays total miles from summary", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("8,500")).toBeTruthy();
+      expect(screen.getByText("8,500")).toBeInTheDocument();
     });
   });
 
   it("displays total gallons from summary", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("1,360")).toBeTruthy();
+      expect(screen.getByText("1,360")).toBeInTheDocument();
     });
   });
 
@@ -158,14 +159,14 @@ describe("IFTAManager component", () => {
   it("displays net tax position", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("$195")).toBeTruthy();
+      expect(screen.getByText("$195")).toBeInTheDocument();
     });
   });
 
   it("shows PAYABLE label when net tax is positive", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("PAYABLE")).toBeTruthy();
+      expect(screen.getByText("PAYABLE")).toBeInTheDocument();
     });
   });
 
@@ -183,28 +184,28 @@ describe("IFTAManager component", () => {
   it("shows trips pending audit section for delivered loads", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("Trips Pending Audit")).toBeTruthy();
+      expect(screen.getByText("Trips Pending Audit")).toBeInTheDocument();
     });
   });
 
   it("shows load numbers in trips pending audit", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText("#LN-D1")).toBeTruthy();
+      expect(screen.getByText("#LN-D1")).toBeInTheDocument();
     });
   });
 
   it("shows empty message when no delivered loads", async () => {
     render(<IFTAManager loads={mockEmptyLoads} />);
     await waitFor(() => {
-      expect(screen.getByText(/No trips currently pending audit/)).toBeTruthy();
+      expect(screen.getByText(/No trips currently pending audit/)).toBeInTheDocument();
     });
   });
 
   it("renders manual mileage section", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByText(/Manual Mileage Log/)).toBeTruthy();
+      expect(screen.getByText(/Manual Mileage Log/)).toBeInTheDocument();
     });
   });
 
@@ -221,48 +222,52 @@ describe("IFTAManager component", () => {
   it("shows Add Manual Entry button", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
     });
   });
 
   it("opens mileage form when Add Manual Entry is clicked", async () => {
+    const user = userEvent.setup();
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
-    expect(screen.getByText("Log Manual Mileage")).toBeTruthy();
-    expect(screen.getByText("Submit corrections or non-ELD trips")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
+    expect(screen.getByText("Log Manual Mileage")).toBeInTheDocument();
+    expect(screen.getByText("Submit corrections or non-ELD trips")).toBeInTheDocument();
   });
 
   it("renders form fields in mileage modal", async () => {
+    const user = userEvent.setup();
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
-    expect(screen.getByText("Truck ID")).toBeTruthy();
-    expect(screen.getByText("State Code")).toBeTruthy();
-    expect(screen.getByText("Miles")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
+    expect(screen.getByText("Truck ID")).toBeInTheDocument();
+    expect(screen.getByText("State Code")).toBeInTheDocument();
+    expect(screen.getByText("Miles")).toBeInTheDocument();
   });
 
   it("can close mileage modal with Cancel", async () => {
+    const user = userEvent.setup();
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
     });
-    fireEvent.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
-    expect(screen.getByText("Log Manual Mileage")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Cancel/i }));
-    expect(screen.queryByText("Log Manual Mileage")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
+    expect(screen.getByText("Log Manual Mileage")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: /Cancel/i }));
+    expect(screen.queryByText("Log Manual Mileage")).not.toBeInTheDocument();
   });
 
   it("changes quarter when quarter button is clicked", async () => {
+    const user = userEvent.setup();
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
       expect(getIFTASummary).toHaveBeenCalledWith(1, 2026);
     });
-    fireEvent.click(screen.getByText("Q2"));
+    await user.click(screen.getByText("Q2"));
     await waitFor(() => {
       expect(getIFTASummary).toHaveBeenCalledWith(2, 2026);
     });
@@ -271,16 +276,16 @@ describe("IFTAManager component", () => {
   it("renders export buttons", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Export Audit File/i })).toBeTruthy();
-      expect(screen.getByRole("button", { name: /Generate 101-IFTA/i })).toBeTruthy();
-      expect(screen.getByRole("button", { name: /Post to Ledger/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Export Audit File/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Generate 101-IFTA/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Post to Ledger/i })).toBeInTheDocument();
     });
   });
 
   it("renders Generate Quarterly Package button", async () => {
     render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Generate Quarterly Package/i })).toBeTruthy();
+      expect(screen.getByRole("button", { name: /Generate Quarterly Package/i })).toBeInTheDocument();
     });
   });
 
@@ -289,7 +294,92 @@ describe("IFTAManager component", () => {
     vi.mocked(getMileageEntries).mockRejectedValue(new Error("Network error"));
     const { container } = render(<IFTAManager loads={mockDeliveredLoads} />);
     await waitFor(() => {
-      expect(container).toBeTruthy();
+      expect(container).toBeInTheDocument();
     });
+  });
+
+  it("submits manual mileage entry with saveMileageEntry", async () => {
+    const user = userEvent.setup();
+    render(<IFTAManager loads={mockDeliveredLoads} />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
+    });
+
+    // Open the modal
+    await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
+    expect(screen.getByText("Log Manual Mileage")).toBeInTheDocument();
+
+    // Fill in form fields: Truck ID, State Code, Miles
+    const textInputs = screen.getAllByRole("textbox");
+    // truckId input
+    await user.type(textInputs[0], "TRK-500");
+    // stateCode input
+    await user.type(textInputs[1], "CA");
+
+    // Miles is a number input — clear default 0 first
+    const milesInput = screen.getByRole("spinbutton");
+    await user.clear(milesInput);
+    await user.type(milesInput, "475");
+
+    // Click Save Record
+    await user.click(screen.getByRole("button", { name: /Save Record/i }));
+
+    await waitFor(() => {
+      expect(saveMileageEntry).toHaveBeenCalledTimes(1);
+    });
+    const savedEntry = vi.mocked(saveMileageEntry).mock.calls[0][0];
+    expect(savedEntry).toMatchObject({
+      truckId: "TRK-500",
+      stateCode: "CA",
+      miles: 475,
+      type: "Manual",
+    });
+  });
+
+  it("does not submit manual mileage entry without required fields", async () => {
+    const user = userEvent.setup();
+    render(<IFTAManager loads={mockDeliveredLoads} />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
+    });
+
+    // Open the modal
+    await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
+
+    // Click Save Record without filling fields
+    await user.click(screen.getByRole("button", { name: /Save Record/i }));
+
+    // saveMileageEntry should NOT have been called (guard in handleSaveMileage)
+    expect(saveMileageEntry).not.toHaveBeenCalled();
+  });
+
+  it("calls exportToExcel when Export Audit File button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<IFTAManager loads={mockDeliveredLoads} />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Export Audit File/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /Export Audit File/i }));
+    expect(exportToExcel).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls exportToPDF when Generate 101-IFTA button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<IFTAManager loads={mockDeliveredLoads} />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Generate 101-IFTA/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /Generate 101-IFTA/i }));
+    expect(exportToPDF).toHaveBeenCalledTimes(1);
+  });
+
+  it("calls exportToPDF when Generate Quarterly Package button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<IFTAManager loads={mockDeliveredLoads} />);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Generate Quarterly Package/i })).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /Generate Quarterly Package/i }));
+    expect(exportToPDF).toHaveBeenCalledTimes(1);
   });
 });

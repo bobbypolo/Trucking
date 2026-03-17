@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IFTAEvidenceReview } from "../../../components/IFTAEvidenceReview";
 import { LoadData, LOAD_STATUS, IFTATripEvidence } from "../../../types";
@@ -88,14 +89,14 @@ describe("IFTAEvidenceReview component", () => {
 
   it("renders without crashing", async () => {
     const { container } = render(<IFTAEvidenceReview {...defaultProps} />);
-    await waitFor(() => expect(container).toBeTruthy());
+    await waitFor(() => expect(container).toBeInTheDocument());
   });
 
   it("renders the trip review header with load number", async () => {
     render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/IFTA Trip Review/)).toBeTruthy();
-      expect(screen.getByText("#LN-R001")).toBeTruthy();
+      expect(screen.getByText(/IFTA Trip Review/)).toBeInTheDocument();
+      expect(screen.getByText("#LN-R001")).toBeInTheDocument();
     });
   });
 
@@ -119,39 +120,49 @@ describe("IFTAEvidenceReview component", () => {
   it("shows confidence badge once analysis completes", async () => {
     render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("HIGH Confidence")).toBeTruthy();
+      expect(screen.getByText("HIGH Confidence")).toBeInTheDocument();
     });
   });
 
   it("shows data points count", async () => {
     render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/3 Data Points Collected/)).toBeTruthy();
+      expect(screen.getByText(/3 Data Points Collected/)).toBeInTheDocument();
     });
   });
 
-  it("calls onClose when close button is clicked", async () => {
+  it("calls onClose when close button in header is clicked", async () => {
+    const user = userEvent.setup();
     render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/IFTA Trip Review/)).toBeTruthy();
+      expect(screen.getByText(/IFTA Trip Review/)).toBeInTheDocument();
     });
-    // Find close button (it is in the header area)
-    const closeButtons = screen.getAllByRole("button");
-    // The close button is typically the one in the top-right
-    const closeBtn = closeButtons.find((b) =>
+    // The header close button has hover:bg-white/10 class and the Lock icon
+    const headerCloseBtn = screen.getAllByRole("button").find((b) =>
       b.className.includes("hover:bg-white/10"),
     );
-    if (closeBtn) {
-      fireEvent.click(closeBtn);
-      expect(defaultProps.onClose).toHaveBeenCalled();
-    }
+    expect(headerCloseBtn).toBeInTheDocument();
+    await user.click(headerCloseBtn!);
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it("calls onClose when Discard Changes footer button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<IFTAEvidenceReview {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/IFTA Trip Review/)).toBeInTheDocument();
+    });
+    const discardBtn = screen.getByRole("button", { name: /Discard Changes/i });
+    expect(discardBtn).toBeInTheDocument();
+    await user.click(discardBtn);
+    expect(defaultProps.onClose).toHaveBeenCalled();
   });
 
   it("handles empty evidence gracefully", async () => {
     vi.mocked(getIFTAEvidence).mockResolvedValue([]);
     const { container } = render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(container).toBeTruthy();
+      expect(container).toBeInTheDocument();
     });
     // analyzeIFTA should NOT be called when evidence is empty
     expect(analyzeIFTA).not.toHaveBeenCalled();
@@ -162,7 +173,7 @@ describe("IFTAEvidenceReview component", () => {
     vi.mocked(getIFTAEvidence).mockResolvedValue([]);
     render(<IFTAEvidenceReview {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("Pending Confidence")).toBeTruthy();
+      expect(screen.getByText("Pending Confidence")).toBeInTheDocument();
     });
   });
 
@@ -173,7 +184,58 @@ describe("IFTAEvidenceReview component", () => {
     );
     await waitFor(() => {
       // Should show truncated id
-      expect(screen.getByText(/IFTA Trip Review/)).toBeTruthy();
+      expect(screen.getByText(/IFTA Trip Review/)).toBeInTheDocument();
+    });
+  });
+
+  it("locks trip when attested and Lock button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<IFTAEvidenceReview {...defaultProps} />);
+
+    // Wait for analysis to complete
+    await waitFor(() => {
+      expect(screen.getByText("HIGH Confidence")).toBeInTheDocument();
+    });
+
+    // Check the attestation checkbox
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox).toBeInTheDocument();
+    await user.click(checkbox);
+
+    // Now click the Lock Trip button
+    const lockBtn = screen.getByRole("button", { name: /Lock Trip for Audit/i });
+    expect(lockBtn).toBeInTheDocument();
+    expect(lockBtn).not.toBeDisabled();
+    await user.click(lockBtn);
+
+    await waitFor(() => {
+      expect(lockIFTATrip).toHaveBeenCalledTimes(1);
+    });
+    const auditArg = vi.mocked(lockIFTATrip).mock.calls[0][0];
+    expect(auditArg).toMatchObject({
+      loadId: "load-review-1",
+      method: "ACTUAL_GPS",
+      confidenceLevel: "HIGH",
+      status: "LOCKED",
+    });
+    expect(defaultProps.onLocked).toHaveBeenCalled();
+    expect(defaultProps.onClose).toHaveBeenCalled();
+  });
+
+  it("Lock Trip button is disabled when not attested", async () => {
+    render(<IFTAEvidenceReview {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("HIGH Confidence")).toBeInTheDocument();
+    });
+    const lockBtn = screen.getByRole("button", { name: /Lock Trip for Audit/i });
+    expect(lockBtn).toBeDisabled();
+  });
+
+  it("displays jurisdiction miles from analysis", async () => {
+    render(<IFTAEvidenceReview {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("200.00 MI")).toBeInTheDocument();
+      expect(screen.getByText("150.00 MI")).toBeInTheDocument();
     });
   });
 });

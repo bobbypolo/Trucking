@@ -12,12 +12,16 @@ vi.mock("recharts", () => ({
       {children}
     </div>
   ),
-  BarChart: ({ children }: any) => <div data-testid="bar-chart">{children}</div>,
-  Bar: () => <div data-testid="bar" />,
-  XAxis: () => <div />,
-  YAxis: () => <div />,
-  Tooltip: () => <div />,
-  Cell: () => <div />,
+  BarChart: ({ children, data }: any) => (
+    <div data-testid="bar-chart" data-item-count={data?.length ?? 0}>
+      {children}
+    </div>
+  ),
+  Bar: ({ dataKey }: any) => <div data-testid="bar" data-key={dataKey} />,
+  XAxis: () => <div data-testid="x-axis" />,
+  YAxis: ({ dataKey }: any) => <div data-testid="y-axis" data-key={dataKey} />,
+  Tooltip: () => <div data-testid="tooltip" />,
+  Cell: () => <div data-testid="cell" />,
 }));
 
 const mockData: IFTAStateEntry[] = [
@@ -30,32 +34,73 @@ const mockData: IFTAStateEntry[] = [
 describe("IFTAChart component", () => {
   it("renders without crashing with data", () => {
     const { container } = render(<IFTAChart data={mockData} />);
-    expect(container).toBeTruthy();
+    expect(container).toBeInTheDocument();
   });
 
   it("renders the chart title", () => {
     render(<IFTAChart data={mockData} />);
-    expect(screen.getByText("Estimated Mileage per Jurisdiction")).toBeTruthy();
+    expect(screen.getByText("Estimated Mileage per Jurisdiction")).toBeInTheDocument();
   });
 
   it("renders empty state when data is empty", () => {
     render(<IFTAChart data={[]} />);
-    expect(screen.getByText("No IFTA data available.")).toBeTruthy();
+    expect(screen.getByText("No IFTA data available.")).toBeInTheDocument();
   });
 
   it("renders empty state when data is null/undefined", () => {
     render(<IFTAChart data={null as any} />);
-    expect(screen.getByText("No IFTA data available.")).toBeTruthy();
+    expect(screen.getByText("No IFTA data available.")).toBeInTheDocument();
   });
 
   it("renders chart container with data", () => {
     render(<IFTAChart data={mockData} />);
-    expect(screen.getByTestId("responsive-container")).toBeTruthy();
+    expect(screen.getByTestId("responsive-container")).toBeInTheDocument();
   });
 
   it("renders with a single data point", () => {
     render(<IFTAChart data={[{ state: "TX", estimatedMiles: 1000 }]} />);
-    expect(screen.getByText("Estimated Mileage per Jurisdiction")).toBeTruthy();
-    expect(screen.getByTestId("responsive-container")).toBeTruthy();
+    expect(screen.getByText("Estimated Mileage per Jurisdiction")).toBeInTheDocument();
+    expect(screen.getByTestId("responsive-container")).toBeInTheDocument();
+  });
+
+  it("does not render chart container for empty data", () => {
+    render(<IFTAChart data={[]} />);
+    expect(screen.queryByTestId("responsive-container")).not.toBeInTheDocument();
+  });
+
+  it("passes data to BarChart with correct item count", () => {
+    render(<IFTAChart data={mockData} />);
+    const barChart = screen.getByTestId("bar-chart");
+    expect(barChart).toBeInTheDocument();
+    expect(barChart.getAttribute("data-item-count")).toBe("4");
+  });
+
+  it("uses estimatedMiles as the bar dataKey", () => {
+    render(<IFTAChart data={mockData} />);
+    const bar = screen.getByTestId("bar");
+    expect(bar.getAttribute("data-key")).toBe("estimatedMiles");
+  });
+
+  it("uses state as the Y-axis category", () => {
+    render(<IFTAChart data={mockData} />);
+    const yAxis = screen.getByTestId("y-axis");
+    expect(yAxis.getAttribute("data-key")).toBe("state");
+  });
+
+  it("renders with multiple jurisdictions and passes correct item count", () => {
+    render(<IFTAChart data={mockData} />);
+    const barChart = screen.getByTestId("bar-chart");
+    expect(barChart).toBeInTheDocument();
+    expect(barChart.getAttribute("data-item-count")).toBe(String(mockData.length));
+  });
+
+  it("renders with large mileage values without error", () => {
+    const largeData: IFTAStateEntry[] = [
+      { state: "CA", estimatedMiles: 999999 },
+      { state: "TX", estimatedMiles: 888888 },
+    ];
+    render(<IFTAChart data={largeData} />);
+    expect(screen.getByTestId("bar-chart")).toBeInTheDocument();
+    expect(screen.getByTestId("bar-chart").getAttribute("data-item-count")).toBe("2");
   });
 });
