@@ -91,6 +91,16 @@ const mockLoads: LoadData[] = [
   }),
 ];
 
+/** Find the sidebar toggle button (absolute right-0 positioned Settings2 button). */
+function findSidebarToggle(): HTMLElement {
+  const buttons = document.querySelectorAll("button");
+  const toggleBtn = Array.from(buttons).find((btn) =>
+    btn.closest('[class*="absolute right-0"]'),
+  );
+  expect(toggleBtn).toBeInTheDocument();
+  return toggleBtn as HTMLElement;
+}
+
 describe("LoadBoardEnhanced component", () => {
   const defaultProps = {
     loads: mockLoads,
@@ -176,92 +186,64 @@ describe("LoadBoardEnhanced component", () => {
   describe("sidebar toggle", () => {
     it("renders settings toggle button when sidebar is closed", () => {
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // The sidebar toggle is a button with Settings2 icon
-      const buttons = screen.getAllByRole("button");
-      expect(buttons.length).toBeGreaterThan(0);
+      const toggleBtn = findSidebarToggle();
+      expect(toggleBtn).toBeInTheDocument();
     });
 
     it("opens customize sidebar when toggle is clicked", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // Find the settings toggle button (the one on the right edge)
-      const settingsButtons = screen.getAllByRole("button");
-      // Click the sidebar toggle (it has Settings2 icon, it's a standalone button on the right)
-      const sidebarToggle = settingsButtons.find(
-        (btn) =>
-          !btn.textContent?.includes("Load") &&
-          !btn.textContent?.includes("Export") &&
-          btn.closest('[class*="absolute right-0"]'),
-      );
-      if (sidebarToggle) {
-        await user.click(sidebarToggle);
-        expect(screen.getByText("Customize View")).toBeInTheDocument();
-        expect(screen.getByText(/Show\/Hide Columns/)).toBeInTheDocument();
-      }
+      const sidebarToggle = findSidebarToggle();
+      await user.click(sidebarToggle);
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      expect(screen.getByText(/Show\/Hide Columns/)).toBeInTheDocument();
     });
 
     it("shows column options in sidebar", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // Open sidebar by finding the absolute positioned button
-      const buttons = document.querySelectorAll("button");
-      const toggleBtn = Array.from(buttons).find((btn) =>
-        btn.closest('[class*="absolute right-0"]'),
-      );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("Load #")).toBeInTheDocument();
-        // Use getAllByText for items that appear both in sidebar and grid
-        expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Origin").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Destination").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Driver").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Rate").length).toBeGreaterThanOrEqual(1);
-      }
+      const toggleBtn = findSidebarToggle();
+      await user.click(toggleBtn);
+      expect(screen.getByText("Load #")).toBeInTheDocument();
+      // Use getAllByText for items that appear both in sidebar and grid
+      expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Origin").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Destination").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Driver").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Rate").length).toBeGreaterThanOrEqual(1);
     });
 
     it("shows IFTA Summary in sidebar", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      const buttons = document.querySelectorAll("button");
-      const toggleBtn = Array.from(buttons).find((btn) =>
-        btn.closest('[class*="absolute right-0"]'),
-      );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
-      }
+      const toggleBtn = findSidebarToggle();
+      await user.click(toggleBtn);
+      expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
     });
 
     it("closes sidebar when X is clicked", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       // Open sidebar
-      const buttons = document.querySelectorAll("button");
-      const toggleBtn = Array.from(buttons).find((btn) =>
-        btn.closest('[class*="absolute right-0"]'),
+      const toggleBtn = findSidebarToggle();
+      await user.click(toggleBtn);
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      // The sidebar is now 'w-80'; find the close button inside it
+      const sidebar = document.querySelector('[class*="w-80"]');
+      expect(sidebar).toBeTruthy();
+      const closeBtns = sidebar!.querySelectorAll("button");
+      // The close button is the one that has no text (only X icon)
+      const closeBtn = Array.from(closeBtns).find(
+        (btn) => !(btn as HTMLElement).textContent?.trim() ||
+          (btn as HTMLElement).textContent?.trim() === "",
       );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("Customize View")).toBeInTheDocument();
-        // The sidebar is now 'w-80'; find the close button inside it
-        const sidebar = document.querySelector('[class*="w-80"]');
-        expect(sidebar).toBeTruthy();
-        const closeBtns = sidebar!.querySelectorAll("button");
-        // The close button is the one that has no text (only X icon)
-        const closeBtn = Array.from(closeBtns).find(
-          (btn) => !(btn as HTMLElement).textContent?.trim() ||
-            (btn as HTMLElement).textContent?.trim() === "",
-        );
-        if (closeBtn) {
-          await user.click(closeBtn as HTMLElement);
-          // After closing, the sidebar transitions to w-0
-          await waitFor(() => {
-            const narrowSidebar = document.querySelector('[class*="w-0"]');
-            expect(narrowSidebar).toBeTruthy();
-          });
-        }
-      }
+      expect(closeBtn).toBeTruthy();
+      await user.click(closeBtn as HTMLElement);
+      // After closing, the sidebar transitions to w-0
+      await waitFor(() => {
+        const narrowSidebar = document.querySelector('[class*="w-0"]');
+        expect(narrowSidebar).toBeTruthy();
+      });
     });
   });
 
@@ -345,10 +327,9 @@ describe("LoadBoardEnhanced component", () => {
       await user.click(screen.getByText("Detailed Load Table"));
       // Find view buttons in table rows
       const viewButtons = document.querySelectorAll("td button");
-      if (viewButtons.length > 0) {
-        await user.click(viewButtons[0] as HTMLElement);
-        expect(defaultProps.onView).toHaveBeenCalledTimes(1);
-      }
+      expect(viewButtons.length).toBeGreaterThan(0);
+      await user.click(viewButtons[0] as HTMLElement);
+      expect(defaultProps.onView).toHaveBeenCalledTimes(1);
     });
 
     it("collapses grid panel when clicked again", async () => {
@@ -387,16 +368,11 @@ describe("LoadBoardEnhanced component", () => {
     it("renders Export IFTA Filing button in sidebar", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      const buttons = document.querySelectorAll("button");
-      const toggleBtn = Array.from(buttons).find((btn) =>
-        btn.closest('[class*="absolute right-0"]'),
-      );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(
-          screen.getByText(/Export IFTA Filing/),
-        ).toBeInTheDocument();
-      }
+      const toggleBtn = findSidebarToggle();
+      await user.click(toggleBtn);
+      expect(
+        screen.getByText(/Export IFTA Filing/),
+      ).toBeInTheDocument();
     });
   });
 });

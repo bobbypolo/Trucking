@@ -119,15 +119,14 @@ describe("LoadSetupModal component", () => {
     it("calls onCancel when close button is clicked", async () => {
       const user = userEvent.setup();
       render(<LoadSetupModal {...defaultProps} />);
-      // The X close button is the first button in the header
+      // The X close button is the first button in the header (empty text)
       const closeButtons = screen.getAllByRole("button");
       const closeBtn = closeButtons.find(
         (btn) => !btn.textContent?.trim() || btn.textContent?.trim() === "",
       );
-      if (closeBtn) {
-        await user.click(closeBtn);
-        expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
-      }
+      expect(closeBtn).toBeTruthy();
+      await user.click(closeBtn!);
+      expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
     });
   });
 

@@ -267,4 +267,74 @@ describe("BookingPortal component", () => {
       });
     });
   });
+
+  describe("complete happy-path: intake to confirmation", () => {
+    it("fills intake, selects broker, builds quote, finalizes, reviews, and reaches confirmation", async () => {
+      const user = userEvent.setup();
+      const { saveQuote, saveBooking, saveLoad } = await import(
+        "../../../services/storageService"
+      );
+
+      render(<BookingPortal {...defaultProps} />);
+
+      // Step 1: Fill intake fields
+      const callerInput = screen.getByPlaceholderText("Who are we speaking with?");
+      await user.type(callerInput, "Jane Smith");
+      expect(callerInput).toHaveValue("Jane Smith");
+
+      const phoneInput = screen.getByPlaceholderText("(555) 000-0000");
+      await user.type(phoneInput, "555-987-6543");
+      expect(phoneInput).toHaveValue("555-987-6543");
+
+      // Select broker from dropdown
+      await waitFor(() => {
+        expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
+      });
+      const brokerSelect = document.querySelector("select") as HTMLSelectElement;
+      expect(brokerSelect).toBeTruthy();
+      await user.selectOptions(brokerSelect, "broker-1");
+
+      // Step 2: Navigate to quote step
+      await user.click(screen.getByText("Manual Phone Quote"));
+      await waitFor(() => {
+        expect(screen.getByText(/Build Quote/)).toBeInTheDocument();
+      });
+
+      // Step 3: Fill linehaul rate
+      const linehaulInput = document.querySelector(
+        'input[type="number"]',
+      ) as HTMLInputElement;
+      expect(linehaulInput).toBeTruthy();
+      await user.type(linehaulInput, "3000");
+
+      // Step 4: Finalize quote
+      await user.click(screen.getByText("Finalize Professional Quote"));
+
+      // Should move to review step
+      await waitFor(() => {
+        expect(screen.getByText(/Review & Dispatch Confirm/)).toBeInTheDocument();
+      });
+      expect(saveQuote).toHaveBeenCalledTimes(1);
+
+      // Step 5: Accept Quote & Convert to Booking
+      const convertBtn = screen.getByText(/Accept Quote & Convert to Booking/);
+      expect(convertBtn).toBeInTheDocument();
+      await user.click(convertBtn);
+
+      // Should reach confirmation step
+      await waitFor(() => {
+        expect(screen.getByText("Booking Solidified")).toBeInTheDocument();
+      });
+      expect(saveBooking).toHaveBeenCalledTimes(1);
+      expect(saveLoad).toHaveBeenCalledTimes(1);
+
+      // Verify confirmation details
+      expect(screen.getByText(/Go to Operational Board/)).toBeInTheDocument();
+      expect(screen.getByText(/Initiate New Quote Cycle/)).toBeInTheDocument();
+
+      // Step 6: Click Go to Operational Board to verify callback
+      await user.click(screen.getByText(/Go to Operational Board/));
+      expect(defaultProps.onBookingComplete).toHaveBeenCalledTimes(1);
+    });
+  });
 });

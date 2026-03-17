@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { OperationalMessaging } from "../../../components/OperationalMessaging";
 import type {
@@ -272,19 +273,13 @@ describe("OperationalMessaging component", () => {
     );
     fireEvent.change(input, { target: { value: "Test message content" } });
 
-    // Click the send button (button with Send icon, not disabled)
-    const sendButtons = screen.getAllByRole("button");
-    const sendBtn = sendButtons.find(
-      (b) => !b.hasAttribute("disabled") && b.querySelector("svg"),
-    );
-
     // Find the actual send button - it's the one next to the textarea
     const messageArea = input.closest("div");
     const buttons = messageArea?.querySelectorAll("button");
-    if (buttons) {
-      const lastBtn = buttons[buttons.length - 1];
-      fireEvent.click(lastBtn);
-    }
+    expect(buttons).toBeTruthy();
+    expect(buttons!.length).toBeGreaterThan(0);
+    const lastBtn = buttons![buttons!.length - 1];
+    fireEvent.click(lastBtn);
 
     await waitFor(() => {
       expect(saveMessage).toHaveBeenCalledWith(
@@ -613,6 +608,87 @@ describe("OperationalMessaging component", () => {
       expect(
         screen.getByText("Load #LD-002 Liaison"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("thread creation and context switching", () => {
+    it("creates a new thread context when a different load is selected and updates chat header", async () => {
+      const user = userEvent.setup();
+      const threads = [
+        makeThread({
+          id: "load-1",
+          primaryContext: {
+            type: "Load",
+            id: "load-1",
+            label: "Load #LD-001",
+          },
+          summary: "Dallas to Houston shipment",
+        }),
+        makeThread({
+          id: "load-2",
+          primaryContext: {
+            type: "Load",
+            id: "load-2",
+            label: "Load #LD-002",
+          },
+          summary: "Chicago to LA freight",
+        }),
+      ];
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[
+            makeLoad(),
+            makeLoad({
+              id: "load-2",
+              loadNumber: "LD-002",
+              pickup: { city: "Chicago", state: "IL" },
+              dropoff: { city: "LA", state: "CA" },
+            }),
+          ]}
+          session={makeSession()}
+          threads={threads}
+        />,
+      );
+
+      // Initially on thread 1
+      expect(screen.getByText("Load #LD-001 Liaison")).toBeInTheDocument();
+
+      // Switch to thread 2
+      await user.click(screen.getByText("Load #LD-002"));
+
+      // Chat header should update to new thread
+      await waitFor(() => {
+        expect(screen.getByText("Load #LD-002 Liaison")).toBeInTheDocument();
+      });
+
+      // Context sidebar should update to show Chicago/LA
+      expect(screen.getByText("Chicago")).toBeInTheDocument();
+      expect(screen.getByText("LA")).toBeInTheDocument();
+    });
+
+    it("renders attachment button (Paperclip icon) in message input area", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+
+      // The message input area should have a Paperclip icon button for attachments
+      const input = screen.getByPlaceholderText(
+        /Message participants for Load #LD-001/,
+      );
+      expect(input).toBeInTheDocument();
+
+      // The chat area should contain SVG icons for actions (paperclip, smile, etc.)
+      const chatArea = input.closest("div")?.parentElement;
+      expect(chatArea).toBeTruthy();
+      const svgs = chatArea!.querySelectorAll("svg");
+      expect(svgs.length).toBeGreaterThan(0);
     });
   });
 });
