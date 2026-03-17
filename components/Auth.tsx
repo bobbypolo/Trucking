@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_URL } from "../services/config";
 import {
   Truck,
   User,
@@ -231,7 +232,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
   const handleForgotPassword = async (emailInput: string) => {
     setForgotPasswordOpen(false);
     try {
-      await fetch("/api/auth/reset-password", {
+      await fetch(`${API_URL}/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: emailInput }),

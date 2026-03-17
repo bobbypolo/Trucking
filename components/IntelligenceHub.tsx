@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { API_URL } from "../services/config";
 import {
   Gauge,
   AlertCircle,
@@ -676,7 +677,7 @@ const IntelligenceHub: React.FC<{
       }
 
       // 2. Save to Immutable Audit Trail (Backend)
-      await fetch(`/api/incidents/${primaryLink.entityId}/actions`, {
+      await fetch(`${API_URL}/incidents/${primaryLink.entityId}/actions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1397,7 +1398,7 @@ const IntelligenceHub: React.FC<{
     // Record Emergency Charge (Financial Audit)
     if (activeRecord.type === "INCIDENT") {
       try {
-        await fetch(`/api/incidents/${activeRecord.id}/charges`, {
+        await fetch(`${API_URL}/incidents/${activeRecord.id}/charges`, {
           method: "POST",
           headers: await getAuthHeaders(),
           body: JSON.stringify({

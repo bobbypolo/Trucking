@@ -1,3 +1,4 @@
+import { API_URL } from "./config";
 import {
   SafetyQuiz,
   QuizResult,
@@ -19,13 +20,11 @@ import { getCompany, updateCompany, updateUser } from "./authService";
 
 // Tenant-scoped key accessors (F-008 fix) — replaces static string constants
 const QUIZZES_KEY = (): string => getTenantKey("quizzes_v1");
-const QUIZ_RESULTS_KEY = (): string =>
-  getTenantKey("quiz_results_v1");
+const QUIZ_RESULTS_KEY = (): string => getTenantKey("quiz_results_v1");
 const MAINTENANCE_KEY = (): string => getTenantKey("maintenance_v2");
 const TICKETS_KEY = (): string => getTenantKey("service_tickets_v1");
 const VENDORS_KEY = (): string => getTenantKey("vendors_v1");
-const SAFETY_ACTIVITY_KEY = (): string =>
-  getTenantKey("safety_activity_v1");
+const SAFETY_ACTIVITY_KEY = (): string => getTenantKey("safety_activity_v1");
 
 const safeParse = <T>(key: string, fallback: T): T => {
   try {
@@ -37,7 +36,8 @@ const safeParse = <T>(key: string, fallback: T): T => {
   }
 };
 
-export const getStoredQuizzes = (): SafetyQuiz[] => safeParse(QUIZZES_KEY(), []);
+export const getStoredQuizzes = (): SafetyQuiz[] =>
+  safeParse(QUIZZES_KEY(), []);
 export const getStoredResults = (): QuizResult[] =>
   safeParse(QUIZ_RESULTS_KEY(), []);
 export const getStoredSafetyActivity = (): ActivityLogEntry[] =>
@@ -52,7 +52,7 @@ export const getEquipment = async (
   companyId: string,
 ): Promise<FleetEquipment[]> => {
   try {
-    const res = await fetch(`/api/equipment/${companyId}`, {
+    const res = await fetch(`${API_URL}/equipment/${companyId}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     return await res.json();
@@ -63,7 +63,7 @@ export const getEquipment = async (
 
 export const getComplianceRecords = async (userId: string): Promise<any[]> => {
   try {
-    const res = await fetch(`/api/compliance/${userId}`, {
+    const res = await fetch(`${API_URL}/compliance/${userId}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     });
     return await res.json();
@@ -107,7 +107,10 @@ export const logSafetyActivity = (
     timestamp: new Date().toISOString(),
     user,
   });
-  localStorage.setItem(SAFETY_ACTIVITY_KEY(), JSON.stringify(logs.slice(0, 50)));
+  localStorage.setItem(
+    SAFETY_ACTIVITY_KEY(),
+    JSON.stringify(logs.slice(0, 50)),
+  );
 };
 
 export const saveQuiz = (quiz: SafetyQuiz) => {

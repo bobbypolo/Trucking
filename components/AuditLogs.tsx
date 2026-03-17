@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { API_URL } from "../services/config";
 import {
   History,
   Search,
@@ -60,7 +61,7 @@ export const AuditLogs: React.FC<AuditLogsProps> = () => {
           params.set("type", filterType);
         }
 
-        const res = await fetch(`/api/audit?${params.toString()}`, {
+        const res = await fetch(`${API_URL}/audit?${params.toString()}`, {
           credentials: "include",
         });
 

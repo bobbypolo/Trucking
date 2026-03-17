@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, Suspense } from "react";
+import { API_URL } from "../services/config";
 import {
   DollarSign,
   Receipt,
@@ -1276,7 +1277,7 @@ const AccountingPortal: React.FC<Props> = ({
             onClose={() => setImportType(null)}
             onImport={async (data) => {
               try {
-                const res = await fetch("/api/accounting/batch-import", {
+                const res = await fetch(`${API_URL}/accounting/batch-import`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ type: importType, data }),
