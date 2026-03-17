@@ -135,9 +135,7 @@ import {
   getUnresolvedRequests as _getUnresolvedRequests,
   saveRequest as _saveRequest,
 } from "./storage/recovery";
-import {
-  getContacts as _getContacts,
-} from "./storage/directory";
+import { getContacts as _getContacts } from "./storage/directory";
 import { getRawVaultDocs as _getRawVaultDocs } from "./storage/vault";
 import { saveTask as _saveTask } from "./storage/tasks";
 import { getTenantKey as _getTenantKey } from "./storage/core";
@@ -1075,7 +1073,6 @@ export const getBrokerSummary = async (brokerId: string) => {
       .filter((r) => r.status === "PAID")
       .reduce((s, r) => s + (r.approvedAmount || 0), 0),
     lastCallAt: calls[0]?.startTime,
-    safetyRating: 9.8, // Mock rating
   };
 };
 
