@@ -53,11 +53,12 @@ export const saveTask = async (
     body: JSON.stringify(body),
   });
   if (!patchRes.ok) {
-    await fetch(`${API_URL}/tasks`, {
+    const postRes = await fetch(`${API_URL}/tasks`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({ ...body, id: task.id }),
     });
+    if (!postRes.ok) throw new Error(`Failed to save task: ${postRes.status}`);
   }
   return task;
 };
@@ -113,11 +114,13 @@ export const saveWorkItem = async (item: WorkItem): Promise<WorkItem> => {
     body: JSON.stringify(body),
   });
   if (!patchRes.ok) {
-    await fetch(`${API_URL}/work-items`, {
+    const postRes = await fetch(`${API_URL}/work-items`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({ ...body, id: item.id }),
     });
+    if (!postRes.ok)
+      throw new Error(`Failed to save work item: ${postRes.status}`);
   }
   return item;
 };

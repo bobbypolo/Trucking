@@ -53,11 +53,13 @@ export const saveCallSession = async (session: CallSession): Promise<void> => {
     body: JSON.stringify(body),
   });
   if (!putRes.ok) {
-    await fetch(`${API_URL}/call-sessions`, {
+    const postRes = await fetch(`${API_URL}/call-sessions`, {
       method: "POST",
       headers: await getAuthHeaders(),
       body: JSON.stringify({ ...body, id: session.id }),
     });
+    if (!postRes.ok)
+      throw new Error(`Failed to save call session: ${postRes.status}`);
   }
 };
 

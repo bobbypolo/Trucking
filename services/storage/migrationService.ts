@@ -35,30 +35,26 @@ export interface MigrationSummary {
 
 // Storage keys to check for existing data
 const MIGRATION_DOMAINS = [
-  { key: "contacts_v1", domain: "contacts", endpoint: "/api/contacts" },
-  { key: "providers_v1", domain: "providers", endpoint: "/api/providers" },
-  { key: "leads_v1", domain: "leads", endpoint: "/api/leads" },
-  { key: "quotes_v1", domain: "quotes", endpoint: "/api/quotes" },
-  { key: "bookings_v1", domain: "bookings", endpoint: "/api/bookings" },
-  { key: "messages_v1", domain: "messages", endpoint: "/api/messages" },
-  { key: "threads_v1", domain: "threads", endpoint: "/api/threads" },
-  { key: "requests_v1", domain: "kci-requests", endpoint: "/api/kci-requests" },
-  { key: "calls_v1", domain: "call-sessions", endpoint: "/api/call-sessions" },
-  { key: "tasks_v1", domain: "tasks", endpoint: "/api/tasks" },
-  {
-    key: "work_items_v1",
-    domain: "work-items",
-    endpoint: "/api/work-items",
-  },
+  { key: "contacts_v1", domain: "contacts", endpoint: "/contacts" },
+  { key: "providers_v1", domain: "providers", endpoint: "/providers" },
+  { key: "leads_v1", domain: "leads", endpoint: "/leads" },
+  { key: "quotes_v1", domain: "quotes", endpoint: "/quotes" },
+  { key: "bookings_v1", domain: "bookings", endpoint: "/bookings" },
+  { key: "messages_v1", domain: "messages", endpoint: "/messages" },
+  { key: "threads_v1", domain: "threads", endpoint: "/threads" },
+  { key: "requests_v1", domain: "kci-requests", endpoint: "/kci-requests" },
+  { key: "calls_v1", domain: "call-sessions", endpoint: "/call-sessions" },
+  { key: "tasks_v1", domain: "tasks", endpoint: "/tasks" },
+  { key: "work_items_v1", domain: "work-items", endpoint: "/work-items" },
   {
     key: "crisis_v1",
     domain: "crisis-actions",
-    endpoint: "/api/crisis-actions",
+    endpoint: "/crisis-actions",
   },
   {
     key: "service_tickets_v1",
     domain: "service-tickets",
-    endpoint: "/api/service-tickets",
+    endpoint: "/service-tickets",
   },
 ];
 

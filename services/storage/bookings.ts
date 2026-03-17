@@ -9,7 +9,7 @@ import { getAuthHeaders } from "../authService";
 
 export const getBookings = async (companyId?: string): Promise<Booking[]> => {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${API_URL}/api/bookings`, { headers });
+  const res = await fetch(`${API_URL}/bookings`, { headers });
   if (!res.ok) throw new Error(`Failed to fetch bookings: ${res.status}`);
   const data = await res.json();
   // Server already scopes by tenant; companyId filter is a no-op safety guard
@@ -24,8 +24,8 @@ export const saveBooking = async (booking: Booking): Promise<Booking> => {
   // Use PATCH if id already exists on server, POST for new records
   const isUpdate = Boolean(booking.id);
   const url = isUpdate
-    ? `${API_URL}/api/bookings/${booking.id}`
-    : `${API_URL}/api/bookings`;
+    ? `${API_URL}/bookings/${booking.id}`
+    : `${API_URL}/bookings`;
   const method = isUpdate ? "PATCH" : "POST";
   const res = await fetch(url, {
     method,

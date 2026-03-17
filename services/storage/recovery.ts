@@ -15,7 +15,7 @@ import { getAuthHeaders } from "../authService";
 
 export const getRawCrisisActions = async (): Promise<CrisisAction[]> => {
   try {
-    const res = await fetch(API_URL + "/api/crisis-actions", {
+    const res = await fetch(API_URL + "/crisis-actions", {
       headers: await getAuthHeaders(),
     });
     if (!res.ok) return [];
@@ -32,7 +32,7 @@ export const saveCrisisAction = async (
 ): Promise<CrisisAction> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/api/crisis-actions/" + action.id, {
+    const patchRes = await fetch(API_URL + "/crisis-actions/" + action.id, {
       method: "PATCH",
       headers: await getAuthHeaders(),
       body: JSON.stringify(action),
@@ -41,7 +41,7 @@ export const saveCrisisAction = async (
   } catch (_) {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/api/crisis-actions", {
+  const res = await fetch(API_URL + "/crisis-actions", {
     method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(action),
@@ -54,7 +54,7 @@ export const saveCrisisAction = async (
 
 export const getRawRequests = async (): Promise<KCIRequest[]> => {
   try {
-    const res = await fetch(API_URL + "/api/kci-requests", {
+    const res = await fetch(API_URL + "/kci-requests", {
       headers: await getAuthHeaders(),
     });
     if (!res.ok) return [];
@@ -88,7 +88,7 @@ export const getRequests = async (filters?: {
 export const saveRequest = async (request: KCIRequest): Promise<KCIRequest> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/api/kci-requests/" + request.id, {
+    const patchRes = await fetch(API_URL + "/kci-requests/" + request.id, {
       method: "PATCH",
       headers: await getAuthHeaders(),
       body: JSON.stringify(request),
@@ -97,7 +97,7 @@ export const saveRequest = async (request: KCIRequest): Promise<KCIRequest> => {
   } catch (_) {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/api/kci-requests", {
+  const res = await fetch(API_URL + "/kci-requests", {
     method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(request),
@@ -139,7 +139,7 @@ export const updateRequestStatus = async (
   }
 
   try {
-    const res = await fetch(API_URL + "/api/kci-requests/" + requestId, {
+    const res = await fetch(API_URL + "/kci-requests/" + requestId, {
       method: "PATCH",
       headers: await getAuthHeaders(),
       body: JSON.stringify(patch),
@@ -174,7 +174,7 @@ export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
 
 export const getRawServiceTickets = async (): Promise<ServiceTicket[]> => {
   try {
-    const res = await fetch(API_URL + "/api/service-tickets", {
+    const res = await fetch(API_URL + "/service-tickets", {
       headers: await getAuthHeaders(),
     });
     if (!res.ok) return [];
@@ -191,19 +191,16 @@ export const saveServiceTicket = async (
 ): Promise<ServiceTicket> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(
-      API_URL + "/api/service-tickets/" + ticket.id,
-      {
-        method: "PATCH",
-        headers: await getAuthHeaders(),
-        body: JSON.stringify(ticket),
-      },
-    );
+    const patchRes = await fetch(API_URL + "/service-tickets/" + ticket.id, {
+      method: "PATCH",
+      headers: await getAuthHeaders(),
+      body: JSON.stringify(ticket),
+    });
     if (patchRes.ok) return patchRes.json();
   } catch (_) {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/api/service-tickets", {
+  const res = await fetch(API_URL + "/service-tickets", {
     method: "POST",
     headers: await getAuthHeaders(),
     body: JSON.stringify(ticket),
