@@ -6,6 +6,7 @@ interface Props {
   message: string;
   placeholder?: string;
   multiline?: boolean;
+  inputType?: string;
   submitLabel?: string;
   cancelLabel?: string;
   onSubmit: (value: string) => void;
@@ -18,6 +19,7 @@ export const InputDialog: React.FC<Props> = ({
   message,
   placeholder = "",
   multiline = false,
+  inputType = "text",
   submitLabel = "Submit",
   cancelLabel = "Cancel",
   onSubmit,
@@ -81,7 +83,7 @@ export const InputDialog: React.FC<Props> = ({
         ) : (
           <input
             ref={inputRef as React.RefObject<HTMLInputElement>}
-            type="text"
+            type={inputType}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder={placeholder}
