@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Dashboard } from "../../../components/Dashboard";
@@ -158,6 +158,7 @@ describe("Dashboard component", () => {
   });
 
   it("clears error and reloads when retry button is clicked", async () => {
+    const user = userEvent.setup();
     vi.mocked(exceptionService.getExceptions).mockRejectedValue(
       new Error("Network error"),
     );
@@ -170,7 +171,10 @@ describe("Dashboard component", () => {
     });
     vi.mocked(exceptionService.getExceptions).mockResolvedValue([]);
     vi.mocked(exceptionService.getDashboardCards).mockResolvedValue([]);
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+
+    const retryBtn = screen.getByRole("button", { name: /retry/i });
+    await user.click(retryBtn);
+
     await waitFor(() => {
       expect(screen.queryByRole("alert")).toBeNull();
     });
