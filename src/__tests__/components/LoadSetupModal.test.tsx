@@ -232,4 +232,53 @@ describe("LoadSetupModal component", () => {
       });
     });
   });
+
+  describe("wizard steps and notes field (lines 72-93, 109)", () => {
+    it("shows call notes textarea and allows typing when in phone order mode", async () => {
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByText("Phone Order"));
+      const textarea = screen.getByPlaceholderText(/Appointment required/i);
+      expect(textarea).toBeInTheDocument();
+      await user.type(textarea, "Special instructions for dock 5");
+      expect(textarea).toHaveValue("Special instructions for dock 5");
+    });
+
+    it("shows Create Order button text after entering phone order mode", async () => {
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByText("Phone Order"));
+      expect(screen.getByText("Create Order")).toBeInTheDocument();
+      expect(screen.queryByText("Phone Order")).not.toBeInTheDocument();
+    });
+
+    it("shows Select Broker text when no broker is pre-selected", () => {
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(screen.getByText("Select Broker")).toBeInTheDocument();
+    });
+
+    it("shows explanatory help text about phone order auto-numbering", () => {
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(
+        screen.getByText(/auto-generate the next Load #/),
+      ).toBeInTheDocument();
+    });
+
+    it("renders both Scan Doc and Phone Order action buttons", () => {
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(screen.getByText(/Scan Doc/)).toBeInTheDocument();
+      expect(screen.getByText("Phone Order")).toBeInTheDocument();
+    });
+
+    it("shows toast error when clicking Scan Doc without selections", async () => {
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByText(/Scan Doc/));
+      await waitFor(() => {
+        expect(
+          document.body.textContent,
+        ).toContain("select both a broker and a driver");
+      });
+    });
+  });
 });

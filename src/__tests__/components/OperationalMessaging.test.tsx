@@ -1,5 +1,9 @@
 import React from "react";
+<<<<<<< Updated upstream
 import { render, screen, waitFor } from "@testing-library/react";
+=======
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+>>>>>>> Stashed changes
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { OperationalMessaging } from "../../../components/OperationalMessaging";
@@ -688,6 +692,392 @@ describe("OperationalMessaging component", () => {
       expect(chatArea).toBeTruthy();
       const svgs = chatArea!.querySelectorAll("svg");
       expect(svgs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("add micro-task flow (lines 769-776)", () => {
+    it("shows Add Micro-Task button in context sidebar", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(screen.getByText(/Add Micro-Task/)).toBeInTheDocument();
+    });
+
+    it("opens task input when Add Micro-Task is clicked", async () => {
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      await user.click(screen.getByText(/Add Micro-Task/));
+      expect(
+        screen.getByPlaceholderText("Enter task objective..."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Press Enter to Commit")).toBeInTheDocument();
+    });
+
+    it("adds a new task when Enter is pressed in the task input", async () => {
+      const user = userEvent.setup();
+      const onRecordAction = vi.fn().mockResolvedValue(undefined);
+      const onNoteCreated = vi.fn();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+          onRecordAction={onRecordAction}
+          onNoteCreated={onNoteCreated}
+        />,
+      );
+      await user.click(screen.getByText(/Add Micro-Task/));
+      const taskInput = screen.getByPlaceholderText("Enter task objective...");
+      await user.type(taskInput, "Check tire pressure{Enter}");
+      await waitFor(() => {
+        expect(screen.getByText("Check tire pressure")).toBeInTheDocument();
+      });
+    });
+
+    it("cancels task creation when Escape is pressed", async () => {
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      await user.click(screen.getByText(/Add Micro-Task/));
+      const taskInput = screen.getByPlaceholderText("Enter task objective...");
+      await user.type(taskInput, "Some task");
+      await user.keyboard("{Escape}");
+      expect(screen.getByText(/Add Micro-Task/)).toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Enter task objective..."),
+      ).not.toBeInTheDocument();
+    });
+
+    it("cancels task creation when Cancel button is clicked", async () => {
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      await user.click(screen.getByText(/Add Micro-Task/));
+      await user.click(screen.getByText("Cancel"));
+      expect(screen.getByText(/Add Micro-Task/)).toBeInTheDocument();
+    });
+  });
+
+  describe("quick requests (lines 788-799)", () => {
+    it("renders quick request buttons for DETENTION, LAYOVER, TOWING, LUMPER", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(screen.getByText("DETENTION")).toBeInTheDocument();
+      expect(screen.getByText("LAYOVER")).toBeInTheDocument();
+      expect(screen.getByText("TOWING")).toBeInTheDocument();
+      expect(screen.getByText("LUMPER")).toBeInTheDocument();
+    });
+
+    it("calls onRecordAction when a quick request button is clicked", async () => {
+      const user = userEvent.setup();
+      const onRecordAction = vi.fn().mockResolvedValue(undefined);
+      const onNoteCreated = vi.fn();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+          onRecordAction={onRecordAction}
+          onNoteCreated={onNoteCreated}
+        />,
+      );
+      await user.click(screen.getByText("DETENTION"));
+      await waitFor(() => {
+        expect(onRecordAction).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: "REQUEST",
+            message: expect.stringContaining("DETENTION"),
+          }),
+        );
+      });
+    });
+  });
+
+  describe("participant search (lines 802-867)", () => {
+    it("renders participant search input in context sidebar", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(
+        screen.getByPlaceholderText("Add participant (360 search)..."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows current user avatar in participant section", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(screen.getByText("T")).toBeInTheDocument();
+    });
+
+    it("displays participant search results when query is typed", async () => {
+      const { globalSearch } = await import(
+        "../../../services/storageService"
+      );
+      (globalSearch as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: "d-1", label: "Mike Driver", type: "DRIVER", subLabel: "CDL-A" },
+      ]);
+
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+
+      const searchInput = screen.getByPlaceholderText(
+        "Add participant (360 search)...",
+      );
+      await user.type(searchInput, "Mike");
+
+      await waitFor(() => {
+        expect(screen.getByText("Mike Driver")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("task toggle (lines 713-731)", () => {
+    it("renders default tasks with checkboxes", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(screen.getByText("Verify weight tickets")).toBeInTheDocument();
+      expect(screen.getByText("Confirm gate code")).toBeInTheDocument();
+    });
+
+    it("toggles a task completion state when clicked", async () => {
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      const taskEl = screen.getByText("Verify weight tickets");
+      await user.click(taskEl);
+      expect(taskEl.className).toContain("line-through");
+    });
+  });
+
+  describe("context sidebar toggle", () => {
+    it("hides context sidebar when info button is clicked", async () => {
+      const user = userEvent.setup();
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+      expect(screen.getByText("Resource Context")).toBeInTheDocument();
+      const buttons = screen.getAllByRole("button");
+      const infoBtn = buttons.find(
+        (b) =>
+          b.className.includes("rounded-lg") &&
+          (b.className.includes("bg-blue-600/20") ||
+            b.className.includes("text-blue-400")),
+      );
+      expect(infoBtn).toBeDefined();
+      await user.click(infoBtn!);
+      expect(screen.queryByText("Resource Context")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("unlinked active session (lines 556-617)", () => {
+    it("shows Unlinked Active Session when ACTIVE but no selected load", () => {
+      const callSession: CallSession = {
+        id: "CALL-UNLINKED",
+        startTime: new Date().toISOString(),
+        status: "ACTIVE",
+        participants: [
+          { id: "user-1", name: "Dispatcher", role: "DISPATCHER" },
+        ],
+        lastActivityAt: new Date().toISOString(),
+        links: [],
+      };
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[]}
+          session={makeSession({ primaryContext: null })}
+          threads={[]}
+          interactionState="ACTIVE"
+          callSession={callSession}
+        />,
+      );
+
+      expect(
+        screen.getByText("Unlinked Active Session"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("SEARCH LOAD OR DRIVER TO LINK..."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows link session search results for unlinked active session", async () => {
+      const { globalSearch } = await import(
+        "../../../services/storageService"
+      );
+      (globalSearch as ReturnType<typeof vi.fn>).mockResolvedValue([
+        {
+          id: "load-99",
+          label: "Load #LD-099",
+          type: "LOAD",
+          subLabel: "Active",
+        },
+      ]);
+
+      const callSession: CallSession = {
+        id: "CALL-LINK",
+        startTime: new Date().toISOString(),
+        status: "ACTIVE",
+        participants: [
+          { id: "user-1", name: "Dispatcher", role: "DISPATCHER" },
+        ],
+        lastActivityAt: new Date().toISOString(),
+        links: [],
+      };
+      const onLinkSession = vi.fn().mockResolvedValue(undefined);
+      const user = userEvent.setup();
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[]}
+          session={makeSession({ primaryContext: null })}
+          threads={[]}
+          interactionState="ACTIVE"
+          callSession={callSession}
+          onLinkSession={onLinkSession}
+        />,
+      );
+
+      const searchInput = screen.getByPlaceholderText(
+        "SEARCH LOAD OR DRIVER TO LINK...",
+      );
+      await user.type(searchInput, "LD-099");
+
+      await waitFor(() => {
+        expect(screen.getByText("Load #LD-099")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("end session and empty note guard", () => {
+    it("calls onNoteCreated when End Session is clicked", async () => {
+      const user = userEvent.setup();
+      const onNoteCreated = vi.fn();
+      const callSession: CallSession = {
+        id: "CALL-END",
+        startTime: new Date().toISOString(),
+        status: "ACTIVE",
+        participants: [
+          { id: "user-1", name: "Dispatcher", role: "DISPATCHER" },
+        ],
+        lastActivityAt: new Date().toISOString(),
+        links: [],
+      };
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+          interactionState="ACTIVE"
+          callSession={callSession}
+          onNoteCreated={onNoteCreated}
+        />,
+      );
+
+      await user.click(screen.getByText("End Session"));
+      expect(onNoteCreated).toHaveBeenCalledWith(
+        "Interaction Ended via Liaison",
+      );
+    });
+
+    it("does not call onNoteCreated when note text is empty", async () => {
+      const user = userEvent.setup();
+      const onNoteCreated = vi.fn();
+      const callSession: CallSession = {
+        id: "CALL-EMPTY",
+        startTime: new Date().toISOString(),
+        status: "ACTIVE",
+        participants: [
+          { id: "user-1", name: "Dispatcher", role: "DISPATCHER" },
+        ],
+        lastActivityAt: new Date().toISOString(),
+        links: [],
+      };
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+          interactionState="ACTIVE"
+          callSession={callSession}
+          onNoteCreated={onNoteCreated}
+        />,
+      );
+
+      await user.click(screen.getByText("Commit Note"));
+      expect(onNoteCreated).not.toHaveBeenCalled();
     });
   });
 });

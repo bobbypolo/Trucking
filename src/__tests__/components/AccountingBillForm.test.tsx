@@ -1,5 +1,9 @@
 import React from "react";
+<<<<<<< Updated upstream
 import { render, screen } from "@testing-library/react";
+=======
+import { render, screen, fireEvent } from "@testing-library/react";
+>>>>>>> Stashed changes
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AccountingBillForm } from "../../../components/AccountingBillForm";
@@ -184,17 +188,20 @@ describe("AccountingBillForm component", () => {
   it("renders delete buttons for each line item", async () => {
     const user = userEvent.setup();
     render(<AccountingBillForm {...defaultProps} />);
+<<<<<<< Updated upstream
     // Add a second line
     await user.click(screen.getByRole("button", { name: /Add Detail Line/i }));
+=======
+    fireEvent.click(screen.getByRole("button", { name: /Add Detail Line/i }));
+>>>>>>> Stashed changes
     expect(screen.getAllByPlaceholderText("E.G. ENGINE OIL REPLACEMENT").length).toBe(2);
-
-    // Should have a delete button per line
     const deleteButtons = screen.getAllByRole("button").filter((btn) => {
       return btn.className.includes("hover:text-red-500");
     });
     expect(deleteButtons.length).toBe(2);
   });
 
+<<<<<<< Updated upstream
   it("submits bill with filled-in bill number", async () => {
     const user = userEvent.setup();
     render(<AccountingBillForm {...defaultProps} />);
@@ -233,5 +240,59 @@ describe("AccountingBillForm component", () => {
     await user.click(deleteButtons[0]);
     // Note: component has a stale-closure bug in removeLine/updateTotal
     // so the visual removal may not reflect; we verify the button is interactive.
+=======
+  describe("edit existing bill (lines 136, 181-225)", () => {
+    it("allows updating line category via select", async () => {
+      const user = userEvent.setup();
+      render(<AccountingBillForm {...defaultProps} />);
+      const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+      // Category select is the second combobox (after vendor)
+      const categorySelect = selects.find((s) =>
+        Array.from(s.options).some((o) => o.textContent === "LABOR"),
+      );
+      expect(categorySelect).toBeTruthy();
+      await user.selectOptions(categorySelect!, "Parts");
+      expect(categorySelect!.value).toBe("Parts");
+    });
+
+    it("allows updating allocation type", async () => {
+      const user = userEvent.setup();
+      render(<AccountingBillForm {...defaultProps} />);
+      const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
+      const allocSelect = selects.find((s) =>
+        Array.from(s.options).some((o) => o.textContent === "OVERHEAD"),
+      );
+      expect(allocSelect).toBeTruthy();
+      await user.selectOptions(allocSelect!, "Load");
+      expect(allocSelect!.value).toBe("Load");
+    });
+
+    it("allows updating allocation ID", async () => {
+      const user = userEvent.setup();
+      render(<AccountingBillForm {...defaultProps} />);
+      const allocIdInput = screen.getByPlaceholderText("ID...") as HTMLInputElement;
+      await user.clear(allocIdInput);
+      await user.type(allocIdInput, "LOAD-001");
+      expect(allocIdInput.value).toBe("LOAD-001");
+    });
+
+    it("submits bill with multiple line items", async () => {
+      const user = userEvent.setup();
+      render(<AccountingBillForm {...defaultProps} />);
+      // Add a second line
+      await user.click(screen.getByRole("button", { name: /Add Detail Line/i }));
+      const descInputs = screen.getAllByPlaceholderText("E.G. ENGINE OIL REPLACEMENT");
+      await user.type(descInputs[0], "Oil Change");
+      await user.type(descInputs[1], "Filter Replace");
+      await user.click(screen.getByRole("button", { name: /Submit for Approval/i }));
+      const savedBill = defaultProps.onSave.mock.calls[0][0];
+      expect(savedBill.lines.length).toBe(2);
+    });
+
+    it("shows GL account info text in footer", () => {
+      render(<AccountingBillForm {...defaultProps} />);
+      expect(screen.getByText(/Auto-posts to GL upon approval routing/)).toBeInTheDocument();
+    });
+>>>>>>> Stashed changes
   });
 });

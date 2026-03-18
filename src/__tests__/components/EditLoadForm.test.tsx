@@ -536,4 +536,114 @@ describe("EditLoadForm component", () => {
       expect(screen.getByText(/LN-001/)).toBeInTheDocument();
     });
   });
+
+  describe("leg types and editing (lines 523-726)", () => {
+    it("can add pickup and dropoff legs and edit facility name", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      await user.click(screen.getByText("+ Add Pickup"));
+      await user.click(screen.getByText("+ Add Drop"));
+      const facilityInputs = screen.getAllByPlaceholderText("Facility Name");
+      expect(facilityInputs.length).toBe(2);
+      await user.type(facilityInputs[0], "Warehouse Alpha");
+      expect((facilityInputs[0] as HTMLInputElement).value).toBe(
+        "Warehouse Alpha",
+      );
+    });
+
+    it("can edit city, state, and address on a leg", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      await user.click(screen.getByText("+ Add Pickup"));
+      const cityInput = screen.getByPlaceholderText("City");
+      await user.type(cityInput, "Memphis");
+      expect((cityInput as HTMLInputElement).value).toBe("Memphis");
+      const stateInput = screen.getByPlaceholderText("ST");
+      await user.type(stateInput, "TN");
+      expect((stateInput as HTMLInputElement).value).toBe("TN");
+    });
+
+    it("can set seal number on a leg", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      await user.click(screen.getByText("+ Add Pickup"));
+      const sealInput = screen.getByPlaceholderText("SEAL-");
+      await user.type(sealInput, "SEAL-001");
+      expect((sealInput as HTMLInputElement).value).toBe("SEAL-001");
+    });
+
+    it("can set pallets and weight on a leg", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      await user.click(screen.getByText("+ Add Pickup"));
+      const numberInputs = document.querySelectorAll(
+        "td input[type='number']",
+      );
+      expect(numberInputs.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("renders appointment time input on a leg", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      await user.click(screen.getByText("+ Add Pickup"));
+      const timeInputs = document.querySelectorAll("input[type='time']");
+      expect(timeInputs.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  describe("rate calculation updates", () => {
+    it("updates margin when carrier rate is changed", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      const numberInputs = document.querySelectorAll('input[type="number"]');
+      const rateInput = Array.from(numberInputs).find(
+        (i) => (i as HTMLInputElement).value === "1500",
+      ) as HTMLInputElement;
+      await user.clear(rateInput);
+      await user.type(rateInput, "3000");
+      // Margin should update: 3000 - 900 = 2100
+      expect(screen.getByText("$2,100")).toBeInTheDocument();
+    });
+  });
+
+  describe("equipment selection", () => {
+    it("shows all equipment type options", () => {
+      render(<EditLoadForm {...defaultProps} />);
+      const text = document.body.textContent || "";
+      expect(text).toContain("DRY VAN");
+      expect(text).toContain("REEFER");
+      expect(text).toContain("FLATBED");
+      expect(text).toContain("INTERMODAL");
+    });
+  });
+
+  describe("special handling dropdown", () => {
+    it("renders STANDARD, HAZMAT, and HOT LOAD options", () => {
+      render(<EditLoadForm {...defaultProps} />);
+      const text = document.body.textContent || "";
+      expect(text).toContain("STANDARD");
+      expect(text).toContain("HAZMAT");
+      expect(text).toContain("HOT LOAD");
+    });
+  });
+
+  describe("truck/trailer/chassis fields", () => {
+    it("renders truck number input", () => {
+      render(<EditLoadForm {...defaultProps} />);
+      expect(screen.getByPlaceholderText("UNIT-")).toBeInTheDocument();
+    });
+
+    it("renders trailer number input", () => {
+      render(<EditLoadForm {...defaultProps} />);
+      expect(screen.getByPlaceholderText("TRL-")).toBeInTheDocument();
+    });
+
+    it("can edit truck and trailer numbers", async () => {
+      const user = userEvent.setup();
+      render(<EditLoadForm {...defaultProps} />);
+      const truckInput = screen.getByPlaceholderText("UNIT-");
+      await user.type(truckInput, "T-101");
+      expect((truckInput as HTMLInputElement).value).toBe("T-101");
+    });
+  });
 });

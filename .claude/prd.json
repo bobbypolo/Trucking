@@ -194,7 +194,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/safetyService"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -233,7 +233,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/vault.test"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -270,9 +270,9 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/notifications.test"
+        "unit": "npx vitest run src/__tests__/services/storage/notifications.test"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -478,7 +478,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/SafetyView src/__tests__/components/Settlements src/__tests__/App"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -520,7 +520,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/ocrService src/__tests__/services/authService"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
