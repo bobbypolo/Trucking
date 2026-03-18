@@ -69,8 +69,8 @@ describe("LoadSetupModal component", () => {
 
   describe("rendering", () => {
     it("renders without crashing", () => {
-      const { container } = render(<LoadSetupModal {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(screen.getByText("Setup New Load")).toBeInTheDocument();
     });
 
     it("renders the modal title", () => {
@@ -80,9 +80,7 @@ describe("LoadSetupModal component", () => {
 
     it("renders broker selection label", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      expect(
-        screen.getByText("Select Broker / Customer"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Select Broker / Customer")).toBeInTheDocument();
     });
 
     it("renders driver selection label", () => {
@@ -124,7 +122,7 @@ describe("LoadSetupModal component", () => {
       const closeBtn = closeButtons.find(
         (btn) => !btn.textContent?.trim() || btn.textContent?.trim() === "",
       );
-      expect(closeBtn).toBeTruthy();
+      expect(closeBtn).toBeDefined();
       await user.click(closeBtn!);
       expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
     });
@@ -133,9 +131,7 @@ describe("LoadSetupModal component", () => {
   describe("driver selection dropdown", () => {
     it("renders driver select with placeholder", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      expect(
-        screen.getByText("Select Carrier / Driver"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Select Carrier / Driver")).toBeInTheDocument();
     });
 
     it("populates drivers from API after mount", async () => {
@@ -219,10 +215,7 @@ describe("LoadSetupModal component", () => {
   describe("pre-selected broker", () => {
     it("shows locked indicator when preSelectedBrokerId is provided", async () => {
       render(
-        <LoadSetupModal
-          {...defaultProps}
-          preSelectedBrokerId="broker-1"
-        />,
+        <LoadSetupModal {...defaultProps} preSelectedBrokerId="broker-1" />,
       );
       await waitFor(() => {
         const text = document.body.textContent || "";
@@ -232,10 +225,7 @@ describe("LoadSetupModal component", () => {
 
     it("shows the pre-selected broker name", async () => {
       render(
-        <LoadSetupModal
-          {...defaultProps}
-          preSelectedBrokerId="broker-1"
-        />,
+        <LoadSetupModal {...defaultProps} preSelectedBrokerId="broker-1" />,
       );
       await waitFor(() => {
         expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();

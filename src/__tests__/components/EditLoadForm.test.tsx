@@ -94,8 +94,8 @@ describe("EditLoadForm component", () => {
 
   describe("rendering", () => {
     it("renders without crashing", () => {
-      const { container } = render(<EditLoadForm {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<EditLoadForm {...defaultProps} />);
+      expect(screen.getByText(/LN-001/)).toBeInTheDocument();
     });
 
     it("renders the manifest header with load number", () => {
@@ -331,9 +331,7 @@ describe("EditLoadForm component", () => {
       render(<EditLoadForm {...defaultProps} />);
       const selects = Array.from(document.querySelectorAll("select"));
       const statusSelect = selects.find((s) =>
-        Array.from(s.options).some(
-          (o) => o.value === LOAD_STATUS.Planned,
-        ),
+        Array.from(s.options).some((o) => o.value === LOAD_STATUS.Planned),
       );
       expect(statusSelect).toBeTruthy();
       expect(statusSelect!.value).toBe(LOAD_STATUS.Planned);
@@ -354,9 +352,7 @@ describe("EditLoadForm component", () => {
   describe("load legs (stop matrix)", () => {
     it("shows empty stops message when no legs", () => {
       render(<EditLoadForm {...defaultProps} />);
-      expect(
-        screen.getByText(/No stops defined/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No stops defined/i)).toBeInTheDocument();
     });
 
     it("adds a pickup leg when '+ Add Pickup' is clicked", async () => {
@@ -394,10 +390,9 @@ describe("EditLoadForm component", () => {
         const svg = btn.querySelector("svg");
         return svg && btn.closest("td");
       });
-      if (removeBtn) {
-        await user.click(removeBtn);
-        expect(screen.getByText(/No stops defined/i)).toBeInTheDocument();
-      }
+      expect(removeBtn).toBeDefined();
+      await user.click(removeBtn!);
+      expect(screen.getByText(/No stops defined/i)).toBeInTheDocument();
     });
 
     it("renders leg table headers", async () => {
@@ -432,9 +427,7 @@ describe("EditLoadForm component", () => {
           },
         ],
       };
-      render(
-        <EditLoadForm {...defaultProps} initialData={legsData} />,
-      );
+      render(<EditLoadForm {...defaultProps} initialData={legsData} />);
       expect(screen.queryByText(/No stops defined/i)).not.toBeInTheDocument();
     });
   });
@@ -486,9 +479,7 @@ describe("EditLoadForm component", () => {
     it("passes form data to onSave when submitted", async () => {
       const onSave = vi.fn();
       const user = userEvent.setup();
-      render(
-        <EditLoadForm {...defaultProps} onSave={onSave} />,
-      );
+      render(<EditLoadForm {...defaultProps} onSave={onSave} />);
       await user.click(screen.getByText("Save Changes"));
       expect(onSave).toHaveBeenCalledTimes(1);
       const savedData = onSave.mock.calls[0][0];
@@ -541,10 +532,8 @@ describe("EditLoadForm component", () => {
 
   describe("restricted driver mode", () => {
     it("renders with restricted driver prop", () => {
-      const { container } = render(
-        <EditLoadForm {...defaultProps} isRestrictedDriver={true} />,
-      );
-      expect(container).toBeTruthy();
+      render(<EditLoadForm {...defaultProps} isRestrictedDriver={true} />);
+      expect(screen.getByText(/LN-001/)).toBeInTheDocument();
     });
   });
 });

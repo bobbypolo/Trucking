@@ -108,8 +108,8 @@ describe("LoadBoardEnhanced component", () => {
 
   describe("rendering with loads", () => {
     it("renders without crashing", () => {
-      const { container } = render(<LoadBoardEnhanced {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<LoadBoardEnhanced {...defaultProps} />);
+      expect(screen.getByText("Detailed Load Table")).toBeInTheDocument();
     });
 
     it("does not show empty state when loads exist", () => {
@@ -188,7 +188,7 @@ describe("LoadBoardEnhanced component", () => {
           !btn.textContent?.includes("Export") &&
           btn.closest('[class*="absolute right-0"]'),
       );
-      expect(sidebarToggle).toBeTruthy();
+      expect(sidebarToggle).toBeDefined();
       await user.click(sidebarToggle!);
       expect(screen.getByText("Customize View")).toBeInTheDocument();
       expect(screen.getByText(/Show\/Hide Columns/)).toBeInTheDocument();
@@ -201,9 +201,10 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      expect(toggleBtn).toBeTruthy();
+      expect(toggleBtn).toBeDefined();
       await user.click(toggleBtn!);
       expect(screen.getByText("Load #")).toBeInTheDocument();
+      // Use getAllByText for items that appear both in sidebar and grid
       expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Origin").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Destination").length).toBeGreaterThanOrEqual(
@@ -220,7 +221,7 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      expect(toggleBtn).toBeTruthy();
+      expect(toggleBtn).toBeDefined();
       await user.click(toggleBtn!);
       expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
     });
@@ -259,32 +260,26 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      expect(toggleBtn).toBeTruthy();
+      expect(toggleBtn).toBeDefined();
       await user.click(toggleBtn!);
-      // Find the Container/Chassis column button (not currently visible)
-      const containerBtn = screen.getByText("Container/Chassis");
-      await user.click(containerBtn);
-      // Click again to toggle off
-      await user.click(containerBtn);
-      // Column toggling should work without error
-      expect(containerBtn).toBeInTheDocument();
-    });
-
-    it("toggles Weight column on and off", async () => {
-      const user = userEvent.setup();
-      render(<LoadBoardEnhanced {...defaultProps} />);
-      const buttons = document.querySelectorAll("button");
-      const toggleBtn = Array.from(buttons).find((btn) =>
-        btn.closest('[class*="absolute right-0"]'),
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      // The sidebar is now 'w-80'; find the close button inside it
+      const sidebar = document.querySelector('[class*="w-80"]');
+      expect(sidebar).toBeInTheDocument();
+      const closeBtns = sidebar!.querySelectorAll("button");
+      // The close button is the one that has no text (only X icon)
+      const closeBtn = Array.from(closeBtns).find(
+        (btn) =>
+          !(btn as HTMLElement).textContent?.trim() ||
+          (btn as HTMLElement).textContent?.trim() === "",
       );
-      expect(toggleBtn).toBeTruthy();
-      await user.click(toggleBtn!);
-      const weightBtn = screen.getByText("Weight");
-      // Toggle on
-      await user.click(weightBtn);
-      // Toggle off
-      await user.click(weightBtn);
-      expect(weightBtn).toBeInTheDocument();
+      expect(closeBtn).toBeDefined();
+      await user.click(closeBtn as HTMLElement);
+      // After closing, the sidebar transitions to w-0
+      await waitFor(() => {
+        const narrowSidebar = document.querySelector('[class*="w-0"]');
+        expect(narrowSidebar).toBeTruthy();
+      });
     });
   });
 
@@ -326,6 +321,7 @@ describe("LoadBoardEnhanced component", () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
+      // Both card view and grid may render locations
       expect(screen.getAllByText("Chicago, IL").length).toBeGreaterThanOrEqual(
         1,
       );
@@ -548,6 +544,7 @@ describe("LoadBoardEnhanced component", () => {
         }),
       ];
       render(<LoadBoardEnhanced {...defaultProps} loads={iftaLoads as any} />);
+      // Component still renders fine with IFTA data
       expect(screen.getByText("Detailed Load Table")).toBeInTheDocument();
     });
 
@@ -595,7 +592,7 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      expect(toggleBtn).toBeTruthy();
+      expect(toggleBtn).toBeDefined();
       await user.click(toggleBtn!);
       expect(screen.getByText(/Export IFTA Filing/)).toBeInTheDocument();
     });

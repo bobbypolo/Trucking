@@ -3,13 +3,8 @@
  * Covers error display and API success state.
  */
 import React from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditLoadForm } from "../../../components/EditLoadForm";
 import { LoadSetupModal } from "../../../components/LoadSetupModal";
@@ -27,16 +22,14 @@ vi.mock("../../../services/brokerService", () => ({
 
 vi.mock("../../../services/authService", () => ({
   getCompany: vi.fn().mockResolvedValue({ id: "company-1", name: "Test Co" }),
-  getCompanyUsers: vi
-    .fn()
-    .mockResolvedValue([
-      {
-        id: "driver-1",
-        name: "John Driver",
-        role: "driver",
-        companyId: "company-1",
-      },
-    ]),
+  getCompanyUsers: vi.fn().mockResolvedValue([
+    {
+      id: "driver-1",
+      name: "John Driver",
+      role: "driver",
+      companyId: "company-1",
+    },
+  ]),
   getCurrentUser: vi.fn().mockReturnValue({
     id: "user-1",
     role: "admin",
@@ -85,13 +78,13 @@ describe("EditLoadForm — error display and API success state (R-FS-06-01)", ()
   });
 
   it("renders the form with existing load data (R-FS-06-01 — load edit state)", () => {
-    const { container } = render(<EditLoadForm {...defaultProps} />);
-    expect(container).toBeTruthy();
+    render(<EditLoadForm {...defaultProps} />);
     // Form should render with load number
-    expect(container.innerHTML).toContain("LN-001");
+    expect(screen.getByText(/LN-001/)).toBeInTheDocument();
   });
 
   it("calls onSave with form data on successful submission (API success state)", async () => {
+    const user = userEvent.setup();
     const onSave = vi.fn();
     render(<EditLoadForm {...defaultProps} onSave={onSave} />);
 
@@ -103,16 +96,13 @@ describe("EditLoadForm — error display and API success state (R-FS-06-01)", ()
         b.textContent?.includes("Initialize") ||
         b.textContent?.includes("Dispatch"),
     );
-    expect(saveButton).toBeTruthy();
-
-    if (saveButton) {
-      fireEvent.click(saveButton);
-      expect(onSave).toHaveBeenCalledTimes(1);
-      // Verify the saved data includes the load ID (success state)
-      const savedData = onSave.mock.calls[0][0] as LoadData;
-      expect(savedData.id).toBe("load-1");
-      expect(savedData.status).toBe(LOAD_STATUS.Planned);
-    }
+    expect(saveButton).toBeDefined();
+    await user.click(saveButton!);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    // Verify the saved data includes the load ID (success state)
+    const savedData = onSave.mock.calls[0][0] as LoadData;
+    expect(savedData.id).toBe("load-1");
+    expect(savedData.status).toBe(LOAD_STATUS.Planned);
   });
 
   it("disables save button when load is locked (error display — locked state)", () => {
@@ -127,10 +117,12 @@ describe("EditLoadForm — error display and API success state (R-FS-06-01)", ()
         b.textContent?.includes("Dispatch"),
     );
     // Locked loads should have the save button disabled
-    expect(saveButton?.hasAttribute("disabled")).toBe(true);
+    expect(saveButton).toBeDefined();
+    expect(saveButton!).toBeDisabled();
   });
 
-  it("calls onCancel when discard is clicked", () => {
+  it("calls onCancel when discard is clicked", async () => {
+    const user = userEvent.setup();
     const onCancel = vi.fn();
     render(<EditLoadForm {...defaultProps} onCancel={onCancel} />);
 
@@ -138,12 +130,9 @@ describe("EditLoadForm — error display and API success state (R-FS-06-01)", ()
     const discardButton = buttons.find((b) =>
       b.textContent?.includes("Discard"),
     );
-    expect(discardButton).toBeTruthy();
-
-    if (discardButton) {
-      fireEvent.click(discardButton);
-      expect(onCancel).toHaveBeenCalledTimes(1);
-    }
+    expect(discardButton).toBeDefined();
+    await user.click(discardButton!);
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it("renders new load form with Initialize Dispatch label (new load creation state)", () => {
@@ -163,20 +152,18 @@ describe("EditLoadForm — error display and API success state (R-FS-06-01)", ()
     const initButton = buttons.find((b) =>
       b.textContent?.includes("Initialize Dispatch"),
     );
-    expect(initButton).toBeTruthy();
+    expect(initButton).toBeDefined();
   });
 
   it("renders with restricted driver mode (access control — error prevention)", () => {
-    const { container } = render(
-      <EditLoadForm {...defaultProps} isRestrictedDriver={true} />,
-    );
-    expect(container).toBeTruthy();
+    render(<EditLoadForm {...defaultProps} isRestrictedDriver={true} />);
+    expect(screen.getByText(/LN-001/)).toBeInTheDocument();
   });
 
   it("displays load number in manifest breadcrumb (API-sourced data display)", () => {
-    const { container } = render(<EditLoadForm {...defaultProps} />);
+    render(<EditLoadForm {...defaultProps} />);
     // The manifest ID should appear in the breadcrumb
-    expect(container.innerHTML).toContain("LN-001");
+    expect(screen.getByText(/LN-001/)).toBeInTheDocument();
   });
 });
 
@@ -194,54 +181,45 @@ describe("LoadSetupModal — load creation entry point (R-FS-06-01)", () => {
   it("renders Setup New Load modal", async () => {
     render(<LoadSetupModal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/Setup New Load/i)).toBeTruthy();
+      expect(screen.getByText(/Setup New Load/i)).toBeInTheDocument();
     });
   });
 
   it("calls onCancel when X button is clicked", async () => {
+    const user = userEvent.setup();
     const onCancel = vi.fn();
     render(<LoadSetupModal {...defaultProps} onCancel={onCancel} />);
 
     const buttons = screen.getAllByRole("button");
     // First close button should cancel the modal
-    if (buttons.length > 0) {
-      fireEvent.click(buttons[0]);
-      await waitFor(() => {
-        expect(onCancel).toHaveBeenCalledTimes(1);
-      });
-    }
+    expect(buttons.length).toBeGreaterThan(0);
+    await user.click(buttons[0]);
+    await waitFor(() => {
+      expect(onCancel).toHaveBeenCalledTimes(1);
+    });
   });
 
   it("renders with preSelectedBrokerId (pre-populated state from API data)", async () => {
     render(<LoadSetupModal {...defaultProps} preSelectedBrokerId="broker-1" />);
     await waitFor(() => {
-      expect(screen.getByText(/Setup New Load/i)).toBeTruthy();
+      expect(screen.getByText(/Setup New Load/i)).toBeInTheDocument();
     });
   });
 
-  it("displays error when Continue is clicked without broker and driver (validation error display)", async () => {
-    // Mock alert to capture error
-    const alertMock = vi.spyOn(window, "alert").mockImplementation(() => {});
+  it("displays error when Scan Doc is clicked without broker and driver (validation error display)", async () => {
+    const user = userEvent.setup();
     render(<LoadSetupModal {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Setup New Load/i)).toBeTruthy();
+      expect(screen.getByText(/Setup New Load/i)).toBeInTheDocument();
     });
 
-    const buttons = screen.getAllByRole("button");
-    const continueButton = buttons.find(
-      (b) =>
-        b.textContent?.includes("Continue") ||
-        b.textContent?.includes("Proceed"),
-    );
-    if (continueButton) {
-      fireEvent.click(continueButton);
-      await waitFor(() => {
-        expect(alertMock).toHaveBeenCalledWith(
-          expect.stringContaining("broker"),
-        );
-      });
-    }
-    alertMock.mockRestore();
+    const scanDocButton = screen.getByText(/Scan Doc/);
+    expect(scanDocButton).toBeInTheDocument();
+    await user.click(scanDocButton);
+    await waitFor(() => {
+      const bodyText = document.body.textContent || "";
+      expect(bodyText).toContain("select both a broker and a driver");
+    });
   });
 });
