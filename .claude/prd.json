@@ -396,7 +396,13 @@
       "scope": [
         "services/storage/core.ts",
         "services/storage/migrationService.ts",
-        "services/storage/index.ts"
+        "services/storage/index.ts",
+        "services/storageService.ts",
+        "src/__tests__/services/storage/migrationService.test.ts",
+        "src/__tests__/services/storage/index.test.ts",
+        "src/__tests__/services/storageService.test.ts",
+        "src/__tests__/services/storageService.deep.test.ts",
+        ".claude/hooks/tests/test_r_p1_36_38.py"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
