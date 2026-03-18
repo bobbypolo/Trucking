@@ -1,41 +1,45 @@
 /**
- * Notification Jobs domain — localStorage CRUD with API sync.
- * Owner: STORY-016 (Phase 2 migration to server).
+ * Notification Jobs domain — API-only implementation.
+ * All data is persisted to and retrieved from /api/notification-jobs.
+ * Server-authoritative; no local storage.
  */
 import { NotificationJob } from "../../types";
 import { API_URL } from "../config";
 import { getAuthHeaders } from "../authService";
-import { getTenantKey } from "./core";
 
-export const STORAGE_KEY_NOTIFICATION_JOBS = (): string =>
-  getTenantKey("notification_jobs_v1");
-
-export const getRawNotificationJobs = (): NotificationJob[] => {
+/**
+ * Fetch all notification jobs for the authenticated tenant from the server.
+ * Returns empty array on error (read operations degrade gracefully).
+ */
+export const getRawNotificationJobs = async (): Promise<NotificationJob[]> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY_NOTIFICATION_JOBS());
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/notification-jobs`, { headers });
+    if (!res.ok) return [];
+    return (await res.json()) as NotificationJob[];
+  } catch {
     return [];
   }
 };
 
-export const saveNotificationJob = async (job: NotificationJob) => {
-  const jobs = getRawNotificationJobs();
-  const idx = jobs.findIndex((j) => j.id === job.id);
-  if (idx >= 0) jobs[idx] = job;
-  else jobs.unshift(job);
-  localStorage.setItem(STORAGE_KEY_NOTIFICATION_JOBS(), JSON.stringify(jobs));
-
-  // Sync to API
-  try {
-    await fetch(`${API_URL}/notification-jobs`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(job),
-    });
-  } catch (e) {
-    console.warn("[storageService] API fallback:", e);
+/**
+ * Create or update a notification job on the server.
+ * Returns the server response (source of truth).
+ * Throws on API failure — callers must handle errors explicitly.
+ */
+export const saveNotificationJob = async (
+  job: NotificationJob,
+): Promise<NotificationJob> => {
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/notification-jobs`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(job),
+  });
+  if (!res.ok) {
+    throw new Error(
+      `[notifications] saveNotificationJob failed: HTTP ${res.status}`,
+    );
   }
-
-  return job;
+  return (await res.json()) as NotificationJob;
 };

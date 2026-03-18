@@ -113,7 +113,6 @@ export {
   uploadVaultDoc,
 } from "./storage/vault";
 export {
-  STORAGE_KEY_NOTIFICATION_JOBS,
   getRawNotificationJobs,
   saveNotificationJob,
 } from "./storage/notifications";

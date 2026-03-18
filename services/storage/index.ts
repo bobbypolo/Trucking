@@ -39,14 +39,5 @@ export {
   saveContact,
   getDirectory,
 } from "./directory";
-export {
-  STORAGE_KEY_VAULT_DOCS,
-  getRawVaultDocs,
-  saveVaultDoc,
-  uploadVaultDoc,
-} from "./vault";
-export {
-  STORAGE_KEY_NOTIFICATION_JOBS,
-  getRawNotificationJobs,
-  saveNotificationJob,
-} from "./notifications";
+export { getRawVaultDocs, saveVaultDoc, uploadVaultDoc } from "./vault";
+export { getRawNotificationJobs, saveNotificationJob } from "./notifications";
