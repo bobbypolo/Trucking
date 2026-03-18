@@ -41,7 +41,42 @@ def test_r_p1_51_no_localstorage_in_services():
         # The remaining match must contain an actual call
         and re.search(r"localStorage\.(getItem|setItem|removeItem|clear)\(", line)
     ]
-    assert violations == [], f"Unexpected localStorage calls in services/: {violations}"
+    assert violations == [], "Unexpected localStorage calls in services/: " + str(
+        violations
+    )
+
+
+def test_r_p1_51_actual_localstorage_calls_absent():
+    """R-P1-51 (edge): Verify no actual setItem/removeItem calls in non-test service files."""
+    services_dir = os.path.join(REPO_ROOT, "services")
+    result = subprocess.run(
+        ["grep", "-rn", "localStorage", services_dir, "--include=*.ts"],
+        capture_output=True,
+        text=True,
+    )
+    lines = result.stdout.splitlines()
+    violations = []
+    for line in lines:
+        if not line:
+            continue
+        if (
+            "__tests__" in line
+            or ".test." in line
+            or "firebase" in line
+            or "config" in line
+        ):
+            continue
+        # Get the part after the line number prefix (file:line:content)
+        parts = line.split(":", 2)
+        code = parts[2].lstrip() if len(parts) >= 3 else ""
+        if code.startswith("//") or code.startswith("*"):
+            continue
+        if re.search(r"localStorage\.(setItem|removeItem)\(", line):
+            violations.append(line)
+    assert violations == [], (
+        "R-P1-51: localStorage.setItem/removeItem present in services/ (non-test): "
+        + str(violations)
+    )
 
 
 def test_r_p1_52_no_demo_mode_in_components():
@@ -60,7 +95,26 @@ def test_r_p1_52_no_demo_mode_in_components():
         text=True,
     )
     combined = result1.stdout.strip() + result2.stdout.strip()
-    assert combined == "", f"DEMO_MODE found in components/ or App.tsx:\n{combined}"
+    assert combined == "", "DEMO_MODE found in components/ or App.tsx: " + combined
+
+
+def test_r_p1_52_demo_mode_not_in_apptsx():
+    """R-P1-52 (error): Explicitly assert DEMO_MODE absent from App.tsx (guards against regression)."""
+    app_tsx = os.path.join(REPO_ROOT, "App.tsx")
+    assert os.path.exists(app_tsx), "App.tsx not found — path mismatch?"
+    with open(app_tsx, "r", encoding="utf-8") as f:
+        content = f.read()
+    non_comment_lines = [
+        line
+        for line in content.splitlines()
+        if "DEMO_MODE" in line
+        and not line.lstrip().startswith("//")
+        and not line.lstrip().startswith("*")
+    ]
+    assert non_comment_lines == [], (
+        "R-P1-52: DEMO_MODE found in App.tsx non-comment lines: "
+        + str(non_comment_lines)
+    )
 
 
 def test_r_p1_53_build_succeeds():
@@ -74,10 +128,31 @@ def test_r_p1_53_build_succeeds():
         timeout=120,
     )
     assert result.returncode == 0, (
-        f"Build failed (exit {result.returncode}):\n{result.stdout[-2000:]}\n{result.stderr[-2000:]}"
+        "Build failed (exit "
+        + str(result.returncode)
+        + "): "
+        + result.stdout[-2000:]
+        + result.stderr[-2000:]
     )
     assert "built in" in result.stdout or "built in" in result.stderr, (
         "Build output did not contain 'built in'"
+    )
+
+
+def test_r_p1_53_build_does_not_emit_typescript_errors():
+    """R-P1-53 (negative): Build must not emit TypeScript error lines."""
+    result = subprocess.run(
+        "npm run build",
+        shell=True,
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        timeout=120,
+    )
+    combined = result.stdout + result.stderr
+    ts_errors = [line for line in combined.splitlines() if "error TS" in line]
+    assert ts_errors == [], "R-P1-53: TypeScript errors found in build output: " + str(
+        ts_errors[:5]
     )
 
 
@@ -94,9 +169,11 @@ def test_r_p1_54_vitest_passes_baseline():
     combined = result.stdout + result.stderr
     # Parse test count
     match = re.search(r"Tests\s+.*?(\d+)\s+passed", combined)
-    assert match, f"Could not parse test count from vitest output:\n{combined[-1000:]}"
+    assert match, "Could not parse test count from vitest output: " + combined[-1000:]
     passed = int(match.group(1))
-    assert passed >= 3070, f"Frontend test count {passed} is below baseline 3070"
+    assert passed >= 3070, (
+        "Frontend test count " + str(passed) + " is below baseline 3070"
+    )
     assert result.returncode == 0, (
-        f"Vitest exited with {result.returncode}. Output:\n{combined[-2000:]}"
+        "Vitest exited with " + str(result.returncode) + ". Output: " + combined[-2000:]
     )
