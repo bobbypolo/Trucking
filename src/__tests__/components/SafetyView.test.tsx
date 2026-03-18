@@ -249,22 +249,11 @@ describe("SafetyView component", () => {
     expect(feedbackContainer).not.toBeNull();
     const closeBtn = feedbackContainer!.querySelector("button");
     expect(closeBtn).not.toBeNull();
-    fireEvent.click(closeBtn!);
+    await user.click(closeBtn!);
     await waitFor(() => {
-      expect(screen.queryByText(/Logic Sync Interrupted/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Logic Sync Interrupted/),
+      ).not.toBeInTheDocument();
     });
-  });
-
-    // Click the X button to dismiss feedback
-    const feedback = screen.getByText(/Logic Sync Interrupted/).closest("div")!;
-    const closeBtn = feedback.querySelector("button");
-    if (closeBtn) {
-      await user.click(closeBtn);
-      await waitFor(() => {
-        expect(
-          screen.queryByText(/Logic Sync Interrupted/),
-        ).not.toBeInTheDocument();
-      });
-    }
   });
 });
