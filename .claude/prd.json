@@ -403,7 +403,8 @@
         "src/__tests__/services/storageService.test.ts",
         "src/__tests__/services/storageService.deep.test.ts",
         ".claude/hooks/tests/test_r_p1_36_38.py",
-        ".claude/prd.json"
+        ".claude/prd.json",
+        ".claude/hooks/tests/test_migrationService.py"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -434,7 +435,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run"
+        "unit": "npx vitest run src/__tests__/services/storage/ src/__tests__/services/storageService.test.ts src/__tests__/services/storageService.deep.test.ts src/__tests__/components/DataMigrationBanner.test.tsx"
       },
       "passed": false,
       "verificationRef": null
