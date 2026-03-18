@@ -64,21 +64,35 @@ def test_r_p1_27_no_localstorage_in_any_incident_fn():
 def test_r_p1_28_get_incidents_is_async():
     """R-P1-28: getIncidents is declared as async (behavioral: checks signature)"""
     content = STORAGE_SERVICE_TS.read_text(encoding="utf-8")
-    match = re.search(
-        r"export\s+const\s+getIncidents\s*=\s*async", content
+    # Value assertion: find the line number where async getIncidents is declared
+    async_declaration_lines = [
+        (i + 1, line.strip())
+        for i, line in enumerate(content.splitlines())
+        if re.search(r"export\s+const\s+getIncidents\s*=\s*async", line)
+    ]
+    assert len(async_declaration_lines) == 1, (
+        f"R-P1-28 FAIL: expected exactly 1 async getIncidents declaration, "
+        f"found {len(async_declaration_lines)}: {async_declaration_lines}"
     )
-    assert match is not None, "R-P1-28 FAIL: getIncidents is not declared as async in storageService.ts"
+    line_num, declaration = async_declaration_lines[0]
+    assert "async" in declaration, f"R-P1-28 FAIL: line {line_num} missing 'async': {declaration}"
 
 
 def test_r_p1_28_get_incidents_returns_promise_array():
     """R-P1-28: getIncidents return type is Promise<Incident[]> (behavioral: type signature)"""
     content = STORAGE_SERVICE_TS.read_text(encoding="utf-8")
-    match = re.search(
-        r"export\s+const\s+getIncidents\s*=\s*async\s*\([^)]*\)\s*:\s*Promise<Incident\[\]>",
-        content,
-    )
-    assert match is not None, (
+    # Value assertion: verify the exact return type annotation
+    return_type_lines = [
+        (i + 1, line.strip())
+        for i, line in enumerate(content.splitlines())
+        if re.search(r"getIncidents.*Promise<Incident\[\]>", line)
+    ]
+    assert len(return_type_lines) >= 1, (
         "R-P1-28 FAIL: getIncidents does not declare return type Promise<Incident[]>"
+    )
+    _line_num, type_decl = return_type_lines[0]
+    assert "Promise<Incident[]>" in type_decl, (
+        f"R-P1-28 FAIL: return type mismatch, found: {type_decl}"
     )
 
 
