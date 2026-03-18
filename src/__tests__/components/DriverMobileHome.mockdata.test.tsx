@@ -1,6 +1,7 @@
 // Tests R-P3-09, R-P3-10
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
@@ -52,7 +53,8 @@ describe("DriverMobileHome: no hardcoded mock data (R-P3-09)", () => {
 });
 
 describe("DriverMobileHome: specialInstructions rendering (R-P3-10)", () => {
-  it("renders selectedLoad.specialInstructions when present", () => {
+  it("renders selectedLoad.specialInstructions when present", async () => {
+    const user = userEvent.setup();
     const loadWithInstructions: LoadData = {
       ...mockLoadBase,
       specialInstructions: "Dock 7",
@@ -69,13 +71,14 @@ describe("DriverMobileHome: specialInstructions rendering (R-P3-10)", () => {
 
     // Find and click the load card to navigate to detail view
     const loadCard = screen.getByText(/LN-001/i);
-    fireEvent.click(loadCard.closest("div[class]") || loadCard);
+    await user.click(loadCard.closest("div[class]") || loadCard);
 
     // Dock 7 should appear
     expect(document.body.textContent).toContain("Dock 7");
   });
 
-  it("does not render instructions div when specialInstructions is absent", () => {
+  it("does not render instructions div when specialInstructions is absent", async () => {
+    const user = userEvent.setup();
     const loadNoInstructions: LoadData = {
       ...mockLoadBase,
       specialInstructions: undefined,
@@ -92,7 +95,7 @@ describe("DriverMobileHome: specialInstructions rendering (R-P3-10)", () => {
 
     // Click the load card
     const loadCard = screen.getByText(/LN-001/i);
-    fireEvent.click(loadCard.closest("div[class]") || loadCard);
+    await user.click(loadCard.closest("div[class]") || loadCard);
 
     expect(document.body.textContent).not.toContain("Check in at Gate 2");
     expect(document.body.textContent).not.toContain("Wait time");
