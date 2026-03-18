@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  Suspense,
+  useCallback,
+} from "react";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
 import { API_URL } from "../services/config";
 import {
   DollarSign,
@@ -138,6 +146,8 @@ const AccountingPortal: React.FC<Props> = ({
       configuration: {},
     },
   ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showBillForm, setShowBillForm] = useState(false);
@@ -173,17 +183,9 @@ const AccountingPortal: React.FC<Props> = ({
     // In a real scenario, this would open a specific sub-modal or trigger a service call
   };
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    if (initialTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
     try {
       const [accs, invs, bs, sets] = await Promise.all([
         getGLAccounts(),
@@ -196,9 +198,41 @@ const AccountingPortal: React.FC<Props> = ({
       setBills(Array.isArray(bs) ? bs : []);
       setSettlements(Array.isArray(sets) ? sets : []);
     } catch (error) {
-      // Error handled silently — data loads on next refresh
+      setLoadError("Failed to load accounting data. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading accounting data"
+        className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter p-10"
+      >
+        <LoadingSkeleton variant="card" count={4} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">
+        <ErrorState message={loadError} onRetry={loadData} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">

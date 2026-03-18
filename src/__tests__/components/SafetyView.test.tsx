@@ -102,12 +102,16 @@ describe("SafetyView component", () => {
 
   it("renders the Safety & Compliance header", async () => {
     render(<SafetyView user={mockUser} />);
-    expect(screen.getByText("Safety & Compliance")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument();
+    });
   });
 
   it("renders all tab navigation items", async () => {
     render(<SafetyView user={mockUser} />);
-    expect(screen.getByText("Monitor")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Monitor")).toBeInTheDocument();
+    });
     expect(screen.getByText("Roster")).toBeInTheDocument();
     expect(screen.getByText("Assets")).toBeInTheDocument();
     expect(screen.getByText("Service")).toBeInTheDocument();
@@ -115,18 +119,20 @@ describe("SafetyView component", () => {
     expect(screen.getByText("Rules")).toBeInTheDocument();
   });
 
-  it("shows Logic Plane synchronized indicator", () => {
+  it("shows Logic Plane synchronized indicator", async () => {
     render(<SafetyView user={mockUser} />);
-    expect(
-      screen.getByText("Logic Plane: Synchronized"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Logic Plane: Synchronized")).toBeInTheDocument();
+    });
   });
 
-  it("shows Global Fleet Governance Matrix subtitle", () => {
+  it("shows Global Fleet Governance Matrix subtitle", async () => {
     render(<SafetyView user={mockUser} />);
-    expect(
-      screen.getByText("Global Fleet Governance Matrix"),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Global Fleet Governance Matrix"),
+      ).toBeInTheDocument();
+    });
   });
 
   // ── MONITOR (Overview) TAB ──
@@ -260,6 +266,9 @@ describe("SafetyView component", () => {
   it("switches to Roster tab when clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -269,6 +278,9 @@ describe("SafetyView component", () => {
   it("renders operator cards on roster tab with performance data", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -279,6 +291,9 @@ describe("SafetyView component", () => {
   it("displays driver role badges on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("driver")).toBeInTheDocument();
@@ -289,6 +304,9 @@ describe("SafetyView component", () => {
   it("displays performance scores on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -300,6 +318,9 @@ describe("SafetyView component", () => {
   it("displays performance grade on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -311,6 +332,9 @@ describe("SafetyView component", () => {
   it("shows On-Time Rate and Doc Quality metrics on roster", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -324,6 +348,9 @@ describe("SafetyView component", () => {
   it("shows non-compliance warnings on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -335,6 +362,9 @@ describe("SafetyView component", () => {
   it("shows Compliance History button on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -346,6 +376,9 @@ describe("SafetyView component", () => {
   it("shows Incident button on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -355,9 +388,8 @@ describe("SafetyView component", () => {
   });
 
   it("opens compliance history modal when clicking Compliance History", async () => {
-    const { getComplianceRecords } = await import(
-      "../../../services/safetyService"
-    );
+    const { getComplianceRecords } =
+      await import("../../../services/safetyService");
     (getComplianceRecords as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         id: "cr-1",
@@ -371,6 +403,9 @@ describe("SafetyView component", () => {
     ]);
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -385,12 +420,14 @@ describe("SafetyView component", () => {
   });
 
   it("shows empty compliance state when no records exist", async () => {
-    const { getComplianceRecords } = await import(
-      "../../../services/safetyService"
-    );
+    const { getComplianceRecords } =
+      await import("../../../services/safetyService");
     (getComplianceRecords as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -407,6 +444,9 @@ describe("SafetyView component", () => {
   it("opens incident form when clicking Incident button on roster card", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -427,6 +467,9 @@ describe("SafetyView component", () => {
     const onOpenHub = vi.fn();
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} onOpenHub={onOpenHub} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -441,6 +484,9 @@ describe("SafetyView component", () => {
   it("switches to Assets tab and shows Fleet Registry heading", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(screen.getByText("Fleet Registry")).toBeInTheDocument();
@@ -452,6 +498,9 @@ describe("SafetyView component", () => {
   it("shows empty state when no equipment registered", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(
@@ -484,6 +533,9 @@ describe("SafetyView component", () => {
     ]);
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(screen.getByText("TR-101")).toBeInTheDocument();
@@ -500,6 +552,9 @@ describe("SafetyView component", () => {
   it("opens asset registration form when Register Asset clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(screen.getByText("Fleet Registry")).toBeInTheDocument();
@@ -516,6 +571,9 @@ describe("SafetyView component", () => {
     const { registerAsset } = await import("../../../services/safetyService");
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(screen.getByText("Fleet Registry")).toBeInTheDocument();
@@ -534,6 +592,9 @@ describe("SafetyView component", () => {
   it("closes modal form when X is clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Assets"));
     await waitFor(() => {
       expect(screen.getByText("Fleet Registry")).toBeInTheDocument();
@@ -542,16 +603,12 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("asset Registration")).toBeInTheDocument();
     });
-    const modalHeader = screen
-      .getByText("asset Registration")
-      .closest("div")!;
+    const modalHeader = screen.getByText("asset Registration").closest("div")!;
     const closeButton = modalHeader.parentElement!.querySelector("button");
     expect(closeButton).toBeInTheDocument();
     await user.click(closeButton!);
     await waitFor(() => {
-      expect(
-        screen.queryByText("asset Registration"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("asset Registration")).not.toBeInTheDocument();
     });
   });
 
@@ -560,6 +617,9 @@ describe("SafetyView component", () => {
   it("switches to Service tab and shows heading", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(
@@ -573,6 +633,9 @@ describe("SafetyView component", () => {
   it("shows service tab KPI stats", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(screen.getByText("Open Tickets")).toBeInTheDocument();
@@ -585,6 +648,9 @@ describe("SafetyView component", () => {
   it("shows the Lifecycle Fleet Health Governance subtitle", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(
@@ -596,6 +662,9 @@ describe("SafetyView component", () => {
   it("shows service ticket table headers", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(screen.getByText("Ticket ID")).toBeInTheDocument();
@@ -609,6 +678,9 @@ describe("SafetyView component", () => {
   it("shows empty service ticket message when none exist", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(screen.getByText("No open service tickets")).toBeInTheDocument();
@@ -616,9 +688,8 @@ describe("SafetyView component", () => {
   });
 
   it("displays service tickets when data is loaded", async () => {
-    const { getServiceTickets } = await import(
-      "../../../services/safetyService"
-    );
+    const { getServiceTickets } =
+      await import("../../../services/safetyService");
     (getServiceTickets as ReturnType<typeof vi.fn>).mockReturnValue([
       {
         id: "ticket-abc12345-xyz",
@@ -632,6 +703,9 @@ describe("SafetyView component", () => {
     ]);
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(screen.getByText("TR-101")).toBeInTheDocument();
@@ -642,6 +716,9 @@ describe("SafetyView component", () => {
   it("opens service ticket form when Open Service Ticket clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(
@@ -650,20 +727,20 @@ describe("SafetyView component", () => {
     });
     await user.click(screen.getByText(/Open Service Ticket/));
     await waitFor(() => {
-      expect(
-        screen.getByText("maintenance Registration"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("maintenance Registration")).toBeInTheDocument();
     });
     expect(screen.getByText("Select Asset")).toBeInTheDocument();
     expect(screen.getByText("Service Description")).toBeInTheDocument();
   });
 
   it("fills maintenance form and submits", async () => {
-    const { saveMaintenanceRecord } = await import(
-      "../../../services/safetyService"
-    );
+    const { saveMaintenanceRecord } =
+      await import("../../../services/safetyService");
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Service"));
     await waitFor(() => {
       expect(
@@ -672,9 +749,7 @@ describe("SafetyView component", () => {
     });
     await user.click(screen.getByText(/Open Service Ticket/));
     await waitFor(() => {
-      expect(
-        screen.getByText("maintenance Registration"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("maintenance Registration")).toBeInTheDocument();
     });
     await user.type(
       screen.getByPlaceholderText("e.g. Annual Inspection and Oil Change"),
@@ -691,11 +766,12 @@ describe("SafetyView component", () => {
   it("switches to Academy tab and shows Safety Academy heading", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Safety Academy & Training"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Safety Academy & Training")).toBeInTheDocument();
     });
     expect(
       screen.getByText("Fleet Certification & Compliance Matrix"),
@@ -705,19 +781,23 @@ describe("SafetyView component", () => {
   it("shows training course cards on Academy tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText("Winter Operations 2025")).toBeInTheDocument();
     });
     expect(screen.getByText("Hazmat Handling (L1)")).toBeInTheDocument();
-    expect(
-      screen.getByText("Hours of Service Compliance"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Hours of Service Compliance")).toBeInTheDocument();
   });
 
   it("shows course types on Academy tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText("Winter Operations 2025")).toBeInTheDocument();
@@ -735,6 +815,9 @@ describe("SafetyView component", () => {
   it("shows fleet completion progress on Academy courses", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText("42%")).toBeInTheDocument();
@@ -745,6 +828,9 @@ describe("SafetyView component", () => {
   it("shows Create Course button on Academy tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText(/Create Course/)).toBeInTheDocument();
@@ -754,6 +840,9 @@ describe("SafetyView component", () => {
   it("opens quiz creation form when Create Course clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText(/Create Course/)).toBeInTheDocument();
@@ -763,15 +852,16 @@ describe("SafetyView component", () => {
       expect(screen.getByText("quiz Registration")).toBeInTheDocument();
     });
     expect(screen.getByText("Course Title")).toBeInTheDocument();
-    expect(
-      screen.getByText("Mandatory for all operators"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Mandatory for all operators")).toBeInTheDocument();
   });
 
   it("fills quiz form and submits", async () => {
     const { saveQuiz } = await import("../../../services/safetyService");
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText(/Create Course/)).toBeInTheDocument();
@@ -794,6 +884,9 @@ describe("SafetyView component", () => {
   it("shows recent test submissions on Academy tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText("Recent Test Submissions")).toBeInTheDocument();
@@ -809,6 +902,9 @@ describe("SafetyView component", () => {
   it("shows pass/fail status for test submissions", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
       expect(screen.getByText("Recent Test Submissions")).toBeInTheDocument();
@@ -824,6 +920,9 @@ describe("SafetyView component", () => {
   it("switches to Rules tab and shows Safety Configuration", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(screen.getByText("Safety Configuration")).toBeInTheDocument();
@@ -833,6 +932,9 @@ describe("SafetyView component", () => {
   it("shows all safety rules on Rules tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(screen.getByText("Minimum Safety Score")).toBeInTheDocument();
@@ -844,6 +946,9 @@ describe("SafetyView component", () => {
   it("shows rule descriptions on Rules tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(
@@ -865,6 +970,9 @@ describe("SafetyView component", () => {
   it("shows rule values on Rules tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(screen.getByText("75")).toBeInTheDocument();
@@ -876,6 +984,9 @@ describe("SafetyView component", () => {
   it("shows Save Safety Policy button on Rules tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(screen.getByText("Save Safety Policy")).toBeInTheDocument();
@@ -885,6 +996,9 @@ describe("SafetyView component", () => {
   it("shows feedback when Save Safety Policy is clicked", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
       expect(screen.getByText("Save Safety Policy")).toBeInTheDocument();
@@ -899,48 +1013,51 @@ describe("SafetyView component", () => {
 
   // ── FEEDBACK & ERROR HANDLING ──
 
-  it("shows feedback message when data loading fails", async () => {
+  it("shows ErrorState when data loading fails", async () => {
     const { getCompany } = await import("../../../services/authService");
     (getCompany as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("Network error"),
     );
     render(<SafetyView user={mockUser} />);
     await waitFor(() => {
-      expect(screen.getByText(/Logic Sync Interrupted/)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toBeInTheDocument();
     });
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
-  it("dismisses feedback message when X is clicked", async () => {
+  it("ErrorState retry button re-fetches and recovers from error", async () => {
     const user = userEvent.setup();
-    const { getCompany } = await import("../../../services/authService");
+    const { getCompany, getCompanyUsers } =
+      await import("../../../services/authService");
     (getCompany as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("Network error"),
     );
+    (getCompany as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      id: "company-1",
+      name: "Test Trucking",
+      accountType: "fleet",
+    });
+    (getCompanyUsers as ReturnType<typeof vi.fn>).mockResolvedValueOnce([]);
     render(<SafetyView user={mockUser} />);
     await waitFor(() => {
-      expect(screen.getByText(/Logic Sync Interrupted/)).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toBeInTheDocument();
     });
-    const feedbackText = screen.getByText(/Logic Sync Interrupted/);
-    const feedbackContainer = feedbackText.closest('[class*="fixed"]');
-    expect(feedbackContainer).toBeInTheDocument();
-    const closeBtn = feedbackContainer!.querySelector("button");
-    expect(closeBtn).toBeInTheDocument();
-    await user.click(closeBtn!);
+    await user.click(screen.getByRole("button", { name: /retry/i }));
     await waitFor(() => {
-      expect(
-        screen.queryByText(/Logic Sync Interrupted/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
+    expect(screen.getByText("Safety & Compliance")).toBeInTheDocument();
   });
 
   // ── INCIDENT CREATION WORKFLOW ──
 
   it("creates an incident with severity and description", async () => {
-    const { createIncident } = await import(
-      "../../../services/storageService"
-    );
+    const { createIncident } = await import("../../../services/storageService");
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -969,6 +1086,9 @@ describe("SafetyView component", () => {
   it("switching between all tabs does not crash", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
+    await waitFor(() =>
+      expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+    );
     await user.click(screen.getByText("Roster"));
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
@@ -987,9 +1107,7 @@ describe("SafetyView component", () => {
     });
     await user.click(screen.getByText("Academy"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Safety Academy & Training"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Safety Academy & Training")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {

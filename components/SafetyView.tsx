@@ -1,4 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
 import {
   User,
   SafetyQuiz,
@@ -119,6 +127,8 @@ export const SafetyView: React.FC<Props> = ({
   const [selectedDriverCompliance, setSelectedDriverCompliance] = useState<
     string | null
   >(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [showForm, setShowForm] = useState<
     "asset" | "maintenance" | "quiz" | "incident" | "compliance" | null
@@ -130,59 +140,84 @@ export const SafetyView: React.FC<Props> = ({
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  useEffect(() => {
-    const loadPayload = async () => {
-      try {
-        const c = await getCompany(user.companyId);
-        if (c) {
-          const allUsers = await getCompanyUsers(c.id);
-          // Standardize role check and filter for active operators
-          const safetyUsers = allUsers.filter((u) =>
-            [
-              "admin",
-              "dispatcher",
-              "safety_manager",
-              "driver",
-              "owner_operator",
-            ].includes(u.role),
-          );
+  const loadPayload = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const c = await getCompany(user.companyId);
+      if (c) {
+        const allUsers = await getCompanyUsers(c.id);
+        // Standardize role check and filter for active operators
+        const safetyUsers = allUsers.filter((u) =>
+          [
+            "admin",
+            "dispatcher",
+            "safety_manager",
+            "driver",
+            "owner_operator",
+          ].includes(u.role),
+        );
 
-          const enrichedOperators = await Promise.all(
-            safetyUsers.map(async (u) => {
-              try {
-                const performance = await calculateDriverPerformance(u, c);
-                return { user: u, performance };
-              } catch (err) {
-                return {
-                  user: u,
-                  performance: {
-                    driverId: u.id,
-                    totalScore: 0,
-                    grade: "At Risk" as any,
-                    status: "Blocked" as any,
-                    metrics: {
-                      safetyScore: 0,
-                      onTimeRate: 0,
-                      paperworkScore: 0,
-                      loadCount: 0,
-                    },
+        const enrichedOperators = await Promise.all(
+          safetyUsers.map(async (u) => {
+            try {
+              const performance = await calculateDriverPerformance(u, c);
+              return { user: u, performance };
+            } catch (err) {
+              return {
+                user: u,
+                performance: {
+                  driverId: u.id,
+                  totalScore: 0,
+                  grade: "At Risk" as any,
+                  status: "Blocked" as any,
+                  metrics: {
+                    safetyScore: 0,
+                    onTimeRate: 0,
+                    paperworkScore: 0,
+                    loadCount: 0,
                   },
-                } as any;
-              }
-            }),
-          );
-          setOperators(enrichedOperators);
+                },
+              } as any;
+            }
+          }),
+        );
+        setOperators(enrichedOperators);
 
-          // Fetch Equipment
-          const equips = await getEquipment(user.companyId);
-          setFleetEquipment(equips);
-        }
-      } catch (error) {
-        showFeedback("Logic Sync Interrupted. Re-establishing connection...");
+        // Fetch Equipment
+        const equips = await getEquipment(user.companyId);
+        setFleetEquipment(equips);
       }
-    };
-    loadPayload();
+    } catch (error) {
+      setLoadError("Failed to load safety data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    loadPayload();
+  }, [loadPayload]);
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading safety data"
+        className="h-full flex flex-col bg-[#020617] text-slate-100 p-10"
+      >
+        <LoadingSkeleton variant="card" count={4} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-full flex flex-col bg-[#020617] text-slate-100">
+        <ErrorState message={loadError} onRetry={loadPayload} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100">
