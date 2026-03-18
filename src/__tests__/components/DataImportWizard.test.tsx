@@ -111,10 +111,9 @@ describe("DataImportWizard", () => {
       const svg = b.querySelector("svg");
       return svg && b.closest(".border-b");
     });
-    if (xBtn) {
-      await user.click(xBtn);
-      expect(onClose).toHaveBeenCalledTimes(1);
-    }
+    expect(xBtn).toBeDefined();
+    await user.click(xBtn!);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 
   it("advances to mapping step after CSV file upload", async () => {
@@ -224,9 +223,8 @@ describe("DataImportWizard", () => {
     // Find the first select dropdown and set a mapping
     const selects = document.querySelectorAll("select");
     // First select is for the first target field
-    if (selects.length > 0) {
-      await user.selectOptions(selects[0], "date");
-    }
+    expect(selects.length).toBeGreaterThan(0);
+    await user.selectOptions(selects[0], "date");
 
     const dryRunBtn = screen.getByText("Run Integrity Check");
     expect(dryRunBtn.closest("button")).not.toBeDisabled();
