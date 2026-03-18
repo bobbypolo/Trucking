@@ -437,7 +437,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/storage/ src/__tests__/services/storageService.test.ts src/__tests__/services/storageService.deep.test.ts src/__tests__/components/DataMigrationBanner.test.tsx"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
