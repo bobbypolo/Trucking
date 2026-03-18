@@ -138,6 +138,7 @@ import {
   getAuthHeaders,
   getCurrentUser,
   getStoredUsers,
+  getStoredCompanies,
   getEffectivePermissions,
   checkPermission,
   checkCapability,
@@ -152,11 +153,7 @@ import {
   CAPABILITY_PRESETS,
 } from "../../../services/authService";
 
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  getIdToken,
-} from "firebase/auth";
+import { signInWithEmailAndPassword, signOut, getIdToken } from "firebase/auth";
 
 describe("authService", () => {
   let localStorageMock: Record<string, string>;
@@ -228,11 +225,57 @@ describe("authService", () => {
     });
   });
 
+  // ─── getStoredCompanies (R-P1-33, R-P1-34, R-P1-35) ─────────────────
+  describe("getStoredCompanies", () => {
+    it("returns an array from in-memory cache (not localStorage)", () => {
+      const result = getStoredCompanies();
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it("reflects companies added via updateCompany", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      await updateCompany({ id: "gsc-reflect-1", name: "Cache Co" } as any);
+
+      const companies = getStoredCompanies();
+      const found = companies.find((c) => c.id === "gsc-reflect-1");
+      expect(found).toBeDefined();
+      expect(found!.name).toBe("Cache Co");
+    });
+
+    it("does not read from localStorage (COMPANIES_KEY removed)", () => {
+      const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
+      getStoredCompanies();
+      const lsCalls = getItemSpy.mock.calls.filter(([key]) =>
+        key.includes("companies"),
+      );
+      expect(lsCalls.length).toBe(0);
+    });
+
+    it("getCompany uses API-first then falls back to in-memory cache", async () => {
+      // Seed cache
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      await updateCompany({
+        id: "gsc-api-fallback-1",
+        name: "Cached Value",
+      } as any);
+
+      // API fails -> returns from in-memory cache
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      const fromCache = await getCompany("gsc-api-fallback-1");
+      expect(fromCache).toEqual({
+        id: "gsc-api-fallback-1",
+        name: "Cached Value",
+      });
+    });
+  });
+
   // ─── PERMISSION_PRESETS ──────────────────────────────────────────────
   describe("PERMISSION_PRESETS", () => {
     it("has presets for ORG_OWNER_SUPER_ADMIN", () => {
       expect(PERMISSION_PRESETS.ORG_OWNER_SUPER_ADMIN).toBeDefined();
-      expect(PERMISSION_PRESETS.ORG_OWNER_SUPER_ADMIN!.length).toBeGreaterThan(0);
+      expect(PERMISSION_PRESETS.ORG_OWNER_SUPER_ADMIN!.length).toBeGreaterThan(
+        0,
+      );
     });
 
     it("ORG_OWNER_SUPER_ADMIN includes all critical permissions", () => {
@@ -291,26 +334,42 @@ describe("authService", () => {
 
     it("Small Team admin has full quote capabilities", () => {
       const caps = CAPABILITY_PRESETS["Small Team"].admin;
-      expect(caps.some((c) => c.capability === "QUOTE_CREATE" && c.level === "Allow")).toBe(true);
-      expect(caps.some((c) => c.capability === "QUOTE_VIEW_MARGIN" && c.level === "Allow")).toBe(true);
+      expect(
+        caps.some(
+          (c) => c.capability === "QUOTE_CREATE" && c.level === "Allow",
+        ),
+      ).toBe(true);
+      expect(
+        caps.some(
+          (c) => c.capability === "QUOTE_VIEW_MARGIN" && c.level === "Allow",
+        ),
+      ).toBe(true);
     });
 
     it("Enterprise DISPATCHER has LOAD_TRACK but no quote creation", () => {
       const caps = CAPABILITY_PRESETS["Enterprise"].DISPATCHER;
-      expect(caps.some((c) => c.capability === "LOAD_TRACK" && c.level === "Allow")).toBe(true);
+      expect(
+        caps.some((c) => c.capability === "LOAD_TRACK" && c.level === "Allow"),
+      ).toBe(true);
       expect(caps.find((c) => c.capability === "QUOTE_CREATE")).toBeUndefined();
     });
 
     it("Split Roles DISPATCHER explicitly denies QUOTE_CREATE", () => {
       const caps = CAPABILITY_PRESETS["Split Roles"].DISPATCHER;
-      expect(caps.some((c) => c.capability === "QUOTE_CREATE" && c.level === "Deny")).toBe(true);
+      expect(
+        caps.some((c) => c.capability === "QUOTE_CREATE" && c.level === "Deny"),
+      ).toBe(true);
     });
   });
 
   // ─── getEffectivePermissions ─────────────────────────────────────────
   describe("getEffectivePermissions", () => {
     it("returns preset-based permissions for ORG_OWNER_SUPER_ADMIN role", () => {
-      const user = { id: "u1", role: "ORG_OWNER_SUPER_ADMIN", companyId: "c1" } as any;
+      const user = {
+        id: "u1",
+        role: "ORG_OWNER_SUPER_ADMIN",
+        companyId: "c1",
+      } as any;
       const perms = getEffectivePermissions(user);
       expect(perms.permissions).toBeDefined();
       expect(perms.permissions!.length).toBeGreaterThan(0);
@@ -344,7 +403,11 @@ describe("authService", () => {
     });
 
     it("returns payroll_manager permissions", () => {
-      const user = { id: "u5", role: "payroll_manager", companyId: "c1" } as any;
+      const user = {
+        id: "u5",
+        role: "payroll_manager",
+        companyId: "c1",
+      } as any;
       const perms = getEffectivePermissions(user);
       expect(perms.viewSettlements).toBe(true);
       expect(perms.manageDrivers).toBe(true);
@@ -406,7 +469,11 @@ describe("authService", () => {
   // ─── checkPermission ─────────────────────────────────────────────────
   describe("checkPermission", () => {
     it("returns true when user role has the permission", () => {
-      const user = { id: "u1", role: "ORG_OWNER_SUPER_ADMIN", companyId: "c1" } as any;
+      const user = {
+        id: "u1",
+        role: "ORG_OWNER_SUPER_ADMIN",
+        companyId: "c1",
+      } as any;
       expect(checkPermission(user, "LOAD_CREATE")).toBe(true);
     });
 
@@ -434,7 +501,11 @@ describe("authService", () => {
     });
 
     it("ORG_OWNER_SUPER_ADMIN always returns true", () => {
-      const user = { id: "u2", role: "ORG_OWNER_SUPER_ADMIN", companyId: "c1" } as any;
+      const user = {
+        id: "u2",
+        role: "ORG_OWNER_SUPER_ADMIN",
+        companyId: "c1",
+      } as any;
       expect(checkCapability(user, "QUOTE_CREATE")).toBe(true);
     });
 
@@ -524,7 +595,9 @@ describe("authService", () => {
           OPS: [{ capability: "QUOTE_CREATE", level: "Allow" }],
         },
       } as any;
-      expect(checkCapability(user, "QUOTE_CREATE", undefined, company)).toBe(true);
+      expect(checkCapability(user, "QUOTE_CREATE", undefined, company)).toBe(
+        true,
+      );
     });
 
     it("dispatchers get LOAD_TRACK by fallback", () => {
@@ -544,7 +617,9 @@ describe("authService", () => {
 
     it("returns false for unknown capability with no overrides", () => {
       const user = { id: "u14", role: "driver", companyId: "c1" } as any;
-      expect(checkCapability(user, "NONEXISTENT_CAPABILITY" as any)).toBe(false);
+      expect(checkCapability(user, "NONEXISTENT_CAPABILITY" as any)).toBe(
+        false,
+      );
     });
 
     it("Scoped level returns true", () => {
@@ -552,9 +627,7 @@ describe("authService", () => {
         id: "u15",
         role: "dispatcher",
         companyId: "c1",
-        assignedCapabilities: [
-          { capability: "QUOTE_CREATE", level: "Scoped" },
-        ],
+        assignedCapabilities: [{ capability: "QUOTE_CREATE", level: "Scoped" }],
       } as any;
       expect(checkCapability(user, "QUOTE_CREATE")).toBe(true);
     });
@@ -658,7 +731,9 @@ describe("authService", () => {
     });
 
     it("falls back gracefully when API call fails", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(
+        new Error("Network error"),
+      );
 
       const user = {
         id: "u2",
@@ -675,39 +750,50 @@ describe("authService", () => {
 
   // ─── updateCompany ───────────────────────────────────────────────────
   describe("updateCompany", () => {
-    it("stores company in localStorage on new entry", async () => {
+    it("stores company in in-memory cache on new entry", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
       } as any);
 
       const company = {
-        id: "c1",
+        id: "uc-new-1",
         name: "Test Corp",
         accountType: "carrier",
       } as any;
 
       await updateCompany(company);
 
-      const stored = JSON.parse(
-        localStorageMock["loadpilot_companies_v1"] || "[]",
-      );
-      expect(stored.length).toBe(1);
-      expect(stored[0].name).toBe("Test Corp");
+      const cached = getStoredCompanies();
+      const found = cached.find((c) => c.id === "uc-new-1");
+      expect(found).toBeDefined();
+      expect(found!.name).toBe("Test Corp");
     });
 
-    it("updates existing company in localStorage", async () => {
+    it("updates existing company in in-memory cache", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
 
-      localStorageMock["loadpilot_companies_v1"] = JSON.stringify([
-        { id: "c1", name: "Old Name" },
-      ]);
+      const original = { id: "uc-existing-1", name: "Old Name" } as any;
+      await updateCompany(original);
 
-      const company = { id: "c1", name: "New Name" } as any;
+      const company = { id: "uc-existing-1", name: "New Name" } as any;
       await updateCompany(company);
 
-      const stored = JSON.parse(localStorageMock["loadpilot_companies_v1"]);
-      expect(stored.length).toBe(1);
-      expect(stored[0].name).toBe("New Name");
+      const cached = getStoredCompanies();
+      const found = cached.find((c) => c.id === "uc-existing-1");
+      expect(found).toBeDefined();
+      expect(found!.name).toBe("New Name");
+    });
+
+    it("does not write to localStorage", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+
+      await updateCompany({ id: "uc-nols-1", name: "No-LS Corp" } as any);
+
+      const lsCalls = setItemSpy.mock.calls.filter(([key]) =>
+        key.includes("companies"),
+      );
+      expect(lsCalls.length).toBe(0);
     });
   });
 
@@ -724,22 +810,26 @@ describe("authService", () => {
       expect(result).toEqual(mockCompany);
     });
 
-    it("falls back to localStorage when API fails", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
+    it("falls back to in-memory cache when API fails", async () => {
+      // Seed the in-memory cache via updateCompany
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      await updateCompany({ id: "gc-fallback-1", name: "Cached Corp" } as any);
 
-      localStorageMock["loadpilot_companies_v1"] = JSON.stringify([
-        { id: "c1", name: "Local Corp" },
-      ]);
+      // Now fail the API
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(
+        new Error("Network error"),
+      );
 
-      const result = await getCompany("c1");
-      expect(result).toEqual({ id: "c1", name: "Local Corp" });
+      const result = await getCompany("gc-fallback-1");
+      expect(result).toEqual({ id: "gc-fallback-1", name: "Cached Corp" });
     });
 
-    it("returns undefined when company not found", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-      localStorageMock["loadpilot_companies_v1"] = JSON.stringify([]);
+    it("returns undefined when company not found in cache", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(
+        new Error("Network error"),
+      );
 
-      const result = await getCompany("nonexistent");
+      const result = await getCompany("gc-nonexistent-xyz");
       expect(result).toBeUndefined();
     });
   });
@@ -925,7 +1015,10 @@ describe("authService", () => {
         "Full Suite",
       );
 
-      expect(result.company.supportedFreightTypes).toEqual(["Intermodal", "Flatbed"]);
+      expect(result.company.supportedFreightTypes).toEqual([
+        "Intermodal",
+        "Flatbed",
+      ]);
       expect(result.company.defaultFreightType).toBe("Flatbed");
       expect(result.company.subscriptionTier).toBe("Full Suite");
       expect(result.company.maxUsers).toBe(50);
@@ -994,7 +1087,11 @@ describe("authService", () => {
   // ─── FLEET_OO_ADMIN_PORTAL permissions ───────────────────────────────
   describe("getEffectivePermissions — FLEET_OO_ADMIN_PORTAL", () => {
     it("returns FLEET_OO_ADMIN_PORTAL permissions", () => {
-      const user = { id: "u", role: "FLEET_OO_ADMIN_PORTAL", companyId: "c1" } as any;
+      const user = {
+        id: "u",
+        role: "FLEET_OO_ADMIN_PORTAL",
+        companyId: "c1",
+      } as any;
       const perms = getEffectivePermissions(user);
       expect(perms.viewSettlements).toBe(true);
       expect(perms.viewSafety).toBe(true);
@@ -1082,7 +1179,15 @@ describe("authService", () => {
 
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({ user: { id: "u99", email: "test@test.com", role: "admin", companyId: "c1" } }),
+        json: () =>
+          Promise.resolve({
+            user: {
+              id: "u99",
+              email: "test@test.com",
+              role: "admin",
+              companyId: "c1",
+            },
+          }),
       } as any);
 
       const { login: loginFn } = await import("../../../services/authService");
@@ -1090,7 +1195,13 @@ describe("authService", () => {
 
       // Now update that same user
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
-      await updateUser({ id: "u99", email: "test@test.com", role: "admin", companyId: "c1", name: "Updated Name" } as any);
+      await updateUser({
+        id: "u99",
+        email: "test@test.com",
+        role: "admin",
+        companyId: "c1",
+        name: "Updated Name",
+      } as any);
 
       // getCurrentUser should reflect the update
       const current = getCurrentUser();
@@ -1115,12 +1226,16 @@ describe("authService", () => {
 
     it("has presets for PAYROLL_SETTLEMENTS", () => {
       expect(PERMISSION_PRESETS.PAYROLL_SETTLEMENTS).toBeDefined();
-      expect(PERMISSION_PRESETS.PAYROLL_SETTLEMENTS).toContain("SETTLEMENT_VIEW");
+      expect(PERMISSION_PRESETS.PAYROLL_SETTLEMENTS).toContain(
+        "SETTLEMENT_VIEW",
+      );
     });
 
     it("has presets for MAINTENANCE_MANAGER", () => {
       expect(PERMISSION_PRESETS.MAINTENANCE_MANAGER).toBeDefined();
-      expect(PERMISSION_PRESETS.MAINTENANCE_MANAGER).toContain("MAINT_TICKET_EDIT");
+      expect(PERMISSION_PRESETS.MAINTENANCE_MANAGER).toContain(
+        "MAINT_TICKET_EDIT",
+      );
     });
 
     it("has presets for SAFETY_MAINT (fused)", () => {
@@ -1140,7 +1255,11 @@ describe("authService", () => {
     });
 
     it("SAFETY_COMPLIANCE returns preset permissions", () => {
-      const user = { id: "u", role: "SAFETY_COMPLIANCE", companyId: "c1" } as any;
+      const user = {
+        id: "u",
+        role: "SAFETY_COMPLIANCE",
+        companyId: "c1",
+      } as any;
       const perms = getEffectivePermissions(user);
       expect(perms.viewSafety).toBe(true);
     });
