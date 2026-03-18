@@ -59,7 +59,10 @@
       "module",
       "integration",
       "e2e"
-    ]
+    ],
+    "scope_enforcement_enabled": true,
+    "plan_identifier_check_enabled": true,
+    "r_marker_content_validation": "warn"
   },
   "test_quality": {
     "min_assertions_per_test": 1,
@@ -77,9 +80,9 @@
   },
   "external_scanners": {
     "bandit": {
-      "cmd": "bandit -r .claude/hooks -f json -q --skip B101,B110,B404,B603,B607,B105 --exclude .claude/hooks/tests",
+      "cmd": "bandit -r {changed_dir} -f json -q --skip B101 --exclude '*/tests/*' --exit-zero",
       "enabled": true,
-      "strict_mode": false
+      "strict_mode": true
     },
     "semgrep": {
       "cmd": "semgrep --config=auto {changed_dir} --json -q",
@@ -161,7 +164,8 @@
   },
   "ralph": {
     "circuit_breaker_threshold": 3,
-    "drift_threshold": 3
+    "drift_threshold": 3,
+    "cumulative_drift_threshold": 10
   },
   "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",
   "complexity": {

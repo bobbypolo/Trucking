@@ -6,7 +6,7 @@
   "stories": [
     {
       "id": "STORY-101",
-      "description": "Backend \u00e2\u20ac\u201d Safety Domain API Routes: Create new Express route module server/routes/safety.ts with CRUD endpoints for all 6 safety sub-domains. Create migration 024_safety_domain.sql.",
+      "description": "Backend â€” Safety Domain API Routes: Create new Express route module server/routes/safety.ts with CRUD endpoints for all 6 safety sub-domains. Create migration 024_safety_domain.sql.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "server/routes/safety.ts",
@@ -69,7 +69,7 @@
     },
     {
       "id": "STORY-102",
-      "description": "Backend \u00e2\u20ac\u201d Vault Documents API Route: Create server/routes/vault-docs.ts with CRUD + file upload via Multer. Reuse document.service.ts StorageAdapter pattern. Create migration 025_vault_docs.sql.",
+      "description": "Backend â€” Vault Documents API Route: Create server/routes/vault-docs.ts with CRUD + file upload via Multer. Reuse document.service.ts StorageAdapter pattern. Create migration 025_vault_docs.sql.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "server/routes/vault-docs.ts",
@@ -112,7 +112,7 @@
     },
     {
       "id": "STORY-103",
-      "description": "Backend \u00e2\u20ac\u201d Notification Jobs API Route: Create server/routes/notification-jobs.ts with GET/POST. Create migration 026_notification_jobs.sql.",
+      "description": "Backend â€” Notification Jobs API Route: Create server/routes/notification-jobs.ts with GET/POST. Create migration 026_notification_jobs.sql.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "server/routes/notification-jobs.ts",
@@ -150,7 +150,7 @@
     },
     {
       "id": "STORY-104",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate safetyService to API: Rewrite services/safetyService.ts to fetch from /api/safety/* endpoints. Remove all 6 localStorage key constants and all localStorage.getItem/setItem calls. Replace safeParse() with async API fetches.",
+      "description": "Frontend â€” Migrate safetyService to API: Rewrite services/safetyService.ts to fetch from /api/safety/* endpoints. Remove all 6 localStorage key constants and all localStorage.getItem/setItem calls. Replace safeParse() with async API fetches.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/safetyService.ts",
@@ -199,7 +199,7 @@
     },
     {
       "id": "STORY-105",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate vault.ts to API: Rewrite services/storage/vault.ts to use /api/vault-docs endpoints.",
+      "description": "Frontend â€” Migrate vault.ts to API: Rewrite services/storage/vault.ts to use /api/vault-docs endpoints.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/storage/vault.ts",
@@ -238,7 +238,7 @@
     },
     {
       "id": "STORY-106",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate notifications.ts to API: Rewrite services/storage/notifications.ts to use /api/notification-jobs endpoints. Remove dual-write pattern.",
+      "description": "Frontend â€” Migrate notifications.ts to API: Rewrite services/storage/notifications.ts to use /api/notification-jobs endpoints. Remove dual-write pattern.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/storage/notifications.ts",
@@ -277,12 +277,14 @@
     },
     {
       "id": "STORY-107",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate incidents localStorage to API-only: Remove all localStorage.getItem/setItem calls from services/storageService.ts incident functions. The /api/incidents route already exists \u00e2\u20ac\u201d make it the sole source of truth.",
+      "description": "Frontend â€” Migrate incidents localStorage to API-only: Remove all localStorage.getItem/setItem calls from services/storageService.ts incident functions. The /api/incidents route already exists â€” make it the sole source of truth.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/storageService.ts",
       "scope": [
-        "services/storageService.ts"
+        "services/storageService.ts",
+        "src/__tests__/services",
+        ".claude/hooks/tests"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -308,17 +310,18 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/storageService.test"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
       "id": "STORY-108",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate brokerService localStorage to API-only: Remove getRawBrokers localStorage fallback from services/brokerService.ts. The /api/clients route already handles broker CRUD.",
+      "description": "Frontend â€” Migrate brokerService localStorage to API-only: Remove getRawBrokers localStorage fallback from services/brokerService.ts. The /api/clients route already handles broker CRUD.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/brokerService.ts",
       "scope": [
-        "services/brokerService.ts"
+        "services",
+        "src/__tests__/services"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -344,17 +347,18 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/brokerService.test"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": ".claude/runtime/receipts/STORY-108/attempt-1/qa-receipt.json"
     },
     {
       "id": "STORY-109",
-      "description": "Frontend \u00e2\u20ac\u201d Migrate authService companies localStorage to API-only: Remove COMPANIES_KEY and safeParseCompanies() localStorage usage from services/authService.ts. The /api/companies/:id route exists.",
+      "description": "Frontend â€” Migrate authService companies localStorage to API-only: Remove COMPANIES_KEY and safeParseCompanies() localStorage usage from services/authService.ts. The /api/companies/:id route exists.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "services/authService.ts",
       "scope": [
-        "services/authService.ts"
+        "services/authService.ts",
+        "src/__tests__/services/authService.test.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -380,7 +384,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/authService.test"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -430,7 +434,7 @@
     },
     {
       "id": "STORY-111",
-      "description": "Strip DEMO_MODE from React Components: Remove all DEMO_MODE imports and conditional blocks from SafetyView.tsx, Settlements.tsx, and App.tsx. The service layer handles all branching \u00e2\u20ac\u201d the UI renders what it receives.",
+      "description": "Strip DEMO_MODE from React Components: Remove all DEMO_MODE imports and conditional blocks from SafetyView.tsx, Settlements.tsx, and App.tsx. The service layer handles all branching â€” the UI renders what it receives.",
       "phase": 1,
       "phase_type": "persistence",
       "component": "components/SafetyView.tsx",
@@ -541,12 +545,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P1-49",
-          "criterion": "npx vitest run \u00e2\u20ac\u201d all frontend tests pass (>= 3,070 baseline)",
+          "criterion": "npx vitest run â€” all frontend tests pass (>= 3,070 baseline)",
           "testType": "unit"
         },
         {
           "id": "R-P1-50",
-          "criterion": "cd server && npx vitest run \u00e2\u20ac\u201d all backend tests pass (>= 1,792 baseline)",
+          "criterion": "cd server && npx vitest run â€” all backend tests pass (>= 1,792 baseline)",
           "testType": "unit"
         },
         {
@@ -566,7 +570,7 @@
         },
         {
           "id": "R-P1-54",
-          "criterion": "Playwright MCP: Navigate to Dashboard, Safety, Settlements, Broker Network, FileVault \u00e2\u20ac\u201d all load data from server, no localStorage artifacts in Application tab",
+          "criterion": "Playwright MCP: Navigate to Dashboard, Safety, Settlements, Broker Network, FileVault â€” all load data from server, no localStorage artifacts in Application tab",
           "testType": "unit"
         }
       ],
@@ -723,7 +727,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P2-12",
-          "criterion": "npx vitest run \u00e2\u20ac\u201d all frontend tests pass (>= 3,070 baseline)",
+          "criterion": "npx vitest run â€” all frontend tests pass (>= 3,070 baseline)",
           "testType": "unit"
         },
         {
@@ -733,12 +737,12 @@
         },
         {
           "id": "R-P2-14",
-          "criterion": "Playwright MCP: Navigate to Auth signup, leave email blank, submit \u00e2\u20ac\u201d validation error visible",
+          "criterion": "Playwright MCP: Navigate to Auth signup, leave email blank, submit â€” validation error visible",
           "testType": "unit"
         },
         {
           "id": "R-P2-15",
-          "criterion": "Playwright MCP: Navigate to AccountingPortal \u00e2\u20ac\u201d skeleton appears before data loads",
+          "criterion": "Playwright MCP: Navigate to AccountingPortal â€” skeleton appears before data loads",
           "testType": "unit"
         }
       ],
@@ -875,12 +879,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P3-13",
-          "criterion": "npx vitest run \u00e2\u20ac\u201d all frontend tests pass",
+          "criterion": "npx vitest run â€” all frontend tests pass",
           "testType": "unit"
         },
         {
           "id": "R-P3-14",
-          "criterion": "cd server && npx vitest run \u00e2\u20ac\u201d all backend tests pass",
+          "criterion": "cd server && npx vitest run â€” all backend tests pass",
           "testType": "unit"
         },
         {
@@ -907,7 +911,7 @@
     },
     {
       "id": "STORY-401",
-      "description": "Fix TypeScript Errors \u00e2\u20ac\u201d Test Files (Batch 1: services): Fix TypeScript errors in src/__tests__/services/*.test.ts files. Primary issues: incorrect mock type definitions, missing type annotations on vi.fn() return values, incorrect parameter types for mocked functions.",
+      "description": "Fix TypeScript Errors â€” Test Files (Batch 1: services): Fix TypeScript errors in src/__tests__/services/*.test.ts files. Primary issues: incorrect mock type definitions, missing type annotations on vi.fn() return values, incorrect parameter types for mocked functions.",
       "phase": 4,
       "phase_type": "hardening",
       "component": "src/__tests__/services",
@@ -945,7 +949,7 @@
     },
     {
       "id": "STORY-402",
-      "description": "Fix TypeScript Errors \u00e2\u20ac\u201d Test Files (Batch 2: components): Fix TypeScript errors in src/__tests__/components/*.test.tsx files.",
+      "description": "Fix TypeScript Errors â€” Test Files (Batch 2: components): Fix TypeScript errors in src/__tests__/components/*.test.tsx files.",
       "phase": 4,
       "phase_type": "hardening",
       "component": "src/__tests__/components",
@@ -983,7 +987,7 @@
     },
     {
       "id": "STORY-403",
-      "description": "Fix TypeScript Error \u00e2\u20ac\u201d vite.config.ts: Fix the allowedHosts: true type error in vite.config.ts. The type expects true | string[] but TypeScript infers boolean.",
+      "description": "Fix TypeScript Error â€” vite.config.ts: Fix the allowedHosts: true type error in vite.config.ts. The type expects true | string[] but TypeScript infers boolean.",
       "phase": 4,
       "phase_type": "hardening",
       "component": "vite.config.ts",
@@ -1011,7 +1015,7 @@
     },
     {
       "id": "STORY-404",
-      "description": "Forbidden Pattern CI Guard \u00e2\u20ac\u201d localStorage Regression: Extend server/__tests__/integration/forbidden-patterns.test.ts to scan for localStorage-as-SoR regressions in services (excluding test files, config, and auth token reads).",
+      "description": "Forbidden Pattern CI Guard â€” localStorage Regression: Extend server/__tests__/integration/forbidden-patterns.test.ts to scan for localStorage-as-SoR regressions in services (excluding test files, config, and auth token reads).",
       "phase": 4,
       "phase_type": "hardening",
       "component": "server/__tests__/integration/forbidden-patterns.test.ts",
@@ -1049,7 +1053,7 @@
     },
     {
       "id": "STORY-405",
-      "description": "Bundle Splitting \u00e2\u20ac\u201d Reduce Chunk Sizes: Optimize bundle splitting in vite.config.ts. Convert LoadList, Intelligence, Settlements, CommandCenterView and other eager heavy components to React.lazy. Target: no single route chunk > 250KB uncompressed.",
+      "description": "Bundle Splitting â€” Reduce Chunk Sizes: Optimize bundle splitting in vite.config.ts. Convert LoadList, Intelligence, Settlements, CommandCenterView and other eager heavy components to React.lazy. Target: no single route chunk > 250KB uncompressed.",
       "phase": 4,
       "phase_type": "hardening",
       "component": "App.tsx",
@@ -1121,12 +1125,12 @@
         },
         {
           "id": "R-P4-17",
-          "criterion": "npx vitest run \u00e2\u20ac\u201d all frontend tests pass",
+          "criterion": "npx vitest run â€” all frontend tests pass",
           "testType": "unit"
         },
         {
           "id": "R-P4-18",
-          "criterion": "cd server && npx vitest run \u00e2\u20ac\u201d all backend tests pass",
+          "criterion": "cd server && npx vitest run â€” all backend tests pass",
           "testType": "unit"
         },
         {
@@ -1136,7 +1140,7 @@
         },
         {
           "id": "R-P4-20",
-          "criterion": "Playwright MCP: Full navigation sweep \u00e2\u20ac\u201d Dashboard, Load Board, Accounting, Safety, Settlements, Broker Network, FileVault \u00e2\u20ac\u201d all render",
+          "criterion": "Playwright MCP: Full navigation sweep â€” Dashboard, Load Board, Accounting, Safety, Settlements, Broker Network, FileVault â€” all render",
           "testType": "unit"
         }
       ],
@@ -1209,27 +1213,27 @@
       "acceptanceCriteria": [
         {
           "id": "R-P5-05",
-          "criterion": "cd server && npx vitest run \u00e2\u20ac\u201d tests >= 1,792 baseline, all passing",
+          "criterion": "cd server && npx vitest run â€” tests >= 1,792 baseline, all passing",
           "testType": "unit"
         },
         {
           "id": "R-P5-06",
-          "criterion": "npx vitest run \u00e2\u20ac\u201d tests >= 3,070 baseline, all passing",
+          "criterion": "npx vitest run â€” tests >= 3,070 baseline, all passing",
           "testType": "unit"
         },
         {
           "id": "R-P5-07",
-          "criterion": "npx tsc --noEmit \u00e2\u20ac\u201d 0 errors (frontend)",
+          "criterion": "npx tsc --noEmit â€” 0 errors (frontend)",
           "testType": "typecheck"
         },
         {
           "id": "R-P5-08",
-          "criterion": "cd server && npx tsc --noEmit \u00e2\u20ac\u201d 0 errors (backend)",
+          "criterion": "cd server && npx tsc --noEmit â€” 0 errors (backend)",
           "testType": "typecheck"
         },
         {
           "id": "R-P5-09",
-          "criterion": "npm run build \u00e2\u20ac\u201d succeeds, no warnings",
+          "criterion": "npm run build â€” succeeds, no warnings",
           "testType": "build"
         },
         {
@@ -1277,7 +1281,7 @@
         },
         {
           "id": "R-P5-14",
-          "criterion": "Playwright MCP: Navigate all 15 pages \u00e2\u20ac\u201d Dashboard, Load Board, Calendar, Dispatch Timeline, Accounting, Safety, Settlements, Broker Network, FileVault, Scanner, Intelligence, Operations Center, Analytics, Driver Mobile, Booking Portal \u00e2\u20ac\u201d all render without errors",
+          "criterion": "Playwright MCP: Navigate all 15 pages â€” Dashboard, Load Board, Calendar, Dispatch Timeline, Accounting, Safety, Settlements, Broker Network, FileVault, Scanner, Intelligence, Operations Center, Analytics, Driver Mobile, Booking Portal â€” all render without errors",
           "testType": "unit"
         },
         {
