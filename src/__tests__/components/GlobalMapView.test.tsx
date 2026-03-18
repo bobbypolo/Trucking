@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { GlobalMapView } from "../../../components/GlobalMapView";
 
 // Mock lucide-react icons
@@ -103,18 +104,22 @@ describe("GlobalMapView", () => {
     expect(screen.getByText("Available")).toBeInTheDocument();
   });
 
-  it("filters vehicles by search term (driver name)", () => {
+  it("filters vehicles by search term (driver name)", async () => {
+    const user = userEvent.setup();
     render(<GlobalMapView loads={mockLoads} users={mockUsers} />);
     const searchInput = screen.getByPlaceholderText(/SEARCH FLEET/i);
-    fireEvent.change(searchInput, { target: { value: "Tom" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "Tom");
     // Should show Tom's vehicle marker
     expect(screen.getByText("Tom Thompson")).toBeInTheDocument();
   });
 
-  it("filters vehicles by load number", () => {
+  it("filters vehicles by load number", async () => {
+    const user = userEvent.setup();
     render(<GlobalMapView loads={mockLoads} users={mockUsers} />);
     const searchInput = screen.getByPlaceholderText(/SEARCH FLEET/i);
-    fireEvent.change(searchInput, { target: { value: "LD-1000" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "LD-1000");
     expect(screen.getByText("Tom Thompson")).toBeInTheDocument();
   });
 
@@ -124,7 +129,8 @@ describe("GlobalMapView", () => {
     expect(screen.getByText("Elena Petrova")).toBeInTheDocument();
   });
 
-  it("toggles left panel collapse", () => {
+  it("toggles left panel collapse", async () => {
+    const user = userEvent.setup();
     render(<GlobalMapView loads={mockLoads} users={mockUsers} />);
     // Find the toggle button (ChevronRight icon wrapped in a button)
     const buttons = screen.getAllByRole("button");
@@ -132,13 +138,13 @@ describe("GlobalMapView", () => {
     const toggleBtn = buttons.find((btn) =>
       btn.className.includes("rounded-full"),
     );
-    if (toggleBtn) {
-      fireEvent.click(toggleBtn);
-      // After clicking, panel should collapse (translate applied)
-    }
+    expect(toggleBtn).toBeDefined();
+    await user.click(toggleBtn!);
+    // After clicking, panel should collapse (translate applied)
   });
 
-  it("calls onViewLoad when clicking vehicle without incident", () => {
+  it("calls onViewLoad when clicking vehicle without incident", async () => {
+    const user = userEvent.setup();
     const onViewLoad = vi.fn();
     render(
       <GlobalMapView
@@ -150,12 +156,12 @@ describe("GlobalMapView", () => {
     );
     // Find a vehicle marker (cursor-pointer elements)
     const markers = document.querySelectorAll(".cursor-pointer");
-    if (markers.length > 0) {
-      fireEvent.click(markers[0]);
-    }
+    expect(markers.length).toBeGreaterThan(0);
+    await user.click(markers[0] as HTMLElement);
   });
 
-  it("calls onSelectIncident when clicking vehicle with incident", () => {
+  it("calls onSelectIncident when clicking vehicle with incident", async () => {
+    const user = userEvent.setup();
     const onSelectIncident = vi.fn();
     render(
       <GlobalMapView
@@ -167,10 +173,9 @@ describe("GlobalMapView", () => {
     );
     // Find vehicle markers
     const markers = document.querySelectorAll(".cursor-pointer");
-    if (markers.length > 0) {
-      fireEvent.click(markers[0]);
-      // Should call onSelectIncident for the driver with incident
-    }
+    expect(markers.length).toBeGreaterThan(0);
+    await user.click(markers[0] as HTMLElement);
+    // Should call onSelectIncident for the driver with incident
   });
 
   it("renders with empty loads and users", () => {

@@ -3,7 +3,8 @@
  * Covers immutability constraints for posted settlements.
  */
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Settlements } from "../../../components/Settlements";
 import {
@@ -116,27 +117,24 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
 
   it("renders Settlements component without crashing", () => {
     const { container } = render(<Settlements {...defaultProps} />);
-    expect(container).toBeTruthy();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("displays driver name for payroll settlement view", () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText(/John Driver/i)).toBeTruthy();
+    expect(screen.getByText(/John Driver/i)).toBeInTheDocument();
   });
 
   it("renders Authorize & Pay button when driver panel is expanded", async () => {
+    const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
 
     // Click on driver row to expand it and show payment buttons
-    await waitFor(() => {
-      const driverRow = screen.getByText(/John Driver/i);
-      fireEvent.click(driverRow);
-    });
+    const driverRow = screen.getByText(/John Driver/i);
+    await user.click(driverRow);
 
     await waitFor(() => {
-      const html = document.body.innerHTML;
-      // After expanding, Authorize & Pay button should be visible
-      expect(html).toContain("Authorize");
+      expect(document.body.innerHTML).toContain("Authorize");
     });
   });
 
@@ -192,18 +190,15 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
   });
 
   it("renders Generate Statement button in expanded driver panel", async () => {
+    const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
 
     // Click on driver row to expand the panel
-    await waitFor(() => {
-      const driverRow = screen.getByText(/John Driver/i);
-      fireEvent.click(driverRow);
-    });
+    const driverRow = screen.getByText(/John Driver/i);
+    await user.click(driverRow);
 
     await waitFor(() => {
-      const html = document.body.innerHTML;
-      // After expanding, Generate Statement button should be visible
-      expect(html).toContain("Generate Statement");
+      expect(document.body.innerHTML).toContain("Generate Statement");
     });
   });
 
@@ -218,7 +213,7 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
           b.textContent?.includes("Loss") ||
           b.textContent?.includes("Payroll"),
       );
-      expect(pnlButton).toBeTruthy();
+      expect(pnlButton).toBeDefined();
     });
   });
 
@@ -226,14 +221,14 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     const { container } = render(
       <Settlements {...defaultProps} isDashboardMode={true} />,
     );
-    expect(container).toBeTruthy();
+    expect(container.firstChild).toBeInTheDocument();
   });
 
   it("empty loads shows no payroll entries", async () => {
-    render(<Settlements loads={[]} users={[driverUser]} />);
+    const { container } = render(<Settlements loads={[]} users={[driverUser]} />);
     await waitFor(() => {
       // Component should render but show no loaded pay entries
-      expect(document.body).toBeTruthy();
+      expect(container).toBeInTheDocument();
     });
   });
 });
@@ -286,6 +281,7 @@ describe("Settlement Status Constants — immutability model (R-FS-06-04)", () =
 
 describe("Settlements — invoices tab (R-FS-06-04)", () => {
   it("renders invoices tab with delivered loads", async () => {
+    const user = userEvent.setup();
     render(
       <Settlements
         loads={[deliveredLoad, completedLoad]}
@@ -294,18 +290,16 @@ describe("Settlements — invoices tab (R-FS-06-04)", () => {
     );
 
     const buttons = screen.getAllByRole("button");
+    expect(buttons.length).toBeGreaterThan(0);
     // Switch to invoices tab
     const invoicesButton = buttons.find((b) =>
       b.textContent?.toLowerCase().includes("invoice"),
     );
     if (invoicesButton) {
-      fireEvent.click(invoicesButton);
+      await user.click(invoicesButton);
       await waitFor(() => {
-        expect(document.body).toBeTruthy();
+        expect(document.body.innerHTML.length).toBeGreaterThan(0);
       });
-    } else {
-      // Tab may not render until expanded — component still renders
-      expect(buttons.length).toBeGreaterThan(0);
     }
   });
 
