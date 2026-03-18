@@ -152,8 +152,6 @@ import {
   getUnresolvedRequests,
   getRawServiceTickets,
   saveServiceTicket,
-  getTenantKey,
-  migrateKey,
   getIncidents,
   saveIncident,
   getLoads,
@@ -296,12 +294,7 @@ describe("storageService deep coverage", () => {
     it("getRawServiceTickets", async () => {
       expect(Array.isArray(await getRawServiceTickets())).toBe(true);
     });
-    it("getTenantKey", () => {
-      expect(getTenantKey("test")).toContain("test");
-    });
-    it("migrateKey is function", () => {
-      expect(typeof migrateKey).toBe("function");
-    });
+
   });
 
   describe("saveIncident API-only (localStorage removed)", () => {

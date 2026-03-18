@@ -28,12 +28,6 @@ vi.mock("uuid", () => ({
 }));
 
 describe("storage/index.ts — barrel exports", () => {
-  it("re-exports core utilities", async () => {
-    const storage = await import("../../../../services/storage/index");
-    expect(storage.getTenantKey).toBeTypeOf("function");
-    expect(storage.migrateKey).toBeTypeOf("function");
-  });
-
   it("re-exports quotes domain", async () => {
     const storage = await import("../../../../services/storage/index");
     expect(storage.getQuotes).toBeTypeOf("function");

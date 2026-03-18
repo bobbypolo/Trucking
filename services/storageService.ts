@@ -70,7 +70,6 @@ import {
 
 // --- Re-export domain modules for backward compatibility ---
 // Consumers can import from storageService or directly from domain modules.
-export { getTenantKey, migrateKey } from "./storage/core";
 export { getQuotes, saveQuote } from "./storage/quotes";
 export { getLeads, saveLead } from "./storage/leads";
 export { getBookings, saveBooking } from "./storage/bookings";
