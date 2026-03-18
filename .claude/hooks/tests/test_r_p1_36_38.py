@@ -34,19 +34,33 @@ def test_r_p1_36_core_no_localstorage():
     )
 
 
-def test_r_p1_36_core_file_exists_or_deleted():
-    """R-P1-36 edge: core.ts should either not exist or exist as a no-op stub."""
+def test_r_p1_36_core_no_active_exports():
+    """R-P1-36 edge: core.ts must not export getTenantKey or migrateKey functions."""
     core_path = os.path.join(SERVICES_DIR, "storage", "core.ts")
-    if os.path.exists(core_path):
-        content = _read_file(core_path)
-        # Must not export getTenantKey or migrateKey functions
-        assert "export const getTenantKey" not in content, (
-            "core.ts still exports getTenantKey"
-        )
-        assert "export const migrateKey" not in content, (
-            "core.ts still exports migrateKey"
-        )
-    # else: file is deleted, which is fine
+    if not os.path.exists(core_path):
+        return  # deleted counts as passing
+    content = _read_file(core_path)
+    # Verify the deprecated functions are absent
+    bad_patterns = ["export const getTenantKey", "export const migrateKey"]
+    found = [p for p in bad_patterns if p in content]
+    assert found == [], "core.ts still exports deprecated functions: " + ", ".join(
+        found
+    )
+
+
+def test_r_p1_36_core_is_stub_or_empty():
+    """R-P1-36 negative: core.ts should be a stub (no functional logic)."""
+    core_path = os.path.join(SERVICES_DIR, "storage", "core.ts")
+    if not os.path.exists(core_path):
+        return
+    content = _read_file(core_path)
+    # Stub files have no function bodies with curly-brace logic
+    # A no-op file has <= 15 non-blank lines
+    non_blank_lines = [ln for ln in content.splitlines() if ln.strip()]
+    assert len(non_blank_lines) <= 15, (
+        f"core.ts has {len(non_blank_lines)} non-blank lines — expected stub (<= 15). "
+        "May still contain active logic."
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -69,14 +83,34 @@ def test_r_p1_37_migration_service_noop():
 
 
 def test_r_p1_37_migration_service_no_active_imports():
-    """R-P1-37 edge: migrationService.ts should not import from core (removed)."""
+    """R-P1-37 edge: migrationService.ts should not import from core (removed exports)."""
     path = os.path.join(SERVICES_DIR, "storage", "migrationService.ts")
     if not os.path.exists(path):
         return  # deleted counts as passing
     content = _read_file(path)
-    # Should not import from core since core is now a no-op stub with no exports
-    assert 'from "./core"' not in content, (
-        "migrationService.ts still imports from core.ts"
+    # core.ts is now a no-op stub with no exports — any import would fail at runtime
+    lines_with_core_import = [
+        ln for ln in content.splitlines() if 'from "./core"' in ln
+    ]
+    assert lines_with_core_import == [], (
+        "migrationService.ts still imports from core.ts (which has no exports): "
+        + str(lines_with_core_import)
+    )
+
+
+def test_r_p1_37_migration_service_exports_are_stubs():
+    """R-P1-37 negative: migrationService.ts must export stub functions (not live logic)."""
+    path = os.path.join(SERVICES_DIR, "storage", "migrationService.ts")
+    if not os.path.exists(path):
+        return
+    content = _read_file(path)
+    # Stub getLocalDataSummary must return empty array — check for return []
+    assert "return [];" in content, (
+        "migrationService.ts getLocalDataSummary must return empty array (no-op stub)"
+    )
+    # Stub isMigrationComplete must return true
+    assert "return true;" in content, (
+        "migrationService.ts isMigrationComplete must return true (migration complete)"
     )
 
 
@@ -116,4 +150,19 @@ def test_r_p1_38_storageservice_no_reexport():
     )
     assert "migrateKey" not in content, (
         "services/storageService.ts still re-exports migrateKey"
+    )
+
+
+def test_r_p1_38_index_barrel_no_reexport():
+    """R-P1-38 negative: storage/index.ts must not re-export getTenantKey or migrateKey."""
+    index_path = os.path.join(SERVICES_DIR, "storage", "index.ts")
+    if not os.path.exists(index_path):
+        return
+    content = _read_file(index_path)
+    # Negative check: these exports must be absent
+    assert "getTenantKey" not in content, (
+        "services/storage/index.ts still exports getTenantKey"
+    )
+    assert "migrateKey" not in content, (
+        "services/storage/index.ts still exports migrateKey"
     )
