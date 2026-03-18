@@ -365,6 +365,9 @@ export default function App() {
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     refreshData(loggedInUser);
+    if (features.seedSystem) {
+      seedDatabase();
+    }
 
     // Support Agile Workspace Entry
     if (loggedInUser.primaryWorkspace === "Quotes") {

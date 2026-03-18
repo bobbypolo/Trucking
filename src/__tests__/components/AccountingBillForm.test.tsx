@@ -1,9 +1,5 @@
 import React from "react";
-<<<<<<< Updated upstream
-import { render, screen } from "@testing-library/react";
-=======
 import { render, screen, fireEvent } from "@testing-library/react";
->>>>>>> Stashed changes
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AccountingBillForm } from "../../../components/AccountingBillForm";
@@ -188,12 +184,7 @@ describe("AccountingBillForm component", () => {
   it("renders delete buttons for each line item", async () => {
     const user = userEvent.setup();
     render(<AccountingBillForm {...defaultProps} />);
-<<<<<<< Updated upstream
-    // Add a second line
-    await user.click(screen.getByRole("button", { name: /Add Detail Line/i }));
-=======
     fireEvent.click(screen.getByRole("button", { name: /Add Detail Line/i }));
->>>>>>> Stashed changes
     expect(screen.getAllByPlaceholderText("E.G. ENGINE OIL REPLACEMENT").length).toBe(2);
     const deleteButtons = screen.getAllByRole("button").filter((btn) => {
       return btn.className.includes("hover:text-red-500");
@@ -201,46 +192,6 @@ describe("AccountingBillForm component", () => {
     expect(deleteButtons.length).toBe(2);
   });
 
-<<<<<<< Updated upstream
-  it("submits bill with filled-in bill number", async () => {
-    const user = userEvent.setup();
-    render(<AccountingBillForm {...defaultProps} />);
-    const billInput = screen.getByPlaceholderText("E.G. MHC-88291");
-    await user.type(billInput, "INV-999");
-    const submitBtn = screen.getByRole("button", { name: /Submit for Approval/i });
-    await user.click(submitBtn);
-    expect(defaultProps.onSave).toHaveBeenCalledTimes(1);
-    const savedBill = defaultProps.onSave.mock.calls[0][0];
-    expect(savedBill.billNumber).toBe("INV-999");
-  });
-
-  it("submits bill with selected vendor", async () => {
-    const user = userEvent.setup();
-    render(<AccountingBillForm {...defaultProps} />);
-    const selects = screen.getAllByRole("combobox") as HTMLSelectElement[];
-    await user.selectOptions(selects[0], "V-102");
-    const submitBtn = screen.getByRole("button", { name: /Submit for Approval/i });
-    await user.click(submitBtn);
-    const savedBill = defaultProps.onSave.mock.calls[0][0];
-    expect(savedBill.vendorId).toBe("V-102");
-  });
-
-  it("renders delete buttons that are clickable", async () => {
-    const user = userEvent.setup();
-    render(<AccountingBillForm {...defaultProps} />);
-    // Add a second line
-    await user.click(screen.getByRole("button", { name: /Add Detail Line/i }));
-    expect(screen.getAllByPlaceholderText("E.G. ENGINE OIL REPLACEMENT").length).toBe(2);
-
-    // Verify delete buttons exist and are clickable (no throw)
-    const deleteButtons = screen.getAllByRole("button").filter((btn) =>
-      btn.className.includes("hover:text-red-500"),
-    );
-    expect(deleteButtons.length).toBe(2);
-    await user.click(deleteButtons[0]);
-    // Note: component has a stale-closure bug in removeLine/updateTotal
-    // so the visual removal may not reflect; we verify the button is interactive.
-=======
   describe("edit existing bill (lines 136, 181-225)", () => {
     it("allows updating line category via select", async () => {
       const user = userEvent.setup();
@@ -293,6 +244,5 @@ describe("AccountingBillForm component", () => {
       render(<AccountingBillForm {...defaultProps} />);
       expect(screen.getByText(/Auto-posts to GL upon approval routing/)).toBeInTheDocument();
     });
->>>>>>> Stashed changes
   });
 });

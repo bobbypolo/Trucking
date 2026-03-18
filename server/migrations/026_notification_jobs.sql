@@ -19,3 +19,7 @@ CREATE TABLE IF NOT EXISTS notification_jobs (
   INDEX idx_notification_jobs_load (load_id),
   INDEX idx_notification_jobs_incident (incident_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- DOWN
+
+DROP TABLE IF EXISTS notification_jobs;

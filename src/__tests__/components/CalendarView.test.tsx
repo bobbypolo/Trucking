@@ -1,13 +1,7 @@
 import React from "react";
-<<<<<<< Updated upstream
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
-=======
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
->>>>>>> Stashed changes
 import { CalendarView } from "../../../components/CalendarView";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
@@ -75,11 +69,7 @@ const mockUsers: User[] = [
   },
 ];
 
-<<<<<<< Updated upstream
-// jsdom doesn't implement scrollTo — stub it globally
-=======
 // jsdom doesn't implement scrollTo - stub it globally
->>>>>>> Stashed changes
 beforeAll(() => {
   Element.prototype.scrollTo = vi.fn();
 });

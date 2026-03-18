@@ -1,9 +1,5 @@
 import React from "react";
-<<<<<<< Updated upstream
-import { render, screen, waitFor } from "@testing-library/react";
-=======
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
->>>>>>> Stashed changes
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommsOverlay } from "../../../components/CommsOverlay";
@@ -364,10 +360,6 @@ describe("CommsOverlay component", () => {
   describe("attach search", () => {
     it("shows search input when attach button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-<<<<<<< Updated upstream
-      // Find and click the link/attach button (LinkIcon) near "Primary Evidence"
-=======
->>>>>>> Stashed changes
       const evidenceText = screen.getByText("Primary Evidence");
       const container = evidenceText.closest("div.flex");
       expect(container).not.toBeNull();
