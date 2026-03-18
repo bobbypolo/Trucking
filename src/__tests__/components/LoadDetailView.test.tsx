@@ -127,8 +127,8 @@ describe("LoadDetailView component", () => {
 
   describe("rendering", () => {
     it("renders without crashing", () => {
-      const { container } = render(<LoadDetailView {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<LoadDetailView {...defaultProps} />);
+      expect(screen.getByText("LN-500")).toBeInTheDocument();
     });
 
     it("renders the manifest workspace header with load number", () => {
@@ -423,10 +423,10 @@ describe("LoadDetailView component", () => {
         pickup: { city: "", state: "" },
         dropoff: { city: "", state: "" },
       };
-      const { container } = render(
+      render(
         <LoadDetailView {...defaultProps} load={minimal} />,
       );
-      expect(container).toBeTruthy();
+      expect(screen.getByText("MIN-1")).toBeInTheDocument();
     });
   });
 });

@@ -14,8 +14,8 @@ describe("Scanner component", () => {
   });
 
   it("renders without crashing", () => {
-    const { container } = render(<Scanner {...defaultProps} />);
-    expect(container).toBeTruthy();
+    render(<Scanner {...defaultProps} />);
+    expect(screen.getByText(/Scan/i)).toBeInTheDocument();
   });
 
   it("renders a file upload input", () => {
@@ -26,16 +26,16 @@ describe("Scanner component", () => {
 
   it("renders in broker mode", () => {
     render(<Scanner {...defaultProps} mode="broker" />);
-    expect(screen.getByText(/Scan Broker Profile/i)).toBeTruthy();
+    expect(screen.getByText(/Scan Broker Profile/i)).toBeInTheDocument();
   });
 
   it("renders in equipment mode", () => {
     render(<Scanner {...defaultProps} mode="equipment" />);
-    expect(screen.getByText(/Scan Equipment/i)).toBeTruthy();
+    expect(screen.getByText(/Scan Equipment/i)).toBeInTheDocument();
   });
 
   it("renders in load mode by default", () => {
     render(<Scanner {...defaultProps} />);
-    expect(screen.getByText(/Scan/i)).toBeTruthy();
+    expect(screen.getByText(/Scan/i)).toBeInTheDocument();
   });
 });

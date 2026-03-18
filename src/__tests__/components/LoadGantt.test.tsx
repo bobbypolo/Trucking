@@ -21,8 +21,8 @@ const createLoad = (overrides: Partial<LoadData> = {}): LoadData => ({
 describe("LoadGantt component", () => {
   describe("rendering", () => {
     it("renders without crashing", () => {
-      const { container } = render(<LoadGantt loads={[]} />);
-      expect(container).toBeTruthy();
+      render(<LoadGantt loads={[]} />);
+      expect(screen.getByText("Operational Sequence")).toBeInTheDocument();
     });
 
     it("renders the header title", () => {
