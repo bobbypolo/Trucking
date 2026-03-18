@@ -586,7 +586,7 @@ export const getIncidents = async (): Promise<Incident[]> => {
     console.warn("[storageService] getIncidents API unavailable:", e);
   }
 
-  // API is sole source of truth — return empty on failure (no localStorage fallback)
+  // API is sole source of truth — return empty array on failure
   return [];
 };
 
