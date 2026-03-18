@@ -435,17 +435,31 @@ export const CompanyProfile: React.FC<Props> = ({
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
                       MC #
                     </label>
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
+                    <div
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black"
+                      title="e.g., MC-123456"
+                      data-testid="mc-hint"
+                    >
                       {company.mcNumber || "Not provided"}
                     </div>
+                    <p className="text-[8px] text-slate-600 font-bold px-1">
+                      e.g., MC-123456
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
                       DOT #
                     </label>
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
+                    <div
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black"
+                      title="e.g., DOT-123456"
+                      data-testid="dot-hint"
+                    >
                       {company.dotNumber || "Not provided"}
                     </div>
+                    <p className="text-[8px] text-slate-600 font-bold px-1">
+                      e.g., DOT-123456
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-2">

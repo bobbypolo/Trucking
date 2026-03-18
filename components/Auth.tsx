@@ -523,6 +523,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <input
                     type="email"
                     required
+                    aria-required="true"
                     value={email}
                     onChange={(e) => {
                       setEmail(e.target.value);
@@ -545,6 +546,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <input
                     type="password"
                     required
+                    aria-required="true"
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
