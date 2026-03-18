@@ -45,6 +45,8 @@ import tasksRouter from "./routes/tasks";
 import kciRequestsRouter from "./routes/kci-requests";
 import crisisActionsRouter from "./routes/crisis-actions";
 import serviceTicketsRouter from "./routes/service-tickets";
+import safetyRouter from "./routes/safety";
+import notificationJobsRouter from "./routes/notification-jobs";
 import healthRouter from "./routes/health";
 
 const app = express();
@@ -98,6 +100,7 @@ app.use(tasksRouter);
 app.use(kciRequestsRouter);
 app.use(crisisActionsRouter);
 app.use(serviceTicketsRouter);
+app.use(safetyRouter);
 
 app.use(errorHandler);
 
