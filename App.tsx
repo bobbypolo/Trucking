@@ -384,8 +384,8 @@ export default function App() {
     }
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     setUser(null);
     setLoads([]);
     setActiveTab("dashboard");
@@ -1238,14 +1238,13 @@ export default function App() {
                   <AuditLogs user={user} />
                 </Suspense>
               )}
-              {activeTab === "company" && company && (
+              {activeTab === "company" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
                   <CompanyProfile
-                    company={company}
                     user={user}
-                    users={companyUsers}
+                    onUserRegistryChange={() => refreshData(user)}
                   />
                 </Suspense>
               )}
