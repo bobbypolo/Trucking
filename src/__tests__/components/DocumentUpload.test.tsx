@@ -6,10 +6,10 @@ import React from "react";
 import {
   render,
   screen,
-  fireEvent,
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FileVault } from "../../../components/FileVault";
 import { User, LoadData, VaultDoc, LOAD_STATUS } from "../../../types";
@@ -95,29 +95,30 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     loads: mockLoads,
   };
 
+  const user = userEvent.setup();
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders FileVault component without crashing", async () => {
-    const { container } = render(<FileVault {...defaultProps} />);
+    render(<FileVault {...defaultProps} />);
     await waitFor(() => {
-      expect(container).toBeTruthy();
+      expect(screen.getByText(/Audit-Ready File Vault/i)).toBeInTheDocument();
     });
   });
 
   it("displays Audit-Ready File Vault header", async () => {
     render(<FileVault {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/Audit-Ready File Vault/i)).toBeTruthy();
+      expect(screen.getByText(/Audit-Ready File Vault/i)).toBeInTheDocument();
     });
   });
 
   it("renders Secure Upload button for document upload flow", async () => {
     render(<FileVault {...defaultProps} />);
     await waitFor(() => {
-      const uploadButton = screen.getByText(/Secure Upload/i);
-      expect(uploadButton).toBeTruthy();
+      expect(screen.getByText(/Secure Upload/i)).toBeInTheDocument();
     });
   });
 
@@ -164,7 +165,7 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     const { container } = render(<FileVault {...defaultProps} />);
     // Loading skeleton rows should be visible immediately (before promise resolves)
     const animatePulse = container.querySelector(".animate-pulse");
-    expect(animatePulse).toBeTruthy();
+    expect(animatePulse).toBeInTheDocument();
   });
 
   it("displays documents once loaded from vault", async () => {
@@ -174,7 +175,7 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     render(<FileVault {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/BOL-001\.pdf/i)).toBeTruthy();
+      expect(screen.getByText(/BOL-001\.pdf/i)).toBeInTheDocument();
     });
   });
 
@@ -186,8 +187,7 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
 
     await waitFor(() => {
       // Status labels should appear — Draft, Approved, Locked
-      const html = document.body.innerHTML;
-      expect(html).toContain("BOL-001.pdf");
+      expect(screen.getByText(/BOL-001\.pdf/i)).toBeInTheDocument();
     });
   });
 
@@ -198,20 +198,19 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     render(<FileVault {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/BOL-001\.pdf/i)).toBeTruthy();
+      expect(screen.getByText(/BOL-001\.pdf/i)).toBeInTheDocument();
     });
 
     // Change filter to Fuel type only
     const selects = document.querySelectorAll("select");
-    if (selects.length > 0) {
-      fireEvent.change(selects[0], { target: { value: "Fuel" } });
-      await waitFor(() => {
-        // BOL document should be hidden after filter
-        expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
-        // Fuel document should be visible
-        expect(screen.getByText(/Fuel-Receipt-001\.pdf/i)).toBeTruthy();
-      });
-    }
+    expect(selects.length).toBeGreaterThan(0);
+    await user.selectOptions(selects[0] as HTMLSelectElement, "Fuel");
+    await waitFor(() => {
+      // BOL document should be hidden after filter
+      expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
+      // Fuel document should be visible
+      expect(screen.getByText(/Fuel-Receipt-001\.pdf/i)).toBeInTheDocument();
+    });
   });
 
   it("filters documents by search query", async () => {
@@ -221,20 +220,20 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     render(<FileVault {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/BOL-001\.pdf/i)).toBeTruthy();
+      expect(screen.getByText(/BOL-001\.pdf/i)).toBeInTheDocument();
     });
 
     // Search for POD document
     const inputs = document.querySelectorAll("input");
-    if (inputs.length > 0) {
-      fireEvent.change(inputs[0], { target: { value: "POD" } });
-      await waitFor(() => {
-        // BOL should be filtered out
-        expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
-        // POD should remain
-        expect(screen.getByText(/POD-001\.pdf/i)).toBeTruthy();
-      });
-    }
+    expect(inputs.length).toBeGreaterThan(0);
+    await user.clear(inputs[0] as HTMLInputElement);
+    await user.type(inputs[0] as HTMLInputElement, "POD");
+    await waitFor(() => {
+      // BOL should be filtered out
+      expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
+      // POD should remain
+      expect(screen.getByText(/POD-001\.pdf/i)).toBeInTheDocument();
+    });
   });
 
   it("shows empty state when no docs match filter", async () => {
@@ -244,24 +243,24 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     render(<FileVault {...defaultProps} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/BOL-001\.pdf/i)).toBeTruthy();
+      expect(screen.getByText(/BOL-001\.pdf/i)).toBeInTheDocument();
     });
 
     // Search for something that won't match
     const inputs = document.querySelectorAll("input");
-    if (inputs.length > 0) {
-      fireEvent.change(inputs[0], { target: { value: "NONEXISTENT_DOC_XYZ" } });
-      await waitFor(() => {
-        expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
-        expect(screen.queryByText(/POD-001\.pdf/i)).toBeNull();
-      });
-    }
+    expect(inputs.length).toBeGreaterThan(0);
+    await user.clear(inputs[0] as HTMLInputElement);
+    await user.type(inputs[0] as HTMLInputElement, "NONEXISTENT_DOC_XYZ");
+    await waitFor(() => {
+      expect(screen.queryByText(/BOL-001\.pdf/i)).toBeNull();
+      expect(screen.queryByText(/POD-001\.pdf/i)).toBeNull();
+    });
   });
 
   it("renders with empty loads array", async () => {
-    const { container } = render(<FileVault {...defaultProps} loads={[]} />);
+    render(<FileVault {...defaultProps} loads={[]} />);
     await waitFor(() => {
-      expect(container).toBeTruthy();
+      expect(screen.getByText(/Audit-Ready File Vault/i)).toBeInTheDocument();
     });
   });
 });

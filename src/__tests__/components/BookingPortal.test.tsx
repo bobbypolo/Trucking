@@ -107,8 +107,8 @@ describe("BookingPortal component", () => {
 
   describe("initial rendering (intake step)", () => {
     it("renders without crashing", () => {
-      const { container } = render(<BookingPortal {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<BookingPortal {...defaultProps} />);
+      expect(screen.getByText("Intake & Quotes")).toBeInTheDocument();
     });
 
     it("renders the main header", () => {
