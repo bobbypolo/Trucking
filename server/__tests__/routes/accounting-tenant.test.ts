@@ -10,9 +10,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  *   - All POST routes that write to DB use req.user.tenantId (R-P1-02)
  *   - No `|| 'DEFAULT'` or hardcoded 'DEFAULT' remains (R-P1-03 via grep in gate cmd)
  *
- * Pattern: Mock pool.query and pool.getConnection, invoke route handler directly
- * via supertest, assert SQL string contains `tenant_id` and params array contains
- * the auth-derived tenantId.
+ * Pattern: sql-auth mock, real requireAuth middleware, supertest.
  */
 
 const TEST_TENANT_ID = "tenant-test-abc123";
@@ -27,6 +25,7 @@ const {
   mockConnectionRollback,
   mockConnectionRelease,
   mockGetConnection,
+  mockResolveSqlPrincipalByFirebaseUid,
 } = vi.hoisted(() => {
   const mockConnectionQuery = vi.fn();
   const mockConnectionBeginTransaction = vi.fn().mockResolvedValue(undefined);
@@ -35,6 +34,7 @@ const {
   const mockConnectionRelease = vi.fn();
   const mockGetConnection = vi.fn();
   const mockPoolQuery = vi.fn();
+  const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
   return {
     mockPoolQuery,
     mockConnectionQuery,
@@ -43,6 +43,7 @@ const {
     mockConnectionRollback,
     mockConnectionRelease,
     mockGetConnection,
+    mockResolveSqlPrincipalByFirebaseUid,
   };
 });
 
@@ -66,13 +67,20 @@ vi.mock("../../geoUtils", () => ({
   calculateDistance: vi.fn().mockReturnValue(100),
 }));
 
-// Mock auth/tenant middleware to pass through; req.user injected by buildApp below
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: unknown, _res: unknown, next: Function) => next(),
-}));
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: unknown, _res: unknown, next: Function) => next(),
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 vi.mock("../../middleware/validate", () => ({
@@ -89,16 +97,13 @@ vi.mock("../../schemas/settlements", () => ({
 import accountingRouter from "../../routes/accounting";
 import express from "express";
 import request from "supertest";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
-function makeUser(tenantId = TEST_TENANT_ID) {
-  return {
-    uid: "user-001",
-    tenantId,
-    role: "dispatcher",
-    email: "a@b.com",
-    firebaseUid: "fb-001",
-  };
-}
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+  ...DEFAULT_SQL_PRINCIPAL,
+  tenantId: TEST_TENANT_ID,
+  companyId: TEST_TENANT_ID,
+});
 
 function makeConnection() {
   return {
@@ -110,30 +115,26 @@ function makeConnection() {
   };
 }
 
-/**
- * Build an Express app that injects req.user from the x-test-user header.
- * This simulates what requireAuth does in production without Firebase deps.
- */
-function buildApp(tenantId = TEST_TENANT_ID) {
+function buildApp() {
   const app = express();
   app.use(express.json());
-  // Inject user context the same way requireAuth does (it's mocked to call next())
-  app.use((req: any, _res: unknown, next: Function) => {
-    req.user = makeUser(tenantId);
-    next();
-  });
   app.use(accountingRouter);
   return app;
 }
+
+const AUTH_HEADER = "Bearer valid-token";
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockConnectionRelease.mockReturnValue(undefined);
   mockGetConnection.mockResolvedValue(makeConnection());
-  // Default: pool.query returns empty rows
   mockPoolQuery.mockResolvedValue([[], []]);
-  // Default: connection.query returns empty rows
   mockConnectionQuery.mockResolvedValue([[], []]);
+  mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+    ...DEFAULT_SQL_PRINCIPAL,
+    tenantId: TEST_TENANT_ID,
+    companyId: TEST_TENANT_ID,
+  });
 });
 
 // ============================================================
@@ -143,7 +144,10 @@ beforeEach(() => {
 describe("R-P1-01: GET routes include tenant_id filter", () => {
   it("GET /api/accounting/accounts — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/accounts").send();
+    await request(app)
+      .get("/api/accounting/accounts")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -153,7 +157,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/load-pl/:loadId — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/load-pl/load-001").send();
+    await request(app)
+      .get("/api/accounting/load-pl/load-001")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allCalls = mockPoolQuery.mock.calls;
@@ -170,7 +177,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/invoices — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/invoices").send();
+    await request(app)
+      .get("/api/accounting/invoices")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -180,7 +190,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/bills — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/bills").send();
+    await request(app)
+      .get("/api/accounting/bills")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -190,7 +203,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/settlements — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/settlements").send();
+    await request(app)
+      .get("/api/accounting/settlements")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -200,7 +216,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/docs — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/docs").send();
+    await request(app)
+      .get("/api/accounting/docs")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -210,7 +229,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/ifta-evidence/:loadId — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/ifta-evidence/load-001").send();
+    await request(app)
+      .get("/api/accounting/ifta-evidence/load-001")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -229,6 +251,7 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
     await request(app)
       .get("/api/accounting/ifta-summary?quarter=1&year=2026")
+      .set("Authorization", AUTH_HEADER)
       .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
@@ -246,7 +269,10 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 
   it("GET /api/accounting/mileage — SQL contains tenant_id and params include tenantId", async () => {
     const app = buildApp();
-    await request(app).get("/api/accounting/mileage").send();
+    await request(app)
+      .get("/api/accounting/mileage")
+      .set("Authorization", AUTH_HEADER)
+      .send();
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
@@ -262,17 +288,20 @@ describe("R-P1-01: GET routes include tenant_id filter", () => {
 describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () => {
   it("POST /api/accounting/journal — uses req.user.tenantId, NOT body tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/journal").send({
-      id: "je-001",
-      tenantId: BODY_TENANT_ID, // attacker-supplied value — must be ignored
-      entryDate: "2026-03-08",
-      referenceNumber: "REF-001",
-      description: "Test entry",
-      sourceDocumentType: "Manual",
-      sourceDocumentId: "doc-001",
-      createdBy: "user-001",
-      lines: [],
-    });
+    await request(app)
+      .post("/api/accounting/journal")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "je-001",
+        tenantId: BODY_TENANT_ID,
+        entryDate: "2026-03-08",
+        referenceNumber: "REF-001",
+        description: "Test entry",
+        sourceDocumentType: "Manual",
+        sourceDocumentId: "doc-001",
+        createdBy: "user-001",
+        lines: [],
+      });
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
@@ -284,18 +313,21 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/invoices — uses req.user.tenantId, NOT body tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/invoices").send({
-      id: "inv-001",
-      tenantId: BODY_TENANT_ID,
-      customerId: "cust-001",
-      loadId: "load-001",
-      invoiceNumber: "INV-001",
-      invoiceDate: "2026-03-08",
-      dueDate: "2026-04-08",
-      status: "Draft",
-      totalAmount: 5000,
-      lines: [],
-    });
+    await request(app)
+      .post("/api/accounting/invoices")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "inv-001",
+        tenantId: BODY_TENANT_ID,
+        customerId: "cust-001",
+        loadId: "load-001",
+        invoiceNumber: "INV-001",
+        invoiceDate: "2026-03-08",
+        dueDate: "2026-04-08",
+        status: "Draft",
+        totalAmount: 5000,
+        lines: [],
+      });
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
@@ -307,17 +339,20 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/bills — uses req.user.tenantId, NOT body tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/bills").send({
-      id: "bill-001",
-      tenantId: BODY_TENANT_ID,
-      vendorId: "vendor-001",
-      billNumber: "BILL-001",
-      billDate: "2026-03-08",
-      dueDate: "2026-04-08",
-      status: "Draft",
-      totalAmount: 2000,
-      lines: [],
-    });
+    await request(app)
+      .post("/api/accounting/bills")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "bill-001",
+        tenantId: BODY_TENANT_ID,
+        vendorId: "vendor-001",
+        billNumber: "BILL-001",
+        billDate: "2026-03-08",
+        dueDate: "2026-04-08",
+        status: "Draft",
+        totalAmount: 2000,
+        lines: [],
+      });
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
@@ -329,20 +364,23 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/settlements — uses req.user.tenantId, NOT body tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/settlements").send({
-      id: "settle-001",
-      tenantId: BODY_TENANT_ID,
-      driverId: "driver-001",
-      settlementDate: "2026-03-08",
-      periodStart: "2026-03-01",
-      periodEnd: "2026-03-07",
-      totalEarnings: 3000,
-      totalDeductions: 200,
-      totalReimbursements: 100,
-      netPay: 2900,
-      status: "Draft",
-      lines: [],
-    });
+    await request(app)
+      .post("/api/accounting/settlements")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "settle-001",
+        tenantId: BODY_TENANT_ID,
+        driverId: "driver-001",
+        settlementDate: "2026-03-08",
+        periodStart: "2026-03-01",
+        periodEnd: "2026-03-07",
+        totalEarnings: 3000,
+        totalDeductions: 200,
+        totalReimbursements: 100,
+        netPay: 2900,
+        status: "Draft",
+        lines: [],
+      });
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
@@ -354,15 +392,18 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/docs — uses req.user.tenantId, NOT body tenantId or DEFAULT", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/docs").send({
-      id: "doc-001",
-      tenantId: BODY_TENANT_ID,
-      type: "BOL",
-      url: "https://example.com/doc.pdf",
-      filename: "doc.pdf",
-      loadId: "load-001",
-      status: "Draft",
-    });
+    await request(app)
+      .post("/api/accounting/docs")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "doc-001",
+        tenantId: BODY_TENANT_ID,
+        type: "BOL",
+        url: "https://example.com/doc.pdf",
+        filename: "doc.pdf",
+        loadId: "load-001",
+        status: "Draft",
+      });
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
@@ -377,6 +418,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
     const app = buildApp();
     await request(app)
       .post("/api/accounting/ifta-audit-lock")
+      .set("Authorization", AUTH_HEADER)
       .send({
         truckId: "truck-001",
         loadId: "load-001",
@@ -400,14 +442,17 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/mileage — INSERT includes tenant_id = req.user.tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/mileage").send({
-      truckId: "truck-001",
-      loadId: "load-001",
-      date: "2026-03-08",
-      stateCode: "TX",
-      miles: 300,
-      source: "Manual",
-    });
+    await request(app)
+      .post("/api/accounting/mileage")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        truckId: "truck-001",
+        loadId: "load-001",
+        date: "2026-03-08",
+        stateCode: "TX",
+        miles: 300,
+        source: "Manual",
+      });
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
@@ -419,11 +464,14 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/ifta-post — INSERT uses req.user.tenantId, NOT hardcoded DEFAULT", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/ifta-post").send({
-      quarter: 1,
-      year: 2026,
-      netTaxDue: 1500,
-    });
+    await request(app)
+      .post("/api/accounting/ifta-post")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        quarter: 1,
+        year: 2026,
+        netTaxDue: 1500,
+      });
 
     expect(mockConnectionQuery).toHaveBeenCalled();
     const allInsertParams = mockConnectionQuery.mock.calls
@@ -435,14 +483,17 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 
   it("POST /api/accounting/adjustments — INSERT includes tenant_id = req.user.tenantId", async () => {
     const app = buildApp();
-    await request(app).post("/api/accounting/adjustments").send({
-      parentEntityType: "Invoice",
-      parentEntityId: "inv-001",
-      reasonCode: "RATE_CORRECTION",
-      description: "Rate correction",
-      amountAdjustment: -100,
-      createdBy: "user-001",
-    });
+    await request(app)
+      .post("/api/accounting/adjustments")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        parentEntityType: "Invoice",
+        parentEntityId: "inv-001",
+        reasonCode: "RATE_CORRECTION",
+        description: "Rate correction",
+        amountAdjustment: -100,
+        createdBy: "user-001",
+      });
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const allParams = mockPoolQuery.mock.calls
@@ -456,6 +507,7 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
     const app = buildApp();
     await request(app)
       .post("/api/accounting/batch-import")
+      .set("Authorization", AUTH_HEADER)
       .send({
         type: "Fuel",
         data: [
@@ -480,10 +532,13 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
   it("POST /api/accounting/sync-qb — returns 501 (QuickBooks not yet available)", async () => {
     // R-S30-02: sync-qb endpoint must return 501, not insert into DB
     const app = buildApp();
-    const res = await request(app).post("/api/accounting/sync-qb").send({
-      entityType: "Invoice",
-      entityId: "inv-001",
-    });
+    const res = await request(app)
+      .post("/api/accounting/sync-qb")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        entityType: "Invoice",
+        entityId: "inv-001",
+      });
 
     expect(res.status).toBe(501);
     expect(res.body.error).toBe("QuickBooks integration is not yet available.");
@@ -497,11 +552,6 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
 // ============================================================
 describe("R-P1-03: No DEFAULT fallback tenant_id values (structural)", () => {
   it("documents that R-P1-03 is verified by the gate cmd: grep -c returns 0", () => {
-    // R-P1-03 is verified by the gate command:
-    //   grep -c "|| 'DEFAULT'" server/routes/accounting.ts | grep -q '^0$'
-    // The POST route tests above already assert auth-derived tenantId is used
-    // and that 'DEFAULT' does not appear in any INSERT params.
-    // This test exists to mark R-P1-03 coverage in the test file.
     expect(true).toBe(true);
   });
 });
@@ -511,11 +561,11 @@ describe("R-P1-03: No DEFAULT fallback tenant_id values (structural)", () => {
 // ============================================================
 
 describe("PATCH /api/accounting/docs/:id — tenant isolation", () => {
-  // Tests R-P1-01, R-P1-02
   it("SQL contains tenant_id in WHERE clause and params include req.user.tenantId", async () => {
     const app = buildApp();
     await request(app)
       .patch("/api/accounting/docs/doc-001")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Approved", is_locked: true });
 
     expect(mockPoolQuery).toHaveBeenCalled();
@@ -525,28 +575,27 @@ describe("PATCH /api/accounting/docs/:id — tenant isolation", () => {
   });
 
   it("cannot modify a document belonging to a different tenant", async () => {
-    // The UPDATE is scoped to tenant_id = req.user.tenantId.
-    // Simulate a request from ATTACKER_TENANT — it must NOT affect
-    // rows belonging to VICTIM_TENANT. Because the WHERE clause is
-    // "id = ? AND tenant_id = ?", the attacker's tenantId is passed
-    // and the database will match 0 rows for the victim's document.
     const ATTACKER_TENANT = "tenant-attacker-xyz";
-    const attackerApp = buildApp(ATTACKER_TENANT);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: ATTACKER_TENANT,
+      companyId: ATTACKER_TENANT,
+    });
+
+    const attackerApp = buildApp();
 
     // Return 0 affected rows (the attacker's tenantId doesn't match victim's doc)
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
 
     await request(attackerApp)
       .patch("/api/accounting/docs/victim-doc-001")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Approved", is_locked: true });
 
     expect(mockPoolQuery).toHaveBeenCalled();
     const [sql, params] = mockPoolQuery.mock.calls[0];
-    // SQL must scope by tenant_id
     expect((sql as string).toLowerCase()).toContain("tenant_id");
-    // Attacker's tenantId (not victim's) is passed in params
     expect(params as unknown[]).toContain(ATTACKER_TENANT);
-    // Victim's tenantId must NOT appear in the params
     expect(params as unknown[]).not.toContain(TEST_TENANT_ID);
   });
 });

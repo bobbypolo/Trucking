@@ -21,6 +21,7 @@ const {
   mockExtractEquipmentFromImage,
   mockGenerateTrainingFromImage,
   mockAnalyzeSafetyCompliance,
+  mockResolveSqlPrincipalByFirebaseUid,
 } = vi.hoisted(() => {
   return {
     mockPoolQuery: vi.fn(),
@@ -30,6 +31,7 @@ const {
     mockExtractEquipmentFromImage: vi.fn(),
     mockGenerateTrainingFromImage: vi.fn(),
     mockAnalyzeSafetyCompliance: vi.fn(),
+    mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
   };
 });
 
@@ -54,12 +56,20 @@ vi.mock("../../geoUtils", () => ({
   calculateDistance: vi.fn().mockReturnValue(50),
 }));
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: unknown, _res: unknown, next: Function) => next(),
-}));
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: unknown, _res: unknown, next: Function) => next(),
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 vi.mock("../../middleware/validate", () => ({
@@ -84,16 +94,21 @@ import express from "express";
 import request from "supertest";
 import accountingRouter from "../../routes/accounting";
 import aiRouter from "../../routes/ai";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
 const TEST_TENANT_ID = "tenant-hardening-test";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+  ...DEFAULT_SQL_PRINCIPAL,
+  tenantId: TEST_TENANT_ID,
+  companyId: TEST_TENANT_ID,
+});
+
+const AUTH_HEADER = "Bearer valid-token";
 
 function buildAccountingApp() {
   const app = express();
   app.use(express.json({ limit: "20mb" }));
-  app.use((req: any, _res: any, next: Function) => {
-    req.user = { uid: "user-1", tenantId: TEST_TENANT_ID, role: "dispatcher" };
-    next();
-  });
   app.use(accountingRouter);
   return app;
 }
@@ -101,10 +116,6 @@ function buildAccountingApp() {
 function buildAiApp(jsonLimit = "5mb") {
   const app = express();
   app.use(express.json({ limit: jsonLimit }));
-  app.use((req: any, _res: any, next: Function) => {
-    req.user = { uid: "user-1", tenantId: TEST_TENANT_ID, role: "dispatcher" };
-    next();
-  });
   app.use(aiRouter);
   return app;
 }
@@ -114,6 +125,11 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
   let app: ReturnType<typeof buildAccountingApp>;
 
   beforeEach(() => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: TEST_TENANT_ID,
+      companyId: TEST_TENANT_ID,
+    });
     app = buildAccountingApp();
     vi.clearAllMocks();
   });
@@ -121,6 +137,7 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
   it("returns 400 when pings is not an array", async () => {
     const res = await request(app)
       .post("/api/accounting/ifta-analyze")
+      .set("Authorization", AUTH_HEADER)
       .send({ pings: "not-an-array", mode: "GPS" });
 
     expect(res.status).toBe(400);
@@ -135,6 +152,7 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
 
     const res = await request(app)
       .post("/api/accounting/ifta-analyze")
+      .set("Authorization", AUTH_HEADER)
       .send({ pings, mode: "GPS" });
 
     expect(res.status).toBe(400);
@@ -144,6 +162,7 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
   it("returns 400 for pings null (non-array variant)", async () => {
     const res = await request(app)
       .post("/api/accounting/ifta-analyze")
+      .set("Authorization", AUTH_HEADER)
       .send({ pings: null, mode: "GPS" });
 
     expect(res.status).toBe(400);
@@ -158,6 +177,7 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
 
     const res = await request(app)
       .post("/api/accounting/ifta-analyze")
+      .set("Authorization", AUTH_HEADER)
       .send({ pings, mode: "GPS" });
 
     // Should not be rejected by the bounds check
@@ -172,6 +192,7 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
 
     const res = await request(app)
       .post("/api/accounting/ifta-analyze")
+      .set("Authorization", AUTH_HEADER)
       .send({ pings, mode: "GPS" });
 
     expect(res.status).not.toBe(400);
@@ -205,6 +226,11 @@ describe("AI routes — MIME type validation (R-S29-03)", () => {
   let app: ReturnType<typeof buildAiApp>;
 
   beforeEach(() => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: TEST_TENANT_ID,
+      companyId: TEST_TENANT_ID,
+    });
     app = buildAiApp();
     vi.clearAllMocks();
     mockExtractLoadInfo.mockResolvedValue({ load: {}, broker: {} });
@@ -219,6 +245,7 @@ describe("AI routes — MIME type validation (R-S29-03)", () => {
         it(`returns 400 for invalid mimeType ${mime} (R-S29-04)`, async () => {
           const res = await request(app)
             .post(endpoint)
+            .set("Authorization", AUTH_HEADER)
             .send({ imageBase64: VALID_BASE64, mimeType: mime });
 
           expect(res.status).toBe(400);
@@ -230,6 +257,7 @@ describe("AI routes — MIME type validation (R-S29-03)", () => {
         it(`accepts valid mimeType ${mime} (R-S29-04)`, async () => {
           const res = await request(app)
             .post(endpoint)
+            .set("Authorization", AUTH_HEADER)
             .send({ imageBase64: VALID_BASE64, mimeType: mime });
 
           // Should not reject with 400 from MIME validation
@@ -240,6 +268,7 @@ describe("AI routes — MIME type validation (R-S29-03)", () => {
       it("accepts request without mimeType (defaults to image/jpeg)", async () => {
         const res = await request(app)
           .post(endpoint)
+          .set("Authorization", AUTH_HEADER)
           .send({ imageBase64: VALID_BASE64 });
 
         expect(res.status).not.toBe(400);
@@ -261,6 +290,7 @@ describe("AI routes — 5 MB payload limit (R-S29-02)", () => {
 
     const res = await request(tinyApp)
       .post("/extract-load")
+      .set("Authorization", AUTH_HEADER)
       .send({ imageBase64: "abc123" });
 
     expect(res.status).toBe(413);

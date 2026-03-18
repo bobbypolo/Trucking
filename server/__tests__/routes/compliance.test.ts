@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-FS-05-02, R-FS-05-07
 
 // Hoisted mocks
-const { mockQuery } = vi.hoisted(() => {
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid };
 });
 
 vi.mock("../../db", () => ({
@@ -30,35 +31,29 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Control user context per-test
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
-let mockUserId = "user-1";
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: mockUserId,
-      id: mockUserId,
-      tenantId: mockUserTenantId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import complianceRouter from "../../routes/compliance";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -68,16 +63,8 @@ function buildApp() {
   return app;
 }
 
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
-
 const USER_ID = "user-1";
+const AUTH_HEADER = "Bearer valid-token";
 
 // ── Auth enforcement ──────────────────────────────────────────────────────────
 
@@ -86,8 +73,8 @@ describe("GET /api/compliance/:userId — auth enforcement", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+  it("returns 401 when no Authorization header is sent", async () => {
+    const app = buildApp();
     const res = await request(app).get(`/api/compliance/${USER_ID}`);
     expect(res.status).toBe(401);
   });
@@ -99,35 +86,43 @@ describe("GET /api/compliance/:userId — RBAC enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserId = "user-1";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
     vi.clearAllMocks();
   });
 
   it("returns 403 when driver accesses another user's compliance record", async () => {
-    mockUserRole = "driver";
-    mockUserId = "user-1";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "user-1",
+      role: "driver",
+    });
     app = buildApp();
 
     const res = await request(app)
       .get("/api/compliance/different-user-id")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     // Route-level RBAC: driver can only see their own record
     expect(res.status).toBe(403);
   });
 
   it("allows dispatcher to access any user's compliance record", async () => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "dispatcher",
+    });
+    app = buildApp();
     mockQuery.mockResolvedValueOnce([[], []]);
 
     const res = await request(app)
       .get("/api/compliance/another-user-id")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     // Dispatcher is allowed
-    expect([200, 500]).toContain(res.status);
+    expect(res.status).toBe(200);
     expect(res.status).not.toBe(403);
   });
 });
@@ -138,8 +133,10 @@ describe("GET /api/compliance/:userId — validation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserId = "user-1";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "dispatcher",
+    });
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -149,7 +146,7 @@ describe("GET /api/compliance/:userId — validation", () => {
 
     const res = await request(app)
       .get(`/api/compliance/${USER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -163,9 +160,11 @@ describe("GET /api/compliance/:userId — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserId = "user-1";
-    mockUserTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "user-1",
+      role: "dispatcher",
+    });
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -184,7 +183,7 @@ describe("GET /api/compliance/:userId — success", () => {
 
     const res = await request(app)
       .get(`/api/compliance/${USER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -198,7 +197,7 @@ describe("GET /api/compliance/:userId — success", () => {
 
     await request(app)
       .get(`/api/compliance/${USER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(mockQuery).toHaveBeenCalledTimes(1);
     const [sql, params] = mockQuery.mock.calls[0];
@@ -209,8 +208,11 @@ describe("GET /api/compliance/:userId — success", () => {
   });
 
   it("allows driver to access their own compliance record", async () => {
-    mockUserRole = "driver";
-    mockUserId = USER_ID;
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: USER_ID,
+      role: "driver",
+    });
     app = buildApp();
 
     const records = [
@@ -225,7 +227,7 @@ describe("GET /api/compliance/:userId — success", () => {
 
     const res = await request(app)
       .get(`/api/compliance/${USER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
@@ -236,7 +238,7 @@ describe("GET /api/compliance/:userId — success", () => {
 
     const res = await request(app)
       .get(`/api/compliance/${USER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
   });
