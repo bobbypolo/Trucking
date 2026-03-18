@@ -33,7 +33,7 @@ dist-ssr/
 *.local
 *-firebase-adminsdk-*.json
 
-# Secrets and credentials Ã¢â‚¬â€ never track
+# Secrets and credentials ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â never track
 server/.env
 .env.staging
 .env.production
@@ -41,7 +41,7 @@ server/.env
 *.pem
 serviceAccount*.json
 
-# Files with embedded API keys Ã¢â‚¬â€ untracked, kept local only
+# Files with embedded API keys ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â untracked, kept local only
 API_CONFIGURATION_AUDIT.md
 API_QUICK_REFERENCE.md
 API_SETUP_CHECKLIST.md
@@ -57,10 +57,10 @@ test_google_maps_api.html
 test-results/
 playwright-results/
 
-# Workflow artifacts Ã¢â‚¬â€ canonical copy is in .claude/docs/
+# Workflow artifacts ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â canonical copy is in .claude/docs/
 verification-log.jsonl
 
-# Full ADE workflow directory Ã¢â‚¬â€ not tracked in git
+# Full ADE workflow directory ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â not tracked in git
 .claude/
 .claude/worktrees/
 .claude/.workflow-state.json
@@ -69,5 +69,5 @@ WORKFLOW.md
 PROJECT_BRIEF.md
 .mcp.json.example
 
-# Test seed fixtures — contains dev credentials, never commit
+# Test seed fixtures â€” contains dev credentials, never commit
 fixtures/test-users.json

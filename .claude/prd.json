@@ -2,992 +2,698 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "888c5e18b0b96a7208af89296fc9873b65381908d972b88d2a5cebd5721cc8d1",
+  "plan_hash": "8ab4a30c2934a47fdc12eac1c3eae1e43176c172d5ee16993f279b3a8f1c3f97",
   "stories": [
     {
-      "id": "STORY-012",
-      "description": "Frontend Cutover - Quotes",
-      "phase": 2,
+      "id": "STORY-101",
+      "description": "Backend — Safety Domain API Routes: Create new Express route module server/routes/safety.ts with CRUD endpoints for all 6 safety sub-domains. Create migration 024_safety_domain.sql.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/quotes.ts",
+      "component": "server/routes/safety.ts",
       "scope": [
-        "services/storage/quotes.ts",
-        "components/QuoteManager.tsx"
+        "server/migrations/024_safety_domain.sql",
+        "server/routes/safety.ts",
+        "server/index.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "persistence-a",
+      "parallelGroup": "1A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S12-01",
-          "criterion": "grep localStorage quotes services/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S12-02",
-          "criterion": "STORAGE_KEY_QUOTES removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S12-03",
-          "criterion": "QuoteManager fetches from API",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S12-04",
-          "criterion": "Quote CRUD calls API",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S12-05",
-          "criterion": "No localStorage for quotes",
-          "testType": "unit"
-        }
+        { "id": "R-P1-01", "criterion": "GET /api/safety/quizzes returns 200 with JSON array for authenticated tenant", "testType": "unit" },
+        { "id": "R-P1-02", "criterion": "POST /api/safety/quizzes creates a quiz and returns 201", "testType": "unit" },
+        { "id": "R-P1-03", "criterion": "GET /api/safety/maintenance returns 200 with JSON array", "testType": "unit" },
+        { "id": "R-P1-04", "criterion": "POST /api/safety/maintenance creates record and returns 201", "testType": "unit" },
+        { "id": "R-P1-05", "criterion": "GET /api/safety/vendors returns 200 with JSON array", "testType": "unit" },
+        { "id": "R-P1-06", "criterion": "POST /api/safety/vendors creates vendor and returns 201", "testType": "unit" },
+        { "id": "R-P1-07", "criterion": "GET /api/safety/activity returns 200 with JSON array (max 50 entries)", "testType": "unit" },
+        { "id": "R-P1-08", "criterion": "Cross-tenant GET request returns 404", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/routes/safety.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-013",
-      "description": "Frontend Cutover - Leads",
-      "phase": 2,
+      "id": "STORY-102",
+      "description": "Backend — Vault Documents API Route: Create server/routes/vault-docs.ts with CRUD + file upload via Multer. Reuse document.service.ts StorageAdapter pattern. Create migration 025_vault_docs.sql.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/leads.ts",
+      "component": "server/routes/vault-docs.ts",
       "scope": [
-        "services/storage/leads.ts"
+        "server/migrations/025_vault_docs.sql",
+        "server/routes/vault-docs.ts",
+        "server/index.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "persistence-a",
+      "parallelGroup": "1A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S13-01",
-          "criterion": "grep localStorage leads services/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S13-02",
-          "criterion": "STORAGE_KEY_LEADS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S13-03",
-          "criterion": "Lead CRUD uses API",
-          "testType": "unit"
-        }
+        { "id": "R-P1-09", "criterion": "GET /api/vault-docs returns 200 with JSON array for authenticated tenant", "testType": "unit" },
+        { "id": "R-P1-10", "criterion": "POST /api/vault-docs with multipart file creates document and returns 201", "testType": "unit" },
+        { "id": "R-P1-11", "criterion": "File > 10MB returns 413", "testType": "unit" },
+        { "id": "R-P1-12", "criterion": "Invalid MIME type returns 400", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/routes/vault-docs.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-014",
-      "description": "Frontend Cutover - Bookings",
-      "phase": 2,
+      "id": "STORY-103",
+      "description": "Backend — Notification Jobs API Route: Create server/routes/notification-jobs.ts with GET/POST. Create migration 026_notification_jobs.sql.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/bookings.ts",
+      "component": "server/routes/notification-jobs.ts",
       "scope": [
-        "services/storage/bookings.ts"
+        "server/migrations/026_notification_jobs.sql",
+        "server/routes/notification-jobs.ts",
+        "server/index.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "persistence-a",
+      "parallelGroup": "1A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S14-01",
-          "criterion": "grep localStorage bookings services/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S14-02",
-          "criterion": "STORAGE_KEY_BOOKINGS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S14-03",
-          "criterion": "Booking CRUD uses API",
-          "testType": "unit"
-        }
+        { "id": "R-P1-13", "criterion": "GET /api/notification-jobs returns 200 with JSON array for authenticated tenant", "testType": "unit" },
+        { "id": "R-P1-14", "criterion": "POST /api/notification-jobs creates job and returns 201", "testType": "unit" },
+        { "id": "R-P1-15", "criterion": "Cross-tenant access returns 404", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/routes/notification-jobs.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-015",
-      "description": "Frontend Cutover - Messages Threads",
-      "phase": 2,
+      "id": "STORY-104",
+      "description": "Frontend — Migrate safetyService to API: Rewrite services/safetyService.ts to fetch from /api/safety/* endpoints. Remove all 6 localStorage key constants and all localStorage.getItem/setItem calls. Replace safeParse() with async API fetches.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/messages.ts",
+      "component": "services/safetyService.ts",
       "scope": [
-        "services/storage/messages.ts"
+        "services/safetyService.ts",
+        "src/__tests__/services/safetyService.enhanced.test.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "persistence-b",
+      "dependsOn": ["STORY-101"],
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S15-01",
-          "criterion": "STORAGE_KEY_MESSAGES and THREADS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S15-02",
-          "criterion": "Writes confirm server ack",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S15-03",
-          "criterion": "No fire-and-forget sync",
-          "testType": "grep"
-        }
+        { "id": "R-P1-16", "criterion": "grep -rn 'localStorage' services/safetyService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-17", "criterion": "grep -rn 'QUIZZES_KEY|QUIZ_RESULTS_KEY|MAINTENANCE_KEY|TICKETS_KEY|VENDORS_KEY|SAFETY_ACTIVITY_KEY' services/safetyService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-18", "criterion": "All safetyService functions are async and fetch from API", "testType": "unit" },
+        { "id": "R-P1-19", "criterion": "getEquipment and getComplianceRecords use getAuthHeaders() instead of localStorage.getItem('token')", "testType": "unit" },
+        { "id": "R-P1-20", "criterion": "Existing safetyService tests pass with updated mocks", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/safetyService" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-016",
-      "description": "Frontend Cutover - Calls Tasks WorkItems",
-      "phase": 2,
+      "id": "STORY-105",
+      "description": "Frontend — Migrate vault.ts to API: Rewrite services/storage/vault.ts to use /api/vault-docs endpoints.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/calls.ts",
+      "component": "services/storage/vault.ts",
       "scope": [
-        "services/storage/calls.ts",
-        "services/storage/tasks.ts"
+        "services/storage/vault.ts",
+        "services/storage/index.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "persistence-b",
+      "dependsOn": ["STORY-102"],
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S16-01",
-          "criterion": "STORAGE_KEY_CALLS TASKS WORK_ITEMS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S16-02",
-          "criterion": "All three use server API",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S16-03",
-          "criterion": "No DEMO_MODE seed data",
-          "testType": "grep"
-        }
+        { "id": "R-P1-21", "criterion": "grep -rn 'localStorage' services/storage/vault.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-22", "criterion": "STORAGE_KEY_VAULT_DOCS constant removed", "testType": "grep" },
+        { "id": "R-P1-23", "criterion": "uploadVaultDoc calls POST /api/vault-docs with multipart form data", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/vault.test" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-017",
-      "description": "Frontend Cutover - Crisis KCI ServiceTickets",
-      "phase": 2,
+      "id": "STORY-106",
+      "description": "Frontend — Migrate notifications.ts to API: Rewrite services/storage/notifications.ts to use /api/notification-jobs endpoints. Remove dual-write pattern.",
+      "phase": 1,
       "phase_type": "persistence",
-      "component": "services/storage/recovery.ts",
+      "component": "services/storage/notifications.ts",
       "scope": [
-        "services/storage/recovery.ts"
+        "services/storage/notifications.ts",
+        "services/storage/index.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "persistence-c",
+      "dependsOn": ["STORY-103"],
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S17-01",
-          "criterion": "STORAGE_KEY_CRISIS REQUESTS SERVICE_TICKETS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S17-02",
-          "criterion": "All use server API",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S17-03",
-          "criterion": "Append-only audit trails",
-          "testType": "unit"
-        }
+        { "id": "R-P1-24", "criterion": "grep -rn 'localStorage' services/storage/notifications.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-25", "criterion": "STORAGE_KEY_NOTIFICATION_JOBS constant removed", "testType": "grep" },
+        { "id": "R-P1-26", "criterion": "saveNotificationJob is async and returns server response (no fire-and-forget)", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/notifications.test" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-018",
-      "description": "Frontend Cutover - Contacts Providers",
-      "phase": 2,
-      "phase_type": "persistence",
-      "component": "services/storage/directory.ts",
-      "scope": [
-        "services/storage/directory.ts"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "persistence-c",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S18-01",
-          "criterion": "STORAGE_KEY_CONTACTS PROVIDERS removed",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S18-02",
-          "criterion": "No DEMO_MODE seed data",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S18-03",
-          "criterion": "grep Titan Recovery returns 0",
-          "testType": "grep"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-019",
-      "description": "Remove All DEMO_MODE Seed Data",
-      "phase": 2,
+      "id": "STORY-107",
+      "description": "Frontend — Migrate incidents localStorage to API-only: Remove all localStorage.getItem/setItem calls from services/storageService.ts incident functions. The /api/incidents route already exists — make it the sole source of truth.",
+      "phase": 1,
       "phase_type": "persistence",
       "component": "services/storageService.ts",
       "scope": [
-        "services/storageService.ts",
-        "services/storage/"
+        "services/storageService.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "persistence-c",
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S19-01",
-          "criterion": "grep DEMO_MODE return [ services/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S19-02",
-          "criterion": "grep DEMO_MODE setItem services/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S19-03",
-          "criterion": "grep inc-desc-001 CALL-INT-101 WI-5001 returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S19-04",
-          "criterion": "seedIncidents is a no-op",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S19-05",
-          "criterion": "All tests still pass",
-          "testType": "unit"
-        }
+        { "id": "R-P1-27", "criterion": "grep -rn 'localStorage.*STORAGE_KEY_INCIDENTS|STORAGE_KEY_INCIDENTS.*localStorage' services/storageService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-28", "criterion": "getIncidents is async and fetches from /api/incidents exclusively", "testType": "unit" },
+        { "id": "R-P1-29", "criterion": "seedIncidents function body remains empty (no-op kept for backward compat)", "testType": "grep" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run && cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/storageService.test" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-020",
-      "description": "Replace All Authority Jargon",
-      "phase": 3,
-      "phase_type": "ux",
-      "component": "components/",
+      "id": "STORY-108",
+      "description": "Frontend — Migrate brokerService localStorage to API-only: Remove getRawBrokers localStorage fallback from services/brokerService.ts. The /api/clients route already handles broker CRUD.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "services/brokerService.ts",
       "scope": [
-        "components/"
+        "services/brokerService.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "ux",
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S20-01",
-          "criterion": "grep -ri Authority components/ returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S20-02",
-          "criterion": "grep Emergency Sign Out returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S20-03",
-          "criterion": "Login uses plain language",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S20-04",
-          "criterion": "All replacements match audit table",
-          "testType": "unit"
-        }
+        { "id": "R-P1-30", "criterion": "grep -rn 'localStorage' services/brokerService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-31", "criterion": "BROKERS_KEY constant removed", "testType": "grep" },
+        { "id": "R-P1-32", "criterion": "saveBroker does not write to localStorage (API-only)", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/brokerService.test" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-021",
-      "description": "Replace All Browser Dialogs",
-      "phase": 3,
-      "phase_type": "ux",
-      "component": "components/",
+      "id": "STORY-109",
+      "description": "Frontend — Migrate authService companies localStorage to API-only: Remove COMPANIES_KEY and safeParseCompanies() localStorage usage from services/authService.ts. The /api/companies/:id route exists.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "services/authService.ts",
       "scope": [
-        "components/"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": "ux",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S21-01",
-          "criterion": "grep alert( components/ excluding tests returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S21-02",
-          "criterion": "grep window.confirm( excluding tests returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S21-03",
-          "criterion": "grep prompt( excluding tests returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S21-04",
-          "criterion": "ConfirmDialog component exists",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S21-05",
-          "criterion": "Breakdown flow uses styled modal",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-022",
-      "description": "Standardize Loading Error Empty States",
-      "phase": 3,
-      "phase_type": "ux",
-      "component": "components/",
-      "scope": [
-        "components/"
+        "services/authService.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "ux",
+      "parallelGroup": "1B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S22-01",
-          "criterion": "LoadingSkeleton exists with variants",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S22-02",
-          "criterion": "ErrorState exists with retry",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S22-03",
-          "criterion": "Dashboard shows skeleton while loading",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S22-04",
-          "criterion": "API errors show ErrorState",
-          "testType": "unit"
-        }
+        { "id": "R-P1-33", "criterion": "grep -rn 'COMPANIES_KEY' services/authService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-34", "criterion": "grep -rn 'localStorage.*companies|companies.*localStorage' services/authService.ts returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-35", "criterion": "getStoredCompanies() fetches from API or returns from in-memory cache", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/authService.test" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-023",
-      "description": "Form Validation and Autocomplete",
-      "phase": 3,
-      "phase_type": "ux",
-      "component": "components/",
+      "id": "STORY-110",
+      "description": "Remove Dead localStorage Infrastructure: Remove services/storage/core.ts (tenant key migration helper) and services/storage/migrationService.ts since all domains now use API. Update services/storage/index.ts barrel exports.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "services/storage/index.ts",
       "scope": [
-        "components/"
+        "services/storage/core.ts",
+        "services/storage/migrationService.ts",
+        "services/storage/index.ts"
       ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": ["STORY-104", "STORY-105", "STORY-106", "STORY-107", "STORY-108", "STORY-109"],
+      "parallelGroup": "1C",
+      "acceptanceCriteria": [
+        { "id": "R-P1-36", "criterion": "services/storage/core.ts deleted or contains no localStorage calls", "testType": "grep" },
+        { "id": "R-P1-37", "criterion": "services/storage/migrationService.ts deleted or is a no-op", "testType": "grep" },
+        { "id": "R-P1-38", "criterion": "grep -rn 'getTenantKey|migrateKey' services/ returns 0 matches (excluding test files)", "testType": "grep" }
+      ],
+      "gateCmds": { "unit": "npx vitest run" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-111",
+      "description": "Strip DEMO_MODE from React Components: Remove all DEMO_MODE imports and conditional blocks from SafetyView.tsx, Settlements.tsx, and App.tsx. The service layer handles all branching — the UI renders what it receives.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "components/SafetyView.tsx",
+      "scope": [
+        "components/SafetyView.tsx",
+        "components/Settlements.tsx",
+        "App.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "1C",
+      "acceptanceCriteria": [
+        { "id": "R-P1-39", "criterion": "grep -rn 'DEMO_MODE' components/SafetyView.tsx returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-40", "criterion": "grep -rn 'DEMO_MODE' components/Settlements.tsx returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-41", "criterion": "grep -rn 'DEMO_MODE' App.tsx returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-42", "criterion": "grep -rn 'seedIncidents' App.tsx returns 0 matches (import and call removed)", "testType": "grep" },
+        { "id": "R-P1-43", "criterion": "Settlements deductions come from API or service layer, not hardcoded array", "testType": "unit" },
+        { "id": "R-P1-44", "criterion": "grep -rn 'DEMO_MODE' components/ --include='*.tsx' returns 0 matches", "testType": "grep" }
+      ],
+      "gateCmds": { "unit": "npx vitest run src/__tests__/components/SafetyView src/__tests__/components/Settlements src/__tests__/App" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-112",
+      "description": "Push DEMO_MODE Branching into Service Layer: Ensure authService.ts and ocrService.ts keep their DEMO_MODE branching in the service layer. Clean up ocrService.ts demo mode to return a proper error, not fake data.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "services/ocrService.ts",
+      "scope": [
+        "services/ocrService.ts",
+        "services/authService.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "1C",
+      "acceptanceCriteria": [
+        { "id": "R-P1-45", "criterion": "services/firebase.ts still exports DEMO_MODE (definition stays)", "testType": "grep" },
+        { "id": "R-P1-46", "criterion": "services/authService.ts DEMO_MODE usage is limited to auth initialization (no UI branching leaked)", "testType": "grep" },
+        { "id": "R-P1-47", "criterion": "services/ocrService.ts demo mode throws or returns empty result (no fake load data)", "testType": "unit" },
+        { "id": "R-P1-48", "criterion": "grep -rn 'DEMO_MODE' services/ocrService.ts | grep -v import shows only error/throw paths", "testType": "grep" }
+      ],
+      "gateCmds": { "unit": "npx vitest run src/__tests__/services/ocrService src/__tests__/services/authService" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-113",
+      "description": "Phase 1 Final Orchestrator Sign-off: Holistic cross-feature exploratory testing of the entire localStorage migration and DEMO_MODE cleanup.",
+      "phase": 1,
+      "phase_type": "persistence",
+      "component": "server/index.ts",
+      "scope": [],
       "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "ux",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-110", "STORY-111", "STORY-112"],
+      "parallelGroup": "1D",
       "acceptanceCriteria": [
-        {
-          "id": "R-S23-01",
-          "criterion": "Required fields show asterisk",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S23-02",
-          "criterion": "Email validates on blur",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S23-03",
-          "criterion": "Password inputs have autocomplete",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S23-04",
-          "criterion": "MC DOT fields show hints",
-          "testType": "unit"
-        }
+        { "id": "R-P1-49", "criterion": "npx vitest run — all frontend tests pass (>= 3,070 baseline)", "testType": "unit" },
+        { "id": "R-P1-50", "criterion": "cd server && npx vitest run — all backend tests pass (>= 1,792 baseline)", "testType": "unit" },
+        { "id": "R-P1-51", "criterion": "grep -rn 'localStorage' services/ --include='*.ts' | grep -v __tests__ | grep -v '.test.' | grep -v 'getItem(\"token\")' | grep -v firebase | grep -v config returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-52", "criterion": "grep -rn 'DEMO_MODE' components/ App.tsx --include='*.tsx' returns 0 matches", "testType": "grep" },
+        { "id": "R-P1-53", "criterion": "npm run build succeeds with no errors", "testType": "build" },
+        { "id": "R-P1-54", "criterion": "Playwright MCP: Navigate to Dashboard, Safety, Settlements, Broker Network, FileVault — all load data from server, no localStorage artifacts in Application tab", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run 2>&1 | tail -5 && cd server && npx vitest run 2>&1 | tail -5" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-024",
-      "description": "Connection Banner Wiring",
-      "phase": 3,
+      "id": "STORY-201",
+      "description": "Standardize Loading/Error/Empty States: Apply LoadingSkeleton and ErrorState to AccountingPortal, SafetyView, BrokerManager, and Settlements. These components currently show no loading indicator.",
+      "phase": 2,
+      "phase_type": "ux",
+      "component": "components/AccountingPortal.tsx",
+      "scope": [
+        "components/AccountingPortal.tsx",
+        "components/SafetyView.tsx",
+        "components/BrokerManager.tsx",
+        "components/Settlements.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": ["STORY-113"],
+      "parallelGroup": "2A",
+      "acceptanceCriteria": [
+        { "id": "R-P2-01", "criterion": "AccountingPortal shows LoadingSkeleton while data loads", "testType": "unit" },
+        { "id": "R-P2-02", "criterion": "SafetyView shows LoadingSkeleton during initial fetch", "testType": "unit" },
+        { "id": "R-P2-03", "criterion": "API errors in AccountingPortal show ErrorState with retry button", "testType": "unit" },
+        { "id": "R-P2-04", "criterion": "API errors in SafetyView show ErrorState with retry button", "testType": "unit" }
+      ],
+      "gateCmds": { "unit": "npx vitest run src/__tests__/components/AccountingPortal src/__tests__/components/SafetyView src/__tests__/components/BrokerManager src/__tests__/components/Settlements" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-202",
+      "description": "Form Validation & Autocomplete: Add required field indicators, inline validation, and autocomplete attributes to Auth, CompanyProfile, and load creation forms.",
+      "phase": 2,
+      "phase_type": "ux",
+      "component": "components/Auth.tsx",
+      "scope": [
+        "components/Auth.tsx",
+        "components/CompanyProfile.tsx",
+        "components/EditLoadForm.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": ["STORY-113"],
+      "parallelGroup": "2A",
+      "acceptanceCriteria": [
+        { "id": "R-P2-05", "criterion": "Required fields show red asterisk or 'Required' label", "testType": "unit" },
+        { "id": "R-P2-06", "criterion": "Email fields validate format on blur and show inline error", "testType": "unit" },
+        { "id": "R-P2-07", "criterion": "All password inputs have autocomplete='current-password' or autocomplete='new-password'", "testType": "unit" },
+        { "id": "R-P2-08", "criterion": "MC/DOT fields in CompanyProfile show format hint ('e.g., MC-123456')", "testType": "unit" }
+      ],
+      "gateCmds": { "unit": "npx vitest run src/__tests__/components/Auth src/__tests__/components/CompanyProfile src/__tests__/components/EditLoadForm" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-203",
+      "description": "Improve Suspense Fallbacks: Replace 7 fallback={null} instances in App.tsx with LoadingSkeleton fallbacks (variant='card', count=3 or appropriate variant).",
+      "phase": 2,
       "phase_type": "ux",
       "component": "App.tsx",
       "scope": [
         "App.tsx"
       ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "ux",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S24-01",
-          "criterion": "Banner appears within 30s",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S24-02",
-          "criterion": "Banner auto-clears on health 200",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S24-03",
-          "criterion": "Retry calls refreshData",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S24-04",
-          "criterion": "Sticky top z-index 100",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
-      "passed": true,
-      "verificationRef": "Already implemented"
-    },
-    {
-      "id": "STORY-025",
-      "description": "Implement Equipment PATCH",
-      "phase": 4,
-      "phase_type": "feature",
-      "component": "server/routes/equipment.ts",
-      "scope": [
-        "server/routes/equipment.ts"
-      ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
+      "dependsOn": ["STORY-113"],
+      "parallelGroup": "2A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S25-01",
-          "criterion": "PATCH updates status maintenance_date mileage notes",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S25-02",
-          "criterion": "Cross-tenant returns 404",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S25-03",
-          "criterion": "Unauthorized role returns 403",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S25-04",
-          "criterion": "Existing equipment tests pass",
-          "testType": "unit"
-        }
+        { "id": "R-P2-09", "criterion": "grep -rn 'fallback={null}' App.tsx returns 0 matches", "testType": "grep" },
+        { "id": "R-P2-10", "criterion": "Every <Suspense> in App.tsx has a LoadingSkeleton fallback", "testType": "grep" },
+        { "id": "R-P2-11", "criterion": "npm run build succeeds (no new bundle size regression)", "testType": "build" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/App" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-026",
-      "description": "Implement File Upload",
-      "phase": 4,
+      "id": "STORY-204",
+      "description": "Phase 2 Final Orchestrator Sign-off: Full frontend regression + Playwright MCP verification of 3 key UX flows.",
+      "phase": 2,
+      "phase_type": "ux",
+      "component": "App.tsx",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-201", "STORY-202", "STORY-203"],
+      "parallelGroup": "2B",
+      "acceptanceCriteria": [
+        { "id": "R-P2-12", "criterion": "npx vitest run — all frontend tests pass (>= 3,070 baseline)", "testType": "unit" },
+        { "id": "R-P2-13", "criterion": "grep -rn 'fallback={null}' App.tsx returns 0 matches", "testType": "grep" },
+        { "id": "R-P2-14", "criterion": "Playwright MCP: Navigate to Auth signup, leave email blank, submit — validation error visible", "testType": "unit" },
+        { "id": "R-P2-15", "criterion": "Playwright MCP: Navigate to AccountingPortal — skeleton appears before data loads", "testType": "unit" }
+      ],
+      "gateCmds": { "unit": "npx vitest run 2>&1 | tail -5" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-301",
+      "description": "Wire File Upload Express Route: Create server/routes/documents.ts using existing document.service.ts + document.schema.ts + document.repository.ts. Add Multer middleware for multipart parsing. Wire FileVault component to use the new endpoint.",
+      "phase": 3,
       "phase_type": "feature",
-      "component": "server/routes/uploads.ts",
+      "component": "server/routes/documents.ts",
       "scope": [
-        "server/routes/uploads.ts"
+        "server/routes/documents.ts",
+        "server/index.ts",
+        "components/FileVault.tsx",
+        "services/storage/vault.ts"
       ],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
+      "dependsOn": ["STORY-204"],
+      "parallelGroup": "3A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S26-01",
-          "criterion": "Upload works with progress",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S26-02",
-          "criterion": "Over 10MB rejected 413",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S26-03",
-          "criterion": "Invalid MIME rejected 400",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S26-04",
-          "criterion": "Cross-tenant returns 404",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S26-05",
-          "criterion": "Content-Disposition attachment",
-          "testType": "unit"
-        }
+        { "id": "R-P3-01", "criterion": "POST /api/documents accepts multipart/form-data with file field", "testType": "unit" },
+        { "id": "R-P3-02", "criterion": "File > 10MB returns 413 with JSON error body", "testType": "unit" },
+        { "id": "R-P3-03", "criterion": "Invalid MIME type (not pdf/jpeg/png/tiff) returns 400 with JSON error body", "testType": "unit" },
+        { "id": "R-P3-04", "criterion": "Path traversal filename (../../../etc/passwd) is sanitized by sanitizeFilename()", "testType": "unit" },
+        { "id": "R-P3-05", "criterion": "GET /api/documents returns document list for authenticated tenant", "testType": "unit" },
+        { "id": "R-P3-06", "criterion": "GET /api/documents/:id/download returns signed URL", "testType": "unit" },
+        { "id": "R-P3-07", "criterion": "Cross-tenant document access returns 404", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/routes/documents.test.ts && npx vitest run src/__tests__/components/FileVault" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-027",
-      "description": "Customer Soft Delete Archive",
-      "phase": 4,
+      "id": "STORY-302",
+      "description": "Remove Unimplemented Features: Hide QB Sync section from AccountingPortal. Ensure IFTA filing returns 501. Remove WebSocket tracking stubs. Remove 'coming soon' language.",
+      "phase": 3,
       "phase_type": "feature",
-      "component": "server/routes/clients.ts",
+      "component": "components/AccountingPortal.tsx",
       "scope": [
-        "server/routes/clients.ts"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S27-01",
-          "criterion": "Archive sets archived_at",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S27-02",
-          "criterion": "Archived hidden from defaults",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S27-03",
-          "criterion": "Un-archive endpoint exists",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S27-04",
-          "criterion": "Unauthorized role returns 403",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-028",
-      "description": "Password Reset Flow",
-      "phase": 4,
-      "phase_type": "feature",
-      "component": "server/routes/users.ts",
-      "scope": [
-        "server/routes/users.ts",
-        "components/Auth.tsx"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S28-01",
-          "criterion": "Forgot Password link visible",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S28-02",
-          "criterion": "Rate limited 3 per 15min",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S28-03",
-          "criterion": "Always returns 200",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S28-04",
-          "criterion": "Works on mobile",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-029",
-      "description": "Endpoint Hardening",
-      "phase": 4,
-      "phase_type": "feature",
-      "component": "server/routes/accounting.ts",
-      "scope": [
-        "server/routes/accounting.ts",
-        "server/routes/ai.ts"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
-      "acceptanceCriteria": [
-        {
-          "id": "R-S29-01",
-          "criterion": "pings over 10000 returns 400",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S29-02",
-          "criterion": "AI over 5MB returns 413",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S29-03",
-          "criterion": "Invalid MIME returns 400",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S29-04",
-          "criterion": "Each boundary has a test",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-030",
-      "description": "Remove Unimplemented Features",
-      "phase": 4,
-      "phase_type": "feature",
-      "component": "components/",
-      "scope": [
-        "components/",
+        "components/AccountingPortal.tsx",
         "server/routes/accounting.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
+      "dependsOn": ["STORY-204"],
+      "parallelGroup": "3A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S30-01",
-          "criterion": "QB Sync hidden",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S30-02",
-          "criterion": "sync-qb returns 501",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S30-03",
-          "criterion": "grep Sync queued returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S30-04",
-          "criterion": "No coming soon in UI",
-          "testType": "grep"
-        }
+        { "id": "R-P3-08", "criterion": "QB Sync section not rendered in AccountingPortal", "testType": "unit" },
+        { "id": "R-P3-09", "criterion": "POST /api/accounting/sync-qb returns 501", "testType": "unit" },
+        { "id": "R-P3-10", "criterion": "grep -rn 'coming soon' components/ --include='*.tsx' -i returns 0 matches", "testType": "grep" },
+        { "id": "R-P3-11", "criterion": "grep -rn 'Sync queued' server/routes/ returns 0 matches", "testType": "grep" },
+        { "id": "R-P3-12", "criterion": "No button in UI triggers a fake success toast for unimplemented features", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run && cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run src/__tests__/components/AccountingPortal && cd server && npx vitest run __tests__/routes/accounting.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-031",
-      "description": "Relabel Tracking Honestly",
-      "phase": 4,
+      "id": "STORY-303",
+      "description": "Phase 3 Final Orchestrator Sign-off: Full regression + Playwright MCP upload happy/unhappy path verification.",
+      "phase": 3,
       "phase_type": "feature",
-      "component": "components/",
-      "scope": [
-        "components/"
-      ],
+      "component": "server/routes/documents.ts",
+      "scope": [],
       "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "feature-reality",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-301", "STORY-302"],
+      "parallelGroup": "3B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S31-01",
-          "criterion": "grep Real-Time Live-Track returns 0",
-          "testType": "grep"
-        },
-        {
-          "id": "R-S31-02",
-          "criterion": "Tracking still works",
-          "testType": "unit"
-        }
+        { "id": "R-P3-13", "criterion": "npx vitest run — all frontend tests pass", "testType": "unit" },
+        { "id": "R-P3-14", "criterion": "cd server && npx vitest run — all backend tests pass", "testType": "unit" },
+        { "id": "R-P3-15", "criterion": "Playwright MCP: Upload 1KB PDF to FileVault, verify success response", "testType": "unit" },
+        { "id": "R-P3-16", "criterion": "Playwright MCP: Upload 15MB file, verify 413 rejection", "testType": "unit" },
+        { "id": "R-P3-17", "criterion": "Playwright MCP: Navigate to AccountingPortal, verify no QB Sync section", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run 2>&1 | tail -5 && cd server && npx vitest run 2>&1 | tail -5" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-032",
-      "description": "Bundle Code Splitting",
-      "phase": 5,
+      "id": "STORY-401",
+      "description": "Fix TypeScript Errors — Test Files (Batch 1: services): Fix TypeScript errors in src/__tests__/services/*.test.ts files. Primary issues: incorrect mock type definitions, missing type annotations on vi.fn() return values, incorrect parameter types for mocked functions.",
+      "phase": 4,
+      "phase_type": "hardening",
+      "component": "src/__tests__/services",
+      "scope": [
+        "src/__tests__/services/*.test.ts"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": ["STORY-303"],
+      "parallelGroup": "4A",
+      "acceptanceCriteria": [
+        { "id": "R-P4-01", "criterion": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/services/' | wc -l returns 0", "testType": "typecheck" },
+        { "id": "R-P4-02", "criterion": "All fixed test files still pass when run via npx vitest run", "testType": "unit" },
+        { "id": "R-P4-03", "criterion": "No 'as any' casts added to silence errors (fix the actual type)", "testType": "grep" }
+      ],
+      "gateCmds": { "unit": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/services/' | wc -l && npx vitest run src/__tests__/services" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-402",
+      "description": "Fix TypeScript Errors — Test Files (Batch 2: components): Fix TypeScript errors in src/__tests__/components/*.test.tsx files.",
+      "phase": 4,
+      "phase_type": "hardening",
+      "component": "src/__tests__/components",
+      "scope": [
+        "src/__tests__/components/*.test.tsx"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 150,
+      "dependsOn": ["STORY-303"],
+      "parallelGroup": "4A",
+      "acceptanceCriteria": [
+        { "id": "R-P4-04", "criterion": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/components/' | wc -l returns 0", "testType": "typecheck" },
+        { "id": "R-P4-05", "criterion": "All fixed test files still pass when run via npx vitest run", "testType": "unit" },
+        { "id": "R-P4-06", "criterion": "No 'as any' casts added to silence errors", "testType": "grep" }
+      ],
+      "gateCmds": { "unit": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/components/' | wc -l && npx vitest run src/__tests__/components" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-403",
+      "description": "Fix TypeScript Error — vite.config.ts: Fix the allowedHosts: true type error in vite.config.ts. The type expects true | string[] but TypeScript infers boolean.",
+      "phase": 4,
       "phase_type": "hardening",
       "component": "vite.config.ts",
       "scope": [
         "vite.config.ts"
       ],
-      "complexity": "moderate",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": null,
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": ["STORY-303"],
+      "parallelGroup": "4A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S32-01",
-          "criterion": "No chunk over 500KB gzipped",
-          "testType": "build"
-        },
-        {
-          "id": "R-S32-02",
-          "criterion": "Login under 150KB gzipped",
-          "testType": "build"
-        },
-        {
-          "id": "R-S32-03",
-          "criterion": "Build no warnings",
-          "testType": "build"
-        }
+        { "id": "R-P4-07", "criterion": "npx tsc --noEmit 2>&1 | grep 'vite.config.ts' | wc -l returns 0", "testType": "typecheck" }
       ],
-      "gateCmds": {
-        "build": "npm run build"
-      },
+      "gateCmds": { "unit": "npx tsc --noEmit 2>&1 | grep 'vite.config.ts' | wc -l" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-033",
-      "description": "Fix TypeScript Errors",
-      "phase": 5,
+      "id": "STORY-404",
+      "description": "Forbidden Pattern CI Guard — localStorage Regression: Extend server/__tests__/integration/forbidden-patterns.test.ts to scan for localStorage-as-SoR regressions in services (excluding test files, config, and auth token reads).",
+      "phase": 4,
       "phase_type": "hardening",
-      "component": "tests",
+      "component": "server/__tests__/integration/forbidden-patterns.test.ts",
       "scope": [
-        "src/__tests__/"
+        "server/__tests__/integration/forbidden-patterns.test.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": null,
+      "dependsOn": ["STORY-303"],
+      "parallelGroup": "4A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S33-01",
-          "criterion": "Frontend tsc 0 errors",
-          "testType": "typecheck"
-        },
-        {
-          "id": "R-S33-02",
-          "criterion": "Server tsc 0 errors",
-          "testType": "typecheck"
-        }
+        { "id": "R-P4-08", "criterion": "Test scans services/**/*.ts (excluding __tests__) for localStorage.getItem / localStorage.setItem outside of auth token reads", "testType": "unit" },
+        { "id": "R-P4-09", "criterion": "Adding localStorage.setItem('loadpilot_test', 'value') to any service file causes the test to fail", "testType": "unit" },
+        { "id": "R-P4-10", "criterion": "Existing tests in forbidden-patterns.test.ts still pass", "testType": "unit" }
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit && cd server && npx tsc --noEmit"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/integration/forbidden-patterns.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-034",
-      "description": "Forbidden Pattern CI Guard",
-      "phase": 5,
+      "id": "STORY-405",
+      "description": "Bundle Splitting — Reduce Chunk Sizes: Optimize bundle splitting in vite.config.ts. Convert LoadList, Intelligence, Settlements, CommandCenterView and other eager heavy components to React.lazy. Target: no single route chunk > 250KB uncompressed.",
+      "phase": 4,
       "phase_type": "hardening",
-      "component": "server/__tests__/",
+      "component": "App.tsx",
       "scope": [
-        "server/__tests__/"
+        "App.tsx",
+        "vite.config.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": null,
+      "dependsOn": ["STORY-303"],
+      "parallelGroup": "4A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S34-01",
-          "criterion": "CI test scans forbidden patterns",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S34-02",
-          "criterion": "Adding forbidden pattern fails test",
-          "testType": "unit"
-        }
+        { "id": "R-P4-11", "criterion": "LoadList, Intelligence, Settlements, CommandCenterView converted to React.lazy imports in App.tsx", "testType": "grep" },
+        { "id": "R-P4-12", "criterion": "npm run build 2>&1 | grep 'kB' shows no single chunk file > 250KB (excluding vendor/maps/pdf/charts/capture shared chunks)", "testType": "build" },
+        { "id": "R-P4-13", "criterion": "grep -c '^import.*from.*components/' App.tsx shows only ErrorBoundary, ConnectionBanner, Toast, LoadingSkeleton as eager imports (UI shell components)", "testType": "grep" },
+        { "id": "R-P4-14", "criterion": "Application loads and all routes render correctly after splitting", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npm run build 2>&1 | tail -20 && npx vitest run src/__tests__/App" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-035",
-      "description": "Operational Readiness",
-      "phase": 5,
+      "id": "STORY-406",
+      "description": "Phase 4 Final Orchestrator Sign-off: Full TypeScript compilation + full test regression + build verification + Playwright MCP navigation sweep.",
+      "phase": 4,
       "phase_type": "hardening",
+      "component": "vite.config.ts",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-401", "STORY-402", "STORY-403", "STORY-404", "STORY-405"],
+      "parallelGroup": "4B",
+      "acceptanceCriteria": [
+        { "id": "R-P4-15", "criterion": "npx tsc --noEmit 2>&1 | grep -c 'error TS' returns 0", "testType": "typecheck" },
+        { "id": "R-P4-16", "criterion": "cd server && npx tsc --noEmit returns 0 errors", "testType": "typecheck" },
+        { "id": "R-P4-17", "criterion": "npx vitest run — all frontend tests pass", "testType": "unit" },
+        { "id": "R-P4-18", "criterion": "cd server && npx vitest run — all backend tests pass", "testType": "unit" },
+        { "id": "R-P4-19", "criterion": "npm run build succeeds with no chunk > 250KB (excluding shared vendor chunks)", "testType": "build" },
+        { "id": "R-P4-20", "criterion": "Playwright MCP: Full navigation sweep — Dashboard, Load Board, Accounting, Safety, Settlements, Broker Network, FileVault — all render", "testType": "unit" }
+      ],
+      "gateCmds": { "unit": "npx tsc --noEmit 2>&1 | grep -c 'error TS' || echo '0' && npx vitest run 2>&1 | tail -5" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-501",
+      "description": "Operational Readiness: Enhanced health check endpoint returning dependency status. Rollback documentation. Ops readiness checklist.",
+      "phase": 5,
+      "phase_type": "release",
       "component": "server/routes/health.ts",
       "scope": [
         "server/routes/health.ts",
-        "docs/"
+        "docs/ops/rollback-procedure.md",
+        "docs/ops/readiness-checklist.md"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": null,
+      "dependsOn": ["STORY-406"],
+      "parallelGroup": "5A",
       "acceptanceCriteria": [
-        {
-          "id": "R-S35-01",
-          "criterion": "Health returns dependency status",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S35-02",
-          "criterion": "Rollback procedure documented",
-          "testType": "docs"
-        },
-        {
-          "id": "R-S35-03",
-          "criterion": "Ops readiness checklist complete",
-          "testType": "docs"
-        }
+        { "id": "R-P5-01", "criterion": "GET /api/health returns { status: 'ok', mysql: 'connected', firebase: 'ready', uptime: <seconds> }", "testType": "unit" },
+        { "id": "R-P5-02", "criterion": "docs/ops/rollback-procedure.md exists with step-by-step instructions", "testType": "docs" },
+        { "id": "R-P5-03", "criterion": "docs/ops/readiness-checklist.md exists with deploy prerequisites", "testType": "docs" },
+        { "id": "R-P5-04", "criterion": "Health endpoint has a test verifying JSON schema", "testType": "unit" }
       ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "cd server && npx vitest run __tests__/routes/health.test.ts" },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-036",
-      "description": "Regression and Release Evidence",
+      "id": "STORY-502",
+      "description": "Full Regression + Release Evidence: Full regression run. Generate release evidence document with test counts, coverage percentages, TS error count, chunk sizes, and sign-off timestamp.",
       "phase": 5,
-      "phase_type": "hardening",
-      "component": "docs/",
+      "phase_type": "release",
+      "component": "docs/release/evidence.md",
       "scope": [
-        "docs/remediation/"
+        "docs/release/evidence.md"
       ],
-      "complexity": "moderate",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": null,
+      "complexity": "simple",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-501"],
+      "parallelGroup": "5B",
       "acceptanceCriteria": [
-        {
-          "id": "R-S36-01",
-          "criterion": "Server tests >= 1268",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S36-02",
-          "criterion": "Frontend tests >= 549",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S36-03",
-          "criterion": "TypeScript 0 errors",
-          "testType": "typecheck"
-        },
-        {
-          "id": "R-S36-04",
-          "criterion": "Forbidden pattern scan passes",
-          "testType": "unit"
-        },
-        {
-          "id": "R-S36-05",
-          "criterion": "Release evidence generated",
-          "testType": "docs"
-        }
+        { "id": "R-P5-05", "criterion": "cd server && npx vitest run — tests >= 1,792 baseline, all passing", "testType": "unit" },
+        { "id": "R-P5-06", "criterion": "npx vitest run — tests >= 3,070 baseline, all passing", "testType": "unit" },
+        { "id": "R-P5-07", "criterion": "npx tsc --noEmit — 0 errors (frontend)", "testType": "typecheck" },
+        { "id": "R-P5-08", "criterion": "cd server && npx tsc --noEmit — 0 errors (backend)", "testType": "typecheck" },
+        { "id": "R-P5-09", "criterion": "npm run build — succeeds, no warnings", "testType": "build" },
+        { "id": "R-P5-10", "criterion": "grep -rn 'localStorage' services/ --include='*.ts' | grep -v __tests__ | grep -v '.test.' | grep -v config | grep -v firebase | wc -l returns 0", "testType": "grep" },
+        { "id": "R-P5-11", "criterion": "grep -rn 'DEMO_MODE' components/ App.tsx --include='*.tsx' | wc -l returns 0", "testType": "grep" },
+        { "id": "R-P5-12", "criterion": "docs/release/evidence.md generated with test counts, coverage percentages, TS error count, chunk sizes, and sign-off timestamp", "testType": "docs" }
       ],
-      "gateCmds": {
-        "unit": "npx vitest run && cd server && npx vitest run"
-      },
+      "gateCmds": { "unit": "npx vitest run 2>&1 | tail -5 && cd server && npx vitest run 2>&1 | tail -5" },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-503",
+      "description": "Phase 5 Final Orchestrator Sign-off (Go/No-Go): The final go/no-go gate. Playwright MCP performs a full exploratory sweep of every major page.",
+      "phase": 5,
+      "phase_type": "release",
+      "component": "docs/release/evidence.md",
+      "scope": [
+        "docs/release/evidence.md"
+      ],
+      "complexity": "simple",
+      "maxTurns": 50,
+      "dependsOn": ["STORY-502"],
+      "parallelGroup": "5C",
+      "acceptanceCriteria": [
+        { "id": "R-P5-13", "criterion": "Playwright MCP: Login flow succeeds", "testType": "unit" },
+        { "id": "R-P5-14", "criterion": "Playwright MCP: Navigate all 15 pages — Dashboard, Load Board, Calendar, Dispatch Timeline, Accounting, Safety, Settlements, Broker Network, FileVault, Scanner, Intelligence, Operations Center, Analytics, Driver Mobile, Booking Portal — all render without errors", "testType": "unit" },
+        { "id": "R-P5-15", "criterion": "Playwright MCP: Console log shows 0 uncaught exceptions", "testType": "unit" },
+        { "id": "R-P5-16", "criterion": "All verification commands from STORY-502 re-confirmed", "testType": "unit" },
+        { "id": "R-P5-17", "criterion": "No critical/high severity regressions detected", "testType": "unit" },
+        { "id": "R-P5-18", "criterion": "docs/release/evidence.md updated with final timestamp and GO decision", "testType": "docs" }
+      ],
+      "gateCmds": { "unit": "npx vitest run 2>&1 | tail -5 && cd server && npx vitest run 2>&1 | tail -5" },
       "passed": false,
       "verificationRef": null
     }

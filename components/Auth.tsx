@@ -224,9 +224,22 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = await login(email, password);
-    if (user) onLogin(user);
-    else setError("Invalid credentials.");
+    setError("");
+    setIsProcessing(true);
+    try {
+      const user = await login(email, password);
+      if (user) {
+        onLogin(user);
+      } else {
+        setError("Invalid credentials.");
+        setPassword("");
+      }
+    } catch {
+      setError("Sign in failed. Please try again.");
+      setPassword("");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleForgotPassword = async (emailInput: string) => {
@@ -511,11 +524,15 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
                     onBlur={(e) => validateEmail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="you@company.com"
                     autoComplete="email"
+                    disabled={isProcessing}
                   />
                   {emailError && (
                     <p className="text-red-400 text-xs font-bold mt-1 ml-1">
@@ -529,10 +546,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     type="password"
                     required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError("");
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="••••••••"
                     autoComplete="current-password"
+                    disabled={isProcessing}
                   />
                 </div>
               </div>
@@ -543,9 +564,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               )}
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
+                disabled={isProcessing}
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
               >
-                Sign In
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Signing In...
+                  </span>
+                ) : (
+                  "Sign In"
+                )}
               </button>
               <button
                 type="button"

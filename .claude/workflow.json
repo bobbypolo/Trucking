@@ -26,10 +26,14 @@
         "max_duration_s": 120
       }
     },
-    "coverage": "",
+    "coverage": "python -m pytest .claude/hooks/tests/ --cov=.claude/hooks --cov-branch --cov-fail-under=80 --no-header -q",
     "coverage_timeout_s": 1200,
     "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
-    "unit_timeout_s": 600
+    "unit_timeout_s": 600,
+    "_comment": "self_test commands verify the ADE workflow itself. project_* commands should be set when host project source code exists. They start as TODO placeholders; /health warns when unconfigured.",
+    "project_test": "TODO: set your project test command (e.g., pytest tests/ -v)",
+    "project_lint": "TODO: set your project lint command (e.g., ruff check .)",
+    "project_type_check": "TODO: set your project type check command (e.g., mypy src/)"
   },
   "test_patterns": [
     "vitest",
@@ -46,7 +50,16 @@
       ]
     },
     "custom_steps": [],
-    "evidence_max_chars": 500
+    "evidence_max_chars": 500,
+    "negative_test_min_pct": 15,
+    "behavioral_assertion_required": true,
+    "min_public_api_coverage_pct": 90,
+    "tdd_checkpoint_required": true,
+    "tdd_checkpoint_phase_types": [
+      "module",
+      "integration",
+      "e2e"
+    ]
   },
   "test_quality": {
     "min_assertions_per_test": 1,
@@ -64,18 +77,19 @@
   },
   "external_scanners": {
     "bandit": {
-      "cmd": "bandit -r {changed_dir} -f json -q",
+      "cmd": "bandit -r {changed_dir} -f json -q --skip B101 --exclude '*/tests/*'",
       "enabled": true,
-      "strict_mode": false
+      "strict_mode": true
     },
     "semgrep": {
       "cmd": "semgrep --config=auto {changed_dir} --json -q",
-      "enabled": false
+      "enabled": true,
+      "strict_mode": false
     },
     "pip-audit": {
       "cmd": "pip-audit --format=json",
       "enabled": true,
-      "strict_mode": false
+      "strict_mode": true
     }
   },
   "agent_config": {
@@ -140,24 +154,8 @@
       ],
       "commands": {
         "lint": "ruff check .",
-        "type_check": "mypy .claude/hooks/ --exclude .claude/hooks/tests --ignore-missing-imports --no-error-summary",
+        "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
         "test": "python -m pytest .claude/hooks/tests/ -v"
-      }
-    },
-    "typescript": {
-      "extensions": [
-        ".ts",
-        ".tsx"
-      ],
-      "test_patterns": [
-        "*.test.ts",
-        "*.test.tsx"
-      ],
-      "commands": {
-        "lint": "npx tsc --noEmit",
-        "type_check": "npx tsc --noEmit",
-        "test": "npx vitest run --reporter=verbose",
-        "test_server": "cd server && npx vitest run --reporter=verbose"
       }
     }
   },
@@ -165,5 +163,10 @@
     "circuit_breaker_threshold": 3,
     "drift_threshold": 3
   },
-  "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands."
+  "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",
+  "complexity": {
+    "enabled": true,
+    "warn_threshold": 10,
+    "fail_threshold": 25
+  }
 }
