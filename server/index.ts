@@ -47,6 +47,7 @@ import crisisActionsRouter from "./routes/crisis-actions";
 import serviceTicketsRouter from "./routes/service-tickets";
 import safetyRouter from "./routes/safety";
 import notificationJobsRouter from "./routes/notification-jobs";
+import vaultDocsRouter from "./routes/vault-docs";
 import healthRouter from "./routes/health";
 
 const app = express();
@@ -101,6 +102,8 @@ app.use(kciRequestsRouter);
 app.use(crisisActionsRouter);
 app.use(serviceTicketsRouter);
 app.use(safetyRouter);
+app.use(notificationJobsRouter);
+app.use(vaultDocsRouter);
 
 app.use(errorHandler);
 
