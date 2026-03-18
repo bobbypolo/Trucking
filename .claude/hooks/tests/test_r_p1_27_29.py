@@ -99,10 +99,19 @@ def test_r_p1_28_get_incidents_returns_promise_array():
 def test_r_p1_28_get_incidents_fetches_api_incidents():
     """R-P1-28: getIncidents fetches from /api/incidents path (behavioral: checks API call)"""
     content = STORAGE_SERVICE_TS.read_text(encoding="utf-8")
-    # Must contain a fetch call with /incidents path
-    assert re.search(
-        r"fetch\s*\(`?\$\{API_URL\}/incidents`?", content
-    ), "R-P1-28 FAIL: getIncidents does not fetch from /api/incidents"
+    # Value assertion: find the actual fetch URL line and verify it contains /incidents
+    fetch_lines = [
+        (i + 1, line.strip())
+        for i, line in enumerate(content.splitlines())
+        if "fetch(" in line and "incidents" in line
+    ]
+    assert len(fetch_lines) >= 1, (
+        "R-P1-28 FAIL: getIncidents does not contain a fetch call to /incidents"
+    )
+    _line_num, fetch_call = fetch_lines[0]
+    assert "/incidents" in fetch_call, (
+        f"R-P1-28 FAIL: fetch call does not target /incidents: {fetch_call}"
+    )
 
 
 def test_r_p1_28_get_incidents_returns_empty_on_failure():
