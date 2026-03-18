@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-FS-05-04, R-FS-05-07, R-S25-01, R-S25-02, R-S25-03, R-S25-04
 
 // Hoisted mocks
-const { mockQuery } = vi.hoisted(() => {
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid: vi.fn() };
 });
 
 vi.mock("../../db", () => ({
@@ -35,53 +35,53 @@ vi.mock("../../helpers", () => ({
   getVisibilitySettings: vi.fn().mockResolvedValue({}),
 }));
 
-// Control user context per-test
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
-let mockUserCompanyId = "company-aaa";
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  const mockFirestore = {
+    collection: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: "user-1",
+                data: () => ({
+                  id: "user-1",
+                  company_id: "company-aaa",
+                  role: "dispatcher",
+                  email: "test@test.com",
+                }),
+              },
+            ],
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+      firestore: () => mockFirestore,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: "user-1",
-      tenantId: mockUserTenantId,
-      companyId: mockUserCompanyId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (req: any, res: any, next: any) => {
-    const user = req.user;
-    if (!user)
-      return res
-        .status(403)
-        .json({ error: "Tenant verification requires authentication." });
-
-    const paramCompanyId = req.params.companyId;
-    if (paramCompanyId && paramCompanyId !== user.tenantId) {
-      return res.status(403).json({ error: "Access denied: tenant mismatch." });
-    }
-    if (req.body) {
-      const bodyCompanyId = req.body.company_id || req.body.companyId;
-      if (bodyCompanyId && bodyCompanyId !== user.tenantId) {
-        return res
-          .status(403)
-          .json({ error: "Access denied: tenant mismatch." });
-      }
-    }
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import equipmentRouter from "../../routes/equipment";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -91,26 +91,19 @@ function buildApp() {
   return app;
 }
 
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
-
 const COMPANY_ID = "company-aaa";
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 // ── Auth enforcement ──────────────────────────────────────────────────────────
 
 describe("GET /api/equipment/:companyId — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).get(`/api/equipment/${COMPANY_ID}`);
     expect(res.status).toBe(401);
   });
@@ -119,10 +112,11 @@ describe("GET /api/equipment/:companyId — auth enforcement", () => {
 describe("POST /api/equipment — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).post("/api/equipment").send({
       company_id: COMPANY_ID,
       unit_number: "T-001",
@@ -139,17 +133,15 @@ describe("GET /api/equipment/:companyId — tenant enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 403 when companyId param does not match user tenant", async () => {
     const res = await request(app)
       .get("/api/equipment/company-zzz")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(403);
   });
@@ -159,17 +151,15 @@ describe("POST /api/equipment — tenant enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 403 when company_id in body does not match user tenant", async () => {
     const res = await request(app)
       .post("/api/equipment")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         company_id: "company-zzz",
         unit_number: "T-001",
@@ -187,17 +177,15 @@ describe("POST /api/equipment — validation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 400 when required fields are missing (company_id, unit_number, type, status)", async () => {
     const res = await request(app)
       .post("/api/equipment")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ company_id: COMPANY_ID }); // missing unit_number, type, status
 
     expect(res.status).toBe(400);
@@ -210,11 +198,9 @@ describe("GET /api/equipment/:companyId — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns equipment list with 200", async () => {
@@ -231,7 +217,7 @@ describe("GET /api/equipment/:companyId — success", () => {
 
     const res = await request(app)
       .get(`/api/equipment/${COMPANY_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -243,7 +229,7 @@ describe("GET /api/equipment/:companyId — success", () => {
 
     const res = await request(app)
       .get(`/api/equipment/${COMPANY_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
   });
@@ -253,11 +239,9 @@ describe("POST /api/equipment — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("creates equipment and returns 201", async () => {
@@ -265,7 +249,7 @@ describe("POST /api/equipment — success", () => {
 
     const res = await request(app)
       .post("/api/equipment")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         id: "eq-new",
         company_id: COMPANY_ID,
@@ -283,7 +267,7 @@ describe("POST /api/equipment — success", () => {
 
     const res = await request(app)
       .post("/api/equipment")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         company_id: COMPANY_ID,
         unit_number: "T-003",
@@ -317,28 +301,30 @@ describe("PATCH /api/equipment/:id — role enforcement (R-S25-03)", () => {
   });
 
   it("returns 403 when role is driver", async () => {
-    mockUserRole = "driver";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "driver",
+    });
     app = buildApp();
 
     const res = await request(app)
       .patch("/api/equipment/eq-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "maintenance" });
 
     expect(res.status).toBe(403);
   });
 
   it("returns 403 when role is customer", async () => {
-    mockUserRole = "customer";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "customer",
+    });
     app = buildApp();
 
     const res = await request(app)
       .patch("/api/equipment/eq-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "maintenance" });
 
     expect(res.status).toBe(403);
@@ -350,9 +336,7 @@ describe("PATCH /api/equipment/:id — cross-tenant returns 404 (R-S25-02)", () 
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
     app = buildApp();
   });
 
@@ -362,7 +346,7 @@ describe("PATCH /api/equipment/:id — cross-tenant returns 404 (R-S25-02)", () 
 
     const res = await request(app)
       .patch("/api/equipment/eq-other")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "maintenance" });
 
     expect(res.status).toBe(404);
@@ -374,9 +358,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
     app = buildApp();
   });
 
@@ -391,7 +373,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "maintenance" });
 
     expect(res.status).toBe(200);
@@ -411,7 +393,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ maintenance_date: "2026-04-01", mileage: 120000, notes: "Oil change done" });
 
     expect(res.status).toBe(200);
@@ -421,7 +403,10 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
   });
 
   it("admin role can also update equipment", async () => {
-    mockUserRole = "admin";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "admin",
+    });
     app = buildApp();
     const updatedRow = { ...EQUIP_ROW, status: "inactive" };
     mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
@@ -430,14 +415,17 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "inactive" });
 
     expect(res.status).toBe(200);
   });
 
   it("safety_manager role can update equipment", async () => {
-    mockUserRole = "safety_manager";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "safety_manager",
+    });
     app = buildApp();
     const updatedRow = { ...EQUIP_ROW, notes: "Brake inspection" };
     mockQuery.mockResolvedValueOnce([[EQUIP_ROW], []]);
@@ -446,7 +434,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ notes: "Brake inspection" });
 
     expect(res.status).toBe(200);
@@ -457,7 +445,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ unknown_field: "value" });
 
     // Zod strips unknown fields; schema allows all-optional so empty body
@@ -471,7 +459,7 @@ describe("PATCH /api/equipment/:id — successful update (R-S25-01)", () => {
 
     const res = await request(app)
       .patch(`/api/equipment/${EQUIP_ROW.id}`)
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "maintenance" });
 
     expect(res.status).toBe(500);
@@ -483,9 +471,7 @@ describe("PATCH /api/equipment/:id — existing GET tests unaffected (R-S25-04)"
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
     app = buildApp();
   });
 
@@ -494,10 +480,9 @@ describe("PATCH /api/equipment/:id — existing GET tests unaffected (R-S25-04)"
 
     const res = await request(app)
       .get(`/api/equipment/${COMPANY_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 });
-

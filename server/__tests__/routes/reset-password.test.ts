@@ -72,13 +72,10 @@ vi.mock("../../db", () => ({
   default: { query: vi.fn() },
 }));
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: any, _res: any, next: any) => next(),
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => next(),
-}));
+// Note: requireAuth and requireTenant are NOT mocked here.
+// The buildTestApp() function uses an inline route handler that bypasses the real middleware.
+// The rate limiter structural test imports the real router, which uses the real middleware
+// (firebase-admin and sql-auth mocks above satisfy its dependencies).
 
 // Build an app that bypasses rate limiting for unit test isolation.
 // Rate limiting is a structural concern verified separately via route stack inspection.

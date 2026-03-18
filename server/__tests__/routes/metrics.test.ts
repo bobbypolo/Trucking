@@ -1,34 +1,52 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import express, { Request, Response, NextFunction } from "express";
 import request from "supertest";
 
 // Tests R-P5-03-AC1: /api/metrics endpoint is admin-only, returns request counts, error rates, latency by route
 
-/**
- * Mock requireAuth to inject user context.
- * The user's role is controlled per-test via mockUserRole.
- */
-let mockUserRole = "admin";
-let mockUserId = "user-1";
-let mockTenantId = "company-aaa";
-
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: mockUserId,
-      tenantId: mockTenantId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
+// Hoisted mocks
+const { mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => ({
+  mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
 }));
 
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
-  },
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  const mockFirestore = {
+    collection: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: "user-1",
+                data: () => ({
+                  id: "user-1",
+                  company_id: "company-aaa",
+                  role: "admin",
+                  email: "test@test.com",
+                }),
+              },
+            ],
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+      firestore: () => mockFirestore,
+    },
+  };
+});
+
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import metricsRouter from "../../routes/metrics";
@@ -37,6 +55,11 @@ import {
   resetMetrics,
   getMetricsSnapshot,
 } from "../../middleware/metrics";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 function createApp() {
   const app = express();
@@ -77,64 +100,80 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetMetrics();
-    mockUserRole = "admin";
-    mockUserId = "user-1";
-    mockTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   describe("AC1: /api/metrics endpoint is admin-only", () => {
     it("returns 200 for admin users", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(200);
     });
 
     it("returns 200 for ORG_OWNER_SUPER_ADMIN users", async () => {
-      mockUserRole = "ORG_OWNER_SUPER_ADMIN";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "ORG_OWNER_SUPER_ADMIN",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(200);
     });
 
     it("returns 403 for non-admin users (driver)", async () => {
-      mockUserRole = "driver";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "driver",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(403);
     });
 
     it("returns 403 for non-admin users (dispatcher)", async () => {
-      mockUserRole = "dispatcher";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "dispatcher",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(403);
     });
 
     it("returns 403 for non-admin users (owner_operator)", async () => {
-      mockUserRole = "owner_operator";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "owner_operator",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(403);
     });
   });
 
   describe("AC1: Returns request counts, error rates, latency by route", () => {
     it("returns structured metrics with routes array", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
       // Generate some traffic
-      await request(app).get("/api/loads");
-      await request(app).get("/api/loads");
-      await request(app).post("/api/loads").send({ name: "test" });
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
+      await request(app).post("/api/loads").set("Authorization", AUTH_HEADER).send({ name: "test" });
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(200);
 
       const body = res.body;
@@ -148,15 +187,18 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("tracks request counts per route", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
       // Generate traffic
-      await request(app).get("/api/loads");
-      await request(app).get("/api/loads");
-      await request(app).get("/api/loads");
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       const getLoadsRoute = res.body.routes.find(
         (r: any) => r.method === "GET" && r.path === "/api/loads",
       );
@@ -166,14 +208,17 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("tracks error counts and error rate", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
       // Generate error traffic
-      await request(app).get("/api/error-route");
-      await request(app).get("/api/error-route");
+      await request(app).get("/api/error-route").set("Authorization", AUTH_HEADER);
+      await request(app).get("/api/error-route").set("Authorization", AUTH_HEADER);
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       const errorRoute = res.body.routes.find(
         (r: any) => r.method === "GET" && r.path === "/api/error-route",
       );
@@ -184,15 +229,18 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("computes latency percentiles (p50, p95, p99)", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
       // Generate enough traffic for meaningful percentiles
       for (let i = 0; i < 10; i++) {
-        await request(app).get("/api/loads");
+        await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
       }
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       const getLoadsRoute = res.body.routes.find(
         (r: any) => r.method === "GET" && r.path === "/api/loads",
       );
@@ -211,10 +259,13 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("includes SLO baseline documentation in response", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       const slos = res.body.slo_baselines;
 
       expect(slos).toBeDefined();
@@ -227,10 +278,13 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("includes production note about restricting access", async () => {
-      mockUserRole = "admin";
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+        ...DEFAULT_SQL_PRINCIPAL,
+        role: "admin",
+      });
       const app = createApp();
 
-      const res = await request(app).get("/api/metrics");
+      const res = await request(app).get("/api/metrics").set("Authorization", AUTH_HEADER);
       expect(res.body).toHaveProperty("production_note");
       expect(res.body.production_note).toContain("internal network");
     });
@@ -238,17 +292,19 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
 
   describe("AC1: Metrics middleware does not interfere with normal traffic", () => {
     it("passes requests through without modification", async () => {
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
       const app = createApp();
 
-      const res = await request(app).get("/api/loads");
+      const res = await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
       expect(res.status).toBe(200);
       expect(res.body).toEqual({ loads: [] });
     });
 
     it("does not add headers or modify response body", async () => {
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
       const app = createApp();
 
-      const res = await request(app).post("/api/loads").send({ name: "test" });
+      const res = await request(app).post("/api/loads").set("Authorization", AUTH_HEADER).send({ name: "test" });
       expect(res.status).toBe(201);
       expect(res.body).toEqual({ id: "new-load" });
     });
@@ -256,8 +312,9 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
 
   describe("AC1: getMetricsSnapshot utility", () => {
     it("returns current snapshot without resetting", async () => {
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
       const app = createApp();
-      await request(app).get("/api/loads");
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
 
       const snapshot = getMetricsSnapshot();
       expect(snapshot.routes.length).toBeGreaterThan(0);
@@ -268,8 +325,9 @@ describe("R-P5-03: SLO Measurement and Alert Configuration", () => {
     });
 
     it("resetMetrics clears all data", async () => {
+      mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
       const app = createApp();
-      await request(app).get("/api/loads");
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER);
 
       resetMetrics();
       const snapshot = getMetricsSnapshot();

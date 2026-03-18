@@ -1,6 +1,7 @@
 // Tests R-P4-07, R-P4-08
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
@@ -83,7 +84,8 @@ describe("DriverMobileHome messaging (R-P4-07, R-P4-08)", () => {
     expect(screen.getByText("Message Dispatch")).toBeInTheDocument();
   });
 
-  it("R-P4-07: clicking Message Dispatch calls onOpenHub('messaging')", () => {
+  it("R-P4-07: clicking Message Dispatch calls onOpenHub('messaging')", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -95,7 +97,7 @@ describe("DriverMobileHome messaging (R-P4-07, R-P4-08)", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Message Dispatch"));
+    await user.click(screen.getByText("Message Dispatch"));
     expect(onOpenHub).toHaveBeenCalledWith("messaging");
   });
 

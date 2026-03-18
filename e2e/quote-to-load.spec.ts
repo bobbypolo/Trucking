@@ -64,8 +64,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
       quotePayload,
       request,
     );
-    // Accept 200, 201, 400 (validation), or 404 (endpoint not found)
-    expect([200, 201, 400, 404]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
 
     if (res.status() === 200 || res.status() === 201) {
       const body = await res.json();
@@ -77,12 +76,10 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
     test.skip(!admin.hasToken, "No admin Firebase token available");
 
     const res = await admin.get(`${API_BASE}/api/quotes`, request);
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
 
-    if (res.status() === 200) {
-      const body = await res.json();
-      expect(Array.isArray(body) || typeof body === "object").toBe(true);
-    }
+    const body = await res.json();
+    expect(Array.isArray(body) || typeof body === "object").toBe(true);
   });
 
   test("Step 3: Update quote status to approved", async ({ request }) => {
@@ -93,8 +90,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
       { status: "approved" },
       request,
     );
-    // Accept update or 404 if endpoint structure differs
-    expect([200, 201, 400, 404]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
   });
 });
 
@@ -140,7 +136,7 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
       bookingPayload,
       request,
     );
-    expect([200, 201, 400, 404]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
 
     if (res.status() === 200 || res.status() === 201) {
       const body = await res.json();
@@ -152,12 +148,10 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
     test.skip(!admin.hasToken, "No admin Firebase token available");
 
     const res = await admin.get(`${API_BASE}/api/bookings`, request);
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
 
-    if (res.status() === 200) {
-      const body = await res.json();
-      expect(Array.isArray(body) || typeof body === "object").toBe(true);
-    }
+    const body = await res.json();
+    expect(Array.isArray(body) || typeof body === "object").toBe(true);
   });
 
   test("Step 3: Update booking status to Ready_for_Dispatch", async ({
@@ -170,7 +164,7 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
       { status: "Ready_for_Dispatch" },
       request,
     );
-    expect([200, 201, 400, 404]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
   });
 });
 

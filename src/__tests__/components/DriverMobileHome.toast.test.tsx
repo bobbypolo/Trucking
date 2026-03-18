@@ -1,6 +1,7 @@
 // Tests R-P4-05, R-P4-06
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User } from "../../../types";
@@ -77,6 +78,7 @@ describe("DriverMobileHome status update toasts (R-P4-05, R-P4-06)", () => {
   });
 
   it("R-P4-05: shows success toast after successful status update", async () => {
+    const user = userEvent.setup();
     onSaveLoad.mockResolvedValue(undefined);
     const load = makeLoad({ status: "planned" });
 
@@ -91,11 +93,11 @@ describe("DriverMobileHome status update toasts (R-P4-05, R-P4-06)", () => {
     );
 
     // Navigate into detail view
-    fireEvent.click(screen.getByText("Dallas → Houston"));
+    await user.click(screen.getByText("Dallas → Houston"));
 
     // Click Start Trip button (planned -> in_transit)
     const startBtn = screen.getByText("Start Trip");
-    fireEvent.click(startBtn);
+    await user.click(startBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Status updated to/i)).toBeInTheDocument();
@@ -107,6 +109,7 @@ describe("DriverMobileHome status update toasts (R-P4-05, R-P4-06)", () => {
   });
 
   it("R-P4-06: shows error toast after failed status update", async () => {
+    const user = userEvent.setup();
     onSaveLoad.mockRejectedValue(new Error("Network error"));
     const load = makeLoad({ status: "planned" });
 
@@ -121,10 +124,10 @@ describe("DriverMobileHome status update toasts (R-P4-05, R-P4-06)", () => {
     );
 
     // Navigate into detail view
-    fireEvent.click(screen.getByText("Dallas → Houston"));
+    await user.click(screen.getByText("Dallas → Houston"));
 
     const startBtn = screen.getByText("Start Trip");
-    fireEvent.click(startBtn);
+    await user.click(startBtn);
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to update status/i)).toBeInTheDocument();

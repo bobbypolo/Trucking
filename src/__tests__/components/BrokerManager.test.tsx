@@ -56,8 +56,8 @@ describe("BrokerManager component", () => {
 
   describe("rendering", () => {
     it("renders without crashing", () => {
-      const { container } = render(<BrokerManager {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<BrokerManager {...defaultProps} />);
+      expect(screen.getByText("Partner Network")).toBeInTheDocument();
     });
 
     it("renders the Partner Network header", () => {
@@ -385,11 +385,10 @@ describe("BrokerManager component", () => {
       });
       // The plus/create load buttons appear on hover - find them by querying the DOM
       const addButtons = document.querySelectorAll('[title="Create Load"]');
-      if (addButtons.length > 0) {
-        const user = userEvent.setup();
-        await user.click(addButtons[0] as HTMLElement);
-        expect(onAddLoad).toHaveBeenCalledWith("broker-1");
-      }
+      expect(addButtons.length).toBeGreaterThan(0);
+      const user = userEvent.setup();
+      await user.click(addButtons[0] as HTMLElement);
+      expect(onAddLoad).toHaveBeenCalledWith("broker-1");
     });
   });
 });

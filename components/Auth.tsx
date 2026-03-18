@@ -484,6 +484,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
             title="Reset Password"
             message="Enter your email address. If an account exists, you will receive a reset link."
             placeholder="you@company.com"
+            inputType="email"
             submitLabel="Send Reset Link"
             cancelLabel="Cancel"
             onSubmit={handleForgotPassword}

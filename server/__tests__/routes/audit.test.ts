@@ -12,16 +12,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  *   - GET /api/audit supports limit/offset pagination (R-P1-05 case 2)
  *   - GET /api/audit supports type filter (R-P1-05 case 3)
  *
- * Pattern: Mock pool and middleware, inject req.user, assert SQL params and response shape.
+ * Pattern: sql-auth mock, real requireAuth middleware, supertest.
  */
 
 const TEST_TENANT_ID = "tenant-audit-abc123";
 const OTHER_TENANT_ID = "tenant-audit-other";
 
-const { mockPoolQuery } = vi.hoisted(() => {
-  const mockPoolQuery = vi.fn();
-  return { mockPoolQuery };
-});
+const { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(
+  () => {
+    const mockPoolQuery = vi.fn();
+    const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
+    return { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid };
+  },
+);
 
 vi.mock("../../db", () => ({
   default: {
@@ -37,53 +40,50 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Mock auth middleware to pass through; req.user injected by buildApp below
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: unknown, _res: unknown, next: Function) => next(),
-}));
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: unknown, _res: unknown, next: Function) => next(),
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import dispatchRouter from "../../routes/dispatch";
 import express from "express";
 import request from "supertest";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
-function makeUser(tenantId = TEST_TENANT_ID) {
-  return {
-    uid: "user-001",
-    tenantId,
-    role: "dispatcher",
-    email: "audit@test.com",
-    firebaseUid: "fb-001",
-  };
-}
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+  ...DEFAULT_SQL_PRINCIPAL,
+  tenantId: TEST_TENANT_ID,
+  companyId: TEST_TENANT_ID,
+});
 
-function buildApp(tenantId = TEST_TENANT_ID) {
+function buildApp() {
   const app = express();
   app.use(express.json());
-  app.use((req: any, _res: unknown, next: Function) => {
-    req.user = makeUser(tenantId);
-    next();
-  });
   app.use(dispatchRouter);
   return app;
 }
 
-// App with no user injected — simulates unauthenticated state but we rely on
-// the requireAuth mock being replaced for the 401 test.
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  // No user injection — req.user will be undefined
-  app.use(dispatchRouter);
-  return app;
-}
+const AUTH_HEADER = "Bearer valid-token";
 
 beforeEach(() => {
   vi.clearAllMocks();
   mockPoolQuery.mockResolvedValue([[], []]);
+  mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+    ...DEFAULT_SQL_PRINCIPAL,
+    tenantId: TEST_TENANT_ID,
+    companyId: TEST_TENANT_ID,
+  });
 });
 
 // ============================================================
@@ -91,25 +91,10 @@ beforeEach(() => {
 // ============================================================
 
 describe("GET /api/audit — auth enforcement", () => {
-  it("returns 401 when req.user is not set (no auth)", async () => {
-    // Restore requireAuth to simulate real auth gate for this test
-    vi.doMock("../../middleware/requireAuth", () => ({
-      requireAuth: (_req: unknown, res: any, _next: Function) => {
-        res.status(401).json({ error: "Unauthorized" });
-      },
-    }));
-
-    // Build a standalone mini-app to test the 401 path
-    const app = express();
-    app.use(express.json());
-    app.get("/api/audit", (_req, res) => {
-      // Simulate what requireAuth would do: reject without user
-      res.status(401).json({ error: "Unauthorized" });
-    });
-
+  it("returns 401 when no Authorization header is sent", async () => {
+    const app = buildApp();
     const res = await request(app).get("/api/audit");
     expect(res.status).toBe(401);
-    expect(res.body.error).toBeDefined();
   });
 });
 
@@ -120,13 +105,7 @@ describe("GET /api/audit — auth enforcement", () => {
 describe("GET /api/audit — tenant isolation", () => {
   it("returns 403 when user.tenantId does not match query scope", async () => {
     // The audit endpoint resolves tenant from req.user.tenantId
-    // There is no URL param — so 403 would only fire if tenant is explicitly wrong
-    // We test this by setting up the route to check tenantId vs a mismatch scenario.
-    // In practice, the route uses user.tenantId directly for DB query (no cross-tenant risk),
-    // but we verify the route still enforces tenantId existence.
-
-    // Mock pool to return rows from a DIFFERENT tenant's data
-    // The route should use req.user.tenantId in the SQL WHERE clause
+    // We test that the route uses user.tenantId in the SQL WHERE clause
     mockPoolQuery.mockResolvedValueOnce([
       [
         {
@@ -141,14 +120,20 @@ describe("GET /api/audit — tenant isolation", () => {
       [{ count: "1" }],
     ]);
 
-    // Build app with a tenant that's clearly different
-    const app = buildApp(OTHER_TENANT_ID);
+    // Use OTHER_TENANT_ID principal
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      tenantId: OTHER_TENANT_ID,
+      companyId: OTHER_TENANT_ID,
+    });
+
+    const app = buildApp();
     const res = await request(app)
       .get("/api/audit")
+      .set("Authorization", AUTH_HEADER)
       .query({ limit: "10", offset: "0" });
 
     // The route should succeed but scope data to the user's tenant (OTHER_TENANT_ID)
-    // It should NOT return 200 with data from a different tenant
     // Verify that the SQL was called with OTHER_TENANT_ID
     expect(mockPoolQuery).toHaveBeenCalledWith(
       expect.stringContaining("company_id"),
@@ -191,6 +176,7 @@ describe("GET /api/audit — returns data", () => {
     const app = buildApp();
     const res = await request(app)
       .get("/api/audit")
+      .set("Authorization", AUTH_HEADER)
       .query({ limit: "50", offset: "0" });
 
     expect(res.status).toBe(200);
@@ -204,8 +190,8 @@ describe("GET /api/audit — returns data", () => {
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ total: 0 }]]);
 
-    const app = buildApp(TEST_TENANT_ID);
-    await request(app).get("/api/audit");
+    const app = buildApp();
+    await request(app).get("/api/audit").set("Authorization", AUTH_HEADER);
 
     // Verify the DB was queried with the auth-derived tenantId
     expect(mockPoolQuery).toHaveBeenCalledWith(
@@ -228,6 +214,7 @@ describe("GET /api/audit — pagination", () => {
     const app = buildApp();
     const res = await request(app)
       .get("/api/audit")
+      .set("Authorization", AUTH_HEADER)
       .query({ limit: "25", offset: "50" });
 
     expect(res.status).toBe(200);
@@ -253,6 +240,7 @@ describe("GET /api/audit — type filter", () => {
     const app = buildApp();
     const res = await request(app)
       .get("/api/audit")
+      .set("Authorization", AUTH_HEADER)
       .query({ type: "StatusChange" });
 
     expect(res.status).toBe(200);

@@ -86,43 +86,12 @@ vi.mock("../../lib/sql-auth", () => ({
   upsertSqlUser: mockUpsertSqlUser,
 }));
 
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
-let mockUserId = "user-1";
-let mockUserEmail = "test@loadpilot.com";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: mockUserId,
-      id: mockUserId,
-      tenantId: mockUserTenantId,
-      companyId: mockUserTenantId,
-      role: mockUserRole,
-      email: mockUserEmail,
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (req: any, res: any, next: any) => {
-    const userTenantId = req.user?.tenantId;
-    if (req.params?.companyId && req.params.companyId !== userTenantId) {
-      return res.status(403).json({ error: "Access denied: tenant mismatch." });
-    }
-    if (req.body) {
-      const bodyCompanyId = req.body.company_id || req.body.companyId;
-      if (bodyCompanyId && bodyCompanyId !== userTenantId) {
-        return res
-          .status(403)
-          .json({ error: "Access denied: tenant mismatch." });
-      }
-    }
-    next();
-  },
-}));
+// Default: admin principal (most tests need admin to pass role checks)
+const ADMIN_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "admin" };
+const DISPATCHER_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "dispatcher", email: "test@loadpilot.com" };
+const DRIVER_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" };
 
 function buildApp() {
   const app = express();
@@ -132,25 +101,27 @@ function buildApp() {
   return app;
 }
 
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
-
 const COMPANY_ID = "company-aaa";
+const AUTH_HEADER = "Bearer valid-firebase-token";
+
+// Helper to set up principal for authenticated requests
+function setupPrincipal(principal = ADMIN_PRINCIPAL) {
+  mockVerifyIdToken.mockResolvedValue({ uid: "firebase-uid-1" });
+  mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(principal);
+}
 
 describe("POST /api/auth/register — auth enforcement (validation)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
   });
 
   it("returns 400 when required fields are missing", async () => {
     const app = buildApp();
-    const res = await request(app).post("/api/auth/register").send({});
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({});
     expect(res.status).toBe(400);
   });
 });
@@ -175,7 +146,7 @@ describe("GET /api/users/me — auth enforcement", () => {
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).get("/api/users/me");
     expect(res.status).toBe(401);
   });
@@ -187,7 +158,7 @@ describe("GET /api/users/:companyId — auth enforcement", () => {
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).get(`/api/users/${COMPANY_ID}`);
     expect(res.status).toBe(401);
   });
@@ -197,18 +168,15 @@ describe("GET /api/users/:companyId — tenant enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = COMPANY_ID;
-    mockUserId = "user-1";
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 403 when requesting users from a different company (non-admin)", async () => {
     const res = await request(app)
       .get("/api/users/company-zzz")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(403);
   });
@@ -228,7 +196,7 @@ describe("GET /api/users/:companyId — tenant enforcement", () => {
 
     const res = await request(app)
       .get(`/api/users/${COMPANY_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -240,29 +208,34 @@ describe("POST /api/auth/register — validation errors", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 400 when email format is invalid", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "not-an-email",
-      name: "Test User",
-      role: "driver",
-      password: "securepass123",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "not-an-email",
+        name: "Test User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when name is empty string", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "user@test.com",
-      name: "",
-      role: "driver",
-      password: "securepass123",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "user@test.com",
+        name: "",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(400);
   });
 });
@@ -271,46 +244,52 @@ describe("POST /api/auth/register — role enforcement (AUTH-01a)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserTenantId = COMPANY_ID;
-    mockUserId = "user-1";
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("returns 403 when non-admin tries to register", async () => {
-    mockUserRole = "dispatcher";
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-    });
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/admin/i);
   });
 
   it("returns 403 when driver tries to register", async () => {
-    mockUserRole = "driver";
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-    });
+    setupPrincipal(DRIVER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(403);
   });
 
   it("returns 201 when admin registers a user", async () => {
-    mockUserRole = "admin";
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-    });
+    setupPrincipal(ADMIN_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledOnce();
   });
@@ -320,40 +299,48 @@ describe("POST /api/auth/register — password validation (AUTH-02)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 400 when password is missing", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+      });
     expect(res.status).toBe(400);
   });
 
   it("returns 400 when password is shorter than 8 chars", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "short",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "short",
+      });
     expect(res.status).toBe(400);
   });
 
   it("returns 201 when password is exactly 8 chars", async () => {
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "12345678",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "12345678",
+      });
     expect(res.status).toBe(201);
   });
 });
@@ -362,21 +349,23 @@ describe("POST /api/auth/register — company resolution (AUTH-03)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("uses req.user.tenantId when no company_id in body", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: COMPANY_ID }),
@@ -384,32 +373,31 @@ describe("POST /api/auth/register — company resolution (AUTH-03)", () => {
   });
 
   it("returns 403 when company_id in body does not match auth tenant (tenant lock)", async () => {
-    /**
-     * Tests Issue 1 — admin cross-tenant user creation prevention.
-     * Body company_id from a foreign tenant must be rejected.
-     */
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-      company_id: "foreign-company",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+        company_id: "foreign-company",
+      });
     expect(res.status).toBe(403);
     expect(mockUpsertSqlUser).not.toHaveBeenCalled();
   });
 
   it("always uses auth tenant even when matching company_id provided in body", async () => {
-    /**
-     * Tests Issue 1 — companyId is always sourced from auth token, not body.
-     */
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-      company_id: COMPANY_ID,
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: COMPANY_ID }),
@@ -421,24 +409,26 @@ describe("POST /api/auth/register — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("registers user and returns 201", async () => {
-    const res = await request(app).post("/api/auth/register").send({
-      id: "new-user",
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      company_id: COMPANY_ID,
-      password: "securepass123",
-      firebaseUid: "fb-new-user",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        id: "new-user",
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        company_id: COMPANY_ID,
+        password: "securepass123",
+        firebaseUid: "fb-new-user",
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("User registered successfully");
@@ -451,22 +441,21 @@ describe("POST /api/auth/register — role enum enforcement (Issue 7)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 400 when role is not in the valid enum (e.g. superadmin)", async () => {
-    /**
-     * Tests Issue 7 — invalid role values rejected at schema validation.
-     */
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "superadmin",
-      password: "securepass123",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "superadmin",
+        password: "securepass123",
+      });
     expect(res.status).toBe(400);
     expect(mockUpsertSqlUser).not.toHaveBeenCalled();
   });
@@ -476,22 +465,24 @@ describe("POST /api/auth/register — error sanitization (SERVER-06a)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
   });
 
   it("does not expose error.message in 500 response", async () => {
     mockUpsertSqlUser.mockRejectedValueOnce(
       new Error("ECONNREFUSED mysql connection"),
     );
-    const res = await request(app).post("/api/auth/register").send({
-      email: "newuser@test.com",
-      name: "New User",
-      role: "driver",
-      password: "securepass123",
-    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
     expect(res.status).toBe(500);
     expect(res.body.details).toBe("Internal error");
     expect(JSON.stringify(res.body)).not.toContain("ECONNREFUSED");
@@ -502,43 +493,49 @@ describe("POST /api/users — auth + role enforcement (AUTH-01b)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserTenantId = COMPANY_ID;
-    mockUserId = "user-1";
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("returns 201 when admin syncs any user", async () => {
-    mockUserRole = "admin";
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-      name: "John Driver",
-      role: "driver",
-      company_id: COMPANY_ID,
-    });
+    setupPrincipal(ADMIN_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        name: "John Driver",
+        role: "driver",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(201);
   });
 
   it("returns 201 when user self-syncs (matching email)", async () => {
-    mockUserRole = "driver";
-    const res = await request(app).post("/api/users").send({
-      email: "test@loadpilot.com",
-      name: "Self Sync",
-      company_id: COMPANY_ID,
-    });
+    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "test@loadpilot.com",
+        name: "Self Sync",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(201);
   });
 
   it("returns 403 when non-admin syncs different user", async () => {
-    mockUserRole = "driver";
-    const res = await request(app).post("/api/users").send({
-      email: "other@test.com",
-      name: "Someone Else",
-      company_id: COMPANY_ID,
-    });
+    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "other@test.com",
+        name: "Someone Else",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(403);
     expect(res.body.error).toMatch(/forbidden/i);
   });
@@ -548,19 +545,20 @@ describe("POST /api/users — company resolution (AUTH-03)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("uses req.user.tenantId when no company_id in body", async () => {
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-    });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+      });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: COMPANY_ID }),
@@ -568,26 +566,25 @@ describe("POST /api/users — company resolution (AUTH-03)", () => {
   });
 
   it("returns 403 when company_id in body does not match auth tenant (tenant lock)", async () => {
-    /**
-     * Tests Issue 1 — admin cross-tenant sync prevention.
-     * A foreign company_id in the body must be rejected.
-     */
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-      company_id: "foreign-company",
-    });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        company_id: "foreign-company",
+      });
     expect(res.status).toBe(403);
     expect(mockUpsertSqlUser).not.toHaveBeenCalled();
   });
 
   it("always uses auth tenant even when matching company_id provided in body", async () => {
-    /**
-     * Tests Issue 1 — companyId is always sourced from auth token, not body.
-     */
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-      company_id: COMPANY_ID,
-    });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(201);
     expect(mockUpsertSqlUser).toHaveBeenCalledWith(
       expect.objectContaining({ companyId: COMPANY_ID }),
@@ -599,23 +596,24 @@ describe("POST /api/users — success (sync)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
     mockUpsertSqlUser.mockResolvedValue(undefined);
     mockMirrorUserToFirestore.mockResolvedValue(undefined);
   });
 
   it("syncs user and returns 201", async () => {
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-      name: "John Driver",
-      role: "driver",
-      company_id: COMPANY_ID,
-      firebaseUid: "fb-driver",
-    });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        name: "John Driver",
+        role: "driver",
+        company_id: COMPANY_ID,
+        firebaseUid: "fb-driver",
+      });
 
     expect(res.status).toBe(201);
     expect(res.body.message).toBe("User updated/created");
@@ -626,6 +624,7 @@ describe("POST /api/users — success (sync)", () => {
   it("returns 400 when email is missing from user sync", async () => {
     const res = await request(app)
       .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
       .send({ name: "No Email" });
     expect(res.status).toBe(400);
   });
@@ -635,20 +634,22 @@ describe("POST /api/users — error sanitization (SERVER-06a)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = COMPANY_ID;
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(ADMIN_PRINCIPAL);
+    app = buildApp();
   });
 
   it("does not expose error.message in 500 response", async () => {
     mockUpsertSqlUser.mockRejectedValueOnce(
       new Error("Duplicate entry for key 'PRIMARY'"),
     );
-    const res = await request(app).post("/api/users").send({
-      email: "driver@test.com",
-      company_id: COMPANY_ID,
-    });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        company_id: COMPANY_ID,
+      });
     expect(res.status).toBe(500);
     expect(res.body.details).toBe("Internal error");
     expect(JSON.stringify(res.body)).not.toContain("Duplicate entry");
@@ -659,16 +660,14 @@ describe("GET /api/users/me — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserId = "user-1";
-    mockUserEmail = "test@loadpilot.com";
-    app = buildApp();
     vi.clearAllMocks();
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns current user profile with 200 (password excluded)", async () => {
     mockFindSqlUserById.mockResolvedValueOnce({
-      id: "user-1",
+      id: "1",
       company_id: COMPANY_ID,
       role: "dispatcher",
       email: "test@test.com",
@@ -681,11 +680,11 @@ describe("GET /api/users/me — success", () => {
 
     const res = await request(app)
       .get("/api/users/me")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(res.body).not.toHaveProperty("password");
-    expect(mockFindSqlUserById).toHaveBeenCalledWith("user-1");
+    expect(mockFindSqlUserById).toHaveBeenCalledWith("1");
   });
 
   it("returns 404 when user profile is not found in SQL", async () => {
@@ -693,7 +692,7 @@ describe("GET /api/users/me — success", () => {
 
     const res = await request(app)
       .get("/api/users/me")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(404);
   });

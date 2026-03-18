@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { OperationalMessaging } from "../../../components/OperationalMessaging";
 import type {
@@ -147,7 +148,8 @@ describe("OperationalMessaging component", () => {
     ).toBeInTheDocument();
   });
 
-  it("filters threads by search query", () => {
+  it("filters threads by search query", async () => {
+    const user = userEvent.setup();
     const threads = [
       makeThread({
         id: "load-1",
@@ -180,7 +182,8 @@ describe("OperationalMessaging component", () => {
     const searchInput = screen.getByPlaceholderText(
       "Find load/record stream...",
     );
-    fireEvent.change(searchInput, { target: { value: "Chicago" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "Chicago");
 
     // LD-001 thread should be hidden
     expect(screen.queryByText("Load #LD-001")).not.toBeInTheDocument();
@@ -210,9 +213,7 @@ describe("OperationalMessaging component", () => {
         threads={[makeThread()]}
       />,
     );
-    expect(
-      screen.getByText("Load #LD-001 Liaison"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Load #LD-001 Liaison")).toBeInTheDocument();
   });
 
   it("shows Tactical Stream tab in the chat header", () => {
@@ -254,9 +255,8 @@ describe("OperationalMessaging component", () => {
   });
 
   it("sends a message when send button is clicked", async () => {
-    const { saveMessage } = await import(
-      "../../../services/storageService"
-    );
+    const user = userEvent.setup();
+    const { saveMessage } = await import("../../../services/storageService");
 
     render(
       <OperationalMessaging
@@ -270,20 +270,15 @@ describe("OperationalMessaging component", () => {
     const input = screen.getByPlaceholderText(
       /Message participants for Load #LD-001/,
     );
-    fireEvent.change(input, { target: { value: "Test message content" } });
-
-    // Click the send button (button with Send icon, not disabled)
-    const sendButtons = screen.getAllByRole("button");
-    const sendBtn = sendButtons.find(
-      (b) => !b.hasAttribute("disabled") && b.querySelector("svg"),
-    );
+    await user.clear(input);
+    await user.type(input, "Test message content");
 
     // Find the actual send button - it's the one next to the textarea
     const messageArea = input.closest("div");
     const buttons = messageArea?.querySelectorAll("button");
     if (buttons) {
       const lastBtn = buttons[buttons.length - 1];
-      fireEvent.click(lastBtn);
+      await user.click(lastBtn);
     }
 
     await waitFor(() => {
@@ -298,9 +293,8 @@ describe("OperationalMessaging component", () => {
   });
 
   it("sends message on Enter key press", async () => {
-    const { saveMessage } = await import(
-      "../../../services/storageService"
-    );
+    const user = userEvent.setup();
+    const { saveMessage } = await import("../../../services/storageService");
 
     render(
       <OperationalMessaging
@@ -314,8 +308,9 @@ describe("OperationalMessaging component", () => {
     const input = screen.getByPlaceholderText(
       /Message participants for Load #LD-001/,
     );
-    fireEvent.change(input, { target: { value: "Enter key message" } });
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
+    await user.clear(input);
+    await user.type(input, "Enter key message");
+    await user.keyboard("{Enter}");
 
     await waitFor(() => {
       expect(saveMessage).toHaveBeenCalledWith(
@@ -327,9 +322,8 @@ describe("OperationalMessaging component", () => {
   });
 
   it("does not send empty messages", async () => {
-    const { saveMessage } = await import(
-      "../../../services/storageService"
-    );
+    const user = userEvent.setup();
+    const { saveMessage } = await import("../../../services/storageService");
 
     render(
       <OperationalMessaging
@@ -343,15 +337,15 @@ describe("OperationalMessaging component", () => {
     const input = screen.getByPlaceholderText(
       /Message participants for Load #LD-001/,
     );
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
+    await user.click(input);
+    await user.keyboard("{Enter}");
 
     expect(saveMessage).not.toHaveBeenCalled();
   });
 
   it("shows error toast when message send fails", async () => {
-    const { saveMessage } = await import(
-      "../../../services/storageService"
-    );
+    const user = userEvent.setup();
+    const { saveMessage } = await import("../../../services/storageService");
     (saveMessage as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("Send failed"),
     );
@@ -368,8 +362,9 @@ describe("OperationalMessaging component", () => {
     const input = screen.getByPlaceholderText(
       /Message participants for Load #LD-001/,
     );
-    fireEvent.change(input, { target: { value: "Failing message" } });
-    fireEvent.keyDown(input, { key: "Enter", shiftKey: false });
+    await user.clear(input);
+    await user.type(input, "Failing message");
+    await user.keyboard("{Enter}");
 
     await waitFor(() => {
       expect(
@@ -424,9 +419,7 @@ describe("OperationalMessaging component", () => {
         threads={[]}
       />,
     );
-    expect(
-      screen.getByText("Omni-Channel Liaison"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Omni-Channel Liaison")).toBeInTheDocument();
   });
 
   it("renders with ACTIVE interaction state showing live banner", () => {
@@ -483,7 +476,8 @@ describe("OperationalMessaging component", () => {
     expect(screen.getByText("Commit Note")).toBeInTheDocument();
   });
 
-  it("calls onNoteCreated when note is committed during active session", () => {
+  it("calls onNoteCreated when note is committed during active session", async () => {
+    const user = userEvent.setup();
     const onNoteCreated = vi.fn();
     const callSession: CallSession = {
       id: "CALL-TEST123",
@@ -511,8 +505,9 @@ describe("OperationalMessaging component", () => {
     const textarea = screen.getByPlaceholderText(
       "Capture live tactical notes here...",
     );
-    fireEvent.change(textarea, { target: { value: "Important call note" } });
-    fireEvent.click(screen.getByText("Commit Note"));
+    await user.clear(textarea);
+    await user.type(textarea, "Important call note");
+    await user.click(screen.getByText("Commit Note"));
 
     expect(onNoteCreated).toHaveBeenCalledWith("Important call note");
   });
@@ -607,12 +602,92 @@ describe("OperationalMessaging component", () => {
     );
 
     // Click the second thread
-    fireEvent.click(screen.getByText("Load #LD-002"));
+    const user = userEvent.setup();
+    await user.click(screen.getByText("Load #LD-002"));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Load #LD-002 Liaison"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Load #LD-002 Liaison")).toBeInTheDocument();
+    });
+  });
+
+  describe("thread creation and context switching", () => {
+    it("creates a new thread context when a different load is selected and updates chat header", async () => {
+      const user = userEvent.setup();
+      const threads = [
+        makeThread({
+          id: "load-1",
+          primaryContext: {
+            type: "Load",
+            id: "load-1",
+            label: "Load #LD-001",
+          },
+          summary: "Dallas to Houston shipment",
+        }),
+        makeThread({
+          id: "load-2",
+          primaryContext: {
+            type: "Load",
+            id: "load-2",
+            label: "Load #LD-002",
+          },
+          summary: "Chicago to LA freight",
+        }),
+      ];
+
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[
+            makeLoad(),
+            makeLoad({
+              id: "load-2",
+              loadNumber: "LD-002",
+              pickup: { city: "Chicago", state: "IL" },
+              dropoff: { city: "LA", state: "CA" },
+            }),
+          ]}
+          session={makeSession()}
+          threads={threads}
+        />,
+      );
+
+      // Initially on thread 1
+      expect(screen.getByText("Load #LD-001 Liaison")).toBeInTheDocument();
+
+      // Switch to thread 2
+      await user.click(screen.getByText("Load #LD-002"));
+
+      // Chat header should update to new thread
+      await waitFor(() => {
+        expect(screen.getByText("Load #LD-002 Liaison")).toBeInTheDocument();
+      });
+
+      // Context sidebar should update to show Chicago/LA
+      expect(screen.getByText("Chicago")).toBeInTheDocument();
+      expect(screen.getByText("LA")).toBeInTheDocument();
+    });
+
+    it("renders attachment button (Paperclip icon) in message input area", () => {
+      render(
+        <OperationalMessaging
+          user={mockUser}
+          loads={[makeLoad()]}
+          session={makeSession()}
+          threads={[makeThread()]}
+        />,
+      );
+
+      // The message input area should have a Paperclip icon button for attachments
+      const input = screen.getByPlaceholderText(
+        /Message participants for Load #LD-001/,
+      );
+      expect(input).toBeInTheDocument();
+
+      // The chat area should contain SVG icons for actions (paperclip, smile, etc.)
+      const chatArea = input.closest("div")?.parentElement;
+      expect(chatArea).toBeTruthy();
+      const svgs = chatArea!.querySelectorAll("svg");
+      expect(svgs.length).toBeGreaterThan(0);
     });
   });
 });

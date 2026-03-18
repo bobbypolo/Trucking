@@ -1,6 +1,7 @@
 // Tests R-P4-02, R-P4-03
 import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
@@ -69,6 +70,7 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
   });
 
   it("R-P4-02: clicking Upload button opens Scanner modal", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -80,11 +82,11 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
     );
 
     // Click the load card to enter detail view
-    fireEvent.click(screen.getByText("Dallas → Houston"));
+    await user.click(screen.getByText("Dallas → Houston"));
 
     // Click Upload button in document checklist
     const uploadBtn = screen.getByText("Upload");
-    fireEvent.click(uploadBtn);
+    await user.click(uploadBtn);
 
     await waitFor(() => {
       expect(screen.getByTestId("scanner-mock")).toBeInTheDocument();
@@ -92,6 +94,7 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
   });
 
   it("R-P4-03: when Scanner calls onDataExtracted, calls onSaveLoad with updated load", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -103,17 +106,17 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
     );
 
     // Enter detail view
-    fireEvent.click(screen.getByText("Dallas → Houston"));
+    await user.click(screen.getByText("Dallas → Houston"));
 
     // Open scanner
-    fireEvent.click(screen.getByText("Upload"));
+    await user.click(screen.getByText("Upload"));
 
     await waitFor(() => {
       expect(screen.getByTestId("scanner-mock")).toBeInTheDocument();
     });
 
     // Trigger extraction
-    fireEvent.click(screen.getByTestId("scanner-extract"));
+    await user.click(screen.getByTestId("scanner-extract"));
 
     await waitFor(() => {
       expect(onSaveLoad).toHaveBeenCalled();
@@ -124,6 +127,7 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
   });
 
   it("Scanner modal closes when cancel is clicked", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -134,14 +138,14 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Dallas → Houston"));
-    fireEvent.click(screen.getByText("Upload"));
+    await user.click(screen.getByText("Dallas → Houston"));
+    await user.click(screen.getByText("Upload"));
 
     await waitFor(() => {
       expect(screen.getByTestId("scanner-mock")).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId("scanner-cancel"));
+    await user.click(screen.getByTestId("scanner-cancel"));
 
     await waitFor(() => {
       expect(screen.queryByTestId("scanner-mock")).not.toBeInTheDocument();

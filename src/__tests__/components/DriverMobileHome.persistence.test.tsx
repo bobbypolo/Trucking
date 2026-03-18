@@ -1,6 +1,7 @@
 // Tests R-P4-09, R-P4-10
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User } from "../../../types";
@@ -93,7 +94,8 @@ describe("DriverMobileHome localStorage persistence (R-P4-09, R-P4-10)", () => {
     });
   });
 
-  it("R-P4-10: writes activeTab to localStorage on tab change", () => {
+  it("R-P4-10: writes activeTab to localStorage on tab change", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -107,12 +109,13 @@ describe("DriverMobileHome localStorage persistence (R-P4-09, R-P4-10)", () => {
     // Click the "Loads" tab nav button (text "Loads" in nav)
     const loadsNavBtn = screen.getByText("Loads").closest("button");
     expect(loadsNavBtn).not.toBeNull();
-    fireEvent.click(loadsNavBtn!);
+    await user.click(loadsNavBtn!);
 
     expect(localStorage.getItem("driver_driver-99_activeTab")).toBe("loads");
   });
 
-  it("R-P4-10: writes correct tab value for docs tab change", () => {
+  it("R-P4-10: writes correct tab value for docs tab change", async () => {
+    const user = userEvent.setup();
     render(
       <DriverMobileHome
         user={mockUser}
@@ -125,7 +128,7 @@ describe("DriverMobileHome localStorage persistence (R-P4-09, R-P4-10)", () => {
 
     // Go to docs tab
     const docsBtn = screen.getByText("Docs").closest("button");
-    fireEvent.click(docsBtn!);
+    await user.click(docsBtn!);
     expect(localStorage.getItem("driver_driver-99_activeTab")).toBe(
       "documents",
     );

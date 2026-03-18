@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { AccountingView } from "../../../components/AccountingView";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
@@ -94,97 +95,98 @@ describe("AccountingView component", () => {
 
   it("renders without crashing", () => {
     const { container } = render(<AccountingView {...defaultProps} />);
-    expect(container).toBeTruthy();
+    expect(container).toBeInTheDocument();
   });
 
   it("renders the Accounting Terminal header", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("Accounting Terminal")).toBeTruthy();
+    expect(screen.getByText("Accounting Terminal")).toBeInTheDocument();
   });
 
   it("renders Fleet Financial Operations subtitle", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("Fleet Financial Operations")).toBeTruthy();
+    expect(screen.getByText("Fleet Financial Operations")).toBeInTheDocument();
   });
 
   it("displays LIVE status indicator", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("LIVE")).toBeTruthy();
+    expect(screen.getByText("LIVE")).toBeInTheDocument();
   });
 
   it("renders the Detailed Settlements navigation button", () => {
     render(<AccountingView {...defaultProps} />);
     const btn = screen.getByRole("button", { name: /Detailed Settlements/i });
-    expect(btn).toBeTruthy();
+    expect(btn).toBeInTheDocument();
   });
 
-  it("calls onNavigate with 'finance' when settlements button is clicked", () => {
+  it("calls onNavigate with 'finance' when settlements button is clicked", async () => {
+    const user = userEvent.setup();
     render(<AccountingView {...defaultProps} />);
     const btn = screen.getByRole("button", { name: /Detailed Settlements/i });
-    fireEvent.click(btn);
+    await user.click(btn);
     expect(defaultProps.onNavigate).toHaveBeenCalledWith("finance");
   });
 
   it("renders all 4 top KPI cards", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("GROSS REVENUE")).toBeTruthy();
-    expect(screen.getByText("OPERATIONAL COST")).toBeTruthy();
-    expect(screen.getByText("NET OVERRIDE")).toBeTruthy();
-    expect(screen.getByText("ACCOUNTS RECEIVABLE")).toBeTruthy();
+    expect(screen.getByText("GROSS REVENUE")).toBeInTheDocument();
+    expect(screen.getByText("OPERATIONAL COST")).toBeInTheDocument();
+    expect(screen.getByText("NET OVERRIDE")).toBeInTheDocument();
+    expect(screen.getByText("ACCOUNTS RECEIVABLE")).toBeInTheDocument();
   });
 
   it("computes and displays gross revenue correctly", () => {
     render(<AccountingView {...defaultProps} />);
     // Total = 3000 + 2500 + 4000 + 1000 = $10,500
-    expect(screen.getByText("$10,500")).toBeTruthy();
+    expect(screen.getByText("$10,500")).toBeInTheDocument();
   });
 
   it("computes and displays operational cost (driver pay) correctly", () => {
     render(<AccountingView {...defaultProps} />);
     // Total driver pay = 1800 + 1500 + 2400 + 600 = $6,300
-    expect(screen.getByText("$6,300")).toBeTruthy();
+    expect(screen.getByText("$6,300")).toBeInTheDocument();
   });
 
   it("computes and displays net margin correctly", () => {
     render(<AccountingView {...defaultProps} />);
     // Net = 10500 - 6300 = $4,200
-    expect(screen.getByText("$4,200")).toBeTruthy();
+    expect(screen.getByText("$4,200")).toBeInTheDocument();
   });
 
   it("shows pending loads count for in-progress statuses", () => {
     render(<AccountingView {...defaultProps} />);
     // in_transit + delivered = 2 pending (not completed, not cancelled)
-    expect(screen.getByText(/2 Loads Pending/)).toBeTruthy();
+    expect(screen.getByText(/2 Loads Pending/)).toBeInTheDocument();
   });
 
   it("shows accounts receivable from completed/delivered loads", () => {
     render(<AccountingView {...defaultProps} />);
     // delivered: 2500, completed: 4000 = $6,500
-    expect(screen.getByText("$6,500")).toBeTruthy();
+    expect(screen.getByText("$6,500")).toBeInTheDocument();
   });
 
   it("shows margin percentage", () => {
     render(<AccountingView {...defaultProps} />);
     // marginPercent = (4200 / 10500) * 100 = 40.0%
-    expect(screen.getByText("40.0% Avg Margin")).toBeTruthy();
+    expect(screen.getByText("40.0% Avg Margin")).toBeInTheDocument();
   });
 
   it("renders the chart section", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("Performance Intelligence")).toBeTruthy();
-    expect(screen.getByText(/7-Day Revenue & Profit Logic/)).toBeTruthy();
+    expect(screen.getByText("Performance Intelligence")).toBeInTheDocument();
+    expect(screen.getByText(/7-Day Revenue & Profit Logic/)).toBeInTheDocument();
   });
 
   it("renders Cash Flow Projection section", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("Cash Flow Projection")).toBeTruthy();
-    expect(screen.getByText("Net Yield")).toBeTruthy();
+    expect(screen.getByText("Cash Flow Projection")).toBeInTheDocument();
+    expect(screen.getByText("Net Yield")).toBeInTheDocument();
   });
 
   it("shows the margin donut chart percentage", () => {
     render(<AccountingView {...defaultProps} />);
     // 40% margin
-    expect(screen.getByText("40%")).toBeTruthy();
+    expect(screen.getByText("40%")).toBeInTheDocument();
   });
 
   it("renders with empty loads array showing $0 values", () => {
@@ -210,19 +212,33 @@ describe("AccountingView component", () => {
       },
     ];
     render(<AccountingView {...defaultProps} loads={zeroLoads} />);
-    expect(screen.getByText("0.0% Avg Margin")).toBeTruthy();
+    expect(screen.getByText("0.0% Avg Margin")).toBeInTheDocument();
   });
 
   it("renders Scaling Growth and Efficiency cards", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByText("Scaling Growth")).toBeTruthy();
-    expect(screen.getByText("Efficiency")).toBeTruthy();
-    expect(screen.getByText("+12%")).toBeTruthy();
-    expect(screen.getByText("98.4%")).toBeTruthy();
+    expect(screen.getByText("Scaling Growth")).toBeInTheDocument();
+    expect(screen.getByText("Efficiency")).toBeInTheDocument();
+    expect(screen.getByText("+12%")).toBeInTheDocument();
+    expect(screen.getByText("98.4%")).toBeInTheDocument();
   });
 
   it("renders chart container element", () => {
     render(<AccountingView {...defaultProps} />);
-    expect(screen.getByTestId("responsive-container")).toBeTruthy();
+    expect(screen.getByTestId("responsive-container")).toBeInTheDocument();
+  });
+
+  it("does not call onNavigate before user interaction", () => {
+    render(<AccountingView {...defaultProps} />);
+    expect(defaultProps.onNavigate).not.toHaveBeenCalled();
+  });
+
+  it("navigates only once per click", async () => {
+    const user = userEvent.setup();
+    render(<AccountingView {...defaultProps} />);
+    const btn = screen.getByRole("button", { name: /Detailed Settlements/i });
+    await user.click(btn);
+    await user.click(btn);
+    expect(defaultProps.onNavigate).toHaveBeenCalledTimes(2);
   });
 });

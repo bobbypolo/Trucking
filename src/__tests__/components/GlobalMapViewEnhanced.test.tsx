@@ -1,22 +1,18 @@
 /**
- * Unit tests for GlobalMapViewEnhanced — STORY-002 (R-P1-04)
+ * GlobalMapViewEnhanced tests — WITHOUT a valid Google Maps API key (fallback).
  *
- * Tests R-P1-01, R-P1-02, R-P1-04:
- * - Error banner renders when API key is missing/empty
- * - No error banner when a valid API key is present (mocked)
- *
- * Uses React Testing Library with jsdom environment.
- * @react-google-maps/api is mocked to avoid loading external scripts.
+ * The API key is captured at module-load time, so tests for the valid-key
+ * path live in a separate file (GlobalMapViewEnhanced.withkey.test.tsx).
  */
-
-// Tests R-P1-01, R-P1-02, R-P1-04
 
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { GlobalMapViewEnhanced } from "../../../components/GlobalMapViewEnhanced";
+import { User, LoadData, LOAD_STATUS } from "../../../types";
 
 // ---------------------------------------------------------------------------
-// Mock @react-google-maps/api — avoids script loading in jsdom
+// Mock @react-google-maps/api (still needed even for fallback path)
 // ---------------------------------------------------------------------------
 vi.mock("@react-google-maps/api", () => ({
   LoadScript: ({ children }: { children: React.ReactNode }) => (
@@ -32,154 +28,98 @@ vi.mock("@react-google-maps/api", () => ({
   ),
 }));
 
-// ---------------------------------------------------------------------------
-// Mock directionsService — avoids network call
-// ---------------------------------------------------------------------------
 vi.mock("../../../services/directionsService", () => ({
   getDirections: vi.fn().mockResolvedValue({ points: "" }),
 }));
 
 // ---------------------------------------------------------------------------
-// Mock the component module so we can inject different API key scenarios
+// Factories
 // ---------------------------------------------------------------------------
+const createDriver = (overrides: Partial<User> = {}): User => ({
+  id: `driver-${Math.random().toString(36).slice(2, 8)}`,
+  companyId: "c1",
+  email: "d@t.com",
+  name: "Test Driver",
+  role: "driver",
+  onboardingStatus: "Completed",
+  safetyScore: 95,
+  ...overrides,
+});
 
-/**
- * We wrap the component in a test harness that lets us pass the API key
- * directly via a prop-like mechanism. Since the component reads
- * import.meta.env at module load time, we instead test the rendered output
- * by mocking the entire module with two variants:
- *
- * 1. MissingKey variant: VITE_GOOGLE_MAPS_API_KEY = ""
- * 2. ValidKey variant:   VITE_GOOGLE_MAPS_API_KEY = "AIzaSyFakeValidKeyForTestingOnly"
- *
- * Strategy: Use Vitest module factory mocking to provide a test double of
- * GlobalMapViewEnhanced that respects an injected apiKey prop, then verify
- * the rendering logic directly.
- */
-
-// We test the rendering logic directly by building small components that
-// replicate the key-detection logic, since import.meta.env is evaluated
-// at module load time.
-
-/**
- * Minimal test double that replicates GlobalMapViewEnhanced's key-detection
- * and error-banner rendering, without the heavy google-maps dependencies.
- */
-const MapWithMissingKey: React.FC = () => {
-  const apiKey: string = ""; // simulates VITE_GOOGLE_MAPS_API_KEY missing
-  const hasValidApiKey = apiKey && apiKey.length > 10;
-  if (!hasValidApiKey) {
-    return (
-      <div
-        className="flex-1 relative overflow-hidden w-full h-full"
-        data-testid="map-fallback"
-      >
-        <div
-          className="absolute top-0 left-0 right-0 z-10 bg-red-900/90 border-b border-red-700 px-4 py-2 flex items-center gap-2"
-          data-testid="maps-api-key-error-banner"
-          role="alert"
-        >
-          <span className="text-sm font-semibold text-red-200">
-            Google Maps API key not configured — map features are unavailable.
-            Set VITE_GOOGLE_MAPS_API_KEY in your environment.
-          </span>
-        </div>
-        <div className="text-slate-400">Map Unavailable</div>
-      </div>
-    );
-  }
-  return <div data-testid="google-map">Map</div>;
-};
-
-const MapWithValidKey: React.FC = () => {
-  const apiKey = "AIzaSyFakeValidKeyForTestingOnly123456"; // length > 10
-  const hasValidApiKey = apiKey && apiKey.length > 10;
-  if (!hasValidApiKey) {
-    return (
-      <div data-testid="maps-api-key-error-banner" role="alert">
-        not configured
-      </div>
-    );
-  }
-  return (
-    <div data-testid="load-script">
-      <div data-testid="google-map">Map loaded</div>
-    </div>
-  );
-};
+const createLoad = (overrides: Partial<LoadData> = {}): LoadData => ({
+  id: `load-${Math.random().toString(36).slice(2, 8)}`,
+  companyId: "c1",
+  driverId: "driver-1",
+  loadNumber: "LN-100",
+  status: LOAD_STATUS.In_Transit,
+  carrierRate: 2000,
+  driverPay: 1200,
+  pickupDate: "2025-12-01",
+  pickup: { city: "Chicago", state: "IL" },
+  dropoff: { city: "Dallas", state: "TX" },
+  ...overrides,
+});
 
 // ---------------------------------------------------------------------------
-// Suite 1: Using the actual component with vitest module factory
+// The VITE_GOOGLE_MAPS_API_KEY env is empty/undefined by default in test,
+// so the component should render the fallback.
 // ---------------------------------------------------------------------------
-
-// We need to test the real component. The trick is to use vi.mock with a
-// factory that references the real component but overrides import.meta.env.
-// The cleanest approach: test the component-level rendering logic with
-// direct mocks of the env, relying on module reset.
-
-describe("GlobalMapViewEnhanced — missing API key", () => {
+describe("GlobalMapViewEnhanced -- missing API key (fallback)", () => {
   beforeEach(() => {
-    vi.resetModules();
+    vi.clearAllMocks();
   });
 
-  it("renders error banner when Google Maps API key is missing", () => {
-    render(<MapWithMissingKey />);
+  it("renders error banner when API key is missing", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
     const banner = screen.getByTestId("maps-api-key-error-banner");
-    expect(banner).toBeTruthy();
+    expect(banner).toBeInTheDocument();
     expect(banner.textContent).toMatch(/not configured/i);
   });
 
-  it("error banner has role=alert for accessibility when key missing", () => {
-    render(<MapWithMissingKey />);
+  it("error banner has role=alert for accessibility", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
     const alerts = screen.getAllByRole("alert");
     expect(alerts.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders map-fallback container when API key is missing", () => {
-    render(<MapWithMissingKey />);
-    const fallback = screen.getByTestId("map-fallback");
-    expect(fallback).toBeTruthy();
-  });
-});
-
-describe("GlobalMapViewEnhanced — valid API key", () => {
-  beforeEach(() => {
-    vi.resetModules();
+  it("renders map-fallback container", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
+    expect(screen.getByTestId("map-fallback")).toBeInTheDocument();
   });
 
-  it("does not render error banner when valid API key present", () => {
-    render(<MapWithValidKey />);
-    const banner = screen.queryByTestId("maps-api-key-error-banner");
-    expect(banner).toBeNull();
+  it("shows Map Unavailable text", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
+    expect(screen.getByText("Map Unavailable")).toBeInTheDocument();
   });
 
-  it("renders map when valid API key is provided", () => {
-    render(<MapWithValidKey />);
-    const map = screen.getByTestId("google-map");
-    expect(map).toBeTruthy();
+  it("shows fleet summary labels", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
+    expect(screen.getByText("Online")).toBeInTheDocument();
+    expect(screen.getByText("En Route")).toBeInTheDocument();
   });
-});
 
-// ---------------------------------------------------------------------------
-// Suite 2: Test the REAL component to verify banner structure matches spec
-// ---------------------------------------------------------------------------
+  it("shows Fleet Summary heading", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
+    expect(screen.getByText("Fleet Summary")).toBeInTheDocument();
+  });
 
-describe("GlobalMapViewEnhanced — real component banner structure", () => {
-  it("real component renders error banner with correct test IDs when key absent", async () => {
-    // Set env to empty BEFORE importing the module
-    (import.meta as any).env.VITE_GOOGLE_MAPS_API_KEY = undefined;
-    vi.resetModules();
+  it("counts online drivers in fallback (drivers with active loads)", () => {
+    const d1 = createDriver({ id: "d1" });
+    const d2 = createDriver({ id: "d2" });
+    const load = createLoad({ driverId: "d1", status: "in_transit" });
+    render(
+      <GlobalMapViewEnhanced loads={[load]} users={[d1, d2]} />,
+    );
+    // d1 is online (has active load), d2 is not
+    const text = document.body.textContent || "";
+    expect(text).toContain("Online");
+    expect(text).toContain("En Route");
+  });
 
-    // Re-import so module-level const is re-evaluated with empty key
-    const mod = await import("../../../components/GlobalMapViewEnhanced");
-    const { GlobalMapViewEnhanced } = mod;
-
-    render(<GlobalMapViewEnhanced loads={[]} users={[]} incidents={[]} />);
-
-    // The component's own error banner should be present
-    // (either the real one or the fallback — we check for the text)
-    const body = document.body.textContent || "";
-    // At minimum, the component should not crash and should render something
-    expect(body.length).toBeGreaterThan(0);
+  it("shows the configuration hint text", () => {
+    render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
+    expect(
+      screen.getByText(/Set VITE_GOOGLE_MAPS_API_KEY/),
+    ).toBeInTheDocument();
   });
 });

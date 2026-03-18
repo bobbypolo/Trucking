@@ -3,9 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-FS-05-03, R-FS-05-07
 
 // Hoisted mocks
-const { mockQuery } = vi.hoisted(() => {
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid };
 });
 
 vi.mock("../../db", () => ({
@@ -30,33 +31,29 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Control user context per-test
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: "user-1",
-      tenantId: mockUserTenantId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import contractsRouter from "../../routes/contracts";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -66,16 +63,8 @@ function buildApp() {
   return app;
 }
 
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
-
 const CUSTOMER_ID = "customer-001";
+const AUTH_HEADER = "Bearer valid-token";
 
 // ── Auth enforcement ──────────────────────────────────────────────────────────
 
@@ -84,8 +73,8 @@ describe("GET /api/contracts/:customerId — auth enforcement", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+  it("returns 401 when no Authorization header is sent", async () => {
+    const app = buildApp();
     const res = await request(app).get(`/api/contracts/${CUSTOMER_ID}`);
     expect(res.status).toBe(401);
   });
@@ -96,8 +85,8 @@ describe("POST /api/contracts — auth enforcement", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+  it("returns 401 when no Authorization header is sent", async () => {
+    const app = buildApp();
     const res = await request(app)
       .post("/api/contracts")
       .send({ customer_id: CUSTOMER_ID, contract_name: "Annual 2026" });
@@ -111,8 +100,9 @@ describe("GET /api/contracts/:customerId — tenant enforcement", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -124,7 +114,7 @@ describe("GET /api/contracts/:customerId — tenant enforcement", () => {
 
     const res = await request(app)
       .get(`/api/contracts/${CUSTOMER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
   });
@@ -136,8 +126,9 @@ describe("POST /api/contracts — validation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -150,7 +141,7 @@ describe("POST /api/contracts — validation", () => {
 
     const res = await request(app)
       .post("/api/contracts")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         id: "contract-001",
         customer_id: CUSTOMER_ID,
@@ -162,12 +153,12 @@ describe("POST /api/contracts — validation", () => {
   });
 
   it("returns 404 when customer does not belong to the tenant (TENANT-05)", async () => {
-    // Customer ownership check returns no rows → customer not found
+    // Customer ownership check returns no rows -> customer not found
     mockQuery.mockResolvedValueOnce([[], []]);
 
     const res = await request(app)
       .post("/api/contracts")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         id: "contract-001",
         customer_id: "foreign-customer-id",
@@ -186,8 +177,9 @@ describe("GET /api/contracts/:customerId — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -205,7 +197,7 @@ describe("GET /api/contracts/:customerId — success", () => {
 
     const res = await request(app)
       .get(`/api/contracts/${CUSTOMER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -217,7 +209,7 @@ describe("GET /api/contracts/:customerId — success", () => {
 
     const res = await request(app)
       .get(`/api/contracts/${CUSTOMER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
@@ -228,7 +220,7 @@ describe("GET /api/contracts/:customerId — success", () => {
 
     const res = await request(app)
       .get(`/api/contracts/${CUSTOMER_ID}`)
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
   });
@@ -238,8 +230,9 @@ describe("POST /api/contracts — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
     vi.clearAllMocks();
   });
@@ -252,7 +245,7 @@ describe("POST /api/contracts — success", () => {
 
     const res = await request(app)
       .post("/api/contracts")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         id: "contract-new",
         customer_id: CUSTOMER_ID,
@@ -275,7 +268,7 @@ describe("POST /api/contracts — success", () => {
 
     const res = await request(app)
       .post("/api/contracts")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ id: "c-err", customer_id: CUSTOMER_ID, contract_name: "Bad" });
 
     expect(res.status).toBe(500);

@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Tests R-P5-05-AC1, R-P5-05-AC2, R-P5-05-AC3
 
 // ---------------------------------------------------------------------------
-// Mock setup (hoisted so vi.mock factories can reference them)
+// Mock setup (hoisted so vi.mock factory can reference them)
 // ---------------------------------------------------------------------------
 const {
   mockQuery,
@@ -13,6 +13,7 @@ const {
   mockRelease,
   mockGetConnection,
   mockConnection,
+  mockResolveSqlPrincipalByFirebaseUid,
 } = vi.hoisted(() => {
   const mockQuery = vi.fn();
   const mockBeginTransaction = vi.fn().mockResolvedValue(undefined);
@@ -37,6 +38,7 @@ const {
     mockRelease,
     mockGetConnection,
     mockConnection,
+    mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
   };
 });
 
@@ -44,27 +46,6 @@ vi.mock("../../db", () => ({
   default: {
     query: mockQuery,
     getConnection: mockGetConnection,
-  },
-}));
-
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: any, _res: any, next: any) => {
-    _req.user = {
-      id: "user-1",
-      uid: "user-1",
-      tenantId: "company-perf",
-      companyId: "company-perf",
-      role: "admin",
-      email: "perf@test.com",
-      firebaseUid: "fb-perf",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
   },
 }));
 
@@ -138,6 +119,10 @@ vi.mock("firebase-admin", () => {
   };
 });
 
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+}));
+
 import express from "express";
 import request from "supertest";
 import loadRoutes from "../../routes/loads";
@@ -145,6 +130,21 @@ import equipmentRoutes from "../../routes/equipment";
 import trackingRoutes from "../../routes/tracking";
 import accountingRoutes from "../../routes/accounting";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+const PERF_PRINCIPAL = {
+  ...DEFAULT_SQL_PRINCIPAL,
+  id: "user-1",
+  tenantId: "company-perf",
+  companyId: "company-perf",
+  role: "admin",
+  email: "perf@test.com",
+  firebaseUid: "fb-perf",
+};
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(PERF_PRINCIPAL);
+
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,10 +182,11 @@ async function measureConcurrentLatency(
     const start = performance.now();
     let res: request.Response;
     if (method === "get" || method === "delete") {
-      res = await request(app)[method](path);
+      res = await request(app)[method](path).set("Authorization", AUTH_HEADER);
     } else {
       res = await request(app)
         [method](path)
+        .set("Authorization", AUTH_HEADER)
         .send(body ?? {});
     }
     const elapsed = performance.now() - start;
@@ -287,6 +288,7 @@ describe("R-P5-05 AC1: Performance Sanity — Latency under Concurrent Load", ()
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConnection.mockResolvedValue(mockConnection);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(PERF_PRINCIPAL);
   });
 
   it("GET /api/loads — p95 < 2000ms at 15 concurrent requests (list endpoint)", async () => {
@@ -469,6 +471,7 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
     vi.clearAllMocks();
     queryCount = 0;
     mockGetConnection.mockResolvedValue(mockConnection);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(PERF_PRINCIPAL);
   });
 
   /** Wrap mockQuery to count calls */
@@ -496,25 +499,13 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(loadRoutes);
-      await request(app).get("/api/loads").expect(200);
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER).expect(200);
 
-      // Expected: 1 (loads query) + N (legs per load) = N+1 queries
-      // Plus getVisibilitySettings calls from helpers mock (1 call)
-      // The actual N+1 pattern IS present in the load list endpoint
-      // We document the actual query count
       console.log(
         `[query-count] GET /api/loads with ${N} loads: ${queryCount} DB queries (expected ~${N + 1})`,
       );
 
-      // Document the N+1 pattern: loads endpoint does 1 + N queries.
-      // For 10 loads, that is 11 queries. This is an N+1 pattern.
-      // AC2 says "no CRITICAL N+1 patterns" — the loads endpoint has a known
-      // N+1 for legs enrichment. We flag it as non-critical because:
-      // - Each sub-query is simple indexed lookup (load_id)
-      // - At modest scale (< 100 loads) this is acceptable
-      // - The alternative (JOIN) would require restructuring the response format
       expect(queryCount).toBeGreaterThanOrEqual(N + 1);
-      // But it should not be EXCESSIVE (e.g., 3N+1 or worse)
       expect(queryCount).toBeLessThanOrEqual(N + 3);
     });
   });
@@ -545,14 +536,12 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(accountingRoutes);
-      await request(app).get("/api/accounting/settlements").expect(200);
+      await request(app).get("/api/accounting/settlements").set("Authorization", AUTH_HEADER).expect(200);
 
       console.log(
         `[query-count] GET /api/accounting/settlements with ${N} settlements: ${queryCount} DB queries (expected ~${N + 1})`,
       );
 
-      // Settlements also has N+1 for lines enrichment (1 + N queries)
-      // This is a known, acceptable pattern at modest scale
       expect(queryCount).toBeGreaterThanOrEqual(N + 1);
       expect(queryCount).toBeLessThanOrEqual(N + 3);
     });
@@ -576,16 +565,13 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(trackingRoutes);
-      await request(app).get("/api/loads/tracking").expect(200);
+      await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER).expect(200);
 
       const queriesPerLoad = queryCount / N;
       console.log(
         `[query-count] GET /api/loads/tracking: ${queryCount} total queries for ${N} loads = ${queriesPerLoad.toFixed(1)} per load`,
       );
 
-      // AC2: map/tracking routes produce < 5 DB queries per request
-      // The tracking endpoint does: 1 (loads) + N (legs per load) = N+1 total
-      // Per load: (N+1)/N which is ~1.33 for N=3, well under 5
       expect(queriesPerLoad).toBeLessThan(5);
     });
 
@@ -608,20 +594,18 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(trackingRoutes);
-      await request(app).get("/api/loads/load-single/tracking").expect(200);
+      await request(app).get("/api/loads/load-single/tracking").set("Authorization", AUTH_HEADER).expect(200);
 
       console.log(
         `[query-count] GET /api/loads/:id/tracking: ${queryCount} DB queries (target: < 5)`,
       );
 
-      // Single load tracking: 1 (load) + 1 (legs) = 2 queries
       expect(queryCount).toBeLessThan(5);
     });
   });
 
   describe("Excessive query detection", () => {
     it("No endpoint produces more than 3x expected queries (excessive N+1 indicator)", async () => {
-      // Test the load list with 20 loads — ensure queries stay proportional
       const N = 20;
       const loads = Array.from({ length: N }, (_, i) =>
         makeLoadRow({ id: `load-${i}`, load_number: `LD-${i}` }),
@@ -635,9 +619,8 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(loadRoutes);
-      await request(app).get("/api/loads").expect(200);
+      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER).expect(200);
 
-      // With N loads, expected: N+1 queries. Excessive would be 3*(N+1) = 63
       const expected = N + 1;
       console.log(
         `[query-count] Excessive check — GET /api/loads with ${N} loads: ${queryCount} queries (expected ~${expected}, excessive threshold: ${expected * 3})`,
@@ -656,11 +639,10 @@ describe("R-P5-05 AC1: Auth Middleware Performance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetConnection.mockResolvedValue(mockConnection);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(PERF_PRINCIPAL);
   });
 
   it("Auth middleware pass-through p95 < 500ms at 20 concurrent requests", async () => {
-    // The requireAuth mock is a simple pass-through, but we measure the
-    // full pipeline overhead (express routing + middleware chain + response)
     mockQuery.mockResolvedValue([
       [
         {
@@ -688,7 +670,6 @@ describe("R-P5-05 AC1: Auth Middleware Performance", () => {
     );
 
     statuses.forEach((s) => expect(s).toBe(200));
-    // Auth overhead target: p95 < 500ms
     expect(p95val).toBeLessThan(500);
   });
 });

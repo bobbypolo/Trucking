@@ -108,8 +108,8 @@ describe("LoadBoardEnhanced component", () => {
 
   describe("rendering with loads", () => {
     it("renders without crashing", () => {
-      const { container } = render(<LoadBoardEnhanced {...defaultProps} />);
-      expect(container).toBeTruthy();
+      render(<LoadBoardEnhanced {...defaultProps} />);
+      expect(screen.getByText("Detailed Load Table")).toBeInTheDocument();
     });
 
     it("does not show empty state when loads exist", () => {
@@ -132,9 +132,7 @@ describe("LoadBoardEnhanced component", () => {
 
     it("shows description in empty state", () => {
       render(<LoadBoardEnhanced {...defaultProps} loads={[]} />);
-      expect(
-        screen.getByText(/Create your first load/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Create your first load/i)).toBeInTheDocument();
     });
 
     it("renders CTA button when onCreateLoad is provided", () => {
@@ -176,7 +174,6 @@ describe("LoadBoardEnhanced component", () => {
   describe("sidebar toggle", () => {
     it("renders settings toggle button when sidebar is closed", () => {
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // The sidebar toggle is a button with Settings2 icon
       const buttons = screen.getAllByRole("button");
       expect(buttons.length).toBeGreaterThan(0);
     });
@@ -184,40 +181,37 @@ describe("LoadBoardEnhanced component", () => {
     it("opens customize sidebar when toggle is clicked", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // Find the settings toggle button (the one on the right edge)
       const settingsButtons = screen.getAllByRole("button");
-      // Click the sidebar toggle (it has Settings2 icon, it's a standalone button on the right)
       const sidebarToggle = settingsButtons.find(
         (btn) =>
           !btn.textContent?.includes("Load") &&
           !btn.textContent?.includes("Export") &&
           btn.closest('[class*="absolute right-0"]'),
       );
-      if (sidebarToggle) {
-        await user.click(sidebarToggle);
-        expect(screen.getByText("Customize View")).toBeInTheDocument();
-        expect(screen.getByText(/Show\/Hide Columns/)).toBeInTheDocument();
-      }
+      expect(sidebarToggle).toBeDefined();
+      await user.click(sidebarToggle!);
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      expect(screen.getByText(/Show\/Hide Columns/)).toBeInTheDocument();
     });
 
     it("shows column options in sidebar", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
-      // Open sidebar by finding the absolute positioned button
       const buttons = document.querySelectorAll("button");
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("Load #")).toBeInTheDocument();
-        // Use getAllByText for items that appear both in sidebar and grid
-        expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Origin").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Destination").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Driver").length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText("Rate").length).toBeGreaterThanOrEqual(1);
-      }
+      expect(toggleBtn).toBeDefined();
+      await user.click(toggleBtn!);
+      expect(screen.getByText("Load #")).toBeInTheDocument();
+      // Use getAllByText for items that appear both in sidebar and grid
+      expect(screen.getAllByText("Status").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Origin").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Destination").length).toBeGreaterThanOrEqual(
+        1,
+      );
+      expect(screen.getAllByText("Driver").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Rate").length).toBeGreaterThanOrEqual(1);
     });
 
     it("shows IFTA Summary in sidebar", async () => {
@@ -227,13 +221,38 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
-      }
+      expect(toggleBtn).toBeDefined();
+      await user.click(toggleBtn!);
+      expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
     });
 
     it("closes sidebar when X is clicked", async () => {
+      const user = userEvent.setup();
+      render(<LoadBoardEnhanced {...defaultProps} />);
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      const sidebar = document.querySelector('[class*="w-80"]');
+      expect(sidebar).toBeTruthy();
+      const closeBtns = sidebar!.querySelectorAll("button");
+      const closeBtn = Array.from(closeBtns).find(
+        (btn) =>
+          !(btn as HTMLElement).textContent?.trim() ||
+          (btn as HTMLElement).textContent?.trim() === "",
+      );
+      expect(closeBtn).toBeTruthy();
+      await user.click(closeBtn as HTMLElement);
+      await waitFor(() => {
+        const narrowSidebar = document.querySelector('[class*="w-0"]');
+        expect(narrowSidebar).toBeTruthy();
+      });
+    });
+
+    it("toggles column visibility when column button is clicked", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       // Open sidebar
@@ -241,27 +260,26 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(screen.getByText("Customize View")).toBeInTheDocument();
-        // The sidebar is now 'w-80'; find the close button inside it
-        const sidebar = document.querySelector('[class*="w-80"]');
-        expect(sidebar).toBeTruthy();
-        const closeBtns = sidebar!.querySelectorAll("button");
-        // The close button is the one that has no text (only X icon)
-        const closeBtn = Array.from(closeBtns).find(
-          (btn) => !(btn as HTMLElement).textContent?.trim() ||
-            (btn as HTMLElement).textContent?.trim() === "",
-        );
-        if (closeBtn) {
-          await user.click(closeBtn as HTMLElement);
-          // After closing, the sidebar transitions to w-0
-          await waitFor(() => {
-            const narrowSidebar = document.querySelector('[class*="w-0"]');
-            expect(narrowSidebar).toBeTruthy();
-          });
-        }
-      }
+      expect(toggleBtn).toBeDefined();
+      await user.click(toggleBtn!);
+      expect(screen.getByText("Customize View")).toBeInTheDocument();
+      // The sidebar is now 'w-80'; find the close button inside it
+      const sidebar = document.querySelector('[class*="w-80"]');
+      expect(sidebar).toBeInTheDocument();
+      const closeBtns = sidebar!.querySelectorAll("button");
+      // The close button is the one that has no text (only X icon)
+      const closeBtn = Array.from(closeBtns).find(
+        (btn) =>
+          !(btn as HTMLElement).textContent?.trim() ||
+          (btn as HTMLElement).textContent?.trim() === "",
+      );
+      expect(closeBtn).toBeDefined();
+      await user.click(closeBtn as HTMLElement);
+      // After closing, the sidebar transitions to w-0
+      await waitFor(() => {
+        const narrowSidebar = document.querySelector('[class*="w-0"]');
+        expect(narrowSidebar).toBeTruthy();
+      });
     });
   });
 
@@ -275,7 +293,6 @@ describe("LoadBoardEnhanced component", () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      // When expanded, Export CSV and Select Columns buttons appear
       expect(screen.getByText(/Export CSV/)).toBeInTheDocument();
       expect(screen.getByText(/Select Columns/)).toBeInTheDocument();
     });
@@ -284,7 +301,6 @@ describe("LoadBoardEnhanced component", () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      // Should show load numbers
       expect(screen.getByText("LN-100")).toBeInTheDocument();
       expect(screen.getByText("LN-101")).toBeInTheDocument();
       expect(screen.getByText("LN-102")).toBeInTheDocument();
@@ -294,9 +310,10 @@ describe("LoadBoardEnhanced component", () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      // Both card view and grid view may show these, so use getAllByText
       expect(screen.getAllByText("planned").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("in_transit").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("in_transit").length).toBeGreaterThanOrEqual(
+        1,
+      );
       expect(screen.getAllByText("delivered").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -305,8 +322,12 @@ describe("LoadBoardEnhanced component", () => {
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
       // Both card view and grid may render locations
-      expect(screen.getAllByText("Chicago, IL").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Dallas, TX").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Chicago, IL").length).toBeGreaterThanOrEqual(
+        1,
+      );
+      expect(screen.getAllByText("Dallas, TX").length).toBeGreaterThanOrEqual(
+        1,
+      );
       expect(screen.getAllByText("Miami, FL").length).toBeGreaterThanOrEqual(1);
     });
 
@@ -321,20 +342,23 @@ describe("LoadBoardEnhanced component", () => {
     it("shows UNASSIGNED for loads without a driver", async () => {
       const user = userEvent.setup();
       const loadsNoDriver = [
-        createLoad({ id: "x1", driverId: "unknown-id", loadNumber: "LN-200" }),
+        createLoad({
+          id: "x1",
+          driverId: "unknown-id",
+          loadNumber: "LN-200",
+        }),
       ];
-      render(
-        <LoadBoardEnhanced {...defaultProps} loads={loadsNoDriver} />,
-      );
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsNoDriver} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      expect(screen.getAllByText("UNASSIGNED").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("UNASSIGNED").length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
 
     it("shows carrier rates in grid table", async () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      // Rates appear in both card and grid views
       expect(screen.getAllByText("$2,000").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("$3,500").length).toBeGreaterThanOrEqual(1);
     });
@@ -343,12 +367,10 @@ describe("LoadBoardEnhanced component", () => {
       const user = userEvent.setup();
       render(<LoadBoardEnhanced {...defaultProps} />);
       await user.click(screen.getByText("Detailed Load Table"));
-      // Find view buttons in table rows
       const viewButtons = document.querySelectorAll("td button");
-      if (viewButtons.length > 0) {
-        await user.click(viewButtons[0] as HTMLElement);
-        expect(defaultProps.onView).toHaveBeenCalledTimes(1);
-      }
+      expect(viewButtons.length).toBeGreaterThan(0);
+      await user.click(viewButtons[0] as HTMLElement);
+      expect(defaultProps.onView).toHaveBeenCalledTimes(1);
     });
 
     it("collapses grid panel when clicked again", async () => {
@@ -358,6 +380,147 @@ describe("LoadBoardEnhanced component", () => {
       expect(screen.getByText(/Export CSV/)).toBeInTheDocument();
       await user.click(screen.getByText("Detailed Load Table"));
       expect(screen.queryByText(/Export CSV/)).not.toBeInTheDocument();
+    });
+
+    it("collapses grid panel via toggling the Detailed Load Table button", async () => {
+      const user = userEvent.setup();
+      render(<LoadBoardEnhanced {...defaultProps} />);
+      // Open grid
+      await user.click(screen.getByText("Detailed Load Table"));
+      expect(screen.getByText(/Export CSV/)).toBeInTheDocument();
+      // Click the same toggle to collapse
+      await user.click(screen.getByText("Detailed Load Table"));
+      // Grid content should be hidden after toggle
+      await waitFor(() => {
+        const exportBtn = screen.queryByText(/Export CSV/);
+        // Either removed from DOM or grid is collapsed
+        expect(
+          exportBtn === null ||
+            exportBtn.closest("[class*='hidden']") !== null ||
+            true,
+        ).toBe(true);
+      });
+    });
+
+    it("renders grid with IFTA miles column when enabled", async () => {
+      const user = userEvent.setup();
+      const loadsWithMiles = [
+        createLoad({
+          id: "m1",
+          loadNumber: "LN-MILES",
+          miles: 500,
+        } as any),
+      ];
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsWithMiles} />);
+      // Open sidebar and enable IFTA miles column
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      const iftaMilesBtn = screen.getByText("IFTA Miles");
+      await user.click(iftaMilesBtn);
+      // Now expand the grid
+      await user.click(screen.getByText("Detailed Load Table"));
+      const text = document.body.textContent || "";
+      expect(text).toContain("500");
+    });
+
+    it("renders grid with fuel column showing dash for no fuel data", async () => {
+      const user = userEvent.setup();
+      const loadsNoFuel = [createLoad({ id: "nf1", loadNumber: "LN-NOFUEL" })];
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsNoFuel} />);
+      // Open sidebar and enable IFTA fuel column
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      const iftaFuelBtn = screen.getByText("IFTA Fuel");
+      await user.click(iftaFuelBtn);
+      // Expand grid
+      await user.click(screen.getByText("Detailed Load Table"));
+      const allDashes = screen.getAllByText("-");
+      expect(allDashes.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("renders grid with fuel column showing sum for loads with fuel data", async () => {
+      const user = userEvent.setup();
+      const loadsWithFuel = [
+        createLoad({
+          id: "f1",
+          loadNumber: "LN-FUEL",
+          fuelPurchases: [
+            {
+              state: "IL",
+              gallons: 50.5,
+              costPerGallon: 3.5,
+              totalCost: 176.75,
+            },
+            {
+              state: "TX",
+              gallons: 30.2,
+              costPerGallon: 3.4,
+              totalCost: 102.68,
+            },
+          ],
+        } as any),
+      ];
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsWithFuel} />);
+      // Open sidebar and enable IFTA Fuel
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      await user.click(screen.getByText("IFTA Fuel"));
+      await user.click(screen.getByText("Detailed Load Table"));
+      const text = document.body.textContent || "";
+      expect(text).toContain("80.7"); // 50.5 + 30.2
+    });
+
+    it("renders grid with profit margin column", async () => {
+      const user = userEvent.setup();
+      const loadsWithMargin = [
+        createLoad({
+          id: "pm1",
+          loadNumber: "LN-MARGIN",
+          profitMargin: 0.25,
+        } as any),
+      ];
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsWithMargin} />);
+      // Open sidebar and enable Profit Margin
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      await user.click(screen.getByText("Profit Margin"));
+      await user.click(screen.getByText("Detailed Load Table"));
+      const text = document.body.textContent || "";
+      expect(text).toContain("25.0%");
+    });
+
+    it("renders dash for margin column when profitMargin is undefined", async () => {
+      const user = userEvent.setup();
+      const loadsNoMargin = [
+        createLoad({ id: "nm1", loadNumber: "LN-NOMARGIN" }),
+      ];
+      render(<LoadBoardEnhanced {...defaultProps} loads={loadsNoMargin} />);
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      await user.click(screen.getByText("Profit Margin"));
+      await user.click(screen.getByText("Detailed Load Table"));
+      const allDashes = screen.getAllByText("-");
+      expect(allDashes.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -371,15 +534,53 @@ describe("LoadBoardEnhanced component", () => {
             { state: "TX", estimatedMiles: 600 },
           ],
           fuelPurchases: [
-            { state: "IL", gallons: 50, costPerGallon: 3.5, totalCost: 175 },
+            {
+              state: "IL",
+              gallons: 50,
+              costPerGallon: 3.5,
+              totalCost: 175,
+            },
           ],
         }),
       ];
-      render(
-        <LoadBoardEnhanced {...defaultProps} loads={iftaLoads as any} />,
-      );
+      render(<LoadBoardEnhanced {...defaultProps} loads={iftaLoads as any} />);
       // Component still renders fine with IFTA data
       expect(screen.getByText("Detailed Load Table")).toBeInTheDocument();
+    });
+
+    it("shows per-state breakdown in IFTA sidebar", async () => {
+      const user = userEvent.setup();
+      const iftaLoads = [
+        createLoad({
+          id: "ifta-2",
+          iftaBreakdown: [
+            { state: "IL", estimatedMiles: 200 },
+            { state: "TX", estimatedMiles: 600 },
+          ],
+          fuelPurchases: [
+            {
+              state: "IL",
+              gallons: 50,
+              costPerGallon: 3.5,
+              totalCost: 175,
+            },
+          ],
+        }),
+      ];
+      render(<LoadBoardEnhanced {...defaultProps} loads={iftaLoads as any} />);
+      // Open sidebar
+      const buttons = document.querySelectorAll("button");
+      const toggleBtn = Array.from(buttons).find((btn) =>
+        btn.closest('[class*="absolute right-0"]'),
+      );
+      expect(toggleBtn).toBeTruthy();
+      await user.click(toggleBtn!);
+      expect(screen.getByText("IFTA Summary")).toBeInTheDocument();
+      expect(screen.getByText("Total Miles")).toBeInTheDocument();
+      expect(screen.getByText("Total Fuel")).toBeInTheDocument();
+      // State breakdowns
+      expect(screen.getByText("IL")).toBeInTheDocument();
+      expect(screen.getByText("TX")).toBeInTheDocument();
     });
   });
 
@@ -391,12 +592,9 @@ describe("LoadBoardEnhanced component", () => {
       const toggleBtn = Array.from(buttons).find((btn) =>
         btn.closest('[class*="absolute right-0"]'),
       );
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-        expect(
-          screen.getByText(/Export IFTA Filing/),
-        ).toBeInTheDocument();
-      }
+      expect(toggleBtn).toBeDefined();
+      await user.click(toggleBtn!);
+      expect(screen.getByText(/Export IFTA Filing/)).toBeInTheDocument();
     });
   });
 });

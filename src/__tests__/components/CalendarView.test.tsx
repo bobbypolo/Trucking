@@ -1,6 +1,7 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
 import { CalendarView } from "../../../components/CalendarView";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
@@ -68,6 +69,11 @@ const mockUsers: User[] = [
   },
 ];
 
+// jsdom doesn't implement scrollTo — stub it globally
+beforeAll(() => {
+  Element.prototype.scrollTo = vi.fn();
+});
+
 describe("CalendarView component", () => {
   const defaultProps = {
     loads: mockLoads,
@@ -81,7 +87,7 @@ describe("CalendarView component", () => {
 
   it("renders without crashing", () => {
     const { container } = render(<CalendarView {...defaultProps} />);
-    expect(container).toBeTruthy();
+    expect(container).toBeInTheDocument();
   });
 
   it("renders day-of-week headers", () => {
@@ -97,20 +103,21 @@ describe("CalendarView component", () => {
 
   it("renders load numbers on the calendar", () => {
     render(<CalendarView {...defaultProps} />);
-    expect(screen.getByText("#LN-001")).toBeTruthy();
-    expect(screen.getByText("#LN-002")).toBeTruthy();
+    expect(screen.getByText("#LN-001")).toBeInTheDocument();
+    expect(screen.getByText("#LN-002")).toBeInTheDocument();
   });
 
   it("renders destination city for loads", () => {
     render(<CalendarView {...defaultProps} />);
-    expect(screen.getByText("Dallas")).toBeTruthy();
-    expect(screen.getByText("Miami")).toBeTruthy();
+    expect(screen.getByText("Dallas")).toBeInTheDocument();
+    expect(screen.getByText("Miami")).toBeInTheDocument();
   });
 
-  it("calls onEdit when a load is clicked", () => {
+  it("calls onEdit when a load is clicked", async () => {
+    const user = userEvent.setup();
     render(<CalendarView {...defaultProps} />);
     const loadEl = screen.getByText("#LN-001");
-    fireEvent.click(loadEl);
+    await user.click(loadEl);
     expect(defaultProps.onEdit).toHaveBeenCalledWith(mockLoads[0]);
   });
 
@@ -118,7 +125,7 @@ describe("CalendarView component", () => {
     const { container } = render(
       <CalendarView {...defaultProps} loads={[]} />,
     );
-    expect(container).toBeTruthy();
+    expect(container).toBeInTheDocument();
   });
 
   it("renders multiple months", () => {
@@ -142,8 +149,8 @@ describe("CalendarView component", () => {
       />,
     );
     // Only driver-1's loads should be visible
-    expect(screen.getByText("#LN-001")).toBeTruthy();
-    expect(screen.queryByText("#LN-002")).toBeNull();
+    expect(screen.getByText("#LN-001")).toBeInTheDocument();
+    expect(screen.queryByText("#LN-002")).not.toBeInTheDocument();
   });
 
   it("shows all loads when no driver filter is applied", () => {
@@ -154,8 +161,8 @@ describe("CalendarView component", () => {
         onSelectDriver={vi.fn()}
       />,
     );
-    expect(screen.getByText("#LN-001")).toBeTruthy();
-    expect(screen.getByText("#LN-002")).toBeTruthy();
+    expect(screen.getByText("#LN-001")).toBeInTheDocument();
+    expect(screen.getByText("#LN-002")).toBeInTheDocument();
   });
 
   it("supports drag and drop when onMoveLoad is provided", () => {
@@ -164,7 +171,7 @@ describe("CalendarView component", () => {
     );
     // Load elements should be draggable
     const loadEl = screen.getByText("#LN-001").closest("[draggable]");
-    expect(loadEl).toBeTruthy();
+    expect(loadEl).toBeInTheDocument();
     expect(loadEl?.getAttribute("draggable")).toBe("true");
   });
 
@@ -179,32 +186,55 @@ describe("CalendarView component", () => {
   it("applies delivered status color to delivered loads", () => {
     render(<CalendarView {...defaultProps} />);
     const deliveredLoad = screen.getByText("#LN-002");
-    // Walk up to find the draggable container with status color class
-    let el: HTMLElement | null = deliveredLoad;
-    let foundGreen = false;
-    while (el) {
-      if (el.className && el.className.includes("green")) {
-        foundGreen = true;
-        break;
-      }
-      el = el.parentElement;
-    }
-    expect(foundGreen).toBe(true);
+    // Walk up to the draggable container to check for green status color class
+    const draggableParent = deliveredLoad.closest("[draggable]") || deliveredLoad.closest("[class*='green']");
+    expect(draggableParent).toBeInTheDocument();
+    expect(draggableParent!.className).toMatch(/green/);
   });
 
   it("applies in-transit status color to active loads", () => {
     render(<CalendarView {...defaultProps} />);
     const activeLoad = screen.getByText("#LN-001");
-    // Walk up to find the draggable container with status color class
-    let el: HTMLElement | null = activeLoad;
-    let foundBlue = false;
-    while (el) {
-      if (el.className && el.className.includes("blue")) {
-        foundBlue = true;
-        break;
-      }
-      el = el.parentElement;
-    }
-    expect(foundBlue).toBe(true);
+    // Walk up to the draggable container to check for blue status color class
+    const draggableParent = activeLoad.closest("[draggable]") || activeLoad.closest("[class*='blue']");
+    expect(draggableParent).toBeInTheDocument();
+    expect(draggableParent!.className).toMatch(/blue/);
+  });
+
+  it("calls onEdit for a different load", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    await user.click(screen.getByText("#LN-002"));
+    expect(defaultProps.onEdit).toHaveBeenCalledWith(mockLoads[1]);
+  });
+
+  it("renders Today button for navigation", () => {
+    render(<CalendarView {...defaultProps} />);
+    const todayBtn = screen.getByRole("button", { name: /Today/i });
+    expect(todayBtn).toBeInTheDocument();
+  });
+
+  it("opens date picker when month button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    // The date picker trigger button contains the current month name
+    const currentMonth = today.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    const monthButtons = screen.getAllByText(currentMonth);
+    // The first one is the button in the toolbar
+    const pickerBtn = monthButtons[0].closest("button");
+    expect(pickerBtn).toBeInTheDocument();
+    await user.click(pickerBtn!);
+    // Date picker should now be visible with "Jump to Date" header
+    expect(screen.getByText("Jump to Date")).toBeInTheDocument();
+  });
+
+  it("does not render loads as draggable when onMoveLoad is not provided", () => {
+    render(<CalendarView {...defaultProps} />);
+    const loadEl = screen.getByText("#LN-001").closest("[draggable]");
+    // Without onMoveLoad, draggable should be false
+    expect(loadEl?.getAttribute("draggable")).toBe("false");
   });
 });

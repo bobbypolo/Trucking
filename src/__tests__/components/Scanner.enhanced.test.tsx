@@ -1,5 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Scanner } from "../../../components/Scanner";
 
@@ -151,34 +152,138 @@ describe("Scanner component — enhanced coverage", () => {
   });
 
   describe("cancel button", () => {
-    it("renders a cancel/skip button", () => {
+    it("renders Cancel Operation button", () => {
       render(<Scanner {...defaultProps} />);
-      // Look for Skip or Cancel text
-      const skipBtn = screen.queryByText(/Skip/i) || screen.queryByText(/Cancel/i);
-      expect(skipBtn).not.toBeNull();
+      // The scanner has a "Cancel Operation" button at the bottom
+      const cancelBtn = screen.getByText("Cancel Operation");
+      expect(cancelBtn).toBeInTheDocument();
     });
   });
 
   describe("onCancel and onDismiss behavior", () => {
-    it("renders skip/cancel button that calls onCancel", () => {
+    it("calls onCancel when Cancel Operation button is clicked", async () => {
+      const user = userEvent.setup();
       render(<Scanner {...defaultProps} />);
-      const skipBtn =
-        screen.queryByText(/Skip/i) || screen.queryByText(/Cancel/i);
-      if (skipBtn) {
-        fireEvent.click(skipBtn);
-        expect(defaultProps.onCancel).toHaveBeenCalled();
-      }
+      const cancelBtn = screen.getByText("Cancel Operation");
+      expect(cancelBtn).toBeInTheDocument();
+      await user.click(cancelBtn);
+      expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
     });
 
-    it("calls onDismiss when provided and dismiss button is clicked", () => {
+    it("calls onDismiss instead of onCancel when both are provided", async () => {
+      const user = userEvent.setup();
       const onDismiss = vi.fn();
       render(<Scanner {...defaultProps} onDismiss={onDismiss} />);
-      // The component should have a dismiss/skip path
-      const skipBtn =
-        screen.queryByText(/Skip/i) || screen.queryByText(/later/i);
-      if (skipBtn) {
-        fireEvent.click(skipBtn);
-      }
+      const cancelBtn = screen.getByText("Cancel Operation");
+      expect(cancelBtn).toBeInTheDocument();
+      await user.click(cancelBtn);
+      expect(onDismiss).toHaveBeenCalledTimes(1);
+      expect(defaultProps.onCancel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("successful file upload", () => {
+    it("calls onDataExtracted with load data on valid image upload", async () => {
+      // Mock fetch to return a successful AI extraction response
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            loadInfo: {
+              load: { pickup: { city: "Dallas", state: "TX" }, carrierRate: 3000 },
+              broker: { name: "Test Broker" },
+            },
+          }),
+      });
+
+      render(<Scanner {...defaultProps} />);
+
+      const fileInput = document.querySelector(
+        'input[type="file"]:not([capture])',
+      ) as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+
+      // Create a valid image file with base64 content
+      const validFile = new File(["fakeImageData"], "rateCon.png", {
+        type: "image/png",
+      });
+
+      // Simulate FileReader.readAsDataURL by triggering change
+      Object.defineProperty(fileInput, "files", {
+        value: [validFile],
+        configurable: true,
+      });
+      fireEvent.change(fileInput);
+
+      await waitFor(() => {
+        expect(defaultProps.onDataExtracted).toHaveBeenCalledTimes(1);
+      });
+      expect(defaultProps.onDataExtracted).toHaveBeenCalledWith(
+        expect.objectContaining({ pickup: { city: "Dallas", state: "TX" } }),
+        expect.objectContaining({ name: "Test Broker" }),
+      );
+    });
+
+    it("calls onDataExtracted with broker data in broker mode", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            brokerInfo: { name: "Alpha Logistics", mcNumber: "MC-555" },
+          }),
+      });
+
+      render(<Scanner {...defaultProps} mode="broker" />);
+
+      const fileInput = document.querySelector(
+        'input[type="file"]:not([capture])',
+      ) as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+
+      const validFile = new File(["fakeImageData"], "carrierPacket.png", {
+        type: "image/png",
+      });
+      Object.defineProperty(fileInput, "files", {
+        value: [validFile],
+        configurable: true,
+      });
+      fireEvent.change(fileInput);
+
+      await waitFor(() => {
+        expect(defaultProps.onDataExtracted).toHaveBeenCalledTimes(1);
+      });
+      expect(defaultProps.onDataExtracted).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Alpha Logistics", mcNumber: "MC-555" }),
+      );
+    });
+
+    it("shows error message when AI extraction fails", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "Server error" }),
+      });
+
+      render(<Scanner {...defaultProps} />);
+
+      const fileInput = document.querySelector(
+        'input[type="file"]:not([capture])',
+      ) as HTMLInputElement;
+      expect(fileInput).toBeTruthy();
+
+      const validFile = new File(["fakeImageData"], "rateCon.png", {
+        type: "image/png",
+      });
+      Object.defineProperty(fileInput, "files", {
+        value: [validFile],
+        configurable: true,
+      });
+      fireEvent.change(fileInput);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Scanning Failed/)).toBeInTheDocument();
+      });
+      expect(defaultProps.onDataExtracted).not.toHaveBeenCalled();
     });
   });
 

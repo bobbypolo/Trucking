@@ -79,23 +79,27 @@ describe("DispatcherTimeline component", () => {
     });
 
     it("renders without crashing with empty arrays", () => {
-      const { container } = render(
+      render(
         <DispatcherTimeline events={[]} timeLogs={[]} loads={[]} />,
       );
-      expect(container).toBeTruthy();
+      expect(
+        screen.getByText(/No activity sequences recorded/),
+      ).toBeInTheDocument();
     });
   });
 
   describe("rendering events", () => {
     it("renders without crashing with data", () => {
-      const { container } = render(
+      render(
         <DispatcherTimeline
           events={mockEvents}
           timeLogs={mockTimeLogs}
           loads={mockLoads}
         />,
       );
-      expect(container).toBeTruthy();
+      expect(
+        screen.getByText("Load status changed to in_transit"),
+      ).toBeInTheDocument();
     });
 
     it("displays event messages", () => {

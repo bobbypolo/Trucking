@@ -44,13 +44,11 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
       `${API_BASE}/api/accounting/accounts`,
       request,
     );
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
 
-    if (res.status() === 200) {
-      const body = await res.json();
-      // Chart of accounts should be an array or object with account entries
-      expect(body).toBeDefined();
-    }
+    const body = await res.json();
+    // Chart of accounts should be an array or object with account entries
+    expect(body).toBeDefined();
   });
 
   test("Step 2: Create a draft invoice", async ({ request }) => {
@@ -73,8 +71,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
       invoicePayload,
       request,
     );
-    // Accept 200, 201, or 400 (validation) -- the endpoint must respond
-    expect([200, 201, 400]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
   });
 
   test("Step 3: Retrieve invoices list", async ({ request }) => {
@@ -84,12 +81,10 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
       `${API_BASE}/api/accounting/invoices`,
       request,
     );
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
 
-    if (res.status() === 200) {
-      const body = await res.json();
-      expect(Array.isArray(body) || typeof body === "object").toBe(true);
-    }
+    const body = await res.json();
+    expect(Array.isArray(body) || typeof body === "object").toBe(true);
   });
 
   test("Step 4: Create a draft bill (AP side)", async ({ request }) => {
@@ -117,14 +112,14 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
       billPayload,
       request,
     );
-    expect([200, 201, 400]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
   });
 
   test("Step 5: Retrieve bills list", async ({ request }) => {
     test.skip(!admin.hasToken, "No Firebase token available");
 
     const res = await admin.get(`${API_BASE}/api/accounting/bills`, request);
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
   });
 });
 
@@ -159,7 +154,7 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
       payload,
       request,
     );
-    expect([200, 201, 400]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
 
     if (res.status() === 200 || res.status() === 201) {
       const body = await res.json();
@@ -174,12 +169,10 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
       `${API_BASE}/api/accounting/settlements`,
       request,
     );
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
 
-    if (res.status() === 200) {
-      const body = await res.json();
-      expect(Array.isArray(body) || typeof body === "object").toBe(true);
-    }
+    const body = await res.json();
+    expect(Array.isArray(body) || typeof body === "object").toBe(true);
   });
 
   test("Step 3: Load P&L endpoint returns financial data", async ({
@@ -192,8 +185,7 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
       `${API_BASE}/api/accounting/load-pl/journey-load-001`,
       request,
     );
-    // 200 (data found) or 404 (load not found) are both valid
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
   });
 });
 
@@ -241,7 +233,7 @@ test.describe("Canonical Journey: Journal Entry", () => {
       entry,
       request,
     );
-    expect([200, 201, 400, 404]).toContain(res.status());
+    expect([200, 201]).toContain(res.status());
   });
 
   test("IFTA summary endpoint returns tax data", async ({ request }) => {
@@ -251,7 +243,7 @@ test.describe("Canonical Journey: Journal Entry", () => {
       `${API_BASE}/api/accounting/ifta-summary?quarter=1&year=2026`,
       request,
     );
-    expect([200, 404]).toContain(res.status());
+    expect(res.status()).toBe(200);
   });
 });
 

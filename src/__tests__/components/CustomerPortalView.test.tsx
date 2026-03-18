@@ -1,6 +1,7 @@
 // Tests R-P3-06, R-P3-07, R-P3-08
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { CustomerPortalView } from "../../../components/CustomerPortalView";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
@@ -31,14 +32,15 @@ const deliveredLoad: LoadData = {
 };
 
 describe("CustomerPortalView: no hardcoded mock data (R-P3-06)", () => {
-  it("does not contain INV-8409, $4,250.00, TRK-491, Syracuse NY, 142 Miles, 78% Complete, 4h 32m", () => {
+  it("does not contain INV-8409, $4,250.00, TRK-491, Syracuse NY, 142 Miles, 78% Complete, 4h 32m", async () => {
+    const user = userEvent.setup();
     const { container } = render(
       <CustomerPortalView user={mockUser} loads={[deliveredLoad]} />,
     );
 
     // Navigate to invoices
     const invoiceBtn = screen.getByText(/invoice center/i);
-    fireEvent.click(invoiceBtn);
+    await user.click(invoiceBtn);
 
     const html = container.innerHTML;
     expect(html).not.toContain("INV-8409");
@@ -52,12 +54,13 @@ describe("CustomerPortalView: no hardcoded mock data (R-P3-06)", () => {
 });
 
 describe("CustomerPortalView: EmptyState for zero delivered loads (R-P3-07)", () => {
-  it("renders No invoices message when given zero delivered loads", () => {
+  it("renders No invoices message when given zero delivered loads", async () => {
+    const user = userEvent.setup();
     render(<CustomerPortalView user={mockUser} loads={[]} />);
 
     // Navigate to invoices tab
     const invoiceBtn = screen.getByText(/invoice center/i);
-    fireEvent.click(invoiceBtn);
+    await user.click(invoiceBtn);
 
     // Should show "No invoices" message
     const text = document.body.textContent || "";
@@ -66,7 +69,8 @@ describe("CustomerPortalView: EmptyState for zero delivered loads (R-P3-07)", ()
 });
 
 describe("CustomerPortalView: quote form submit (R-P3-08)", () => {
-  it("calls onSubmitQuote callback with form data when submit is clicked", () => {
+  it("calls onSubmitQuote callback with form data when submit is clicked", async () => {
+    const user = userEvent.setup();
     const onSubmitQuote = vi.fn();
     render(
       <CustomerPortalView
@@ -78,13 +82,13 @@ describe("CustomerPortalView: quote form submit (R-P3-08)", () => {
 
     // Navigate to quotes tab
     const quotesBtn = screen.getByText(/request quote/i);
-    fireEvent.click(quotesBtn);
+    await user.click(quotesBtn);
 
     // Submit the form
     const submitBtn = screen.getByRole("button", {
       name: /submit priority request/i,
     });
-    fireEvent.click(submitBtn);
+    await user.click(submitBtn);
 
     // Callback should have been called
     expect(onSubmitQuote).toHaveBeenCalledTimes(1);
@@ -97,18 +101,19 @@ describe("CustomerPortalView: quote form submit (R-P3-08)", () => {
     );
   });
 
-  it("shows Contact dispatch message after submit when no onSubmitQuote provided", () => {
+  it("shows Contact dispatch message after submit when no onSubmitQuote provided", async () => {
+    const user = userEvent.setup();
     render(<CustomerPortalView user={mockUser} loads={[]} />);
 
     // Navigate to quotes tab
     const quotesBtn = screen.getByText(/request quote/i);
-    fireEvent.click(quotesBtn);
+    await user.click(quotesBtn);
 
     // Submit the form
     const submitBtn = screen.getByRole("button", {
       name: /submit priority request/i,
     });
-    fireEvent.click(submitBtn);
+    await user.click(submitBtn);
 
     // Should show Contact text
     const text = document.body.textContent || "";

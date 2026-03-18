@@ -120,3 +120,58 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
     expect(appSource).not.toContain('"Organization"');
   });
 });
+
+// Verify every sidebar tab ID has a matching render case in the main content.
+// This prevents the bug where clicking a nav item falls through to an empty
+// content area because no `activeTab === "<id>"` conditional exists.
+describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
+  // Extract all sidebar nav item IDs from the categories array.
+  const categoryBlock = appSource.slice(
+    appSource.indexOf("const categories: NavCategory[]"),
+    appSource.indexOf("const filteredCategories"),
+  );
+  const idMatches = [...categoryBlock.matchAll(/id:\s*"([^"]+)"/g)].map(
+    (m) => m[1],
+  );
+
+  // Every nav ID should have a corresponding `activeTab === "id"` render check
+  const tabIds = [
+    "operations-hub",
+    "dashboard",
+    "exceptions",
+    "analytics",
+    "loads",
+    "quotes",
+    "map",
+    "calendar",
+    "network",
+    "finance",
+    "accounting",
+    "safety",
+    "audit",
+    "company",
+  ];
+
+  it("extracts expected tab IDs from categories", () => {
+    for (const id of tabIds) {
+      expect(idMatches).toContain(id);
+    }
+  });
+
+  for (const id of tabIds) {
+    it(`"${id}" tab has a matching render conditional`, () => {
+      const renderPattern = new RegExp(
+        `activeTab\\s*===\\s*"${id}"\\s*&&\\s*`,
+      );
+      expect(appSource).toMatch(renderPattern);
+    });
+  }
+
+  it('"company" tab does not require company data to render', () => {
+    // CompanyProfile loads its own data, so the render guard must NOT
+    // include `&& company &&` which blocks rendering when company is null.
+    expect(appSource).not.toMatch(
+      /activeTab\s*===\s*"company"\s*&&\s*company\s*&&/,
+    );
+  });
+});

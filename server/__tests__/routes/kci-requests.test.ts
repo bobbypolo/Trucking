@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Hoisted mocks for pool.query
-const { mockQuery } = vi.hoisted(() => {
+// Hoisted mocks for pool.query and sql-auth
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid: vi.fn() };
 });
 
 vi.mock("../../db", () => ({
@@ -28,41 +28,53 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Directly mock auth middleware to control user context per-test
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
-let mockUserCompanyId = "company-aaa";
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  const mockFirestore = {
+    collection: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: "user-1",
+                data: () => ({
+                  id: "user-1",
+                  company_id: "company-aaa",
+                  role: "dispatcher",
+                  email: "test@test.com",
+                }),
+              },
+            ],
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+      firestore: () => mockFirestore,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: "user-1",
-      tenantId: mockUserTenantId,
-      companyId: mockUserCompanyId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (req: any, res: any, next: any) => {
-    const user = req.user;
-    if (!user) {
-      return res
-        .status(403)
-        .json({ error: "Tenant verification requires authentication." });
-    }
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import kciRequestsRouter from "../../routes/kci-requests";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -72,28 +84,18 @@ function buildApp() {
   return app;
 }
 
-// Simulate missing auth — raw app without mocked middleware
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 // ── GET /api/kci-requests — auth enforcement ────────────────────────────────
 
 describe("GET /api/kci-requests — auth enforcement", () => {
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).get("/api/kci-requests");
     expect(res.status).toBe(401);
   });
@@ -105,11 +107,9 @@ describe("GET /api/kci-requests — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns KCI requests list with 200", async () => {
@@ -137,7 +137,7 @@ describe("GET /api/kci-requests — success", () => {
 
     const res = await request(app)
       .get("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -149,7 +149,7 @@ describe("GET /api/kci-requests — success", () => {
 
     const res = await request(app)
       .get("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
   });
@@ -161,11 +161,9 @@ describe("POST /api/kci-requests — creation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 201 with valid data", async () => {
@@ -185,7 +183,7 @@ describe("POST /api/kci-requests — creation", () => {
 
     const res = await request(app)
       .post("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         type: "Fuel Advance",
         status: "Pending",
@@ -201,7 +199,7 @@ describe("POST /api/kci-requests — creation", () => {
   it("returns 400 when required field 'type' is missing", async () => {
     const res = await request(app)
       .post("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Pending", priority: "HIGH" });
 
     expect(res.status).toBe(400);
@@ -210,7 +208,7 @@ describe("POST /api/kci-requests — creation", () => {
   it("returns 400 when 'type' is empty string", async () => {
     const res = await request(app)
       .post("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ type: "" });
 
     expect(res.status).toBe(400);
@@ -221,7 +219,7 @@ describe("POST /api/kci-requests — creation", () => {
 
     const res = await request(app)
       .post("/api/kci-requests")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ type: "Fuel Advance" });
 
     expect(res.status).toBe(500);
@@ -234,11 +232,9 @@ describe("PATCH /api/kci-requests/:id — tenant isolation", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 404 for cross-tenant update attempt (conceals existence)", async () => {
@@ -250,7 +246,7 @@ describe("PATCH /api/kci-requests/:id — tenant isolation", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Approved" });
 
     expect(res.status).toBe(404);
@@ -262,7 +258,7 @@ describe("PATCH /api/kci-requests/:id — tenant isolation", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/nonexistent")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Denied" });
 
     expect(res.status).toBe(404);
@@ -291,7 +287,7 @@ describe("PATCH /api/kci-requests/:id — tenant isolation", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Under Review" });
 
     expect(res.status).toBe(200);
@@ -309,9 +305,10 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
   });
 
   it("returns 403 when driver tries to set approved_amount", async () => {
-    mockUserRole = "driver";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "driver",
+    });
     app = buildApp();
 
     const existing = {
@@ -326,7 +323,7 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ approved_amount: 500 });
 
     expect(res.status).toBe(403);
@@ -334,9 +331,10 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
   });
 
   it("returns 403 when driver tries to set status to Approved", async () => {
-    mockUserRole = "driver";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "driver",
+    });
     app = buildApp();
 
     const existing = {
@@ -351,7 +349,7 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "Approved" });
 
     expect(res.status).toBe(403);
@@ -359,9 +357,10 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
   });
 
   it("returns 200 when admin approves (approved_amount)", async () => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "admin",
+    });
     app = buildApp();
 
     const existing = {
@@ -387,7 +386,7 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ approved_amount: 500, status: "Approved" });
 
     expect(res.status).toBe(200);
@@ -395,9 +394,7 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
   });
 
   it("returns 200 when dispatcher approves", async () => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
     app = buildApp();
 
     const existing = {
@@ -423,16 +420,17 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ approved_amount: 300, status: "Approved" });
 
     expect(res.status).toBe(200);
   });
 
   it("returns 200 when payroll_manager approves", async () => {
-    mockUserRole = "payroll_manager";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "payroll_manager",
+    });
     app = buildApp();
 
     const existing = {
@@ -455,7 +453,7 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 
     const res = await request(app)
       .patch("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ approved_amount: 400, status: "Approved" });
 
     expect(res.status).toBe(200);
@@ -465,20 +463,19 @@ describe("PATCH /api/kci-requests/:id — approval role enforcement", () => {
 // ── DELETE /api/kci-requests — no endpoint ──────────────────────────────────
 
 describe("DELETE /api/kci-requests/:id — no endpoint exists", () => {
-  let app: ReturnType<typeof buildApp>;
-
   beforeEach(() => {
-    mockUserRole = "admin";
-    mockUserTenantId = "company-aaa";
-    mockUserCompanyId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "admin",
+    });
   });
 
   it("returns 404 — DELETE endpoint does not exist (retention policy)", async () => {
+    const app = buildApp();
     const res = await request(app)
       .delete("/api/kci-requests/kci-001")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(404);
   });

@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AuditLogs } from "../../../components/AuditLogs";
 
@@ -40,6 +41,8 @@ const errorResponse = (status: number, body?: Record<string, unknown>) =>
   });
 
 describe("AuditLogs component", () => {
+  const user = userEvent.setup();
+
   it("renders the header with correct title", async () => {
     mockFetch.mockReturnValue(successResponse([]));
     render(<AuditLogs />);
@@ -143,7 +146,7 @@ describe("AuditLogs component", () => {
     const entries = [makeAuditEntry({ message: "Retry success" })];
     mockFetch.mockReturnValueOnce(successResponse(entries));
 
-    fireEvent.click(screen.getByText("RETRY"));
+    await user.click(screen.getByText("RETRY"));
 
     await waitFor(() => {
       expect(screen.getByText("Retry success")).toBeInTheDocument();
@@ -156,9 +159,7 @@ describe("AuditLogs component", () => {
     render(<AuditLogs />);
 
     await waitFor(() => {
-      expect(
-        screen.getByText("No Activity Detected"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("No Activity Detected")).toBeInTheDocument();
     });
 
     const entries = [makeAuditEntry({ message: "Refreshed data" })];
@@ -166,7 +167,7 @@ describe("AuditLogs component", () => {
 
     // Click the refresh button (RefreshCw icon button with title "Refresh")
     const refreshBtn = screen.getByTitle("Refresh");
-    fireEvent.click(refreshBtn);
+    await user.click(refreshBtn);
 
     await waitFor(() => {
       expect(screen.getByText("Refreshed data")).toBeInTheDocument();
@@ -200,7 +201,7 @@ describe("AuditLogs component", () => {
     mockFetch.mockReturnValue(successResponse([]));
 
     // Click "StatusChange" filter
-    fireEvent.click(screen.getByText("StatusChange"));
+    await user.click(screen.getByText("StatusChange"));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();
@@ -225,7 +226,8 @@ describe("AuditLogs component", () => {
 
     // Type in search
     const searchInput = screen.getByPlaceholderText("SEARCH AUDIT...");
-    fireEvent.change(searchInput, { target: { value: "delivered" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "delivered");
 
     // "Load picked up" should be hidden, "Load delivered" visible
     expect(screen.queryByText("Load picked up")).not.toBeInTheDocument();
@@ -246,7 +248,8 @@ describe("AuditLogs component", () => {
     });
 
     const searchInput = screen.getByPlaceholderText("SEARCH AUDIT...");
-    fireEvent.change(searchInput, { target: { value: "LD-200" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "LD-200");
 
     expect(screen.queryByText("Event A")).not.toBeInTheDocument();
     expect(screen.getByText("Event B")).toBeInTheDocument();
@@ -266,7 +269,8 @@ describe("AuditLogs component", () => {
     });
 
     const searchInput = screen.getByPlaceholderText("SEARCH AUDIT...");
-    fireEvent.change(searchInput, { target: { value: "bob" } });
+    await user.clear(searchInput);
+    await user.type(searchInput, "bob");
 
     expect(screen.queryByText("Event A")).not.toBeInTheDocument();
     expect(screen.getByText("Event B")).toBeInTheDocument();
@@ -312,7 +316,7 @@ describe("AuditLogs component", () => {
     const secondPage = [makeAuditEntry({ message: "Second page event" })];
     mockFetch.mockReturnValueOnce(successResponse(secondPage, 2));
 
-    fireEvent.click(screen.getByText(/LOAD MORE/));
+    await user.click(screen.getByText(/LOAD MORE/));
 
     await waitFor(() => {
       expect(screen.getByText("Second page event")).toBeInTheDocument();

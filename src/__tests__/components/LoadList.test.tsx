@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LoadList } from "../../../components/LoadList";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
@@ -71,34 +72,36 @@ describe("LoadList component", () => {
   });
 
   it("renders without crashing", () => {
-    const { container } = render(<LoadList {...defaultProps} />);
-    expect(container).toBeTruthy();
+    render(<LoadList {...defaultProps} />);
+    expect(screen.getByText(/LN-001/i)).toBeInTheDocument();
   });
 
   it("renders with empty loads array", () => {
-    const { container } = render(<LoadList {...defaultProps} loads={[]} />);
-    expect(container).toBeTruthy();
+    render(<LoadList {...defaultProps} loads={[]} />);
+    expect(screen.queryByText(/LN-001/i)).not.toBeInTheDocument();
   });
 
   it("renders load numbers in the list", () => {
     render(<LoadList {...defaultProps} />);
-    expect(screen.getByText(/LN-001/i)).toBeTruthy();
-    expect(screen.getByText(/LN-002/i)).toBeTruthy();
-    expect(screen.getByText(/LN-003/i)).toBeTruthy();
+    expect(screen.getByText(/LN-001/i)).toBeInTheDocument();
+    expect(screen.getByText(/LN-002/i)).toBeInTheDocument();
+    expect(screen.getByText(/LN-003/i)).toBeInTheDocument();
   });
 
   it("displays pickup city for each load", () => {
     render(<LoadList {...defaultProps} />);
-    expect(screen.getByText(/Chicago/)).toBeTruthy();
-    expect(screen.getByText(/Atlanta/)).toBeTruthy();
-    expect(screen.getByText(/Houston/)).toBeTruthy();
+    expect(screen.getByText(/Chicago/)).toBeInTheDocument();
+    expect(screen.getByText(/Atlanta/)).toBeInTheDocument();
+    expect(screen.getByText(/Houston/)).toBeInTheDocument();
   });
 
-  it("filters loads by search term", () => {
+  it("filters loads by search term", async () => {
+    const user = userEvent.setup();
     render(<LoadList {...defaultProps} />);
     const searchInputs = screen.getAllByRole("textbox");
     const searchInput = searchInputs[0];
-    fireEvent.change(searchInput, { target: { value: "LN-001" } });
-    expect(screen.getByText(/LN-001/i)).toBeTruthy();
+    await user.clear(searchInput);
+    await user.type(searchInput, "LN-001");
+    expect(screen.getByText(/LN-001/i)).toBeInTheDocument();
   });
 });
