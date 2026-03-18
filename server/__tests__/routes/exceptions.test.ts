@@ -3,9 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-FS-05-05, R-FS-05-07
 
 // Hoisted mocks
-const { mockQuery } = vi.hoisted(() => {
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid: vi.fn() };
 });
 
 vi.mock("../../db", () => ({
@@ -30,33 +30,53 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-// Control user context per-test
-let mockUserRole = "dispatcher";
-let mockUserTenantId = "company-aaa";
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  const mockFirestore = {
+    collection: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: "user-1",
+                data: () => ({
+                  id: "user-1",
+                  company_id: "company-aaa",
+                  role: "dispatcher",
+                  email: "test@test.com",
+                }),
+              },
+            ],
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+      firestore: () => mockFirestore,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (req: any, _res: any, next: any) => {
-    req.user = {
-      uid: "user-1",
-      tenantId: mockUserTenantId,
-      role: mockUserRole,
-      email: "test@loadpilot.com",
-      firebaseUid: "firebase-uid-1",
-    };
-    next();
-  },
-}));
-
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import express from "express";
 import request from "supertest";
 import exceptionsRouter from "../../routes/exceptions";
 import { errorHandler } from "../../middleware/errorHandler";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
 function buildApp() {
   const app = express();
@@ -66,14 +86,7 @@ function buildApp() {
   return app;
 }
 
-function buildUnauthApp() {
-  const app = express();
-  app.use(express.json());
-  app.use((_req: any, res: any) => {
-    res.status(401).json({ error: "Authentication required." });
-  });
-  return app;
-}
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 const makeException = (overrides = {}) => ({
   id: "ex-001",
@@ -98,10 +111,11 @@ const makeException = (overrides = {}) => ({
 describe("GET /api/exceptions — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app).get("/api/exceptions");
     expect(res.status).toBe(401);
   });
@@ -110,10 +124,11 @@ describe("GET /api/exceptions — auth enforcement", () => {
 describe("POST /api/exceptions — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app)
       .post("/api/exceptions")
       .send({ type: "DELAY", entityType: "LOAD", entityId: "load-001" });
@@ -124,10 +139,11 @@ describe("POST /api/exceptions — auth enforcement", () => {
 describe("PATCH /api/exceptions/:id — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const app = buildUnauthApp();
+    const app = buildApp();
     const res = await request(app)
       .patch("/api/exceptions/ex-001")
       .send({ status: "RESOLVED" });
@@ -143,10 +159,9 @@ describe("GET /api/exceptions — tenant enforcement (middleware present)", () =
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("allows authenticated user — requireTenant passes with no companyId param", async () => {
@@ -154,7 +169,7 @@ describe("GET /api/exceptions — tenant enforcement (middleware present)", () =
 
     const res = await request(app)
       .get("/api/exceptions")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
   });
@@ -166,10 +181,9 @@ describe("PATCH /api/exceptions/:id — validation (not found)", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 404 when exception does not exist", async () => {
@@ -177,7 +191,7 @@ describe("PATCH /api/exceptions/:id — validation (not found)", () => {
 
     const res = await request(app)
       .patch("/api/exceptions/nonexistent")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "RESOLVED" });
 
     expect(res.status).toBe(404);
@@ -190,10 +204,9 @@ describe("GET /api/exceptions — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns exceptions list with 200", async () => {
@@ -202,7 +215,7 @@ describe("GET /api/exceptions — success", () => {
 
     const res = await request(app)
       .get("/api/exceptions")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
@@ -215,7 +228,7 @@ describe("GET /api/exceptions — success", () => {
 
     const res = await request(app)
       .get("/api/exceptions?status=OPEN")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(1);
@@ -226,7 +239,7 @@ describe("GET /api/exceptions — success", () => {
 
     const res = await request(app)
       .get("/api/exceptions")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
   });
@@ -236,10 +249,9 @@ describe("POST /api/exceptions — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("creates exception and returns 201 with id", async () => {
@@ -248,7 +260,7 @@ describe("POST /api/exceptions — success", () => {
 
     const res = await request(app)
       .post("/api/exceptions")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         type: "DELAY",
         entityType: "LOAD",
@@ -268,10 +280,9 @@ describe("PATCH /api/exceptions/:id — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("updates exception status and returns 200", async () => {
@@ -282,7 +293,7 @@ describe("PATCH /api/exceptions/:id — success", () => {
 
     const res = await request(app)
       .patch("/api/exceptions/ex-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({
         status: "IN_PROGRESS",
         notes: "Working on it",
@@ -300,7 +311,7 @@ describe("PATCH /api/exceptions/:id — success", () => {
 
     const res = await request(app)
       .patch("/api/exceptions/ex-001")
-      .set("Authorization", "Bearer valid-token")
+      .set("Authorization", AUTH_HEADER)
       .send({ status: "RESOLVED" });
 
     expect(res.status).toBe(500);
@@ -311,15 +322,13 @@ describe("GET /api/exceptions/:id/events — success", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
-    mockUserRole = "dispatcher";
-    mockUserTenantId = "company-aaa";
-    app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    app = buildApp();
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
-    const unauthApp = buildUnauthApp();
-    const res = await request(unauthApp).get("/api/exceptions/ex-001/events");
+    const res = await request(app).get("/api/exceptions/ex-001/events");
     expect(res.status).toBe(401);
   });
 
@@ -336,7 +345,7 @@ describe("GET /api/exceptions/:id/events — success", () => {
 
     const res = await request(app)
       .get("/api/exceptions/ex-001/events")
-      .set("Authorization", "Bearer valid-token");
+      .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);

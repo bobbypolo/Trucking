@@ -5,9 +5,9 @@ import request from "supertest";
 // Tests R-P3-02-AC2: tracking endpoint returns DB-backed load positions
 // Tests R-P3-02-AC3: graceful missing-key/fallback behavior
 
-const { mockQuery } = vi.hoisted(() => {
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
   const mockQuery = vi.fn();
-  return { mockQuery };
+  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid: vi.fn() };
 });
 
 vi.mock("../../db", () => ({
@@ -16,20 +16,52 @@ vi.mock("../../db", () => ({
   },
 }));
 
-vi.mock("../../middleware/requireAuth", () => ({
-  requireAuth: (_req: any, _res: any, next: any) => {
-    _req.user = { id: "user-1", tenantId: "company-aaa", role: "admin" };
-    next();
-  },
-}));
+// Mock firebase-admin for requireAuth
+vi.mock("firebase-admin", () => {
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
+  const mockFirestore = {
+    collection: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          get: vi.fn().mockResolvedValue({
+            empty: false,
+            docs: [
+              {
+                id: "user-1",
+                data: () => ({
+                  id: "user-1",
+                  company_id: "company-aaa",
+                  role: "admin",
+                  email: "test@test.com",
+                }),
+              },
+            ],
+          }),
+        }),
+      }),
+    }),
+  };
+  return {
+    default: {
+      app: vi.fn(),
+      auth: () => mockAuth,
+      firestore: () => mockFirestore,
+    },
+  };
+});
 
-vi.mock("../../middleware/requireTenant", () => ({
-  requireTenant: (_req: any, _res: any, next: any) => {
-    next();
-  },
+vi.mock("../../lib/sql-auth", () => ({
+  resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
 import trackingRouter from "../../routes/tracking";
+import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+
+mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+
+const AUTH_HEADER = "Bearer valid-firebase-token";
 
 function createApp() {
   const app = express();
@@ -41,6 +73,7 @@ function createApp() {
 describe("R-P3-02: Tracking Route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
   });
 
   describe("AC2: GET /api/loads/tracking — returns DB-backed positions", () => {
@@ -86,7 +119,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([mockLegs, []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/tracking");
+      const res = await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
@@ -104,7 +137,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([[], []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/tracking");
+      const res = await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
@@ -148,7 +181,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([mockLegs, []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/tracking");
+      const res = await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(200);
       // currentPosition should be the last completed stop
@@ -185,7 +218,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([mockLegs, []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/tracking");
+      const res = await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.body[0].currentPosition).toBeNull();
     });
@@ -218,7 +251,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([mockLegs, []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/load-100/tracking");
+      const res = await request(app).get("/api/loads/load-100/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(200);
       expect(res.body.id).toBe("load-100");
@@ -229,7 +262,7 @@ describe("R-P3-02: Tracking Route", () => {
       mockQuery.mockResolvedValueOnce([[], []]);
 
       const app = createApp();
-      const res = await request(app).get("/api/loads/nonexistent/tracking");
+      const res = await request(app).get("/api/loads/nonexistent/tracking").set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(404);
     });
