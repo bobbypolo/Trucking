@@ -71,13 +71,8 @@ import {
   MapPin,
   ClipboardList,
 } from "lucide-react";
-import {
-  saveLoad,
-  createIncident,
-  seedIncidents,
-} from "../services/storageService";
+import { saveLoad, createIncident } from "../services/storageService";
 import { v4 as uuidv4 } from "uuid";
-import { DEMO_MODE } from "../services/firebase";
 import { Scanner } from "./Scanner";
 import {
   getServiceTickets,
@@ -177,9 +172,6 @@ export const SafetyView: React.FC<Props> = ({
             }),
           );
           setOperators(enrichedOperators);
-
-          // Seed incidents if none exist (demo only)
-          if (DEMO_MODE) await seedIncidents(loads);
 
           // Fetch Equipment
           const equips = await getEquipment(user.companyId);

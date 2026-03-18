@@ -9,7 +9,7 @@ vi.mock("../../../services/storageService", () => ({ generateInvoicePDF: vi.fn()
 vi.mock("../../../services/authService", () => ({ addDriver: vi.fn(), getCurrentUser: vi.fn().mockReturnValue({ id: "user-1", role: "admin", companyId: "company-1", name: "Test Admin" }) }));
 vi.mock("../../../services/financialService", () => ({ createSettlement: vi.fn().mockResolvedValue(undefined), uploadToVault: vi.fn().mockResolvedValue(undefined), getSettlements: vi.fn().mockResolvedValue([]), getBills: vi.fn().mockResolvedValue([]) }));
 vi.mock("../../../services/syncService", () => ({ generateQBSummaryJournal: vi.fn(), exportToCSV: vi.fn() }));
-vi.mock("../../../services/firebase", () => ({ DEMO_MODE: true }));
+vi.mock("../../../services/firebase", () => ({ DEMO_MODE: false }));
 
 const makeDriver = (o: Partial<User> = {}): User => ({ id: "driver-1", companyId: "company-1", email: "d@t.com", name: "Test Driver", role: "driver", payModel: "percent", payRate: 25, onboardingStatus: "Completed", safetyScore: 95, ...o });
 const makeLoad = (o: Partial<LoadData> = {}): LoadData => ({ id: "load-1", companyId: "company-1", driverId: "driver-1", loadNumber: "LN-001", status: LOAD_STATUS.Delivered, carrierRate: 2000, driverPay: 500, pickupDate: "2025-12-01", pickup: { city: "Chicago", state: "IL", facilityName: "Acme" }, dropoff: { city: "Dallas", state: "TX" }, ...o });
@@ -17,14 +17,15 @@ const makeLoad = (o: Partial<LoadData> = {}): LoadData => ({ id: "load-1", compa
 describe("Settlements deep coverage", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  describe("DEMO_MODE deductions", () => {
-    it("shows demo deductions in expanded card", async () => {
+  describe("Deductions (service layer)", () => {
+    it("shows empty deductions from service layer (no hardcoded demo items)", async () => {
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad()]} users={[makeDriver()]} />);
       await user.click(screen.getByText("Test Driver"));
-      await waitFor(() => { expect(screen.getByText("Itemized Deductions")).toBeInTheDocument(); });
-      expect(screen.getByText("Occupational Accident Insurance")).toBeInTheDocument();
-      expect(screen.getByText("ELD / Dashcam Subscription")).toBeInTheDocument();
+      await waitFor(() => { expect(screen.getByText("Total Deductions")).toBeInTheDocument(); });
+      // No hardcoded demo deduction items should appear
+      expect(screen.queryByText("Occupational Accident Insurance")).not.toBeInTheDocument();
+      expect(screen.queryByText("ELD / Dashcam Subscription")).not.toBeInTheDocument();
     });
   });
 

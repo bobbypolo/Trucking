@@ -42,7 +42,6 @@ import {
   getBills,
 } from "../services/financialService";
 import { v4 as uuidv4 } from "uuid";
-import { DEMO_MODE } from "../services/firebase";
 
 interface Props {
   loads: LoadData[];
@@ -112,29 +111,8 @@ export const Settlements: React.FC<Props> = ({
       earnings = userLoads.reduce((sum, l) => sum + (l.driverPay || 0), 0);
     }
 
-    // Demo mode sample deductions (standard 1099 items); empty in production
-    const deductions = DEMO_MODE
-      ? [
-          {
-            id: "ded-1",
-            type: "Deduction" as const,
-            description: "Occupational Accident Insurance",
-            amount: 35.0,
-          },
-          {
-            id: "ded-2",
-            type: "Deduction" as const,
-            description: "ELD / Dashcam Subscription",
-            amount: 12.5,
-          },
-          {
-            id: "ded-3",
-            type: "Deduction" as const,
-            description: "Fuel Advance (Settlement Offset)",
-            amount: 450.0,
-          },
-        ]
-      : [];
+    // Deductions come from the API/service layer (settlements data); default empty
+    const deductions: SettlementLine[] = [];
 
     const reimbursements = userLoads.reduce(
       (sum, l) => sum + (l.expenses?.reduce((s, e) => s + e.amount, 0) || 0),
@@ -195,14 +173,13 @@ export const Settlements: React.FC<Props> = ({
     const data = calculatePayData(user);
     const docId = uuidv4();
 
-    // Statement vault entry — URL is populated by real PDF generation in production;
-    // in demo mode a placeholder URL is used for illustration.
+    // Statement vault entry — URL is populated by real PDF generation in production.
     await uploadToVault({
       id: docId,
       tenantId: currentUser?.companyId || "",
       type: "Statement",
       filename: `Statement_${user.name.replace(" ", "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
-      url: DEMO_MODE ? "https://example.com/demo-statement.pdf" : "",
+      url: "",
       driverId: user.id,
       status: "Locked",
       isLocked: true,
@@ -213,7 +190,6 @@ export const Settlements: React.FC<Props> = ({
       `Audit-Ready Statement generated and saved to Vault for ${user.name}`,
     );
   };
-
 
   const pnlStats = useMemo(() => {
     const totalRev = loads.reduce((sum, l) => sum + (l.carrierRate || 0), 0);
@@ -272,7 +248,6 @@ export const Settlements: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-3">
-
             <button
               onClick={() => onUserUpdate?.()}
               className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all shadow-lg"

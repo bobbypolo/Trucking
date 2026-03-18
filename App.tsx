@@ -18,7 +18,6 @@ import {
   getDispatchEvents,
   getTimeLogs,
   getIncidents,
-  seedIncidents,
   createIncident,
   saveIncidentAction,
   saveIncidentCharge,
@@ -187,7 +186,6 @@ const NetworkPortal = React.lazy(() =>
 import { getRecord360Data } from "./services/storageService";
 import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
 import { CommandCenterView } from "./components/CommandCenterView";
-import { DEMO_MODE } from "./services/firebase";
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -281,16 +279,10 @@ export default function App() {
   } | null>(null);
 
   useEffect(() => {
-    if (features.seedSystem && DEMO_MODE) {
-      seedDatabase().then(() => seedSafetyData(true));
-    }
-
     const unsubscribe = onUserChange(async (updatedUser) => {
       setUser(updatedUser);
       if (updatedUser) {
         await refreshData(updatedUser);
-        const l = await getLoads(updatedUser);
-        if (DEMO_MODE && l.length > 0) await seedIncidents(l);
       }
     });
 
