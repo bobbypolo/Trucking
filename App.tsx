@@ -523,7 +523,7 @@ export default function App() {
 
   if (!user)
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
         <Auth onLogin={handleLogin} />
       </Suspense>
     );
@@ -661,7 +661,7 @@ export default function App() {
   // 4. Global Overlay Elements (Accessible everywhere)
   const globalOverlays = (
     <>
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingSkeleton variant="list" count={3} />}>
         <IssueSidebar
           isOpen={isIssueSidebarOpen}
           onClose={() => setIsIssueSidebarOpen(false)}
@@ -701,7 +701,7 @@ export default function App() {
       {(isAdding || editingLoad) && scanMode && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
           <div className="w-full max-w-lg relative">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
               <Scanner
                 onDataExtracted={(d, b) => {
                   setScanMode(false);
@@ -731,7 +731,7 @@ export default function App() {
       {(isAdding || editingLoad) && !scanMode && (
         <div className="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full h-full max-w-7xl">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
               <EditLoadForm
                 initialData={editingLoad || {}}
                 onSave={handleSaveLoad}
@@ -764,7 +764,7 @@ export default function App() {
       )}
 
       {viewingLoad && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <LoadDetailView
             load={viewingLoad}
             onClose={() => setViewingLoad(null)}
@@ -1229,7 +1229,9 @@ export default function App() {
                 </Suspense>
               )}
               {activeTab === "audit" && (
-                <Suspense fallback={null}>
+                <Suspense
+                  fallback={<LoadingSkeleton variant="table" count={3} />}
+                >
                   <AuditLogs user={user} />
                 </Suspense>
               )}
@@ -1268,7 +1270,7 @@ export default function App() {
         {mainContent}
         {globalOverlays}
         {user && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
             <CommsOverlay
               session={session}
               activeCallSession={activeCallSession}
