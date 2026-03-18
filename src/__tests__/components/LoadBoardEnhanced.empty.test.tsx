@@ -1,6 +1,7 @@
 // Tests R-P3-12
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { LoadBoardEnhanced } from "../../../components/LoadBoardEnhanced";
 
@@ -30,12 +31,13 @@ describe("LoadBoardEnhanced: EmptyState for empty loads (R-P3-12)", () => {
     expect(btn).toBeTruthy();
   });
 
-  it("CTA button calls onCreateLoad when clicked", () => {
+  it("CTA button calls onCreateLoad when clicked", async () => {
+    const user = userEvent.setup();
     const onCreateLoad = vi.fn();
     render(<LoadBoardEnhanced {...defaultProps} onCreateLoad={onCreateLoad} />);
 
     const btn = screen.getByRole("button", { name: /create load/i });
-    fireEvent.click(btn);
+    await user.click(btn);
     expect(onCreateLoad).toHaveBeenCalledTimes(1);
   });
 });
