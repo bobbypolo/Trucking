@@ -1,4 +1,5 @@
 // Tests R-P1-11
+// NOTE: Source-inspection test — validates naming conventions, not behavior
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";

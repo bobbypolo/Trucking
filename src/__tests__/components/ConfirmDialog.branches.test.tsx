@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog";
 
 describe("ConfirmDialog — branch coverage", () => {
@@ -65,22 +66,25 @@ describe("ConfirmDialog — branch coverage", () => {
     expect(confirmBtn.className).toContain("bg-blue-600");
   });
 
-  it("calls onConfirm when confirm button is clicked", () => {
+  it("calls onConfirm when confirm button is clicked", async () => {
+    const user = userEvent.setup();
     render(<ConfirmDialog {...defaultProps} />);
-    fireEvent.click(screen.getByText("Confirm"));
+    await user.click(screen.getByText("Confirm"));
     expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onCancel when cancel button is clicked", () => {
+  it("calls onCancel when cancel button is clicked", async () => {
+    const user = userEvent.setup();
     render(<ConfirmDialog {...defaultProps} />);
-    fireEvent.click(screen.getByText("Cancel"));
+    await user.click(screen.getByText("Cancel"));
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onCancel when backdrop is clicked", () => {
+  it("calls onCancel when backdrop is clicked", async () => {
+    const user = userEvent.setup();
     render(<ConfirmDialog {...defaultProps} />);
     const backdrop = screen.getByRole("dialog").querySelector(".absolute");
-    fireEvent.click(backdrop!);
+    await user.click(backdrop!);
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
   });
 

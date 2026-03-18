@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, fireEvent, act, waitFor } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 // Mock apiHealth before importing component
 const mockGetStatus = vi.fn().mockReturnValue("connected");
@@ -83,11 +84,10 @@ describe("ConnectionBanner", () => {
   it("calls checkNow and onRetry when Retry is clicked", async () => {
     mockGetStatus.mockReturnValue("offline");
     const onRetry = vi.fn();
+    const user = userEvent.setup();
     render(<ConnectionBanner onRetry={onRetry} />);
 
-    await act(async () => {
-      fireEvent.click(screen.getByText("Retry"));
-    });
+    await user.click(screen.getByText("Retry"));
 
     expect(mockCheckNow).toHaveBeenCalled();
     expect(onRetry).toHaveBeenCalled();
@@ -119,11 +119,10 @@ describe("ConnectionBanner", () => {
 
   it("handles Retry without onRetry prop", async () => {
     mockGetStatus.mockReturnValue("offline");
+    const user = userEvent.setup();
     render(<ConnectionBanner />);
 
-    await act(async () => {
-      fireEvent.click(screen.getByText("Retry"));
-    });
+    await user.click(screen.getByText("Retry"));
 
     expect(mockCheckNow).toHaveBeenCalled();
     // Should not throw even without onRetry

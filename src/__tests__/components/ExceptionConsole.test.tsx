@@ -228,11 +228,10 @@ describe("ExceptionConsole component", () => {
     // The view toggle buttons are within a flex container with bg-slate-900
     const toggleContainer = within(viewToggles).getAllByRole("button");
     // Button index: 0 = List, 1 = All, 2 = AI Risk, 3 = Grid
-    if (toggleContainer.length >= 4) {
-      await user.click(toggleContainer[3]);
-      // Table should no longer be present in grid mode
-      expect(screen.queryByRole("table")).not.toBeInTheDocument();
-    }
+    expect(toggleContainer.length).toBeGreaterThanOrEqual(4);
+    await user.click(toggleContainer[3]);
+    // Table should no longer be present in grid mode
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
   it("resolves an exception through the confirm dialog", async () => {
@@ -256,9 +255,8 @@ describe("ExceptionConsole component", () => {
       ? Array.from(lastTd.querySelectorAll("button"))
       : [];
     // First action button is the resolve button (CheckCircle2)
-    if (actionBtns.length > 0) {
-      await user.click(actionBtns[0]);
-    }
+    expect(actionBtns.length).toBeGreaterThan(0);
+    await user.click(actionBtns[0]);
 
     // Confirm dialog should appear
     await waitFor(() => {
