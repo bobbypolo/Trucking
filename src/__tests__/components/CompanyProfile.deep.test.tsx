@@ -182,10 +182,10 @@ describe("CompanyProfile deep coverage", () => {
       const autoLockRow = screen
         .getByText("Auto-Lock Compliance")
         .closest("div[class*='flex']");
-      const toggleBtns = autoLockRow?.querySelectorAll("button");
-      if (toggleBtns && toggleBtns.length > 0) {
-        await user.click(toggleBtns[0]);
-      }
+      expect(autoLockRow).toBeInTheDocument();
+      const toggleBtns = autoLockRow!.querySelectorAll("button");
+      expect(toggleBtns.length).toBeGreaterThan(0);
+      await user.click(toggleBtns[0]);
 
       await user.click(screen.getByRole("button", { name: /save changes/i }));
 
@@ -350,10 +350,10 @@ describe("CompanyProfile deep coverage", () => {
       const viewSettlements = screen
         .getByText("View Own Settlements")
         .closest("div[class*='flex']");
-      const toggleBtn = viewSettlements?.querySelector("button");
-      if (toggleBtn) {
-        await user.click(toggleBtn);
-      }
+      expect(viewSettlements).toBeInTheDocument();
+      const toggleBtn = viewSettlements!.querySelector("button");
+      expect(toggleBtn).toBeInTheDocument();
+      await user.click(toggleBtn!);
 
       await user.click(screen.getByRole("button", { name: /save changes/i }));
 
@@ -386,9 +386,8 @@ describe("CompanyProfile deep coverage", () => {
       const editButtons = document.querySelectorAll(
         "button[class*='hover:bg-blue-600']",
       );
-      if (editButtons.length > 0) {
-        await user.click(editButtons[0] as HTMLElement);
-      }
+      expect(editButtons.length).toBeGreaterThan(0);
+      await user.click(editButtons[0] as HTMLElement);
     });
   });
 

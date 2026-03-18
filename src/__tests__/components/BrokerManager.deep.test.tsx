@@ -64,13 +64,11 @@ describe("BrokerManager deep coverage", () => {
 
       const alphaCard = screen.getByText("Alpha Logistics").closest("[class*='rounded-2xl']");
       const editBtn = alphaCard?.querySelector("button[class*='bg-slate-800']");
-
-      if (editBtn) {
-        await user.click(editBtn as HTMLElement);
-        await waitFor(() => {
-          expect(screen.getByText("Edit Client")).toBeInTheDocument();
-        });
-      }
+      expect(editBtn).toBeInTheDocument();
+      await user.click(editBtn as HTMLElement);
+      await waitFor(() => {
+        expect(screen.getByText("Edit Client")).toBeInTheDocument();
+      });
     });
 
     it("saves an edited broker entity with updated name", async () => {

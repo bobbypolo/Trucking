@@ -427,23 +427,14 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
         complianceHeading.closest("[class*='fixed inset-0']") ||
         complianceHeading.closest("[class*='z-']");
 
-      // If we found the modal container, find the close button within it
-      if (modalContainer) {
-        const closeBtn =
-          modalContainer.querySelectorAll("button")[
-            modalContainer.querySelectorAll("button").length - 1
-          ];
-        await user.click(closeBtn);
-      } else {
-        // Fallback: click the header's parent close button
-        const headerDiv = complianceHeading.closest(
-          ".flex.items-center.justify-between",
-        );
-        if (headerDiv) {
-          const closeBtns = headerDiv.querySelectorAll("button");
-          await user.click(closeBtns[closeBtns.length - 1]);
-        }
-      }
+      // Assert that we found the modal container, then find the close button within it
+      expect(modalContainer).toBeInTheDocument();
+      const closeBtn =
+        modalContainer!.querySelectorAll("button")[
+          modalContainer!.querySelectorAll("button").length - 1
+        ];
+      expect(closeBtn).toBeInTheDocument();
+      await user.click(closeBtn);
 
       await waitFor(() => {
         expect(
@@ -509,22 +500,17 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
         .closest("div")!.parentElement!;
       const xButtons = modalHeader.querySelectorAll("button");
       // The X close button is the last one in the header row
-      let found = false;
-      for (const btn of xButtons) {
-        if (btn.querySelector("svg") || btn.textContent === "") {
-          await user.click(btn);
-          found = true;
-          break;
-        }
-      }
+      const closeBtn = Array.from(xButtons).find(
+        (btn) => btn.querySelector("svg") || btn.textContent === "",
+      );
+      expect(closeBtn).toBeInTheDocument();
+      await user.click(closeBtn!);
 
-      if (found) {
-        await waitFor(() => {
-          expect(
-            screen.queryByText("asset Registration"),
-          ).not.toBeInTheDocument();
-        });
-      }
+      await waitFor(() => {
+        expect(
+          screen.queryByText("asset Registration"),
+        ).not.toBeInTheDocument();
+      });
     });
 
     it("shows feedback toast after successful form submission", async () => {

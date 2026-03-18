@@ -256,13 +256,10 @@ describe("ExceptionConsole deep coverage", () => {
       const rows = screen.getAllByRole("row");
       const firstDataRow = rows[1];
       const lastTd = firstDataRow.querySelector("td:last-child");
-      const actionBtns = lastTd
-        ? Array.from(lastTd.querySelectorAll("button"))
-        : [];
-
-      if (actionBtns.length > 0) {
-        await user.click(actionBtns[0]);
-      }
+      expect(lastTd).toBeInTheDocument();
+      const actionBtns = Array.from(lastTd!.querySelectorAll("button"));
+      expect(actionBtns.length).toBeGreaterThan(0);
+      await user.click(actionBtns[0]);
 
       await waitFor(() => {
         expect(screen.getByText("Resolve Exception")).toBeInTheDocument();
@@ -343,14 +340,12 @@ describe("ExceptionConsole deep coverage", () => {
       }
 
       // In grid view, find "Execute Action" buttons
-      const executeActions = screen.queryAllByText(/Execute Action/);
-      if (executeActions.length > 0) {
-        const actionBtn = executeActions[0].closest("button");
-        if (actionBtn) {
-          await user.click(actionBtn);
-          expect(onViewDetail).toHaveBeenCalled();
-        }
-      }
+      const executeActions = screen.getAllByText(/Execute Action/);
+      expect(executeActions.length).toBeGreaterThan(0);
+      const actionBtn = executeActions[0].closest("button");
+      expect(actionBtn).toBeInTheDocument();
+      await user.click(actionBtn!);
+      expect(onViewDetail).toHaveBeenCalled();
     });
   });
 });

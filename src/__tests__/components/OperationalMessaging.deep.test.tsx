@@ -132,7 +132,8 @@ describe("OperationalMessaging deep coverage (lines 689, 717-749, 828)", () => {
       render(<OperationalMessaging user={mockUser} loads={[makeLoad()]} session={makeSession()} threads={[makeThread()]} />);
       const task = screen.getByText("Verify weight tickets");
       const el = task.closest("div[class*=\"cursor-pointer\"]");
-      if (el) await user.click(el);
+      expect(el).toBeInTheDocument();
+      await user.click(el!);
     });
   });
 });

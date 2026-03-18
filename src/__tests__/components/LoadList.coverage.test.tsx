@@ -129,10 +129,9 @@ describe("LoadList coverage — lines 82-86, 100, 160-165", () => {
     await user.click(screen.getByText("Fleet Network"));
     // Click on the load card for LN-001
     const loadCard = screen.getByText(/LN-001/).closest("[class*='cursor-pointer']");
-    if (loadCard) {
-      await user.click(loadCard);
-      expect(defaultProps.onView).toHaveBeenCalled();
-    }
+    expect(loadCard).toBeInTheDocument();
+    await user.click(loadCard!);
+    expect(defaultProps.onView).toHaveBeenCalled();
   });
 
   it("renders Call and Modify buttons for each load", async () => {
