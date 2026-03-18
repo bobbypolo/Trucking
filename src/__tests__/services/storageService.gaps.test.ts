@@ -22,7 +22,7 @@ vi.mock("firebase/storage", () => ({
   getDownloadURL: vi.fn(),
 }));
 vi.mock("../../../services/brokerService", () => ({
-  getRawBrokers: vi.fn().mockReturnValue([]),
+  getBrokers: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("jspdf", () => {
   function MockJsPDF() {
@@ -147,7 +147,7 @@ import {
 } from "../../../services/storageService";
 import { fetchLoads as apiFetchLoads, createLoad as apiCreateLoad, searchLoadsApi } from "../../../services/loadService";
 import { getCompany, getStoredUsers } from "../../../services/authService";
-import { getRawBrokers } from "../../../services/brokerService";
+import { getBrokers } from "../../../services/brokerService";
 import { getBookings } from "../../../services/storage/bookings";
 import { getQuotes } from "../../../services/storage/quotes";
 import { getRawRequests } from "../../../services/storage/recovery";
@@ -162,7 +162,7 @@ const mockApiCreateLoad = apiCreateLoad as ReturnType<typeof vi.fn>;
 const mockSearchLoadsApi = searchLoadsApi as ReturnType<typeof vi.fn>;
 const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockGetStoredUsers = getStoredUsers as ReturnType<typeof vi.fn>;
-const mockGetRawBrokers = getRawBrokers as ReturnType<typeof vi.fn>;
+const mockGetBrokers = getBrokers as ReturnType<typeof vi.fn>;
 const mockGetBookings = getBookings as ReturnType<typeof vi.fn>;
 const mockGetQuotes = getQuotes as ReturnType<typeof vi.fn>;
 const mockGetRawRequests = getRawRequests as ReturnType<typeof vi.fn>;
@@ -196,7 +196,7 @@ describe("storageService — gap coverage", () => {
     mockSearchLoadsApi.mockReset().mockResolvedValue([]);
     mockGetCompany.mockReset();
     mockGetStoredUsers.mockReset().mockReturnValue([]);
-    mockGetRawBrokers.mockReset().mockReturnValue([]);
+    mockGetBrokers.mockReset().mockResolvedValue([]);
     mockGetBookings.mockReset().mockResolvedValue([]);
     mockGetQuotes.mockReset().mockResolvedValue([]);
     mockGetRawRequests.mockReset().mockResolvedValue([]);
@@ -263,11 +263,12 @@ describe("storageService — gap coverage", () => {
       }
     });
 
-    it("saves to localStorage even when API fails", async () => {
+    it("returns false when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
+      // API is sole source of truth — no localStorage fallback, returns false on failure
       const result = await createIncident({ type: "Weather" });
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 
@@ -291,18 +292,14 @@ describe("storageService — gap coverage", () => {
       expect(result).toBe(true);
     });
 
-    it("handles API failure gracefully", async () => {
-      const key = "loadpilot_test-co_incidents_v1";
-      localStorageMock[key] = JSON.stringify([
-        { id: "inc-1", timeline: [], billingItems: [] },
-      ]);
-
+    it("returns false when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
+      // API is sole source of truth — no localStorage fallback, returns false on failure
       const result = await saveIncidentAction("inc-1", {
         action: "NOTE_ADDED",
       });
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 
@@ -647,13 +644,13 @@ describe("storageService — gap coverage", () => {
   // ─── getBrokerSummary ────────────────────────────────────────────────
   describe("getBrokerSummary", () => {
     it("returns null for unknown broker", async () => {
-      mockGetRawBrokers.mockReturnValue([]);
+      mockGetBrokers.mockResolvedValue([]);
       const result = await getBrokerSummary("nonexistent");
       expect(result).toBeNull();
     });
 
     it("returns summary for known broker", async () => {
-      mockGetRawBrokers.mockReturnValue([
+      mockGetBrokers.mockResolvedValue([
         { id: "b1", name: "Acme Freight" },
       ]);
       mockGetRawRequests.mockResolvedValue([]);
@@ -687,7 +684,7 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns data for BROKER type", async () => {
-      mockGetRawBrokers.mockReturnValue([
+      mockGetBrokers.mockResolvedValue([
         { id: "b1", name: "Acme" },
       ]);
 

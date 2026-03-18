@@ -55,7 +55,7 @@ import {
   getCurrentUser,
 } from "./authService";
 export { getAuthHeaders };
-import { getRawBrokers } from "./brokerService";
+import { getBrokers } from "./brokerService";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { v4 as uuidv4 } from "uuid";
@@ -138,14 +138,7 @@ import {
 import { getContacts as _getContacts } from "./storage/directory";
 import { getRawVaultDocs as _getRawVaultDocs } from "./storage/vault";
 import { saveTask as _saveTask } from "./storage/tasks";
-import { getTenantKey as _getTenantKey } from "./storage/core";
-
-// STORAGE_KEY for loads removed — load data comes from backend API only
-// API endpoint paths for tenant-scoped operational entities
-const API_PATH_INCIDENTS = "/api/incidents"; // used by fetch calls in getIncidents / saveIncident
-
-// Tenant-scoped localStorage key accessor for incidents (stays here — incidents are API-primary)
-const STORAGE_KEY_INCIDENTS = (): string => _getTenantKey("incidents_v1");
+// STORAGE_KEY for loads and incidents removed — both come from backend API only
 
 // In-memory cache for API-fetched data (browser storage removed)
 let _cachedLoads: LoadData[] = [];
@@ -153,23 +146,6 @@ let _cachedLoads: LoadData[] = [];
 const getRawLoads = (): LoadData[] => {
   // Returns cached results from last API fetch
   return _cachedLoads;
-};
-
-const getRawIncidents = (): Incident[] => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY_INCIDENTS());
-    if (!data) return [];
-    const parsed = JSON.parse(data);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((inc: any) => ({
-      ...inc,
-      id: inc.id || uuidv4(),
-      timeline: inc.timeline || [],
-      billingItems: inc.billingItems || [],
-    }));
-  } catch (e) {
-    return [];
-  }
 };
 
 export const getLoads = async (user: User): Promise<LoadData[]> => {
@@ -582,7 +558,7 @@ export const getIncidents = async (): Promise<Incident[]> => {
     });
     if (res.ok) {
       const data = await res.json();
-      const remote = data.map((inc: any) => ({
+      return data.map((inc: any) => ({
         ...inc,
         loadId: inc.load_id,
         reportedAt: inc.reported_at,
@@ -605,21 +581,13 @@ export const getIncidents = async (): Promise<Incident[]> => {
             receiptUrl: b.receipt_url,
           })) || [],
       }));
-
-      // Merge: Remote takes precedence for existing, but local-only (unsynced) are kept
-      const local = getRawIncidents();
-      const remoteIds = new Set(remote.map((r: any) => r.id));
-      const localOnly = local.filter((l) => !remoteIds.has(l.id));
-      const merged = [...remote, ...localOnly];
-
-      localStorage.setItem(STORAGE_KEY_INCIDENTS(), JSON.stringify(merged));
-      return merged;
     }
   } catch (e) {
-    console.warn("[storageService] API fallback:", e);
+    console.warn("[storageService] getIncidents API unavailable:", e);
   }
 
-  return getRawIncidents();
+  // API is sole source of truth — return empty on failure (no localStorage fallback)
+  return [];
 };
 
 // seedIncidents: kept as no-op for backward compatibility (STORY-019)
@@ -649,22 +617,19 @@ export const createIncident = async (incident: Partial<Incident>) => {
     });
 
     if (res.ok) {
-      // Successfully synced
+      return true;
     }
   } catch (e) {
-    console.error("[storageService] createIncident sync failed:", e);
+    console.error("[storageService] createIncident API call failed:", e);
   }
 
-  // Always save to localStorage as safety
-  const incidents = getRawIncidents();
-  incidents.unshift(incToSave as Incident);
-  localStorage.setItem(STORAGE_KEY_INCIDENTS(), JSON.stringify(incidents));
-  return true; // Return true because we persisted at least locally
+  // API is sole source of truth — no localStorage fallback
+  return false;
 };
 
 export const saveIncident = async (incident: Incident) => {
   try {
-    // API primary: fetch api/incidents (tenant-scoped, durable storage)
+    // API is sole source of truth for incidents
     const res = await fetch(`${API_URL}/incidents`, {
       method: "POST",
       headers: await getAuthHeaders(),
@@ -688,13 +653,8 @@ export const saveIncident = async (incident: Incident) => {
     console.warn("[storageService] saveIncident API call failed:", e);
   }
 
-  // Fallback: write to localStorage if API unavailable
-  const incidents = getRawIncidents();
-  const idx = incidents.findIndex((i) => i.id === incident.id);
-  if (idx >= 0) incidents[idx] = incident;
-  else incidents.unshift(incident);
-  localStorage.setItem(STORAGE_KEY_INCIDENTS(), JSON.stringify(incidents));
-  return true;
+  // No localStorage fallback — API is sole source of truth
+  return false;
 };
 
 export const saveIncidentAction = async (
@@ -711,29 +671,14 @@ export const saveIncidentAction = async (
       }),
     });
     if (res.ok) {
-      // Synced
+      return true;
     }
   } catch (e) {
-    console.error("[storageService] saveIncidentAction sync failed:", e);
+    console.error("[storageService] saveIncidentAction API call failed:", e);
   }
 
-  // Persist locally
-  const incidents = getRawIncidents();
-  const idx = incidents.findIndex((inc) => inc.id === incidentId);
-  if (idx >= 0) {
-    const newAction: IncidentAction = {
-      id: uuidv4(),
-      incident_id: incidentId,
-      action: action.action || "Unknown",
-      actorName: action.actorName || "System",
-      actor_name: action.actorName || "System",
-      notes: action.notes || "",
-      timestamp: new Date().toISOString(),
-    };
-    incidents[idx].timeline = [...(incidents[idx].timeline || []), newAction];
-    localStorage.setItem(STORAGE_KEY_INCIDENTS(), JSON.stringify(incidents));
-  }
-  return true;
+  // No localStorage fallback — API is sole source of truth
+  return false;
 };
 
 export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
@@ -1040,7 +985,7 @@ export const getDriverSummary = async (
 };
 
 export const getBrokerSummary = async (brokerId: string) => {
-  const brokers = getRawBrokers();
+  const brokers = await getBrokers();
   const broker = brokers.find((b) => b.id === brokerId);
   if (!broker) return null;
 
@@ -1181,7 +1126,7 @@ export const globalSearch = async (
     });
 
   // 4. Search Brokers (Customers)
-  const brokers = getRawBrokers();
+  const brokers = await getBrokers();
   brokers
     .filter(
       (b) =>
@@ -1237,7 +1182,8 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
         t.assignedTo === load?.driverId,
     );
     const driver = getStoredUsers().find((u) => u.id === load?.driverId);
-    const broker = getRawBrokers().find((b) => b.id === load?.brokerId);
+    const allBrokersForLoad = await getBrokers();
+    const broker = allBrokersForLoad.find((b) => b.id === load?.brokerId);
 
     const vaultDocs = _getRawVaultDocs().filter((d) => d.entityId === id);
 
@@ -1345,7 +1291,8 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
       timeline,
     };
   } else if (type === "BROKER") {
-    const broker = getRawBrokers().find((b) => b.id === id);
+    const allBrokersForRecord = await getBrokers();
+    const broker = allBrokersForRecord.find((b) => b.id === id);
     const brokerLoads = loads.filter((l) => l.brokerId === id);
     const loadIds = brokerLoads.map((l) => l.id);
     const linkedRequests = requests.filter((r) =>

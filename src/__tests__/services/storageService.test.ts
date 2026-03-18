@@ -21,7 +21,7 @@ vi.mock("firebase/storage", () => ({
   getDownloadURL: vi.fn(),
 }));
 vi.mock("../../../services/brokerService", () => ({
-  getRawBrokers: vi.fn().mockReturnValue([]),
+  getBrokers: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("jspdf", () => ({ jsPDF: vi.fn() }));
 vi.mock("jspdf-autotable", () => ({ default: vi.fn() }));
