@@ -163,6 +163,8 @@ def test_r_p1_54_vitest_passes_baseline():
         shell=True,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         cwd=REPO_ROOT,
         timeout=300,
     )

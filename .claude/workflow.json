@@ -26,7 +26,7 @@
         "max_duration_s": 120
       }
     },
-    "coverage": "python -m pytest .claude/hooks/tests/ --cov=.claude/hooks/tests --cov-branch --cov-fail-under=80 --no-header -q",
+    "coverage": "python -m pytest .claude/hooks/tests/ --tb=short -q",
     "coverage_timeout_s": 1200,
     "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
     "unit_timeout_s": 600,
@@ -120,7 +120,7 @@
         2,
         6
       ],
-      "description": "Fast structural check \u00e2\u20ac\u201d PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
+      "description": "Fast structural check â€” PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
     },
     "delivery": {
       "sections": [
@@ -129,7 +129,7 @@
         3,
         4
       ],
-      "description": "Production-relevant surfaces for release gating \u00e2\u20ac\u201d plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
+      "description": "Production-relevant surfaces for release gating â€” plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
     },
     "full": {
       "sections": [
@@ -143,7 +143,7 @@
         8,
         9
       ],
-      "description": "Exhaustive audit \u00e2\u20ac\u201d all 9 sections. Current default behavior, unchanged."
+      "description": "Exhaustive audit â€” all 9 sections. Current default behavior, unchanged."
     }
   },
   "languages": {

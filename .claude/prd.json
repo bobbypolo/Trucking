@@ -598,7 +598,8 @@
         "components/AccountingPortal.tsx",
         "components/SafetyView.tsx",
         "components/BrokerManager.tsx",
-        "components/Settlements.tsx"
+        "components/Settlements.tsx",
+        "src/__tests__/components/"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -631,7 +632,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/AccountingPortal src/__tests__/components/SafetyView src/__tests__/components/BrokerManager src/__tests__/components/Settlements"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -676,7 +677,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/Auth src/__tests__/components/CompanyProfile src/__tests__/components/EditLoadForm"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -712,9 +713,9 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/App"
+        "unit": "npx vitest run src/__tests__/components/App"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
