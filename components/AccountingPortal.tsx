@@ -771,14 +771,14 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "IFTA" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="table" count={3} />}>
             <IFTAManager loads={loads} />
           </Suspense>
         )}
 
         {activeTab === "SETTLEMENTS" && (
           <div className="h-full -m-10">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="table" count={3} />}>
               <Settlements
                 loads={loads}
                 users={users}
@@ -984,7 +984,7 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "VAULT" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
             <FileVault currentUser={currentUser} loads={loads} />
           </Suspense>
         )}
@@ -1286,7 +1286,7 @@ const AccountingPortal: React.FC<Props> = ({
       </div>
 
       {showBillForm && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <AccountingBillForm
             loads={loads}
             onClose={() => setShowBillForm(false)}
@@ -1305,7 +1305,7 @@ const AccountingPortal: React.FC<Props> = ({
       )}
 
       {importType && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <DataImportWizard
             type={importType}
             onClose={() => setImportType(null)}
