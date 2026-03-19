@@ -66,7 +66,7 @@ describe("networkService", () => {
         ok: true,
       } as Response);
 
-      const party = { name: "New Broker", type: "broker" };
+      const party = { name: "New Broker", type: "Broker" as const };
       await saveParty(party);
 
       expect(globalThis.fetch).toHaveBeenCalledWith(

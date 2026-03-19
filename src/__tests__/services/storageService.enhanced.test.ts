@@ -264,7 +264,7 @@ describe("storageService — enhanced coverage", () => {
       });
 
       expect(fetchSpy).toHaveBeenCalled();
-      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
       expect(body.user_id).toBe("u1");
       expect(body.load_id).toBe("l1");
     });
@@ -288,11 +288,11 @@ describe("storageService — enhanced coverage", () => {
       await logDispatchEvent({
         loadId: "l1",
         dispatcherId: "disp-1",
-        eventType: "assigned",
+        eventType: "StatusChange",
       });
 
       expect(fetchSpy).toHaveBeenCalled();
-      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
       expect(body.load_id).toBe("l1");
       expect(body.dispatcher_id).toBe("disp-1");
     });
@@ -499,7 +499,7 @@ describe("storageService — enhanced coverage", () => {
           ]),
       } as any);
 
-      const incidents = await getIncidents("c1");
+      const incidents = await getIncidents();
       expect(incidents.length).toBeGreaterThanOrEqual(0);
     });
 
@@ -510,7 +510,7 @@ describe("storageService — enhanced coverage", () => {
         { id: "inc-1", timeline: [], billingItems: [] },
       ]);
 
-      const incidents = await getIncidents("c1");
+      const incidents = await getIncidents();
       expect(incidents.length).toBeGreaterThanOrEqual(0);
     });
   });

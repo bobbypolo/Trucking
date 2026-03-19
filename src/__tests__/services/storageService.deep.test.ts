@@ -233,7 +233,7 @@ describe("storageService deep coverage", () => {
       expect(m.saveVaultDoc).toHaveBeenCalled();
     });
     it("uploadVaultDoc", async () => {
-      await uploadVaultDoc({ id: "d1" } as any);
+      await uploadVaultDoc(new File([], "test.pdf"), "BOL" as any, "test-tenant");
       const m = await import("../../../services/storage/vault");
       expect(m.uploadVaultDoc).toHaveBeenCalled();
     });
@@ -262,7 +262,7 @@ describe("storageService deep coverage", () => {
 
   describe("other re-exports", () => {
     it("getLeads", async () => {
-      expect(Array.isArray(await getLeads())).toBe(true);
+      expect(Array.isArray(await getLeads("test-co"))).toBe(true);
     });
     it("getQuotes", async () => {
       expect(Array.isArray(await getQuotes())).toBe(true);

@@ -267,7 +267,7 @@ describe("storageService — gap coverage", () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
       // API is sole source of truth — no localStorage fallback, returns false on failure
-      const result = await createIncident({ type: "Weather" });
+      const result = await createIncident({ type: "Weather Shutdown" });
       expect(result).toBe(false);
     });
   });
@@ -309,13 +309,13 @@ describe("storageService — gap coverage", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
 
       const issue = await saveIssue({
-        category: "Mechanical",
+        category: "Maintenance",
         description: "Flat tire",
       });
 
       expect(issue).toBeDefined();
       expect(issue.id).toBeTruthy();
-      expect(issue.category).toBe("Mechanical");
+      expect(issue.category).toBe("Maintenance");
     });
 
     it("handles API failure gracefully", async () => {
