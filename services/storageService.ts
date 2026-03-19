@@ -297,7 +297,7 @@ export const getTimeLogs = async (
 // Consolidated Work Item logic at the end of the file
 
 export const settleLoad = async (loadId: string) => {
-  // Update via API — no localStorage
+  // Update via server API
   await updateLoadStatusApi(loadId, LOAD_STATUS.Settled, "system");
 
   // Update in-memory cache
@@ -621,7 +621,7 @@ export const createIncident = async (incident: Partial<Incident>) => {
     console.error("[storageService] createIncident API call failed:", e);
   }
 
-  // API is sole source of truth — no localStorage fallback
+  // API is sole source of truth — no fallback
   return false;
 };
 
@@ -651,7 +651,7 @@ export const saveIncident = async (incident: Incident) => {
     console.warn("[storageService] saveIncident API call failed:", e);
   }
 
-  // No localStorage fallback — API is sole source of truth
+  // API is sole source of truth — no fallback
   return false;
 };
 
@@ -675,7 +675,7 @@ export const saveIncidentAction = async (
     console.error("[storageService] saveIncidentAction API call failed:", e);
   }
 
-  // No localStorage fallback — API is sole source of truth
+  // API is sole source of truth — no fallback
   return false;
 };
 
