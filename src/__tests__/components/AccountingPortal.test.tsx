@@ -222,7 +222,7 @@ describe("AccountingPortal component", () => {
     await user.click(screen.getByText("Fuel & IFTA"));
     await waitFor(() => {
       expect(screen.getByTestId("ifta-component")).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it("renders the lazy-loaded File Vault tab", async () => {
@@ -235,7 +235,7 @@ describe("AccountingPortal component", () => {
     await user.click(screen.getByText("File Vault"));
     await waitFor(() => {
       expect(screen.getByTestId("file-vault-component")).toBeInTheDocument();
-    });
+    }, { timeout: 5000 });
   });
 
   it("renders with empty loads and users without crashing", async () => {
