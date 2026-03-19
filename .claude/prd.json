@@ -758,7 +758,7 @@
       "gateCmds": {
         "unit": "npx vitest run 2>&1 | tail -5"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
