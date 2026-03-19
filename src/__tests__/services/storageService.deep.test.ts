@@ -233,7 +233,7 @@ describe("storageService deep coverage", () => {
       expect(m.saveVaultDoc).toHaveBeenCalled();
     });
     it("uploadVaultDoc", async () => {
-      await uploadVaultDoc(new File([], "test.pdf"), "BOL" as any, "test-tenant");
+      await uploadVaultDoc(new File([], "test.pdf"), "BOL", "test-tenant");
       const m = await import("../../../services/storage/vault");
       expect(m.uploadVaultDoc).toHaveBeenCalled();
     });
