@@ -957,6 +957,7 @@ const IntelligenceHub: React.FC<{
   >("PROVIDERS");
   const [directorySearchQuery, setDirectorySearchQuery] = useState("");
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
+  const [roadsideVendors, setRoadsideVendors] = useState<Provider[]>([]);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [recordResults, setRecordResults] = useState<GlobalSearchResult[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -1007,6 +1008,10 @@ const IntelligenceHub: React.FC<{
       getContacts().then(setAllContacts);
     }
   }, [showDirectoryDrawer]);
+
+  useEffect(() => {
+    getVendors().then(setRoadsideVendors);
+  }, []);
 
   useEffect(() => {
     const performDirectorySearch = async () => {
@@ -4091,7 +4096,7 @@ const IntelligenceHub: React.FC<{
                   Verified Vendor Network
                 </label>
                 <div className="space-y-3">
-                  {getVendors().map((vendor) => (
+                  {roadsideVendors.map((vendor) => (
                     <button
                       key={vendor.id}
                       onClick={() => setSelectedVendorForRoadside(vendor)}

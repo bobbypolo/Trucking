@@ -36,9 +36,9 @@ vi.mock("../../../services/safetyService", () => ({
   getMaintenanceRecords: vi.fn().mockResolvedValue([]),
   saveMaintenanceRecord: (...args: unknown[]) =>
     mockSaveMaintenanceRecord(...args),
-  getServiceTickets: vi.fn().mockReturnValue([]),
+  getServiceTickets: vi.fn().mockResolvedValue([]),
   saveServiceTicket: vi.fn().mockResolvedValue(undefined),
-  getVendors: vi.fn().mockReturnValue([]),
+  getVendors: vi.fn().mockResolvedValue([]),
   getEquipment: vi.fn().mockResolvedValue([]),
   getComplianceRecords: (...args: unknown[]) =>
     mockGetComplianceRecords(...args),

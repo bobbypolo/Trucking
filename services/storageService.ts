@@ -106,7 +106,6 @@ export {
   getDirectory,
 } from "./storage/directory";
 export {
-  STORAGE_KEY_VAULT_DOCS,
   getRawVaultDocs,
   saveVaultDoc,
   uploadVaultDoc,
@@ -1184,7 +1183,7 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
     const allBrokersForLoad = await getBrokers();
     const broker = allBrokersForLoad.find((b) => b.id === load?.brokerId);
 
-    const vaultDocs = _getRawVaultDocs().filter((d) => d.entityId === id);
+    const vaultDocs = (await _getRawVaultDocs()).filter((d) => d.entityId === id);
 
     const timeline = buildTimeline([
       ...linkedRequests.map((r) => ({
@@ -1340,7 +1339,7 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
     const linkedCalls = calls.filter((c) =>
       c.links.some((l) => l.entityId === id || l.entityId === incident?.loadId),
     );
-    const vaultDocs = _getRawVaultDocs().filter(
+    const vaultDocs = (await _getRawVaultDocs()).filter(
       (d) => d.entityId === id || d.entityId === incident?.loadId,
     );
 

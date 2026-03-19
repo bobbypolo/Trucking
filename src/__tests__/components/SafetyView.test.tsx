@@ -28,9 +28,9 @@ vi.mock("../../../services/safetyService", () => ({
   saveQuizResult: vi.fn().mockResolvedValue(undefined),
   getMaintenanceRecords: vi.fn().mockResolvedValue([]),
   saveMaintenanceRecord: vi.fn().mockResolvedValue(undefined),
-  getServiceTickets: vi.fn().mockReturnValue([]),
+  getServiceTickets: vi.fn().mockResolvedValue([]),
   saveServiceTicket: vi.fn().mockResolvedValue(undefined),
-  getVendors: vi.fn().mockReturnValue([]),
+  getVendors: vi.fn().mockResolvedValue([]),
   getEquipment: vi.fn().mockResolvedValue([]),
   getComplianceRecords: vi.fn().mockResolvedValue([]),
 }));
@@ -690,7 +690,7 @@ describe("SafetyView component", () => {
   it("displays service tickets when data is loaded", async () => {
     const { getServiceTickets } =
       await import("../../../services/safetyService");
-    (getServiceTickets as ReturnType<typeof vi.fn>).mockReturnValue([
+    (getServiceTickets as ReturnType<typeof vi.fn>).mockResolvedValue([
       {
         id: "ticket-abc12345-xyz",
         unitId: "TR-101",

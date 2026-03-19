@@ -26,9 +26,9 @@ vi.mock("../../../services/safetyService", () => ({
   saveQuizResult: vi.fn().mockResolvedValue(undefined),
   getMaintenanceRecords: vi.fn().mockResolvedValue([]),
   saveMaintenanceRecord: vi.fn().mockResolvedValue(undefined),
-  getServiceTickets: vi.fn().mockReturnValue([]),
+  getServiceTickets: vi.fn().mockResolvedValue([]),
   saveServiceTicket: vi.fn().mockResolvedValue(undefined),
-  getVendors: vi.fn().mockReturnValue([]),
+  getVendors: vi.fn().mockResolvedValue([]),
   getEquipment: vi.fn().mockResolvedValue([]),
   getComplianceRecords: vi.fn().mockResolvedValue([]),
 }));

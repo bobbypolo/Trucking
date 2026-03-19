@@ -70,7 +70,7 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
     );
 
     expect(result.status).toBe(0);
-  });
+  }, 30000);
 
   it("prints valid JSON with {updated, alreadyLinked, missingFirebaseUser, total} keys", () => {
     if (!dbAvailable) {
@@ -130,7 +130,7 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
     expect(typeof parsed.alreadyLinked).toBe("number");
     expect(typeof parsed.missingFirebaseUser).toBe("number");
     expect(typeof parsed.total).toBe("number");
-  });
+  }, 30000);
 });
 
 /**

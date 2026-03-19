@@ -16,6 +16,8 @@ import {
   Company,
   QuizResult,
   MaintenanceRecord,
+  ServiceTicket,
+  Provider,
 } from "../types";
 import {
   checkDriverCompliance,
@@ -124,6 +126,8 @@ export const SafetyView: React.FC<Props> = ({
   >([]);
   const [fleetEquipment, setFleetEquipment] = useState<FleetEquipment[]>([]);
   const [complianceRecords, setComplianceRecords] = useState<any[]>([]);
+  const [serviceTickets, setServiceTickets] = useState<ServiceTicket[]>([]);
+  const [vendors, setVendors] = useState<Provider[]>([]);
   const [selectedDriverCompliance, setSelectedDriverCompliance] = useState<
     string | null
   >(null);
@@ -187,6 +191,14 @@ export const SafetyView: React.FC<Props> = ({
         // Fetch Equipment
         const equips = await getEquipment(user.companyId);
         setFleetEquipment(equips);
+
+        // Fetch service tickets and vendors
+        const [tickets, vendorList] = await Promise.all([
+          getServiceTickets(),
+          getVendors(),
+        ]);
+        setServiceTickets(tickets);
+        setVendors(vendorList);
       }
     } catch (error) {
       setLoadError("Failed to load safety data. Please try again.");
@@ -645,7 +657,7 @@ export const SafetyView: React.FC<Props> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {getVendors().map((vendor) => (
+              {vendors.map((vendor) => (
                 <div
                   key={vendor.id}
                   className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all"
@@ -743,20 +755,20 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Open Tickets",
-                  value: getServiceTickets().filter(
+                  value: serviceTickets.filter(
                     (t) => t.status !== "Closed",
                   ).length,
                   color: "text-blue-500",
                 },
                 {
                   label: "Awaiting Vendor",
-                  value: getServiceTickets().filter((t) => t.status === "Open")
+                  value: serviceTickets.filter((t) => t.status === "Open")
                     .length,
                   color: "text-orange-500",
                 },
                 {
                   label: "In Progress",
-                  value: getServiceTickets().filter(
+                  value: serviceTickets.filter(
                     (t) => t.status === "In_Progress",
                   ).length,
                   color: "text-yellow-500",
@@ -800,7 +812,7 @@ export const SafetyView: React.FC<Props> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {getServiceTickets().map((ticket) => (
+                    {serviceTickets.map((ticket) => (
                       <tr
                         key={ticket.id}
                         className="hover:bg-white/5 transition-colors cursor-pointer group"
@@ -856,7 +868,7 @@ export const SafetyView: React.FC<Props> = ({
                         </td>
                       </tr>
                     ))}
-                    {getServiceTickets().length === 0 && (
+                    {serviceTickets.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-8 py-20 text-center">
                           <div className="opacity-10 mb-4 flex justify-center">

@@ -42,7 +42,7 @@ vi.mock("../../../services/storageService", () => ({
 }));
 
 vi.mock("../../../services/safetyService", () => ({
-  getVendors: vi.fn().mockReturnValue([
+  getVendors: vi.fn().mockResolvedValue([
     {
       id: "v-1",
       name: "Quick Tow LLC",
