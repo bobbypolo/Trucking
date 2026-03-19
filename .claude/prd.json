@@ -1176,7 +1176,8 @@
       "scope": [
         "server/routes/health.ts",
         "docs/ops/rollback-procedure.md",
-        "docs/ops/readiness-checklist.md"
+        "docs/ops/readiness-checklist.md",
+        "server/__tests__/routes/health.test.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -1209,7 +1210,7 @@
       "gateCmds": {
         "unit": "cd server && npx vitest run __tests__/routes/health.test.ts"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
