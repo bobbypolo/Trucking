@@ -56,6 +56,9 @@ test_google_maps_api.html
 # Test artifacts
 test-results/
 playwright-results/
+# Generated export artifacts from test runs
+*.xlsx
+*.pdf
 
 # Workflow artifacts ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â canonical copy is in .claude/docs/
 verification-log.jsonl
