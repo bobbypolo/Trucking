@@ -1107,7 +1107,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npm run build 2>&1 | tail -20 && npx vitest run src/__tests__/App"
+        "unit": "npm run build 2>&1 | tail -20 && npx vitest run src/__tests__/components/App"
       },
       "passed": true,
       "verificationRef": null
