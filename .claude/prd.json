@@ -1064,7 +1064,7 @@
       "gateCmds": {
         "unit": "cd server && npx vitest run __tests__/integration/forbidden-patterns.test.ts"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -1075,7 +1075,8 @@
       "component": "App.tsx",
       "scope": [
         "App.tsx",
-        "vite.config.ts"
+        "vite.config.ts",
+        ".claude/hooks/tests/test_r_p4_11.py"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -1108,7 +1109,7 @@
       "gateCmds": {
         "unit": "npm run build 2>&1 | tail -20 && npx vitest run src/__tests__/App"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
