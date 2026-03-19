@@ -928,7 +928,8 @@
       "phase_type": "hardening",
       "component": "src/__tests__/services",
       "scope": [
-        "src/__tests__/services/*.test.ts"
+        "src/__tests__/services/",
+        ".claude/hooks/tests/"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -956,7 +957,7 @@
       "gateCmds": {
         "unit": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/services/' | wc -l && npx vitest run src/__tests__/services"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -966,7 +967,8 @@
       "phase_type": "hardening",
       "component": "src/__tests__/components",
       "scope": [
-        "src/__tests__/components/*.test.tsx"
+        "src/__tests__/components/",
+        "types.ts"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -994,7 +996,7 @@
       "gateCmds": {
         "unit": "npx tsc --noEmit 2>&1 | grep 'src/__tests__/components/' | wc -l && npx vitest run src/__tests__/components"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -1022,7 +1024,7 @@
       "gateCmds": {
         "unit": "npx tsc --noEmit 2>&1 | grep 'vite.config.ts' | wc -l"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
