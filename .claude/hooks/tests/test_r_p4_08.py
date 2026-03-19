@@ -134,6 +134,10 @@ def test_r_p4_10_negative_forbidden_patterns_file_is_valid_typescript():
     assert len(content) > 5000, (
         f"forbidden-patterns.test.ts is unexpectedly small ({len(content)} chars) — may be truncated"
     )
+    # Must import from vitest (behavioral value check)
+    assert 'from "vitest"' in content, (
+        'forbidden-patterns.test.ts must import { describe, it, expect } from "vitest"'
+    )
     # Must have describe blocks (TypeScript test structure)
     describe_count = content.count("describe(")
     assert describe_count >= 7, (
