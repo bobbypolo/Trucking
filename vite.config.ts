@@ -43,6 +43,7 @@ export default defineConfig(() => {
               id.includes("node_modules/jspdf-autotable")
             )
               return "pdf";
+            if (id.includes("node_modules/xlsx")) return "xlsx";
             if (id.includes("node_modules/recharts")) return "charts";
             if (id.includes("node_modules/html2canvas")) return "capture";
             // Firebase SDK — split into its own shared chunk

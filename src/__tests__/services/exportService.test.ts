@@ -47,12 +47,12 @@ describe("exportService", () => {
 
   // --- exportToExcel ---
   describe("exportToExcel", () => {
-    it("converts data to worksheet and writes an xlsx file", () => {
+    it("converts data to worksheet and writes an xlsx file", async () => {
       const data = [
         { name: "Load 1", amount: 100 },
         { name: "Load 2", amount: 200 },
       ];
-      exportToExcel(data, "test-report");
+      await exportToExcel(data, "test-report");
 
       expect(mockJsonToSheet).toHaveBeenCalledWith(data);
       expect(mockBookNew).toHaveBeenCalled();
@@ -67,8 +67,8 @@ describe("exportService", () => {
       );
     });
 
-    it("handles empty data array", () => {
-      exportToExcel([], "empty-report");
+    it("handles empty data array", async () => {
+      await exportToExcel([], "empty-report");
       expect(mockJsonToSheet).toHaveBeenCalledWith([]);
       expect(mockWriteFile).toHaveBeenCalledWith(
         expect.anything(),
@@ -79,13 +79,13 @@ describe("exportService", () => {
 
   // --- exportToPDF ---
   describe("exportToPDF", () => {
-    it("creates a PDF with title, date, and autoTable", () => {
+    it("creates a PDF with title, date, and autoTable", async () => {
       const headers = ["Name", "Amount"];
       const data = [
         ["Load 1", "100"],
         ["Load 2", "200"],
       ];
-      exportToPDF(headers, data, "Loads Report", "loads-report");
+      await exportToPDF(headers, data, "Loads Report", "loads-report");
 
       expect(mockSetFontSize).toHaveBeenCalledWith(20);
       expect(mockText).toHaveBeenCalledWith("Loads Report", 14, 22);
@@ -98,10 +98,10 @@ describe("exportService", () => {
       );
     });
 
-    it("calls autoTable with correct head, body, and styling", () => {
+    it("calls autoTable with correct head, body, and styling", async () => {
       const headers = ["Col A", "Col B"];
       const data = [["val1", "val2"]];
-      exportToPDF(headers, data, "Title", "file");
+      await exportToPDF(headers, data, "Title", "file");
 
       expect(mockAutoTable).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -115,13 +115,13 @@ describe("exportService", () => {
       );
     });
 
-    it("saves the PDF with the correct filename", () => {
-      exportToPDF(["H"], [["D"]], "Title", "my-report");
+    it("saves the PDF with the correct filename", async () => {
+      await exportToPDF(["H"], [["D"]], "Title", "my-report");
       expect(mockSave).toHaveBeenCalledWith("my-report.pdf");
     });
 
-    it("handles empty data array", () => {
-      exportToPDF(["H1"], [], "Empty", "empty");
+    it("handles empty data array", async () => {
+      await exportToPDF(["H1"], [], "Empty", "empty");
       expect(mockAutoTable).toHaveBeenCalledWith(
         expect.objectContaining({
           head: [["H1"]],
