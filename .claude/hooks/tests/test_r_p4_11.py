@@ -281,6 +281,45 @@ def test_r_p4_13_shell_components_remain_eager():
     )
 
 
+# --- R-P4-13: Negative / error tests ---
+
+
+def test_r_p4_13_error_if_route_component_eagerly_imported():
+    """R-P4-13 error: Route components (non-shell) must NOT be eagerly imported."""
+    source = _read_app()
+    # Known route components that were converted to lazy — if any slip back to eager, fail
+    route_components = [
+        "LoadList",
+        "Intelligence",
+        "Settlements",
+        "CommandCenterView",
+        "LoadSetupModal",
+        "GoogleMapsAPITester",
+    ]
+    found_eager = [
+        c
+        for c in route_components
+        if f"import {{ {c} }}" in source or f"import {{{c}}}" in source
+    ]
+    assert found_eager == [], (
+        f"Route components found as eager imports (must be lazy): {found_eager}"
+    )
+
+
+def test_r_p4_13_boundary_no_lazy_outside_suspense():
+    """R-P4-13 boundary: Verify Suspense is present — lazy without Suspense causes runtime error."""
+    source = _read_app()
+    # Count lazy defs and Suspense boundaries
+    lazy_defs = re.findall(r"const \w+ = React\.lazy\(", source)
+    suspense_count = source.count("<Suspense")
+    # At minimum, 1 Suspense boundary is required to avoid runtime errors
+    missing_suspense = 1 if suspense_count == 0 else 0
+    assert missing_suspense == 0, (
+        f"No <Suspense> boundaries found but {len(lazy_defs)} lazy components exist. "
+        "React.lazy without Suspense causes runtime errors."
+    )
+
+
 # --- R-P4-14: Compilation and structure tests ---
 
 
