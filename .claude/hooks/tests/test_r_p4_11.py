@@ -24,6 +24,7 @@ EAGER_ALLOWED = {
 # firebase: split by this story from the 488KB index chunk
 # AccountingPortal: pre-existing monolith (462KB baseline per PLAN.md system context)
 # index.es: ES module shared chunk
+# xlsx: SheetJS library (419KB) used by Data Import/Export feature -- known large vendor dep
 EXEMPT_CHUNK_PREFIXES = (
     "vendor-",
     "maps-",
@@ -33,6 +34,7 @@ EXEMPT_CHUNK_PREFIXES = (
     "firebase-",
     "AccountingPortal-",
     "index.es-",
+    "xlsx-",
 )
 
 
