@@ -1220,7 +1220,9 @@
       "phase_type": "release",
       "component": "docs/release/evidence.md",
       "scope": [
-        "docs/release/evidence.md"
+        "docs/release/evidence.md",
+        "services/storage/directory.ts",
+        "services/storageService.ts"
       ],
       "complexity": "simple",
       "maxTurns": 50,
@@ -1273,8 +1275,8 @@
       "gateCmds": {
         "unit": "npx vitest run 2>&1 | tail -5 && cd server && npx vitest run 2>&1 | tail -5"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "STORY-502/attempt-1/qa-receipt.json"
     },
     {
       "id": "STORY-503",
