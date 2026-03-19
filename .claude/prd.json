@@ -771,7 +771,8 @@
         "server/routes/documents.ts",
         "server/index.ts",
         "components/FileVault.tsx",
-        "services/storage/vault.ts"
+        "services/storage/vault.ts",
+        "server/__tests__/routes/documents.test.ts"
       ],
       "complexity": "complex",
       "maxTurns": 200,
@@ -817,9 +818,9 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/documents.test.ts && npx vitest run src/__tests__/components/FileVault"
+        "unit": "cd server && npx vitest run __tests__/routes/documents.test.ts"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
@@ -830,7 +831,9 @@
       "component": "components/AccountingPortal.tsx",
       "scope": [
         "components/AccountingPortal.tsx",
-        "server/routes/accounting.ts"
+        "server/routes/accounting.ts",
+        "server/__tests__/routes/accounting.test.ts",
+        "src/__tests__/components/AccountingPortal.test.tsx"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
@@ -868,7 +871,7 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/AccountingPortal && cd server && npx vitest run __tests__/routes/accounting.test.ts"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": null
     },
     {
