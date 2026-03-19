@@ -99,6 +99,78 @@ router.post(
   },
 );
 
+// ── Quiz Results ─────────────────────────────────────────────────────────────
+
+// GET /api/safety/quiz-results — list quiz results for authenticated tenant
+router.get(
+  "/api/safety/quiz-results",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    try {
+      const [rows] = await pool.query(
+        "SELECT * FROM safety_quiz_results WHERE company_id = ? ORDER BY submitted_at DESC",
+        [companyId],
+      );
+      res.json(rows);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/safety/quiz-results",
+      });
+      log.error({ err: error }, "Failed to fetch safety quiz results");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// POST /api/safety/quiz-results — create a quiz result record
+router.post(
+  "/api/safety/quiz-results",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const { quiz_id, driver_id, driver_name, score, passed } = req.body;
+
+    if (!quiz_id) {
+      return res.status(400).json({ error: "quiz_id is required" });
+    }
+
+    const id = uuidv4();
+    try {
+      await pool.query(
+        `INSERT INTO safety_quiz_results
+          (id, company_id, quiz_id, driver_id, driver_name, score, passed)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          companyId,
+          quiz_id,
+          driver_id ?? null,
+          driver_name ?? null,
+          score ?? null,
+          passed ? 1 : 0,
+        ],
+      );
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/safety/quiz-results",
+      });
+      log.info({ resultId: id, quizId: quiz_id }, "Safety quiz result recorded");
+      res.status(201).json({ message: "Quiz result recorded", id });
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/safety/quiz-results",
+      });
+      log.error({ err: error }, "Failed to record safety quiz result");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 // ── Maintenance ──────────────────────────────────────────────────────────────
 
 // GET /api/safety/maintenance — list maintenance records for authenticated tenant

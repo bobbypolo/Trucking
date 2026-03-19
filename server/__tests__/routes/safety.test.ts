@@ -590,3 +590,188 @@ describe("Cross-tenant isolation — R-P1-08", () => {
     expect(res.status).toBe(404);
   });
 });
+
+// ── R-P1-09: GET /api/safety/quiz-results ────────────────────────────────────
+
+describe("GET /api/safety/quiz-results — R-P1-09", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    app = buildApp();
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+  });
+
+  it("returns 401 without Authorization header", async () => {
+    const res = await request(app).get("/api/safety/quiz-results");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 200 with JSON array of quiz results for authenticated tenant", async () => {
+    const results = [
+      {
+        id: "result-001",
+        company_id: TENANT_A,
+        quiz_id: "quiz-001",
+        driver_id: "driver-001",
+        driver_name: "John Smith",
+        score: 92.5,
+        passed: 1,
+        submitted_at: new Date().toISOString(),
+      },
+      {
+        id: "result-002",
+        company_id: TENANT_A,
+        quiz_id: "quiz-001",
+        driver_id: "driver-002",
+        driver_name: "Jane Doe",
+        score: 65.0,
+        passed: 0,
+        submitted_at: new Date().toISOString(),
+      },
+    ];
+    mockQuery.mockResolvedValueOnce([results, []]);
+
+    const res = await request(app)
+      .get("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(2);
+  });
+
+  it("returns empty array when tenant has no quiz results", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .get("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(0);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB connection error"));
+
+    const res = await request(app)
+      .get("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(500);
+    const body = res.body as { error: string };
+    expect(body.error).toBe("Database error");
+  });
+
+  it("SQL query scopes results to authenticated tenant company_id", async () => {
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/company_id\s*=\s*\?/i);
+    const paramList = params as string[];
+    expect(paramList[0]).toBe(TENANT_A);
+  });
+});
+
+// ── R-P1-10: POST /api/safety/quiz-results ───────────────────────────────────
+
+describe("POST /api/safety/quiz-results — R-P1-10", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    app = buildApp();
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+  });
+
+  it("returns 401 without Authorization header", async () => {
+    const res = await request(app)
+      .post("/api/safety/quiz-results")
+      .send({ quiz_id: "quiz-001", driver_id: "driver-001", score: 85, passed: true });
+    expect(res.status).toBe(401);
+  });
+
+  it("creates a quiz result and returns 201 with id", async () => {
+    mockQuery.mockResolvedValueOnce([{ insertId: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        quiz_id: "quiz-001",
+        driver_id: "driver-001",
+        driver_name: "John Smith",
+        score: 92.5,
+        passed: true,
+      });
+
+    expect(res.status).toBe(201);
+    const body = res.body as { message: string; id: string };
+    expect(body.message).toBe("Quiz result recorded");
+    expect(typeof body.id).toBe("string");
+    expect(body.id.length).toBeGreaterThan(0);
+  });
+
+  it("returns 400 when quiz_id is missing", async () => {
+    const res = await request(app)
+      .post("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER)
+      .send({ driver_id: "driver-001", score: 80, passed: true });
+
+    expect(res.status).toBe(400);
+    const body = res.body as { error: string };
+    expect(body.error).toBe("quiz_id is required");
+  });
+
+  it("accepts result without optional fields and returns 201", async () => {
+    mockQuery.mockResolvedValueOnce([{ insertId: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER)
+      .send({ quiz_id: "quiz-002" });
+
+    expect(res.status).toBe(201);
+    const body = res.body as { message: string };
+    expect(body.message).toBe("Quiz result recorded");
+  });
+
+  it("stores passed=false as 0 in database", async () => {
+    mockQuery.mockResolvedValueOnce([{ insertId: 1 }, []]);
+
+    await request(app)
+      .post("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER)
+      .send({ quiz_id: "quiz-001", score: 45, passed: false });
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    const paramList = params as unknown[];
+    // passed is index 6 (id, company_id, quiz_id, driver_id, driver_name, score, passed)
+    expect(paramList[6]).toBe(0);
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await request(app)
+      .post("/api/safety/quiz-results")
+      .set("Authorization", AUTH_HEADER)
+      .send({ quiz_id: "quiz-001", score: 75, passed: true });
+
+    expect(res.status).toBe(500);
+    const body = res.body as { error: string };
+    expect(body.error).toBe("Database error");
+  });
+});
