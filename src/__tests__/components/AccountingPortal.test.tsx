@@ -271,4 +271,28 @@ describe("AccountingPortal component", () => {
       ).toBeInTheDocument();
     });
   });
+
+  // R-P3-08: QB Sync section not rendered in AccountingPortal
+  it('does not render a QB Sync section (R-P3-08)', async () => {
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText('Overview')).toBeInTheDocument();
+    });
+    // QB Sync / QuickBooks section must be absent
+    expect(screen.queryByText(/quickbooks/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/QB Sync/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sync-qb/i)).not.toBeInTheDocument();
+  });
+
+  // R-P3-12: No button triggers a fake success toast for unimplemented features
+  it('does not show coming soon or unimplemented feature toasts (R-P3-12)', async () => {
+    render(<AccountingPortal {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText('Overview')).toBeInTheDocument();
+    });
+    // There should be no "Coming Soon" text anywhere in the rendered output
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
+    // There should be no "Not Yet Implemented" text
+    expect(screen.queryByText(/not yet implemented/i)).not.toBeInTheDocument();
+  });
 });
