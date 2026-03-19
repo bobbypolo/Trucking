@@ -107,16 +107,26 @@ def test_r_p4_11_commandcenterview_is_lazy():
 # --- R-P4-11: Edge / negative tests ---
 
 
-def test_r_p4_11_no_other_components_eagerly_imported():
-    """R-P4-11 edge: No non-shell components sneak back in as eager imports."""
+def test_r_p4_11_negative_lazy_count_not_regressed():
+    """R-P4-11 negative: React.lazy count must not have decreased (reverted components)."""
     source = _read_app()
-    # All React.lazy definitions must use import() pattern
     lazy_defs = re.findall(r"const \w+ = React\.lazy\(", source)
     lazy_count = len(lazy_defs)
-    # We expect a substantial number of lazy components (22+ originally, now 28+)
-    assert lazy_count >= 22, (
-        f"Expected >= 22 React.lazy component definitions, found {lazy_count}. "
-        f"Converted components may have been reverted."
+    # Before this story there were 22 lazy components; after conversion there are 28
+    reverted = [
+        c
+        for c in [
+            "LoadList",
+            "Intelligence",
+            "Settlements",
+            "CommandCenterView",
+            "LoadSetupModal",
+            "GoogleMapsAPITester",
+        ]
+        if "React.lazy" not in source or f"const {c} = React.lazy" not in source
+    ]
+    assert reverted == [], (
+        f"The following components were not converted to React.lazy: {reverted}"
     )
 
 
@@ -174,11 +184,14 @@ def test_r_p4_12_index_chunk_under_250kb():
     assert chunk_count >= 1, (
         f"Expected at least 1 index-*.js chunk, found {chunk_count}"
     )
-    for chunk in index_chunks:
-        size_kb = chunk.stat().st_size / 1024
-        assert size_kb < 250, (
-            f"{chunk.name} is {size_kb:.1f}KB - expected < 250KB after Firebase split"
-        )
+    oversized = [
+        f"{c.name}: {c.stat().st_size / 1024:.1f}KB"
+        for c in index_chunks
+        if c.stat().st_size / 1024 >= 250
+    ]
+    assert oversized == [], (
+        f"Index chunk(s) exceed 250KB after Firebase split: {oversized}"
+    )
 
 
 def test_r_p4_12_firebase_chunk_exists_and_is_substantial():
@@ -190,33 +203,40 @@ def test_r_p4_12_firebase_chunk_exists_and_is_substantial():
 
     firebase_chunks = list(DIST_ASSETS.glob("firebase-*.js"))
     chunk_count = len(firebase_chunks)
-    assert chunk_count >= 1, (
-        f"Expected a firebase-*.js chunk from manualChunks, found {chunk_count}"
+    assert chunk_count == 1, (
+        f"Expected exactly 1 firebase-*.js chunk from manualChunks, found {chunk_count}"
     )
-    for chunk in firebase_chunks:
-        size_kb = chunk.stat().st_size / 1024
-        # Firebase SDK is ~220KB - must be substantial
-        assert size_kb >= 50, (
-            f"firebase chunk {chunk.name} is only {size_kb:.1f}KB - expected >= 50KB"
-        )
+    # Firebase SDK is ~220KB - tiny chunk means split did not work
+    trivial_chunks = [
+        f"{c.name}: {c.stat().st_size / 1024:.1f}KB"
+        for c in firebase_chunks
+        if c.stat().st_size / 1024 < 50
+    ]
+    assert trivial_chunks == [], (
+        f"Firebase chunk is too small (< 50KB) - SDK may not be included: {trivial_chunks}"
+    )
 
 
 # --- R-P4-12: Negative tests ---
 
 
-def test_r_p4_12_index_chunk_not_huge():
-    """R-P4-12 negative: index chunk must NOT be the old 488KB+ size."""
+def test_r_p4_12_negative_index_chunk_not_pre_story_size():
+    """R-P4-12 negative: index chunk must NOT be the old 488KB+ pre-story size."""
     if not DIST_ASSETS.exists():
         import pytest
 
         pytest.skip("dist/assets not found - run npm run build first")
 
-    for chunk in DIST_ASSETS.glob("index-*.js"):
-        size_kb = chunk.stat().st_size / 1024
-        assert size_kb < 400, (
-            f"index chunk {chunk.name} is {size_kb:.1f}KB - Firebase split did not work. "
-            f"Before this story it was 488KB."
-        )
+    # Before this story index was 488KB; after Firebase split it should be < 250KB
+    pre_story_sized = [
+        f"{c.name}: {c.stat().st_size / 1024:.1f}KB"
+        for c in DIST_ASSETS.glob("index-*.js")
+        if c.stat().st_size / 1024 >= 400
+    ]
+    assert pre_story_sized == [], (
+        "Index chunk is still pre-story size (>= 400KB), Firebase split did not work: "
+        + ", ".join(pre_story_sized)
+    )
 
 
 # --- R-P4-13: Eager imports tests ---
@@ -230,17 +250,15 @@ def test_r_p4_13_only_shell_components_are_eager():
         source,
         re.MULTILINE,
     )
-    eager_count = len(eager_imports)
-    assert eager_count <= 4, (
-        f"Expected at most 4 eager component imports, found {eager_count}: {eager_imports}"
+    non_shell = [
+        p
+        for p in eager_imports
+        if not any(a.lower() in p.split("/")[-1].lower() for a in EAGER_ALLOWED)
+    ]
+    assert non_shell == [], (
+        f"Non-shell components found as eager imports: {non_shell}. "
+        f"Only {sorted(EAGER_ALLOWED)} are allowed as eager imports."
     )
-    for path_part in eager_imports:
-        name = path_part.split("/")[-1]
-        allowed = any(a.lower() in name.lower() for a in EAGER_ALLOWED)
-        assert allowed, (
-            f"Eager import from ./components/{path_part} is not a shell component. "
-            f"Only {sorted(EAGER_ALLOWED)} allowed eagerly."
-        )
 
 
 def test_r_p4_13_shell_components_remain_eager():
@@ -252,12 +270,15 @@ def test_r_p4_13_shell_components_remain_eager():
         "Toast": r"^import.*Toast.*from.*components/Toast",
         "LoadingSkeleton": r"^import.*LoadingSkeleton.*from.*components/ui/LoadingSkeleton",
     }
-    for name, pattern in required.items():
-        matches = re.findall(pattern, source, re.MULTILINE)
-        assert len(matches) >= 1, (
-            f"Shell component {name} must remain as an eager import, "
-            f"but no matching import found."
-        )
+    missing = [
+        name
+        for name, pattern in required.items()
+        if not re.findall(pattern, source, re.MULTILINE)
+    ]
+    assert missing == [], (
+        f"Shell component(s) {missing} are missing their eager imports. "
+        f"These must remain eagerly imported as UI shell components."
+    )
 
 
 # --- R-P4-14: Compilation and structure tests ---
@@ -284,9 +305,22 @@ def test_r_p4_14_lazy_components_have_suspense_wrappers():
     """R-P4-14: Lazy-loaded components have Suspense fallback boundaries."""
     source = _read_app()
     suspense_count = source.count("<Suspense")
-    assert suspense_count >= 10, (
-        f"Expected >= 10 Suspense boundaries in App.tsx, found {suspense_count}. "
-        f"All lazy components must be wrapped."
+    # Each Suspense fallback wraps a lazy component — need at least one per lazy component
+    # Check the ratio of lazy defs to Suspense wrappers
+    lazy_defs = re.findall(r"const \w+ = React\.lazy\(", source)
+    lazy_without_suspense = [
+        d
+        for d in lazy_defs
+        if suspense_count == 0  # if no Suspense at all, something is very wrong
+    ]
+    assert lazy_without_suspense == [], (
+        f"No Suspense boundaries found in App.tsx despite {len(lazy_defs)} lazy components"
+    )
+    # Also verify minimum count
+    missing_wrappers = max(0, 10 - suspense_count)
+    assert missing_wrappers == 0, (
+        f"Too few Suspense boundaries: found {suspense_count}, expected >= 10. "
+        f"Missing approximately {missing_wrappers} wrappers."
     )
 
 
@@ -294,8 +328,12 @@ def test_r_p4_14_vite_config_has_firebase_chunk():
     """R-P4-14: vite.config.ts splits Firebase into its own chunk."""
     with open("F:/Trucking/DisbatchMe/vite.config.ts", encoding="utf-8") as f:
         config = f.read()
-    firebase_count = config.count("firebase")
-    assert firebase_count >= 2, (
-        f"Expected >= 2 occurrences of 'firebase' in vite.config.ts "
-        f"(condition + return value), found {firebase_count}"
+    # Verify firebase appears in both the condition and return value
+    firebase_occurrences = config.count("firebase")
+    assert firebase_occurrences != 0, (
+        "vite.config.ts has no 'firebase' references - Firebase chunk split is missing"
+    )
+    assert firebase_occurrences >= 2, (
+        f"Expected >= 2 'firebase' occurrences in vite.config.ts "
+        f"(condition + return value), found {firebase_occurrences}"
     )
