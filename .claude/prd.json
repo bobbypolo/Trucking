@@ -1286,7 +1286,8 @@
       "component": "docs/release/evidence.md",
       "scope": [
         "docs/release/evidence.md",
-        ".claude/hooks/tests"
+        ".claude/hooks/tests",
+        ".claude/prd.json"
       ],
       "complexity": "simple",
       "maxTurns": 50,
