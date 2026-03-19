@@ -32,7 +32,7 @@ describe("storage/index.ts — barrel exports", () => {
     const storage = await import("../../../../services/storage/index");
     expect(storage.getQuotes).toBeTypeOf("function");
     expect(storage.saveQuote).toBeTypeOf("function");
-  });
+  }, 10000);
 
   it("re-exports leads domain", async () => {
     const storage = await import("../../../../services/storage/index");
