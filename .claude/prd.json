@@ -1034,7 +1034,8 @@
       "phase_type": "hardening",
       "component": "server/__tests__/integration/forbidden-patterns.test.ts",
       "scope": [
-        "server/__tests__/integration/forbidden-patterns.test.ts"
+        "server/__tests__/integration/forbidden-patterns.test.ts",
+        ".claude/hooks/tests/test_r_p4_08.py"
       ],
       "complexity": "moderate",
       "maxTurns": 150,
