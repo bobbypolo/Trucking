@@ -1271,77 +1271,84 @@ export const SafetyView: React.FC<Props> = ({
             <div className="p-8 border-t border-slate-800 bg-slate-950/50">
               <button
                 onClick={async () => {
-                  if (showForm === "asset")
-                    registerAsset(user.companyId, formData, user);
-                  else if (showForm === "maintenance")
-                    saveMaintenanceRecord({
-                      ...formData,
-                      id: uuidv4(),
-                      date: new Date().toISOString(),
-                    });
-                  else if (showForm === "quiz")
-                    saveQuiz({
-                      ...formData,
-                      id: uuidv4(),
-                      createdAt: new Date().toISOString(),
-                      questions: [],
-                      assignedTo: ["all"],
-                    });
-                  else if (showForm === "incident") {
-                    const newIncident = {
-                      id: uuidv4(),
-                      loadId: formData.loadId,
-                      type: formData.category || "Incident",
-                      severity:
-                        formData.category === "Safety" ? "Critical" : "High",
-                      status: "Open",
-                      description: formData.description,
-                      reportedAt: new Date().toISOString(),
-                      reportedBy: user.name,
-                      timeline: [
-                        {
-                          id: uuidv4(),
-                          timestamp: new Date().toISOString(),
-                          action: "Incident Created",
-                          notes: `Incident created by Safety Department: ${formData.description}`,
-                          actorName: user.name,
-                        },
-                      ],
-                      isAtRisk: true,
-                      serviceTickets: [],
-                      billingItems: [],
-                    };
-                    await createIncident(newIncident as any);
-
-                    // Also add an issue to the load for visibility in Dispatch Board
-                    const targetLoad = loads.find(
-                      (l) => l.id === formData.loadId,
-                    );
-                    if (targetLoad) {
-                      const newIssue = {
+                  try {
+                    if (showForm === "asset")
+                      await registerAsset(user.companyId, formData, user);
+                    else if (showForm === "maintenance")
+                      await saveMaintenanceRecord({
+                        ...formData,
                         id: uuidv4(),
-                        category: formData.category || "Incident",
-                        description:
-                          formData.description || "No description provided.",
+                        date: new Date().toISOString(),
+                      });
+                    else if (showForm === "quiz")
+                      await saveQuiz({
+                        ...formData,
+                        id: uuidv4(),
+                        createdAt: new Date().toISOString(),
+                        questions: [],
+                        assignedTo: ["all"],
+                      });
+                    else if (showForm === "incident") {
+                      const newIncident = {
+                        id: uuidv4(),
+                        loadId: formData.loadId,
+                        type: formData.category || "Incident",
+                        severity:
+                          formData.category === "Safety" ? "Critical" : "High",
+                        status: "Open",
+                        description: formData.description,
                         reportedAt: new Date().toISOString(),
                         reportedBy: user.name,
-                        status: "Open" as const,
+                        timeline: [
+                          {
+                            id: uuidv4(),
+                            timestamp: new Date().toISOString(),
+                            action: "Incident Created",
+                            notes: `Incident created by Safety Department: ${formData.description}`,
+                            actorName: user.name,
+                          },
+                        ],
+                        isAtRisk: true,
+                        serviceTickets: [],
+                        billingItems: [],
                       };
-                      const updatedLoad = {
-                        ...targetLoad,
-                        issues: [...(targetLoad.issues || []), newIssue],
-                        isActionRequired: true,
-                        actionSummary: `CRISIS ALERT: ${formData.description}`,
-                      };
-                      saveLoad(updatedLoad, user);
-                    }
-                  }
+                      await createIncident(newIncident as any);
 
-                  showFeedback(
-                    `${showForm.charAt(0).toUpperCase() + showForm.slice(1)} Saved Successfully`,
-                  );
-                  setShowForm(null);
-                  setFormData({});
+                      // Also add an issue to the load for visibility in Dispatch Board
+                      const targetLoad = loads.find(
+                        (l) => l.id === formData.loadId,
+                      );
+                      if (targetLoad) {
+                        const newIssue = {
+                          id: uuidv4(),
+                          category: formData.category || "Incident",
+                          description:
+                            formData.description || "No description provided.",
+                          reportedAt: new Date().toISOString(),
+                          reportedBy: user.name,
+                          status: "Open" as const,
+                        };
+                        const updatedLoad = {
+                          ...targetLoad,
+                          issues: [...(targetLoad.issues || []), newIssue],
+                          isActionRequired: true,
+                          actionSummary: `CRISIS ALERT: ${formData.description}`,
+                        };
+                        await saveLoad(updatedLoad, user);
+                      }
+                    }
+
+                    showFeedback(
+                      `${showForm.charAt(0).toUpperCase() + showForm.slice(1)} Saved Successfully`,
+                    );
+                    setShowForm(null);
+                    setFormData({});
+                  } catch (err) {
+                    console.error(`Failed to save ${showForm}:`, err);
+                    showFeedback(
+                      `Failed to save ${showForm}. Please try again.`,
+                    );
+                  }
                 }}
                 className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95"
               >
