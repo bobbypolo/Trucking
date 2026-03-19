@@ -1285,7 +1285,8 @@
       "phase_type": "release",
       "component": "docs/release/evidence.md",
       "scope": [
-        "docs/release/evidence.md"
+        "docs/release/evidence.md",
+        ".claude/hooks/tests"
       ],
       "complexity": "simple",
       "maxTurns": 50,
