@@ -1,7 +1,7 @@
 // Tests R-P3-02, R-P3-03, R-P3-04
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { AnalyticsDashboard } from "../../../components/AnalyticsDashboard";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 

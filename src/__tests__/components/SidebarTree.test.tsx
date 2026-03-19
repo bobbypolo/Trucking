@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { SidebarTree } from "../../../components/SidebarTree";
 
 describe("SidebarTree", () => {
-  let setActiveTab: ReturnType<typeof vi.fn>;
+  let setActiveTab: MockedFunction<(tab: string) => void>;
   let user: ReturnType<typeof userEvent.setup>;
 
   const defaultProps = {
@@ -15,7 +15,7 @@ describe("SidebarTree", () => {
   };
 
   beforeEach(() => {
-    setActiveTab = vi.fn();
+    setActiveTab = vi.fn<(tab: string) => void>();
     user = userEvent.setup();
   });
 

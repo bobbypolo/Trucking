@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
 
 // ── Service mocks (network boundary) ──────────────────────────────────────
 vi.mock("../../../services/storageService", () => ({
@@ -2212,8 +2212,8 @@ describe("IntelligenceHub component", () => {
       });
 
       // Hover over the driver card to reveal "Assign Handoff" button
-      const driverCard = screen.getByText("Mike Thompson").closest("div.p-6");
-      const assignBtn = within(driverCard!).getByText("Assign Handoff");
+      const driverCard = screen.getByText("Mike Thompson").closest("div.p-6") as HTMLElement;
+      const assignBtn = within(driverCard).getByText("Assign Handoff");
       await user.click(assignBtn);
 
       await waitFor(() => {

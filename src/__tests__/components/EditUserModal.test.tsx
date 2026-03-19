@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -31,13 +31,13 @@ function makeUser(overrides: Partial<User> = {}): User {
 }
 
 describe("EditUserModal", () => {
-  let onSave: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSave: MockedFunction<(updatedUser: User) => void>;
+  let onCancel: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    onSave = vi.fn();
-    onCancel = vi.fn();
+    onSave = vi.fn<(updatedUser: User) => void>();
+    onCancel = vi.fn<() => void>();
     user = userEvent.setup();
   });
 

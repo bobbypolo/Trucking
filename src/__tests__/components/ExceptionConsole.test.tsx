@@ -213,7 +213,7 @@ describe("ExceptionConsole component", () => {
     // Click the grid view button (second button in the view toggle)
     const viewToggles = screen
       .getByText("Issue Tracker")
-      .closest("div[class*='border-b']")!;
+      .closest("div[class*='border-b']") as HTMLElement;
     const buttons = within(viewToggles).getAllByRole("button");
     // Grid button is after list button - find by checking SVG content
     // The grid button contains a LayoutGrid icon

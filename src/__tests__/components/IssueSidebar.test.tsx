@@ -205,7 +205,7 @@ describe("IssueSidebar component", () => {
     render(<IssueSidebar {...defaultProps} />);
     // Find the first issue description, then navigate to its card
     const issueText = screen.getByText("Driver delayed at pickup");
-    const card = issueText.closest("div[class*='rounded-xl']")!;
+    const card = issueText.closest("div[class*='rounded-xl']") as HTMLElement;
     const viewBtn = within(card).getAllByRole("button")[0];
     await user.click(viewBtn);
     expect(defaultProps.onViewLoad).toHaveBeenCalledWith(mockLoads[0]);
@@ -217,7 +217,7 @@ describe("IssueSidebar component", () => {
     // Find the first issue card and its resolve (check) button
     const card = screen
       .getByText("Driver delayed at pickup")
-      .closest("div[class*='rounded-xl']")!;
+      .closest("div[class*='rounded-xl']") as HTMLElement;
     const buttons = within(card).getAllByRole("button");
     // The resolve button is the second one (after the view button)
     const resolveBtn = buttons[1];

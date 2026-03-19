@@ -5,7 +5,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
 
@@ -84,14 +84,14 @@ const mockCompany = {
 } as unknown as Company;
 
 describe("DriverMobileHome — enhanced coverage", () => {
-  let onSaveLoad: ReturnType<typeof vi.fn>;
-  let onLogout: ReturnType<typeof vi.fn>;
-  let onOpenHub: ReturnType<typeof vi.fn>;
+  let onSaveLoad: MockedFunction<(load: LoadData) => Promise<void>>;
+  let onLogout: MockedFunction<() => void>;
+  let onOpenHub: MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
 
   beforeEach(() => {
-    onSaveLoad = vi.fn().mockResolvedValue(undefined);
-    onLogout = vi.fn();
-    onOpenHub = vi.fn();
+    onSaveLoad = vi.fn<(load: LoadData) => Promise<void>>().mockResolvedValue(undefined);
+    onLogout = vi.fn<() => void>();
+    onOpenHub = vi.fn<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>();
     localStorage.clear();
   });
 

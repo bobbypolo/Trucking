@@ -8,7 +8,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { DataImportWizard } from "../../../components/DataImportWizard";
 
 // ---------------------------------------------------------------------------
@@ -197,12 +197,12 @@ async function setupMappingsAndRunDryRun(
 // Tests
 // ---------------------------------------------------------------------------
 describe("DataImportWizard deep coverage", () => {
-  let onImport: ReturnType<typeof vi.fn>;
-  let onClose: ReturnType<typeof vi.fn>;
+  let onImport: MockedFunction<(data: any[]) => Promise<void>>;
+  let onClose: MockedFunction<() => void>;
 
   beforeEach(() => {
-    onImport = vi.fn().mockResolvedValue(undefined);
-    onClose = vi.fn();
+    onImport = vi.fn<(data: any[]) => Promise<void>>().mockResolvedValue(undefined);
+    onClose = vi.fn<() => void>();
   });
 
   // ========================================================================

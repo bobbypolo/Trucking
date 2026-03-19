@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -58,13 +58,13 @@ vi.mock("papaparse", () => ({
 }));
 
 describe("DataImportWizard", () => {
-  let onImport: ReturnType<typeof vi.fn>;
-  let onClose: ReturnType<typeof vi.fn>;
+  let onImport: MockedFunction<(data: any[]) => Promise<void>>;
+  let onClose: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    onImport = vi.fn().mockResolvedValue(undefined);
-    onClose = vi.fn();
+    onImport = vi.fn<(data: any[]) => Promise<void>>().mockResolvedValue(undefined);
+    onClose = vi.fn<() => void>();
     user = userEvent.setup();
   });
 

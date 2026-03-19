@@ -39,7 +39,7 @@ const mockParties: NetworkParty[] = [
     name: "ABC Logistics",
     status: "Approved",
     contacts: [
-      { id: "c-1", name: "Alice Smith", role: "Account Manager", phone: "555-0101", email: "alice@abc.com" },
+      { id: "c-1", partyId: "party-1", name: "Alice Smith", role: "Account Manager", phone: "555-0101", email: "alice@abc.com", isPrimary: true },
     ],
     rateTable: [],
     constraints: [],

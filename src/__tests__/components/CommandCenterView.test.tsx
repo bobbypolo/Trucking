@@ -96,7 +96,7 @@ function buildUser(overrides: Partial<UserType> = {}): UserType {
     companyId: "co-1",
     email: "dispatcher@co.com",
     name: "Jane Dispatch",
-    role: "Dispatcher",
+    role: "dispatcher",
     onboardingStatus: "Completed",
     safetyScore: 95,
     ...overrides,
@@ -151,7 +151,7 @@ function buildEvent(
 const defaultProps = {
   session: buildSession(),
   loads: [buildLoad()],
-  users: [buildUser(), buildUser({ id: "driver-1", name: "Mike Driver", role: "Driver" as const })],
+  users: [buildUser(), buildUser({ id: "driver-1", name: "Mike Driver", role: "driver" as const })],
   currentUser: buildUser(),
   onRecordAction: vi.fn().mockResolvedValue(undefined),
   onNavigate: vi.fn(),

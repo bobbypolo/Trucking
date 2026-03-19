@@ -138,15 +138,17 @@ describe("GoogleMapsAPITester", () => {
       formattedAddress: "1600 Amphitheatre Parkway",
     });
     vi.mocked(getDistanceMatrix).mockResolvedValue({
-      distance: "92 mi",
-      duration: "1h 30m",
+      distance: { text: "92 mi", value: 148128 },
+      duration: { text: "1h 30m", value: 5400 },
     });
     vi.mocked(getDirections).mockResolvedValue({
-      routes: [{ summary: "I-94 N" }],
+      points: "encodedPolyline",
+      bounds: { northeast: { lat: 43.038, lng: -87.629 }, southwest: { lat: 37.422, lng: -122.084 } },
+      legs: [{ summary: "I-94 N" }],
     });
     vi.mocked(snapToRoads).mockResolvedValue([
-      { lat: 41.879, lng: -87.629 },
-      { lat: 43.038, lng: -87.906 },
+      { location: { latitude: 41.879, longitude: -87.629 }, placeId: "place1" },
+      { location: { latitude: 43.038, longitude: -87.906 }, placeId: "place2" },
     ]);
 
     render(<GoogleMapsAPITester />);
@@ -171,8 +173,8 @@ describe("GoogleMapsAPITester", () => {
       lng: -122.084,
       formattedAddress: "Test",
     });
-    vi.mocked(getDistanceMatrix).mockResolvedValue({ distance: "92 mi" });
-    vi.mocked(getDirections).mockResolvedValue({ routes: [] });
+    vi.mocked(getDistanceMatrix).mockResolvedValue({ distance: { text: "92 mi", value: 148128 }, duration: { text: "1h 30m", value: 5400 } });
+    vi.mocked(getDirections).mockResolvedValue({ points: "", bounds: { northeast: { lat: 0, lng: 0 }, southwest: { lat: 0, lng: 0 } }, legs: [] });
     vi.mocked(snapToRoads).mockResolvedValue([]);
 
     render(<GoogleMapsAPITester />);
