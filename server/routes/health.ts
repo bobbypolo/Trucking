@@ -10,11 +10,13 @@ const router = Router();
  * Enhanced health check endpoint — used by load balancers and ops monitoring.
  * This endpoint is intentionally UNAUTHENTICATED.
  *
- * Returns:
- *   - status: "ok" | "degraded"
- *   - uptime: process uptime in seconds
- *   - dependencies.db: { status: "connected" | "disconnected", error? }
- *   - dependencies.firebase: { status: "available" | "unavailable", error? }
+ * Returns (R-P5-01):
+ *   - status:   "ok" | "degraded"
+ *   - mysql:    "connected" | "disconnected"
+ *   - firebase: "ready" | "unavailable"
+ *   - uptime:   process uptime in seconds
+ *
+ * Also returns legacy `dependencies` sub-object for backward compatibility.
  */
 router.get("/api/health", async (_req: Request, res: Response) => {
   const [dbResult, firebaseResult] = await Promise.all([
@@ -26,9 +28,13 @@ router.get("/api/health", async (_req: Request, res: Response) => {
     dbResult.status === "connected" && firebaseResult.status === "available";
 
   res.json({
+    // Top-level flat schema (R-P5-01)
     status: allHealthy ? "ok" : "degraded",
-    message: "LoadPilot API",
+    mysql: dbResult.status === "connected" ? "connected" : "disconnected",
+    firebase: firebaseResult.status === "available" ? "ready" : "unavailable",
     uptime: process.uptime(),
+    // Legacy nested schema (backward compat)
+    message: "LoadPilot API",
     dependencies: {
       db: dbResult,
       firebase: firebaseResult,
@@ -72,7 +78,10 @@ function checkFirebase(): Promise<{
   try {
     const auth = admin.auth();
     if (!auth) {
-      return Promise.resolve({ status: "unavailable", error: "auth() returned null" });
+      return Promise.resolve({
+        status: "unavailable",
+        error: "auth() returned null",
+      });
     }
     return Promise.resolve({ status: "available" });
   } catch (err: unknown) {
