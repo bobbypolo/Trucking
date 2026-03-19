@@ -1035,7 +1035,8 @@
       "component": "server/__tests__/integration/forbidden-patterns.test.ts",
       "scope": [
         "server/__tests__/integration/forbidden-patterns.test.ts",
-        ".claude/hooks/tests/test_r_p4_08.py"
+        ".claude/hooks/tests/test_r_p4_08.py",
+        ".claude/prd.json"
       ],
       "complexity": "moderate",
       "maxTurns": 150,

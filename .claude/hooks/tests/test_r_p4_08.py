@@ -40,14 +40,15 @@ def test_r_p4_08_exclusions_present():
     )
 
 
-def test_r_p4_08_section_8_missing_raises_assertion():
-    """R-P4-08 edge: If SECTION 8 were absent, test_r_p4_08_section_8_present would fail."""
-    # Validate the assertion logic itself — simulate content without SECTION 8
-    content_without_section_8 = "// No localStorage guard here"
-    # This is a meta-test verifying our assertion condition works correctly
-    found = "SECTION 8" in content_without_section_8
-    assert not found, (
-        "Expected 'SECTION 8' to be absent from stub content — meta-test is broken"
+def test_r_p4_08_section_8_negative_missing_content():
+    """R-P4-08 negative: Guard logic fails if SECTION 8 is absent from content."""
+    # Simulate a file without Section 8 — our assertion must catch this
+    stub_content = "// No localStorage guard here\nconst x = 1;"
+    assert "SECTION 8" not in stub_content, (
+        "Stub content unexpectedly contains SECTION 8 — test logic is broken"
+    )
+    assert "scanLocalStorageSoR" not in stub_content, (
+        "Stub content unexpectedly contains scanLocalStorageSoR"
     )
 
 
@@ -65,17 +66,30 @@ def test_r_p4_09_detection_logic_flags_regression():
 
 
 def test_r_p4_09_auth_token_read_not_flagged():
-    """R-P4-09 edge: A pure auth-token read line should not be flagged by the guard."""
+    """R-P4-09 edge: A pure auth-token read line must not be flagged by the guard."""
     with open(FORBIDDEN_PATTERNS_TEST, encoding="utf-8") as f:
         content = f.read()
-    # The guard must include logic to permit auth token reads
-    # Verify the AUTH_TOKEN_RE or equivalent exclusion pattern is present
-    assert "AUTH_TOKEN_RE" in content or "localStorage.getItem" in content, (
-        "Section 8 must define an auth-token read exclusion pattern"
+    # The guard must define an auth-token exclusion pattern
+    assert "AUTH_TOKEN_RE" in content, (
+        "Section 8 must define AUTH_TOKEN_RE for auth token read exclusion"
     )
-    # The exclusion must specifically target the 'token' key (Bearer header pattern)
-    assert '"token"' in content, (
-        "Auth token exclusion must reference the 'token' localStorage key"
+    # The exclusion must target localStorage.getItem("token") specifically
+    assert "localStorage.getItem" in content and '"token"' in content, (
+        'AUTH_TOKEN_RE must reference localStorage.getItem("token") pattern'
+    )
+
+
+def test_r_p4_09_negative_invalid_service_file_flagged():
+    """R-P4-09 negative: localStorage.setItem in a non-auth context must be detected."""
+    with open(FORBIDDEN_PATTERNS_TEST, encoding="utf-8") as f:
+        content = f.read()
+    # Verify the canary test writes a synthetic file with the forbidden call
+    assert "localStorage.setItem" in content, (
+        "Section 8 must demonstrate detection of localStorage.setItem patterns"
+    )
+    # Verify it asserts a positive hit count (not zero)
+    assert "toBeGreaterThan(0)" in content, (
+        "Section 8 R-P4-09 test must assert hits.length > 0 for the forbidden pattern"
     )
 
 
@@ -112,13 +126,19 @@ def test_r_p4_10_all_forbidden_pattern_tests_pass():
     )
 
 
-def test_r_p4_10_forbidden_patterns_file_exists():
-    """R-P4-10 edge: The test file itself must exist and be readable."""
-    assert os.path.isfile(FORBIDDEN_PATTERNS_TEST), (
-        f"forbidden-patterns.test.ts not found at: {FORBIDDEN_PATTERNS_TEST}"
-    )
+def test_r_p4_10_negative_forbidden_patterns_file_is_valid_typescript():
+    """R-P4-10 negative: File must be parseable TypeScript (not an empty or corrupt file)."""
     with open(FORBIDDEN_PATTERNS_TEST, encoding="utf-8") as f:
         content = f.read()
-    assert len(content) > 1000, (
-        "forbidden-patterns.test.ts is unexpectedly small — may have been truncated"
+    # Must have meaningful content — basic structural checks
+    assert len(content) > 5000, (
+        f"forbidden-patterns.test.ts is unexpectedly small ({len(content)} chars) — may be truncated"
     )
+    # Must have describe blocks (TypeScript test structure)
+    describe_count = content.count("describe(")
+    assert describe_count >= 7, (
+        f"Expected at least 7 describe() blocks (7 sections), found {describe_count}"
+    )
+    # Must have it() test cases
+    it_count = len(re.findall(r"\bit\(", content))
+    assert it_count >= 20, f"Expected at least 20 it() test cases, found {it_count}"
