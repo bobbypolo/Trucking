@@ -29,12 +29,30 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ["react", "react-dom"],
-            maps: ["@react-google-maps/api"],
-            pdf: ["jspdf", "jspdf-autotable"],
-            charts: ["recharts"],
-            capture: ["html2canvas"],
+          manualChunks(id) {
+            // Third-party library chunks (exempt from 250KB route-chunk rule)
+            if (
+              id.includes("node_modules/react/") ||
+              id.includes("node_modules/react-dom/") ||
+              id.includes("node_modules/scheduler/")
+            )
+              return "vendor";
+            if (id.includes("node_modules/@react-google-maps/")) return "maps";
+            if (
+              id.includes("node_modules/jspdf") ||
+              id.includes("node_modules/jspdf-autotable")
+            )
+              return "pdf";
+            if (id.includes("node_modules/recharts")) return "charts";
+            if (id.includes("node_modules/html2canvas")) return "capture";
+            // Firebase SDK — split into its own shared chunk
+            if (
+              id.includes("node_modules/firebase/") ||
+              id.includes("node_modules/@firebase/")
+            )
+              return "firebase";
+            // lucide-react icon tree-shaking: let rollup split per-icon
+            // (no manualChunks override — allows fine-grained splitting)
           },
         },
       },

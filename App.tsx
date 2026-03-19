@@ -58,7 +58,9 @@ const Auth = React.lazy(() =>
 const Dashboard = React.lazy(() =>
   import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
 );
-import { LoadList } from "./components/LoadList";
+const LoadList = React.lazy(() =>
+  import("./components/LoadList").then((m) => ({ default: m.LoadList })),
+);
 const LoadBoardEnhanced = React.lazy(() =>
   import("./components/LoadBoardEnhanced").then((m) => ({
     default: m.LoadBoardEnhanced,
@@ -87,14 +89,24 @@ const BrokerManager = React.lazy(() =>
 const SafetyView = React.lazy(() =>
   import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
 );
-import { Intelligence } from "./components/Intelligence";
-import { Settlements } from "./components/Settlements";
+const Intelligence = React.lazy(() =>
+  import("./components/Intelligence").then((m) => ({
+    default: m.Intelligence,
+  })),
+);
+const Settlements = React.lazy(() =>
+  import("./components/Settlements").then((m) => ({ default: m.Settlements })),
+);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
   })),
 );
-import { LoadSetupModal } from "./components/LoadSetupModal";
+const LoadSetupModal = React.lazy(() =>
+  import("./components/LoadSetupModal").then((m) => ({
+    default: m.LoadSetupModal,
+  })),
+);
 const QuoteManager = React.lazy(() =>
   import("./components/QuoteManager").then((m) => ({
     default: m.QuoteManager,
@@ -184,8 +196,16 @@ const NetworkPortal = React.lazy(() =>
   })),
 );
 import { getRecord360Data } from "./services/storageService";
-import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
-import { CommandCenterView } from "./components/CommandCenterView";
+const GoogleMapsAPITester = React.lazy(() =>
+  import("./components/GoogleMapsAPITester").then((m) => ({
+    default: m.GoogleMapsAPITester,
+  })),
+);
+const CommandCenterView = React.lazy(() =>
+  import("./components/CommandCenterView").then((m) => ({
+    default: m.CommandCenterView,
+  })),
+);
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -678,24 +698,26 @@ export default function App() {
       </Suspense>
 
       {showLoadSetup && (
-        <LoadSetupModal
-          currentUser={user!}
-          preSelectedBrokerId={showLoadSetup.brokerId}
-          onContinue={(bid, did, ln, cn, oft, imd) => {
-            setShowLoadSetup(null);
-            setEditingLoad({
-              brokerId: bid,
-              driverId: did,
-              loadNumber: ln,
-              phoneCallNotes: cn,
-              freightType: oft,
-              ...imd,
-            });
-            setIsAdding(true);
-            setScanMode(!ln);
-          }}
-          onCancel={() => setShowLoadSetup(null)}
-        />
+        <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
+          <LoadSetupModal
+            currentUser={user!}
+            preSelectedBrokerId={showLoadSetup.brokerId}
+            onContinue={(bid, did, ln, cn, oft, imd) => {
+              setShowLoadSetup(null);
+              setEditingLoad({
+                brokerId: bid,
+                driverId: did,
+                loadNumber: ln,
+                phoneCallNotes: cn,
+                freightType: oft,
+                ...imd,
+              });
+              setIsAdding(true);
+              setScanMode(!ln);
+            }}
+            onCancel={() => setShowLoadSetup(null)}
+          />
+        </Suspense>
       )}
 
       {(isAdding || editingLoad) && scanMode && (
@@ -1246,7 +1268,11 @@ export default function App() {
                 </Suspense>
               )}
               {features.apiTester && activeTab === "api-tester" && (
-                <GoogleMapsAPITester />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={1} />}
+                >
+                  <GoogleMapsAPITester />
+                </Suspense>
               )}
             </div>
           </div>
