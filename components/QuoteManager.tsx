@@ -351,10 +351,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     .filter((q) => q.status === status)
                     .filter(
                       (q) =>
-                        q.pickup.city
+                        (q.pickup?.city ?? '')
                           .toLowerCase()
                           .includes(searchQuery.toLowerCase()) ||
-                        q.dropoff.city
+                        (q.dropoff?.city ?? '')
                           .toLowerCase()
                           .includes(searchQuery.toLowerCase()),
                     )
@@ -373,8 +373,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               {quote.equipmentType}
                             </div>
                             <div className="text-sm font-black text-white uppercase tracking-tighter group-hover:text-blue-400 transition-colors">
-                              {quote.pickup.city}, {quote.pickup.state} →{" "}
-                              {quote.dropoff.city}, {quote.dropoff.state}
+                              {quote.pickup?.city ?? ''}, {quote.pickup?.state ?? ''} →{" "}
+                              {quote.dropoff?.city ?? ''}, {quote.dropoff?.state ?? ''}
                             </div>
                           </div>
                           <div className="text-right">
@@ -499,7 +499,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase tracking-tight"
                                 placeholder="Location Alpha"
-                                value={selectedQuote.pickup.facilityName || ""}
+                                value={selectedQuote.pickup?.facilityName || ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -515,7 +515,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="City"
-                                value={selectedQuote.pickup.city}
+                                value={selectedQuote.pickup?.city ?? ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -529,7 +529,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
-                                value={selectedQuote.pickup.state}
+                                value={selectedQuote.pickup?.state ?? ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -558,7 +558,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase tracking-tight"
                                 placeholder="Location Omega"
-                                value={selectedQuote.dropoff.facilityName || ""}
+                                value={selectedQuote.dropoff?.facilityName || ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -574,7 +574,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="City"
-                                value={selectedQuote.dropoff.city}
+                                value={selectedQuote.dropoff?.city ?? ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -588,7 +588,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
-                                value={selectedQuote.dropoff.state}
+                                value={selectedQuote.dropoff?.state ?? ""}
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -1196,7 +1196,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           <input
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all font-mono tracking-tight"
                             placeholder="CHICAGO"
-                            value={selectedQuote?.pickup.city || ""}
+                            value={selectedQuote?.pickup?.city || ""}
                             onChange={(e) =>
                               selectedQuote &&
                               setSelectedQuote({
@@ -1217,7 +1217,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all font-mono"
                             placeholder="IL"
                             maxLength={2}
-                            value={selectedQuote?.pickup.state || ""}
+                            value={selectedQuote?.pickup?.state || ""}
                             onChange={(e) =>
                               selectedQuote &&
                               setSelectedQuote({
@@ -1248,7 +1248,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           <input
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500/50 transition-all font-mono tracking-tight"
                             placeholder="DALLAS"
-                            value={selectedQuote?.dropoff.city || ""}
+                            value={selectedQuote?.dropoff?.city || ""}
                             onChange={(e) =>
                               selectedQuote &&
                               setSelectedQuote({
@@ -1269,7 +1269,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500/50 transition-all font-mono"
                             placeholder="TX"
                             maxLength={2}
-                            value={selectedQuote?.dropoff.state || ""}
+                            value={selectedQuote?.dropoff?.state || ""}
                             onChange={(e) =>
                               selectedQuote &&
                               setSelectedQuote({

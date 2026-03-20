@@ -676,7 +676,7 @@ export const Settlements: React.FC<Props> = ({
                           {load.loadNumber}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400">
-                          {load.pickup.facilityName}
+                          {load.pickup?.facilityName ?? ''}
                         </td>
                         <td className="px-6 py-4 text-sm font-mono text-white">
                           ${(load.carrierRate || 0).toLocaleString()}

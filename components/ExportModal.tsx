@@ -40,7 +40,7 @@ export const ExportModal: React.FC<Props> = ({ loads, onClose, currentUserRole }
     const customers = new Set<string>();
     loads.forEach(l => {
       // Use Facility Name if broker is missing, or Broker Name if linked (simplified here to Facility Name for generic use)
-      const name = l.pickup.facilityName || 'Unknown'; 
+      const name = l.pickup?.facilityName || 'Unknown';
       customers.add(name);
     });
     return Array.from(customers).sort();
@@ -55,7 +55,7 @@ export const ExportModal: React.FC<Props> = ({ loads, onClose, currentUserRole }
 
       // Customer Filter
       if (selectedCustomerId !== 'all') {
-        const custName = l.pickup.facilityName || 'Unknown';
+        const custName = l.pickup?.facilityName || 'Unknown';
         if (custName !== selectedCustomerId) return false;
       }
 
