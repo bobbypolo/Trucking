@@ -34,7 +34,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
             const term = filter.toLowerCase();
             result = result.filter(l =>
                 l.loadNumber.toLowerCase().includes(term) ||
-                l.pickup.city.toLowerCase().includes(term) ||
+                (l.pickup?.city ?? "").toLowerCase().includes(term) ||
                 l.containerNumber?.toLowerCase().includes(term) ||
                 l.chassisNumber?.toLowerCase().includes(term)
             );
@@ -132,13 +132,13 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                         <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 group-hover:border-slate-700/50 transition-all relative overflow-hidden">
                             <div className="space-y-1.5 border-r border-slate-800 pr-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Origin</div>
-                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup.city}, {load.pickup.state}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup.facilityName || 'LOGISTICS HUB'}</div>
+                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || 'LOGISTICS HUB'}</div>
                             </div>
                             <div className="space-y-1.5 pl-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Destination</div>
-                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff.city}, {load.dropoff.state}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff.facilityName || 'TERMINAL DOCK'}</div>
+                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || 'TERMINAL DOCK'}</div>
                             </div>
                         </div>
 

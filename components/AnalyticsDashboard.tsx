@@ -70,7 +70,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({
       { vol: number; totalProfit: number; totalMiles: number }
     > = {};
     loads.forEach((l) => {
-      const key = `${l.pickup.city}, ${l.pickup.state} \u2192 ${l.dropoff.city}, ${l.dropoff.state}`;
+      const key = `${l.pickup?.city ?? ""}, ${l.pickup?.state ?? ""} \u2192 ${l.dropoff?.city ?? ""}, ${l.dropoff?.state ?? ""}`;
       if (!laneMap[key])
         laneMap[key] = { vol: 0, totalProfit: 0, totalMiles: 0 };
       laneMap[key].vol += 1;

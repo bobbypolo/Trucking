@@ -108,7 +108,7 @@ const DayCell: React.FC<DayCellProps> = ({
                 <span>#{load.loadNumber}</span>
               </div>
               <div className="truncate opacity-80 flex items-center gap-1 mt-0.5">
-                <MapPin className="w-2.5 h-2.5 shrink-0" /> {load.dropoff.city}
+                <MapPin className="w-2.5 h-2.5 shrink-0" /> {load.dropoff?.city ?? ""}
               </div>
             </div>
           </div>

@@ -56,7 +56,7 @@ export const CustomerPortalView: React.FC<Props> = ({
   const filteredLoads = customerLoads.filter(
     (l) =>
       l.loadNumber.includes(searchTerm) ||
-      l.dropoff.city.toLowerCase().includes(searchTerm.toLowerCase()),
+      (l.dropoff?.city ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const selectedLoad = customerLoads.find((l) => l.id === selectedLoadId);
@@ -183,7 +183,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                             Load #{load.loadNumber}
                           </div>
                           <div className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">
-                            {load.pickup.city} → {load.dropoff.city}
+                            {load.pickup?.city ?? ""} → {load.dropoff?.city ?? ""}
                           </div>
                         </div>
                         <div className="bg-slate-950 px-2 py-1 rounded-lg border border-white/5">
@@ -244,9 +244,9 @@ export const CustomerPortalView: React.FC<Props> = ({
                           Tracking ID: {selectedLoad.loadNumber}
                         </span>
                         <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-                          {selectedLoad.pickup.city}{" "}
+                          {selectedLoad.pickup?.city ?? ""}{" "}
                           <ArrowRight className="inline-block w-8 h-8 text-blue-500 mx-2" />{" "}
-                          {selectedLoad.dropoff.city}
+                          {selectedLoad.dropoff?.city ?? ""}
                         </h1>
                       </div>
                       <div className="text-right space-y-1">
@@ -270,8 +270,8 @@ export const CustomerPortalView: React.FC<Props> = ({
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          {selectedLoad.pickup.city},{" "}
-                          {selectedLoad.pickup.state}
+                          {selectedLoad.pickup?.city ?? ""},{" "}
+                          {selectedLoad.pickup?.state ?? ""}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -284,8 +284,8 @@ export const CustomerPortalView: React.FC<Props> = ({
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          {selectedLoad.dropoff.city},{" "}
-                          {selectedLoad.dropoff.state}
+                          {selectedLoad.dropoff?.city ?? ""},{" "}
+                          {selectedLoad.dropoff?.state ?? ""}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -396,7 +396,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                                   {l.loadNumber}
                                 </td>
                                 <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
-                                  {l.pickup.city} → {l.dropoff.city}
+                                  {l.pickup?.city ?? ""} → {l.dropoff?.city ?? ""}
                                 </td>
                                 <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
                                   {l.dropoffDate || l.pickupDate}

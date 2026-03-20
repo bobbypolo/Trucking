@@ -1229,7 +1229,7 @@ export const SafetyView: React.FC<Props> = ({
                           .filter((l) => l.driverId === formData.driverId)
                           .map((l) => (
                             <option key={l.id} value={l.id}>
-                              PRO {l.loadNumber} - {l.pickup.city}
+                              PRO {l.loadNumber} - {l.pickup?.city ?? ""}
                             </option>
                           ))}
                       </select>

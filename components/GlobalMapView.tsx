@@ -209,8 +209,8 @@ export const GlobalMapView: React.FC<Props> = ({
                     <span>ETA: 14:20</span>
                   </div>
                   <div className="text-[9px] font-bold text-slate-300">
-                    {vehicle.activeLoad.pickup.city} →{" "}
-                    {vehicle.activeLoad.dropoff.city}
+                    {vehicle.activeLoad.pickup?.city ?? ""} →{" "}
+                    {vehicle.activeLoad.dropoff?.city ?? ""}
                   </div>
                 </div>
               )}

@@ -315,8 +315,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
       for (const load of loads) {
         if (load.status === LOAD_STATUS.In_Transit && !routePaths[load.id]) {
           try {
-            const origin = `${load.pickup.city}, ${load.pickup.state}`;
-            const destination = `${load.dropoff.city}, ${load.dropoff.state}`;
+            const origin = `${load.pickup?.city ?? ""}, ${load.pickup?.state ?? ""}`;
+            const destination = `${load.dropoff?.city ?? ""}, ${load.dropoff?.state ?? ""}`;
             const directions = await getDirections(origin, destination);
 
             // Decode polyline (simple version for demo)
@@ -499,8 +499,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                         #{selectedVehicle.activeLoad.loadNumber}
                       </div>
                       <div className="text-[9px] text-slate-600 italic">
-                        {selectedVehicle.activeLoad.pickup.city} →{" "}
-                        {selectedVehicle.activeLoad.dropoff.city}
+                        {selectedVehicle.activeLoad.pickup?.city ?? ""} →{" "}
+                        {selectedVehicle.activeLoad.dropoff?.city ?? ""}
                       </div>
                     </div>
                   )}
@@ -746,8 +746,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                 #{selectedDriverOverlay.activeLoad.loadNumber}
               </div>
               <div className="text-[10px] text-slate-400">
-                {selectedDriverOverlay.activeLoad.pickup.city} →{" "}
-                {selectedDriverOverlay.activeLoad.dropoff.city}
+                {selectedDriverOverlay.activeLoad.pickup?.city ?? ""} →{" "}
+                {selectedDriverOverlay.activeLoad.dropoff?.city ?? ""}
               </div>
             </div>
           )}

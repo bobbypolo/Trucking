@@ -40,8 +40,8 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
           bEntry.totalRate += load.carrierRate;
       };
       loads.forEach(load => {
-          processFacility(load.pickup.facilityName, load.pickup.city, load.pickup.state, load);
-          processFacility(load.dropoff.facilityName, load.dropoff.city, load.dropoff.state, load);
+          processFacility(load.pickup?.facilityName ?? "", load.pickup?.city ?? "", load.pickup?.state ?? "", load);
+          processFacility(load.dropoff?.facilityName ?? "", load.dropoff?.city ?? "", load.dropoff?.state ?? "", load);
       });
       return Array.from(map.values()).map(f => ({
           ...f, riskScore: (f.detentionCount / f.visits) * 100, onTimeScore: 100 - ((f.lateCount / f.visits) * 100),
@@ -63,7 +63,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
           entry.loads.push(load);
           if (load.status === 'cancelled') entry.cancelCount++;
           if (!load.issues?.some(i => i.category === 'Dispatch') && load.status !== 'cancelled') entry.onTimeCount++;
-          const lane = `${load.pickup.state} -> ${load.dropoff.state}`;
+          const lane = `${load.pickup?.state ?? ""} -> ${load.dropoff?.state ?? ""}`;
           entry.lanes.set(lane, (entry.lanes.get(lane) || 0) + 1);
       });
       return Array.from(map.values()).map(b => ({

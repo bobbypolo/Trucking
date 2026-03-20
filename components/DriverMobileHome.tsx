@@ -239,7 +239,7 @@ export const DriverMobileHome: React.FC<Props> = ({
         </div>
       </div>
       <h3 className="text-lg font-black text-white uppercase tracking-tight">
-        {load.pickup.city} → {load.dropoff.city}
+        {load.pickup?.city ?? ""} → {load.dropoff?.city ?? ""}
       </h3>
       <div className="flex items-center gap-4 py-2 border-t border-white/5">
         <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
@@ -284,12 +284,12 @@ export const DriverMobileHome: React.FC<Props> = ({
             <div className="flex justify-between items-start">
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">
                 {v.customerName
-                  ? selectedLoad.pickup.facilityName || "N/A"
+                  ? selectedLoad.pickup?.facilityName || "N/A"
                   : "Confidential Facility"}
               </h2>
             </div>
             <p className="text-xs text-slate-500 font-bold uppercase">
-              {selectedLoad.pickup.city}, {selectedLoad.pickup.state}
+              {selectedLoad.pickup?.city ?? ""}, {selectedLoad.pickup?.state ?? ""}
             </p>
           </div>
 
@@ -354,8 +354,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
                     <div className="text-xs font-bold text-slate-400 uppercase">
-                      Destination: {selectedLoad.dropoff.city},{" "}
-                      {selectedLoad.dropoff.state}
+                      Destination: {selectedLoad.dropoff?.city ?? ""},{" "}
+                      {selectedLoad.dropoff?.state ?? ""}
                     </div>
                   </div>
                 </div>
