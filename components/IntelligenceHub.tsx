@@ -1123,7 +1123,10 @@ const IntelligenceHub: React.FC<{
     });
 
     if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident };
+      const updated = {
+        ...active360Data.incident,
+        timeline: active360Data.incident.timeline ?? [],
+      };
       updated.timeline.push({
         id: uuidv4(),
         timestamp: new Date().toISOString(),
@@ -2558,7 +2561,7 @@ const IntelligenceHub: React.FC<{
                         c.id
                           .toLowerCase()
                           .includes(commSearchQuery.toLowerCase()) ||
-                        c.participants.some((p) =>
+                        (c.participants ?? []).some((p) =>
                           p.name
                             .toLowerCase()
                             .includes(commSearchQuery.toLowerCase()),
@@ -3477,7 +3480,7 @@ const IntelligenceHub: React.FC<{
                       </div>
                       <div className="space-y-2 mb-5 text-[11px] text-slate-400 relative z-10 opacity-80">
                         <div className="flex gap-2 flex-wrap">
-                          {provider.capabilities.map((c) => (
+                          {(provider.capabilities ?? []).map((c) => (
                             <span
                               key={c}
                               className="px-2.5 py-1 bg-white/[0.05] rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest"
@@ -3488,7 +3491,7 @@ const IntelligenceHub: React.FC<{
                         </div>
                         <p className="flex items-center gap-1.5 font-bold uppercase tracking-tight">
                           <MapPin className="w-4 h-4 text-slate-600" />{" "}
-                          {provider.coverage.regions?.join(", ") ||
+                          {provider.coverage?.regions?.join(", ") ||
                             "Global Network"}
                         </p>
                       </div>
@@ -3585,7 +3588,7 @@ const IntelligenceHub: React.FC<{
                   .filter(
                     (c) =>
                       !directorySearchQuery ||
-                      c.name
+                      (c.name ?? '')
                         .toLowerCase()
                         .includes(directorySearchQuery.toLowerCase()),
                   )
@@ -3597,7 +3600,7 @@ const IntelligenceHub: React.FC<{
                       <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500">
-                            {contact.name.charAt(0)}
+                            {(contact.name ?? '?').charAt(0)}
                           </div>
                           <div>
                             <h4 className="text-xs font-black text-white uppercase">
@@ -4020,7 +4023,7 @@ const IntelligenceHub: React.FC<{
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${selectedContacts.includes(contact.id) ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-500"}`}
                     >
-                      {contact.name.charAt(0)}
+                      {(contact.name ?? '?').charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[11px] font-black text-white uppercase truncate">

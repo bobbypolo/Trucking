@@ -255,7 +255,10 @@ export const CommandCenterView: React.FC<Props> = ({
   const handleAction = async (actionType: string) => {
     if (!selectedIncident) return;
 
-    let updatedIncident = { ...selectedIncident };
+    let updatedIncident = {
+      ...selectedIncident,
+      timeline: selectedIncident.timeline ?? [],
+    };
     const timestamp = new Date().toISOString();
 
     if (actionType === "CLOSE") {

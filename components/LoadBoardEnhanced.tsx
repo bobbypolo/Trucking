@@ -382,12 +382,12 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         )}
                         {visibleColumns.includes("pickup") && (
                           <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
-                            {load.pickup.city}, {load.pickup.state}
+                            {load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("dropoff") && (
                           <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
-                            {load.dropoff.city}, {load.dropoff.state}
+                            {load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("driver") && (

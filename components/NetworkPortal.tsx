@@ -997,7 +997,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 </button>
                               </div>
                               <div className="space-y-3">
-                                {set.rules.map((rule, rIdx) => (
+                                {(set.rules ?? []).map((rule, rIdx) => (
                                   <div
                                     key={rIdx}
                                     className="p-4 bg-slate-950 border border-white/5 rounded-2xl flex items-center gap-4 text-[10px]"
@@ -1844,8 +1844,8 @@ export const NetworkPortal: React.FC<Props> = ({
                             </span>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {set.rules.length > 0 ? (
-                              set.rules.map((rule, rIdx) => (
+                            {(set.rules ?? []).length > 0 ? (
+                              (set.rules ?? []).map((rule, rIdx) => (
                                 <div
                                   key={rIdx}
                                   className="p-4 bg-slate-950 border border-white/5 rounded-2xl flex items-center justify-between"
