@@ -71,6 +71,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                     <input
                         type="text"
                         placeholder="QUERY MANIFEST, CONTAINER, OR CHASSIS..."
+                        aria-label="Search loads by manifest, container, or chassis"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-[10px] text-white font-black uppercase tracking-[0.2em] focus:border-blue-500 outline-none shadow-inner placeholder:text-slate-700"

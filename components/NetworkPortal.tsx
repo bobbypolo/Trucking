@@ -54,6 +54,9 @@ import {
 } from "../types";
 import { getParties, saveParty } from "../services/networkService";
 import { Toast } from "./Toast";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   companyId: string;
@@ -108,17 +111,50 @@ export const NetworkPortal: React.FC<Props> = ({
 
   const [equipmentAssets, setEquipmentAssets] = useState<EquipmentAsset[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [wizardErrors, setWizardErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, [companyId]);
 
   const loadData = async () => {
-    const data = await getParties(companyId);
-    setParties(data);
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getParties(companyId);
+      setParties(data);
+    } catch (err) {
+      console.error("[NetworkPortal] Failed to load parties:", err);
+      setLoadError("Failed to load network data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  const validateWizard = (data: Partial<NetworkParty>): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!data.name?.trim()) errs.name = "Company name is required";
+    if (data.contacts && data.contacts.length > 0) {
+      data.contacts.forEach((c, i) => {
+        if (c.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email)) {
+          errs[`contactEmail${i}`] = `Contact ${i + 1} has invalid email format`;
+        }
+      });
+    }
+    return errs;
+  };
+
+  const isWizardValid = !!formData.name?.trim();
+
   const handleSave = async (dataToSave: Partial<NetworkParty>) => {
+    const errs = validateWizard(dataToSave);
+    if (Object.keys(errs).length > 0) {
+      setWizardErrors(errs);
+      return;
+    }
+    setWizardErrors({});
     setIsSubmitting(true);
     try {
       await saveParty({ ...dataToSave, company_id: companyId } as any);
@@ -222,7 +258,7 @@ export const NetworkPortal: React.FC<Props> = ({
         <div className="flex gap-8 items-center">
           <div className="flex-1 relative group">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 group-focus-within:text-blue-500 transition-colors" />
-            <input
+            <input aria-label="SEARCH BY PARTY NAME, MC#, DOT# OR CONTACT..."
               className="w-full bg-[#020617] border border-white/10 rounded-2xl pl-16 pr-6 py-4 text-[12px] text-white font-bold outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-800"
               placeholder="SEARCH BY PARTY NAME, MC#, DOT# OR CONTACT..."
               value={searchQuery}
@@ -254,6 +290,24 @@ export const NetworkPortal: React.FC<Props> = ({
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 overflow-y-auto p-10 no-scrollbar">
         {view === "dashboard" && (
+          <>
+          {isLoading && (
+            <div className="py-8">
+              <LoadingSkeleton variant="card" count={6} />
+            </div>
+          )}
+          {!isLoading && loadError && (
+            <ErrorState message={loadError} onRetry={loadData} />
+          )}
+          {!isLoading && !loadError && filteredParties.length === 0 && (
+            <EmptyState
+              icon={<Users className="w-12 h-12" />}
+              title="No partners found"
+              description="Start onboarding your first shipper, broker, or vendor."
+              action={{ label: "Start Onboarding", onClick: () => setView("wizard") }}
+            />
+          )}
+          {!isLoading && !loadError && filteredParties.length > 0 && (
           <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-8">
             {filteredParties.map((party) => (
               <div
@@ -368,6 +422,8 @@ export const NetworkPortal: React.FC<Props> = ({
               </div>
             ))}
           </div>
+          )}
+          </>
         )}
 
         {view === "wizard" && (
@@ -488,17 +544,18 @@ export const NetworkPortal: React.FC<Props> = ({
                       </div>
                       <div className="space-y-6">
                         <div className="space-y-3">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                            Entity Legal Name
+                          <label htmlFor="npEntityLegalName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                            Entity Legal Name *
                           </label>
-                          <input
-                            className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white font-black uppercase placeholder:text-slate-800 outline-none focus:border-blue-500/50"
+                          <input id="npEntityLegalName"
+                            className={`w-full bg-slate-950 border ${wizardErrors.name ? "border-red-500" : "border-white/10"} rounded-2xl px-6 py-4 text-sm text-white font-black uppercase placeholder:text-slate-800 outline-none focus:border-blue-500/50`}
                             placeholder="FULL REGISTERED NAME"
                             value={formData.name}
                             onChange={(e) =>
                               setFormData({ ...formData, name: e.target.value })
                             }
                           />
+                          {wizardErrors.name && <p className="text-red-400 text-xs mt-1">{wizardErrors.name}</p>}
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-3">
@@ -507,7 +564,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 ? "Internal Client Ref"
                                 : "MC Number"}
                             </label>
-                            <input
+                            <input aria-label="IDENTIFIER"
                               className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-3 text-xs text-white outline-none focus:border-blue-500/50"
                               placeholder="IDENTIFIER"
                               value={formData.mcNumber}
@@ -520,10 +577,10 @@ export const NetworkPortal: React.FC<Props> = ({
                             />
                           </div>
                           <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                            <label htmlFor="npEinTaxID" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                               EIN / Tax ID
                             </label>
-                            <input
+                            <input id="npEinTaxID"
                               className="w-full bg-slate-950 border border-white/10 rounded-xl px-5 py-3 text-xs text-white outline-none focus:border-blue-500/50"
                               placeholder="00-0000000"
                               value={formData.vendorProfile?.taxId}
@@ -541,10 +598,10 @@ export const NetworkPortal: React.FC<Props> = ({
                         </div>
                         {formData.type === "Shipper" && (
                           <div className="space-y-3">
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                            <label htmlFor="npClientClassification" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                               Client Classification
                             </label>
-                            <select className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white font-black uppercase outline-none appearance-none">
+                            <select id="npClientClassification" className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white font-black uppercase outline-none appearance-none">
                               <option>RETAIL / E-COMMERCE</option>
                               <option>MANUFACTURING</option>
                               <option>WAREHOUSE / DISTRIBUTION</option>
@@ -581,10 +638,10 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                              <label htmlFor="npDefaultTerms" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                 Default Terms
                               </label>
-                              <select
+                              <select id="npDefaultTerms"
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none"
                                 value={formData.mcNumber} // Temporary hijacking for MVP
                                 onChange={(e) =>
@@ -623,10 +680,10 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                              <label htmlFor="npSettlementMethod" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                 Settlement Method
                               </label>
-                              <select
+                              <select id="npSettlementMethod"
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none"
                                 value={formData.dotNumber} // Temporary hijacking
                                 onChange={(e) =>
@@ -772,7 +829,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               {(formData.rates || []).map((rate, idx) => (
                                 <tr key={idx} className="hover:bg-white/[0.02]">
                                   <td className="px-6 py-4">
-                                    <input
+                                    <input aria-label="Contact name"
                                       className="bg-transparent border-0 font-black text-blue-400 uppercase outline-none w-full"
                                       value={rate.catalogItemId}
                                       onChange={(e) => {
@@ -789,7 +846,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     />
                                   </td>
                                   <td className="px-6 py-4">
-                                    <select
+                                    <select aria-label="Contact role"
                                       className="bg-transparent border-0 font-black text-slate-400 outline-none"
                                       value={rate.direction}
                                       onChange={(e) => {
@@ -809,7 +866,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     </select>
                                   </td>
                                   <td className="px-6 py-4">
-                                    <select
+                                    <select aria-label="Contact region"
                                       className="bg-transparent border-0 font-black text-slate-400 outline-none"
                                       value={rate.priceType}
                                       onChange={(e) => {
@@ -839,7 +896,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                         <span className="text-slate-600 font-bold">
                                           $
                                         </span>
-                                        <input
+                                        <input aria-label="Contact email"
                                           type="number"
                                           className="bg-transparent border-0 font-black text-white text-right outline-none w-20"
                                           value={rate.baseAmount || 0}
@@ -867,7 +924,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                         <span className="text-slate-600 font-bold">
                                           $
                                         </span>
-                                        <input
+                                        <input aria-label="Contact phone"
                                           type="number"
                                           className="bg-transparent border-0 font-black text-blue-400 text-right outline-none w-20"
                                           value={rate.unitAmount || 0}
@@ -890,7 +947,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     )}
                                   </td>
                                   <td className="px-6 py-4 uppercase">
-                                    <select
+                                    <select aria-label="Service type"
                                       className="bg-transparent border-0 font-black text-slate-400 outline-none"
                                       value={rate.unitType || "Flat"}
                                       onChange={(e) => {
@@ -962,7 +1019,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                   <div className="px-3 py-1 bg-orange-600/10 text-orange-500 border border-orange-500/20 rounded-lg text-[8px] font-black uppercase">
                                     SET #{sIdx + 1}
                                   </div>
-                                  <select
+                                  <select aria-label="Service status"
                                     className="bg-transparent border-0 text-[10px] font-black text-white uppercase outline-none"
                                     value={set.appliesTo}
                                     onChange={(e) => {
@@ -1008,7 +1065,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     key={rIdx}
                                     className="p-4 bg-slate-950 border border-white/5 rounded-2xl flex items-center gap-4 text-[10px]"
                                   >
-                                    <select
+                                    <select aria-label="Filter category"
                                       className="bg-transparent border-0 text-slate-500 font-black uppercase outline-none"
                                       value={rule.type}
                                       onChange={(e) => {
@@ -1029,7 +1086,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                       <option value="Equipment">Equip</option>
                                       <option value="Compliance">Safety</option>
                                     </select>
-                                    <input
+                                    <input aria-label="FIELD"
                                       list="constraint-fields"
                                       className="bg-transparent border-0 font-bold text-slate-400 uppercase outline-none w-24"
                                       placeholder="FIELD"
@@ -1046,7 +1103,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                         });
                                       }}
                                     />
-                                    <select
+                                    <select aria-label="Filter region"
                                       className="bg-transparent border-0 font-black text-orange-500 uppercase outline-none"
                                       value={rule.operator}
                                       onChange={(e) => {
@@ -1068,7 +1125,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                       <option value="<=">&lt;=</option>
                                       <option value="EXISTS">EXISTS</option>
                                     </select>
-                                    <input
+                                    <input aria-label="VALUE"
                                       list="constraint-values"
                                       className="bg-transparent border-0 font-black text-white truncate outline-none flex-1"
                                       placeholder="VALUE"
@@ -1224,7 +1281,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               {(formData.contacts || []).map((c, i) => (
                                 <tr key={i} className="group">
                                   <td className="px-6 py-4">
-                                    <input
+                                    <input aria-label="Search contacts"
                                       className="bg-transparent border-0 text-[11px] font-black text-white uppercase outline-none w-full"
                                       value={c.name}
                                       onChange={(e) => {
@@ -1243,7 +1300,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     </div>
                                   </td>
                                   <td className="px-6 py-4">
-                                    <select
+                                    <select aria-label="Sort contacts"
                                       className="bg-transparent border-0 text-[9px] font-black text-blue-500 uppercase outline-none"
                                       value={c.role}
                                       onChange={(e) => {
@@ -1503,7 +1560,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             Activating this node will bridge its operational and
                             financial telemetry across the global matrix.
                           </p>
-                          <select
+                          <select aria-label="Filter status"
                             className="w-full bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-black uppercase outline-none"
                             value={formData.status}
                             onChange={(e) =>
@@ -1558,7 +1615,7 @@ export const NetworkPortal: React.FC<Props> = ({
                   ) : (
                     <button
                       onClick={() => handleSave(formData)}
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || !isWizardValid}
                       className="px-12 py-5 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-green-900/20 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? "Saving..." : "Commit to Registry"}{" "}
@@ -2134,10 +2191,10 @@ export const NetworkPortal: React.FC<Props> = ({
             </div>
             <div className="p-10 space-y-8">
               <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="npLegalName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Legal Name
                 </label>
-                <input
+                <input id="npLegalName"
                   className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white font-black"
                   placeholder="ENTITY NAME"
                   value={quickFormData.name}
@@ -2149,10 +2206,10 @@ export const NetworkPortal: React.FC<Props> = ({
               {activeModal === "QUICK_VENDOR" ? (
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label htmlFor="npOffering" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       Offering
                     </label>
-                    <select
+                    <select id="npOffering"
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white font-black appearance-none"
                       value={quickFormData.offering}
                       onChange={(e) =>
@@ -2168,10 +2225,10 @@ export const NetworkPortal: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label htmlFor="npTaxID" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       Tax ID
                     </label>
-                    <input
+                    <input id="npTaxID"
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white"
                       placeholder="00-0000000"
                       value={quickFormData.taxId}
@@ -2187,10 +2244,10 @@ export const NetworkPortal: React.FC<Props> = ({
               ) : (
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label htmlFor="npUnit" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       Unit #
                     </label>
-                    <input
+                    <input id="npUnit"
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white font-black"
                       placeholder="TRK-99"
                       value={quickFormData.unitNumber}
@@ -2203,10 +2260,10 @@ export const NetworkPortal: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label htmlFor="npPlateVIN" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                       Plate / VIN
                     </label>
-                    <input
+                    <input id="npPlateVIN"
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs text-white"
                       placeholder="VIN..."
                       value={quickFormData.vin}

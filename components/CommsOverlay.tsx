@@ -236,6 +236,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 autoFocus
                                 type="text"
                                 placeholder="Search records to link..."
+                                aria-label="Search records to link"
                                 className="w-full bg-slate-950 border border-blue-500/30 rounded-xl pl-9 pr-4 py-3 text-[11px] text-white outline-none focus:border-blue-500"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -336,6 +337,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 onChange={(e) => setNoteText(e.target.value)}
                                 className="w-full bg-transparent text-[13px] text-white placeholder-slate-600 resize-none outline-none h-24 mb-4"
                                 placeholder="Type operational note..."
+                                aria-label="Operational note"
                             />
                             <div className="flex items-center justify-between">
                                 <div className="flex gap-2">
@@ -377,6 +379,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 type="text"
                                 className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white outline-none focus:border-blue-500"
                                 placeholder="Send tactical message..."
+                                aria-label="Send tactical message"
                                 onKeyDown={async (e) => {
                                     if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                                         const text = e.currentTarget.value;

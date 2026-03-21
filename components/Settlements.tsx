@@ -261,6 +261,7 @@ export const Settlements: React.FC<Props> = ({
                   type="text"
                   value="12/01/2025"
                   readOnly
+                  aria-label="Pay period start date"
                   className="bg-slate-900 border border-slate-700 rounded-md px-3 py-1 text-sm font-mono text-white w-28 text-center"
                 />
                 <span className="text-slate-500">-</span>
@@ -268,6 +269,7 @@ export const Settlements: React.FC<Props> = ({
                   type="text"
                   value="12/31/2025"
                   readOnly
+                  aria-label="Pay period end date"
                   className="bg-slate-900 border border-slate-700 rounded-md px-3 py-1 text-sm font-mono text-white w-28 text-center"
                 />
               </div>
