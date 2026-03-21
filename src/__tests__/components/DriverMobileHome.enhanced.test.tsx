@@ -1,11 +1,14 @@
 import React from "react";
-import {
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  type MockedFunction,
+} from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
 
@@ -86,12 +89,19 @@ const mockCompany = {
 describe("DriverMobileHome — enhanced coverage", () => {
   let onSaveLoad: MockedFunction<(load: LoadData) => Promise<void>>;
   let onLogout: MockedFunction<() => void>;
-  let onOpenHub: MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
+  let onOpenHub: MockedFunction<
+    (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
+  >;
 
   beforeEach(() => {
-    onSaveLoad = vi.fn<(load: LoadData) => Promise<void>>().mockResolvedValue(undefined);
+    onSaveLoad = vi
+      .fn<(load: LoadData) => Promise<void>>()
+      .mockResolvedValue(undefined);
     onLogout = vi.fn<() => void>();
-    onOpenHub = vi.fn<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>();
+    onOpenHub =
+      vi.fn<
+        (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
+      >();
     localStorage.clear();
   });
 
@@ -199,7 +209,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      expect(screen.getByText("No loads assigned")).toBeInTheDocument();
+      expect(screen.getByText("No Active Loads")).toBeInTheDocument();
     });
 
     it("renders load card with route", () => {

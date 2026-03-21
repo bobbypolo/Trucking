@@ -753,7 +753,9 @@ const IntelligenceHub: React.FC<{
     };
 
     await handleActionLogging(event);
-    showSuccessMessage(`Note attached to interaction: ${currentCallSession.id}`);
+    showSuccessMessage(
+      `Note attached to interaction: ${currentCallSession.id}`,
+    );
   };
 
   const handleCreateRequest = async () => {
@@ -2126,6 +2128,40 @@ const IntelligenceHub: React.FC<{
     );
   };
 
+  if (props.isLoading) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-start justify-center p-8">
+        <div className="w-full max-w-4xl space-y-6">
+          <LoadingSkeleton variant="card" count={3} />
+          <LoadingSkeleton variant="table" count={5} />
+        </div>
+      </div>
+    );
+  }
+
+  if (props.loadError) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-center justify-center">
+        <ErrorState
+          message={props.loadError}
+          onRetry={props.onRetry ?? (() => {})}
+        />
+      </div>
+    );
+  }
+
+  if (loads.length === 0 && incidents.length === 0) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-center justify-center">
+        <EmptyState
+          icon={<Brain className="w-12 h-12" />}
+          title="Intelligence Hub Ready"
+          description="No operational data yet. Create loads and start dispatching to populate the command center."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full w-full bg-[#0a0c10] overflow-hidden text-slate-300 font-inter relative">
       {toast && (
@@ -2459,7 +2495,9 @@ const IntelligenceHub: React.FC<{
                     setShowLoadDetail(true);
                   }}
                   setSuccessMessage={(msg) =>
-                    msg === null ? clearSuccessMessage() : showSuccessMessage(msg)
+                    msg === null
+                      ? clearSuccessMessage()
+                      : showSuccessMessage(msg)
                   }
                 />
               )}
@@ -2970,7 +3008,10 @@ const IntelligenceHub: React.FC<{
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="call-entity-type" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label
+                    htmlFor="call-entity-type"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                  >
                     Entity Type
                   </label>
                   <select
@@ -2988,7 +3029,10 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="call-category" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label
+                    htmlFor="call-category"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                  >
                     Category
                   </label>
                   <select
@@ -3007,7 +3051,10 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-2">
-                <label htmlFor="call-notes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="call-notes"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Notes
                 </label>
                 <textarea
@@ -3068,7 +3115,10 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label htmlFor="task-title" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="task-title"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Task Title
                 </label>
                 <input
@@ -3083,7 +3133,10 @@ const IntelligenceHub: React.FC<{
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="task-assignee" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="task-assignee"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Assignee
                 </label>
                 <select
@@ -3150,7 +3203,10 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label htmlFor="issue-category" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="issue-category"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Category
                 </label>
                 <select
@@ -3168,7 +3224,10 @@ const IntelligenceHub: React.FC<{
                 </select>
               </div>
               <div className="space-y-2">
-                <label htmlFor="issue-description" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="issue-description"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Description
                 </label>
                 <textarea
@@ -3244,7 +3303,10 @@ const IntelligenceHub: React.FC<{
             <div className="p-10 space-y-8 overflow-y-auto no-scrollbar">
               {/* Context Grid */}
               <div className="space-y-3">
-                <label htmlFor="request-asset-context" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="request-asset-context"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Asset Context (Required)
                 </label>
                 <div className="relative group">
@@ -3310,7 +3372,10 @@ const IntelligenceHub: React.FC<{
 
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label htmlFor="request-type" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label
+                    htmlFor="request-type"
+                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                  >
                     Type Designation
                   </label>
                   <select
@@ -3335,7 +3400,10 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-3">
-                  <label htmlFor="request-amount" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label
+                    htmlFor="request-amount"
+                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                  >
                     Quantum (USD)
                   </label>
                   <div className="relative">
@@ -3360,7 +3428,10 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label htmlFor="request-justification" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="request-justification"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Mission Justification
                 </label>
                 <textarea
@@ -3613,7 +3684,7 @@ const IntelligenceHub: React.FC<{
                   .filter(
                     (c) =>
                       !directorySearchQuery ||
-                      (c.name ?? '')
+                      (c.name ?? "")
                         .toLowerCase()
                         .includes(directorySearchQuery.toLowerCase()),
                   )
@@ -3625,7 +3696,7 @@ const IntelligenceHub: React.FC<{
                       <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500">
-                            {(contact.name ?? '?').charAt(0)}
+                            {(contact.name ?? "?").charAt(0)}
                           </div>
                           <div>
                             <h4 className="text-xs font-black text-white uppercase">
@@ -3954,7 +4025,10 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label htmlFor="doc-discrepancy-log" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="doc-discrepancy-log"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Discrepancy Log (Optional)
                 </label>
                 <textarea
@@ -3994,7 +4068,10 @@ const IntelligenceHub: React.FC<{
                     },
                   });
                   setShowDocForm(false);
-                  showSuccessMessage("BOL Successfully Uploaded to Depository", 3000);
+                  showSuccessMessage(
+                    "BOL Successfully Uploaded to Depository",
+                    3000,
+                  );
                 }}
                 className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-lg shadow-indigo-900/40 active:scale-95 transition-all outline-none"
               >
@@ -4048,7 +4125,7 @@ const IntelligenceHub: React.FC<{
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${selectedContacts.includes(contact.id) ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-500"}`}
                     >
-                      {(contact.name ?? '?').charAt(0)}
+                      {(contact.name ?? "?").charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[11px] font-black text-white uppercase truncate">
@@ -4065,7 +4142,10 @@ const IntelligenceHub: React.FC<{
                 ))}
               </div>
               <div className="space-y-3">
-                <label htmlFor="notify-briefing" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="notify-briefing"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                >
                   Emergency Briefing
                 </label>
                 <textarea
@@ -4157,7 +4237,10 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-3">
-                <label htmlFor="roadside-damage-report" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="roadside-damage-report"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                >
                   Tactical Damage Report
                 </label>
                 <textarea
