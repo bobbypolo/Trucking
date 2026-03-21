@@ -105,6 +105,7 @@ export const LoadSetupModal: React.FC<Props> = ({
       const errs: Record<string, string> = {};
       if (!selectedBrokerId) errs.broker = "Broker is required";
       if (!selectedDriverId) errs.driver = "Driver is required";
+      if (callNotes.length > 500) errs.callNotes = "Call notes must be 500 characters or fewer";
       setFormErrors(errs);
     }
   };
@@ -167,13 +168,13 @@ export const LoadSetupModal: React.FC<Props> = ({
               htmlFor="lsmAssignDriver"
               className="text-xs font-bold text-slate-400"
             >
-              Assign Driver
+              Assign Driver *
             </label>
             <select
               id="lsmAssignDriver"
               value={selectedDriverId}
               onChange={(e) => setSelectedDriverId(e.target.value)}
-              className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none"
+              className={`w-full bg-[#0a0f18] border ${formErrors.driver ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
             >
               <option value="">Select Carrier / Driver</option>
               {users
@@ -214,6 +215,7 @@ export const LoadSetupModal: React.FC<Props> = ({
               <p className="text-[9px] text-slate-600 mt-1 text-right">
                 {callNotes.length}/500
               </p>
+              {formErrors.callNotes && <p className="text-red-400 text-xs mt-1">{formErrors.callNotes}</p>}
             </div>
           )}
 

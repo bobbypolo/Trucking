@@ -304,7 +304,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                       aria-label="Base rate value"
                       type="number"
                       step="0.01"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 pl-12 text-2xl font-black text-white font-mono shadow-inner outline-none focus:border-blue-500 transition-colors"
+                      className={`w-full bg-slate-950 border ${errors.payRate ? "border-red-500" : "border-slate-800"} rounded-2xl p-4 pl-12 text-2xl font-black text-white font-mono shadow-inner outline-none focus:border-blue-500 transition-colors`}
                       value={
                         formData.payModel === "salary"
                           ? formData.salaryAmount
@@ -318,6 +318,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                       }}
                     />
                   </div>
+                  {errors.payRate && <p className="text-red-400 text-xs mt-1">{errors.payRate}</p>}
                 </div>
               </div>
             </div>

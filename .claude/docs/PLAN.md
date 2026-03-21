@@ -585,6 +585,20 @@ Add inline validation to all forms that accept user input. Required fields show 
 - R-W3-01d: All `<input type="email">` validate format on blur and show error
 - VPC for each modified component
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| MODIFY | components/AccountingBillForm.tsx | Add inline error displays for billDate, dueDate, totalAmount; red border on vendorId | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/IFTAManager.tsx | Add date-not-future validation; inline error for date field | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/EditUserModal.tsx | Add inline payRate error display with red border | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/BolGenerator.tsx | Add validateBol with HH:MM time format check; inline errors for signature and time fields | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/BookingPortal.tsx | Add inline error displays for pickup, dropoff, rate fields with red borders | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/QuoteManager.tsx | Add inline error displays for pickup city, dropoff city, rate fields | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/LoadSetupModal.tsx | Add callNotes max 500 chars validation; inline callNotes error | .claude/hooks/tests/test_r_w3_01.py |
+| MODIFY | components/DataImportWizard.tsx | Add inline mappingError display below mapping table | .claude/hooks/tests/test_r_w3_01.py |
+| CREATE | .claude/hooks/tests/test_r_w3_01.py | Python QA tests for R-W3-01a/b/c/d and VPC-401 | .claude/hooks/tests/test_r_w3_01.py |
+
 ### H-402: Loading/Error/Empty States — Batch 1 (6 Components)
 **Requirement IDs**: R-W3-02, R-W3-03, R-W3-04 | **Carry-forward from**: old STORY-022
 **Agent**: Frontend

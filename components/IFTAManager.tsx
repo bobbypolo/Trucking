@@ -29,6 +29,9 @@ import { exportToExcel, exportToPDF } from "../services/exportService";
 import { IFTAEvidenceReview } from "./IFTAEvidenceReview";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   loads: LoadData[];
@@ -39,7 +42,8 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   const [year, setYear] = useState(2026);
   const [summary, setSummary] = useState<IFTASummary | null>(null);
   const [mileageEntries, setMileageEntries] = useState<MileageEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAddMileage, setShowAddMileage] = useState(false);
   const [newEntry, setNewEntry] = useState<Partial<MileageEntry>>({
     date: new Date().toISOString().split("T")[0],
@@ -54,11 +58,66 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   } | null>(null);
   const [confirmLedger, setConfirmLedger] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [mileageErrors, setMileageErrors] = useState<Record<string, string>>({});
-  const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
+  const [mileageErrors, setMileageErrors] = useState<Record<string, string>>(
+    {},
+  );
+  const US_STATES = [
+    "AL",
+    "AK",
+    "AZ",
+    "AR",
+    "CA",
+    "CO",
+    "CT",
+    "DE",
+    "FL",
+    "GA",
+    "HI",
+    "ID",
+    "IL",
+    "IN",
+    "IA",
+    "KS",
+    "KY",
+    "LA",
+    "ME",
+    "MD",
+    "MA",
+    "MI",
+    "MN",
+    "MS",
+    "MO",
+    "MT",
+    "NE",
+    "NV",
+    "NH",
+    "NJ",
+    "NM",
+    "NY",
+    "NC",
+    "ND",
+    "OH",
+    "OK",
+    "OR",
+    "PA",
+    "RI",
+    "SC",
+    "SD",
+    "TN",
+    "TX",
+    "UT",
+    "VT",
+    "VA",
+    "WA",
+    "WV",
+    "WI",
+    "WY",
+    "DC",
+  ];
 
   const loadData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const [s, m] = await Promise.all([
         getIFTASummary(quarter, year),
@@ -66,7 +125,13 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
       ]);
       setSummary(s);
       setMileageEntries(m);
-    } catch (error) {}
+    } catch (error) {
+      setLoadError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load IFTA data. Please try again.",
+      );
+    }
     setLoading(false);
   };
 
@@ -96,20 +161,33 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   const validateMileageEntry = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!newEntry.truckId) errs.truckId = "Truck ID is required";
-    if (!newEntry.date) errs.date = "Date is required";
+    if (!newEntry.date) {
+      errs.date = "Date is required";
+    } else if (newEntry.date > new Date().toISOString().split("T")[0]) {
+      errs.date = "Date cannot be in the future";
+    }
     if (!newEntry.stateCode) errs.stateCode = "State code is required";
-    else if (!US_STATES.includes(newEntry.stateCode.toUpperCase())) errs.stateCode = "Invalid US state code";
-    if (!newEntry.miles || Number(newEntry.miles) <= 0) errs.miles = "Miles must be greater than 0";
+    else if (!US_STATES.includes(newEntry.stateCode.toUpperCase()))
+      errs.stateCode = "Invalid US state code";
+    if (!newEntry.miles || Number(newEntry.miles) <= 0)
+      errs.miles = "Miles must be greater than 0";
     return errs;
   };
 
-  const isMileageValid = !!newEntry.truckId && !!newEntry.date && !!newEntry.stateCode &&
+  const isMileageValid =
+    !!newEntry.truckId &&
+    !!newEntry.date &&
+    !!newEntry.stateCode &&
     US_STATES.includes((newEntry.stateCode || "").toUpperCase()) &&
-    !!newEntry.miles && Number(newEntry.miles) > 0;
+    !!newEntry.miles &&
+    Number(newEntry.miles) > 0;
 
   const handleSaveMileage = async () => {
     const errs = validateMileageEntry();
-    if (Object.keys(errs).length > 0) { setMileageErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setMileageErrors(errs);
+      return;
+    }
     setMileageErrors({});
     setIsSubmitting(true);
     try {
@@ -120,6 +198,39 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col space-y-6 p-8">
+        <LoadingSkeleton variant="card" count={4} />
+        <LoadingSkeleton variant="table" count={5} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-full flex flex-col">
+        <ErrorState message={loadError} onRetry={loadData} />
+      </div>
+    );
+  }
+
+  if (!summary && mileageEntries.length === 0) {
+    return (
+      <div className="h-full flex flex-col">
+        <EmptyState
+          icon={<Globe className="w-12 h-12" />}
+          title="No IFTA Data Available"
+          description="Select a quarter and year to view IFTA compliance data, or add mileage entries to get started."
+          action={{
+            label: "Add Mileage Entry",
+            onClick: () => setShowAddMileage(true),
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col space-y-8 animate-in fade-in duration-500">
@@ -162,7 +273,8 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             </button>
           ))}
           <div className="w-px h-6 bg-white/5 mx-2 my-auto" />
-          <select aria-label="Select year"
+          <select
+            aria-label="Select year"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="bg-transparent text-[10px] font-black text-white px-4 outline-none uppercase"
@@ -489,10 +601,14 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label htmlFor="iftaTruckID" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                <label
+                  htmlFor="iftaTruckID"
+                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                >
                   Truck ID *
                 </label>
-                <input id="iftaTruckID"
+                <input
+                  id="iftaTruckID"
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.truckId}
@@ -500,40 +616,68 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     setNewEntry({ ...newEntry, truckId: e.target.value })
                   }
                 />
-                {mileageErrors.truckId && <p className="text-red-400 text-xs mt-1">{mileageErrors.truckId}</p>}
+                {mileageErrors.truckId && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {mileageErrors.truckId}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <label htmlFor="iftaDate" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                <label
+                  htmlFor="iftaDate"
+                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                >
                   Date *
                 </label>
-                <input id="iftaDate"
+                <input
+                  id="iftaDate"
                   type="date"
-                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
+                  className={`w-full bg-slate-900 border ${mileageErrors.date ? "border-red-500" : "border-white/5"} rounded-xl p-4 text-xs font-black text-white uppercase outline-none`}
                   value={newEntry.date}
                   onChange={(e) =>
                     setNewEntry({ ...newEntry, date: e.target.value })
                   }
                 />
+                {mileageErrors.date && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {mileageErrors.date}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <label htmlFor="iftaStateCode" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                <label
+                  htmlFor="iftaStateCode"
+                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                >
                   State Code *
                 </label>
-                <input id="iftaStateCode"
+                <input
+                  id="iftaStateCode"
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.stateCode}
                   onChange={(e) =>
-                    setNewEntry({ ...newEntry, stateCode: e.target.value.toUpperCase() })
+                    setNewEntry({
+                      ...newEntry,
+                      stateCode: e.target.value.toUpperCase(),
+                    })
                   }
                 />
-                {mileageErrors.stateCode && <p className="text-red-400 text-xs mt-1">{mileageErrors.stateCode}</p>}
+                {mileageErrors.stateCode && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {mileageErrors.stateCode}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
-                <label htmlFor="iftaMiles" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                <label
+                  htmlFor="iftaMiles"
+                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                >
                   Miles *
                 </label>
-                <input id="iftaMiles"
+                <input
+                  id="iftaMiles"
                   type="number"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.miles}
@@ -541,7 +685,11 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     setNewEntry({ ...newEntry, miles: Number(e.target.value) })
                   }
                 />
-                {mileageErrors.miles && <p className="text-red-400 text-xs mt-1">{mileageErrors.miles}</p>}
+                {mileageErrors.miles && (
+                  <p className="text-red-400 text-xs mt-1">
+                    {mileageErrors.miles}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex gap-4 pt-4">

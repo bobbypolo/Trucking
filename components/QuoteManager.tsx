@@ -537,20 +537,23 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                              <input aria-label="City"
-                                className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
-                                placeholder="City"
-                                value={selectedQuote.pickup?.city ?? ""}
-                                onChange={(e) =>
-                                  setSelectedQuote({
-                                    ...selectedQuote,
-                                    pickup: {
-                                      ...selectedQuote.pickup,
-                                      city: e.target.value,
-                                    },
-                                  })
-                                }
-                              />
+                              <div>
+                                <input aria-label="City"
+                                  className={`w-full bg-slate-950 border ${quoteErrors.pickupCity ? "border-red-500" : "border-white/5"} rounded-xl p-3.5 text-sm text-white font-black uppercase`}
+                                  placeholder="City *"
+                                  value={selectedQuote.pickup?.city ?? ""}
+                                  onChange={(e) =>
+                                    setSelectedQuote({
+                                      ...selectedQuote,
+                                      pickup: {
+                                        ...selectedQuote.pickup,
+                                        city: e.target.value,
+                                      },
+                                    })
+                                  }
+                                />
+                                {quoteErrors.pickupCity && <p className="text-red-400 text-xs mt-1">{quoteErrors.pickupCity}</p>}
+                              </div>
                               <input aria-label="State"
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
@@ -598,20 +601,23 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                              <input aria-label="City"
-                                className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
-                                placeholder="City"
-                                value={selectedQuote.dropoff?.city ?? ""}
-                                onChange={(e) =>
-                                  setSelectedQuote({
-                                    ...selectedQuote,
-                                    dropoff: {
-                                      ...selectedQuote.dropoff,
-                                      city: e.target.value,
-                                    },
-                                  })
-                                }
-                              />
+                              <div>
+                                <input aria-label="City"
+                                  className={`w-full bg-slate-950 border ${quoteErrors.dropoffCity ? "border-red-500" : "border-white/5"} rounded-xl p-3.5 text-sm text-white font-black uppercase`}
+                                  placeholder="City *"
+                                  value={selectedQuote.dropoff?.city ?? ""}
+                                  onChange={(e) =>
+                                    setSelectedQuote({
+                                      ...selectedQuote,
+                                      dropoff: {
+                                        ...selectedQuote.dropoff,
+                                        city: e.target.value,
+                                      },
+                                    })
+                                  }
+                                />
+                                {quoteErrors.dropoffCity && <p className="text-red-400 text-xs mt-1">{quoteErrors.dropoffCity}</p>}
+                              </div>
                               <input aria-label="State"
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
@@ -743,8 +749,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 </span>
                                 <input aria-label="Linehaul"
                                   type="number"
-                                  className="w-full bg-slate-950 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-lg font-black text-white outline-none focus:border-yellow-500/50 transition-all font-mono"
-                                  placeholder="Linehaul"
+                                  className={`w-full bg-slate-950 border ${quoteErrors.rate ? "border-red-500" : "border-white/10"} rounded-xl pl-8 pr-4 py-3 text-lg font-black text-white outline-none focus:border-yellow-500/50 transition-all font-mono`}
+                                  placeholder="Linehaul *"
                                   value={selectedQuote.linehaul}
                                   onChange={(e) => {
                                     const lh = parseFloat(e.target.value) || 0;
@@ -777,6 +783,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[8px] font-bold text-slate-500">
                                   BASE
                                 </span>
+                                {quoteErrors.rate && <p className="text-red-400 text-xs mt-1">{quoteErrors.rate}</p>}
                               </div>
                               <div className="relative group">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">

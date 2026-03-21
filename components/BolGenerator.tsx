@@ -178,10 +178,24 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
 
   const isBolValid = !!driverSig && !!terms;
 
+  const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+  const validateBol = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!driverSig) errs.driverSig = "Driver signature is required";
+    if (timeArrived && !timeRegex.test(timeArrived)) errs.timeArrived = "Time must be HH:MM format";
+    if (timeStart && !timeRegex.test(timeStart)) errs.timeStart = "Time must be HH:MM format";
+    if (timeEnd && !timeRegex.test(timeEnd)) errs.timeEnd = "Time must be HH:MM format";
+    return errs;
+  };
+
   const handleSave = async () => {
-    if (!driverSig) {
-      setBolErrors({ driverSig: "Driver signature is required" });
-      setToast({ message: "Driver signature is required.", type: "error" });
+    const errs = validateBol();
+    if (Object.keys(errs).length > 0) {
+      setBolErrors(errs);
+      if (errs.driverSig) {
+        setToast({ message: "Driver signature is required.", type: "error" });
+      }
       return;
     }
     setBolErrors({});
@@ -283,10 +297,11 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                       </label>
                       <input id="bolArrivalTimeHitDock"
                         type="time"
-                        className="input-field py-1"
+                        className={`input-field py-1 ${bolErrors.timeArrived ? "border-red-500" : ""}`}
                         value={timeArrived}
                         onChange={(e) => setTimeArrived(e.target.value)}
                       />
+                      {bolErrors.timeArrived && <p className="text-red-400 text-xs mt-1">{bolErrors.timeArrived}</p>}
                     </div>
                     <button
                       onClick={() => markTime(setTimeArrived)}
@@ -302,10 +317,11 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                       </label>
                       <input id="bolStartLoadingUnloading"
                         type="time"
-                        className="input-field py-1"
+                        className={`input-field py-1 ${bolErrors.timeStart ? "border-red-500" : ""}`}
                         value={timeStart}
                         onChange={(e) => setTimeStart(e.target.value)}
                       />
+                      {bolErrors.timeStart && <p className="text-red-400 text-xs mt-1">{bolErrors.timeStart}</p>}
                     </div>
                     <button
                       onClick={() => markTime(setTimeStart)}
@@ -321,10 +337,11 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                       </label>
                       <input id="bolFinishLoadingUnloading"
                         type="time"
-                        className="input-field py-1"
+                        className={`input-field py-1 ${bolErrors.timeEnd ? "border-red-500" : ""}`}
                         value={timeEnd}
                         onChange={(e) => setTimeEnd(e.target.value)}
                       />
+                      {bolErrors.timeEnd && <p className="text-red-400 text-xs mt-1">{bolErrors.timeEnd}</p>}
                     </div>
                     <button
                       onClick={() => markTime(setTimeEnd)}
@@ -374,6 +391,7 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                 onSave={setDriverSig}
                 existingSignature={driverSig}
               />
+              {bolErrors.driverSig && <p className="text-red-400 text-xs mt-1">{bolErrors.driverSig}</p>}
 
               <div className="pt-4 border-t border-slate-700">
                 <label htmlFor="bolRepresentative" className="block text-xs font-bold text-slate-400 mb-1 uppercase">

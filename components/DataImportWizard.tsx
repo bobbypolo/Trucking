@@ -344,6 +344,7 @@ export const DataImportWizard: React.FC<Props> = ({
                   </tbody>
                 </table>
               </div>
+              {mappingError && <p className="text-red-400 text-sm font-bold mt-4 px-2">{mappingError}</p>}
             </div>
           )}
 

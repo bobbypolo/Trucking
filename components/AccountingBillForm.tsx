@@ -204,7 +204,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                 Vendor Entity *
               </label>
               <select id="abfVendorEntity"
-                className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50 appearance-none"
+                className={`w-full bg-slate-900 border ${errors.vendorId ? "border-red-500" : "border-white/10"} rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50 appearance-none`}
                 value={bill.vendorId}
                 onChange={(e) => setBill({ ...bill, vendorId: e.target.value })}
               >
@@ -221,10 +221,11 @@ export const AccountingBillForm: React.FC<Props> = ({
               </label>
               <input id="abfInvoiceDate"
                 type="date"
-                className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50"
+                className={`w-full bg-slate-900 border ${errors.billDate ? "border-red-500" : "border-white/10"} rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50`}
                 value={bill.billDate}
                 onChange={(e) => setBill({ ...bill, billDate: e.target.value })}
               />
+              {errors.billDate && <p className="text-red-400 text-xs mt-1">{errors.billDate}</p>}
             </div>
             <div className="space-y-2">
               <label htmlFor="abfPaymentDue" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
@@ -232,10 +233,11 @@ export const AccountingBillForm: React.FC<Props> = ({
               </label>
               <input id="abfPaymentDue"
                 type="date"
-                className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50"
+                className={`w-full bg-slate-900 border ${errors.dueDate ? "border-red-500" : "border-white/10"} rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50`}
                 value={bill.dueDate}
                 onChange={(e) => setBill({ ...bill, dueDate: e.target.value })}
               />
+              {errors.dueDate && <p className="text-red-400 text-xs mt-1">{errors.dueDate}</p>}
             </div>
           </div>
 
@@ -381,6 +383,7 @@ export const AccountingBillForm: React.FC<Props> = ({
               <span className="text-3xl font-black text-white tracking-tighter">
                 ${bill.totalAmount?.toLocaleString()}
               </span>
+              {errors.totalAmount && <p className="text-red-400 text-xs mt-1">{errors.totalAmount}</p>}
             </div>
             <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest max-w-[200px]">
               Auto-posts to GL upon approval routing.
