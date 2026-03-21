@@ -134,7 +134,8 @@ export const CompanyProfile: React.FC<Props> = ({
           status: log.clockOut ? "Completed" : "Active",
         }));
         setTimeLogs(recent);
-      } catch {
+      } catch (err) {
+        console.error("[CompanyProfile] Failed to load time logs:", err);
         setTimeLogs([]);
       } finally {
         setTimeLogsLoading(false);
@@ -145,31 +146,45 @@ export const CompanyProfile: React.FC<Props> = ({
 
   const handleClockIn = async () => {
     const now = new Date().toISOString();
-    const success = await logTime({
-      userId: user.id,
-      activityType: "Driving/Active Duty",
-      clockIn: now,
-      location: undefined,
-    });
-    if (success !== undefined) {
-      setIsClockedIn(true);
-      setClockInTime(now);
-      showMsg("Clocked In Successfully.", 3000);
+    try {
+      const success = await logTime({
+        userId: user.id,
+        activityType: "Driving/Active Duty",
+        clockIn: now,
+        location: undefined,
+      });
+      if (success !== undefined) {
+        setIsClockedIn(true);
+        setClockInTime(now);
+        showMsg("Clocked In Successfully.", 3000);
+      } else {
+        showMsg("Clock-in failed. Please try again.", 3000);
+      }
+    } catch (err) {
+      console.error("[CompanyProfile] Clock-in failed:", err);
+      showMsg("Clock-in failed. Please try again.", 3000);
     }
   };
 
   const handleClockOut = async () => {
-    const success = await logTime({
-      userId: user.id,
-      activityType: "Off Duty",
-      clockOut: new Date().toISOString(),
-    });
-    if (success !== undefined) {
-      setIsClockedIn(false);
-      setClockInTime(null);
-      setShowClockOutModal(false);
-      setClockNotes("");
-      showMsg("Shift ended.", 3000);
+    try {
+      const success = await logTime({
+        userId: user.id,
+        activityType: "Off Duty",
+        clockOut: new Date().toISOString(),
+      });
+      if (success !== undefined) {
+        setIsClockedIn(false);
+        setClockInTime(null);
+        setShowClockOutModal(false);
+        setClockNotes("");
+        showMsg("Shift ended.", 3000);
+      } else {
+        showMsg("Clock-out failed. Please try again.", 3000);
+      }
+    } catch (err) {
+      console.error("[CompanyProfile] Clock-out failed:", err);
+      showMsg("Clock-out failed. Please try again.", 3000);
     }
   };
 
@@ -179,6 +194,9 @@ export const CompanyProfile: React.FC<Props> = ({
     try {
       await updateCompany(company);
       showMsg("Save Changes.", 4000);
+    } catch (err) {
+      console.error("[CompanyProfile] Save company failed:", err);
+      showMsg("Failed to save changes. Please try again.", 4000);
     } finally {
       setIsSubmitting(false);
     }

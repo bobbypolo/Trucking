@@ -125,7 +125,9 @@ export const NetworkPortal: React.FC<Props> = ({
       await loadData();
       setView("dashboard");
       setWizardStep(1);
+      setToast({ message: "Party saved successfully.", type: "success" });
     } catch (e) {
+      console.error("[NetworkPortal] Save party failed:", e);
       setToast({ message: "Failed to save party", type: "error" });
     } finally {
       setIsSubmitting(false);

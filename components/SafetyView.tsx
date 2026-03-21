@@ -167,6 +167,10 @@ export const SafetyView: React.FC<Props> = ({
               const performance = await calculateDriverPerformance(u, c);
               return { user: u, performance };
             } catch (err) {
+              console.error(
+                "[SafetyView] Failed to calculate driver performance:",
+                err,
+              );
               return {
                 user: u,
                 performance: {

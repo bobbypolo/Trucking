@@ -161,6 +161,7 @@ export const OperationalMessaging: React.FC<Props> = ({
       const saved = await saveMessage(draft);
       setMessages((prev) => [...prev, saved]);
       setMessageText("");
+      setToast({ message: "Message delivered.", type: "success" });
     } catch (err) {
       console.error("[OperationalMessaging] Message send failed:", err);
       setToast({
@@ -205,22 +206,31 @@ export const OperationalMessaging: React.FC<Props> = ({
   const handleCreateTask = async (text: string) => {
     if (!onRecordAction || !selectedThreadId) return;
     const targetId = String(selectedThreadId).replace("inc-", "");
-    await onRecordAction({
-      id: Math.random().toString(36).substr(2, 9),
-      type: "TASK",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Strategic Task created: ${text}`,
-      loadId: targetId,
-      payload: { title: text, status: "PENDING" },
-    });
-    if (onNoteCreated)
-      onNoteCreated(`ACTION: Created Strategic Task - ${text}`);
-    setTasks((prev) => [
-      ...prev,
-      { id: Math.random().toString(36).substr(2, 9), text, completed: false },
-    ]);
+    try {
+      await onRecordAction({
+        id: Math.random().toString(36).substr(2, 9),
+        type: "TASK",
+        timestamp: new Date().toISOString(),
+        actorId: user.id,
+        actorName: user.name,
+        message: `Strategic Task created: ${text}`,
+        loadId: targetId,
+        payload: { title: text, status: "PENDING" },
+      });
+      if (onNoteCreated)
+        onNoteCreated(`ACTION: Created Strategic Task - ${text}`);
+      setTasks((prev) => [
+        ...prev,
+        { id: Math.random().toString(36).substr(2, 9), text, completed: false },
+      ]);
+      setToast({ message: "Task created.", type: "success" });
+    } catch (err) {
+      console.error("[OperationalMessaging] Task creation failed:", err);
+      setToast({
+        message: "Failed to create task. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   const handleQuickRequest = async (type: string) => {

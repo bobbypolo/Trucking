@@ -17,6 +17,7 @@ import {
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import { ImportTemplate, ImportMapping, ImportDryRun } from "../types";
+import { Toast } from "./Toast";
 
 interface Props {
   type: "Fuel" | "Bills" | "Invoices" | "CoA";
@@ -36,6 +37,10 @@ export const DataImportWizard: React.FC<Props> = ({
   const [dryRun, setDryRun] = useState<ImportDryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success" | "info";
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const targetFields = {
@@ -153,6 +158,16 @@ export const DataImportWizard: React.FC<Props> = ({
     setIsSubmitting(true);
     try {
       await onImport(fileData);
+      setToast({
+        message: `${fileData.length} records imported successfully.`,
+        type: "success",
+      });
+    } catch (err) {
+      console.error("[DataImportWizard] Import failed:", err);
+      setToast({
+        message: "Import failed. Please check your data and try again.",
+        type: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -168,6 +183,13 @@ export const DataImportWizard: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-2xl z-[200] flex items-center justify-center p-10">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       <div className="bg-[#020617] border border-white/10 w-full max-w-4xl rounded-[3rem] shadow-2xl flex flex-col h-[80vh] overflow-hidden">
         {/* HEADER */}
         <div className="p-10 border-b border-white/5 bg-slate-900/20 flex justify-between items-center shrink-0">

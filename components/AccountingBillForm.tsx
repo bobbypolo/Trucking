@@ -14,6 +14,7 @@ import {
   FilePlus,
   ChevronRight,
 } from "lucide-react";
+import { Toast } from "./Toast";
 import {
   APBill,
   APBillLine,
@@ -36,6 +37,10 @@ export const AccountingBillForm: React.FC<Props> = ({
   onClose,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success" | "info";
+  } | null>(null);
   const [bill, setBill] = useState<Partial<APBill>>({
     billNumber: "",
     billDate: new Date().toISOString().split("T")[0],
@@ -101,6 +106,13 @@ export const AccountingBillForm: React.FC<Props> = ({
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSave(bill));
+      setToast({ message: "Bill submitted for approval.", type: "success" });
+    } catch (err) {
+      console.error("[AccountingBillForm] Submit failed:", err);
+      setToast({
+        message: "Failed to submit bill. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -122,6 +134,13 @@ export const AccountingBillForm: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10 overflow-auto">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       <div className="bg-[#020617] border border-white/10 w-full max-w-5xl rounded-[3rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* HEADER */}
         <div className="p-10 border-b border-white/5 bg-slate-900/20 flex justify-between items-center shrink-0">

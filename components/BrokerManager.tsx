@@ -28,6 +28,7 @@ import {
   getContracts,
   saveContract,
 } from "../services/brokerService";
+import { Toast } from "./Toast";
 
 interface Props {
   brokers?: Broker[];
@@ -58,6 +59,10 @@ export const BrokerManager: React.FC<Props> = ({
   );
   const [activeTab, setActiveTab] = useState<"My" | "All">("My");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success" | "info";
+  } | null>(null);
 
   // New State for Chassis Form
   const [chassisForm, setChassisForm] = useState<Partial<ApprovedChassis>>({
@@ -92,6 +97,16 @@ export const BrokerManager: React.FC<Props> = ({
       loadData();
       if (onSave) onSave(broker);
       setShowForm(false);
+      setToast({
+        message: "Entity profile saved successfully.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error("[BrokerManager] Save failed:", err);
+      setToast({
+        message: "Failed to save entity. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -137,6 +152,13 @@ export const BrokerManager: React.FC<Props> = ({
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* Header - High Density Version */}
       <div className="bg-[#0a0f1e]/80 backdrop-blur-md border-b border-white/5 px-8 py-6 sticky top-0 z-10">
         <div className="flex justify-between items-center mb-6">
