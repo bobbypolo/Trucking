@@ -5,6 +5,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
+import { deliverNotification } from "../services/notification-delivery.service";
 
 const router = Router();
 
@@ -136,6 +137,27 @@ router.post(
         ],
       );
       log.info({ jobId: id }, "Notification job created");
+
+      // Attempt delivery via notification-delivery service
+      const deliveryResult = await deliverNotification({
+        channel,
+        message,
+        recipients: jobRecipients,
+        subject: "LoadPilot Notification",
+      });
+
+      // Update job status based on delivery result
+      const finalStatus = deliveryResult.status;
+      const finalSentAt = deliveryResult.sent_at || jobSentAt;
+      const finalSyncError = deliveryResult.sync_error || null;
+
+      await pool.query(
+        `UPDATE notification_jobs
+           SET status = ?, sent_at = ?, sync_error = ?
+         WHERE id = ?`,
+        [finalStatus, finalSentAt, finalSyncError ? 1 : 0, id],
+      );
+
       res.status(201).json({
         id,
         company_id: companyId,
@@ -143,15 +165,76 @@ router.post(
         incident_id: incidentId || null,
         message,
         channel,
-        status: jobStatus,
+        status: finalStatus,
         sent_by: jobSentBy,
-        sent_at: jobSentAt,
+        sent_at: finalSentAt,
         recipients: jobRecipients,
-        sync_error: sync_error || false,
+        sync_error: finalSyncError || false,
       });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [POST /api/notification-jobs]");
       res.status(500).json({ error: "Failed to create notification job" });
+    }
+  },
+);
+
+// PATCH /api/notification-jobs/:id — update job status
+router.patch(
+  "/api/notification-jobs/:id",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const jobId = req.params.id;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/notification-jobs/:id",
+    });
+
+    const { status, sync_error } = req.body;
+
+    if (!status || !["SENT", "FAILED", "PENDING"].includes(status)) {
+      return res
+        .status(400)
+        .json({ error: "status must be SENT, FAILED, or PENDING" });
+    }
+
+    try {
+      const [rows]: any = await pool.query(
+        "SELECT * FROM notification_jobs WHERE id = ?",
+        [jobId],
+      );
+      const row = (rows as any[])[0];
+      if (!row || row.company_id !== companyId) {
+        return res.status(404).json({ error: "Notification job not found" });
+      }
+
+      const sentAt =
+        status === "SENT" ? new Date().toISOString() : row.sent_at;
+
+      await pool.query(
+        `UPDATE notification_jobs
+           SET status = ?, sent_at = ?, sync_error = ?
+         WHERE id = ?`,
+        [status, sentAt, sync_error ? 1 : 0, jobId],
+      );
+
+      res.json({
+        ...row,
+        status,
+        sent_at: sentAt,
+        sync_error: sync_error || false,
+        recipients:
+          typeof row.recipients === "string"
+            ? JSON.parse(row.recipients)
+            : row.recipients,
+      });
+    } catch (error) {
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/notification-jobs/:id]",
+      );
+      res.status(500).json({ error: "Failed to update notification job" });
     }
   },
 );

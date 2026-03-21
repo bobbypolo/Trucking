@@ -505,6 +505,7 @@ router.get(
 router.get(
   "/api/safety/fmcsa/:dotNumber",
   requireAuth,
+  requireTenant,
   async (req: Request, res) => {
     const { dotNumber } = req.params;
     try {

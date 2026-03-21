@@ -142,6 +142,31 @@ export const SafetyView: React.FC<Props> = ({
   >(null);
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [safetyFormErrors, setSafetyFormErrors] = useState<Record<string, string>>({});
+
+  const isSafetyFormValid = (() => {
+    if (!showForm) return false;
+    if (showForm === "asset") return !!formData.id?.trim();
+    if (showForm === "maintenance") return !!formData.description?.trim();
+    if (showForm === "incident") return !!formData.description?.trim();
+    return true;
+  })();
+  const [fmcsaData, setFmcsaData] = useState<{
+    available: boolean;
+    isMock?: boolean;
+    data?: {
+      dotNumber: string;
+      legalName: string;
+      safetyRating: string | null;
+      totalDrivers: number;
+      totalPowerUnits: number;
+      inspections: {
+        totalInspections: number;
+        driverOosRate: number;
+        vehicleOosRate: number;
+      } | null;
+    };
+  } | null>(null);
 
   const loadPayload = useCallback(async () => {
     setIsLoading(true);
@@ -202,6 +227,20 @@ export const SafetyView: React.FC<Props> = ({
         ]);
         setServiceTickets(tickets);
         setVendors(vendorList);
+
+        // Fetch FMCSA safety score (non-blocking — uses company DOT if available)
+        const dotNumber = c?.dotNumber;
+        if (dotNumber) {
+          try {
+            const resp = await fetch(`/api/safety/fmcsa/${dotNumber}`);
+            if (resp.ok) {
+              const fmcsa = await resp.json();
+              setFmcsaData(fmcsa);
+            }
+          } catch {
+            // FMCSA fetch is non-critical — silently degrade
+          }
+        }
       }
     } catch (error) {
       setLoadError("Failed to load safety data. Please try again.");
@@ -303,9 +342,19 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Fleet Safety Score",
-                  value: "65",
-                  target: "Target: 95+",
-                  color: "text-red-400",
+                  value: fmcsaData?.available && fmcsaData.data?.safetyRating
+                    ? fmcsaData.data.safetyRating
+                    : "N/A",
+                  target: fmcsaData?.isMock
+                    ? "Mock Data"
+                    : fmcsaData?.available
+                      ? "FMCSA Verified"
+                      : "Target: 95+",
+                  color: fmcsaData?.available && fmcsaData.data?.safetyRating === "Satisfactory"
+                    ? "text-green-400"
+                    : fmcsaData?.available
+                      ? "text-yellow-400"
+                      : "text-red-400",
                 },
                 {
                   label: "Pending Maintenance",
@@ -1094,24 +1143,25 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "asset" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      Asset ID / Unit Number
+                    <label htmlFor="svAssetIDUnitNumber" className="text-[10px] font-bold text-slate-500 uppercase">
+                      Asset ID / Unit Number *
                     </label>
-                    <input
+                    <input id="svAssetIDUnitNumber"
                       type="text"
                       placeholder="e.g. TR-101"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:border-blue-500 transition-colors outline-none"
+                      className={`w-full bg-slate-950 border ${safetyFormErrors.id ? "border-red-500" : "border-slate-800"} rounded-lg px-4 py-3 text-white focus:border-blue-500 transition-colors outline-none`}
                       onChange={(e) =>
                         setFormData({ ...formData, id: e.target.value })
                       }
                     />
+                    {safetyFormErrors.id && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.id}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svType" className="text-[10px] font-bold text-slate-500 uppercase">
                         Type
                       </label>
-                      <select
+                      <select id="svType"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, type: e.target.value })
@@ -1124,10 +1174,10 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svOwnership" className="text-[10px] font-bold text-slate-500 uppercase">
                         Ownership
                       </label>
-                      <select
+                      <select id="svOwnership"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({
@@ -1146,10 +1196,10 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "maintenance" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="svSelectAsset" className="text-[10px] font-bold text-slate-500 uppercase">
                       Select Asset
                     </label>
-                    <select
+                    <select id="svSelectAsset"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       onChange={(e) =>
                         setFormData({ ...formData, unitId: e.target.value })
@@ -1161,10 +1211,10 @@ export const SafetyView: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      Service Description
+                    <label htmlFor="svServiceDescription" className="text-[10px] font-bold text-slate-500 uppercase">
+                      Service Description *
                     </label>
-                    <textarea
+                    <textarea id="svServiceDescription"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white h-24 outline-none"
                       placeholder="e.g. Annual Inspection and Oil Change"
                       onChange={(e) =>
@@ -1174,16 +1224,17 @@ export const SafetyView: React.FC<Props> = ({
                         })
                       }
                     />
+                    {safetyFormErrors.description && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.description}</p>}
                   </div>
                 </>
               )}
               {showForm === "quiz" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="svCourseTitle" className="text-[10px] font-bold text-slate-500 uppercase">
                       Course Title
                     </label>
-                    <input
+                    <input id="svCourseTitle"
                       type="text"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       placeholder="e.g. Hazardous Materials Handling"
@@ -1216,10 +1267,10 @@ export const SafetyView: React.FC<Props> = ({
                 <>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svSelectRelevantManifest" className="text-[10px] font-bold text-slate-500 uppercase">
                         Select Relevant Manifest
                       </label>
-                      <select
+                      <select id="svSelectRelevantManifest"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, loadId: e.target.value })
@@ -1237,10 +1288,10 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svIncidentSeverity" className="text-[10px] font-bold text-slate-500 uppercase">
                         Incident Severity
                       </label>
-                      <select
+                      <select id="svIncidentSeverity"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, category: e.target.value })
@@ -1252,10 +1303,10 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
-                        Description of Event
+                      <label htmlFor="svDescriptionOfEvent" className="text-[10px] font-bold text-slate-500 uppercase">
+                        Description of Event *
                       </label>
-                      <textarea
+                      <textarea id="svDescriptionOfEvent"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-4 text-sm text-white h-32 outline-none resize-none placeholder:text-slate-700"
                         placeholder="DESCRIBE THE INCIDENT IN DETAIL FOR AUDIT CONTROL..."
                         onChange={(e) =>
@@ -1272,8 +1323,23 @@ export const SafetyView: React.FC<Props> = ({
             </div>
             <div className="p-8 border-t border-slate-800 bg-slate-950/50">
               <button
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isSafetyFormValid}
                 onClick={async () => {
+                  const errs: Record<string, string> = {};
+                  if (showForm === "asset") {
+                    if (!formData.id?.trim()) errs.id = "Unit number is required";
+                  }
+                  if (showForm === "maintenance") {
+                    if (!formData.description?.trim()) errs.description = "Description is required";
+                  }
+                  if (showForm === "incident") {
+                    if (!formData.description?.trim()) errs.description = "Description is required";
+                  }
+                  if (Object.keys(errs).length > 0) {
+                    setSafetyFormErrors(errs);
+                    return;
+                  }
+                  setSafetyFormErrors({});
                   setIsSubmitting(true);
                   try {
                     if (showForm === "asset")
