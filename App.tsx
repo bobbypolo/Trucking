@@ -169,6 +169,7 @@ const AuditLogs = React.lazy(() =>
   import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
+import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -297,6 +298,10 @@ export default function App() {
     message: string;
     type: "success" | "error" | "info";
   } | null>(null);
+  // Session expired modal — shown on first auth:session-expired event.
+  // A ref guards against multiple rapid 401s showing the modal more than once.
+  const sessionExpiredFiredRef = React.useRef(false);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onUserChange(async (updatedUser) => {
@@ -314,74 +319,89 @@ export default function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
 
+    // Listen for 401 session-expired events emitted by apiFetch()
+    const handleSessionExpired = () => {
+      if (!sessionExpiredFiredRef.current) {
+        sessionExpiredFiredRef.current = true;
+        setShowSessionExpiredModal(true);
+      }
+    };
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+
     return () => {
       unsubscribe();
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("auth:session-expired", handleSessionExpired);
     };
   }, []);
 
-  const refreshData = useCallback(async (currentUser: User) => {
-    const results = await Promise.allSettled([
-      getLoads(currentUser),
-      getBrokers(currentUser.companyId),
-      getCompanyUsers(currentUser.companyId),
-      getCompany(currentUser.companyId),
-      getDispatchEvents(currentUser.companyId),
-      getTimeLogs(currentUser.companyId, true),
-      getIncidents(),
-    ]);
+  const refreshData = useCallback(
+    async (currentUser: User) => {
+      const results = await Promise.allSettled([
+        getLoads(currentUser),
+        getBrokers(currentUser.companyId),
+        getCompanyUsers(currentUser.companyId),
+        getCompany(currentUser.companyId),
+        getDispatchEvents(currentUser.companyId),
+        getTimeLogs(currentUser.companyId, true),
+        getIncidents(),
+      ]);
 
-    const [
-      loadsResult,
-      brokersResult,
-      usersResult,
-      companyResult,
-      eventsResult,
-      logsResult,
-      incidentsResult,
-    ] = results;
+      const [
+        loadsResult,
+        brokersResult,
+        usersResult,
+        companyResult,
+        eventsResult,
+        logsResult,
+        incidentsResult,
+      ] = results;
 
-    // Apply each result, falling back to current state on failure
-    setLoads((prev) =>
-      loadsResult.status === "fulfilled" ? loadsResult.value : prev,
-    );
-    setBrokers((prev) =>
-      brokersResult.status === "fulfilled" ? brokersResult.value : prev,
-    );
-    setCompany((prev) =>
-      companyResult.status === "fulfilled" ? companyResult.value || null : prev,
-    );
-    setDispatchEvents((prev) =>
-      eventsResult.status === "fulfilled" ? eventsResult.value : prev,
-    );
-    setTimeLogs((prev) =>
-      logsResult.status === "fulfilled" ? logsResult.value : prev,
-    );
-    setIncidents((prev) =>
-      incidentsResult.status === "fulfilled" ? incidentsResult.value : prev,
-    );
-    if (
-      ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
-        currentUser.role,
-      )
-    ) {
-      setCompanyUsers((prev) =>
-        usersResult.status === "fulfilled" ? usersResult.value : prev,
+      // Apply each result, falling back to current state on failure
+      setLoads((prev) =>
+        loadsResult.status === "fulfilled" ? loadsResult.value : prev,
       );
-    } else {
-      setCompanyUsers([currentUser]);
-    }
+      setBrokers((prev) =>
+        brokersResult.status === "fulfilled" ? brokersResult.value : prev,
+      );
+      setCompany((prev) =>
+        companyResult.status === "fulfilled"
+          ? companyResult.value || null
+          : prev,
+      );
+      setDispatchEvents((prev) =>
+        eventsResult.status === "fulfilled" ? eventsResult.value : prev,
+      );
+      setTimeLogs((prev) =>
+        logsResult.status === "fulfilled" ? logsResult.value : prev,
+      );
+      setIncidents((prev) =>
+        incidentsResult.status === "fulfilled" ? incidentsResult.value : prev,
+      );
+      if (
+        ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
+          currentUser.role,
+        )
+      ) {
+        setCompanyUsers((prev) =>
+          usersResult.status === "fulfilled" ? usersResult.value : prev,
+        );
+      } else {
+        setCompanyUsers([currentUser]);
+      }
 
-    // Show toast if any calls failed
-    const failures = results.filter((r) => r.status === "rejected");
-    if (failures.length > 0) {
-      setRefreshToast({
-        message: "Some data could not be loaded. Please retry.",
-        type: "error",
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.companyId]);
+      // Show toast if any calls failed
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        setRefreshToast({
+          message: "Some data could not be loaded. Please retry.",
+          type: "error",
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [user?.companyId],
+  );
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
@@ -1315,6 +1335,14 @@ export default function App() {
             />
           </Suspense>
         )}
+        <SessionExpiredModal
+          open={showSessionExpiredModal}
+          onNavigateToLogin={() => {
+            sessionExpiredFiredRef.current = false;
+            setShowSessionExpiredModal(false);
+            setUser(null);
+          }}
+        />
       </div>
     </ErrorBoundary>
   );

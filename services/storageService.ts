@@ -105,11 +105,7 @@ export {
   saveContact,
   getDirectory,
 } from "./storage/directory";
-export {
-  getRawVaultDocs,
-  saveVaultDoc,
-  uploadVaultDoc,
-} from "./storage/vault";
+export { getRawVaultDocs, saveVaultDoc, uploadVaultDoc } from "./storage/vault";
 export {
   getRawNotificationJobs,
   saveNotificationJob,
@@ -161,8 +157,15 @@ export const getLoads = async (user: User): Promise<LoadData[]> => {
     } else {
       return loads.filter((l) => l.driverId === user.id);
     }
-  } catch (e) {
-    // Return cached loads if API is unavailable
+  } catch (e: any) {
+    // Re-throw auth errors so the session-expired interceptor can handle them
+    if (
+      e?.message?.startsWith("Unauthorized") ||
+      e?.name === "ForbiddenError"
+    ) {
+      throw e;
+    }
+    // Return cached loads only for non-auth network failures
     return _cachedLoads;
   }
 };
@@ -242,56 +245,68 @@ export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
 export const getDispatchEvents = async (
   companyId: string,
 ): Promise<DispatchEvent[]> => {
+  let res: Response;
   try {
-    const res = await fetch(`${API_URL}/dispatch-events/${companyId}`, {
+    res = await fetch(`${API_URL}/dispatch-events/${companyId}`, {
       headers: await getAuthHeaders(),
     });
-    if (res.ok) {
-      const data = await res.json();
-      return data.map((e: any) => ({
-        ...e,
-        loadId: e.load_id,
-        dispatcherId: e.dispatcher_id,
-        eventType: e.event_type,
-        createdAt: e.created_at,
-      }));
-    }
   } catch (e) {
     console.warn("[storageService] API fallback:", e);
+    return [];
   }
-  return [];
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Auth error: ${res.status}`);
+  }
+  if (!res.ok) {
+    console.warn("[storageService] getDispatchEvents failed:", res.status);
+    return [];
+  }
+  const data = await res.json();
+  return data.map((e: any) => ({
+    ...e,
+    loadId: e.load_id,
+    dispatcherId: e.dispatcher_id,
+    eventType: e.event_type,
+    createdAt: e.created_at,
+  }));
 };
 
 export const getTimeLogs = async (
   userIdOrCompanyId: string,
   isCompany = false,
 ): Promise<TimeLog[]> => {
+  const url = isCompany
+    ? `${API_URL}/time-logs/company/${userIdOrCompanyId}`
+    : `${API_URL}/time-logs/${userIdOrCompanyId}`;
+  let res: Response;
   try {
-    const url = isCompany
-      ? `${API_URL}/time-logs/company/${userIdOrCompanyId}`
-      : `${API_URL}/time-logs/${userIdOrCompanyId}`;
-    const res = await fetch(url, {
+    res = await fetch(url, {
       headers: await getAuthHeaders(),
     });
-    if (res.ok) {
-      const data = await res.json();
-      return data.map((t: any) => ({
-        ...t,
-        userId: t.user_id,
-        loadId: t.load_id,
-        activityType: t.activity_type,
-        clockIn: t.clock_in,
-        clockOut: t.clock_out,
-        location: {
-          lat: t.location_lat,
-          lng: t.location_lng,
-        },
-      }));
-    }
   } catch (e) {
     console.warn("[storageService] API fallback:", e);
+    return [];
   }
-  return [];
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Auth error: ${res.status}`);
+  }
+  if (!res.ok) {
+    console.warn("[storageService] getTimeLogs failed:", res.status);
+    return [];
+  }
+  const data = await res.json();
+  return data.map((t: any) => ({
+    ...t,
+    userId: t.user_id,
+    loadId: t.load_id,
+    activityType: t.activity_type,
+    clockIn: t.clock_in,
+    clockOut: t.clock_out,
+    location: {
+      lat: t.location_lat,
+      lng: t.location_lng,
+    },
+  }));
 };
 
 // Consolidated Work Item logic at the end of the file
@@ -550,42 +565,46 @@ export const generateMaintenanceLogPDF = (eq: FleetEquipment, name: string) => {
 };
 
 export const getIncidents = async (): Promise<Incident[]> => {
+  let res: Response;
   try {
-    const res = await fetch(`${API_URL}/incidents`, {
+    res = await fetch(`${API_URL}/incidents`, {
       headers: await getAuthHeaders(),
     });
-    if (res.ok) {
-      const data = await res.json();
-      return data.map((inc: any) => ({
-        ...inc,
-        loadId: inc.load_id,
-        reportedAt: inc.reported_at,
-        slaDeadline: inc.sla_deadline,
-        location: {
-          lat: Number(inc.location_lat),
-          lng: Number(inc.location_lng),
-        },
-        timeline:
-          inc.timeline?.map((t: any) => ({
-            ...t,
-            actorName: t.actor_name,
-            timestamp: t.timestamp,
-          })) || [],
-        billingItems:
-          inc.billingItems?.map((b: any) => ({
-            ...b,
-            providerVendor: b.provider_vendor,
-            approvedBy: b.approved_by,
-            receiptUrl: b.receipt_url,
-          })) || [],
-      }));
-    }
   } catch (e) {
     console.warn("[storageService] getIncidents API unavailable:", e);
+    return [];
   }
-
-  // API is sole source of truth — return empty array on failure
-  return [];
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Auth error: ${res.status}`);
+  }
+  if (!res.ok) {
+    console.warn("[storageService] getIncidents API unavailable:", res.status);
+    return [];
+  }
+  const data = await res.json();
+  return data.map((inc: any) => ({
+    ...inc,
+    loadId: inc.load_id,
+    reportedAt: inc.reported_at,
+    slaDeadline: inc.sla_deadline,
+    location: {
+      lat: Number(inc.location_lat),
+      lng: Number(inc.location_lng),
+    },
+    timeline:
+      inc.timeline?.map((t: any) => ({
+        ...t,
+        actorName: t.actor_name,
+        timestamp: t.timestamp,
+      })) || [],
+    billingItems:
+      inc.billingItems?.map((b: any) => ({
+        ...b,
+        providerVendor: b.provider_vendor,
+        approvedBy: b.approved_by,
+        receiptUrl: b.receipt_url,
+      })) || [],
+  }));
 };
 
 // seedIncidents: kept as no-op for backward compatibility (STORY-019)
@@ -1183,7 +1202,9 @@ export const getRecord360Data = async (type: EntityType, id: string) => {
     const allBrokersForLoad = await getBrokers();
     const broker = allBrokersForLoad.find((b) => b.id === load?.brokerId);
 
-    const vaultDocs = (await _getRawVaultDocs()).filter((d) => d.entityId === id);
+    const vaultDocs = (await _getRawVaultDocs()).filter(
+      (d) => d.entityId === id,
+    );
 
     const timeline = buildTimeline([
       ...linkedRequests.map((r) => ({
