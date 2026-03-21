@@ -481,6 +481,18 @@ Ensure all write operations show clear feedback using existing Toast component f
 - NetworkPortal.tsx — Toast for errors but no success confirmation
 - SafetyView.tsx — Uses showFeedback helper but verify complete coverage
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| MODIFY | components/AccountingBillForm.tsx | Add Toast on submit success and error | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/BrokerManager.tsx | Add Toast on save success and error | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/CompanyProfile.tsx | Add error catch to handleSaveCompany, handleClockIn, handleClockOut | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/OperationalMessaging.tsx | Add success toast to send message; wrap handleCreateTask in try/catch | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/DataImportWizard.tsx | Add Toast on import success and error | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/NetworkPortal.tsx | Add success toast to handleSave | .claude/hooks/tests/test_r_w2_04.py |
+| MODIFY | components/SafetyView.tsx | Add console.error to inner catch blocks | .claude/hooks/tests/test_r_w2_04.py |
+
 **Done When**:
 - R-W2-04a: Every form submit in H-302's list shows either success toast or error message
 - R-W2-04b: Read each modified file — confirm no catch block silently ignores errors (no empty catch, no catch-and-return-empty)
