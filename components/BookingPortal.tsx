@@ -149,15 +149,21 @@ export const BookingPortal: React.FC<Props> = ({
         totalRate: data.carrierRate || 0,
       }));
       setStep("quote");
-      showFeedback({
-        msg: "Intelligence extracted successfully.",
-        type: "success",
-      }, 4000);
+      showFeedback(
+        {
+          msg: "Intelligence extracted successfully.",
+          type: "success",
+        },
+        4000,
+      );
     } catch (error) {
-      showFeedback({
-        msg: "Extraction failed. Manual entry required.",
-        type: "error",
-      }, 4000);
+      showFeedback(
+        {
+          msg: "Extraction failed. Manual entry required.",
+          type: "error",
+        },
+        4000,
+      );
       setStep("quote");
     } finally {
       setIsScanning(false);
@@ -166,92 +172,101 @@ export const BookingPortal: React.FC<Props> = ({
 
   const createQuote = async () => {
     if (!selectedBroker || !quote.totalRate) {
-      showFeedback({
-        msg: "Missing broker or rate information.",
-        type: "error",
-      }, 5000);
+      showFeedback(
+        {
+          msg: "Missing broker or rate information.",
+          type: "error",
+        },
+        5000,
+      );
       return;
     }
     setLoading(true);
-    const finalQuote: Quote = {
-      ...(quote as Quote),
-      ownerId: user.id,
-      validUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(), // 7 days valid
-    };
-    await saveQuote(finalQuote);
-    setQuote(finalQuote);
-    setStep("review");
-    setLoading(false);
+    try {
+      const finalQuote: Quote = {
+        ...(quote as Quote),
+        ownerId: user.id,
+        validUntil: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(), // 7 days valid
+      };
+      await saveQuote(finalQuote);
+      setQuote(finalQuote);
+      setStep("review");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const convertToBooking = async () => {
     setLoading(true);
-    const quoteId = quote.id ?? uuidv4();
-    const newBooking: Booking = {
-      id: uuidv4(),
-      quoteId,
-      companyId: user.companyId,
-      status: "Accepted",
-      requiresAppt: false,
-      createdAt: new Date().toISOString(),
-    };
-    await saveBooking(newBooking);
-    setBooking(newBooking);
+    try {
+      const quoteId = quote.id ?? uuidv4();
+      const newBooking: Booking = {
+        id: uuidv4(),
+        quoteId,
+        companyId: user.companyId,
+        status: "Accepted",
+        requiresAppt: false,
+        createdAt: new Date().toISOString(),
+      };
+      await saveBooking(newBooking);
+      setBooking(newBooking);
 
-    // Generate Load Stub
-    const companyData = await getCompany(user.companyId);
-    const emptyPickup = { city: "", state: "", facilityName: "" };
-    const emptyDropoff = { city: "", state: "", facilityName: "" };
-    const pickupLocation = quote.pickup ?? emptyPickup;
-    const dropoffLocation = quote.dropoff ?? emptyDropoff;
-    const validUntil = quote.validUntil ?? new Date().toISOString();
-    const loadNumber = companyData
-      ? generateNextLoadNumber(companyData, selectedBroker?.name ?? "")
-      : `LD-${Date.now()}`;
+      // Generate Load Stub
+      const companyData = await getCompany(user.companyId);
+      const emptyPickup = { city: "", state: "", facilityName: "" };
+      const emptyDropoff = { city: "", state: "", facilityName: "" };
+      const pickupLocation = quote.pickup ?? emptyPickup;
+      const dropoffLocation = quote.dropoff ?? emptyDropoff;
+      const validUntil = quote.validUntil ?? new Date().toISOString();
+      const loadNumber = companyData
+        ? generateNextLoadNumber(companyData, selectedBroker?.name ?? "")
+        : `LD-${Date.now()}`;
 
-    const newLoad: LoadData = {
-      id: uuidv4(),
-      bookingId: newBooking.id,
-      quoteId,
-      companyId: user.companyId,
-      driverId: "", // Unassigned
-      loadNumber: loadNumber,
-      status: "draft",
-      carrierRate: quote.totalRate || 0,
-      driverPay: 0,
-      pickupDate: quote.validUntil || new Date().toISOString(),
-      freightType: quote.equipmentType || "Intermodal",
-      legs: [
-        {
-          id: uuidv4(),
-          type: "Pickup",
-          location: {
-            ...pickupLocation,
-            facilityName: pickupLocation.facilityName || "",
+      const newLoad: LoadData = {
+        id: uuidv4(),
+        bookingId: newBooking.id,
+        quoteId,
+        companyId: user.companyId,
+        driverId: "", // Unassigned
+        loadNumber: loadNumber,
+        status: "draft",
+        carrierRate: quote.totalRate || 0,
+        driverPay: 0,
+        pickupDate: quote.validUntil || new Date().toISOString(),
+        freightType: quote.equipmentType || "Intermodal",
+        legs: [
+          {
+            id: uuidv4(),
+            type: "Pickup",
+            location: {
+              ...pickupLocation,
+              facilityName: pickupLocation.facilityName || "",
+            },
+            date: validUntil,
+            completed: false,
           },
-          date: validUntil,
-          completed: false,
-        },
-        {
-          id: uuidv4(),
-          type: "Dropoff",
-          location: {
-            ...dropoffLocation,
-            facilityName: dropoffLocation.facilityName || "",
+          {
+            id: uuidv4(),
+            type: "Dropoff",
+            location: {
+              ...dropoffLocation,
+              facilityName: dropoffLocation.facilityName || "",
+            },
+            date: validUntil,
+            completed: false,
           },
-          date: validUntil,
-          completed: false,
-        },
-      ],
-      pickup: pickupLocation,
-      dropoff: dropoffLocation,
-      createdAt: Date.now(),
-      version: 1,
-    };
-    await saveLoad(newLoad, user);
+        ],
+        pickup: pickupLocation,
+        dropoff: dropoffLocation,
+        createdAt: Date.now(),
+        version: 1,
+      };
+      await saveLoad(newLoad, user);
 
-    setStep("confirmation");
-    setLoading(false);
+      setStep("confirmation");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -682,7 +697,7 @@ export const BookingPortal: React.FC<Props> = ({
                   ) : (
                     <ClipboardCheck className="w-4 h-4" />
                   )}
-                  Finalize Professional Quote
+                  {loading ? "Saving..." : "Finalize Professional Quote"}
                 </button>
               </div>
             </div>
@@ -787,7 +802,9 @@ export const BookingPortal: React.FC<Props> = ({
                       ) : (
                         <ClipboardCheck className="w-5 h-5" />
                       )}
-                      Accept Quote & Convert to Booking
+                      {loading
+                        ? "Converting..."
+                        : "Accept Quote & Convert to Booking"}
                     </button>
                   ) : (
                     <div className="w-full py-6 bg-slate-900 border border-slate-800 rounded-3xl text-slate-500 font-black uppercase tracking-[0.2em] text-xs flex flex-col items-center gap-2 opacity-60">

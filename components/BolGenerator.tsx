@@ -163,6 +163,7 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
   );
 
   const [terms, setTerms] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success" | "info";
@@ -174,7 +175,7 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
     setter(timeStr);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!driverSig) {
       setToast({ message: "Driver signature is required.", type: "error" });
       return;
@@ -194,7 +195,12 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
       timeLoadingEnd: timeEnd,
       termsAccepted: terms,
     };
-    onSave(bolData);
+    setIsSubmitting(true);
+    try {
+      await Promise.resolve(onSave(bolData));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -479,10 +485,11 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
           ) : (
             <button
               onClick={handleSave}
-              disabled={!terms || !driverSig}
+              disabled={!terms || !driverSig || isSubmitting}
               className="px-6 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded text-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4" /> Save & Attach
+              <Save className="w-4 h-4" />{" "}
+              {isSubmitting ? "Saving..." : "Save & Attach"}
             </button>
           )}
         </div>

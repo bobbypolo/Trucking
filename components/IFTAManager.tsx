@@ -53,6 +53,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
     type: "success" | "error" | "info";
   } | null>(null);
   const [confirmLedger, setConfirmLedger] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -92,9 +93,14 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
 
   const handleSaveMileage = async () => {
     if (!newEntry.stateCode || !newEntry.miles || !newEntry.truckId) return;
-    await saveMileageEntry(newEntry);
-    setShowAddMileage(false);
-    loadData();
+    setIsSubmitting(true);
+    try {
+      await saveMileageEntry(newEntry);
+      setShowAddMileage(false);
+      loadData();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -526,9 +532,10 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               </button>
               <button
                 onClick={handleSaveMileage}
-                className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                disabled={isSubmitting}
+                className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save Record
+                {isSubmitting ? "Saving..." : "Save Record"}
               </button>
             </div>
           </div>

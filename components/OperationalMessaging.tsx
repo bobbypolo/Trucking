@@ -102,6 +102,7 @@ export const OperationalMessaging: React.FC<Props> = ({
   ]);
   const [isAddingTask, setIsAddingTask] = useState(false);
   const [newTaskText, setNewTaskText] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success" | "info";
@@ -147,6 +148,7 @@ export const OperationalMessaging: React.FC<Props> = ({
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !selectedThreadId) return;
+    setIsSubmitting(true);
     const draft: Message = {
       id: Math.random().toString(36).substr(2, 9),
       loadId: String(selectedThreadId).replace("inc-", ""),
@@ -165,6 +167,8 @@ export const OperationalMessaging: React.FC<Props> = ({
         message: "Message could not be delivered. Please try again.",
         type: "error",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -543,8 +547,9 @@ export const OperationalMessaging: React.FC<Props> = ({
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!messageText.trim()}
+                    disabled={!messageText.trim() || isSubmitting}
                     className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 disabled:opacity-50 disabled:bg-slate-800 transition-all"
+                    title={isSubmitting ? "Sending..." : "Send"}
                   >
                     <Send className="w-5 h-5" />
                   </button>

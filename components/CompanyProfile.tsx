@@ -91,6 +91,7 @@ export const CompanyProfile: React.FC<Props> = ({
     { type: string; time: string; date: string; status: string }[]
   >([]);
   const [timeLogsLoading, setTimeLogsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isAdmin =
     user.role === "admin" ||
@@ -173,9 +174,13 @@ export const CompanyProfile: React.FC<Props> = ({
   };
 
   const handleSaveCompany = async () => {
-    if (company && isAdmin) {
+    if (!company || !isAdmin) return;
+    setIsSubmitting(true);
+    try {
       await updateCompany(company);
       showMsg("Save Changes.", 4000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -274,9 +279,11 @@ export const CompanyProfile: React.FC<Props> = ({
           {isAdmin && (
             <button
               onClick={handleSaveCompany}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all"
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4" /> Save Changes
+              <Save className="w-4 h-4" />{" "}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           )}
         </div>

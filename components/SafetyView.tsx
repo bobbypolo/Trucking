@@ -134,12 +134,14 @@ export const SafetyView: React.FC<Props> = ({
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [feedback, showFeedback, clearFeedback] =
-    useAutoFeedback<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<
+    string | null
+  >(null);
   const [showForm, setShowForm] = useState<
     "asset" | "maintenance" | "quiz" | "incident" | "compliance" | null
   >(null);
   const [formData, setFormData] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadPayload = useCallback(async () => {
     setIsLoading(true);
@@ -752,9 +754,8 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Open Tickets",
-                  value: serviceTickets.filter(
-                    (t) => t.status !== "Closed",
-                  ).length,
+                  value: serviceTickets.filter((t) => t.status !== "Closed")
+                    .length,
                   color: "text-blue-500",
                 },
                 {
@@ -1267,7 +1268,9 @@ export const SafetyView: React.FC<Props> = ({
             </div>
             <div className="p-8 border-t border-slate-800 bg-slate-950/50">
               <button
+                disabled={isSubmitting}
                 onClick={async () => {
+                  setIsSubmitting(true);
                   try {
                     if (showForm === "asset")
                       await registerAsset(user.companyId, formData, user);
@@ -1345,11 +1348,15 @@ export const SafetyView: React.FC<Props> = ({
                     showFeedback(
                       `Failed to save ${showForm}. Please try again.`,
                     );
+                  } finally {
+                    setIsSubmitting(false);
                   }
                 }}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Submit {showForm.replace("_", " ")}
+                {isSubmitting
+                  ? "Submitting..."
+                  : `Submit ${showForm?.replace("_", " ")}`}
               </button>
             </div>
           </div>

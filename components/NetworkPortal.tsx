@@ -107,6 +107,7 @@ export const NetworkPortal: React.FC<Props> = ({
   });
 
   const [equipmentAssets, setEquipmentAssets] = useState<EquipmentAsset[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -118,6 +119,7 @@ export const NetworkPortal: React.FC<Props> = ({
   };
 
   const handleSave = async (dataToSave: Partial<NetworkParty>) => {
+    setIsSubmitting(true);
     try {
       await saveParty({ ...dataToSave, company_id: companyId } as any);
       await loadData();
@@ -125,6 +127,8 @@ export const NetworkPortal: React.FC<Props> = ({
       setWizardStep(1);
     } catch (e) {
       setToast({ message: "Failed to save party", type: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1552,9 +1556,11 @@ export const NetworkPortal: React.FC<Props> = ({
                   ) : (
                     <button
                       onClick={() => handleSave(formData)}
-                      className="px-12 py-5 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-green-900/20 active:scale-95 transition-all flex items-center gap-3"
+                      disabled={isSubmitting}
+                      className="px-12 py-5 bg-green-600 hover:bg-green-500 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl shadow-green-900/20 active:scale-95 transition-all flex items-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      Commit to Registry <CheckCircle className="w-4 h-4" />
+                      {isSubmitting ? "Saving..." : "Commit to Registry"}{" "}
+                      <CheckCircle className="w-4 h-4" />
                     </button>
                   )}
                 </div>
@@ -2260,9 +2266,10 @@ export const NetworkPortal: React.FC<Props> = ({
                   setActiveModal("NONE");
                   setQuickFormData({});
                 }}
-                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all"
+                disabled={isSubmitting}
+                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.25rem] text-[10px] font-black uppercase tracking-widest shadow-xl shadow-blue-500/20 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Confirm Injection
+                {isSubmitting ? "Saving..." : "Confirm Injection"}
               </button>
             </div>
           </div>

@@ -49,6 +49,7 @@ export const LoadSetupModal: React.FC<Props> = ({
     message: string;
     type: "error" | "success" | "info";
   } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -67,10 +68,12 @@ export const LoadSetupModal: React.FC<Props> = ({
     }
   }, [selectedBrokerId]);
 
-  const handleContinue = (forcePhoneOrder: boolean = false) => {
+  const handleContinue = async (forcePhoneOrder: boolean = false) => {
     if (selectedDriverId && selectedBrokerId) {
-      if (forcePhoneOrder || isPhoneOrder) {
-        getCompany(currentUser.companyId).then((company) => {
+      setIsSubmitting(true);
+      try {
+        if (forcePhoneOrder || isPhoneOrder) {
+          const company = await getCompany(currentUser.companyId);
           const broker = brokers.find((b) => b.id === selectedBrokerId);
           if (company && broker) {
             const newLoadNumber = generateNextLoadNumber(company, broker.name);
@@ -88,9 +91,11 @@ export const LoadSetupModal: React.FC<Props> = ({
               callNotes,
             );
           }
-        });
-      } else {
-        onContinue(selectedBrokerId, selectedDriverId);
+        } else {
+          onContinue(selectedBrokerId, selectedDriverId);
+        }
+      } finally {
+        setIsSubmitting(false);
       }
     } else {
       setToast({
@@ -188,19 +193,26 @@ export const LoadSetupModal: React.FC<Props> = ({
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => handleContinue(false)}
-              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
+              disabled={isSubmitting}
+              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Scan Doc <ArrowRight className="w-4 h-4" />
+              {isSubmitting ? "Loading..." : "Scan Doc"}{" "}
+              <ArrowRight className="w-4 h-4" />
             </button>
 
             <button
               onClick={() =>
                 isPhoneOrder ? handleContinue(true) : setIsPhoneOrder(true)
               }
-              className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20"
+              disabled={isSubmitting}
+              className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <PhoneCall className="w-4 h-4" />{" "}
-              {isPhoneOrder ? "Create Order" : "Phone Order"}
+              {isSubmitting
+                ? "Creating..."
+                : isPhoneOrder
+                  ? "Create Order"
+                  : "Phone Order"}
             </button>
           </div>
 

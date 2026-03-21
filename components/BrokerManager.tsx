@@ -57,6 +57,7 @@ export const BrokerManager: React.FC<Props> = ({
     null,
   );
   const [activeTab, setActiveTab] = useState<"My" | "All">("My");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New State for Chassis Form
   const [chassisForm, setChassisForm] = useState<Partial<ApprovedChassis>>({
@@ -85,10 +86,15 @@ export const BrokerManager: React.FC<Props> = ({
   }, [brokers, searchTerm]);
 
   const handleSave = async (broker: Broker) => {
-    await saveBroker(broker);
-    loadData();
-    if (onSave) onSave(broker);
-    setShowForm(false);
+    setIsSubmitting(true);
+    try {
+      await saveBroker(broker);
+      loadData();
+      if (onSave) onSave(broker);
+      setShowForm(false);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleAddChassis = () => {
@@ -606,9 +612,10 @@ export const BrokerManager: React.FC<Props> = ({
               </button>
               <button
                 onClick={() => handleSave(editingBroker as Broker)}
-                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 transition-all active:scale-95"
+                disabled={isSubmitting}
+                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save Entity Profile
+                {isSubmitting ? "Saving..." : "Save Entity Profile"}
               </button>
             </div>
           </div>

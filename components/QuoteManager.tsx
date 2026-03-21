@@ -72,6 +72,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
@@ -171,10 +172,15 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
   };
 
   const handleSaveQuote = async (data: Quote) => {
-    await saveQuote(data);
-    await loadData();
-    setActiveView("pipeline");
-    setSelectedQuote(null);
+    setIsSubmitting(true);
+    try {
+      await saveQuote(data);
+      await loadData();
+      setActiveView("pipeline");
+      setSelectedQuote(null);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleConvert = async (quote: Quote) => {
@@ -921,9 +927,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
                           <button
                             onClick={() => handleSaveQuote(selectedQuote)}
-                            className="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-black uppercase tracking-[0.3em] text-[10px] shadow-lg hover:shadow-yellow-500/20 active:scale-95 transition-all"
+                            disabled={isSubmitting}
+                            className="w-full py-4 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-black uppercase tracking-[0.3em] text-[10px] shadow-lg hover:shadow-yellow-500/20 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                           >
-                            Save & Update
+                            {isSubmitting ? "Saving..." : "Save & Update"}
                           </button>
                         </div>
                       </div>
@@ -1357,24 +1364,32 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 <button
                   onClick={async () => {
                     if (selectedQuote) {
-                      const quoteWithFinancials = {
-                        ...selectedQuote,
-                        discount: 0,
-                        commission: selectedQuote.linehaul * 0.1,
-                        estimatedDriverPay: selectedQuote.linehaul * 0.7,
-                        companyCostFactor: 50,
-                        status: "Draft" as QuoteStatus,
-                      };
-                      await saveQuote(quoteWithFinancials);
-                      await loadData();
-                      setSelectedQuote(quoteWithFinancials);
-                      setActiveView("details");
+                      setIsSubmitting(true);
+                      try {
+                        const quoteWithFinancials = {
+                          ...selectedQuote,
+                          discount: 0,
+                          commission: selectedQuote.linehaul * 0.1,
+                          estimatedDriverPay: selectedQuote.linehaul * 0.7,
+                          companyCostFactor: 50,
+                          status: "Draft" as QuoteStatus,
+                        };
+                        await saveQuote(quoteWithFinancials);
+                        await loadData();
+                        setSelectedQuote(quoteWithFinancials);
+                        setActiveView("details");
+                      } finally {
+                        setIsSubmitting(false);
+                      }
                     }
                   }}
-                  className="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl shadow-blue-500/30 transition-all active:scale-95 flex items-center gap-4 group"
+                  disabled={isSubmitting}
+                  className="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl shadow-blue-500/30 transition-all active:scale-95 flex items-center gap-4 group disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   <CheckCircle2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                  Initialize & Engineering Reveal
+                  {isSubmitting
+                    ? "Saving..."
+                    : "Initialize & Engineering Reveal"}
                 </button>
               </div>
             </div>
