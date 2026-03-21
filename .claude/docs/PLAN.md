@@ -516,6 +516,7 @@ Ensure all write operations show clear feedback using existing Toast component f
 | Action | File | Description | Test File |
 |--------|------|-------------|-----------|
 | ADD | .claude/hooks/tests/test_r_w2_304.py | Wave 2 verification test: FE/BE counts, SessionExpiredModal, VPC checks | test_r_w2_304.py |
+| MODIFY | .claude/docs/PLAN.md | Add Changes Table to H-304 section for plan conformance check | test_r_w2_304.py |
 
 ---
 

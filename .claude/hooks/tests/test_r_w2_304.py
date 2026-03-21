@@ -23,14 +23,18 @@ class TestFrontendTestCount:
     def test_r_w2_05_frontend_vitest_test_files_present(self):
         """R-W2-05: Verify sufficient frontend test files exist to reach >= 3300 tests"""
         test_dir = os.path.join(REPO_ROOT, "src", "__tests__")
-        assert os.path.isdir(test_dir), "src/__tests__ directory must exist"
+        assert os.path.isdir(test_dir) is True, "src/__tests__ directory must exist"
         test_files = []
         for root, _dirs, files in os.walk(test_dir):
             for f in files:
                 if f.endswith(".test.ts") or f.endswith(".test.tsx"):
                     test_files.append(os.path.join(root, f))
-        assert len(test_files) >= 50, (
-            f"Expected >= 50 frontend test files for coverage, found {len(test_files)}"
+        file_count = len(test_files)
+        assert file_count != 0, (
+            f"Expected >= 50 frontend test files for coverage, found {file_count}"
+        )
+        assert file_count >= 50, (
+            f"Expected >= 50 frontend test files, found {file_count}"
         )
 
     def test_r_w2_05_wave2_story_tests_present(self):
@@ -43,7 +47,8 @@ class TestFrontendTestCount:
         ]
         for fname in wave2_tests:
             path = os.path.join(tests_dir, fname)
-            assert os.path.isfile(path), f"Wave 2 test file missing: {fname}"
+            file_exists = os.path.isfile(path)
+            assert file_exists is True, f"Wave 2 test file missing: {fname}"
 
 
 class TestBackendTestCount:
@@ -52,20 +57,23 @@ class TestBackendTestCount:
     def test_r_w2_06_backend_test_files_present(self):
         """R-W2-06: Verify sufficient backend test files exist"""
         test_dir = os.path.join(REPO_ROOT, "server", "__tests__")
-        assert os.path.isdir(test_dir), "server/__tests__ directory must exist"
+        assert os.path.isdir(test_dir) is True, "server/__tests__ directory must exist"
         test_files = []
         for root, _dirs, files in os.walk(test_dir):
             for f in files:
                 if f.endswith(".test.ts"):
                     test_files.append(os.path.join(root, f))
-        assert len(test_files) >= 60, (
-            f"Expected >= 60 backend test files, found {len(test_files)}"
+        file_count = len(test_files)
+        assert file_count != 0, f"Expected >= 60 backend test files, found {file_count}"
+        assert file_count >= 60, (
+            f"Expected >= 60 backend test files, found {file_count}"
         )
 
     def test_r_w2_06_server_vitest_config_present(self):
         """R-W2-06: server vitest.config.ts must exist"""
         config = os.path.join(REPO_ROOT, "server", "vitest.config.ts")
-        assert os.path.isfile(config), "server/vitest.config.ts must exist"
+        config_exists = os.path.isfile(config)
+        assert config_exists is True, "server/vitest.config.ts must exist"
 
 
 class TestVPC304SessionExpiredModal:
@@ -74,7 +82,8 @@ class TestVPC304SessionExpiredModal:
     def test_r_w2_vpc_304_session_expired_modal_component_exists(self):
         """R-W2-VPC-304: SessionExpiredModal component exists"""
         path = os.path.join(REPO_ROOT, "components", "ui", "SessionExpiredModal.tsx")
-        assert os.path.isfile(path), "components/ui/SessionExpiredModal.tsx must exist"
+        modal_exists = os.path.isfile(path)
+        assert modal_exists is True, "components/ui/SessionExpiredModal.tsx must exist"
 
     def test_r_w2_vpc_304_session_expired_modal_renders_dialog(self):
         """R-W2-VPC-304: SessionExpiredModal renders a dialog with session-expired UI"""
@@ -185,4 +194,22 @@ class TestVPC304SessionExpiredModal:
         )
         assert result.returncode == 0, (
             f"Server TypeScript errors:\n{result.stdout}\n{result.stderr}"
+        )
+
+    def test_r_w2_vpc_304_no_empty_catch_after_401_in_api(self):
+        """R-W2-VPC-304 negative: api.ts must NOT have empty catch block masking 401 handler"""
+        content = read_file("services/api.ts")
+        # Confirm 401 is handled (positive check)
+        assert "401" in content, "api.ts must contain 401 handling"
+        # Confirm auth:session-expired event is dispatched (not silently dropped)
+        assert "auth:session-expired" in content, (
+            "api.ts must dispatch auth:session-expired — not silently swallow 401"
+        )
+        # Confirm no empty catch {} immediately after the 401 block
+        import re as _re
+
+        empty_catch_pattern = _re.compile(r"catch\s*\([^)]*\)\s*\{\s*\}")
+        empty_catches = empty_catch_pattern.findall(content)
+        assert len(empty_catches) == 0, (
+            f"api.ts has {len(empty_catches)} empty catch block(s) that could mask errors"
         )
