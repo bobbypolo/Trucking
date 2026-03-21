@@ -30,3 +30,17 @@ def test_operational_messaging_call_session_guarded():
     assert "selectedLoad.dropoff.city" not in content, (
         "OperationalMessaging must not have unguarded selectedLoad.dropoff.city"
     )
+
+
+def test_operational_messaging_rejects_invalid_non_null_assertions():
+    """R-W1-01c: Non-null assertions on callSession must be replaced with safe access."""
+    # Tests R-W1-01c -- negative test: callSession!.id must not exist
+    from pathlib import Path
+    import os
+    path = Path(os.path.join(str(Path(__file__).resolve().parents[3]), 'components/OperationalMessaging.tsx'))
+    content = path.read_text(encoding='utf-8', errors='replace')
+    forbidden_patterns = ['callSession!.id', 'selectedLoad.pickup.city', 'selectedLoad.dropoff.city']
+    for pattern in forbidden_patterns:
+        assert pattern not in content, (
+            f'OperationalMessaging must not contain "{pattern}": guards required'
+        )

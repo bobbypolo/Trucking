@@ -52,3 +52,23 @@ def test_quote_manager_pickup_dropoff_guarded():
         assert pattern not in content, (
             f"QuoteManager must not have unguarded '{pattern}'"
         )
+
+
+def test_quote_manager_rejects_unguarded_access_patterns():
+    """R-W1-01c: Unguarded access patterns on quote fields must not exist."""
+    # Tests R-W1-01c -- negative test: forbidden patterns must not appear
+    from pathlib import Path
+    import os
+    path = Path(os.path.join(str(Path(__file__).resolve().parents[3]), 'components/QuoteManager.tsx'))
+    content = path.read_text(encoding='utf-8', errors='replace')
+    forbidden_patterns = [
+        'quote.totalRate.toLocaleString()',
+        'selectedQuote.validUntil.split(',
+        'q.pickup.city',
+        'q.dropoff.city',
+        '{quote.pickup.city}',
+    ]
+    for pattern in forbidden_patterns:
+        assert pattern not in content, (
+            f'QuoteManager must not contain unguarded "{pattern}"'
+        )
