@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { CallSession, WorkspaceSession, OperationalEvent, KCIRequest, RecordLink, EntityType } from '../types';
+import { LoadingSkeleton } from './ui/LoadingSkeleton';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './ui/EmptyState';
 
 interface CommsOverlayProps {
     session: WorkspaceSession;
@@ -20,6 +23,9 @@ interface CommsOverlayProps {
     setOverlayState: (state: 'floating' | 'docked' | 'collapsed') => void;
     user: { id: string, name: string };
     allLoads: any[];
+    isLoading?: boolean;
+    loadError?: string | null;
+    onRetryLoad?: () => void;
 }
 
 export const CommsOverlay: React.FC<CommsOverlayProps> = ({
@@ -33,7 +39,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
     setOverlayState,
     user,
     allLoads,
-    onLinkSessionToRecord
+    onLinkSessionToRecord,
+    isLoading,
+    loadError,
+    onRetryLoad
 }) => {
     const [activeTab, setActiveTab] = useState<'notes' | 'messages' | 'requests' | 'tasks'>('notes');
     const [noteText, setNoteText] = useState('');
@@ -305,25 +314,26 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 bg-slate-950/40">
-                {!activeCallSession && (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-                        <div className="w-20 h-20 rounded-full bg-blue-600/5 flex items-center justify-center border border-blue-500/10">
-                            <Phone className="w-8 h-8 text-blue-500/30" />
-                        </div>
-                        <div className="space-y-2">
-                            <h4 className="text-[13px] font-black text-white uppercase tracking-wider">No Active Interaction</h4>
-                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-relaxed px-10">Start an interaction to begin logging timeline events</p>
-                        </div>
-                        <button
-                            onClick={startSession}
-                            className="px-8 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-blue-500 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-900/40 flex items-center gap-3"
-                        >
-                            <Plus className="w-4 h-4" /> Start Interaction
-                        </button>
+                {isLoading && (
+                    <div className="h-full flex items-center justify-center">
+                        <LoadingSkeleton variant="list" count={3} />
                     </div>
                 )}
+                {!isLoading && loadError && (
+                    <div className="h-full flex items-center justify-center">
+                        <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+                    </div>
+                )}
+                {!isLoading && !loadError && !activeCallSession && (
+                    <EmptyState
+                        icon={<Phone className="w-12 h-12" />}
+                        title="No Active Interaction"
+                        description="Start an interaction to begin logging timeline events"
+                        action={{ label: "Start Interaction", onClick: startSession }}
+                    />
+                )}
 
-                {activeCallSession && activeTab === 'notes' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'notes' && (
                     <div className="h-full flex flex-col">
                         <div className="flex-1 space-y-4 mb-4">
                             {/* Previous session events would go here - for now just show current draft */}
@@ -355,7 +365,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                     </div>
                 )}
 
-                {activeCallSession && activeTab === 'messages' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'messages' && (
                     <div className="h-full flex flex-col">
                         <div className="flex-1 space-y-4 mb-4 overflow-y-auto no-scrollbar">
                             {(allLoads.find(l => l.id === session.primaryContext?.id)?.messages || []).length === 0 ? (
@@ -401,7 +411,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                     </div>
                 )}
 
-                {activeCallSession && activeTab === 'requests' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'requests' && (
                     <div className="space-y-4">
                         <div className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl mb-6">
                             <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Context</h4>

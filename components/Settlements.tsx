@@ -43,6 +43,9 @@ import {
   getBills,
 } from "../services/financialService";
 import { v4 as uuidv4 } from "uuid";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   loads: LoadData[];
@@ -73,15 +76,27 @@ export const Settlements: React.FC<Props> = ({
     useAutoFeedback<string | null>(null);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
   const [bills, setBills] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const currentUser = getCurrentUser();
 
-  React.useEffect(() => {
-    const loadAccountingData = async () => {
+  const loadAccountingData = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
       const [sData, bData] = await Promise.all([getSettlements(), getBills()]);
       setSettlements(sData);
       setBills(bData);
-    };
+    } catch (err) {
+      console.error("[Settlements] Failed to load accounting data:", err);
+      setLoadError("Failed to load financial data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
     loadAccountingData();
   }, [feedback]);
 
@@ -315,18 +330,20 @@ export const Settlements: React.FC<Props> = ({
       )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar pb-24">
-        {activeTab === "payroll" && (
+        {isLoading && (
+          <LoadingSkeleton variant="table" count={5} />
+        )}
+        {!isLoading && loadError && (
+          <ErrorState message={loadError} onRetry={loadAccountingData} />
+        )}
+        {!isLoading && !loadError && activeTab === "payroll" && (
           <div className="max-w-6xl mx-auto space-y-4">
             {users.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-24 bg-slate-900/50 rounded-[3rem] border border-slate-800 border-dashed text-center">
-                <AlertOctagon className="w-16 h-16 text-slate-800 mb-6" />
-                <h3 className="text-xl font-black text-slate-700 uppercase tracking-tighter">
-                  System Data Syncing
-                </h3>
-                <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-2">
-                  Waiting for company personnel registry to synchronize.
-                </p>
-              </div>
+              <EmptyState
+                icon={<Users className="w-12 h-12" />}
+                title="No personnel found"
+                description="Waiting for company personnel registry to synchronize."
+              />
             )}
             {users.length > 0 && filteredPersonnel.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 bg-slate-900/50 rounded-[3rem] border border-slate-800 border-dashed text-center">
@@ -614,7 +631,7 @@ export const Settlements: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "invoices" && (
+        {!isLoading && !loadError && activeTab === "invoices" && (
           <div className="max-w-6xl mx-auto space-y-4">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">
@@ -713,7 +730,7 @@ export const Settlements: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "pnl" && (
+        {!isLoading && !loadError && activeTab === "pnl" && (
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[

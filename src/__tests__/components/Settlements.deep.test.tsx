@@ -21,7 +21,7 @@ describe("Settlements deep coverage", () => {
     it("shows empty deductions from service layer (no hardcoded demo items)", async () => {
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad()]} users={[makeDriver()]} />);
-      await user.click(screen.getByText("Test Driver"));
+      await user.click(await screen.findByText("Test Driver"));
       await waitFor(() => { expect(screen.getByText("Total Deductions")).toBeInTheDocument(); });
       // No hardcoded demo deduction items should appear
       expect(screen.queryByText("Occupational Accident Insurance")).not.toBeInTheDocument();
@@ -33,19 +33,19 @@ describe("Settlements deep coverage", () => {
     it("salary pay model", async () => {
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad({ driverId: "ds" })]} users={[makeDriver({ id: "ds", name: "Sal", payModel: "salary", payRate: 5000 })]} />);
-      await user.click(screen.getByText("Sal"));
+      await user.click(await screen.findByText("Sal"));
       await waitFor(() => { expect(screen.getByText("Gross Earnings")).toBeInTheDocument(); });
     });
     it("mileage pay model", async () => {
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad({ driverId: "dm" })]} users={[makeDriver({ id: "dm", name: "Mil", payModel: "mileage", payRate: 0.6 })]} />);
-      await user.click(screen.getByText("Mil"));
+      await user.click(await screen.findByText("Mil"));
       await waitFor(() => { expect(screen.getByText("Gross Earnings")).toBeInTheDocument(); });
     });
     it("default pay model fallback", async () => {
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad({ driverId: "dd" })]} users={[makeDriver({ id: "dd", name: "Def", payModel: undefined, payRate: undefined })]} />);
-      await user.click(screen.getByText("Def"));
+      await user.click(await screen.findByText("Def"));
       await waitFor(() => { expect(screen.getByText("Gross Earnings")).toBeInTheDocument(); });
     });
   });
@@ -55,7 +55,7 @@ describe("Settlements deep coverage", () => {
       const { getCurrentUser } = await import("../../../services/authService");
       (getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue({ id: "driver-1", role: "driver", companyId: "company-1", name: "Test Driver" });
       render(<Settlements loads={[makeLoad()]} users={[makeDriver(), makeDriver({ id: "other", name: "Other" })]} />);
-      expect(screen.getByText("Test Driver")).toBeInTheDocument();
+      await waitFor(() => { expect(screen.getByText("Test Driver")).toBeInTheDocument(); });
       expect(screen.queryByText("Other")).not.toBeInTheDocument();
     });
   });
@@ -87,7 +87,7 @@ describe("Settlements deep coverage", () => {
       const { getCurrentUser } = await import("../../../services/authService");
       (getCurrentUser as ReturnType<typeof vi.fn>).mockReturnValue({ id: "user-1", role: "admin", companyId: "company-1", name: "Admin" });
       render(<Settlements loads={[makeLoad()]} users={[{ id: "cust-1", companyId: "company-1", email: "c@t.com", name: "Customer", role: "customer" as any, onboardingStatus: "Completed", safetyScore: 0 }]} />);
-      expect(screen.getByText("No eligible personnel found")).toBeInTheDocument();
+      await waitFor(() => { expect(screen.getByText("No eligible personnel found")).toBeInTheDocument(); });
     });
   });
 
@@ -96,7 +96,7 @@ describe("Settlements deep coverage", () => {
       const { settleLoad } = await import("../../../services/storageService");
       const user = userEvent.setup();
       render(<Settlements loads={[makeLoad(), makeLoad({ id: "load-2", loadNumber: "LN-002", financialStatus: "Invoiced" })]} users={[makeDriver()]} />);
-      await user.click(screen.getByText("Test Driver"));
+      await user.click(await screen.findByText("Test Driver"));
       await waitFor(() => { expect(screen.getByText(/Authorize & Pay/)).toBeInTheDocument(); });
       await user.click(screen.getByText(/Authorize & Pay/));
       await waitFor(() => { expect(settleLoad).toHaveBeenCalledWith("load-1"); expect(settleLoad).toHaveBeenCalledWith("load-2"); });

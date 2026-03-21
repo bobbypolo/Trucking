@@ -6,6 +6,9 @@ import { generateInvoicePDF, saveLoad } from '../services/storageService';
 import { getCompany, getCurrentUser } from '../services/authService';
 import { ExportModal } from './ExportModal';
 import { v4 as uuidv4 } from 'uuid';
+import { LoadingSkeleton } from './ui/LoadingSkeleton';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './ui/EmptyState';
 
 interface Props {
     loads: LoadData[];
@@ -17,9 +20,12 @@ interface Props {
     canViewRates?: boolean;
     users?: User[];
     onOpenHub?: (tab: 'messaging', startCall?: boolean) => void;
+    isLoading?: boolean;
+    loadError?: string | null;
+    onRetryLoad?: () => void;
 }
 
-export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, selectedDriverId, onClearFilter, canViewRates = true, users = [], onOpenHub }) => {
+export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, selectedDriverId, onClearFilter, canViewRates = true, users = [], onOpenHub, isLoading, loadError, onRetryLoad }) => {
     const currentUser = getCurrentUser();
     const [filter, setFilter] = useState('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -91,7 +97,13 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-24">
-                {processedLoads.map(load => (
+                {isLoading && (
+                    <LoadingSkeleton variant="list" count={5} />
+                )}
+                {!isLoading && loadError && (
+                    <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+                )}
+                {!isLoading && !loadError && processedLoads.map(load => (
                     <div
                         key={load.id}
                         className={`bg-slate-900 p-4 rounded-2xl border ${load.isActionRequired
@@ -168,14 +180,12 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                         </div>
                     </div>
                 ))}
-                {processedLoads.length === 0 && (
-                    <div className="py-32 text-center space-y-6">
-                        <div className="w-24 h-24 bg-slate-900 rounded-[3rem] border border-slate-800 flex items-center justify-center mx-auto shadow-2xl"><Layers className="w-12 h-12 text-slate-800 animate-pulse" /></div>
-                        <div className="space-y-2">
-                            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-xs">No loads to show</p>
-                            <p className="text-slate-700 text-[10px] font-bold uppercase tracking-widest">No active manifests detected in local subspace</p>
-                        </div>
-                    </div>
+                {!isLoading && !loadError && processedLoads.length === 0 && (
+                    <EmptyState
+                        icon={<Layers className="w-12 h-12" />}
+                        title="No loads to show"
+                        description="No active manifests detected. Create a new load to get started."
+                    />
                 )}
             </div>
         </div>
