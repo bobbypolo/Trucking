@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   User,
   Lead,
@@ -97,7 +98,7 @@ export const BookingPortal: React.FC<Props> = ({
 
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [feedback, setFeedback] = useState<{
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<{
     msg: string;
     type: "success" | "error";
   } | null>(null);
@@ -148,17 +149,15 @@ export const BookingPortal: React.FC<Props> = ({
         totalRate: data.carrierRate || 0,
       }));
       setStep("quote");
-      setFeedback({
+      showFeedback({
         msg: "Intelligence extracted successfully.",
         type: "success",
-      });
-      setTimeout(() => setFeedback(null), 4000);
+      }, 4000);
     } catch (error) {
-      setFeedback({
+      showFeedback({
         msg: "Extraction failed. Manual entry required.",
         type: "error",
-      });
-      setTimeout(() => setFeedback(null), 4000);
+      }, 4000);
       setStep("quote");
     } finally {
       setIsScanning(false);
@@ -167,10 +166,10 @@ export const BookingPortal: React.FC<Props> = ({
 
   const createQuote = async () => {
     if (!selectedBroker || !quote.totalRate) {
-      setFeedback({
+      showFeedback({
         msg: "Missing broker or rate information.",
         type: "error",
-      });
+      }, 5000);
       return;
     }
     setLoading(true);
@@ -294,7 +293,7 @@ export const BookingPortal: React.FC<Props> = ({
             )}
             {feedback.msg}
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback}>
             <X className="w-4 h-4" />
           </button>
         </div>

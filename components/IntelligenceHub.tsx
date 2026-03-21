@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import { API_URL } from "../services/config";
 import {
   Gauge,
@@ -416,7 +417,8 @@ const IntelligenceHub: React.FC<{
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showDocForm, setShowDocForm] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, showSuccessMessage, clearSuccessMessage] =
+    useAutoFeedback<string | null>(null);
   const [activeTimelineFilter, setActiveTimelineFilter] = useState<
     | "ALL"
     | "MESSAGE"
@@ -494,7 +496,7 @@ const IntelligenceHub: React.FC<{
     }
 
     setShowRepowerPanel(false);
-    setSuccessMessage(
+    showSuccessMessage(
       `Repower Handoff successful: ${driverName} is now assigned. Stakeholders notified.`,
     );
 
@@ -635,7 +637,7 @@ const IntelligenceHub: React.FC<{
     const queues = await getTriageQueues();
     setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
 
-    setSuccessMessage(`Interaction Started: ${newSession.id}`);
+    showSuccessMessage(`Interaction Started: ${newSession.id}`);
   };
 
   const wrapUpInteraction = async () => {
@@ -695,7 +697,7 @@ const IntelligenceHub: React.FC<{
     setInteractionState("WRAP-UP");
     if (setActiveCallSession) setActiveCallSession(updatedSession);
 
-    setSuccessMessage(
+    showSuccessMessage(
       `Interaction wrapped & audit log created: ${sessionToWrap.id}`,
     );
 
@@ -745,15 +747,15 @@ const IntelligenceHub: React.FC<{
     };
 
     await handleActionLogging(event);
-    setSuccessMessage(`Note attached to interaction: ${currentCallSession.id}`);
+    showSuccessMessage(`Note attached to interaction: ${currentCallSession.id}`);
   };
 
   const handleCreateRequest = async () => {
     if (!requestData.attachedRecord) {
-      setSuccessMessage(
+      showSuccessMessage(
         "ERROR: Strategic Attachment Required to process request.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -827,7 +829,7 @@ const IntelligenceHub: React.FC<{
     });
 
     setShowRequestForm(false);
-    setSuccessMessage(`Request Created: ${newRequest.id}`);
+    showSuccessMessage(`Request Created: ${newRequest.id}`);
 
     // Refresh queues
     const queues = await getTriageQueues();
@@ -869,11 +871,11 @@ const IntelligenceHub: React.FC<{
           score: bestMatch.matchScore,
         },
       });
-      setSuccessMessage(
+      showSuccessMessage(
         `Auto-Assigned ${bestMatch.driverName} to Load #${load.loadNumber}`,
       );
     } else {
-      setSuccessMessage(
+      showSuccessMessage(
         `No high-confidence match found for Load #${load.loadNumber}`,
       );
     }
@@ -1030,10 +1032,10 @@ const IntelligenceHub: React.FC<{
 
   const handleSafetyEscalate = async (load?: LoadData) => {
     if (!load && !activeRecord) {
-      setSuccessMessage(
+      showSuccessMessage(
         "SYSTEM: Protocol requires an active record context for safety escalation.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1073,7 +1075,7 @@ const IntelligenceHub: React.FC<{
       message: `Dispatcher ${user.name} escalated Load #${load?.loadNumber || activeRecord?.label} to Safety`,
       payload: { category: "Escalation", action: "Safety Handoff" },
     });
-    setSuccessMessage(
+    showSuccessMessage(
       "SAFETY PROTOCOL TRIGGERED: Handoff Created for Safety & Compliance",
     );
     fetchQueues();
@@ -1090,7 +1092,7 @@ const IntelligenceHub: React.FC<{
         item.id,
         type as EntityType,
       );
-      setSuccessMessage(
+      showSuccessMessage(
         `${type} ${item.name || item.label || item.id} linked to active call.`,
       );
       return;
@@ -1139,17 +1141,16 @@ const IntelligenceHub: React.FC<{
       setActive360Data(data);
     }
 
-    setSuccessMessage(
+    showSuccessMessage(
       `${item.name || item.label || item.id} attached to ${activeRecord.label}`,
     );
   };
 
   const handleSystemSeed = async () => {
-    setSuccessMessage("COMMENCING SYSTEM SEEDING...");
+    showSuccessMessage("COMMENCING SYSTEM SEEDING...");
     await seedMockData(user);
     await fetchQueues();
-    setSuccessMessage("OPERATIONAL ENVIRONMENT READY - SYSTEM HOT");
-    setTimeout(() => setSuccessMessage(null), 4000);
+    showSuccessMessage("OPERATIONAL ENVIRONMENT READY - SYSTEM HOT", 4000);
   };
   const [callData, setCallData] = useState({
     type: "Driver",
@@ -1194,15 +1195,10 @@ const IntelligenceHub: React.FC<{
       payload: { category: "Linking", sessionId, recordId, recordType },
     });
 
-    setSuccessMessage(`Session Successfully Linked to Record`);
+    showSuccessMessage(`Session Successfully Linked to Record`);
   };
 
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
+  // Auto-clear is now handled by useAutoFeedback hook
 
   const activeThread = useMemo(() => {
     if (!selectedThreadId) return null;
@@ -1287,10 +1283,10 @@ const IntelligenceHub: React.FC<{
 
   const sendNotificationJob = async () => {
     if (selectedContacts.length === 0) {
-      setSuccessMessage(
+      showSuccessMessage(
         "PROTOCOL ERROR: Recipient selection required for broadcast.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1352,7 +1348,7 @@ const IntelligenceHub: React.FC<{
     }
 
     setShowNotifyPicker(false);
-    setSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
+    showSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
 
     const data = await getRecord360Data(activeRecord.type, activeRecord.id);
     setActive360Data(data);
@@ -1371,10 +1367,10 @@ const IntelligenceHub: React.FC<{
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
     if (!selectedVendorForRoadside || !loadId) {
-      setSuccessMessage(
+      showSuccessMessage(
         "SYSTEM ERROR: Valid vendor selection required for roadside dispatch.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1458,10 +1454,10 @@ const IntelligenceHub: React.FC<{
 
     await fetchQueues();
     setShowRoadsideForm(false);
-    setSuccessMessage(
+    showSuccessMessage(
       `Roadside Assistance Dispatched: ${selectedVendorForRoadside.name}`,
+      4000,
     );
-    setTimeout(() => setSuccessMessage(null), 4000);
 
     const data = await getRecord360Data(activeRecord.type, activeRecord.id);
     setActive360Data(data);
@@ -1470,7 +1466,7 @@ const IntelligenceHub: React.FC<{
   const handleEscalate = async () => {
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    setSuccessMessage("Escalating to Leadership...");
+    showSuccessMessage("Escalating to Leadership...");
 
     await handleActionLogging({
       id: uuidv4(),
@@ -1518,7 +1514,7 @@ const IntelligenceHub: React.FC<{
 
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    setSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
+    showSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
 
     await handleActionLogging({
       id: uuidv4(),
@@ -1554,7 +1550,7 @@ const IntelligenceHub: React.FC<{
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
     if (!loadId) {
-      setSuccessMessage("No related load found to verify drop");
+      showSuccessMessage("No related load found to verify drop");
       return;
     }
 
@@ -1583,8 +1579,7 @@ const IntelligenceHub: React.FC<{
       await saveIncident(updated);
     }
 
-    setSuccessMessage("Trailer Drop Verified");
-    setTimeout(() => setSuccessMessage(null), 3000);
+    showSuccessMessage("Trailer Drop Verified", 3000);
   };
 
   // Mock stats
@@ -1716,7 +1711,7 @@ const IntelligenceHub: React.FC<{
     await saveCallSession(newCall);
     const queues = await getTriageQueues();
     setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
-    setSuccessMessage(
+    showSuccessMessage(
       `Tactical Inbound Initiated: ${randomCaller.name} (${randomCaller.role})`,
     );
   };
@@ -1890,7 +1885,7 @@ const IntelligenceHub: React.FC<{
 
       if (action === "SNOOZE") {
         setSnoozedIds((prev) => new Set([...prev, item.id]));
-        setSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
+        showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
       } else if (action === "TAKE") {
         if (type === "INCIDENT") {
           const incs = await getIncidents();
@@ -1908,7 +1903,7 @@ const IntelligenceHub: React.FC<{
           };
           await saveWorkItem(updatedItem);
         }
-        setSuccessMessage(`Record ${item.id} Assigned to You`);
+        showSuccessMessage(`Record ${item.id} Assigned to You`);
       } else if (action === "ESCALATE") {
         if (type === "INCIDENT") {
           const incs = await getIncidents();
@@ -1927,7 +1922,7 @@ const IntelligenceHub: React.FC<{
             await saveWorkItem(wi);
           }
         }
-        setSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+        showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
       }
 
       await handleActionLogging({
@@ -1951,7 +1946,7 @@ const IntelligenceHub: React.FC<{
       }
 
       await fetchQueues();
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // auto-cleared by useAutoFeedback
     };
 
     const priority =
@@ -2311,10 +2306,10 @@ const IntelligenceHub: React.FC<{
                             status: "AUTHORIZED",
                           },
                         });
-                        setSuccessMessage(
+                        showSuccessMessage(
                           "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
+                          4000,
                         );
-                        setTimeout(() => setSuccessMessage(null), 4000);
                       },
                     },
                   ]}
@@ -2446,7 +2441,9 @@ const IntelligenceHub: React.FC<{
                     setSelectedLoadForDetail(load);
                     setShowLoadDetail(true);
                   }}
-                  setSuccessMessage={setSuccessMessage}
+                  setSuccessMessage={(msg) =>
+                    msg === null ? clearSuccessMessage() : showSuccessMessage(msg)
+                  }
                 />
               )}
 
@@ -2489,7 +2486,7 @@ const IntelligenceHub: React.FC<{
                     onSaveIncident={async (inc) => {
                       await coreCreateIncident(inc);
                       await fetchQueues();
-                      setSuccessMessage(
+                      showSuccessMessage(
                         "CRISIS PROTOCOL INITIATED: Incident Logged & Triage Updated",
                       );
                     }}
@@ -2919,7 +2916,7 @@ const IntelligenceHub: React.FC<{
 
                   await fetchQueues();
                   setShowHandoffForm(false);
-                  setSuccessMessage(
+                  showSuccessMessage(
                     `Operational Handoff Committed to ${assignedUser.name}`,
                   );
                 }}
@@ -3017,8 +3014,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...callData },
                   });
                   setShowCallLogForm(false);
-                  setSuccessMessage("Operational Log Saved");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Operational Log Saved", 3000);
                 }}
                 className="w-full py-4 bg-teal-600 shadow-xl shadow-teal-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-teal-500 transition-all"
               >
@@ -3098,8 +3094,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...taskData, status: "PENDING" },
                   });
                   setShowTaskForm(false);
-                  setSuccessMessage("Task Created");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Task Created", 3000);
                 }}
                 className="w-full py-4 bg-orange-600 shadow-xl shadow-orange-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-orange-500 transition-all"
               >
@@ -3183,8 +3178,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...issueData, status: "OPEN" },
                   });
                   setShowIssueForm(false);
-                  setSuccessMessage("Issue Logged");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Issue Logged", 3000);
                 }}
                 className="w-full py-4 bg-red-600 shadow-xl shadow-red-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-red-500 transition-all"
               >
@@ -3500,7 +3494,7 @@ const IntelligenceHub: React.FC<{
                           onClick={() => {
                             setInteractionState("ACTIVE");
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Directing Link to ${provider.name}...`,
                             );
                           }}
@@ -3511,7 +3505,7 @@ const IntelligenceHub: React.FC<{
                         <button
                           onClick={() => {
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Opening Liaison Thread for ${provider.name}...`,
                             );
                           }}
@@ -3625,7 +3619,7 @@ const IntelligenceHub: React.FC<{
                           onClick={() => {
                             setInteractionState("ACTIVE");
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Directing Link to ${contact.name}...`,
                             );
                           }}
@@ -3636,7 +3630,7 @@ const IntelligenceHub: React.FC<{
                         <button
                           onClick={() => {
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Opening SMS Channel for ${contact.name}...`,
                             );
                           }}
@@ -3669,7 +3663,7 @@ const IntelligenceHub: React.FC<{
                       className="hidden"
                       accept=".csv"
                       onChange={() =>
-                        setSuccessMessage(
+                        showSuccessMessage(
                           "Import Simulated: 42 Contacts created",
                         )
                       }
@@ -3968,8 +3962,7 @@ const IntelligenceHub: React.FC<{
                     },
                   });
                   setShowDocForm(false);
-                  setSuccessMessage("BOL Successfully Uploaded to Depository");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("BOL Successfully Uploaded to Depository", 3000);
                 }}
                 className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-lg shadow-indigo-900/40 active:scale-95 transition-all outline-none"
               >

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   AlertTriangle,
   ShieldAlert,
@@ -125,6 +126,31 @@ export const CommandCenterView: React.FC<Props> = ({
   onNotify,
   setSuccessMessage,
 }) => {
+  // Managed feedback: auto-clears with cleanup on unmount, syncs to optional prop
+  const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (msgTimerRef.current !== null) {
+        clearTimeout(msgTimerRef.current);
+        msgTimerRef.current = null;
+      }
+    };
+  }, []);
+  const showManagedMessage = useCallback(
+    (msg: string | null, durationMs = 3000) => {
+      if (!setSuccessMessage) return;
+      if (msgTimerRef.current !== null) clearTimeout(msgTimerRef.current);
+      setSuccessMessage(msg);
+      msgTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) setSuccessMessage(null);
+        msgTimerRef.current = null;
+      }, durationMs);
+    },
+    [setSuccessMessage],
+  );
   const [localIncidents, setLocalIncidents] = useState<Incident[]>([]);
   const incidents = useMemo(() => {
     if (Array.isArray(propsIncidents) && propsIncidents.length > 0)
@@ -333,19 +359,15 @@ export const CommandCenterView: React.FC<Props> = ({
 
     // Integrated UI feedback for testing
     if (actionType === "REPOWER") {
-      if (setSuccessMessage) {
-        setSuccessMessage(
-          "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
-        );
-        setTimeout(() => setSuccessMessage(null), 4000);
-      }
+      showManagedMessage(
+        "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
+        4000,
+      );
     } else if (actionType === "ROADSIDE") {
-      if (setSuccessMessage) {
-        setSuccessMessage(
-          "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
-        );
-        setTimeout(() => setSuccessMessage(null), 4000);
-      }
+      showManagedMessage(
+        "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
+        4000,
+      );
     }
   };
 
@@ -481,12 +503,10 @@ export const CommandCenterView: React.FC<Props> = ({
                           icon: Layers,
                           color: "text-slate-400",
                           action: () => {
-                            if (setSuccessMessage) {
-                              setSuccessMessage(
-                                "Connecting record - select which item to link...",
-                              );
-                              setTimeout(() => setSuccessMessage(null), 3000);
-                            }
+                            showManagedMessage(
+                              "Connecting record - select which item to link...",
+                              3000,
+                            );
                           },
                         },
                       ].map((opt, idx) => (
@@ -1365,12 +1385,10 @@ export const CommandCenterView: React.FC<Props> = ({
                         </div>
                         <button
                           onClick={() => {
-                            if (setSuccessMessage) {
-                              setSuccessMessage(
-                                "SETTLEMENT: Redirecting to Unified Settlement Queue...",
-                              );
-                              setTimeout(() => setSuccessMessage(null), 3000);
-                            }
+                            showManagedMessage(
+                              "SETTLEMENT: Redirecting to Unified Settlement Queue...",
+                              3000,
+                            );
                           }}
                           className="px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
                         >

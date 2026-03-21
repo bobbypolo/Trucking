@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   User,
   Company,
@@ -81,7 +82,7 @@ export const CompanyProfile: React.FC<Props> = ({
     role: "driver",
     onboardingStatus: "Pending",
   });
-  const [msg, setMsg] = useState("");
+  const [msg, showMsg] = useAutoFeedback<string>({ clearValue: "" });
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockNotes, setClockNotes] = useState("");
@@ -152,8 +153,7 @@ export const CompanyProfile: React.FC<Props> = ({
     if (success !== undefined) {
       setIsClockedIn(true);
       setClockInTime(now);
-      setMsg("Clocked In Successfully.");
-      setTimeout(() => setMsg(""), 3000);
+      showMsg("Clocked In Successfully.", 3000);
     }
   };
 
@@ -168,16 +168,14 @@ export const CompanyProfile: React.FC<Props> = ({
       setClockInTime(null);
       setShowClockOutModal(false);
       setClockNotes("");
-      setMsg("Shift ended.");
-      setTimeout(() => setMsg(""), 3000);
+      showMsg("Shift ended.", 3000);
     }
   };
 
   const handleSaveCompany = async () => {
     if (company && isAdmin) {
       await updateCompany(company);
-      setMsg("Save Changes.");
-      setTimeout(() => setMsg(""), 4000);
+      showMsg("Save Changes.", 4000);
     }
   };
 
@@ -214,8 +212,7 @@ export const CompanyProfile: React.FC<Props> = ({
       operatingMode: mode,
       capabilityMatrix: CAPABILITY_PRESETS[mode],
     });
-    setMsg(`System reconfigured to ${mode} mode.`);
-    setTimeout(() => setMsg(""), 3000);
+    showMsg(`System reconfigured to ${mode} mode.`, 3000);
   };
 
   const freightOptions: {

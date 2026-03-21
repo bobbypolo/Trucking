@@ -5,6 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import {
@@ -133,16 +134,12 @@ export const SafetyView: React.FC<Props> = ({
   >(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] =
+    useAutoFeedback<string | null>(null);
   const [showForm, setShowForm] = useState<
     "asset" | "maintenance" | "quiz" | "incident" | "compliance" | null
   >(null);
   const [formData, setFormData] = useState<any>({});
-
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
 
   const loadPayload = useCallback(async () => {
     setIsLoading(true);
@@ -287,7 +284,7 @@ export const SafetyView: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback}>
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -5,6 +5,7 @@ import React, {
   Suspense,
   useCallback,
 } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { API_URL } from "../services/config";
@@ -149,31 +150,28 @@ const AccountingPortal: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] =
+    useAutoFeedback<string | null>(null);
   const [showBillForm, setShowBillForm] = useState(false);
   const [importType, setImportType] = useState<
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
   >(null);
 
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
-
   const handleRunEngine = async () => {
     const rule = automationRules.find((r) => r.action === "match_receipt");
     if (!rule || !rule.enabled) {
-      setFeedback("Fuel Matching rule is disabled or missing.");
+      showFeedback("Fuel Matching rule is disabled or missing.");
       return;
     }
 
-    setFeedback("Engine running: Scanning Vault for unlinked receipts...");
+    showFeedback("Engine running: Scanning Vault for unlinked receipts...");
 
     // Mocking the scan - in real life this pulls from getBills() and getVaultDocs()
     setTimeout(() => {
       const results = { matched: 12, orphaned: 2 };
-      setFeedback(
+      showFeedback(
         `Sync Complete: Auto-Matched ${results.matched} receipts. ${results.orphaned} require manual verification.`,
+        4000,
       );
     }, 1500);
   };
@@ -295,7 +293,7 @@ const AccountingPortal: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -600,7 +598,7 @@ const AccountingPortal: React.FC<Props> = ({
                             {inv.status === "Sent" && (
                               <button
                                 onClick={() =>
-                                  setFeedback(
+                                  showFeedback(
                                     `Sent collection reminder for ${inv.invoiceNumber}`,
                                   )
                                 }
@@ -715,7 +713,7 @@ const AccountingPortal: React.FC<Props> = ({
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() =>
-                              setFeedback(
+                              showFeedback(
                                 `Scheduled payment for bill ${bill.id.slice(0, 4)} on Friday`,
                               )
                             }
@@ -738,7 +736,7 @@ const AccountingPortal: React.FC<Props> = ({
                           {bill.status !== "Approved" && (
                             <button
                               onClick={() =>
-                                setFeedback(
+                                showFeedback(
                                   `Bill ${bill.id.slice(0, 4)} Approved`,
                                 )
                               }
@@ -966,7 +964,7 @@ const AccountingPortal: React.FC<Props> = ({
                               ] as any,
                             };
                             await createAPBill(bill);
-                            setFeedback(
+                            showFeedback(
                               `Ticket ${tk.id} successfully converted to A/P Bill and posted to General Ledger.`,
                             );
                           }}

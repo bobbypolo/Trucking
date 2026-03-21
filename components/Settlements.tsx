@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   LoadData,
   User,
@@ -68,14 +69,10 @@ export const Settlements: React.FC<Props> = ({
     end: "2025-12-31",
   });
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] =
+    useAutoFeedback<string | null>(null);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
   const [bills, setBills] = useState<any[]>([]);
-
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
 
   const currentUser = getCurrentUser();
 
@@ -309,7 +306,7 @@ export const Settlements: React.FC<Props> = ({
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-bold">{feedback}</span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback}>
             <X className="w-4 h-4" />
           </button>
         </div>

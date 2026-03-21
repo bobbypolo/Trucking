@@ -380,7 +380,8 @@ export default function App() {
         type: "error",
       });
     }
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.companyId]);
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
