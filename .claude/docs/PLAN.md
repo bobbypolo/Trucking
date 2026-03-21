@@ -776,6 +776,17 @@ Add tooltip or title text to disabled buttons/sections that explain why the acti
 
 **Pattern**: `<button disabled={!isAdmin} title={!isAdmin ? "Admin access required" : undefined}>Delete</button>`
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| MODIFY | components/IssueSidebar.tsx | Add disabled+title pattern to resolve/approve/reject buttons; add info banner for non-admin | .claude/hooks/tests/test_r_w4_04.py |
+| MODIFY | components/CompanyProfile.tsx | Add title/aria-label on Save button for non-admin; add read-only info banner | .claude/hooks/tests/test_r_w4_04.py |
+| MODIFY | components/EditLoadForm.tsx | Add title attrs to all locked-state disabled inputs/buttons | .claude/hooks/tests/test_r_w4_04.py |
+| CREATE | .claude/hooks/tests/test_r_w4_04.py | Python QA tests for R-W4-04a, R-W4-04b, R-W4-VPC-504 | .claude/hooks/tests/test_r_w4_04.py |
+| CREATE | src/__tests__/components/IssueSidebar.permissions.test.tsx | Vitest tests for permission UX (disabled buttons, info banner) | src/__tests__/components/IssueSidebar.permissions.test.tsx |
+
+
 **Done When**:
 - R-W4-04a: Every disabled button that is disabled due to role restrictions has explanatory `title` or `aria-label`
 - R-W4-04b: At least one section-level info banner exists (e.g., CompanyProfile operations tab for non-admin)
@@ -793,6 +804,19 @@ Same approach as H-501 for the remaining ~15 components with inputs. These are l
 **Done When**:
 - R-W4-01d: Every `<input>`, `<select>`, `<textarea>` in Batch 2 components has either `<label htmlFor>` or `aria-label`
 - VPC for modified components
+
+
+#### Changes Table
+
+| Action | File | What Changed | Covered By |
+|--------|------|-------------|------------|
+| MODIFY | components/CalendarView.tsx | Add label htmlFor to date input | test_r_w4_01d.py |
+| MODIFY | components/CustomerPortalView.tsx | Add label htmlFor to quote form inputs | test_r_w4_01d.py |
+| MODIFY | components/ExceptionConsole.tsx | Add aria-label to filter input | test_r_w4_01d.py |
+| MODIFY | components/GlobalMapView.tsx | Add aria-label to search input | test_r_w4_01d.py |
+| MODIFY | components/GlobalMapViewEnhanced.tsx | Add aria-label to search input | test_r_w4_01d.py |
+| MODIFY | components/Intelligence.tsx | Add aria-label to filter input | test_r_w4_01d.py |
+| CREATE | .claude/hooks/tests/test_r_w4_01d.py | 60+ pytest assertions for Batch 2 a11y | - |
 
 ### H-507: Icon Button Accessibility + Heading Hierarchy — Batch 2 (Remaining Components)
 **Requirement IDs**: R-W4-02, R-W4-05
