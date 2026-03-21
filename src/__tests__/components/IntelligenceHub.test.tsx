@@ -1,7 +1,15 @@
 import React from "react";
 import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
 
 // ── Service mocks (network boundary) ──────────────────────────────────────
 vi.mock("../../../services/storageService", () => ({
@@ -113,9 +121,7 @@ vi.mock("../../../components/CommandCenterView", () => ({
 }));
 
 vi.mock("../../../components/SafetyView", () => ({
-  SafetyView: (props: any) => (
-    <div data-testid="safety-view">SafetyView</div>
-  ),
+  SafetyView: (props: any) => <div data-testid="safety-view">SafetyView</div>,
 }));
 
 vi.mock("../../../components/NetworkPortal", () => ({
@@ -331,9 +337,7 @@ describe("IntelligenceHub component", () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<IntelligenceHub {...defaultProps} />);
       await flushAsync();
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
 
     it("shows 'Awaiting Selection' when no active record", async () => {
@@ -346,10 +350,7 @@ describe("IntelligenceHub component", () => {
     it("shows the active record label when context is set", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
       expect(screen.getByText("Load #LN-001")).toBeInTheDocument();
@@ -463,7 +464,9 @@ describe("IntelligenceHub component", () => {
         expect(screen.getByText("Load #99")).toBeInTheDocument();
       });
       expect(screen.getByText("John Driver")).toBeInTheDocument();
-      expect(screen.getByText("Global Intelligence Results")).toBeInTheDocument();
+      expect(
+        screen.getByText("Global Intelligence Results"),
+      ).toBeInTheDocument();
       // Verify chip rendering (line 2221+)
       expect(screen.getByText("In Transit")).toBeInTheDocument();
     });
@@ -659,16 +662,16 @@ describe("IntelligenceHub component", () => {
       expect(screen.getByText("Initiate Handoff")).toBeInTheDocument();
 
       // Find the X close button inside the handoff modal
-      const modal = screen.getByText("Initiate Handoff").closest("div.absolute");
+      const modal = screen
+        .getByText("Initiate Handoff")
+        .closest("div.absolute");
       const closeBtn = modal!.querySelector("button");
       await user.click(closeBtn!);
 
       // Modal should be gone. Instead of checking for the text, check the
       // modal overlay is gone.
       await waitFor(() => {
-        expect(
-          screen.queryByText("Initiate Handoff"),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Initiate Handoff")).not.toBeInTheDocument();
       });
     });
   });
@@ -863,9 +866,7 @@ describe("IntelligenceHub component", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByPlaceholderText(
-            "SEARCH LOAD, CUSTOMER, OR DRIVER...",
-          ),
+          screen.getByPlaceholderText("SEARCH LOAD, CUSTOMER, OR DRIVER..."),
         ).toBeInTheDocument();
       });
     });
@@ -879,9 +880,7 @@ describe("IntelligenceHub component", () => {
       await user.click(createRequestBtn);
 
       await waitFor(() => {
-        expect(
-          screen.getByText("DETENTION (ACCESSORIAL)"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("DETENTION (ACCESSORIAL)")).toBeInTheDocument();
       });
       expect(screen.getByText("LAYOVER (STRATEGIC)")).toBeInTheDocument();
       expect(screen.getByText("LUMPER (SERVICE)")).toBeInTheDocument();
@@ -907,9 +906,7 @@ describe("IntelligenceHub component", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByPlaceholderText(
-            "SEARCH LOAD, CUSTOMER, OR DRIVER...",
-          ),
+          screen.getByPlaceholderText("SEARCH LOAD, CUSTOMER, OR DRIVER..."),
         ).toBeInTheDocument();
       });
 
@@ -947,9 +944,7 @@ describe("IntelligenceHub component", () => {
       expect(
         screen.getByText("Electronic Record Injection"),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText("Inject Image/PDF Artifact"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Inject Image/PDF Artifact")).toBeInTheDocument();
     });
 
     it("submits doc form and creates document event", async () => {
@@ -1001,10 +996,7 @@ describe("IntelligenceHub component", () => {
     it("opens roadside recovery dispatch form when active record exists", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1024,10 +1016,7 @@ describe("IntelligenceHub component", () => {
     it("selects a vendor in roadside form", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1042,7 +1031,9 @@ describe("IntelligenceHub component", () => {
 
       // Vendor should be selected (checkmark icon appears)
       await waitFor(() => {
-        const vendorButton = screen.getByText("Quick Tow LLC").closest("button");
+        const vendorButton = screen
+          .getByText("Quick Tow LLC")
+          .closest("button");
         expect(vendorButton!.className).toContain("bg-orange-600/10");
       });
     });
@@ -1050,10 +1041,7 @@ describe("IntelligenceHub component", () => {
     it("closes roadside form via Abort Dispatch button", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1104,10 +1092,7 @@ describe("IntelligenceHub component", () => {
     it("opens repower panel with driver matches", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1126,10 +1111,7 @@ describe("IntelligenceHub component", () => {
     it("closes repower panel via X button", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1164,10 +1146,7 @@ describe("IntelligenceHub component", () => {
     it("triggers verify drop action with active context", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1191,10 +1170,7 @@ describe("IntelligenceHub component", () => {
     it("opens multi-channel stakeholder alert panel", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1214,10 +1190,7 @@ describe("IntelligenceHub component", () => {
     it("closes notify picker via Cancel button", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1287,9 +1260,7 @@ describe("IntelligenceHub component", () => {
             id: "call-1",
             status: "ACTIVE",
             startTime: new Date().toISOString(),
-            participants: [
-              { id: "d-1", name: "Tom Driver", role: "DRIVER" },
-            ],
+            participants: [{ id: "d-1", name: "Tom Driver", role: "DRIVER" }],
             lastActivityAt: new Date().toISOString(),
             links: [],
             team: "DISPATCH",
@@ -1389,10 +1360,7 @@ describe("IntelligenceHub component", () => {
     it("displays active record label in the header", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
       expect(screen.getByText("Load #LN-001")).toBeInTheDocument();
@@ -1401,10 +1369,7 @@ describe("IntelligenceHub component", () => {
     it("fetches 360 data when active record changes", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1426,9 +1391,7 @@ describe("IntelligenceHub component", () => {
         />,
       );
       await flushAsync();
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
 
     it("renders for driver role", async () => {
@@ -1442,9 +1405,7 @@ describe("IntelligenceHub component", () => {
         />,
       );
       await flushAsync();
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
   });
 
@@ -1453,12 +1414,12 @@ describe("IntelligenceHub component", () => {
   describe("empty states", () => {
     it("renders with empty loads array", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      render(
-        <IntelligenceHub {...defaultProps} loads={[]} users={[]} />,
-      );
+      render(<IntelligenceHub {...defaultProps} loads={[]} users={[]} />);
       await flushAsync();
       expect(
-        screen.getByText("Unified Command Center"),
+        screen.getByText(
+          "No operational data yet. Create loads and start dispatching to populate the command center.",
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -1567,10 +1528,7 @@ describe("IntelligenceHub component", () => {
     it("pre-fills attached record from active context", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1659,12 +1617,7 @@ describe("IntelligenceHub component", () => {
         },
       });
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={incidentSession}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={incidentSession} />);
       await flushAsync();
 
       expect(screen.getByText("INCIDENT: Breakdown")).toBeInTheDocument();
@@ -1749,10 +1702,7 @@ describe("IntelligenceHub component", () => {
     it("success message state is set and auto-clears (passed to CommandCenterView)", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1817,19 +1767,14 @@ describe("IntelligenceHub component", () => {
       };
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          activeCallSession={callSession}
-        />,
+        <IntelligenceHub {...defaultProps} activeCallSession={callSession} />,
       );
       await flushAsync();
 
       // The component should recognize the external session
       // The header workspace label still shows "Awaiting Selection"
       // but the internal state has the call session
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
   });
 
@@ -2004,12 +1949,7 @@ describe("IntelligenceHub component", () => {
         },
       ]);
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={incidentSession}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={incidentSession} />);
       await flushAsync();
 
       const handoffBtn = screen.getByTitle("Handoff");
@@ -2151,10 +2091,7 @@ describe("IntelligenceHub component", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -2212,7 +2149,9 @@ describe("IntelligenceHub component", () => {
       });
 
       // Hover over the driver card to reveal "Assign Handoff" button
-      const driverCard = screen.getByText("Mike Thompson").closest("div.p-6") as HTMLElement;
+      const driverCard = screen
+        .getByText("Mike Thompson")
+        .closest("div.p-6") as HTMLElement;
       const assignBtn = within(driverCard).getByText("Assign Handoff");
       await user.click(assignBtn);
 
@@ -2543,10 +2482,7 @@ describe("IntelligenceHub component", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -2591,10 +2527,7 @@ describe("IntelligenceHub component", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -2663,9 +2596,7 @@ describe("IntelligenceHub component", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByPlaceholderText(
-            "SEARCH LOAD, CUSTOMER, OR DRIVER...",
-          ),
+          screen.getByPlaceholderText("SEARCH LOAD, CUSTOMER, OR DRIVER..."),
         ).toBeInTheDocument();
       });
 
@@ -2716,7 +2647,9 @@ describe("IntelligenceHub component", () => {
       });
 
       // Find the X button in the request form header
-      const header = screen.getByText("Strategic Financial Request").closest("div.bg-slate-900");
+      const header = screen
+        .getByText("Strategic Financial Request")
+        .closest("div.bg-slate-900");
       const closeBtn = header!.querySelector("button") as HTMLButtonElement;
       await user.click(closeBtn);
 
@@ -2771,9 +2704,7 @@ describe("IntelligenceHub component", () => {
       await flushAsync();
       expect(screen.getByTestId("command-center")).toBeInTheDocument();
 
-      rerender(
-        <IntelligenceHub {...defaultProps} initialTab="safety" />,
-      );
+      rerender(<IntelligenceHub {...defaultProps} initialTab="safety" />);
       await flushAsync();
       expect(screen.getByTestId("safety-view")).toBeInTheDocument();
     });
@@ -2798,9 +2729,7 @@ describe("IntelligenceHub component", () => {
       await user.click(closeBtn);
 
       await waitFor(() => {
-        expect(
-          screen.queryByText("Report Issue"),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Report Issue")).not.toBeInTheDocument();
       });
     });
   });
