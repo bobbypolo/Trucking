@@ -17,6 +17,7 @@ EAGER_ALLOWED = {
     "ConnectionBanner",
     "Toast",
     "LoadingSkeleton",
+    "SessionExpiredModal",  # Shell-level overlay: must appear immediately on 401
 }
 
 # Exempt chunk prefixes per R-P4-12:

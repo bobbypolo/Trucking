@@ -299,6 +299,19 @@ class TestWave1VerificationPlaywright:
             "components/Dashboard.tsx",
             "hooks/useAutoFeedback.ts",
             "App.tsx",
+            # Wave 2 additions (H-301 session safety, H-302 form protection)
+            "services/api.ts",
+            "services/storageService.ts",
+            "components/ui/SessionExpiredModal.tsx",
+            "components/AccountingBillForm.tsx",
+            "components/BolGenerator.tsx",
+            "components/BookingPortal.tsx",
+            "components/BrokerManager.tsx",
+            "components/DataImportWizard.tsx",
+            "components/EditUserModal.tsx",
+            "components/IFTAManager.tsx",
+            "components/LoadSetupModal.tsx",
+            "components/NetworkPortal.tsx",
         }
         result = subprocess.run(
             ["git", "diff", "5c49dee..HEAD", "--name-only"],
