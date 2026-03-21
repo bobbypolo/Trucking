@@ -1084,9 +1084,9 @@ export const NetworkPortal: React.FC<Props> = ({
                                         const next = [
                                           ...(formData.constraintSets || []),
                                         ];
-                                        next[sIdx].rules = next[
-                                          sIdx
-                                        ].rules.filter((_, i) => i !== rIdx);
+                                        next[sIdx].rules = (
+                                          next[sIdx].rules ?? []
+                                        ).filter((_, i) => i !== rIdx);
                                         setFormData({
                                           ...formData,
                                           constraintSets: next,
@@ -1125,6 +1125,8 @@ export const NetworkPortal: React.FC<Props> = ({
                                     const nextSets = [
                                       ...(formData.constraintSets || []),
                                     ];
+                                    if (!nextSets[sIdx].rules)
+                                      nextSets[sIdx].rules = [];
                                     nextSets[sIdx].rules.push({
                                       id: uuidv4(),
                                       constraintSetId: set.id,
