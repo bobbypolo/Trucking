@@ -183,26 +183,29 @@ def test_r_w1_01a_safety_view_pickup_guarded():
 # ---------------------------------------------------------------------------
 
 
-def test_r_w1_01b_spot_verify_load_list():  # noqa: behavioral
+def test_r_w1_01b_spot_verify_load_list():
     """R-W1-01b: Spot-verify LoadList has no unguarded .pickup. or .dropoff. on load objects."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "LoadList.tsx"
     content = _read(path)
+    violations = []
     for i, line in enumerate(content.split("\n"), 1):
         stripped = line.strip()
         if stripped.startswith("//"):
             continue
         if re.search(r"\bload\.pickup\.", line) and "?.pickup." not in line:
-            assert False, f"LoadList line {i}: unguarded load.pickup.: {stripped!r}"
+            violations.append(f"line {i}: unguarded load.pickup.: {stripped!r}")
         if re.search(r"\bload\.dropoff\.", line) and "?.dropoff." not in line:
-            assert False, f"LoadList line {i}: unguarded load.dropoff.: {stripped!r}"
+            violations.append(f"line {i}: unguarded load.dropoff.: {stripped!r}")
+    assert violations == [], f"LoadList unguarded reads: {violations}"
 
 
-def test_r_w1_01b_spot_verify_customer_portal():  # noqa: behavioral
+def test_r_w1_01b_spot_verify_customer_portal():
     """R-W1-01b: Spot-verify CustomerPortalView has no unguarded pickup/dropoff reads."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "CustomerPortalView.tsx"
     content = _read(path)
+    violations = []
     for i, line in enumerate(content.split("\n"), 1):
         stripped = line.strip()
         if stripped.startswith("//"):
@@ -216,16 +219,16 @@ def test_r_w1_01b_spot_verify_customer_portal():  # noqa: behavioral
                         continue
                     if f"...{obj_name}.{prop}" in line:
                         continue
-                    assert False, (
-                        f"CustomerPortalView line {i}: unguarded {pattern!r}: {stripped!r}"
-                    )
+                    violations.append(f"line {i}: unguarded {pattern!r}: {stripped!r}")
+    assert violations == [], f"CustomerPortalView unguarded reads: {violations}"
 
 
-def test_r_w1_01b_spot_verify_global_map_view_enhanced():  # noqa: behavioral
+def test_r_w1_01b_spot_verify_global_map_view_enhanced():
     """R-W1-01b: Spot-verify GlobalMapViewEnhanced has no unguarded pickup/dropoff reads."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "GlobalMapViewEnhanced.tsx"
     content = _read(path)
+    violations = []
     for i, line in enumerate(content.split("\n"), 1):
         stripped = line.strip()
         if stripped.startswith("//"):
@@ -238,9 +241,8 @@ def test_r_w1_01b_spot_verify_global_map_view_enhanced():  # noqa: behavioral
             ):
                 if "set" + prop.capitalize() in line:
                     continue
-                assert False, (
-                    f"GlobalMapViewEnhanced line {i}: unguarded .{prop}.: {stripped!r}"
-                )
+                violations.append(f"line {i}: unguarded .{prop}.: {stripped!r}")
+    assert violations == [], f"GlobalMapViewEnhanced unguarded reads: {violations}"
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +268,7 @@ def test_r_w1_vpc_201_typescript_compiles():
     assert result.returncode == 0, f"TypeScript failed: {result.stdout} {result.stderr}"
 
 
-def test_r_w1_vpc_201_no_remaining_unguarded_reads():  # noqa: behavioral
+def test_r_w1_vpc_201_no_remaining_unguarded_reads():
     """R-W1-VPC-201: None of the 10 story files have unguarded .pickup. or .dropoff. reads."""
     # Tests R-W1-VPC-201
     unsafe_patterns = [".pickup.", ".dropoff."]
@@ -278,6 +280,7 @@ def test_r_w1_vpc_201_no_remaining_unguarded_reads():  # noqa: behavioral
         "onPickup",
         "onDropoff",
     ]
+    all_violations = []
     for rel_path in STORY_FILES:
         path = REPO_ROOT / rel_path
         if not path.exists():
@@ -293,9 +296,10 @@ def test_r_w1_vpc_201_no_remaining_unguarded_reads():  # noqa: behavioral
                         continue
                     if "..." in line and pattern.strip(".") in line:
                         continue
-                    assert False, (
-                        f"{rel_path} line {i}: unguarded {pattern!r}: {stripped!r}"
+                    all_violations.append(
+                        f"{rel_path}:{i}: unguarded {pattern!r}: {stripped!r}"
                     )
+    assert all_violations == [], f"Unguarded reads found: {all_violations}"
 
 
 def test_r_w1_01_rejects_missing_optional_chaining():
@@ -303,24 +307,26 @@ def test_r_w1_01_rejects_missing_optional_chaining():
     # Tests R-W1-01a -- negative test: guard logic works correctly
 
     # An unguarded nested read: no optional chaining on pickup
-    bad_line = 'const city = load.pickup.city;'
+    bad_line = "const city = load.pickup.city;"
     # A guarded read: optional chaining on the parent object before pickup
-    safe_line = 'const city = load?.pickup.city;'
+    safe_line = "const city = load?.pickup.city;"
 
     # The bad pattern contains .pickup. with no preceding ?.
-    assert '.pickup.' in bad_line, 'bad_line must contain .pickup. pattern'
-    assert '?.pickup.' not in bad_line, 'bad_line must NOT have optional chaining ?.pickup.'
+    assert ".pickup." in bad_line, "bad_line must contain .pickup. pattern"
+    assert "?.pickup." not in bad_line, (
+        "bad_line must NOT have optional chaining ?.pickup."
+    )
 
     # The safe line has ?.pickup. so is guarded
-    assert '?.pickup.' in safe_line, 'safe_line must have optional chaining ?.pickup.'
+    assert "?.pickup." in safe_line, "safe_line must have optional chaining ?.pickup."
 
     # If neither safe marker appears, the line is unsafe -- this should be False for a safe line
-    safe_markers = ['?.pickup.', '?.dropoff.', 'setPickup', 'setDropoff']
-    safe_line_flagged = (
-        '.pickup.' in safe_line and not any(m in safe_line for m in safe_markers)
+    safe_markers = ["?.pickup.", "?.dropoff.", "setPickup", "setDropoff"]
+    safe_line_flagged = ".pickup." in safe_line and not any(
+        m in safe_line for m in safe_markers
     )
-    assert safe_line_flagged == False, 'safe_line must NOT be flagged as unsafe'
-    bad_line_flagged = (
-        '.pickup.' in bad_line and not any(m in bad_line for m in safe_markers)
+    assert safe_line_flagged == False, "safe_line must NOT be flagged as unsafe"
+    bad_line_flagged = ".pickup." in bad_line and not any(
+        m in bad_line for m in safe_markers
     )
-    assert bad_line_flagged == True, 'bad_line must be flagged as unsafe'
+    assert bad_line_flagged == True, "bad_line must be flagged as unsafe"
