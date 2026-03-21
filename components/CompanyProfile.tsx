@@ -294,10 +294,12 @@ export const CompanyProfile: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {!isDriver && (
             <button
-              onClick={handleSaveCompany}
-              disabled={isSubmitting}
+              onClick={isAdmin ? handleSaveCompany : undefined}
+              disabled={!isAdmin || isSubmitting}
+              title={!isAdmin ? "Only administrators can save changes" : undefined}
+              aria-label={!isAdmin ? "Save Changes - Only administrators can save changes" : undefined}
               className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />{" "}
@@ -344,6 +346,14 @@ export const CompanyProfile: React.FC<Props> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar pb-24 bg-slate-900/50">
+        {!isAdmin && !isDriver && (
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3" role="status">
+            <Lock className="w-4 h-4 text-blue-400 shrink-0" />
+            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+              Viewing as read-only — Only administrators can modify company settings
+            </p>
+          </div>
+        )}
         {activeTab === "driver_cockpit" && (
           <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -485,10 +495,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpLegalName" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Legal Name
                   </label>
-                  <input
+                  <input id="cpLegalName"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black uppercase tracking-tight"
                     value={company.name}
                     readOnly
@@ -502,29 +512,29 @@ export const CompanyProfile: React.FC<Props> = ({
               </h3>
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpMainTerminalAddress" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Main Terminal Address
                   </label>
-                  <input
+                  <input id="cpMainTerminalAddress"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-bold"
                     value={company.address || ""}
                     readOnly
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <input
+                  <input aria-label="CITY"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold"
                     value={company.city || ""}
                     placeholder="CITY"
                     readOnly
                   />
-                  <input
+                  <input aria-label="ST"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.state || ""}
                     placeholder="ST"
                     readOnly
                   />
-                  <input
+                  <input aria-label="ZIP"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.zip || ""}
                     placeholder="ZIP"
@@ -567,10 +577,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpCompanyStructure" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Company Structure
                   </label>
-                  <select
+                  <select id="cpCompanyStructure"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase outline-none focus:border-blue-500 transition-all"
                     value={company.accountType}
                     onChange={(e) =>
@@ -642,10 +652,10 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpPrefix" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Prefix
                     </label>
-                    <input
+                    <input id="cpPrefix"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase"
                       value={company.loadNumberingConfig.prefix}
                       onChange={(e) =>
@@ -660,10 +670,10 @@ export const CompanyProfile: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpAutoSequence" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Auto-Sequence
                     </label>
-                    <input
+                    <input id="cpAutoSequence"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.loadNumberingConfig.nextSequence}
@@ -772,10 +782,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpMinSafetyScoreForDispatch" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Min. Safety Score for Dispatch
                   </label>
-                  <input
+                  <input id="cpMinSafetyScoreForDispatch"
                     type="range"
                     min="0"
                     max="100"
@@ -810,10 +820,10 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpPreferredCurrency" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Preferred Currency
                     </label>
-                    <select
+                    <select id="cpPreferredCurrency"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black outline-none"
                       value={company.governance?.preferredCurrency || "USD"}
                       onChange={(e) =>
@@ -831,10 +841,10 @@ export const CompanyProfile: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpMaxLoadsWeek" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Max Loads/Week
                     </label>
-                    <input
+                    <input id="cpMaxLoadsWeek"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.governance?.maxLoadsPerDriverPerWeek || 5}
@@ -983,10 +993,10 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="p-10 space-y-8">
               <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                <label htmlFor="cpTripDutyCompletionNotes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
                   Trip / Duty Completion Notes
                 </label>
-                <textarea
+                <textarea id="cpTripDutyCompletionNotes"
                   className="w-full bg-slate-950 border border-slate-800 rounded-3xl p-6 text-white font-bold text-sm h-40 focus:border-red-500 outline-none shadow-inner placeholder:text-slate-800"
                   placeholder="Describe shifts, delays, or chassis observations..."
                   value={clockNotes}

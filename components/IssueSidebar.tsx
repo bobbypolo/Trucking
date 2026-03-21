@@ -34,6 +34,8 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
     return issuesList;
   }, [loads]);
 
+  const isRoleMapped = ['admin', 'safety_manager', 'payroll_manager', 'dispatcher'].includes(currentUser.role);
+
   const filteredIssues = useMemo(() => {
     if (currentUser.role === 'admin') return activeIssues;
     if (currentUser.role === 'safety_manager') return activeIssues.filter(i => i.issue.category === 'Safety' || i.issue.category === 'Maintenance' || i.issue.category === 'Incident');
@@ -128,7 +130,14 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
             {filteredIssues.length === 0 && (
               <div className="text-center text-slate-700 py-10">
                 <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-10" />
-                <p className="text-[10px] font-black uppercase tracking-widest">No Priority Issues</p>
+                <p className="text-[10px] font-black uppercase tracking-widest">
+                  {isRoleMapped ? 'No Priority Issues' : 'No actions available for your role'}
+                </p>
+                {!isRoleMapped && (
+                  <p className="text-[8px] text-slate-600 uppercase tracking-widest mt-2">
+                    Contact an administrator for access
+                  </p>
+                )}
               </div>
             )}
 
