@@ -490,6 +490,7 @@ export const BookingPortal: React.FC<Props> = ({
                     className="hidden"
                     accept="image/*,application/pdf"
                     onChange={handleFileUpload}
+                    aria-label="Upload document for scanning"
                   />
                   <button
                     onClick={() => handleIntakeMethod("photo")}

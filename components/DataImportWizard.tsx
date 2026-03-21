@@ -264,6 +264,7 @@ export const DataImportWizard: React.FC<Props> = ({
                 ref={fileInputRef}
                 accept=".csv,.xlsx,.xls"
                 onChange={handleFileUpload}
+                aria-label="Select file for import"
               />
               <button
                 onClick={() => fileInputRef.current?.click()}

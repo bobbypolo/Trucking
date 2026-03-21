@@ -702,6 +702,14 @@ Auth.tsx, CompanyProfile.tsx, EditLoadForm.tsx, AccountingBillForm.tsx, EditUser
 - R-W4-01c: Every `<textarea>` in Batch 1 has a label
 - VPC for modified components
 
+#### Changes Table
+
+| Action | File | Purpose | Test File |
+|--------|------|---------|-----------|
+| MODIFY | components/BookingPortal.tsx | Add aria-label to hidden file input | test_r_w4_01.py |
+| MODIFY | components/DataImportWizard.tsx | Add aria-label to hidden file input | test_r_w4_01.py |
+| MODIFY | .claude/hooks/tests/test_r_w4_01.py | Fix R-marker IDs to match prd.json criteria | test_r_w4_01.py |
+
 ### H-502: Icon Button Accessibility + Heading Hierarchy — Batch 1 (Top 15 Components)
 **Requirement IDs**: R-W4-02, R-W4-05
 **Agent**: Frontend

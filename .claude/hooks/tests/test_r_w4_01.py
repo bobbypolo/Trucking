@@ -1,4 +1,4 @@
-# Tests R-W4-01-AC1, R-W4-01-AC2, R-W4-01-AC3, R-W4-VPC-501
+# Tests R-W4-01a, R-W4-01b, R-W4-01c, R-W4-VPC-501
 """H-501: Form Labels & Input Accessibility — Batch 1.
 
 Validates that all form inputs in the 15 batch-1 components have proper
