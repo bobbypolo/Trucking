@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BookingPortal } from "../../../components/BookingPortal";
@@ -106,68 +106,80 @@ describe("BookingPortal component", () => {
   });
 
   describe("initial rendering (intake step)", () => {
-    it("renders without crashing", () => {
+    it("renders without crashing", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Intake & Quotes")).toBeInTheDocument();
+      expect(await screen.findByText("Intake & Quotes")).toBeInTheDocument();
     });
 
-    it("renders the main header", () => {
+    it("renders the main header", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Intake & Quotes")).toBeInTheDocument();
+      expect(await screen.findByText("Intake & Quotes")).toBeInTheDocument();
     });
 
-    it("renders the subtitle", () => {
+    it("renders the subtitle", async () => {
+      render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(
+          screen.getByText(/Sales Workspace.*Lead to Booking Pipeline/i),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("renders step indicators", async () => {
+      render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText(/1\. intake/i)).toBeInTheDocument();
+        expect(screen.getByText(/2\. quote/i)).toBeInTheDocument();
+        expect(screen.getByText(/3\. review/i)).toBeInTheDocument();
+        expect(screen.getByText(/4\. confirmation/i)).toBeInTheDocument();
+      });
+    });
+
+    it("renders Lead Identification section", async () => {
       render(<BookingPortal {...defaultProps} />);
       expect(
-        screen.getByText(/Sales Workspace.*Lead to Booking Pipeline/i),
+        await screen.findByText("Lead Identification"),
       ).toBeInTheDocument();
     });
 
-    it("renders step indicators", () => {
+    it("renders Intake Strategy section", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText(/1\. intake/i)).toBeInTheDocument();
-      expect(screen.getByText(/2\. quote/i)).toBeInTheDocument();
-      expect(screen.getByText(/3\. review/i)).toBeInTheDocument();
-      expect(screen.getByText(/4\. confirmation/i)).toBeInTheDocument();
+      expect(await screen.findByText("Intake Strategy")).toBeInTheDocument();
     });
 
-    it("renders Lead Identification section", () => {
+    it("renders caller/contact input", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Lead Identification")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Who are we speaking with?"),
+        ).toBeInTheDocument();
+      });
     });
 
-    it("renders Intake Strategy section", () => {
+    it("renders phone input", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Intake Strategy")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("(555) 000-0000"),
+        ).toBeInTheDocument();
+      });
     });
 
-    it("renders caller/contact input", () => {
+    it("renders AI Scan Intelligence button", async () => {
       render(<BookingPortal {...defaultProps} />);
       expect(
-        screen.getByPlaceholderText("Who are we speaking with?"),
+        await screen.findByText("AI Scan Intelligence"),
       ).toBeInTheDocument();
     });
 
-    it("renders phone input", () => {
+    it("renders Manual Phone Quote button", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(
-        screen.getByPlaceholderText("(555) 000-0000"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("Manual Phone Quote")).toBeInTheDocument();
     });
 
-    it("renders AI Scan Intelligence button", () => {
+    it("renders client select dropdown", async () => {
       render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("AI Scan Intelligence")).toBeInTheDocument();
-    });
-
-    it("renders Manual Phone Quote button", () => {
-      render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Manual Phone Quote")).toBeInTheDocument();
-    });
-
-    it("renders client select dropdown", () => {
-      render(<BookingPortal {...defaultProps} />);
-      expect(screen.getByText("Select Partner")).toBeInTheDocument();
+      expect(await screen.findByText("Select Partner")).toBeInTheDocument();
     });
 
     it("populates broker options after mount", async () => {
@@ -183,6 +195,11 @@ describe("BookingPortal component", () => {
     it("allows typing caller name", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("Who are we speaking with?"),
+        ).toBeInTheDocument();
+      });
       const input = screen.getByPlaceholderText("Who are we speaking with?");
       await user.type(input, "Jane Smith");
       expect(input).toHaveValue("Jane Smith");
@@ -191,6 +208,11 @@ describe("BookingPortal component", () => {
     it("allows typing phone number", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(
+          screen.getByPlaceholderText("(555) 000-0000"),
+        ).toBeInTheDocument();
+      });
       const input = screen.getByPlaceholderText("(555) 000-0000");
       await user.type(input, "555-123-4567");
       expect(input).toHaveValue("555-123-4567");
@@ -233,7 +255,7 @@ describe("BookingPortal component", () => {
     it("moves to quote step when Manual Phone Quote is clicked", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Build Quote/)).toBeInTheDocument();
       });
@@ -242,7 +264,7 @@ describe("BookingPortal component", () => {
     it("renders quote form fields in quote step", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Lane Baseline/)).toBeInTheDocument();
         expect(screen.getByText(/Equipment Requirement/)).toBeInTheDocument();
@@ -253,16 +275,16 @@ describe("BookingPortal component", () => {
     it("renders linehaul rate input in quote step", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
-        expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+        expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
       });
     });
 
     it("renders equipment type select in quote step", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         const text = document.body.textContent || "";
         expect(text).toContain("Intermodal");
@@ -273,7 +295,7 @@ describe("BookingPortal component", () => {
     it("renders back to intake button in quote step", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText("Back to Intake")).toBeInTheDocument();
       });
@@ -282,7 +304,7 @@ describe("BookingPortal component", () => {
     it("navigates back to intake from quote step", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText("Back to Intake")).toBeInTheDocument();
       });
@@ -295,7 +317,7 @@ describe("BookingPortal component", () => {
     it("renders Finalize Professional Quote button", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(
           screen.getByText("Finalize Professional Quote"),
@@ -308,7 +330,7 @@ describe("BookingPortal component", () => {
     it("allows editing origin city/state", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Lane Baseline/)).toBeInTheDocument();
       });
@@ -324,7 +346,7 @@ describe("BookingPortal component", () => {
     it("allows editing destination city/state", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Lane Baseline/)).toBeInTheDocument();
       });
@@ -339,7 +361,7 @@ describe("BookingPortal component", () => {
     it("allows changing equipment type", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Equipment Requirement/)).toBeInTheDocument();
       });
@@ -351,7 +373,7 @@ describe("BookingPortal component", () => {
     it("allows typing equipment requirements", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Equipment Requirement/)).toBeInTheDocument();
       });
@@ -365,7 +387,7 @@ describe("BookingPortal component", () => {
     it("allows typing assumptions", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText(/Assumptions/)).toBeInTheDocument();
       });
@@ -379,7 +401,7 @@ describe("BookingPortal component", () => {
     it("allows entering fuel surcharge", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText("Fuel Surcharge (FSC)")).toBeInTheDocument();
       });
@@ -395,7 +417,7 @@ describe("BookingPortal component", () => {
     it("shows Total Quote Value field", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(screen.getByText("Total Quote Value")).toBeInTheDocument();
       });
@@ -404,9 +426,9 @@ describe("BookingPortal component", () => {
     it("computes total from linehaul rate", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
-        expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+        expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
       });
       const linehaulInputs = document.querySelectorAll('input[type="number"]');
       const linehaulInput = linehaulInputs[0] as HTMLInputElement;
@@ -422,7 +444,7 @@ describe("BookingPortal component", () => {
     it("shows error when finalizing quote without broker or rate", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(
           screen.getByText("Finalize Professional Quote"),
@@ -438,7 +460,7 @@ describe("BookingPortal component", () => {
     it("dismisses feedback when X button is clicked", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(
           screen.getByText("Finalize Professional Quote"),
@@ -446,9 +468,7 @@ describe("BookingPortal component", () => {
       });
       await user.click(screen.getByText("Finalize Professional Quote"));
       await waitFor(() => {
-        expect(
-          screen.getByText(/Missing broker or rate/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Missing broker or rate/)).toBeInTheDocument();
       });
       // Find and click the X/close button in the feedback bar
       const feedbackBar = screen
@@ -468,6 +488,9 @@ describe("BookingPortal component", () => {
     it("triggers file input when AI Scan Intelligence is clicked", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -478,6 +501,9 @@ describe("BookingPortal component", () => {
     it("processes uploaded file and moves to quote step with extracted data", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -500,6 +526,9 @@ describe("BookingPortal component", () => {
       mockExtractLoadData.mockRejectedValueOnce(new Error("OCR failed"));
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -518,6 +547,9 @@ describe("BookingPortal component", () => {
 
     it("does nothing when file input change fires with no file", async () => {
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -530,7 +562,9 @@ describe("BookingPortal component", () => {
   });
 
   describe("full intake -> quote -> review -> booking flow", () => {
-    async function navigateToReviewStep(user: ReturnType<typeof userEvent.setup>) {
+    async function navigateToReviewStep(
+      user: ReturnType<typeof userEvent.setup>,
+    ) {
       render(<BookingPortal {...defaultProps} />);
       // Wait for brokers to load
       await waitFor(() => {
@@ -544,6 +578,10 @@ describe("BookingPortal component", () => {
       await waitFor(() => {
         expect(screen.getByText(/Build Quote/)).toBeInTheDocument();
       });
+      // Fill origin and destination (required for validation)
+      const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+      fireEvent.change(cityInputs[0], { target: { value: "Denver, CO" } });
+      fireEvent.change(cityInputs[1], { target: { value: "Phoenix, AZ" } });
       // Enter linehaul rate
       const linehaulInputs = document.querySelectorAll('input[type="number"]');
       const linehaulInput = linehaulInputs[0] as HTMLInputElement;
@@ -553,7 +591,9 @@ describe("BookingPortal component", () => {
       await user.click(screen.getByText("Finalize Professional Quote"));
       await waitFor(() => {
         expect(mockSaveQuote).toHaveBeenCalled();
-        expect(screen.getByText(/Review & Dispatch Confirm/)).toBeInTheDocument();
+        expect(
+          screen.getByText(/Review & Dispatch Confirm/),
+        ).toBeInTheDocument();
       });
     }
 
@@ -615,7 +655,9 @@ describe("BookingPortal component", () => {
   });
 
   describe("confirmation step", () => {
-    async function navigateToConfirmation(user: ReturnType<typeof userEvent.setup>) {
+    async function navigateToConfirmation(
+      user: ReturnType<typeof userEvent.setup>,
+    ) {
       render(<BookingPortal {...defaultProps} />);
       await waitFor(() => {
         expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
@@ -626,13 +668,19 @@ describe("BookingPortal component", () => {
       await waitFor(() => {
         expect(screen.getByText(/Build Quote/)).toBeInTheDocument();
       });
+      // Fill origin and destination (required for validation)
+      const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+      fireEvent.change(cityInputs[0], { target: { value: "Denver, CO" } });
+      fireEvent.change(cityInputs[1], { target: { value: "Phoenix, AZ" } });
       const linehaulInputs = document.querySelectorAll('input[type="number"]');
       const linehaulInput = linehaulInputs[0] as HTMLInputElement;
       await user.clear(linehaulInput);
       await user.type(linehaulInput, "2500");
       await user.click(screen.getByText("Finalize Professional Quote"));
       await waitFor(() => {
-        expect(screen.getByText(/Review & Dispatch Confirm/)).toBeInTheDocument();
+        expect(
+          screen.getByText(/Review & Dispatch Confirm/),
+        ).toBeInTheDocument();
       });
       await user.click(screen.getByText(/Accept Quote & Convert to Booking/));
       await waitFor(() => {

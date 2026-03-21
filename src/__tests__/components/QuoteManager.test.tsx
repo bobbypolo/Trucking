@@ -321,9 +321,7 @@ describe("QuoteManager component", () => {
   it("shows the search input with correct placeholder", async () => {
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      const searchInput = screen.getByPlaceholderText(
-        "Find Quote or Lane...",
-      );
+      const searchInput = screen.getByPlaceholderText("Find Quote or Lane...");
       expect(searchInput).toBeInTheDocument();
     });
   });
@@ -610,7 +608,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("ORIGIN HUB")).toBeInTheDocument();
     });
-    const cityInputs = screen.getAllByPlaceholderText("City");
+    const cityInputs = screen.getAllByPlaceholderText("City *");
     expect(cityInputs.length).toBeGreaterThan(0);
     await user.clear(cityInputs[0]);
     await user.type(cityInputs[0], "Denver");
@@ -627,7 +625,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Linehaul & Revenue")).toBeInTheDocument();
     });
-    const linehaulInput = screen.getByPlaceholderText("Linehaul");
+    const linehaulInput = screen.getByPlaceholderText("Linehaul *");
     expect(linehaulInput).toBeInTheDocument();
     await user.clear(linehaulInput);
     await user.type(linehaulInput, "3000");
@@ -988,13 +986,9 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText("Intake Desk"));
     await waitFor(() => {
-      expect(
-        screen.getByText(/Mission Notes/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Mission Notes/)).toBeInTheDocument();
     });
-    const notesInput = screen.getByPlaceholderText(
-      /Specify high-value cargo/,
-    );
+    const notesInput = screen.getByPlaceholderText(/Specify high-value cargo/);
     expect(notesInput).toBeInTheDocument();
     await user.type(notesInput, "High value cargo");
     expect(notesInput).toHaveValue("High value cargo");
@@ -1213,9 +1207,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Sales Commission")).toBeInTheDocument();
     });
-    const commissionRow = screen
-      .getByText("Sales Commission")
-      .closest("div")!;
+    const commissionRow = screen.getByText("Sales Commission").closest("div")!;
     const commInput = commissionRow.querySelector("input");
     expect(commInput).toBeInTheDocument();
   });
@@ -1233,9 +1225,9 @@ describe("QuoteManager component", () => {
     // Fixed overhead shows $50 from companyCostFactor default
     // Component renders as $ text node + {value} expression, use getAllByText regex
     // Fixed overhead row shows a dollar value (new quotes default to $50, existing may be $0 or undefined)
-    const overheadLabel = screen.getByText('Fixed Overhead');
-    const overheadRow = overheadLabel.closest('div.flex');
-    expect(overheadRow?.textContent).toContain('$');
+    const overheadLabel = screen.getByText("Fixed Overhead");
+    const overheadRow = overheadLabel.closest("div.flex");
+    expect(overheadRow?.textContent).toContain("$");
   });
 
   it("shows margin percentage in details view", async () => {
@@ -1262,7 +1254,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("DESTINATION HUB")).toBeInTheDocument();
     });
-    const cityInputs = screen.getAllByPlaceholderText("City");
+    const cityInputs = screen.getAllByPlaceholderText("City *");
     // Second city input is dropoff
     expect(cityInputs.length).toBeGreaterThanOrEqual(2);
     await user.clear(cityInputs[1]);
@@ -1434,9 +1426,10 @@ describe("QuoteManager component", () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText(/New Quote/)).toBeInTheDocument();
+      expect(screen.getByText(/Chicago/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/New Quote/));
+    // Open existing quote with valid data (Chicago -> Dallas, rate 2200)
+    await user.click(screen.getByText(/Chicago, IL/));
     await waitFor(() => {
       expect(screen.getByText("Save & Update")).toBeInTheDocument();
     });
@@ -1526,7 +1519,9 @@ describe("QuoteManager component", () => {
       expect(screen.getByText(/Chicago/)).toBeInTheDocument();
     });
     // Click the Chicago -> Dallas quote card
-    await user.click(screen.getByText(/Chicago, IL/).closest("[class*='cursor-pointer']")!);
+    await user.click(
+      screen.getByText(/Chicago, IL/).closest("[class*='cursor-pointer']")!,
+    );
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
@@ -1541,7 +1536,9 @@ describe("QuoteManager component", () => {
       expect(screen.getByText(/Atlanta/)).toBeInTheDocument();
     });
     // Click the Accepted quote (Atlanta -> Miami)
-    await user.click(screen.getByText(/Atlanta, GA/).closest("[class*='cursor-pointer']")!);
+    await user.click(
+      screen.getByText(/Atlanta, GA/).closest("[class*='cursor-pointer']")!,
+    );
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
@@ -1554,7 +1551,9 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText(/Atlanta/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/Atlanta, GA/).closest("[class*='cursor-pointer']")!);
+    await user.click(
+      screen.getByText(/Atlanta, GA/).closest("[class*='cursor-pointer']")!,
+    );
     await waitFor(() => {
       expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
     });
@@ -1570,7 +1569,9 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText(/Chicago/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/Chicago, IL/).closest("[class*='cursor-pointer']")!);
+    await user.click(
+      screen.getByText(/Chicago, IL/).closest("[class*='cursor-pointer']")!,
+    );
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
@@ -1639,7 +1640,9 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Discard Entry")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Initialize & Engineering Reveal/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Initialize & Engineering Reveal/),
+    ).toBeInTheDocument();
   });
 
   it("returns to pipeline when Discard Entry is clicked", async () => {
@@ -1666,7 +1669,9 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText("Intake Desk"));
     await waitFor(() => {
-      expect(screen.getByText(/Initialize & Engineering Reveal/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Initialize & Engineering Reveal/),
+      ).toBeInTheDocument();
     });
     await user.click(screen.getByText(/Initialize & Engineering Reveal/));
     await waitFor(() => {
@@ -1686,8 +1691,8 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Financial Engineering")).toBeInTheDocument();
     });
-    // Find the linehaul input (placeholder "Linehaul")
-    const linehaulInput = screen.getByPlaceholderText("Linehaul");
+    // Find the linehaul input (placeholder "Linehaul *")
+    const linehaulInput = screen.getByPlaceholderText("Linehaul *");
     await user.clear(linehaulInput);
     await user.type(linehaulInput, "3000");
     // The rate calculation should reflect a total

@@ -80,12 +80,12 @@ describe("LoadSetupModal component", () => {
 
     it("renders broker selection label", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      expect(screen.getByText("Select Broker / Customer")).toBeInTheDocument();
+      expect(screen.getByText(/Select Broker \/ Customer/)).toBeInTheDocument();
     });
 
     it("renders driver selection label", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      expect(screen.getByText("Assign Driver")).toBeInTheDocument();
+      expect(screen.getByText(/Assign Driver/)).toBeInTheDocument();
     });
 
     it("renders Scan Doc button", () => {
@@ -175,15 +175,10 @@ describe("LoadSetupModal component", () => {
   });
 
   describe("validation", () => {
-    it("shows error toast when continuing without broker and driver selected", async () => {
-      const user = userEvent.setup();
+    it("disables Scan Doc button when broker and driver are not selected", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      await user.click(screen.getByText(/Scan Doc/));
-      await waitFor(() => {
-        const toasts = document.querySelectorAll('[role="status"]');
-        const bodyText = document.body.textContent || "";
-        expect(bodyText).toContain("select both a broker and a driver");
-      });
+      const scanBtn = screen.getByText(/Scan Doc/).closest("button");
+      expect(scanBtn).toBeDisabled();
     });
   });
 
@@ -270,15 +265,10 @@ describe("LoadSetupModal component", () => {
       expect(screen.getByText("Phone Order")).toBeInTheDocument();
     });
 
-    it("shows toast error when clicking Scan Doc without selections", async () => {
-      const user = userEvent.setup();
+    it("disables Scan Doc button when no broker or driver is selected", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      await user.click(screen.getByText(/Scan Doc/));
-      await waitFor(() => {
-        expect(
-          document.body.textContent,
-        ).toContain("select both a broker and a driver");
-      });
+      const scanBtn = screen.getByText(/Scan Doc/).closest("button");
+      expect(scanBtn).toBeDisabled();
     });
   });
 });

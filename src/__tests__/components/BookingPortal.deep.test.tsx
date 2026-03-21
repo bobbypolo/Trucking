@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BookingPortal } from "../../../components/BookingPortal";
@@ -111,6 +111,10 @@ async function goToQuoteStep(user: ReturnType<typeof userEvent.setup>) {
 
 async function goToReviewStep(user: ReturnType<typeof userEvent.setup>) {
   await goToQuoteStep(user);
+  // Fill origin and destination (required for validation)
+  const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+  fireEvent.change(cityInputs[0], { target: { value: "Denver, CO" } });
+  fireEvent.change(cityInputs[1], { target: { value: "Phoenix, AZ" } });
   const linehaulInputs = document.querySelectorAll('input[type="number"]');
   const linehaulInput = linehaulInputs[0] as HTMLInputElement;
   await user.clear(linehaulInput);
@@ -365,6 +369,9 @@ describe("BookingPortal deep coverage", () => {
     it("populates quote fields from OCR extraction result", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -386,6 +393,9 @@ describe("BookingPortal deep coverage", () => {
     it("shows success feedback after OCR extraction", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -404,6 +414,9 @@ describe("BookingPortal deep coverage", () => {
       mockExtractLoadData.mockRejectedValueOnce(new Error("Parse error"));
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
+      await waitFor(() => {
+        expect(document.querySelector('input[type="file"]')).toBeTruthy();
+      });
       const fileInput = document.querySelector(
         'input[type="file"]',
       ) as HTMLInputElement;
@@ -504,7 +517,7 @@ describe("BookingPortal deep coverage", () => {
     it("feedback auto-clears are handled (not blocking UI)", async () => {
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
-      await user.click(screen.getByText("Manual Phone Quote"));
+      await user.click(await screen.findByText("Manual Phone Quote"));
       await waitFor(() => {
         expect(
           screen.getByText("Finalize Professional Quote"),
