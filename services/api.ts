@@ -15,15 +15,18 @@ export class ForbiddenError extends Error {
 export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = await getIdTokenAsync();
 
+  const { signal, headers: customHeaders, ...restOptions } = options;
+
   const headers = {
     "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
+    ...(customHeaders || {}),
   };
 
   const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
+    ...restOptions,
     headers,
+    ...(signal ? { signal } : {}),
   });
 
   if (!response.ok) {

@@ -77,6 +77,9 @@ import {
   checkDriverCompliance,
 } from "../services/safetyService";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   session: WorkspaceSession;
@@ -101,6 +104,9 @@ interface Props {
   onNotify?: () => void;
   setSuccessMessage?: (msg: string | null) => void;
   refreshQueues?: () => Promise<void>;
+  isLoading?: boolean;
+  loadError?: string | null;
+  onRetryLoad?: () => void;
 }
 
 export const CommandCenterView: React.FC<Props> = ({
@@ -125,6 +131,9 @@ export const CommandCenterView: React.FC<Props> = ({
   onRoadside,
   onNotify,
   setSuccessMessage,
+  isLoading,
+  loadError,
+  onRetryLoad,
 }) => {
   // Managed feedback: auto-clears with cleanup on unmount, syncs to optional prop
   const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,15 +194,25 @@ export const CommandCenterView: React.FC<Props> = ({
   }, [windowWidth]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchLocal = async () => {
-      if (!propsIncidents || propsIncidents.length === 0) {
-        const incs = await getIncidents();
-        setLocalIncidents(incs);
+      try {
+        if (!propsIncidents || propsIncidents.length === 0) {
+          const incs = await getIncidents();
+          if (controller.signal.aborted) return;
+          setLocalIncidents(incs);
+        }
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
       }
     };
     fetchLocal();
     const interval = setInterval(fetchLocal, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [propsIncidents]);
 
   const selectedIncident = useMemo(
@@ -386,8 +405,26 @@ export const CommandCenterView: React.FC<Props> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-[#020617] h-full overflow-hidden font-inter">
-      {/* Redundant top bar removed to reduce clutter within IntelligenceHub */}
-
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <LoadingSkeleton variant="card" count={4} />
+        </div>
+      )}
+      {!isLoading && loadError && (
+        <div className="flex-1 flex items-center justify-center">
+          <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+        </div>
+      )}
+      {!isLoading && !loadError && incidents.length === 0 && loads.length === 0 && (
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            icon={<AlertTriangle className="w-12 h-12" />}
+            title="No incidents or loads"
+            description="The command center is clear. Incidents and loads will appear here when detected."
+          />
+        </div>
+      )}
+      {!isLoading && !loadError && (incidents.length > 0 || loads.length > 0) && (
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Detail Drawer (Unified Incident & Record Workspace) */}
         <aside
@@ -411,6 +448,7 @@ export const CommandCenterView: React.FC<Props> = ({
                       <input
                         type="text"
                         placeholder="Search triage..."
+                        aria-label="Search triage queue"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="bg-slate-950 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white outline-none focus:border-blue-500/50 transition-all w-48"
@@ -1577,6 +1615,7 @@ export const CommandCenterView: React.FC<Props> = ({
           </div>
         </main>
       </div>
+      )}
     </div>
   );
 };

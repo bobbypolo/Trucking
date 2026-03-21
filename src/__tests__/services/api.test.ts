@@ -146,6 +146,62 @@ describe("api", () => {
       expect(opts.method).toBe("POST");
       expect(opts.body).toBe(JSON.stringify({ name: "test" }));
     });
+
+    it("forwards AbortSignal to fetch when provided in options", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      const controller = new AbortController();
+      await apiFetch("/loads", { signal: controller.signal });
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBe(controller.signal);
+    });
+
+    it("does not include signal when none is provided", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      await apiFetch("/loads");
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBeUndefined();
+    });
+
+    it("rejects with AbortError when signal is aborted", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const abortError = new DOMException(
+        "The operation was aborted.",
+        "AbortError",
+      );
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(abortError);
+
+      await expect(
+        apiFetch("/loads", { signal: controller.signal }),
+      ).rejects.toThrow("The operation was aborted.");
+    });
+
+    it("propagates AbortError with correct name property", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      const abortError = new DOMException(
+        "The operation was aborted.",
+        "AbortError",
+      );
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(abortError);
+
+      try {
+        await apiFetch("/loads", { signal: controller.signal });
+        expect.unreachable("should have thrown");
+      } catch (err: any) {
+        expect(err.name).toBe("AbortError");
+      }
+    });
   });
 
   // --- api convenience methods ---

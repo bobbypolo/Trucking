@@ -127,6 +127,9 @@ import { features } from "../config/features";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./EmptyState";
 
 interface Thread {
   id: string;
@@ -177,6 +180,9 @@ const IntelligenceHub: React.FC<{
     recordId: string,
     recordType: EntityType,
   ) => Promise<void>;
+  isLoading?: boolean;
+  loadError?: string | null;
+  onRetry?: () => void;
 }> = (props) => {
   const {
     user,
@@ -992,16 +998,26 @@ const IntelligenceHub: React.FC<{
     }
   }, [activeRecord?.id, activeRecord?.activeSubTab]);
 
-  const fetchQueues = async () => {
-    const queues = await getTriageQueues();
-    const workItems = await getWorkItems(user.companyId);
-    setTriageQueues({ ...queues, workItems });
+  const fetchQueues = async (signal?: AbortSignal) => {
+    try {
+      const queues = await getTriageQueues();
+      const workItems = await getWorkItems(user.companyId);
+      if (signal?.aborted) return;
+      setTriageQueues({ ...queues, workItems });
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (signal?.aborted) return;
+    }
   };
 
   useEffect(() => {
-    fetchQueues();
-    const interval = setInterval(fetchQueues, 10000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchQueues(controller.signal);
+    const interval = setInterval(() => fetchQueues(controller.signal), 10000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -2180,6 +2196,7 @@ const IntelligenceHub: React.FC<{
                 <input
                   type="text"
                   placeholder="SEARCH COMMAND..."
+                  aria-label="Search intelligence commands"
                   className={`w-full bg-slate-900 border border-white/5 rounded-xl pl-10 pr-4 ${isHighObstruction ? "py-1 text-[11px] font-black" : "py-2 text-[10px]"} text-white outline-none focus:border-indigo-500/50 transition-all`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -2830,6 +2847,7 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="space-y-8">
               <select
+                aria-label="Select operator for handoff"
                 className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white outline-none focus:border-blue-500/50"
                 value={handoffData.assignedTo}
                 onChange={(e) =>
@@ -2854,6 +2872,7 @@ const IntelligenceHub: React.FC<{
               <textarea
                 className="w-full bg-slate-950 border border-white/10 rounded-[2rem] p-6 text-sm text-white h-40 resize-none outline-none focus:border-blue-500/50"
                 placeholder="Strategic briefing for the next operator..."
+                aria-label="Strategic briefing for handoff"
                 value={handoffData.notes}
                 onChange={(e) =>
                   setHandoffData({ ...handoffData, notes: e.target.value })
@@ -2951,10 +2970,11 @@ const IntelligenceHub: React.FC<{
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label htmlFor="call-entity-type" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                     Entity Type
                   </label>
                   <select
+                    id="call-entity-type"
                     className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                     value={callData.type}
                     onChange={(e) =>
@@ -2968,10 +2988,11 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label htmlFor="call-category" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                     Category
                   </label>
                   <select
+                    id="call-category"
                     className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                     value={callData.category}
                     onChange={(e) =>
@@ -2986,10 +3007,11 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="call-notes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Notes
                 </label>
                 <textarea
+                  id="call-notes"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-blue-500/50"
                   placeholder="Enter operational notes here..."
                   value={callData.notes}
@@ -3046,10 +3068,11 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="task-title" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Task Title
                 </label>
                 <input
+                  id="task-title"
                   type="text"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-orange-500/50"
                   placeholder="What needs to be done?"
@@ -3060,10 +3083,11 @@ const IntelligenceHub: React.FC<{
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="task-assignee" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Assignee
                 </label>
                 <select
+                  id="task-assignee"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                   value={taskData.assignedTo}
                   onChange={(e) =>
@@ -3126,10 +3150,11 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="issue-category" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Category
                 </label>
                 <select
+                  id="issue-category"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                   value={issueData.category}
                   onChange={(e) =>
@@ -3143,10 +3168,11 @@ const IntelligenceHub: React.FC<{
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label htmlFor="issue-description" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   Description
                 </label>
                 <textarea
+                  id="issue-description"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-red-500/50"
                   placeholder="Describe the issue in detail..."
                   value={issueData.description}
@@ -3218,7 +3244,7 @@ const IntelligenceHub: React.FC<{
             <div className="p-10 space-y-8 overflow-y-auto no-scrollbar">
               {/* Context Grid */}
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label htmlFor="request-asset-context" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
                   Asset Context (Required)
                 </label>
                 <div className="relative group">
@@ -3227,6 +3253,7 @@ const IntelligenceHub: React.FC<{
                     type="text"
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-[13px] text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner placeholder:text-slate-800"
                     placeholder="SEARCH LOAD, CUSTOMER, OR DRIVER..."
+                    id="request-asset-context"
                     value={
                       requestData.attachedRecord
                         ? requestData.attachedRecord.label
@@ -3283,10 +3310,11 @@ const IntelligenceHub: React.FC<{
 
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label htmlFor="request-type" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
                     Type Designation
                   </label>
                   <select
+                    id="request-type"
                     value={requestData.type}
                     onChange={(e) =>
                       setRequestData({
@@ -3307,7 +3335,7 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label htmlFor="request-amount" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
                     Quantum (USD)
                   </label>
                   <div className="relative">
@@ -3315,6 +3343,7 @@ const IntelligenceHub: React.FC<{
                       $
                     </span>
                     <input
+                      id="request-amount"
                       type="number"
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-white font-mono outline-none focus:border-blue-500 transition-all shadow-inner"
                       placeholder="0.00"
@@ -3331,10 +3360,11 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label htmlFor="request-justification" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
                   Mission Justification
                 </label>
                 <textarea
+                  id="request-justification"
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
                   placeholder="PROVIDE OPERATIONAL RATIONALE FOR THIS EXCEPTION..."
                   value={requestData.notes}
@@ -3423,6 +3453,7 @@ const IntelligenceHub: React.FC<{
                 <input
                   type="text"
                   placeholder={`SEARCH ${directoryTab}...`}
+                  aria-label={`Search ${directoryTab.toLowerCase()}`}
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-xs text-white outline-none focus:border-blue-500/50"
                   value={directorySearchQuery}
                   onChange={(e) => setDirectorySearchQuery(e.target.value)}
@@ -3923,10 +3954,11 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label htmlFor="doc-discrepancy-log" className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
                   Discrepancy Log (Optional)
                 </label>
                 <textarea
+                  id="doc-discrepancy-log"
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-28 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
                   placeholder="SPECIFY ANY OSD OR CARGO DISCREPANCIES DETECTED DURING INTAKE..."
                 ></textarea>
@@ -4033,10 +4065,11 @@ const IntelligenceHub: React.FC<{
                 ))}
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label htmlFor="notify-briefing" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
                   Emergency Briefing
                 </label>
                 <textarea
+                  id="notify-briefing"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner"
                   placeholder="Enter the message for broadcast..."
                   value={notificationMessage}
@@ -4124,10 +4157,11 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label htmlFor="roadside-damage-report" className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
                   Tactical Damage Report
                 </label>
                 <textarea
+                  id="roadside-damage-report"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-24 resize-none outline-none focus:border-orange-500 transition-all shadow-inner"
                   placeholder="Specify repair requirements..."
                   value={roadsideNotes}

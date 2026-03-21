@@ -59,7 +59,7 @@ export const Dashboard: React.FC<Props> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = async (signal?: AbortSignal) => {
     setError(null);
     setLoading(true);
     try {
@@ -67,17 +67,26 @@ export const Dashboard: React.FC<Props> = ({
         getExceptions({ status_not_in: "RESOLVED,CLOSED" }),
         getDashboardCards(),
       ]);
+      if (signal?.aborted) return;
       setExceptions(exs);
       setCards(cardDefs);
     } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (signal?.aborted) return;
       setError("Unable to load dashboard data. Please retry.");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    loadDashboardData();
+    const controller = new AbortController();
+    loadDashboardData(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const exceptionCounts = useMemo(() => {
