@@ -439,6 +439,26 @@ const handleSubmit = async () => {
 <button disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save'}</button>
 ```
 
+
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|----------|
+| MODIFY | components/AccountingBillForm.tsx | Add isSubmitting state + try/finally to Save button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/BrokerManager.tsx | Add isSubmitting state + try/finally to Add Chassis/Save Broker buttons | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/CompanyProfile.tsx | Add isSubmitting state + try/finally to Save Changes button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/OperationalMessaging.tsx | Add isSubmitting + try/finally to Send Message button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/DataImportWizard.tsx | Add isSubmitting + try/finally to Dry Run and Confirm Import buttons | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/NetworkPortal.tsx | Add isSubmitting + try/finally to wizard submit and quick modals | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/IFTAManager.tsx | Add isSubmitting + try/finally to Save Mileage button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/BolGenerator.tsx | Add isSubmitting + try/finally to Save BOL button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/QuoteManager.tsx | Add isSubmitting + try/finally to Save Quote and Convert Quote buttons | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/LoadSetupModal.tsx | Verify and complete isSubmitting protection on Continue button | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/BookingPortal.tsx | Add try/finally + setLoading(false) to Convert to Booking | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/SafetyView.tsx | Add isSubmitting + try/finally to asset registration and maintenance forms | .claude/hooks/tests/test_r_w2_03.py |
+| MODIFY | components/EditUserModal.tsx | Verify and complete isSubmitting protection on Save button | .claude/hooks/tests/test_r_w2_03.py |
+| CREATE | .claude/hooks/tests/test_r_w2_03.py | Python QA tests for R-W2-03a/b/c and VPC-302 | .claude/hooks/tests/test_r_w2_03.py |
+
 **Done When**:
 - R-W2-03a: Every submit/save button in every listed form has `disabled={isSubmitting}` or equivalent
 - R-W2-03b: Every submit button shows loading text ("Saving...", "Sending...", "Creating...") during submission
