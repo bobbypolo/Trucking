@@ -5,6 +5,8 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
+import { getSafetyScore } from "../services/fmcsa.service";
+import { checkExpiring } from "../services/cert-expiry-checker";
 
 const router = Router();
 
@@ -468,6 +470,53 @@ router.post(
       });
       log.error({ err: error }, "Failed to log safety activity");
       res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// ── Expiring Certificates ────────────────────────────────────────────────────
+
+// GET /api/safety/expiring-certs — list driver certificates expiring within N days
+router.get(
+  "/api/safety/expiring-certs",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const daysAhead = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+    try {
+      const certs = await checkExpiring(companyId, daysAhead);
+      res.json(certs);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/safety/expiring-certs",
+      });
+      log.error({ err: error }, "Failed to check expiring certificates");
+      res.status(500).json({ error: "Failed to check expiring certificates" });
+    }
+  },
+);
+
+
+// ---- FMCSA Safety Scores ----
+
+// GET /api/safety/fmcsa/:dotNumber -- fetch FMCSA safety score for a carrier
+router.get(
+  "/api/safety/fmcsa/:dotNumber",
+  requireAuth,
+  async (req: Request, res) => {
+    const { dotNumber } = req.params;
+    try {
+      const result = await getSafetyScore(dotNumber);
+      res.json(result);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/safety/fmcsa/:dotNumber",
+      });
+      log.error({ err: error, dotNumber }, "Failed to fetch FMCSA safety score");
+      res.status(500).json({ error: "Failed to fetch FMCSA safety score" });
     }
   },
 );

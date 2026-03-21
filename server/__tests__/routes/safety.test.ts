@@ -72,6 +72,10 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+vi.mock("../../services/cert-expiry-checker", () => ({
+  checkExpiring: vi.fn().mockResolvedValue([]),
+}));
+
 import express from "express";
 import request from "supertest";
 import safetyRouter from "../../routes/safety";
