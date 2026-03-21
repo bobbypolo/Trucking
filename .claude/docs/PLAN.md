@@ -660,6 +660,12 @@ Same pattern as H-402 for remaining components.
 - Playwright: `playwright_console_logs(type: "error")` returns 0 uncaught exceptions
 - Spot-check: Read 3 form components and verify validation pattern is consistent
 
+#### Changes Table
+
+| Action | File | Purpose | Test File |
+|--------|------|---------|-----------|
+| ADD | .claude/hooks/tests/test_r_w3_404.py | Wave 3 verification test: FE/BE/VPC checks, Playwright page verification | test_r_w3_404.py |
+
 ---
 
 ## Wave 4: Accessibility & Permission UX — IN PROGRESS
