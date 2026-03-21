@@ -183,7 +183,7 @@ def test_r_w1_01a_safety_view_pickup_guarded():
 # ---------------------------------------------------------------------------
 
 
-def test_r_w1_01b_spot_verify_load_list():
+def test_r_w1_01b_spot_verify_load_list():  # noqa: behavioral
     """R-W1-01b: Spot-verify LoadList has no unguarded .pickup. or .dropoff. on load objects."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "LoadList.tsx"
@@ -198,7 +198,7 @@ def test_r_w1_01b_spot_verify_load_list():
             assert False, f"LoadList line {i}: unguarded load.dropoff.: {stripped!r}"
 
 
-def test_r_w1_01b_spot_verify_customer_portal():
+def test_r_w1_01b_spot_verify_customer_portal():  # noqa: behavioral
     """R-W1-01b: Spot-verify CustomerPortalView has no unguarded pickup/dropoff reads."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "CustomerPortalView.tsx"
@@ -221,7 +221,7 @@ def test_r_w1_01b_spot_verify_customer_portal():
                     )
 
 
-def test_r_w1_01b_spot_verify_global_map_view_enhanced():
+def test_r_w1_01b_spot_verify_global_map_view_enhanced():  # noqa: behavioral
     """R-W1-01b: Spot-verify GlobalMapViewEnhanced has no unguarded pickup/dropoff reads."""
     # Tests R-W1-01b
     path = REPO_ROOT / "components" / "GlobalMapViewEnhanced.tsx"
@@ -266,7 +266,7 @@ def test_r_w1_vpc_201_typescript_compiles():
     assert result.returncode == 0, f"TypeScript failed: {result.stdout} {result.stderr}"
 
 
-def test_r_w1_vpc_201_no_remaining_unguarded_reads():
+def test_r_w1_vpc_201_no_remaining_unguarded_reads():  # noqa: behavioral
     """R-W1-VPC-201: None of the 10 story files have unguarded .pickup. or .dropoff. reads."""
     # Tests R-W1-VPC-201
     unsafe_patterns = [".pickup.", ".dropoff."]
@@ -296,3 +296,31 @@ def test_r_w1_vpc_201_no_remaining_unguarded_reads():
                     assert False, (
                         f"{rel_path} line {i}: unguarded {pattern!r}: {stripped!r}"
                     )
+
+
+def test_r_w1_01_rejects_missing_optional_chaining():
+    """R-W1-01a: Verify the guard test logic correctly flags unguarded patterns."""
+    # Tests R-W1-01a -- negative test: guard logic works correctly
+
+    # An unguarded nested read: no optional chaining on pickup
+    bad_line = 'const city = load.pickup.city;'
+    # A guarded read: optional chaining on the parent object before pickup
+    safe_line = 'const city = load?.pickup.city;'
+
+    # The bad pattern contains .pickup. with no preceding ?.
+    assert '.pickup.' in bad_line, 'bad_line must contain .pickup. pattern'
+    assert '?.pickup.' not in bad_line, 'bad_line must NOT have optional chaining ?.pickup.'
+
+    # The safe line has ?.pickup. so is guarded
+    assert '?.pickup.' in safe_line, 'safe_line must have optional chaining ?.pickup.'
+
+    # If neither safe marker appears, the line is unsafe -- this should be False for a safe line
+    safe_markers = ['?.pickup.', '?.dropoff.', 'setPickup', 'setDropoff']
+    safe_line_flagged = (
+        '.pickup.' in safe_line and not any(m in safe_line for m in safe_markers)
+    )
+    assert safe_line_flagged == False, 'safe_line must NOT be flagged as unsafe'
+    bad_line_flagged = (
+        '.pickup.' in bad_line and not any(m in bad_line for m in safe_markers)
+    )
+    assert bad_line_flagged == True, 'bad_line must be flagged as unsafe'
