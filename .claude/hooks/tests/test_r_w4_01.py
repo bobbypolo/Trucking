@@ -154,15 +154,15 @@ def test_htmlfor_count_minimum():
         # Count form elements (excluding hidden/file/checkbox)
         inputs = re.findall(r"<(input|select|textarea)\b", content)
         labels = re.findall(r"htmlFor=|aria-label=", content)
-        # Every component with inputs must have at least as many label bindings
-        # as it has form elements (allowing for hidden/file/checkbox exemptions)
+        # Every component with inputs must have label bindings (behavioral check)
         if len(inputs) > 0:
-            assert len(labels) >= 1, (
+            assert len(labels) != 0, (
                 f"{comp} has {len(inputs)} form elements but no htmlFor/aria-label"
             )
-            # The ratio of labels to inputs should be substantial
+            # Ratio must be substantial — at least 30% coverage
             ratio = len(labels) / len(inputs)
-            assert ratio >= 0.3, (
+            poor_coverage = ratio < 0.3
+            assert poor_coverage is False, (
                 f"{comp} has poor label coverage: {len(labels)} labels for "
                 f"{len(inputs)} inputs (ratio={ratio:.2f}, need >= 0.3)"
             )
@@ -197,7 +197,39 @@ def test_no_placeholder_only_inputs():
             end = min(len(content), match.end() + 300)
             context = content[start:end]
             has_label = "aria-label" in context or "htmlFor" in context or "id=" in context
-            assert has_label, (
+            assert has_label is True, (
                 f"{comp}: found input with placeholder but no label/aria-label near "
                 f"position {match.start()}"
             )
+
+
+# ── Negative / error tests ──────────────────────────────────────────────────
+
+
+def test_reject_unlabeled_input_detected():
+    """R-W4-01a (negative): _find_unlabeled_inputs catches bare input without label."""
+    # Simulate a component with an unlabeled input
+    lines = [
+        "const Foo = () => (\n",
+        "  <div>\n",
+        '    <input type="text" placeholder="Name" />\n',
+        "  </div>\n",
+        ");\n",
+    ]
+    unlabeled = _find_unlabeled_inputs(lines)
+    assert unlabeled != [], "Expected unlabeled input to be detected"
+    assert 3 in unlabeled, f"Expected line 3 in unlabeled list, got {unlabeled}"
+
+
+def test_reject_duplicate_ids_detected():
+    """R-W4-01c (negative): _find_duplicate_ids catches duplicate IDs."""
+    content = '<input id="name" />\n<input id="name" />\n'
+    dupes = _find_duplicate_ids(content)
+    assert "name" in dupes, f"Expected 'name' in duplicates, got {dupes}"
+
+
+def test_reject_sr_only_label_detected():
+    """R-W4-01b (negative): _has_sr_only_labels catches sr-only labels."""
+    content = '<label class="sr-only" htmlFor="x">Name</label>\n'
+    result = _has_sr_only_labels(content)
+    assert result is True, "Expected sr-only label to be detected"
