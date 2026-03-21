@@ -511,6 +511,12 @@ Ensure all write operations show clear feedback using existing Toast component f
 - Playwright: Verify SessionExpiredModal renders (if testable via mock)
 - Read H-301 diff and confirm 401/403 handling in api.ts
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| ADD | .claude/hooks/tests/test_r_w2_304.py | Wave 2 verification test: FE/BE counts, SessionExpiredModal, VPC checks | test_r_w2_304.py |
+
 ---
 
 ## Wave 3: UX Consistency (Validation + Loading/Error/Empty States)
