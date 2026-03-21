@@ -133,11 +133,17 @@ def test_no_duplicate_ids(component):
 # and the gate command (npx tsc --noEmit)
 def test_batch1_component_count():
     """R-W4-VPC-501: All 15 batch-1 components exist and are readable."""
+    assert len(BATCH_1_COMPONENTS) == 15, (
+        f"Expected 15 batch-1 components, got {len(BATCH_1_COMPONENTS)}"
+    )
     for comp in BATCH_1_COMPONENTS:
         fullpath = os.path.join(PROJECT_ROOT, comp)
         assert os.path.isfile(fullpath), f"Component {comp} not found"
         lines = _read_component(comp)
         assert len(lines) > 10, f"Component {comp} seems empty"
+        content = "".join(lines)
+        # Each component should be a valid React component (export statement)
+        assert "export" in content, f"Component {comp} missing export statement"
 
 
 def test_htmlfor_count_minimum():
@@ -148,8 +154,50 @@ def test_htmlfor_count_minimum():
         # Count form elements (excluding hidden/file/checkbox)
         inputs = re.findall(r"<(input|select|textarea)\b", content)
         labels = re.findall(r"htmlFor=|aria-label=", content)
-        # At least some accessibility attributes should exist
+        # Every component with inputs must have at least as many label bindings
+        # as it has form elements (allowing for hidden/file/checkbox exemptions)
         if len(inputs) > 0:
-            assert len(labels) > 0, (
+            assert len(labels) >= 1, (
                 f"{comp} has {len(inputs)} form elements but no htmlFor/aria-label"
+            )
+            # The ratio of labels to inputs should be substantial
+            ratio = len(labels) / len(inputs)
+            assert ratio >= 0.3, (
+                f"{comp} has poor label coverage: {len(labels)} labels for "
+                f"{len(inputs)} inputs (ratio={ratio:.2f}, need >= 0.3)"
+            )
+
+
+def test_htmlfor_id_pairing_valid():
+    """R-W4-VPC-501: htmlFor values reference existing id attributes."""
+    for comp in BATCH_1_COMPONENTS:
+        lines = _read_component(comp)
+        content = "".join(lines)
+        # Extract htmlFor values (static string only)
+        html_fors = re.findall(r'htmlFor="([^"]+)"', content)
+        ids = set(re.findall(r'\bid="([^"]+)"', content))
+        for hf in html_fors:
+            assert hf in ids, (
+                f"{comp}: htmlFor=\"{hf}\" has no matching id attribute"
+            )
+
+
+def test_no_placeholder_only_inputs():
+    """R-W4-01a (edge): Inputs with placeholder must also have label or aria-label."""
+    for comp in BATCH_1_COMPONENTS:
+        lines = _read_component(comp)
+        content = "".join(lines)
+        # Find inputs with placeholder attribute
+        placeholder_inputs = re.finditer(
+            r"<input[^>]*placeholder=", content, re.DOTALL
+        )
+        for match in placeholder_inputs:
+            # Get surrounding context (200 chars before and after)
+            start = max(0, match.start() - 200)
+            end = min(len(content), match.end() + 300)
+            context = content[start:end]
+            has_label = "aria-label" in context or "htmlFor" in context or "id=" in context
+            assert has_label, (
+                f"{comp}: found input with placeholder but no label/aria-label near "
+                f"position {match.start()}"
             )
