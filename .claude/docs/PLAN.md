@@ -388,6 +388,8 @@ Full regression + Playwright spot-check of the 5 most-affected components.
 | CREATE | components/ui/SessionExpiredModal.tsx | New alertdialog modal with aria-modal | src/__tests__/components/ui/SessionExpiredModal.test.tsx |
 | MODIFY | App.tsx | Listen for session-expired event, render modal | src/__tests__/components/ui/SessionExpiredModal.test.tsx |
 | MODIFY | services/storageService.ts | Re-throw auth errors instead of silent empty array | .claude/hooks/tests/test_r_w2_01.py |
+| CREATE | src/__tests__/services/api.interceptor.test.ts | Vitest tests for 401/403 interceptor | .claude/hooks/tests/test_r_w2_01.py |
+| CREATE | src/__tests__/components/ui/SessionExpiredModal.test.tsx | Vitest tests for SessionExpiredModal | .claude/hooks/tests/test_r_w2_01.py |
 
 **Edge cases to handle**:
 - Multiple 401s fire simultaneously (only show modal once — use a flag)
