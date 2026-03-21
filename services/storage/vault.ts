@@ -12,6 +12,57 @@ import { API_URL } from "../config";
 import { getIdTokenAsync } from "../authService";
 
 /**
+ * Allowed MIME types for vault uploads.
+ * Must stay in sync with server/schemas/document.schema.ts.
+ */
+export const ALLOWED_MIME_TYPES: readonly string[] = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/tiff",
+] as const;
+
+/**
+ * Maximum file size in bytes: 10 MB.
+ * Must stay in sync with server/schemas/document.schema.ts.
+ */
+export const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+export interface ValidationResult {
+  valid: boolean;
+  error?: string;
+}
+
+/**
+ * Validate file MIME type against allowed types.
+ * R-W5-03b: Invalid MIME type shows clear rejection message.
+ */
+export const validateFileType = (file: File): ValidationResult => {
+  if (ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { valid: true };
+  }
+  return {
+    valid: false,
+    error: `File type "${file.type || "unknown"}" is not allowed. Accepted types: PDF, JPEG, PNG, TIFF.`,
+  };
+};
+
+/**
+ * Validate file size against the 10 MB limit.
+ * R-W5-03c: File size limit enforced with user-visible error.
+ */
+export const validateFileSize = (file: File): ValidationResult => {
+  if (file.size <= MAX_FILE_SIZE_BYTES) {
+    return { valid: true };
+  }
+  const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  return {
+    valid: false,
+    error: `File is too large (${sizeMB} MB). Maximum allowed size is 10 MB.`,
+  };
+};
+
+/**
  * Fetch all vault documents for the current tenant from the API.
  */
 export const getRawVaultDocs = async (): Promise<VaultDoc[]> => {

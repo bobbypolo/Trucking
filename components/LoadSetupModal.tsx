@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Broker, User, FreightType, Contract } from "../types";
 import {
   Building2,
@@ -50,6 +51,9 @@ export const LoadSetupModal: React.FC<Props> = ({
     type: "error" | "success" | "info";
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true, onCancel);
 
   useEffect(() => {
     loadInitialData();
@@ -98,10 +102,10 @@ export const LoadSetupModal: React.FC<Props> = ({
         setIsSubmitting(false);
       }
     } else {
-      setToast({
-        message: "Please select both a broker and a driver.",
-        type: "error",
-      });
+      const errs: Record<string, string> = {};
+      if (!selectedBrokerId) errs.broker = "Broker is required";
+      if (!selectedDriverId) errs.driver = "Driver is required";
+      setFormErrors(errs);
     }
   };
 
@@ -114,7 +118,10 @@ export const LoadSetupModal: React.FC<Props> = ({
           onDismiss={() => setToast(null)}
         />
       )}
-      <div className="bg-[#1a2235] rounded-2xl border border-slate-800 w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col">
+      <div
+        ref={panelRef}
+        className="bg-[#1a2235] rounded-2xl border border-slate-800 w-full max-w-lg shadow-2xl relative overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -135,7 +142,7 @@ export const LoadSetupModal: React.FC<Props> = ({
           {/* Broker Selection */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-400">
-              Select Broker / Customer
+              Select Broker / Customer *
             </label>
             <div className="relative">
               <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -149,14 +156,21 @@ export const LoadSetupModal: React.FC<Props> = ({
                 )}
               </div>
             </div>
+            {formErrors.broker && (
+              <p className="text-red-400 text-xs mt-1">{formErrors.broker}</p>
+            )}
           </div>
 
           {/* Driver Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400">
+            <label
+              htmlFor="lsmAssignDriver"
+              className="text-xs font-bold text-slate-400"
+            >
               Assign Driver
             </label>
             <select
+              id="lsmAssignDriver"
               value={selectedDriverId}
               onChange={(e) => setSelectedDriverId(e.target.value)}
               className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none"
@@ -172,20 +186,34 @@ export const LoadSetupModal: React.FC<Props> = ({
                   </option>
                 ))}
             </select>
+            {formErrors.driver && (
+              <p className="text-red-400 text-xs mt-1">{formErrors.driver}</p>
+            )}
           </div>
 
           {/* Phone Order Notes */}
           {isPhoneOrder && (
             <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
-              <label className="text-[10px] font-black text-yellow-500 uppercase tracking-widest">
+              <label
+                htmlFor="lsmInitialCallNotes"
+                className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+              >
                 Initial Call Notes
               </label>
               <textarea
+                id="lsmInitialCallNotes"
                 value={callNotes}
-                onChange={(e) => setCallNotes(e.target.value)}
+                onChange={(e) => {
+                  if (e.target.value.length <= 500)
+                    setCallNotes(e.target.value);
+                }}
+                maxLength={500}
                 placeholder="e.g. Appointment required for pickup, strict delivery window..."
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-white h-24 focus:border-blue-500 outline-none placeholder:text-slate-700"
               />
+              <p className="text-[9px] text-slate-600 mt-1 text-right">
+                {callNotes.length}/500
+              </p>
             </div>
           )}
 
@@ -193,7 +221,7 @@ export const LoadSetupModal: React.FC<Props> = ({
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => handleContinue(false)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !selectedBrokerId || !selectedDriverId}
               className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Loading..." : "Scan Doc"}{" "}

@@ -1,12 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Shield, FileText, Upload, Filter, Search,
     Lock, Unlock, History, MoreVertical,
     Download, Trash2, CheckCircle, AlertCircle,
-    User, Truck, Package, HardDrive, Clock, ExternalLink
+    User, Truck, Package, HardDrive, Clock, ExternalLink,
+    X, Loader2
 } from 'lucide-react';
 import { VaultDoc, VaultDocType, VaultDocStatus, User as UserType, LoadData } from '../types';
 import { getVaultDocs, uploadToVault, updateDocStatus } from '../services/financialService';
+import {
+    validateFileType,
+    validateFileSize,
+    uploadVaultDoc,
+    ALLOWED_MIME_TYPES,
+    MAX_FILE_SIZE_BYTES
+} from '../services/storage/vault';
+import { LoadingSkeleton } from './ui/LoadingSkeleton';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './EmptyState';
 
 interface Props {
     currentUser: UserType;
@@ -16,17 +27,122 @@ interface Props {
 export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
     const [docs, setDocs] = useState<VaultDoc[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<VaultDocType | 'all'>('all');
     const [statusFilter, setStatusFilter] = useState<VaultDocStatus | 'all'>('all');
     const [showUploadModal, setShowUploadModal] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [uploading, setUploading] = useState(false);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+    const [uploadSuccess, setUploadSuccess] = useState(false);
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const [selectedDocType, setSelectedDocType] = useState<VaultDocType>('BOL');
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const resetUploadState = useCallback(() => {
+        setSelectedFile(null);
+        setUploadProgress(0);
+        setUploading(false);
+        setUploadError(null);
+        setUploadSuccess(false);
+        setValidationError(null);
+        setSelectedDocType('BOL');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }, []);
+
+    const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        setUploadError(null);
+        setValidationError(null);
+        setUploadSuccess(false);
+
+        const file = e.target.files?.[0];
+        if (!file) {
+            setSelectedFile(null);
+            return;
+        }
+
+        // R-W5-03b: File type validation before upload attempt
+        const typeCheck = validateFileType(file);
+        if (!typeCheck.valid) {
+            setValidationError(typeCheck.error ?? 'Invalid file type');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        // R-W5-03c: File size limit enforced with user-visible error
+        const sizeCheck = validateFileSize(file);
+        if (!sizeCheck.valid) {
+            setValidationError(sizeCheck.error ?? 'File too large');
+            setSelectedFile(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        setSelectedFile(file);
+    }, []);
+
+    const handleUpload = useCallback(async () => {
+        if (!selectedFile) return;
+
+        setUploading(true);
+        setUploadProgress(0);
+        setUploadError(null);
+        setUploadSuccess(false);
+
+        try {
+            // R-W5-02a: Simulate progress updates during upload
+            const progressInterval = setInterval(() => {
+                setUploadProgress(prev => {
+                    if (prev >= 90) {
+                        clearInterval(progressInterval);
+                        return 90;
+                    }
+                    return prev + 10;
+                });
+            }, 200);
+
+            const doc = await uploadVaultDoc(
+                selectedFile,
+                selectedDocType,
+                currentUser?.companyId ?? '',
+                {}
+            );
+
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+            setUploadSuccess(true);
+            setDocs(prev => [doc, ...prev]);
+
+            // Reset after brief success display
+            setTimeout(() => {
+                setShowUploadModal(false);
+                resetUploadState();
+            }, 1500);
+        } catch (err: unknown) {
+            // R-W5-03a: Error message shown when upload fails
+            const message = err instanceof Error ? err.message : 'Upload failed. Please try again.';
+            setUploadError(message);
+            setUploadProgress(0);
+        } finally {
+            setUploading(false);
+        }
+    }, [selectedFile, selectedDocType, currentUser, resetUploadState]);
 
     const loadVault = async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const data = await getVaultDocs({});
             setDocs(Array.isArray(data) ? data : []);
         } catch (error) {
+            setLoadError(
+                error instanceof Error
+                    ? error.message
+                    : 'Failed to load vault documents. Please try again.',
+            );
         }
         setLoading(false);
     };
@@ -69,6 +185,35 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
         }
     };
 
+    if (loading) {
+        return (
+            <div className="h-full flex flex-col space-y-6 p-8">
+                <LoadingSkeleton variant="table" count={6} />
+            </div>
+        );
+    }
+
+    if (loadError) {
+        return (
+            <div className="h-full flex flex-col">
+                <ErrorState message={loadError} onRetry={loadVault} />
+            </div>
+        );
+    }
+
+    if (docs.length === 0 && !searchQuery && typeFilter === 'all' && statusFilter === 'all') {
+        return (
+            <div className="h-full flex flex-col">
+                <EmptyState
+                    icon={<HardDrive className="w-16 h-16" />}
+                    title="No Documents in Vault"
+                    description="Upload your first compliance document to get started. BOLs, PODs, fuel receipts, and more."
+                    action={{ label: "Upload Document", onClick: () => setShowUploadModal(true) }}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="h-full flex flex-col space-y-6">
             <header className="flex justify-between items-end">
@@ -97,6 +242,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                     <input
                         type="text"
                         placeholder="SEARCH BY LOAD #, VENDOR, FILENAME..."
+                        aria-label="Search documents by load number, vendor, or filename"
                         className="w-full bg-slate-950 border border-white/5 rounded-xl pl-12 pr-6 py-3 text-[10px] font-black uppercase tracking-widest text-white outline-none focus:border-blue-500/50 transition-all font-mono"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -106,6 +252,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                 <select
                     value={typeFilter}
                     onChange={(e) => setTypeFilter(e.target.value as any)}
+                    aria-label="Filter by document type"
                     className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none focus:border-blue-500/50"
                 >
                     <option value="all">DOCUMENT TYPES</option>
@@ -120,6 +267,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as any)}
+                    aria-label="Filter by document status"
                     className="bg-slate-950 border border-white/5 rounded-xl px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 outline-none focus:border-blue-500/50"
                 >
                     <option value="all">ALL STATUSES</option>
@@ -144,13 +292,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                        {loading ? (
-                            Array(5).fill(0).map((_, i) => (
-                                <tr key={i} className="animate-pulse">
-                                    <td colSpan={6} className="px-8 py-8"><div className="h-4 bg-white/5 rounded w-full"></div></td>
-                                </tr>
-                            ))
-                        ) : filteredDocs.length > 0 ? (
+                        {filteredDocs.length > 0 ? (
                             filteredDocs.map((doc) => (
                                 <tr key={doc.id} className="hover:bg-white/[0.02] transition-all group">
                                     <td className="px-8 py-6">
@@ -253,6 +395,141 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-1">Audit Log Coverage: 100% Transactions</div>
                 </div>
             </div>
+
+            {/* UPLOAD MODAL */}
+            {showUploadModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" data-testid="upload-modal">
+                    <div className="bg-slate-900 border border-white/10 rounded-3xl w-full max-w-lg p-8 relative">
+                        <button
+                            onClick={() => { setShowUploadModal(false); resetUploadState(); }}
+                            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white transition-colors"
+                            aria-label="Close upload modal"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+
+                        <h3 className="text-lg font-black text-white uppercase tracking-tighter mb-6 flex items-center gap-2">
+                            <Upload className="w-5 h-5 text-blue-500" />
+                            Secure Document Upload
+                        </h3>
+
+                        {/* Document Type Selector */}
+                        <div className="mb-4">
+                            <label htmlFor="upload-doc-type" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Document Type
+                            </label>
+                            <select
+                                id="upload-doc-type"
+                                value={selectedDocType}
+                                onChange={(e) => setSelectedDocType(e.target.value as VaultDocType)}
+                                disabled={uploading}
+                                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/50"
+                            >
+                                <option value="BOL">Bill of Lading (BOL)</option>
+                                <option value="POD">Proof of Delivery (POD)</option>
+                                <option value="Fuel">Fuel Receipt</option>
+                                <option value="Repair">Repair Bill</option>
+                                <option value="Insurance">Insurance Document</option>
+                                <option value="Permit">Permit</option>
+                            </select>
+                        </div>
+
+                        {/* File Input */}
+                        <div className="mb-4">
+                            <label htmlFor="upload-file-input" className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                                Select File
+                            </label>
+                            <input
+                                id="upload-file-input"
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif"
+                                onChange={handleFileSelect}
+                                disabled={uploading}
+                                className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white file:cursor-pointer"
+                                data-testid="file-input"
+                            />
+                            <p className="text-[9px] text-slate-500 mt-1 font-bold uppercase tracking-widest">
+                                Accepted: PDF, JPEG, PNG, TIFF (max 10 MB)
+                            </p>
+                        </div>
+
+                        {/* Validation Error */}
+                        {validationError && (
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2" data-testid="validation-error">
+                                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <span className="text-[10px] font-bold text-red-400">{validationError}</span>
+                            </div>
+                        )}
+
+                        {/* Upload Error */}
+                        {uploadError && (
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2" data-testid="upload-error">
+                                <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                                <span className="text-[10px] font-bold text-red-400">{uploadError}</span>
+                            </div>
+                        )}
+
+                        {/* Progress Bar (R-W5-02a) */}
+                        {uploading && (
+                            <div className="mb-4" data-testid="upload-progress">
+                                <div className="flex items-center justify-between mb-1">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                        Uploading...
+                                    </span>
+                                    <span className="text-[10px] font-black text-blue-400">{uploadProgress}%</span>
+                                </div>
+                                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="bg-blue-500 h-full rounded-full transition-all duration-300 ease-out"
+                                        style={{ width: `${uploadProgress}%` }}
+                                        role="progressbar"
+                                        aria-valuenow={uploadProgress}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-label="Upload progress"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Success Message */}
+                        {uploadSuccess && (
+                            <div className="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2" data-testid="upload-success">
+                                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                                <span className="text-[10px] font-bold text-emerald-400">Upload complete! Document added to vault.</span>
+                            </div>
+                        )}
+
+                        {/* Selected File Info */}
+                        {selectedFile && !uploading && !uploadSuccess && (
+                            <div className="mb-4 p-3 bg-slate-800/50 border border-white/5 rounded-xl">
+                                <div className="text-[11px] font-bold text-white truncate">{selectedFile.name}</div>
+                                <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Upload Button */}
+                        <button
+                            onClick={handleUpload}
+                            disabled={!selectedFile || uploading || uploadSuccess}
+                            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-all"
+                            data-testid="upload-submit-btn"
+                        >
+                            {uploading ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+                            ) : uploadSuccess ? (
+                                <><CheckCircle className="w-4 h-4" /> Uploaded</>
+                            ) : (
+                                <><Upload className="w-4 h-4" /> Upload Document</>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

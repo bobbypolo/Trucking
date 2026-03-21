@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import { User, RolePermissions, PayModel } from "../types";
 import {
   X,
@@ -34,9 +35,38 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
     "info",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, true, onCancel);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!formData.name.trim()) errs.name = "Name is required";
+    if (!formData.email.trim()) {
+      errs.email = "Email is required";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errs.email = "Invalid email format";
+    }
+    if (formData.payRate !== undefined && formData.payRate < 0) {
+      errs.payRate = "Pay rate cannot be negative";
+    }
+    return errs;
+  };
+
+  const isFormValid =
+    !!formData.name.trim() &&
+    !!formData.email.trim() &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email) &&
+    (formData.payRate === undefined || formData.payRate >= 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+    setErrors({});
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSave(formData));
@@ -60,7 +90,10 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
   ].includes(formData.role);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+    <div
+      ref={panelRef}
+      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
+    >
       <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Modal Header */}
         <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-800/30 shrink-0">
@@ -108,38 +141,72 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
             <div className="space-y-6 animate-fade-in">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] text-slate-600 uppercase font-black mb-2 block">
-                    Full Legal Name
+                  <label
+                    htmlFor="eumFullLegalName"
+                    className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
+                  >
+                    Full Legal Name *
                   </label>
                   <input
-                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white font-black"
+                    id="eumFullLegalName"
+                    className={`w-full bg-slate-900 border ${errors.name ? "border-red-500" : "border-slate-800"} rounded-2xl p-4 text-white font-black`}
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                   />
+                  {errors.name && (
+                    <p className="text-red-400 text-xs mt-1">{errors.name}</p>
+                  )}
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-600 uppercase font-black mb-2 block">
-                    Email
+                  <label
+                    htmlFor="eumEmail"
+                    className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
+                  >
+                    Email *
                   </label>
                   <input
-                    className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white font-mono"
+                    id="eumEmail"
+                    className={`w-full bg-slate-900 border ${errors.email ? "border-red-500" : "border-slate-800"} rounded-2xl p-4 text-white font-mono`}
                     value={formData.email}
                     onChange={(e) =>
                       setFormData({ ...formData, email: e.target.value })
                     }
+                    onBlur={() => {
+                      if (
+                        formData.email &&
+                        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+                      ) {
+                        setErrors((prev) => ({
+                          ...prev,
+                          email: "Invalid email format",
+                        }));
+                      } else {
+                        setErrors((prev) => {
+                          const { email, ...rest } = prev;
+                          return rest;
+                        });
+                      }
+                    }}
                   />
+                  {errors.email && (
+                    <p className="text-red-400 text-xs mt-1">{errors.email}</p>
+                  )}
                 </div>
               </div>
 
               {/* Agile Operations additions */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] text-slate-600 uppercase font-black mb-2 block">
+                  <label
+                    htmlFor="eumPrimaryWorkspace"
+                    className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
+                  >
                     Primary Workspace
                   </label>
                   <select
+                    id="eumPrimaryWorkspace"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white font-black uppercase"
                     value={formData.primaryWorkspace || "Balanced"}
                     onChange={(e) =>
@@ -155,10 +222,14 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] text-slate-600 uppercase font-black mb-2 block">
+                  <label
+                    htmlFor="eumDutyMode"
+                    className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
+                  >
                     Duty Mode
                   </label>
                   <select
+                    id="eumDutyMode"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-white font-black uppercase"
                     value={formData.dutyMode || "Both"}
                     onChange={(e) =>
@@ -230,6 +301,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                       {formData.payModel === "percent" ? "%" : "$"}
                     </span>
                     <input
+                      aria-label="Base rate value"
                       type="number"
                       step="0.01"
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 pl-12 text-2xl font-black text-white font-mono shadow-inner outline-none focus:border-blue-500 transition-colors"
@@ -300,7 +372,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
         <div className="p-8 bg-slate-900 border-t border-slate-800 flex flex-col gap-4 shrink-0">
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
+            disabled={isSubmitting || !isFormValid}
             className="w-full bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-3xl font-black uppercase tracking-[0.2em] text-xs shadow-2xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Saving..." : "Save Changes"}

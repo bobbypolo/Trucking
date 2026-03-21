@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { Lock } from "lucide-react";
 import { logout } from "../../services/authService";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface SessionExpiredModalProps {
   open: boolean;
@@ -8,7 +9,7 @@ interface SessionExpiredModalProps {
 }
 
 /**
- * SessionExpiredModal — renders on auth:session-expired events.
+ * SessionExpiredModal -- renders on auth:session-expired events.
  *
  * Accessibility: role="alertdialog", aria-modal="true", focus trapped.
  * Deduplication is handled by the parent (App.tsx) via a single boolean flag.
@@ -18,20 +19,16 @@ export function SessionExpiredModal({
   onNavigateToLogin,
 }: SessionExpiredModalProps) {
   const signInRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Trap focus to the Sign In button when modal opens
-  useEffect(() => {
-    if (open && signInRef.current) {
-      signInRef.current.focus();
-    }
-  }, [open]);
-
-  if (!open) return null;
-
-  const handleSignIn = async () => {
+  const handleSignIn = useCallback(async () => {
     await logout();
     onNavigateToLogin();
-  };
+  }, [onNavigateToLogin]);
+
+  useFocusTrap(panelRef, open, handleSignIn);
+
+  if (!open) return null;
 
   return (
     <div
@@ -39,6 +36,7 @@ export function SessionExpiredModal({
       aria-hidden={!open}
     >
       <div
+        ref={panelRef}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="session-expired-title"
