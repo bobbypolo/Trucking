@@ -3,7 +3,7 @@ import { LoadData, User, Issue, IssueCategory } from '../types';
 import {
   AlertTriangle, X, CheckCircle, Wrench, DollarSign,
   Truck, AlertOctagon, ArrowRight, Headset, History,
-  CheckCircle2, XCircle, AlertCircle
+  CheckCircle2, XCircle, AlertCircle, Info
 } from 'lucide-react';
 import { saveLoad } from '../services/storageService';
 
@@ -35,6 +35,8 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
   }, [loads]);
 
   const isRoleMapped = ['admin', 'safety_manager', 'payroll_manager', 'dispatcher'].includes(currentUser.role);
+  const canResolve = ['admin', 'safety_manager', 'dispatcher'].includes(currentUser.role);
+  const isAdmin = currentUser.role === 'admin';
 
   const filteredIssues = useMemo(() => {
     if (currentUser.role === 'admin') return activeIssues;
@@ -127,6 +129,14 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
 
         {activeTab === 'Issues' && (
           <>
+            {isRoleMapped && !isAdmin && (
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 flex items-start gap-2 mb-3" role="status">
+                <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">
+                  Viewing as {currentUser.role.replace('_', ' ')} — Some actions require administrator privileges
+                </p>
+              </div>
+            )}
             {filteredIssues.length === 0 && (
               <div className="text-center text-slate-700 py-10">
                 <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-10" />
@@ -163,14 +173,14 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
-                    {(currentUser.role === 'admin' || currentUser.role === 'safety_manager' || currentUser.role === 'dispatcher') && (
-                      <button
-                        onClick={() => handleResolve(load, issue.id)}
-                        className="p-1.5 bg-green-600/10 hover:bg-green-600 text-green-500 hover:text-white rounded-lg transition-all border border-green-500/20"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={canResolve ? () => handleResolve(load, issue.id) : undefined}
+                      disabled={!canResolve}
+                      title={!canResolve ? "Only admins, safety managers, and dispatchers can resolve issues" : undefined}
+                      className={`p-1.5 rounded-lg transition-all border ${canResolve ? 'bg-green-600/10 hover:bg-green-600 text-green-500 hover:text-white border-green-500/20' : 'bg-slate-800/30 text-slate-600 border-slate-700/30 cursor-not-allowed opacity-50'}`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -189,22 +199,24 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
                       <span className="text-[8px] text-slate-600 font-bold uppercase">{load.status}</span>
                     </div>
                     <p className="text-[10px] text-slate-300 italic leading-relaxed">"{load.actionSummary || 'No justification provided.'}"</p>
-                    {currentUser.role === 'admin' && (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          onClick={() => handleApproveAction(load, true)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-500 text-white py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all"
-                        >
-                          <CheckCircle2 className="w-3 h-3" /> Approve
-                        </button>
-                        <button
-                          onClick={() => handleApproveAction(load, false)}
-                          className="flex-1 flex items-center justify-center gap-2 bg-red-950/40 hover:bg-red-900 text-red-500 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border border-red-900/30 transition-all"
-                        >
-                          <XCircle className="w-3 h-3" /> Reject
-                        </button>
-                      </div>
-                    )}
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={isAdmin ? () => handleApproveAction(load, true) : undefined}
+                        disabled={!isAdmin}
+                        title={!isAdmin ? "Only administrators can approve actions" : undefined}
+                        className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isAdmin ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50'}`}
+                      >
+                        <CheckCircle2 className="w-3 h-3" /> Approve
+                      </button>
+                      <button
+                        onClick={isAdmin ? () => handleApproveAction(load, false) : undefined}
+                        disabled={!isAdmin}
+                        title={!isAdmin ? "Only administrators can reject actions" : undefined}
+                        className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isAdmin ? 'bg-red-950/40 hover:bg-red-900 text-red-500 border border-red-900/30' : 'bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50 border border-slate-700/30'}`}
+                      >
+                        <XCircle className="w-3 h-3" /> Reject
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
