@@ -380,6 +380,15 @@ Full regression + Playwright spot-check of the 5 most-affected components.
    - Renders above everything (z-50)
 3. **App.tsx** — Listen for `auth:session-expired` event on window, set state to show SessionExpiredModal.
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|----------|
+| MODIFY | services/api.ts | Add 401 session-expired event + ForbiddenError class | src/__tests__/services/api.interceptor.test.ts |
+| CREATE | components/ui/SessionExpiredModal.tsx | New alertdialog modal with aria-modal | src/__tests__/components/ui/SessionExpiredModal.test.tsx |
+| MODIFY | App.tsx | Listen for session-expired event, render modal | src/__tests__/components/ui/SessionExpiredModal.test.tsx |
+| MODIFY | services/storageService.ts | Re-throw auth errors instead of silent empty array | .claude/hooks/tests/test_r_w2_01.py |
+
 **Edge cases to handle**:
 - Multiple 401s fire simultaneously (only show modal once — use a flag)
 - User has unsaved form data → modal warns "unsaved changes will be lost" (best-effort, not blocking)
