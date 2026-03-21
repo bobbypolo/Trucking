@@ -2,7 +2,7 @@
   "version": "3.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "c93a610bd47be7aca421f92ad3b186339fda3e8171117b9115446293aed39c97",
+  "plan_hash": "024a2745c73da803b969fa7ca1e7a94a4cb376cb2b05c097a6f818947df211bc",
   "prior_plan": {
     "ref": "docs/backup-2026-03-18/prd.json.bak",
     "stories_completed": 29,
@@ -11,7 +11,7 @@
   "stories": [
     {
       "id": "H-201",
-      "description": "Fix Unsafe Nested Property Access — Top 10 Components. Add optional chaining to all pickup/dropoff and other nested reads on API data in the top 10 components most likely to crash on partial payloads.",
+      "description": "Fix Unsafe Nested Property Access \u00e2\u20ac\u201d Top 10 Components. Add optional chaining to all pickup/dropoff and other nested reads on API data in the top 10 components most likely to crash on partial payloads.",
       "phase": 1,
       "phase_type": "crash-proofing",
       "component": "components/",
@@ -35,7 +35,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-W1-01a",
-          "criterion": "All pickup/dropoff reads on API data use optional chaining — verified by reading each file diff",
+          "criterion": "All pickup/dropoff reads on API data use optional chaining \u00e2\u20ac\u201d verified by reading each file diff",
           "testType": "review"
         },
         {
@@ -53,12 +53,12 @@
         "unit": "npx vitest run src/__tests__/components/AnalyticsDashboard src/__tests__/components/CalendarView src/__tests__/components/LoadList src/__tests__/components/SafetyView",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-202",
-      "description": "Fix Unsafe Nested Property Access — Remaining 7 Components. Add optional chaining to all nested reads on API data in the remaining 7 components identified in the stability audit.",
+      "description": "Fix Unsafe Nested Property Access \u00e2\u20ac\u201d Remaining 7 Components. Add optional chaining to all nested reads on API data in the remaining 7 components identified in the stability audit.",
       "phase": 1,
       "phase_type": "crash-proofing",
       "component": "components/",
@@ -92,8 +92,8 @@
         "unit": "npx vitest run src/__tests__/components/QuoteManager src/__tests__/components/Settlements src/__tests__/components/CommandCenterView src/__tests__/components/BookingPortal src/__tests__/components/IntelligenceHub",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-203",
@@ -121,7 +121,7 @@
         },
         {
           "id": "R-W1-02b",
-          "criterion": "No 'as any' casts added to replace assertions — actual type fixes only",
+          "criterion": "No 'as any' casts added to replace assertions \u00e2\u20ac\u201d actual type fixes only",
           "testType": "review"
         },
         {
@@ -133,8 +133,8 @@
       "gateCmds": {
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-204",
@@ -161,12 +161,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-W1-03a",
-          "criterion": "Read each modified file — confirm no .map()/.filter()/.reduce()/.forEach() is called on a variable that could be undefined without a guard",
+          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no .map()/.filter()/.reduce()/.forEach() is called on a variable that could be undefined without a guard",
           "testType": "review"
         },
         {
           "id": "R-W1-04a",
-          "criterion": "Read each modified file — confirm no Object.entries/keys/values() is called on a variable that could be null without ?? {}",
+          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no Object.entries/keys/values() is called on a variable that could be null without ?? {}",
           "testType": "review"
         },
         {
@@ -178,8 +178,8 @@
       "gateCmds": {
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-205",
@@ -211,7 +211,7 @@
         },
         {
           "id": "R-W1-05b",
-          "criterion": "No raw setTimeout(() => set...null patterns remain in any component listed — verify by reading each file",
+          "criterion": "No raw setTimeout(() => set...null patterns remain in any component listed \u00e2\u20ac\u201d verify by reading each file",
           "testType": "review"
         },
         {
@@ -229,8 +229,8 @@
         "unit": "npx vitest run src/__tests__/hooks/useAutoFeedback",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-206",
@@ -242,7 +242,13 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-201", "H-202", "H-203", "H-204", "H-205"],
+      "dependsOn": [
+        "H-201",
+        "H-202",
+        "H-203",
+        "H-204",
+        "H-205"
+      ],
       "parallelGroup": "1C",
       "acceptanceCriteria": [
         {
@@ -265,8 +271,8 @@
         "unit": "npx vitest run",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-301",
@@ -298,7 +304,7 @@
         },
         {
           "id": "R-W2-01c",
-          "criterion": "storageService.ts no longer returns empty arrays on auth errors — it lets the error propagate",
+          "criterion": "storageService.ts no longer returns empty arrays on auth errors \u00e2\u20ac\u201d it lets the error propagate",
           "testType": "review"
         },
         {
@@ -326,8 +332,8 @@
         "unit": "npx vitest run src/__tests__/services/api src/__tests__/components/ui/SessionExpiredModal",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-302",
@@ -380,8 +386,8 @@
       "gateCmds": {
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-303",
@@ -401,7 +407,9 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-302"],
+      "dependsOn": [
+        "H-302"
+      ],
       "parallelGroup": "2B",
       "acceptanceCriteria": [
         {
@@ -411,7 +419,7 @@
         },
         {
           "id": "R-W2-04b",
-          "criterion": "Read each modified file — confirm no catch block silently ignores errors",
+          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no catch block silently ignores errors",
           "testType": "review"
         },
         {
@@ -423,8 +431,8 @@
       "gateCmds": {
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-304",
@@ -436,7 +444,11 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-301", "H-302", "H-303"],
+      "dependsOn": [
+        "H-301",
+        "H-302",
+        "H-303"
+      ],
       "parallelGroup": "2C",
       "acceptanceCriteria": [
         {
@@ -459,8 +471,8 @@
         "unit": "npx vitest run",
         "typecheck": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-401",
@@ -522,7 +534,7 @@
     },
     {
       "id": "H-402",
-      "description": "Loading/Error/Empty States — Batch 1 (6 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the first batch of 6 components.",
+      "description": "Loading/Error/Empty States \u00e2\u20ac\u201d Batch 1 (6 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the first batch of 6 components.",
       "phase": 3,
       "phase_type": "ux-consistency",
       "component": "components/",
@@ -570,7 +582,7 @@
     },
     {
       "id": "H-403",
-      "description": "Loading/Error/Empty States — Batch 2 (5 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the second batch of 5 components.",
+      "description": "Loading/Error/Empty States \u00e2\u20ac\u201d Batch 2 (5 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the second batch of 5 components.",
       "phase": 3,
       "phase_type": "ux-consistency",
       "component": "components/",
@@ -624,7 +636,11 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-401", "H-402", "H-403"],
+      "dependsOn": [
+        "H-401",
+        "H-402",
+        "H-403"
+      ],
       "parallelGroup": "3C",
       "acceptanceCriteria": [
         {
@@ -634,12 +650,12 @@
         },
         {
           "id": "R-W3-06",
-          "criterion": "Playwright: all 15 major pages show data, loading, or empty state — no blank screens, 0 console errors",
+          "criterion": "Playwright: all 15 major pages show data, loading, or empty state \u00e2\u20ac\u201d no blank screens, 0 console errors",
           "testType": "e2e"
         },
         {
           "id": "R-W3-VPC-404",
-          "criterion": "npx tsc --noEmit — 0 errors; cd server && npx vitest run passes",
+          "criterion": "npx tsc --noEmit \u00e2\u20ac\u201d 0 errors; cd server && npx vitest run passes",
           "testType": "unit"
         }
       ],
@@ -652,7 +668,7 @@
     },
     {
       "id": "H-501",
-      "description": "Form Labels & Input Accessibility — Batch 1. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the first batch of 15 components.",
+      "description": "Form Labels & Input Accessibility \u00e2\u20ac\u201d Batch 1. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the first batch of 15 components.",
       "phase": 4,
       "phase_type": "accessibility",
       "component": "components/",
@@ -708,7 +724,7 @@
     },
     {
       "id": "H-502",
-      "description": "Icon Button Accessibility + Heading Hierarchy — Batch 1. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the first batch of 15 components.",
+      "description": "Icon Button Accessibility + Heading Hierarchy \u00e2\u20ac\u201d Batch 1. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the first batch of 15 components.",
       "phase": 4,
       "phase_type": "accessibility",
       "component": "components/",
@@ -732,7 +748,9 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-501"],
+      "dependsOn": [
+        "H-501"
+      ],
       "parallelGroup": "4A-seq",
       "acceptanceCriteria": [
         {
@@ -742,7 +760,7 @@
         },
         {
           "id": "R-W4-05a",
-          "criterion": "Heading elements in Batch 1 follow sequential order (H1→H2→H3) — no skipped levels",
+          "criterion": "Heading elements in Batch 1 follow sequential order (H1\u00e2\u2020\u2019H2\u00e2\u2020\u2019H3) \u00e2\u20ac\u201d no skipped levels",
           "testType": "review"
         },
         {
@@ -850,7 +868,7 @@
     },
     {
       "id": "H-506",
-      "description": "Form Labels & Input Accessibility — Batch 2. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the second batch of 18 components.",
+      "description": "Form Labels & Input Accessibility \u00e2\u20ac\u201d Batch 2. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the second batch of 18 components.",
       "phase": 4,
       "phase_type": "accessibility",
       "component": "components/",
@@ -899,7 +917,7 @@
     },
     {
       "id": "H-507",
-      "description": "Icon Button Accessibility + Heading Hierarchy — Batch 2. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the second batch of 17 components.",
+      "description": "Icon Button Accessibility + Heading Hierarchy \u00e2\u20ac\u201d Batch 2. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the second batch of 17 components.",
       "phase": 4,
       "phase_type": "accessibility",
       "component": "components/",
@@ -925,7 +943,9 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-506"],
+      "dependsOn": [
+        "H-506"
+      ],
       "parallelGroup": "4A-seq",
       "acceptanceCriteria": [
         {
@@ -935,7 +955,7 @@
         },
         {
           "id": "R-W4-05b",
-          "criterion": "Heading elements in Batch 2 follow sequential order — no skipped levels",
+          "criterion": "Heading elements in Batch 2 follow sequential order \u00e2\u20ac\u201d no skipped levels",
           "testType": "review"
         },
         {
@@ -960,7 +980,14 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-501", "H-502", "H-503", "H-504", "H-506", "H-507"],
+      "dependsOn": [
+        "H-501",
+        "H-502",
+        "H-503",
+        "H-504",
+        "H-506",
+        "H-507"
+      ],
       "parallelGroup": "4C",
       "acceptanceCriteria": [
         {
@@ -970,7 +997,7 @@
         },
         {
           "id": "R-W4-VPC-505",
-          "criterion": "Playwright: 5 form-heavy pages — inputs have labels; tab through modal — focus trapped; 0 console errors; all 4 batch stories verified (full 54-component coverage)",
+          "criterion": "Playwright: 5 form-heavy pages \u00e2\u20ac\u201d inputs have labels; tab through modal \u00e2\u20ac\u201d focus trapped; 0 console errors; all 4 batch stories verified (full 54-component coverage)",
           "testType": "e2e"
         }
       ],
@@ -1001,7 +1028,7 @@
         },
         {
           "id": "R-W5-01b",
-          "criterion": "Spot-check 5 key forms on mobile viewport — all buttons tappable",
+          "criterion": "Spot-check 5 key forms on mobile viewport \u00e2\u20ac\u201d all buttons tappable",
           "testType": "e2e"
         },
         {
@@ -1074,7 +1101,8 @@
         "services/api.ts",
         "components/Dashboard.tsx",
         "components/IntelligenceHub.tsx",
-        "components/CommandCenterView.tsx"
+        "components/CommandCenterView.tsx",
+        "src/__tests__/services/api.test.ts"
       ],
       "complexity": "moderate",
       "effort": "M",
@@ -1120,7 +1148,11 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-601", "H-602", "H-603"],
+      "dependsOn": [
+        "H-601",
+        "H-602",
+        "H-603"
+      ],
       "parallelGroup": "5C",
       "acceptanceCriteria": [
         {
@@ -1130,12 +1162,12 @@
         },
         {
           "id": "R-W5-BUNDLE",
-          "criterion": "No route chunk exceeds 250KB (excl vendor/xlsx) — verify with npx vite build 2>&1 | grep -E 'kB|chunk'",
+          "criterion": "No route chunk exceeds 250KB (excl vendor/xlsx) \u00e2\u20ac\u201d verify with npx vite build 2>&1 | grep -E 'kB|chunk'",
           "testType": "unit"
         },
         {
           "id": "R-W5-VPC-604",
-          "criterion": "Playwright: Full 15-page navigation sweep — all render, 0 console errors; mobile viewport — login, accounting, load list render correctly; all audit grades improved (no D or F grades)",
+          "criterion": "Playwright: Full 15-page navigation sweep \u00e2\u20ac\u201d all render, 0 console errors; mobile viewport \u00e2\u20ac\u201d login, accounting, load list render correctly; all audit grades improved (no D or F grades)",
           "testType": "e2e"
         }
       ],
@@ -1161,7 +1193,9 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-404"],
+      "dependsOn": [
+        "H-404"
+      ],
       "parallelGroup": "6A",
       "acceptanceCriteria": [
         {
@@ -1210,22 +1244,24 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-404"],
+      "dependsOn": [
+        "H-404"
+      ],
       "parallelGroup": "6A",
       "acceptanceCriteria": [
         {
           "id": "R-W6-03a",
-          "criterion": "Upload a file via FileVault → file persists on server → appears in document list",
+          "criterion": "Upload a file via FileVault \u00e2\u2020\u2019 file persists on server \u00e2\u2020\u2019 appears in document list",
           "testType": "review"
         },
         {
           "id": "R-W6-03b",
-          "criterion": "Click download on uploaded file → browser downloads the file with correct name",
+          "criterion": "Click download on uploaded file \u00e2\u2020\u2019 browser downloads the file with correct name",
           "testType": "review"
         },
         {
           "id": "R-W6-03c",
-          "criterion": "Delete a file → file removed from disk and database",
+          "criterion": "Delete a file \u00e2\u2020\u2019 file removed from disk and database",
           "testType": "review"
         },
         {
@@ -1250,12 +1286,15 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-701", "H-702"],
+      "dependsOn": [
+        "H-701",
+        "H-702"
+      ],
       "parallelGroup": "6B",
       "acceptanceCriteria": [
         {
           "id": "R-W6-04",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Playwright: FileVault renders with no console errors; upload→list→download round-trip confirmed",
+          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Playwright: FileVault renders with no console errors; upload\u00e2\u2020\u2019list\u00e2\u2020\u2019download round-trip confirmed",
           "testType": "unit"
         }
       ],
@@ -1304,7 +1343,7 @@
         },
         {
           "id": "R-W7-VPC-801",
-          "criterion": "VPC: unit tests pass, tsc clean; mock nodemailer transport — verify sendMail called with correct to/subject/body",
+          "criterion": "VPC: unit tests pass, tsc clean; mock nodemailer transport \u00e2\u20ac\u201d verify sendMail called with correct to/subject/body",
           "testType": "unit"
         }
       ],
@@ -1348,12 +1387,12 @@
         },
         {
           "id": "R-W7-VPC-802",
-          "criterion": "Unit tests: mock DB with 3 certs (expired, 7-day, 60-day) — verify 2 notification jobs created",
+          "criterion": "Unit tests: mock DB with 3 certs (expired, 7-day, 60-day) \u00e2\u20ac\u201d verify 2 notification jobs created",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run src/__tests__/services/cert-expiry-checker",
+        "unit": "cd server && npx vitest run __tests__/services/cert-expiry-checker",
         "typecheck": "cd server && npx tsc --noEmit"
       },
       "passed": false,
@@ -1371,7 +1410,10 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-801", "H-802"],
+      "dependsOn": [
+        "H-801",
+        "H-802"
+      ],
       "parallelGroup": "7B",
       "acceptanceCriteria": [
         {
@@ -1406,12 +1448,16 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-801", "H-802", "H-803"],
+      "dependsOn": [
+        "H-801",
+        "H-802",
+        "H-803"
+      ],
       "parallelGroup": "7C",
       "acceptanceCriteria": [
         {
           "id": "R-W7-04",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Integration: create notification job via API — verify status transitions to SENT or FAILED; Playwright: notification/safety views render correctly",
+          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Integration: create notification job via API \u00e2\u20ac\u201d verify status transitions to SENT or FAILED; Playwright: notification/safety views render correctly",
           "testType": "unit"
         }
       ],
@@ -1451,12 +1497,12 @@
         },
         {
           "id": "R-W8-01c",
-          "criterion": "Results cached — second call within 24h returns cached data",
+          "criterion": "Results cached \u00e2\u20ac\u201d second call within 24h returns cached data",
           "testType": "unit"
         },
         {
           "id": "R-W8-VPC-901",
-          "criterion": "Unit tests: mock FMCSA API response — verify parsing and caching; tsc clean",
+          "criterion": "Unit tests: mock FMCSA API response \u00e2\u20ac\u201d verify parsing and caching; tsc clean",
           "testType": "unit"
         }
       ],
@@ -1504,7 +1550,7 @@
         },
         {
           "id": "R-W8-VPC-902",
-          "criterion": "Unit tests: mock navigator.mediaDevices — verify camera flow; tsc clean",
+          "criterion": "Unit tests: mock navigator.mediaDevices \u00e2\u20ac\u201d verify camera flow; tsc clean",
           "testType": "unit"
         }
       ],
@@ -1548,8 +1594,8 @@
         }
       ],
       "gateCmds": {},
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "H-904",
@@ -1561,7 +1607,11 @@
       "complexity": "moderate",
       "effort": "M",
       "maxTurns": 150,
-      "dependsOn": ["H-901", "H-902", "H-903"],
+      "dependsOn": [
+        "H-901",
+        "H-902",
+        "H-903"
+      ],
       "parallelGroup": "8B",
       "acceptanceCriteria": [
         {

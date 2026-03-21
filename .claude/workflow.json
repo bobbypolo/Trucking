@@ -31,9 +31,9 @@
     "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
     "unit_timeout_s": 600,
     "_comment": "self_test commands verify the ADE workflow itself. project_* commands should be set when host project source code exists. They start as TODO placeholders; /health warns when unconfigured.",
-    "project_test": "TODO: set your project test command (e.g., pytest tests/ -v)",
-    "project_lint": "TODO: set your project lint command (e.g., ruff check .)",
-    "project_type_check": "TODO: set your project type check command (e.g., mypy src/)"
+    "project_test": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
+    "project_lint": "npx tsc --noEmit",
+    "project_type_check": "npx tsc --noEmit"
   },
   "test_patterns": [
     "vitest",
@@ -49,7 +49,17 @@
         "*_test.*"
       ]
     },
-    "custom_steps": [],
+    "custom_steps": [
+      {
+        "id": "vite_build",
+        "name": "Vite production build",
+        "command": "npx vite build",
+        "after_step": 3,
+        "severity": "block",
+        "timeout_s": 120,
+        "enabled": true
+      }
+    ],
     "evidence_max_chars": 500,
     "negative_test_min_pct": 15,
     "behavioral_assertion_required": true,

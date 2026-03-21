@@ -1,5 +1,10 @@
 # Plan: Frontend Hardening Sprint — Robustness & Resilience
 
+> **Parallel Execution Constraints** (added 2026-03-21):
+> - Max 10 concurrent agents
+> - Each agent MUST use worktree isolation (`isolation: "worktree"`)
+> - Worktrees must be based on the feature branch (`ralph/loadpilot-orchestrator-qa-master-plan`), not main
+
 ## Goal
 
 Harden the LoadPilot frontend from "operational but fragile" to production-ready by systematically fixing all crash risks, memory leaks, auth expiry failures, write-flow safety gaps, and accessibility fundamentals. This plan addresses every finding from the 10-question frontend stability audit AND completes 3 carry-forward items from the prior remediation plan (PLAN.md.bak / prd.json.bak). No new features — only making existing features robust.
@@ -204,7 +209,9 @@ grep -rn '<h[1-6]' src/components/ --include='*.tsx' | sort | head -30
 
 ---
 
-## Wave 1: Crash-Proofing (API Data Resilience + Stability)
+## Wave 1: Crash-Proofing (API Data Resilience + Stability) — DONE
+
+> All 6 stories (H-201 through H-206) PASSED with QA receipts verified.
 
 **Objective**: Eliminate all HIGH-risk crash patterns and memory leaks. After this wave, no component crashes on partial/malformed API data, and no component leaks memory over time.
 
@@ -351,7 +358,9 @@ Full regression + Playwright spot-check of the 5 most-affected components.
 
 ---
 
-## Wave 2: Session & Mutation Safety
+## Wave 2: Session & Mutation Safety — DONE
+
+> All 4 stories (H-301 through H-304) PASSED with QA receipts verified.
 
 **Objective**: Prevent silent data loss from auth expiry and duplicate submissions. After this wave, users get clear feedback when their session expires and cannot accidentally create duplicate records.
 
@@ -520,7 +529,8 @@ Ensure all write operations show clear feedback using existing Toast component f
 
 ---
 
-## Wave 3: UX Consistency (Validation + Loading/Error/Empty States)
+## Wave 3: UX Consistency (Validation + Loading/Error/Empty States) — IN PROGRESS
+> **Status**: H-401 not started. H-402 code committed (QA pending). H-403 not started. H-404 blocked on deps.
 
 **Objective**: Standardize form validation and ensure every data-fetching component has proper loading, error, and empty states. After this wave, users always know what's happening.
 
@@ -638,7 +648,8 @@ Same pattern as H-402 for remaining components.
 
 ---
 
-## Wave 4: Accessibility & Permission UX
+## Wave 4: Accessibility & Permission UX — IN PROGRESS
+> **Status**: H-501 code committed (QA pending). H-503 not started. H-504 code committed (QA pending). H-506 code committed (QA pending). H-502/H-507/H-505 blocked on deps.
 
 **Objective**: Fix accessibility fundamentals (labels, aria, focus, heading hierarchy) and add permission explanation UX. After this wave, screen readers work and users understand why features are restricted.
 
@@ -784,7 +795,8 @@ Same approach as H-502 for remaining components.
 
 ---
 
-## Wave 5: Mobile Polish & Upload Verification
+## Wave 5: Mobile Polish & Upload Verification — IN PROGRESS
+> **Status**: H-601 not started. H-602 code committed (QA pending). H-603 not started. H-604 blocked on deps.
 
 **Objective**: Fix mobile tap targets, verify file upload flows in browser, and add AbortController for cancellable requests. After this wave, mobile users can tap all buttons and upload flows are proven.
 
@@ -987,7 +999,8 @@ Verify FileVault.tsx upload and download work end-to-end with the new disk adapt
 
 ---
 
-## Wave 7: Notification Delivery — Make Alerts Real
+## Wave 7: Notification Delivery — Make Alerts Real — IN PROGRESS
+> **Status**: H-801 code committed (QA pending). H-802 code committed (QA pending). H-803/H-804 blocked on deps.
 
 **Objective**: Add actual email delivery to the notification jobs system. After this wave, notification jobs transition from PENDING to SENT, and driver certificate expiry alerts actually fire.
 
@@ -1095,7 +1108,8 @@ Update any notification-related UI to show actual delivery status (PENDING/SENT/
 
 ---
 
-## Wave 8: Feature Completion — FMCSA, Scanner, Configuration
+## Wave 8: Feature Completion — FMCSA, Scanner, Configuration — IN PROGRESS
+> **Status**: H-901 code committed (QA pending). H-902 code committed (QA pending). H-903 DONE. H-904 blocked on deps.
 
 **Objective**: Complete remaining partial features and document configuration requirements for features that only need API keys.
 
@@ -1126,6 +1140,14 @@ Integrate the FMCSA SAFER Web Services API to fetch real safety ratings by USDOT
 - R-W8-01b: SafetyView displays real safety rating when DOT number is configured
 - R-W8-01c: Results cached — second call within 24h returns cached data
 - Unit tests: mock FMCSA API response → verify parsing and caching
+
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|----------|
+| CREATE | server/services/fmcsa.service.ts | FMCSA SAFER API service with caching and mock fallback | server/__tests__/services/fmcsa.service.test.ts |
+| MODIFY | server/routes/safety.ts | Add GET /api/safety/fmcsa/:dotNumber endpoint | server/__tests__/services/fmcsa.service.test.ts |
+| MODIFY | components/SafetyView.tsx | Display real FMCSA safety scores with mock badge | .claude/hooks/tests/test_r_w8_01.py |
 
 ### H-902: Scanner Live Camera Capture
 **Requirement IDs**: R-W8-02
