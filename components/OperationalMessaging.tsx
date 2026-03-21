@@ -587,7 +587,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                           key={res.id}
                           onClick={() =>
                             onLinkSession?.(
-                              callSession!.id,
+                              callSession?.id ?? "",
                               res.id,
                               res.type as any,
                             )
@@ -657,7 +657,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                     Pickup
                   </div>
                   <div className="text-[10px] font-bold text-white truncate">
-                    {selectedLoad.pickup?.city ?? ''}
+                    {selectedLoad.pickup?.city ?? ""}
                   </div>
                 </div>
                 <div className="p-4 bg-slate-950 rounded-2xl border border-white/5">
@@ -665,7 +665,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                     Dropoff
                   </div>
                   <div className="text-[10px] font-bold text-white truncate">
-                    {selectedLoad.dropoff?.city ?? ''}
+                    {selectedLoad.dropoff?.city ?? ""}
                   </div>
                 </div>
               </div>

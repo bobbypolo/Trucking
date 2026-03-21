@@ -351,10 +351,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     .filter((q) => q.status === status)
                     .filter(
                       (q) =>
-                        (q.pickup?.city ?? '')
+                        (q.pickup?.city ?? "")
                           .toLowerCase()
                           .includes(searchQuery.toLowerCase()) ||
-                        (q.dropoff?.city ?? '')
+                        (q.dropoff?.city ?? "")
                           .toLowerCase()
                           .includes(searchQuery.toLowerCase()),
                     )
@@ -373,13 +373,15 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               {quote.equipmentType}
                             </div>
                             <div className="text-sm font-black text-white uppercase tracking-tighter group-hover:text-blue-400 transition-colors">
-                              {quote.pickup?.city ?? ''}, {quote.pickup?.state ?? ''} →{" "}
-                              {quote.dropoff?.city ?? ''}, {quote.dropoff?.state ?? ''}
+                              {quote.pickup?.city ?? ""},{" "}
+                              {quote.pickup?.state ?? ""} →{" "}
+                              {quote.dropoff?.city ?? ""},{" "}
+                              {quote.dropoff?.state ?? ""}
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-base font-black text-emerald-500 tracking-tighter">
-                              ${quote.totalRate.toLocaleString()}
+                              ${(quote.totalRate ?? 0).toLocaleString()}
                             </div>
                             {quote.margin && (
                               <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
@@ -558,7 +560,9 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase tracking-tight"
                                 placeholder="Location Omega"
-                                value={selectedQuote.dropoff?.facilityName || ""}
+                                value={
+                                  selectedQuote.dropoff?.facilityName || ""
+                                }
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -621,7 +625,9 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <input
                                 type="date"
                                 className="flex-1 bg-slate-950 border border-white/5 rounded-xl p-4 text-sm text-white font-black outline-none focus:border-blue-500/50 transition-all"
-                                value={selectedQuote.validUntil.split("T")[0]}
+                                value={
+                                  (selectedQuote.validUntil ?? "").split("T")[0]
+                                }
                                 onChange={(e) =>
                                   setSelectedQuote({
                                     ...selectedQuote,
@@ -888,7 +894,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 Net Revenue
                               </span>
                               <span className="text-xl font-black text-white tracking-tighter">
-                                ${selectedQuote.totalRate.toLocaleString()}
+                                $
+                                {(
+                                  selectedQuote.totalRate ?? 0
+                                ).toLocaleString()}
                               </span>
                             </div>
                             <div className="flex justify-between items-center bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20">
