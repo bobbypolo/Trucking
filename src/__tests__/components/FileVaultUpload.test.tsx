@@ -81,7 +81,6 @@ describe("vault.ts file validation", () => {
     });
 
     it("rejects files over 10MB with error message", () => {
-      // Create a file object with overridden size
       const bigFile = new File(["x"], "big.pdf", { type: "application/pdf" });
       Object.defineProperty(bigFile, "size", { value: 11 * 1024 * 1024 });
       const result = validateFileSize(bigFile);
