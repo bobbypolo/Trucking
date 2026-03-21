@@ -1053,6 +1053,17 @@ Add a server endpoint or utility that checks for driver certificates expiring wi
 - R-W7-03c: If SMTP configured, email is actually sent for each expiring cert
 - Unit tests: mock DB with 3 certs (expired, 7-day, 60-day) → verify 2 notification jobs created (expired + 7-day)
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| CREATE | server/services/cert-expiry-checker.ts | Cert expiry checker service with checkExpiring() | server/__tests__/services/cert-expiry-checker.test.ts |
+| MODIFY | server/routes/safety.ts | Add GET /api/safety/expiring-certs endpoint | server/__tests__/routes/safety-expiring-certs.test.ts |
+| CREATE | server/__tests__/services/cert-expiry-checker.test.ts | Unit tests for checkExpiring() service | server/__tests__/services/cert-expiry-checker.test.ts |
+| CREATE | server/__tests__/routes/safety-expiring-certs.test.ts | Route tests for GET /api/safety/expiring-certs | server/__tests__/routes/safety-expiring-certs.test.ts |
+| MODIFY | server/__tests__/routes/safety.test.ts | Add cert-expiry-checker mock for existing tests | server/__tests__/routes/safety.test.ts |
+| CREATE | .claude/hooks/tests/test_r_w7_03.py | Python QA tests for R-W7-03a/b/c and VPC-802 | .claude/hooks/tests/test_r_w7_03.py |
+
 ### H-803: Notification Status in Frontend
 **Requirement IDs**: R-W7-02
 **Agent**: Frontend
