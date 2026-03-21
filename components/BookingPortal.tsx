@@ -97,6 +97,7 @@ export const BookingPortal: React.FC<Props> = ({
   const [booking, setBooking] = useState<Partial<Booking> | null>(null);
 
   const [loading, setLoading] = useState(false);
+  const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
   const [isScanning, setIsScanning] = useState(false);
   const [feedback, showFeedback, clearFeedback] = useAutoFeedback<{
     msg: string;
@@ -196,7 +197,24 @@ export const BookingPortal: React.FC<Props> = ({
     }
   };
 
+  const validateQuote = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!quote.pickup?.city?.trim()) errs.pickupCity = "Pickup city is required";
+    if (!quote.pickup?.state?.trim()) errs.pickupState = "Pickup state is required";
+    if (!quote.dropoff?.city?.trim()) errs.dropoffCity = "Dropoff city is required";
+    if (!quote.dropoff?.state?.trim()) errs.dropoffState = "Dropoff state is required";
+    if (!quote.totalRate || quote.totalRate <= 0) errs.rate = "Rate must be greater than 0";
+    return errs;
+  };
+
+  const isQuoteValid = !!quote.pickup?.city?.trim() && !!quote.pickup?.state?.trim() &&
+    !!quote.dropoff?.city?.trim() && !!quote.dropoff?.state?.trim() &&
+    !!quote.totalRate && quote.totalRate > 0;
+
   const convertToBooking = async () => {
+    const errs = validateQuote();
+    if (Object.keys(errs).length > 0) { setQuoteErrors(errs); return; }
+    setQuoteErrors({});
     setLoading(true);
     try {
       const quoteId = quote.id ?? uuidv4();
@@ -331,10 +349,10 @@ export const BookingPortal: React.FC<Props> = ({
 
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
+                    <label htmlFor="bpCallerPointOfContact" className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
                       Caller / Point of Contact
                     </label>
-                    <input
+                    <input id="bpCallerPointOfContact"
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:border-blue-500 outline-none transition-all font-bold"
                       placeholder="Who are we speaking with?"
                       value={lead.callerName || ""}
@@ -345,10 +363,10 @@ export const BookingPortal: React.FC<Props> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
+                      <label htmlFor="bpDirectPhone" className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
                         Direct Phone
                       </label>
-                      <input
+                      <input id="bpDirectPhone"
                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:border-blue-500 outline-none transition-all font-bold"
                         placeholder="(555) 000-0000"
                         value={lead.callerPhone || ""}
@@ -358,10 +376,10 @@ export const BookingPortal: React.FC<Props> = ({
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
+                      <label htmlFor="bpClient" className="text-[10px] text-slate-500 font-black uppercase tracking-[0.2em] mb-2 block">
                         Client
                       </label>
-                      <select
+                      <select id="bpClient"
                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white focus:border-blue-500 outline-none transition-all font-bold appearance-none"
                         onChange={(e) =>
                           setSelectedBroker(
@@ -470,10 +488,10 @@ export const BookingPortal: React.FC<Props> = ({
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                        <label className="text-[9px] text-slate-600 font-black uppercase mb-2 block">
+                        <label htmlFor="bpOriginCityST" className="text-[9px] text-slate-600 font-black uppercase mb-2 block">
                           Origin (City, ST)
                         </label>
-                        <input
+                        <input id="bpOriginCityST"
                           className="w-full bg-transparent text-sm text-white font-black uppercase outline-none"
                           placeholder="CITY, ST"
                           value={`${quote.pickup?.city || ""}${quote.pickup?.state ? ", " + quote.pickup?.state : ""}`}
@@ -497,10 +515,10 @@ export const BookingPortal: React.FC<Props> = ({
                         />
                       </div>
                       <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                        <label className="text-[9px] text-slate-600 font-black uppercase mb-2 block">
+                        <label htmlFor="bpDestinationCityST" className="text-[9px] text-slate-600 font-black uppercase mb-2 block">
                           Destination (City, ST)
                         </label>
-                        <input
+                        <input id="bpDestinationCityST"
                           className="w-full bg-transparent text-sm text-white font-black uppercase outline-none"
                           placeholder="CITY, ST"
                           value={`${quote.dropoff?.city || ""}${quote.dropoff?.state ? ", " + quote.dropoff?.state : ""}`}
@@ -531,7 +549,7 @@ export const BookingPortal: React.FC<Props> = ({
                       Equipment Requirement
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
-                      <select
+                      <select aria-label="Equipment type"
                         className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black appearance-none outline-none focus:border-orange-500 transition-all"
                         value={quote.equipmentType}
                         onChange={(e) =>
@@ -546,7 +564,7 @@ export const BookingPortal: React.FC<Props> = ({
                         <option value="Reefer">Reefer</option>
                         <option value="Flatbed">Flatbed</option>
                       </select>
-                      <input
+                      <input aria-label="Special Constraints (TWIC)"
                         className="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black outline-none focus:border-orange-500 transition-all"
                         placeholder="Special Constraints (e.g. TWIC)"
                         value={quote.equipmentRequirements || ""}
@@ -564,7 +582,7 @@ export const BookingPortal: React.FC<Props> = ({
                     <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.3em]">
                       Assumptions & Policy
                     </h3>
-                    <textarea
+                    <textarea aria-label="Detention rules, lumper policy, appointment requirements..."
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs text-slate-400 font-bold outline-none focus:border-indigo-500 transition-all min-h-[100px]"
                       placeholder="Detention rules, lumper policy, appointment requirements..."
                       value={quote.assumptions || ""}
@@ -584,12 +602,12 @@ export const BookingPortal: React.FC<Props> = ({
                   <div className="space-y-6">
                     <div className="flex justify-between items-end">
                       <div className="flex-1">
-                        <label className="text-[11px] text-slate-500 font-black uppercase mb-2 block">
+                        <label htmlFor="bpLinehaulRate" className="text-[11px] text-slate-500 font-black uppercase mb-2 block">
                           Linehaul Rate
                         </label>
                         <div className="relative">
                           <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-700" />
-                          <input
+                          <input id="bpLinehaulRate"
                             type="number"
                             className="w-full bg-slate-900 border-2 border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-2xl text-white font-black outline-none focus:border-green-600 transition-all"
                             value={quote.linehaul || ""}
@@ -614,10 +632,10 @@ export const BookingPortal: React.FC<Props> = ({
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-[10px] text-slate-500 font-black uppercase mb-2 block">
+                        <label htmlFor="bpFuelSurchargeFSC" className="text-[10px] text-slate-500 font-black uppercase mb-2 block">
                           Fuel Surcharge (FSC)
                         </label>
-                        <input
+                        <input id="bpFuelSurchargeFSC"
                           type="number"
                           className="w-full bg-slate-900 border border-slate-800 rounded-xl p-4 text-lg text-blue-400 font-black"
                           value={quote.fuelSurcharge || ""}
@@ -794,7 +812,7 @@ export const BookingPortal: React.FC<Props> = ({
                   ) ? (
                     <button
                       onClick={convertToBooking}
-                      disabled={loading}
+                      disabled={loading || !isQuoteValid}
                       className="w-full py-6 bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white rounded-3xl font-black uppercase tracking-[0.3em] text-sm shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4"
                     >
                       {loading ? (

@@ -54,6 +54,8 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   } | null>(null);
   const [confirmLedger, setConfirmLedger] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mileageErrors, setMileageErrors] = useState<Record<string, string>>({});
+  const US_STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
 
   const loadData = async () => {
     setLoading(true);
@@ -91,8 +93,24 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
     }
   };
 
+  const validateMileageEntry = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!newEntry.truckId) errs.truckId = "Truck ID is required";
+    if (!newEntry.date) errs.date = "Date is required";
+    if (!newEntry.stateCode) errs.stateCode = "State code is required";
+    else if (!US_STATES.includes(newEntry.stateCode.toUpperCase())) errs.stateCode = "Invalid US state code";
+    if (!newEntry.miles || Number(newEntry.miles) <= 0) errs.miles = "Miles must be greater than 0";
+    return errs;
+  };
+
+  const isMileageValid = !!newEntry.truckId && !!newEntry.date && !!newEntry.stateCode &&
+    US_STATES.includes((newEntry.stateCode || "").toUpperCase()) &&
+    !!newEntry.miles && Number(newEntry.miles) > 0;
+
   const handleSaveMileage = async () => {
-    if (!newEntry.stateCode || !newEntry.miles || !newEntry.truckId) return;
+    const errs = validateMileageEntry();
+    if (Object.keys(errs).length > 0) { setMileageErrors(errs); return; }
+    setMileageErrors({});
     setIsSubmitting(true);
     try {
       await saveMileageEntry(newEntry);
@@ -144,7 +162,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             </button>
           ))}
           <div className="w-px h-6 bg-white/5 mx-2 my-auto" />
-          <select
+          <select aria-label="Select year"
             value={year}
             onChange={(e) => setYear(Number(e.target.value))}
             className="bg-transparent text-[10px] font-black text-white px-4 outline-none uppercase"
@@ -471,10 +489,10 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-[8px] font-black text-slate-600 uppercase ml-1">
-                  Truck ID
+                <label htmlFor="iftaTruckID" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                  Truck ID *
                 </label>
-                <input
+                <input id="iftaTruckID"
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.truckId}
@@ -482,12 +500,13 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     setNewEntry({ ...newEntry, truckId: e.target.value })
                   }
                 />
+                {mileageErrors.truckId && <p className="text-red-400 text-xs mt-1">{mileageErrors.truckId}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[8px] font-black text-slate-600 uppercase ml-1">
-                  Date
+                <label htmlFor="iftaDate" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                  Date *
                 </label>
-                <input
+                <input id="iftaDate"
                   type="date"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.date}
@@ -497,23 +516,24 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[8px] font-black text-slate-600 uppercase ml-1">
-                  State Code
+                <label htmlFor="iftaStateCode" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                  State Code *
                 </label>
-                <input
+                <input id="iftaStateCode"
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.stateCode}
                   onChange={(e) =>
-                    setNewEntry({ ...newEntry, stateCode: e.target.value })
+                    setNewEntry({ ...newEntry, stateCode: e.target.value.toUpperCase() })
                   }
                 />
+                {mileageErrors.stateCode && <p className="text-red-400 text-xs mt-1">{mileageErrors.stateCode}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-[8px] font-black text-slate-600 uppercase ml-1">
-                  Miles
+                <label htmlFor="iftaMiles" className="text-[8px] font-black text-slate-600 uppercase ml-1">
+                  Miles *
                 </label>
-                <input
+                <input id="iftaMiles"
                   type="number"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
                   value={newEntry.miles}
@@ -521,6 +541,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     setNewEntry({ ...newEntry, miles: Number(e.target.value) })
                   }
                 />
+                {mileageErrors.miles && <p className="text-red-400 text-xs mt-1">{mileageErrors.miles}</p>}
               </div>
             </div>
             <div className="flex gap-4 pt-4">
@@ -532,7 +553,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               </button>
               <button
                 onClick={handleSaveMileage}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !isMileageValid}
                 className="flex-1 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Saving..." : "Save Record"}

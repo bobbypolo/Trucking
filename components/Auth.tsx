@@ -520,7 +520,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <div className="space-y-4">
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                  <input
+                  <input aria-label="Email address"
                     type="email"
                     required
                     aria-required="true"
@@ -543,7 +543,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                  <input
+                  <input aria-label="Password"
                     type="password"
                     required
                     aria-required="true"
@@ -584,7 +584,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   setForgotPasswordMessage("");
                   setForgotPasswordOpen(true);
                 }}
-                className="w-full text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
+                className="w-full flex items-center justify-center text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
                 data-testid="forgot-password-link"
               >
                 Forgot Password?
@@ -597,7 +597,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <button
                 type="button"
                 onClick={() => setView("signup")}
-                className="w-full text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                className="w-full flex items-center justify-center text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
               >
                 Create Account
               </button>
@@ -613,7 +613,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("login")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -650,10 +650,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authLegalName" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Legal Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="authLegalName"
                     required
                     placeholder="Legal Name"
                     value={name}
@@ -662,10 +662,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authCompanyName" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Company Name <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="authCompanyName"
                     required
                     placeholder="Company Name"
                     value={companyName}
@@ -676,10 +676,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authEmail" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Email <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="authEmail"
                     required
                     type="email"
                     placeholder="Email"
@@ -696,10 +696,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authPassword" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Password <span className="text-red-500">*</span>
                   </label>
-                  <input
+                  <input id="authPassword"
                     required
                     type="password"
                     placeholder="Password"
@@ -728,7 +728,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("signup")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -802,7 +802,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("signup")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -817,10 +817,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authMcNumberOptional" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     MC Number (Optional)
                   </label>
-                  <input
+                  <input id="authMcNumberOptional"
                     placeholder="e.g., MC-123456"
                     value={mcNumber}
                     onChange={(e) => setMcNumber(e.target.value)}
@@ -828,10 +828,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authTaxIDEIN" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Tax ID / EIN *
                   </label>
-                  <input
+                  <input id="authTaxIDEIN"
                     required
                     placeholder="00-0000000"
                     value={taxId}
@@ -841,10 +841,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                <label htmlFor="authBillingStreetAddress" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                   Billing Street Address *
                 </label>
-                <input
+                <input id="authBillingStreetAddress"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -853,21 +853,21 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <input
+                <input aria-label="City"
                   required
                   placeholder="City"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
-                <input
+                <input aria-label="State"
                   required
                   placeholder="State"
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
-                <input
+                <input aria-label="ZIP"
                   required
                   placeholder="ZIP"
                   value={zip}
@@ -893,7 +893,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("regulatory")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -911,7 +911,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <div className="p-3 bg-blue-600 rounded-xl">
                     <Truck className="w-6 h-6 text-white" />
                   </div>
-                  <input
+                  <input aria-label="Power Unit # (Truck ID)"
                     placeholder="Power Unit # (Truck ID)"
                     value={truckUnitId}
                     onChange={(e) => setTruckUnitId(e.target.value)}
@@ -922,7 +922,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <div className="p-3 bg-orange-600 rounded-xl">
                     <Container className="w-6 h-6 text-white" />
                   </div>
-                  <input
+                  <input aria-label="Trailing Unit # (Trailer/Chassis)"
                     placeholder="Trailing Unit # (Trailer/Chassis)"
                     value={trailerUnitId}
                     onChange={(e) => setTrailerUnitId(e.target.value)}
@@ -965,7 +965,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("equipment")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1004,17 +1004,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     ))}
                     <button
                       type="button"
-                      className="bg-slate-900 border border-slate-800 border-dashed px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-white uppercase"
+                      className="bg-slate-900 border border-slate-800 border-dashed px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-white uppercase flex items-center justify-center"
                     >
                       + Add Category
                     </button>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authReimbursementRules" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Reimbursement Rules
                   </label>
-                  <input
+                  <input id="authReimbursementRules"
                     value={reimbursementRules}
                     onChange={(e) => setReimbursementRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm"
@@ -1040,7 +1040,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("money")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1055,10 +1055,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authBaseJurisdictionState" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Base Jurisdiction (State)
                   </label>
-                  <input
+                  <input id="authBaseJurisdictionState"
                     required
                     value={baseJurisdiction}
                     onChange={(e) => setBaseJurisdiction(e.target.value)}
@@ -1067,10 +1067,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authMileageCaptureMode" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Mileage Capture Mode
                   </label>
-                  <select className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none">
+                  <select id="authMileageCaptureMode" className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none">
                     <option value="Manual">Manual Entry</option>
                     <option value="CSV">CSV Import</option>
                     <option value="ELD">ELD Integration</option>
@@ -1095,7 +1095,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("ifta")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1110,10 +1110,10 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authDocumentNamingRule" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Document Naming Rule
                   </label>
-                  <input
+                  <input id="authDocumentNamingRule"
                     value={docNamingRules}
                     onChange={(e) => setDocNamingRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs"
@@ -1154,7 +1154,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("templates")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1169,12 +1169,12 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label htmlFor="authAccountantSeatOptional" className="text-[10px] text-slate-600 font-black uppercase ml-1">
                     Accountant Seat (Optional)
                   </label>
                   <div className="relative">
                     <Users className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                    <input
+                    <input id="authAccountantSeatOptional"
                       type="email"
                       value={accountantEmail}
                       onChange={(e) => setAccountantEmail(e.target.value)}
@@ -1245,18 +1245,18 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </span>
                 </div>
                 <div className="space-y-4">
-                  <input
+                  <input aria-label="Card Number"
                     placeholder="Card Number"
                     value={cardNumber}
                     onChange={(e) => setCardNumber(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono"
                   />
                   <div className="grid grid-cols-2 gap-4">
-                    <input
+                    <input aria-label="MM/YY"
                       placeholder="MM/YY"
                       className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
                     />
-                    <input
+                    <input aria-label="CVC"
                       placeholder="CVC"
                       className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
                     />

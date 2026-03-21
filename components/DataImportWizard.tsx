@@ -41,6 +41,7 @@ export const DataImportWizard: React.FC<Props> = ({
     message: string;
     type: "error" | "success" | "info";
   } | null>(null);
+  const [mappingError, setMappingError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const targetFields = {
@@ -113,7 +114,20 @@ export const DataImportWizard: React.FC<Props> = ({
     }
   };
 
+  const requiredTargetFields = targetFields.slice(0, Math.min(3, targetFields.length));
+  const areRequiredFieldsMapped = requiredTargetFields.every(
+    (field) => mappings.some((m) => m.targetField === field && m.sourceColumn),
+  );
+
   const runDryRun = () => {
+    const unmapped = requiredTargetFields.filter(
+      (field) => !mappings.some((m) => m.targetField === field && m.sourceColumn),
+    );
+    if (unmapped.length > 0) {
+      setMappingError("Required columns not mapped: " + unmapped.join(", "));
+      return;
+    }
+    setMappingError("");
     setLoading(true);
     // Simulate dry run validation
     const errors: any[] = [];
@@ -301,7 +315,7 @@ export const DataImportWizard: React.FC<Props> = ({
                           {field}
                         </td>
                         <td className="px-8 py-6">
-                          <select
+                          <select aria-label="Source column mapping"
                             className="w-full bg-slate-900 border border-white/10 rounded-xl p-3 text-[10px] font-black text-slate-300 outline-none focus:border-blue-500/50 appearance-none"
                             value={
                               mappings.find((m) => m.targetField === field)

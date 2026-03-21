@@ -37,6 +37,7 @@ export const AccountingBillForm: React.FC<Props> = ({
   onClose,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success" | "info";
@@ -102,7 +103,27 @@ export const AccountingBillForm: React.FC<Props> = ({
     setBill({ ...bill, totalAmount: total });
   };
 
+  const validateForm = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!bill.vendorId) errs.vendorId = "Vendor is required";
+    if (!bill.billDate) errs.billDate = "Invoice date is required";
+    if (!bill.dueDate) errs.dueDate = "Due date is required";
+    if (bill.billDate && bill.dueDate && bill.dueDate < bill.billDate) {
+      errs.dueDate = "Due date must be on or after invoice date";
+    }
+    const total = (bill.lines || []).reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+    if (total <= 0) errs.totalAmount = "Total amount must be greater than 0";
+    return errs;
+  };
+
+  const isFormValid = !!bill.vendorId && !!bill.billDate && !!bill.dueDate &&
+    (bill.dueDate ?? "") >= (bill.billDate ?? "") &&
+    (bill.lines || []).reduce((sum, l) => sum + (Number(l.amount) || 0), 0) > 0;
+
   const handleSubmit = async () => {
+    const validationErrors = validateForm();
+    if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return; }
+    setErrors({});
     setIsSubmitting(true);
     try {
       await Promise.resolve(onSave(bill));
@@ -165,10 +186,10 @@ export const AccountingBillForm: React.FC<Props> = ({
           {/* TOP INFO */}
           <div className="grid grid-cols-4 gap-6">
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+              <label htmlFor="abfBillReference" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
                 Bill Reference #
               </label>
-              <input
+              <input id="abfBillReference"
                 type="text"
                 className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50"
                 value={bill.billNumber}
@@ -179,10 +200,10 @@ export const AccountingBillForm: React.FC<Props> = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Vendor Entity
+              <label htmlFor="abfVendorEntity" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                Vendor Entity *
               </label>
-              <select
+              <select id="abfVendorEntity"
                 className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50 appearance-none"
                 value={bill.vendorId}
                 onChange={(e) => setBill({ ...bill, vendorId: e.target.value })}
@@ -192,12 +213,13 @@ export const AccountingBillForm: React.FC<Props> = ({
                 <option value="V-102">PILOT FLYING J</option>
                 <option value="V-103">RUSH TRUCK CENTERS</option>
               </select>
+              {errors.vendorId && <p className="text-red-400 text-xs mt-1">{errors.vendorId}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Invoice Date
+              <label htmlFor="abfInvoiceDate" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                Invoice Date *
               </label>
-              <input
+              <input id="abfInvoiceDate"
                 type="date"
                 className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50"
                 value={bill.billDate}
@@ -205,10 +227,10 @@ export const AccountingBillForm: React.FC<Props> = ({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Payment Due
+              <label htmlFor="abfPaymentDue" className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                Payment Due *
               </label>
-              <input
+              <input id="abfPaymentDue"
                 type="date"
                 className="w-full bg-slate-900 border border-white/10 rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50"
                 value={bill.dueDate}
@@ -257,7 +279,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                   {bill.lines?.map((line) => (
                     <tr key={line.id} className="group">
                       <td className="px-6 py-4">
-                        <input
+                        <input aria-label="ENGINE OIL REPLACEMENT"
                           type="text"
                           className="w-full bg-transparent border-none text-[11px] font-black uppercase text-white outline-none"
                           placeholder="E.G. ENGINE OIL REPLACEMENT"
@@ -268,7 +290,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                         />
                       </td>
                       <td className="px-6 py-4">
-                        <select
+                        <select aria-label="Line item category"
                           className="bg-transparent border-none text-[10px] font-black uppercase text-slate-400 outline-none appearance-none"
                           value={line.category}
                           onChange={(e) =>
@@ -288,7 +310,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                           <div className="p-1.5 bg-slate-900 rounded-lg text-slate-500">
                             {getAllocationIcon(line.allocationType)}
                           </div>
-                          <select
+                          <select aria-label="Allocation type"
                             className="bg-transparent border-none text-[10px] font-black uppercase text-slate-400 outline-none appearance-none"
                             value={line.allocationType}
                             onChange={(e) =>
@@ -308,7 +330,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <input
+                        <input aria-label="ID..."
                           type="text"
                           className="w-full bg-transparent border-none text-[10px] font-mono text-slate-500 uppercase outline-none"
                           placeholder="ID..."
@@ -323,7 +345,7 @@ export const AccountingBillForm: React.FC<Props> = ({
                           <span className="text-[10px] text-emerald-500/50 font-black">
                             $
                           </span>
-                          <input
+                          <input aria-label="Line item amount"
                             type="number"
                             className="bg-transparent border-none text-[12px] font-black text-emerald-500 outline-none text-right w-24"
                             value={line.amount}
@@ -373,7 +395,7 @@ export const AccountingBillForm: React.FC<Props> = ({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isFormValid}
               className="px-12 py-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl shadow-emerald-500/20 flex items-center gap-3 font-inter disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />{" "}
