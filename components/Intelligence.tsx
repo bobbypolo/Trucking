@@ -205,7 +205,8 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                 <div className="relative mb-6">
                     <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
                     <input 
-                        placeholder={activeTab === 'facilities' ? "Filter Facilities..." : "Filter Brokers..."} 
+                        placeholder={activeTab === 'facilities' ? "Filter Facilities..." : "Filter Brokers..."}
+                        aria-label={activeTab === 'facilities' ? "Filter facilities" : "Filter brokers"}
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white font-black uppercase tracking-widest shadow-inner outline-none focus:border-blue-500"

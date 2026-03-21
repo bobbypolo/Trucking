@@ -631,6 +631,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               <input
                 type="text"
                 placeholder="Search drivers..."
+                aria-label="Search drivers"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-950 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-[9px] text-white outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-slate-700"

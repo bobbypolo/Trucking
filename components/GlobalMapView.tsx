@@ -239,6 +239,7 @@ export const GlobalMapView: React.FC<Props> = ({
           <input
             className="w-full bg-[#0a0f1e]/80 backdrop-blur-xl border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-xs text-white font-bold placeholder:text-slate-600 outline-none focus:border-blue-500 transition-all shadow-2xl"
             placeholder="SEARCH FLEET / LOAD ID..."
+            aria-label="Search fleet or load ID"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />

@@ -258,6 +258,7 @@ export const ExceptionConsole: React.FC<Props> = ({
             <input
               type="text"
               placeholder="Filter by Load #, Driver, or Asset..."
+              aria-label="Filter exceptions by load number, driver, or asset"
               className="w-full bg-[#020617] border border-white/5 rounded-xl pl-12 pr-6 py-3 text-xs text-white outline-none focus:border-blue-500/50 transition-all font-mono"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

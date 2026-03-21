@@ -306,11 +306,12 @@ export const CalendarView: React.FC<Props> = ({
 
           {/* Manual Input */}
           <div className="mb-4 bg-slate-900/50 p-2 rounded border border-slate-700">
-            <label className="text-[10px] text-slate-400 mb-1 block uppercase font-bold">
+            <label htmlFor="calendar-manual-date" className="text-[10px] text-slate-400 mb-1 block uppercase font-bold">
               Type Specific Date
             </label>
             <div className="flex gap-2">
               <input
+                id="calendar-manual-date"
                 type="date"
                 className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm w-full focus:border-blue-500 outline-none"
                 value={manualDateInput}

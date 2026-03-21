@@ -158,6 +158,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                     <input
                       className="w-full bg-[#0a0f1e] border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:border-blue-500 transition-all"
                       placeholder="SEARCH BY LOAD # OR CITY..."
+                      aria-label="Search shipments by load number or city"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -460,20 +461,22 @@ export const CustomerPortalView: React.FC<Props> = ({
                   >
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                        <label htmlFor="quote-origin" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                           Origin City
                         </label>
                         <input
+                          id="quote-origin"
                           value={quoteOrigin}
                           onChange={(e) => setQuoteOrigin(e.target.value)}
                           className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                        <label htmlFor="quote-destination" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                           Destination City
                         </label>
                         <input
+                          id="quote-destination"
                           value={quoteDestination}
                           onChange={(e) => setQuoteDestination(e.target.value)}
                           className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
@@ -481,10 +484,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                      <label htmlFor="quote-equipment" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                         Equipment Type
                       </label>
                       <select
+                        id="quote-equipment"
                         value={quoteEquipment}
                         onChange={(e) => setQuoteEquipment(e.target.value)}
                         className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all appearance-none"
