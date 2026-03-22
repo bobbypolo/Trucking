@@ -3,14 +3,14 @@
   "stop_block_count": 0,
   "ralph": {
     "consecutive_skips": 0,
-    "stories_passed": 18,
+    "stories_passed": 19,
     "stories_skipped": 0,
     "feature_branch": "ralph/full-saas-integration-sprint",
-    "current_story_id": "S-401,S-402,S-403",
+    "current_story_id": "S-501",
     "current_attempt": 1,
     "max_attempts": 4,
     "prior_failure_summary": "",
-    "current_step": "STEP_5_HANDLE_RESULT",
+    "current_step": "STEP_4_DISPATCH",
     "checkpoint_hash": "",
     "cumulative_drift_warnings": 1
   }

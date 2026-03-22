@@ -724,7 +724,8 @@
       "phase": 5,
       "phase_type": "middleware",
       "scope": [
-        "server/middleware/requireTier.ts"
+        "server/middleware/requireTier.ts",
+        "server/__tests__/middleware/"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -758,8 +759,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": null,
       "dependsOn": [
         "S-101"
