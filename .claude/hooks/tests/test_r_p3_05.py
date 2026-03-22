@@ -96,6 +96,13 @@ def test_r_p3_08_no_unprotected_routes():
     import re
     route_defs = re.findall(r'router\.(get|post)\(', content)
     auth_refs = content.count('requireAuth')
+    tenant_refs = content.count('requireTenant')
+    # Value assertions: exactly 5 routes defined and at least 5 requireAuth uses
+    assert len(route_defs) == 5, f'Expected 5 route definitions, got {len(route_defs)}'
+    # requireAuth appears in import + comment + 5 route handlers = 7+
+    assert auth_refs >= 5, f'Expected >= 5 requireAuth, got {auth_refs}'
+    assert tenant_refs >= 5, f'Expected >= 5 requireTenant, got {tenant_refs}'
+    # Every route handler must have its own requireAuth
     assert auth_refs >= len(route_defs), (
         f'Found {len(route_defs)} route definitions but only {auth_refs} requireAuth references'
     )
