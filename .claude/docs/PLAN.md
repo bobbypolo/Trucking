@@ -851,6 +851,27 @@ Same approach as H-502 for remaining components.
 - R-W4-05b: Heading elements in Batch 2 follow sequential order — no skipped levels
 - VPC for modified components
 
+#### Changes Table
+
+| Action | File | Description | Test |
+|--------|------|-------------|------|
+| MODIFY | components/LoadList.tsx | Add aria-label to icon-only filter button | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/EditLoadForm.tsx | Fix heading hierarchy h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/DriverMobileHome.tsx | Add aria-labels to messaging and logout buttons | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/CalendarView.tsx | Add aria-label to close button, fix heading h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/CustomerPortalView.tsx | Add aria-label to logout, fix heading h1->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/Intelligence.tsx | Add aria-labels to expand and close buttons | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/AnalyticsDashboard.tsx | Add aria-labels to options buttons, fix h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/CommsOverlay.tsx | Add aria-labels to dock/collapse/action buttons, fix headings | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/IssueSidebar.tsx | Add aria-label to close button, fix heading h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/GlobalMapView.tsx | Add aria-labels to map control buttons, fix heading | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/GlobalMapViewEnhanced.tsx | Fix heading hierarchy h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/ExceptionConsole.tsx | Add aria-labels to resolve/options buttons, fix h3->h2 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/EditUserModal.tsx | Add aria-label to close button, fix h4->h3 | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/LoadSetupModal.tsx | Add aria-label to close button | .claude/hooks/tests/test_r_w4_07.py |
+| MODIFY | components/DataImportWizard.tsx | Add aria-label to close button | .claude/hooks/tests/test_r_w4_07.py |
+| CREATE | .claude/hooks/tests/test_r_w4_07.py | QA tests for R-W4-02b, R-W4-05b, R-W4-VPC-507 | test_r_w4_07.py |
+
 ### H-505: Wave 4 Verification
 **Requirement IDs**: R-W4-01 through R-W4-06
 **Agent**: QA
