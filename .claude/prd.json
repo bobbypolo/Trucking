@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
-  "plan_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "plan_hash": "6ad60e0cf869bb4e258d5e4f9dc741510ce294f2a49f5762f8ea24114dda6aaa",
   "stories": [
     {
       "id": "S-101",
@@ -31,7 +31,7 @@
         "lint": "cd server && npx tsc --noEmit"
       },
       "passed": true,
-      "verificationRef": "",
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
@@ -67,8 +67,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
@@ -100,7 +100,7 @@
         "lint": "cd server && npx tsc --noEmit"
       },
       "passed": true,
-      "verificationRef": ".claude/runtime/receipts/S-103/attempt-1/qa-receipt.json",
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
@@ -157,7 +157,7 @@
         },
         {
           "id": "R-P2-03",
-          "criterion": "Webhook is idempotent — same event.id processed twice does not duplicate DB updates",
+          "criterion": "Webhook is idempotent \u00e2\u20ac\u201d same event.id processed twice does not duplicate DB updates",
           "testType": "unit"
         },
         {
@@ -687,7 +687,7 @@
         },
         {
           "id": "R-P4-12",
-          "criterion": "Polling stops on component unmount (cleanup — no memory leak)",
+          "criterion": "Polling stops on component unmount (cleanup \u00e2\u20ac\u201d no memory leak)",
           "testType": "unit"
         }
       ],
