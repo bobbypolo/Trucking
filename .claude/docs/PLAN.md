@@ -927,6 +927,16 @@ The server-side upload route (`POST /api/documents` via Multer) was implemented 
 - Playwright: Navigate to FileVault, verify page renders, verify no console errors
 - VPC for FileVault.tsx
 
+#### Changes Table
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| MODIFY | components/FileVault.tsx | Add upload progress bar, file validation errors, upload error display | src/__tests__/components/FileVaultUpload.test.tsx |
+| MODIFY | services/storage/vault.ts | Add validateFileType, validateFileSize, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES | src/__tests__/components/FileVaultUpload.test.tsx |
+| CREATE | src/__tests__/components/FileVaultUpload.test.tsx | Unit tests for vault validation functions | .claude/hooks/tests/test_r_w5_02.py |
+| ADD | .claude/hooks/tests/test_r_w5_02.py | QA acceptance criteria tests for H-602 | test_r_w5_02.py |
+
+
 ### H-603: AbortController for API Requests
 **Requirement IDs**: R-W5-04
 **Agent**: Frontend
