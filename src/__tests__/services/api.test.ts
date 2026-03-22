@@ -170,7 +170,7 @@ describe("api", () => {
       expect(opts.signal).toBeUndefined();
     });
 
-    it("rejects with AbortError when signal is aborted", async () => {
+    it("silently returns undefined when request is aborted (AbortError)", async () => {
       const controller = new AbortController();
       controller.abort();
 
@@ -180,27 +180,20 @@ describe("api", () => {
       );
       vi.spyOn(globalThis, "fetch").mockRejectedValue(abortError);
 
-      await expect(
-        apiFetch("/loads", { signal: controller.signal }),
-      ).rejects.toThrow("The operation was aborted.");
+      const result = await apiFetch("/loads", { signal: controller.signal });
+      expect(result).toBeUndefined();
     });
 
-    it("propagates AbortError with correct name property", async () => {
-      const controller = new AbortController();
-      controller.abort();
-
+    it("does not throw on AbortError -- callers see undefined not an exception", async () => {
       const abortError = new DOMException(
         "The operation was aborted.",
         "AbortError",
       );
       vi.spyOn(globalThis, "fetch").mockRejectedValue(abortError);
 
-      try {
-        await apiFetch("/loads", { signal: controller.signal });
-        expect.unreachable("should have thrown");
-      } catch (err: any) {
-        expect(err.name).toBe("AbortError");
-      }
+      // Should NOT reject -- AbortError is silently swallowed
+      const result = await apiFetch("/loads");
+      expect(result).toBeUndefined();
     });
   });
 
@@ -216,6 +209,18 @@ describe("api", () => {
       const opts = (globalThis.fetch as any).mock.calls[0][1];
       expect(opts.method).toBe("GET");
     });
+
+    it("forwards AbortSignal when provided", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as Response);
+
+      const controller = new AbortController();
+      await api.get("/loads", { signal: controller.signal });
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBe(controller.signal);
+    });
   });
 
   describe("api.post", () => {
@@ -229,6 +234,18 @@ describe("api", () => {
       const opts = (globalThis.fetch as any).mock.calls[0][1];
       expect(opts.method).toBe("POST");
       expect(opts.body).toBe(JSON.stringify({ name: "New Load" }));
+    });
+
+    it("forwards AbortSignal when provided", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      const controller = new AbortController();
+      await api.post("/loads", { name: "test" }, { signal: controller.signal });
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBe(controller.signal);
     });
   });
 
@@ -244,6 +261,18 @@ describe("api", () => {
       expect(opts.method).toBe("PATCH");
       expect(opts.body).toBe(JSON.stringify({ status: "delivered" }));
     });
+
+    it("forwards AbortSignal when provided", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      const controller = new AbortController();
+      await api.patch("/loads/1", { status: "done" }, { signal: controller.signal });
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBe(controller.signal);
+    });
   });
 
   describe("api.delete", () => {
@@ -256,6 +285,18 @@ describe("api", () => {
       await api.delete("/loads/1");
       const opts = (globalThis.fetch as any).mock.calls[0][1];
       expect(opts.method).toBe("DELETE");
+    });
+
+    it("forwards AbortSignal when provided", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as Response);
+
+      const controller = new AbortController();
+      await api.delete("/loads/1", { signal: controller.signal });
+      const opts = (globalThis.fetch as any).mock.calls[0][1];
+      expect(opts.signal).toBe(controller.signal);
     });
   });
 });

@@ -23,11 +23,21 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
     ...(customHeaders || {}),
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...restOptions,
-    headers,
-    ...(signal ? { signal } : {}),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...restOptions,
+      headers,
+      ...(signal ? { signal } : {}),
+    });
+  } catch (err: unknown) {
+    // Silently swallow AbortError so callers never see it as an exception.
+    // This prevents stale-request errors from surfacing in error toasts.
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return undefined;
+    }
+    throw err;
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -51,17 +61,26 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
   return response.json();
 };
 
+/** Optional fetch overrides that callers can pass to convenience methods. */
+export interface ApiFetchOptions {
+  signal?: AbortSignal;
+}
+
 export const api = {
-  get: (endpoint: string) => apiFetch(endpoint, { method: "GET" }),
-  post: (endpoint: string, body: any) =>
+  get: (endpoint: string, opts?: ApiFetchOptions) =>
+    apiFetch(endpoint, { method: "GET", ...opts }),
+  post: (endpoint: string, body: any, opts?: ApiFetchOptions) =>
     apiFetch(endpoint, {
       method: "POST",
       body: JSON.stringify(body),
+      ...opts,
     }),
-  patch: (endpoint: string, body: any) =>
+  patch: (endpoint: string, body: any, opts?: ApiFetchOptions) =>
     apiFetch(endpoint, {
       method: "PATCH",
       body: JSON.stringify(body),
+      ...opts,
     }),
-  delete: (endpoint: string) => apiFetch(endpoint, { method: "DELETE" }),
+  delete: (endpoint: string, opts?: ApiFetchOptions) =>
+    apiFetch(endpoint, { method: "DELETE", ...opts }),
 };
