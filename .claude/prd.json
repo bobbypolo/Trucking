@@ -376,7 +376,9 @@
       "phase_type": "route",
       "scope": [
         "server/routes/stripe.ts",
-        "server/index.ts"
+        "server/index.ts",
+        "server/__tests__/routes/stripe.test.ts",
+        ".claude/hooks/tests/test_r_s301.py"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -405,8 +407,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
         "S-201"
@@ -449,8 +451,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
         "S-204"
@@ -486,8 +488,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
         "S-203"
