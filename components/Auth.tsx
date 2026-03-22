@@ -112,6 +112,13 @@ function clearWizardState(): void {
   }
 }
 
+const TIER_PRICES: Record<string, string> = {
+  "Records Vault": "$19.00",
+  "Automation Pro": "$69.00",
+  "Fleet Core": "$49.00",
+  "Fleet Command": "$149.00",
+};
+
 interface Props {
   onLogin: (user: UserType) => void;
 }
@@ -156,9 +163,6 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     useState<FreightType>("Dry Van");
 
   // Payment States
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCVC, setCardCVC] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [additionalSeats, setAdditionalSeats] = useState(0);
 
@@ -338,8 +342,9 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     setView("payment");
   };
 
-  const processSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Complete signup with trial status (no Stripe payment)
+  const processSignup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsProcessing(true);
 
     try {
@@ -446,6 +451,49 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
       onLogin(user);
     } catch (e) {
       setError("Signup failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Redirect to Stripe Checkout for paid subscription
+  const handleStripeCheckout = async () => {
+    setIsProcessing(true);
+    setError("");
+
+    try {
+      const successUrl = `${window.location.origin}/signup/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/signup/cancel`;
+
+      const response = await fetch(
+        `${API_URL}/stripe/create-checkout-session`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tier,
+            successUrl,
+            cancelUrl,
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        // Stripe not configured or API error — fall through to trial
+        await processSignup();
+        return;
+      }
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        // No checkout URL returned — fall through to trial
+        await processSignup();
+      }
+    } catch {
+      // Network error or Stripe unavailable — fall through to trial
+      await processSignup();
     } finally {
       setIsProcessing(false);
     }
@@ -1232,10 +1280,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
           )}
 
           {view === "payment" && (
-            <form
-              onSubmit={processSignup}
-              className="space-y-8 animate-fade-in h-full flex flex-col justify-center"
-            >
+            <div className="space-y-8 animate-fade-in h-full flex flex-col justify-center">
               <div className="text-center relative">
                 <button
                   type="button"
@@ -1260,41 +1305,52 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     Subscription Plan
                   </span>
                   <span className="text-2xl font-black text-blue-400 font-mono">
-                    $49.00<span className="text-xs text-slate-600">/mo</span>
+                    {TIER_PRICES[tier] || "$49.00"}
+                    <span className="text-xs text-slate-600">/mo</span>
                   </span>
                 </div>
-                <div className="space-y-4">
-                  <input aria-label="Card Number"
-                    placeholder="Card Number"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <input aria-label="MM/YY"
-                      placeholder="MM/YY"
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
-                    />
-                    <input aria-label="CVC"
-                      placeholder="CVC"
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
-                    />
-                  </div>
+                <div className="text-center py-4">
+                  <span className="text-lg font-black text-white uppercase tracking-tight">
+                    {tier}
+                  </span>
+                  <p className="text-slate-400 text-xs mt-2">
+                    Payment is securely handled by Stripe. No card details are
+                    stored on our servers.
+                  </p>
                 </div>
               </div>
-              <button
-                disabled={isProcessing}
-                type="submit"
-                className="w-full bg-green-600 py-5 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl active:scale-95 flex items-center justify-center gap-4"
-              >
-                {isProcessing ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <ShieldCheck />
-                )}{" "}
-                Get Started
-              </button>
-            </form>
+              {error && (
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              )}
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={handleStripeCheckout}
+                  className="w-full bg-blue-600 py-5 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl active:scale-95 flex items-center justify-center gap-4"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <CreditCard />
+                  )}{" "}
+                  Subscribe with Stripe
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => processSignup()}
+                  className="w-full bg-slate-700 py-4 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl active:scale-95 flex items-center justify-center gap-4 hover:bg-slate-600 transition-colors"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <ShieldCheck />
+                  )}{" "}
+                  Start Free Trial
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
