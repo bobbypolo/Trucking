@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 
@@ -6,6 +7,12 @@ export interface ExpiringCert {
   certType: string;
   expiryDate: Date;
   daysRemaining: number;
+}
+
+export interface ExpiryAlertResult {
+  alertsCreated: number;
+  expiringCerts: ExpiringCert[];
+  jobIds: string[];
 }
 
 /**
@@ -46,7 +53,10 @@ export async function checkExpiring(
   const result: ExpiringCert[] = records.map((row) => ({
     driverId: row.user_id,
     certType: row.type,
-    expiryDate: row.expiry_date instanceof Date ? row.expiry_date : new Date(row.expiry_date),
+    expiryDate:
+      row.expiry_date instanceof Date
+        ? row.expiry_date
+        : new Date(row.expiry_date),
     daysRemaining: row.days_remaining,
   }));
 
@@ -56,4 +66,65 @@ export async function checkExpiring(
   );
 
   return result;
+}
+
+/**
+ * Scans for expiring certificates and creates a notification job for each.
+ * Each notification job is inserted into the notification_jobs table with
+ * channel=email, status=PENDING, and a descriptive message.
+ *
+ * @param companyId - The tenant's company ID
+ * @param daysAhead - Number of days to look ahead (default: 30)
+ * @returns Summary of alerts created including job IDs
+ */
+export async function createExpiryAlerts(
+  companyId: string,
+  daysAhead: number = 30,
+): Promise<ExpiryAlertResult> {
+  const log = createChildLogger({ service: "cert-expiry-checker" });
+
+  const expiringCerts = await checkExpiring(companyId, daysAhead);
+
+  if (expiringCerts.length === 0) {
+    log.info({ companyId }, "No expiring certs found — no alerts created");
+    return { alertsCreated: 0, expiringCerts: [], jobIds: [] };
+  }
+
+  const jobIds: string[] = [];
+
+  for (const cert of expiringCerts) {
+    const jobId = uuidv4();
+    const expiryStr = cert.expiryDate.toISOString().split("T")[0];
+    const urgency =
+      cert.daysRemaining <= 0
+        ? "EXPIRED"
+        : cert.daysRemaining <= 7
+          ? "URGENT"
+          : "WARNING";
+
+    const message =
+      cert.daysRemaining <= 0
+        ? `Driver certificate ${cert.certType} for driver ${cert.driverId} expired on ${expiryStr}`
+        : `Driver certificate ${cert.certType} for driver ${cert.driverId} expires on ${expiryStr} (${cert.daysRemaining} days remaining) [${urgency}]`;
+
+    await pool.query(
+      `INSERT INTO notification_jobs
+         (id, company_id, message, channel, status, sent_by, sent_at, recipients)
+       VALUES (?, ?, ?, 'email', 'PENDING', 'system', NOW(), '[]')`,
+      [jobId, companyId, message],
+    );
+
+    jobIds.push(jobId);
+  }
+
+  log.info(
+    { companyId, alertsCreated: jobIds.length },
+    "Cert expiry alerts created",
+  );
+
+  return {
+    alertsCreated: jobIds.length,
+    expiringCerts,
+    jobIds,
+  };
 }
