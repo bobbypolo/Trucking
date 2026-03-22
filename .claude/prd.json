@@ -1,7 +1,7 @@
 {
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
-  "plan_hash": "6ad60e0cf869bb4e258d5e4f9dc741510ce294f2a49f5762f8ea24114dda6aaa",
+  "plan_hash": "55a554847510e7b74414416d659de94b01416919fde762bf4957fc17b6d53561",
   "stories": [
     {
       "id": "S-101",

@@ -96,6 +96,8 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] Null subscription_tier defaults to "Records Vault" in mapper
 - Tests (functional): Migration test + verify mapCompanyRowToApiCompany includes subscriptionTier
 - Verification: `cd server && npx vitest run` passes
+- R-P1-01: Migration 027 applies without error and column exists with default Records Vault
+- R-P1-02: mapCompanyRowToApiCompany returns subscriptionTier field, null defaults to Records Vault
 
 **S-102: Add Stripe columns to companies + wire through auth chain + types**
 
@@ -113,6 +115,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] `mapCompanyRowToApiCompany()` returns Stripe fields
 - Tests (functional): Migration test asserts all 3 columns exist
 - Verification: `cd server && npx vitest run` passes, `npx tsc --noEmit` passes
+- R-P1-03: Migration 028 applies and all 3 nullable columns exist in companies table
+- R-P1-04: Company interface in types.ts has stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd fields
+- R-P1-05: mapCompanyRowToApiCompany returns stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd
 
 **S-103: Add QuickBooks OAuth token table**
 
@@ -123,6 +128,8 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] DOWN migration drops table cleanly
 - Tests (functional): Migration test creates table, inserts test row, verifies unique constraint rejects duplicate company_id
 - Verification: `cd server && npx vitest run` passes
+- R-P1-06: Migration 029 creates quickbooks_tokens table with UNIQUE constraint on company_id
+- R-P1-07: DOWN migration drops table cleanly
 
 **S-104: Add GPS positions table**
 
@@ -133,6 +140,8 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] Can insert and query by company_id + vehicle_id with ORDER BY recorded_at DESC
 - Tests (functional): Migration test creates table, inserts positions, queries by company_id with ORDER BY, asserts correct order
 - Verification: `cd server && npx vitest run` passes
+- R-P1-08: Migration 030 creates gps_positions table with compound index
+- R-P1-09: Can insert and query positions ordered by recorded_at DESC
 
 **Wave 1 Gate**: All 4 migrations apply. Full server test suite passes. 0 TypeScript errors.
 
@@ -167,6 +176,11 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test createBillingPortalSession → returns URL
   - Test tier-to-price mapping for all 4 tiers
 - Functional Verification: Mock Stripe SDK, call `createCheckoutSession("co-1", "Automation Pro", "test@test.com")`, assert returned URL contains Stripe domain. Call `handleWebhookEvent` with `checkout.session.completed` payload, then query mock DB to verify `companies` row updated with correct `stripe_customer_id` and `subscription_tier = "Automation Pro"`.
+- R-P2-01: createCheckoutSession returns valid session URL with correct price ID for each of 4 tiers
+- R-P2-02: handleWebhookEvent updates companies table on checkout.session.completed, invoice.payment_failed, customer.subscription.deleted
+- R-P2-03: Webhook is idempotent â€” same event.id processed twice does not duplicate DB updates
+- R-P2-04: Missing STRIPE_SECRET_KEY returns { available: false, reason: no_api_key }
+- R-P2-05: Invalid webhook signature returns error without crash
 
 **S-202: Implement Twilio SMS in notification delivery service**
 
@@ -187,6 +201,10 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test multiple recipients → sends to each, returns SENT if any succeed
   - Test email channel still works (regression)
 - Functional Verification: Mock Twilio, call `deliverNotification({ channel: "sms", recipients: [{phone: "+1555..."}], message: "test" })`, assert Twilio `messages.create` called with correct `to`, `from`, `body`. Assert returned status is "SENT".
+- R-P2-06: SMS channel sends via Twilio when configured, returns SENT with message SID
+- R-P2-07: Missing Twilio config returns { status: FAILED, sync_error: Twilio not configured }
+- R-P2-08: Recipients without phone numbers are skipped, not errored
+- R-P2-09: Existing email delivery tests still pass unchanged (regression)
 
 **S-203: Create GPS provider interface + Samsara adapter**
 
@@ -213,6 +231,10 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test factory returns SamsaraAdapter for "samsara"
   - Test factory throws for unknown provider name
 - Functional Verification: Mock global fetch, call `getGpsProvider().getVehicleLocations("co-1")`, assert returned positions have correct lat/lng/speed fields. Call again within 60s, assert fetch NOT called (cache hit). Wait 61s (or reset cache), call again, assert fetch called.
+- R-P2-10: GpsProvider interface is provider-agnostic with no Samsara-specific types
+- R-P2-11: Samsara adapter returns parsed GpsPosition array from API, with 5s timeout and 60s cache
+- R-P2-12: Missing SAMSARA_API_TOKEN returns mock positions with isMock: true
+- R-P2-13: Factory returns SamsaraAdapter for samsara, throws for unknown provider
 
 **S-204: Create QuickBooks OAuth service**
 
@@ -241,6 +263,12 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test token encrypt/decrypt roundtrip → original value preserved
   - Test missing config → graceful degradation
 - Functional Verification: Mock intuit-oauth SDK. Call `getAuthorizationUrl("co-1")`, assert URL contains client_id. Call `handleCallback("co-1", "auth-code", "realm-123")`, assert `quickbooks_tokens` table (mocked) receives encrypted token. Call `syncInvoiceToQBO("co-1", { invoiceNumber: "INV-001", amount: 5000 })`, assert Intuit API mock received correct Invoice object.
+- R-P2-14: getAuthorizationUrl returns valid Intuit OAuth URL with correct client_id and redirect_uri
+- R-P2-15: handleCallback exchanges auth code, encrypts tokens with AES-256-GCM, stores in quickbooks_tokens table
+- R-P2-16: getClient decrypts tokens, refreshes if expired, re-encrypts and stores new tokens
+- R-P2-17: syncInvoiceToQBO creates Invoice via Intuit API with correct field mapping
+- R-P2-18: Token encrypt/decrypt roundtrip preserves original token value
+- R-P2-19: Missing env vars returns { available: false, reason: no_api_key }
 
 **S-205: Remove weather feature flag**
 
@@ -255,6 +283,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test without API key → returns graceful fallback
   - Test API error → returns `{ available: false, reason: "api_error" }`
 - Functional Verification: Mock fetch. Set `WEATHER_API_KEY`, call `getWeatherForLocation(lat, lng)`, assert Azure Maps API called and response parsed. Unset key, call again, assert `{ available: false }` returned without API call.
+- R-P2-20: Weather works when WEATHER_API_KEY set (no WEATHER_ENABLED needed)
+- R-P2-21: Returns { available: false, reason: no_api_key } when key not set
+- R-P2-22: No reference to WEATHER_ENABLED remains in codebase
 
 **Wave 2 Gate**: Full server + frontend test suite passes. 0 TypeScript errors. Each service's functional verification passes.
 
@@ -287,6 +318,10 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test POST webhook with invalid signature → 400
   - Test POST webhook without auth → 200 (public endpoint)
 - Functional Verification: Mock stripe.service, POST to `/api/stripe/create-checkout-session` with auth header and body `{ tier: "Automation Pro", email: "test@t.com" }`, assert 200 response contains `url`. POST to webhook with mocked payload, assert service `handleWebhookEvent` called.
+- R-P3-01: POST /api/stripe/create-checkout-session returns 200 with sessionId and url when Stripe configured
+- R-P3-02: POST /api/stripe/create-checkout-session returns 401 without auth token
+- R-P3-03: POST /api/stripe/webhook returns 200 on valid event, 400 on invalid signature
+- R-P3-04: Webhook endpoint accessible without auth token (public)
 
 **S-302: Replace QuickBooks 501 stub with real routes**
 
@@ -310,6 +345,10 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test POST sync-bill with auth → 200 + QBO ID
   - Test GET status → connection state
 - Functional Verification: Mock quickbooks.service, POST to `/api/quickbooks/sync-invoice` with auth + invoice body, assert 200 response contains `qboInvoiceId`. Verify service was called with correct invoice data.
+- R-P3-05: 501 stub removed from accounting.ts
+- R-P3-06: GET /api/quickbooks/auth-url returns OAuth URL when configured, 503 when not
+- R-P3-07: POST /api/quickbooks/sync-invoice syncs invoice and returns QBO reference ID
+- R-P3-08: All routes enforce requireAuth + requireTenant
 
 **S-303: Add GPS live tracking route**
 
@@ -332,6 +371,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test existing GET /api/loads/tracking still works → regression
   - Test tenant isolation on live positions
 - Functional Verification: Mock GPS provider, GET `/api/tracking/live` with auth, assert response contains `positions[]` with lat/lng/speed/heading fields. POST to webhook with `{ vehicleId: "truck-1", latitude: 40.7128, longitude: -74.0060 }`, assert DB mock received insert call.
+- R-P3-09: GET /api/tracking/live returns positions from GPS provider, stores in DB
+- R-P3-10: POST /api/tracking/webhook validates X-GPS-API-Key header, rejects invalid/missing
+- R-P3-11: Existing GET /api/loads/tracking still works unchanged (backward compatible)
 
 **S-304: Wire legacy sendNotification to real delivery service**
 
@@ -348,6 +390,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test sendNotification catches delivery errors (doesn't throw)
   - Test loads.ts integration still calls sendNotification (regression)
 - Functional Verification: Mock notification-delivery.service, call `sendNotification(["test@t.com"], "Load #123", "Status update")`, assert `deliverNotification` called with `{ channel: "email", recipients: [{email: "test@t.com"}], message: "Status update" }`.
+- R-P3-12: sendNotification calls deliverNotification with channel email and correct recipients
+- R-P3-13: Notification failure does NOT throw (fire-and-forget, catches errors)
+- R-P3-14: Empty emails array is a no-op
 
 **S-305: Update .env.example with all new integration vars**
 
@@ -358,6 +403,8 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] Required vs optional clearly marked
   - [ ] No real API keys or secrets in file
 - Verification: Grep file for actual API keys/tokens (must find none)
+- R-P3-15: All integration env vars documented with descriptions and required/optional status
+- R-P3-16: No real API keys or secrets in the file
 
 **S-306: Clean up IFTA client-side stub comment**
 
@@ -368,6 +415,8 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - [ ] `netTaxDue = 0` unchanged
   - [ ] Existing IFTA tests pass
 - Verification: `npx vitest run` passes
+- R-P3-17: Comment accurately describes server-side IFTA calculation via /api/accounting/ifta-summary
+- R-P3-18: netTaxDue = 0 unchanged and existing IFTA tests pass
 
 **Wave 3 Gate**: Full test suite passes. All new routes respond correctly. Legacy endpoints unchanged.
 
@@ -402,6 +451,11 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test Stripe unavailable → falls through to trial flow
   - Test existing signup flow tests still pass (regression)
 - Functional Verification: Render Auth component, navigate to payment step. Assert no `input[type=text]` with placeholder containing "card" exists. Click "Subscribe with Stripe", assert fetch called to `/api/stripe/create-checkout-session` with correct body. Assert `window.location.href` set to returned URL.
+- R-P4-01: No input for card number, expiry, or CVC exists in rendered output (PCI compliance)
+- R-P4-02: Subscribe with Stripe button calls checkout session API with successUrl and cancelUrl
+- R-P4-03: Start Free Trial button bypasses payment, logs in with trial status
+- R-P4-04: When Stripe not configured, payment step auto-falls through to trial
+- R-P4-05: Existing signup flow tests still pass (regression)
 
 **S-402: Add subscription management to CompanyProfile**
 
@@ -424,6 +478,10 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test sections hidden when not configured (mock 503 response)
   - Test QuickBooks shows connected state
 
+- R-P4-06: Billing section shows current tier name and status badge
+- R-P4-07: Manage Subscription button calls billing portal API and redirects
+- R-P4-08: Connect QuickBooks button calls auth-url API and redirects
+- R-P4-09: Sections hidden when API returns 503 (not configured)
 **S-403: Update GlobalMapViewEnhanced to consume live GPS data**
 
 - Files: `components/GlobalMapViewEnhanced.tsx` (mod)
@@ -447,6 +505,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test fallback to static data on API error
   - Test cleanup on unmount (no lingering interval)
 
+- R-P4-10: Map shows live GPS positions when API returns data, updates every 30 seconds
+- R-P4-11: Fallback to static data when GPS provider not configured (no visual regression)
+- R-P4-12: Polling stops on component unmount (cleanup â€” no memory leak)
 **Wave 4 Gate**: Full frontend test suite passes. 0 TypeScript errors. Build succeeds.
 
 ---
@@ -472,6 +533,11 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test missing tier → defaults to Records Vault
   - Test caching → only 1 DB query per request even with multiple requireTier calls
 
+- R-P5-01: Allowed tier + active status calls next()
+- R-P5-02: Disallowed tier returns 403 with required_tiers, current_tier, upgrade_url
+- R-P5-03: Past_due status returns 403 regardless of tier
+- R-P5-04: Missing tier defaults to Records Vault
+- R-P5-05: Tier lookup cached per-request (1 DB query even with multiple requireTier calls)
 **S-502: Apply tier gates to premium routes**
 
 - Files: `server/routes/ai.ts` (mod), select other route files
@@ -493,6 +559,9 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
   - Test GPS tracking with Fleet Core tier → 200
   - Test base CRUD with Records Vault → 200 (regression)
 
+- R-P5-06: AI endpoints return 403 for Records Vault tier, 200 for Automation Pro
+- R-P5-07: Base CRUD endpoints (loads, quotes, invoices) accessible by Records Vault tier (regression)
+- R-P5-08: GPS tracking returns 403 for Records Vault and Automation Pro, 200 for Fleet Core+
 **Wave 5 Gate**: Full test suite passes. Tier enforcement verified on all protected routes.
 
 ---

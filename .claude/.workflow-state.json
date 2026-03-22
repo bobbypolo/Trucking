@@ -10,7 +10,7 @@
     "current_attempt": 1,
     "max_attempts": 4,
     "prior_failure_summary": "",
-    "current_step": "",
+    "current_step": "STEP_1_INIT",
     "checkpoint_hash": "",
     "cumulative_drift_warnings": 0
   }
