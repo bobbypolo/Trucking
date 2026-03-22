@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Tests R-P3-03-AC1: Weather requests have 5s timeout; failures return degraded response not 500; behind feature flag; telemetry logged
+// Tests R-P2-20, R-P2-21, R-P2-22: Weather feature flag removed, API key presence check only
+// Note: The old feature flag env var has been fully removed from the codebase.
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -19,21 +20,20 @@ vi.mock("../../lib/logger", () => ({
 
 const originalEnv = { ...process.env };
 
-describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
+describe("S-205: Weather Service (feature flag removed)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
     process.env = { ...originalEnv };
-    // Default: feature flag enabled, API key present
+    // Only WEATHER_API_KEY needed — old feature flag removed
     process.env.WEATHER_API_KEY = "test-weather-key";
-    process.env.WEATHER_ENABLED = "true";
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
 
-  describe("AC1: Successful weather response", () => {
+  describe("R-P2-20: Weather works when WEATHER_API_KEY set (no feature flag needed)", () => {
     it("returns weather data when Azure Maps API responds successfully", async () => {
       const { getWeatherForLocation } =
         await import("../../services/weather.service");
@@ -60,6 +60,34 @@ describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
       expect(result.data!.description).toBe("Partly Cloudy");
       expect(result.data!.windSpeed).toBe(10);
       expect(result.data!.hasPrecipitation).toBe(false);
+    });
+
+    it("works without any feature flag being set", async () => {
+      // No feature flag env var needed — only API key matters
+      // (old feature flag env var was removed in S-205)
+
+      const { getWeatherForLocation } =
+        await import("../../services/weather.service");
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              temperature: { value: 65 },
+              phrase: "Clear",
+              wind: { speed: { value: 5 } },
+              hasPrecipitation: false,
+            },
+          ],
+        }),
+      });
+
+      const result = await getWeatherForLocation(41.8781, -87.6298);
+
+      // Should work — no feature flag check
+      expect(result.available).toBe(true);
+      expect(result.data!.temperature).toBe(65);
     });
 
     it("passes correct coordinates and API key in the URL", async () => {
@@ -89,12 +117,84 @@ describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
     });
   });
 
-  describe("AC1: 5-second timeout", () => {
-    it("returns degraded response when request exceeds 5s timeout", async () => {
+  describe("R-P2-21: Returns { available: false, reason: no_api_key } when key not set", () => {
+    it("returns no_api_key when WEATHER_API_KEY is missing", async () => {
+      delete process.env.WEATHER_API_KEY;
+
+      vi.resetModules();
+
+      vi.doMock("../../lib/logger", () => ({
+        createChildLogger: () => ({
+          info: mockInfo,
+          warn: mockWarn,
+          error: mockError,
+        }),
+      }));
+
       const { getWeatherForLocation } =
         await import("../../services/weather.service");
 
-      // Simulate AbortError (what happens when AbortSignal.timeout fires)
+      const result = await getWeatherForLocation(41.8781, -87.6298);
+
+      expect(result.available).toBe(false);
+      expect(result.reason).toBe("no_api_key");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("does not call the API when key is missing", async () => {
+      delete process.env.WEATHER_API_KEY;
+
+      vi.resetModules();
+
+      vi.doMock("../../lib/logger", () => ({
+        createChildLogger: () => ({
+          info: mockInfo,
+          warn: mockWarn,
+          error: mockError,
+        }),
+      }));
+
+      const { getWeatherForLocation } =
+        await import("../../services/weather.service");
+
+      await getWeatherForLocation(41.8781, -87.6298);
+
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("R-P2-22: No reference to old feature flag remains", () => {
+    it("WeatherResponse type does not include 'disabled' reason", async () => {
+      const { getWeatherForLocation } =
+        await import("../../services/weather.service");
+
+      // With API key set, should get weather data (not 'disabled')
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              temperature: { value: 70 },
+              phrase: "Sunny",
+              wind: { speed: { value: 3 } },
+              hasPrecipitation: false,
+            },
+          ],
+        }),
+      });
+
+      const result = await getWeatherForLocation(41.8781, -87.6298);
+      expect(result.available).toBe(true);
+      expect(result.reason).toBeUndefined();
+      // 'disabled' is no longer a valid reason
+    });
+  });
+
+  describe("Graceful degradation (preserved behavior)", () => {
+    it("returns degraded response on 5s timeout", async () => {
+      const { getWeatherForLocation } =
+        await import("../../services/weather.service");
+
       const abortError = new DOMException(
         "The operation was aborted",
         "AbortError",
@@ -107,9 +207,7 @@ describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
       expect(result.reason).toBe("timeout");
       expect(result.data).toBeUndefined();
     });
-  });
 
-  describe("AC1: Failure returns degraded response, not 500", () => {
     it("returns degraded response on network error", async () => {
       const { getWeatherForLocation } =
         await import("../../services/weather.service");
@@ -153,103 +251,9 @@ describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
       expect(result.available).toBe(false);
       expect(result.reason).toBe("no_data");
     });
-
-    it("returns degraded response when API key is missing", async () => {
-      delete process.env.WEATHER_API_KEY;
-
-      vi.resetModules();
-
-      // Re-mock logger after resetModules
-      vi.doMock("../../lib/logger", () => ({
-        createChildLogger: () => ({
-          info: mockInfo,
-          warn: mockWarn,
-          error: mockError,
-        }),
-      }));
-
-      const { getWeatherForLocation } =
-        await import("../../services/weather.service");
-
-      const result = await getWeatherForLocation(41.8781, -87.6298);
-
-      expect(result.available).toBe(false);
-      expect(result.reason).toBe("no_api_key");
-    });
   });
 
-  describe("AC1: Feature flag", () => {
-    it("returns degraded response when feature flag is disabled", async () => {
-      process.env.WEATHER_ENABLED = "false";
-
-      vi.resetModules();
-
-      vi.doMock("../../lib/logger", () => ({
-        createChildLogger: () => ({
-          info: mockInfo,
-          warn: mockWarn,
-          error: mockError,
-        }),
-      }));
-
-      const { getWeatherForLocation } =
-        await import("../../services/weather.service");
-
-      const result = await getWeatherForLocation(41.8781, -87.6298);
-
-      expect(result.available).toBe(false);
-      expect(result.reason).toBe("disabled");
-    });
-
-    it("processes requests when feature flag is enabled", async () => {
-      process.env.WEATHER_ENABLED = "true";
-
-      const { getWeatherForLocation } =
-        await import("../../services/weather.service");
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          results: [
-            {
-              temperature: { value: 70 },
-              phrase: "Sunny",
-              wind: { speed: { value: 3 } },
-              hasPrecipitation: false,
-            },
-          ],
-        }),
-      });
-
-      const result = await getWeatherForLocation(41.8781, -87.6298);
-
-      expect(result.available).toBe(true);
-    });
-
-    it("defaults to disabled when WEATHER_ENABLED is not set", async () => {
-      delete process.env.WEATHER_ENABLED;
-
-      vi.resetModules();
-
-      vi.doMock("../../lib/logger", () => ({
-        createChildLogger: () => ({
-          info: mockInfo,
-          warn: mockWarn,
-          error: mockError,
-        }),
-      }));
-
-      const { getWeatherForLocation } =
-        await import("../../services/weather.service");
-
-      const result = await getWeatherForLocation(41.8781, -87.6298);
-
-      expect(result.available).toBe(false);
-      expect(result.reason).toBe("disabled");
-    });
-  });
-
-  describe("AC1: Telemetry logging", () => {
+  describe("Telemetry logging (preserved behavior)", () => {
     it("logs successful weather requests with duration", async () => {
       const { getWeatherForLocation } =
         await import("../../services/weather.service");
@@ -270,7 +274,6 @@ describe("R-P3-03: Weather Service with Timeouts and Fallbacks", () => {
 
       await getWeatherForLocation(41.8781, -87.6298);
 
-      // Check that info was called with telemetry data
       expect(mockInfo).toHaveBeenCalled();
       const logCall = mockInfo.mock.calls.find(
         (call: unknown[]) =>

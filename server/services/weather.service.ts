@@ -8,10 +8,10 @@
  * Features:
  * - 5-second timeout on all API requests
  * - Graceful degradation: failures return { available: false } not 500
- * - Feature flag: WEATHER_ENABLED env var (defaults to disabled)
+ * - Availability gated by WEATHER_API_KEY presence (no feature flag)
  * - Telemetry: logs request duration, success/failure, timeout events
  *
- * @see .claude/docs/PLAN.md R-P3-03
+ * @see .claude/docs/PLAN.md S-205
  */
 
 import { createChildLogger } from "../lib/logger";
@@ -39,23 +39,15 @@ export interface WeatherData {
  */
 export interface WeatherResponse {
   available: boolean;
-  reason?: "timeout" | "api_error" | "no_data" | "no_api_key" | "disabled";
+  reason?: "timeout" | "api_error" | "no_data" | "no_api_key";
   data?: WeatherData;
-}
-
-/**
- * Check if the weather feature flag is enabled.
- * Defaults to disabled when WEATHER_ENABLED is not set.
- */
-function isWeatherEnabled(): boolean {
-  return process.env.WEATHER_ENABLED === "true";
 }
 
 /**
  * Fetch current weather conditions for a given latitude/longitude.
  *
  * Never throws — always returns a WeatherResponse.
- * On any failure (timeout, network, missing key, disabled),
+ * On any failure (timeout, network, missing key),
  * returns { available: false, reason: "..." }.
  */
 export async function getWeatherForLocation(
@@ -63,15 +55,6 @@ export async function getWeatherForLocation(
   longitude: number,
 ): Promise<WeatherResponse> {
   const startTime = Date.now();
-
-  // Check feature flag first
-  if (!isWeatherEnabled()) {
-    log.info(
-      { latitude, longitude, enabled: false },
-      "Weather request skipped: feature disabled",
-    );
-    return { available: false, reason: "disabled" };
-  }
 
   // Check API key
   const apiKey = process.env.WEATHER_API_KEY;
