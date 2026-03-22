@@ -18,8 +18,8 @@ const COMPONENTS = path.join(ROOT, "components");
 function grepNonTest(pattern: string, dir: string, ext = "*.ts"): string[] {
   try {
     const result = execSync(
-      `grep -r "${pattern}" "${dir}" --include="${ext}" -l`,
-      { encoding: "utf-8" },
+      `grep -r "${pattern}" "${dir}" --include="${ext}" --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=coverage -l`,
+      { encoding: "utf-8", timeout: 15000 },
     );
     return result
       .trim()
