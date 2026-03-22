@@ -630,8 +630,8 @@
         "unit": "npx vitest run",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave4",
       "dependsOn": [
         "S-301"
@@ -643,7 +643,8 @@
       "phase": 4,
       "phase_type": "frontend",
       "scope": [
-        "components/CompanyProfile.tsx"
+        "components/CompanyProfile.tsx",
+        "src/__tests__/components/"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -672,8 +673,8 @@
         "unit": "npx vitest run",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave4",
       "dependsOn": [
         "S-301",
@@ -710,8 +711,8 @@
         "unit": "npx vitest run",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave4",
       "dependsOn": [
         "S-303"
