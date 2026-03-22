@@ -92,6 +92,20 @@ import {
   getEquipment,
   getComplianceRecords,
 } from "../services/safetyService";
+import {
+  NotificationStatusBadge,
+  type NotificationStatus,
+} from "./ui/NotificationStatusBadge";
+import { CertExpiryWarnings } from "./ui/CertExpiryWarnings";
+
+interface NotificationJob {
+  id: string;
+  message: string;
+  channel: string;
+  status: NotificationStatus;
+  sent_at: string;
+  sync_error?: string | boolean;
+}
 
 interface Props {
   user: User;
@@ -143,6 +157,7 @@ export const SafetyView: React.FC<Props> = ({
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [safetyFormErrors, setSafetyFormErrors] = useState<Record<string, string>>({});
+  const [notificationJobs, setNotificationJobs] = useState<NotificationJob[]>([]);
 
   const isSafetyFormValid = (() => {
     if (!showForm) return false;
@@ -240,6 +255,17 @@ export const SafetyView: React.FC<Props> = ({
           } catch {
             // FMCSA fetch is non-critical — silently degrade
           }
+        }
+
+        // Fetch notification jobs (non-blocking)
+        try {
+          const nResp = await fetch("/api/notification-jobs");
+          if (nResp.ok) {
+            const jobs: NotificationJob[] = await nResp.json();
+            setNotificationJobs(jobs);
+          }
+        } catch {
+          // Notification jobs fetch is non-critical — silently degrade
         }
       }
     } catch (error) {
@@ -491,6 +517,52 @@ export const SafetyView: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+
+            {/* Certificate Expiry Warnings — real data from API */}
+            <CertExpiryWarnings companyId={user.companyId} daysAhead={30} />
+
+            {/* Recent Notification Status */}
+            {notificationJobs.length > 0 && (
+              <div
+                data-testid="notification-jobs-section"
+                className="bg-slate-900 p-6 rounded-xl border border-slate-800"
+              >
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-3">
+                  <Activity className="w-5 h-5 text-blue-500" />
+                  Recent Notifications
+                  <span className="text-[9px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-900/50">
+                    {notificationJobs.length}
+                  </span>
+                </h4>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+                  {notificationJobs.slice(0, 10).map((job) => (
+                    <div
+                      key={job.id}
+                      data-testid="notification-job-item"
+                      className="flex items-center justify-between p-3 bg-slate-950 rounded-lg border border-slate-800 hover:border-slate-700 transition-all"
+                    >
+                      <div className="flex-1 min-w-0 mr-3">
+                        <div className="text-xs font-medium text-white truncate">
+                          {job.message}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {job.channel} &middot;{" "}
+                          {new Date(job.sent_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <NotificationStatusBadge
+                        status={job.status}
+                        syncError={
+                          job.status === "FAILED" && job.sync_error
+                            ? String(job.sync_error)
+                            : undefined
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -1226,13 +1226,24 @@ Update any notification-related UI to show actual delivery status (PENDING/SENT/
 
 **Tasks**:
 1. Check if there's a notification list view — if so, add status badge (green=SENT, red=FAILED, yellow=PENDING)
-2. If SafetyView shows cert alerts, wire it to show real expiry data from `GET /api/safety/cert-expiry-check`
+2. If SafetyView shows cert alerts, wire it to show real expiry data from `GET /api/safety/expiring-certs`
 3. Add `sync_error` display on FAILED jobs so admin can see why delivery failed
 
 **Done When**:
 - R-W7-02-FE: Notification status badges render correctly for each status
 - R-W7-03-FE: SafetyView displays real cert expiry warnings (not placeholder text)
-- VPC for modified components
+- R-W7-VPC-803: VPC for modified components
+
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| CREATE | components/ui/NotificationStatusBadge.tsx | Reusable status badge component (PENDING/SENT/FAILED) | NotificationStatusBadge.test.tsx |
+| CREATE | components/ui/CertExpiryWarnings.tsx | Cert expiry warnings component fetching from /api/safety/expiring-certs | CertExpiryWarnings.test.tsx |
+| MODIFY | components/SafetyView.tsx | Import and render CertExpiryWarnings + notification badges in overview tab | SafetyView.notifications.test.tsx |
+| CREATE | src/__tests__/components/NotificationStatusBadge.test.tsx | Vitest tests for badge component | - |
+| CREATE | src/__tests__/components/CertExpiryWarnings.test.tsx | Vitest tests for cert expiry warnings | - |
+| CREATE | src/__tests__/components/SafetyView.notifications.test.tsx | Integration tests for SafetyView notification features | - |
 
 ### H-804: Wave 7 Verification
 **Requirement IDs**: R-W7-01 through R-W7-04
