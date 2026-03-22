@@ -1154,6 +1154,15 @@ Install nodemailer. Create `server/services/notification-delivery.service.ts` th
 - Unit tests: mock nodemailer transport → verify `sendMail` called with correct to/subject/body
 - Unit tests: no SMTP config → verify job marked FAILED gracefully
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| CREATE | server/services/notification-delivery.service.ts | Email delivery service with sendEmail() and deliverNotification() | server/__tests__/services/notification-delivery.service.test.ts |
+| MODIFY | server/routes/notification-jobs.ts | Integrate deliverNotification() into POST handler, add PATCH endpoint | server/__tests__/services/notification-delivery.service.test.ts |
+| CREATE | server/__tests__/services/notification-delivery.service.test.ts | Vitest tests mocking nodemailer transport | .claude/hooks/tests/test_r_w7_01.py |
+| CREATE | .claude/hooks/tests/test_r_w7_01.py | Python QA tests for R-W7-01a/b, R-W7-02a/b, VPC-801 | .claude/hooks/tests/test_r_w7_01.py |
+
 ### H-802: Driver Certificate Expiry Alerts
 **Requirement IDs**: R-W7-03
 **Agent**: Backend
