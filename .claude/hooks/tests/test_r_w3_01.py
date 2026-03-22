@@ -195,3 +195,62 @@ class TestRequiredFieldMarkers:
     def test_network_portal_has_required_markers(self):
         content = read_component("NetworkPortal.tsx")
         assert "Entity Legal Name *" in content
+
+
+def _read_auth() -> str:
+    path = os.path.join(COMPONENTS_DIR, "Auth.tsx")
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+class TestPasswordAutocomplete:
+    """R-W3-01c: All input type='password' have autocomplete='current-password' or 'new-password'"""
+
+    def test_all_password_inputs_have_autocomplete(self):
+        content = _read_auth()
+        # Find all password input blocks
+        password_blocks = re.findall(
+            r'type="password".*?(?=type="|$)', content, re.DOTALL
+        )
+        # Auth.tsx is the only component with password inputs
+        assert len(password_blocks) >= 2, (
+            "Expected at least 2 password inputs in Auth.tsx"
+        )
+        # Verify autoComplete attributes exist near password inputs
+        assert 'autoComplete="current-password"' in content, (
+            "Missing autoComplete='current-password' on login password input"
+        )
+        assert 'autoComplete="new-password"' in content, (
+            "Missing autoComplete='new-password' on signup password input"
+        )
+
+    def test_no_password_inputs_in_scoped_components(self):
+        """Scoped form components should not have password inputs (those are in Auth.tsx)."""
+        for comp in FORM_COMPONENTS:
+            content = read_component(comp)
+            assert 'type="password"' not in content, (
+                f"{comp} has password input but no autocomplete handling"
+            )
+
+
+class TestEmailOnBlurValidation:
+    """R-W3-01d: All input type='email' validate format on blur and show error"""
+
+    def test_auth_email_has_onblur_validation(self):
+        content = _read_auth()
+        assert "onBlur" in content, "Auth.tsx missing onBlur handler"
+        assert "validateEmail" in content, "Auth.tsx missing validateEmail function"
+        assert "emailError" in content, "Auth.tsx missing emailError state"
+
+    def test_edit_user_email_has_onblur_validation(self):
+        content = read_component("EditUserModal.tsx")
+        assert "onBlur" in content, "EditUserModal missing onBlur handler"
+        assert re.search(
+            r"onBlur.*email|email.*onBlur", content, re.DOTALL | re.IGNORECASE
+        ), "EditUserModal missing email onBlur validation"
+
+    def test_network_portal_validates_email_format(self):
+        content = read_component("NetworkPortal.tsx")
+        assert re.search(r"email.*invalid|invalid.*email", content, re.IGNORECASE), (
+            "NetworkPortal missing email format validation"
+        )
