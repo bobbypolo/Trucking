@@ -244,11 +244,13 @@ export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
 
 export const getDispatchEvents = async (
   companyId: string,
+  signal?: AbortSignal,
 ): Promise<DispatchEvent[]> => {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/dispatch-events/${companyId}`, {
       headers: await getAuthHeaders(),
+      ...(signal ? { signal } : {}),
     });
   } catch (e) {
     console.warn("[storageService] API fallback:", e);
@@ -274,6 +276,7 @@ export const getDispatchEvents = async (
 export const getTimeLogs = async (
   userIdOrCompanyId: string,
   isCompany = false,
+  signal?: AbortSignal,
 ): Promise<TimeLog[]> => {
   const url = isCompany
     ? `${API_URL}/time-logs/company/${userIdOrCompanyId}`
@@ -282,6 +285,7 @@ export const getTimeLogs = async (
   try {
     res = await fetch(url, {
       headers: await getAuthHeaders(),
+      ...(signal ? { signal } : {}),
     });
   } catch (e) {
     console.warn("[storageService] API fallback:", e);
@@ -564,11 +568,14 @@ export const generateMaintenanceLogPDF = (eq: FleetEquipment, name: string) => {
   doc.save(`Maintenance_${eq.id}.pdf`);
 };
 
-export const getIncidents = async (): Promise<Incident[]> => {
+export const getIncidents = async (
+  signal?: AbortSignal,
+): Promise<Incident[]> => {
   let res: Response;
   try {
     res = await fetch(`${API_URL}/incidents`, {
       headers: await getAuthHeaders(),
+      ...(signal ? { signal } : {}),
     });
   } catch (e) {
     console.warn("[storageService] getIncidents API unavailable:", e);

@@ -181,29 +181,38 @@ const AccountingPortal: React.FC<Props> = ({
     // In a real scenario, this would open a specific sub-modal or trigger a service call
   };
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     setLoadError(null);
     try {
       const [accs, invs, bs, sets] = await Promise.all([
-        getGLAccounts(),
-        getInvoices(),
-        getBills(),
-        getSettlements(),
+        getGLAccounts(signal),
+        getInvoices(signal),
+        getBills(signal),
+        getSettlements(undefined, signal),
       ]);
+      if (signal?.aborted) return;
       setAccounts(Array.isArray(accs) ? accs : []);
       setInvoices(Array.isArray(invs) ? invs : []);
       setBills(Array.isArray(bs) ? bs : []);
       setSettlements(Array.isArray(sets) ? sets : []);
-    } catch (error) {
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (signal?.aborted) return;
       setLoadError("Failed to load accounting data. Please try again.");
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => {
+      controller.abort();
+    };
   }, [loadData]);
 
   useEffect(() => {
