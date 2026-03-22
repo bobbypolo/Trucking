@@ -110,7 +110,10 @@
       "phase": 1,
       "phase_type": "migration",
       "scope": [
-        "server/migrations/030_gps_positions.sql"
+        "server/migrations/030_gps_positions.sql",
+        "server/__tests__/migrations/",
+        "server/__tests__/services/migration-rehearsal.test.ts",
+        ".claude/hooks/tests/"
       ],
       "complexity": "simple",
       "acceptanceCriteria": [
@@ -129,8 +132,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
