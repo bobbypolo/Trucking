@@ -23,29 +23,20 @@ import {
   MAX_FILE_SIZE_BYTES,
   documentListQuerySchema,
 } from "../schemas/document.schema";
+import { createDiskStorageAdapter } from "../services/disk-storage-adapter";
 
 const router = Router();
 
 /**
- * In-memory storage adapter used for documents route.
- * Binary content is held in memory and not persisted to Firebase Storage.
- * Production deployments should swap this for a Firebase/S3 adapter.
+ * Default storage adapter: DiskStorageAdapter.
+ * Files are persisted to ./uploads on the local filesystem.
+ * Suitable for development and single-server deployments.
  */
-export const memoryStorageAdapter: StorageAdapter = {
-  async uploadBlob(_path, _buffer, _metadata): Promise<void> {
-    // no-op: stores metadata only in MySQL; binary held in request memory
-  },
-  async deleteBlob(_path): Promise<void> {
-    // no-op
-  },
-  async getSignedUrl(_path, _expiresInMs): Promise<string> {
-    return "";
-  },
-};
+const defaultStorageAdapter: StorageAdapter = createDiskStorageAdapter();
 
 /** Factory so tests can inject a custom storage adapter. */
 export function createDocumentsRouteService(
-  storage: StorageAdapter = memoryStorageAdapter,
+  storage: StorageAdapter = defaultStorageAdapter,
 ) {
   return createDocumentService(storage);
 }

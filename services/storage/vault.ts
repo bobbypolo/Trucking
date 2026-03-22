@@ -149,3 +149,54 @@ export const uploadVaultDoc = async (
 
   return doc;
 };
+
+/**
+ * Get a download URL for a vault document.
+ * Calls GET /api/documents/:id/download which returns { url } pointing
+ * to the DiskStorageAdapter file on the server.
+ *
+ * R-W6-02c: FileVault component calls download endpoint.
+ */
+export const getDocumentDownloadUrl = async (
+  documentId: string,
+): Promise<string> => {
+  const token = await getIdTokenAsync();
+  const res = await fetch(`${API_URL}/documents/${documentId}/download`, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      (err as { error?: string }).error ||
+        `Download failed: ${res.status}`,
+    );
+  }
+
+  const data = await res.json();
+  return data.url;
+};
+
+/**
+ * Trigger a file download in the browser.
+ * Fetches the download URL then opens it to initiate the browser download.
+ *
+ * R-W6-02c: FileVault component calls download endpoint.
+ */
+export const downloadVaultDoc = async (
+  documentId: string,
+  filename: string,
+): Promise<void> => {
+  const url = await getDocumentDownloadUrl(documentId);
+  // Use a temporary anchor element to trigger download
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};

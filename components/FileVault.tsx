@@ -44,6 +44,7 @@ import {
   validateFileType,
   validateFileSize,
   uploadVaultDoc,
+  downloadVaultDoc,
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
 } from "../services/storage/vault";
@@ -84,6 +85,17 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
     setValidationError(null);
     setSelectedDocType("BOL");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  // R-W6-02c: Download handler -- calls download endpoint via vault service
+  const handleDownload = useCallback(async (doc: VaultDoc) => {
+    try {
+      await downloadVaultDoc(doc.id, doc.filename);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Download failed. Please try again.";
+      setLoadError(message);
+    }
   }, []);
 
   const handleFileSelect = useCallback(
@@ -428,9 +440,13 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all" aria-label="Download file">
-                        <Download className="w-3.5 h-3.5 text-slate-400" />
-                      </button>
+                      <button
+                          onClick={() => handleDownload(doc)}
+                          className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all"
+                          aria-label="Download file"
+                        >
+                          <Download className="w-3.5 h-3.5 text-slate-400" />
+                        </button>
                       <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all" aria-label="View file history">
                         <History className="w-3.5 h-3.5 text-slate-400" />
                       </button>
