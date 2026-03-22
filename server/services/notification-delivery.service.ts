@@ -1,8 +1,8 @@
 /**
  * Notification Delivery Service for LoadPilot
  *
- * Implements email delivery using nodemailer, replacing console.log stubs.
- * Falls back gracefully when SMTP is not configured.
+ * Implements email delivery using nodemailer and SMS delivery using Twilio.
+ * Falls back gracefully when SMTP or Twilio is not configured.
  *
  * Environment Variables:
  * - SMTP_HOST: SMTP server hostname (e.g., smtp.ethereal.email)
@@ -10,11 +10,15 @@
  * - SMTP_USER: SMTP authentication username
  * - SMTP_PASS: SMTP authentication password
  * - SMTP_FROM: Default sender address
+ * - TWILIO_ACCOUNT_SID: Twilio Account SID
+ * - TWILIO_AUTH_TOKEN: Twilio Auth Token
+ * - TWILIO_FROM_NUMBER: Twilio sender phone number (E.164 format)
  *
- * @see .claude/docs/PLAN.md H-801
+ * @see .claude/docs/PLAN.md H-801, S-202
  */
 
 import nodemailer from "nodemailer";
+import Twilio from "twilio";
 import { createChildLogger } from "../lib/logger";
 
 const log = createChildLogger({ service: "notification-delivery" });
@@ -133,10 +137,108 @@ export async function sendEmail(
 }
 
 /**
+ * Check whether Twilio is configured via environment variables.
+ * All three variables are required: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER.
+ */
+function isTwilioConfigured(): boolean {
+  return !!(
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    process.env.TWILIO_FROM_NUMBER
+  );
+}
+
+/**
+ * Create a Twilio client from environment variables.
+ */
+function createTwilioClient() {
+  return Twilio(
+    process.env.TWILIO_ACCOUNT_SID!,
+    process.env.TWILIO_AUTH_TOKEN!,
+  );
+}
+
+/**
+ * Deliver an SMS notification via Twilio.
+ *
+ * - Filters recipients to those with phone numbers (skips others)
+ * - Returns FAILED with "Twilio not configured" if env vars are missing
+ * - Returns FAILED with "No recipients with phone numbers" if none have phones
+ * - Returns SENT if at least one message was sent successfully
+ * - Handles Twilio API errors gracefully (logs, returns FAILED, doesn't throw)
+ */
+async function deliverSms(
+  options: DeliverNotificationOptions,
+): Promise<DeliverNotificationResult> {
+  if (!isTwilioConfigured()) {
+    log.warn({ channel: "SMS" }, "Twilio not configured — SMS not sent");
+    return {
+      status: "FAILED",
+      sync_error: "Twilio not configured",
+    };
+  }
+
+  // Filter to recipients with phone numbers; skip those without
+  const smsRecipients = options.recipients.filter((r) => r.phone);
+
+  if (smsRecipients.length === 0) {
+    log.warn(
+      { channel: "SMS", recipientCount: options.recipients.length },
+      "No recipients with phone numbers — SMS skipped",
+    );
+    return {
+      status: "FAILED",
+      sync_error: "No recipients with phone numbers",
+    };
+  }
+
+  const client = createTwilioClient();
+  const fromNumber = process.env.TWILIO_FROM_NUMBER!;
+  let anySent = false;
+  let lastError: string | undefined;
+
+  for (const recipient of smsRecipients) {
+    try {
+      const message = await client.messages.create({
+        body: options.message,
+        from: fromNumber,
+        to: recipient.phone!,
+      });
+
+      log.info(
+        { sid: message.sid, to: recipient.phone, name: recipient.name },
+        "SMS sent successfully",
+      );
+      anySent = true;
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown SMS delivery error";
+      log.error(
+        { err, to: recipient.phone, name: recipient.name },
+        "SMS delivery failed",
+      );
+      lastError = errorMessage;
+    }
+  }
+
+  if (anySent) {
+    return {
+      status: "SENT",
+      sent_at: new Date().toISOString(),
+    };
+  }
+
+  return {
+    status: "FAILED",
+    sync_error: lastError || "All SMS deliveries failed",
+  };
+}
+
+/**
  * Deliver a notification by dispatching to the appropriate channel handler.
  *
- * - email: sends via nodemailer (or falls back to console.log)
- * - SMS: returns FAILED with "SMS not yet implemented"
+ * - email: sends via nodemailer (falls back gracefully when SMTP not configured)
+ * - sms: sends via Twilio (falls back gracefully when Twilio not configured)
  * - Other channels: returns FAILED with "Channel not supported"
  */
 export async function deliverNotification(
@@ -185,11 +287,7 @@ export async function deliverNotification(
   }
 
   if (channel === "sms") {
-    log.warn({ channel: "SMS" }, "SMS channel not yet implemented");
-    return {
-      status: "FAILED",
-      sync_error: "SMS not yet implemented",
-    };
+    return deliverSms(options);
   }
 
   return {

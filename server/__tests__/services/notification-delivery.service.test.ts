@@ -271,7 +271,11 @@ describe("R-W7-01: Notification Delivery Service", () => {
       expect(mockSendMail).toHaveBeenCalled();
     });
 
-    it("returns FAILED for SMS channel (not yet implemented)", async () => {
+    it("returns FAILED for SMS channel when Twilio not configured", async () => {
+      delete process.env.TWILIO_ACCOUNT_SID;
+      delete process.env.TWILIO_AUTH_TOKEN;
+      delete process.env.TWILIO_FROM_NUMBER;
+
       const { deliverNotification } = await import(
         "../../services/notification-delivery.service"
       );
@@ -283,7 +287,7 @@ describe("R-W7-01: Notification Delivery Service", () => {
       });
 
       expect(result.status).toBe("FAILED");
-      expect(result.sync_error).toBe("SMS not yet implemented");
+      expect(result.sync_error).toBe("Twilio not configured");
     });
   });
 
