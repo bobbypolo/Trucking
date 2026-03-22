@@ -897,6 +897,12 @@ Fix submit buttons and interactive elements below 44px tap target minimum (audit
 - R-W5-01b: Spot-check 5 key forms on mobile viewport — all buttons tappable
 - VPC for modified components
 
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|----------|
+| MODIFY | index.css | Add @media mobile tap target rule (min-height/min-width 44px) | test_r_w5_01.py |
+
 ### H-602: File Upload UX Verification & Polish
 **Requirement IDs**: R-W5-02, R-W5-03 | **Carry-forward from**: old STORY-026 (server route done in STORY-301, UI flows never verified)
 **Agent**: Frontend
