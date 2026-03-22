@@ -65,6 +65,13 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+// Mock requireTier to pass-through (these tests focus on GPS functionality, not tier gating)
+vi.mock("../../middleware/requireTier", () => ({
+  requireTier:
+    () => (_req: any, _res: any, next: any) =>
+      next(),
+}));
+
 import trackingRouter from "../../routes/tracking";
 import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 

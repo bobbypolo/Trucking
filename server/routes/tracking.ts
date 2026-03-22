@@ -2,6 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { requireTier } from "../middleware/requireTier";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 import { getGpsProvider } from "../services/gps";
@@ -67,6 +68,7 @@ router.get(
   "/api/loads/tracking",
   requireAuth,
   requireTenant,
+  requireTier("Fleet Core", "Fleet Command"),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     try {
@@ -123,6 +125,7 @@ router.get(
   "/api/loads/:id/tracking",
   requireAuth,
   requireTenant,
+  requireTier("Fleet Core", "Fleet Command"),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const loadId = req.params.id;
@@ -221,6 +224,7 @@ router.get(
   "/api/tracking/live",
   requireAuth,
   requireTenant,
+  requireTier("Fleet Core", "Fleet Command"),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const log = createChildLogger({
