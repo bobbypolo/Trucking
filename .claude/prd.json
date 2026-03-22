@@ -1,1631 +1,376 @@
 {
-  "version": "3.0",
+  "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
-  "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "024a2745c73da803b969fa7ca1e7a94a4cb376cb2b05c097a6f818947df211bc",
-  "prior_plan": {
-    "ref": "docs/backup-2026-03-18/prd.json.bak",
-    "stories_completed": 29,
-    "status": "ALL_PASSED"
-  },
+  "plan_hash": "6ad60e0cf869bb4e258d5e4f9dc741510ce294f2a49f5762f8ea24114dda6aaa",
   "stories": [
     {
-      "id": "H-201",
-      "description": "Fix Unsafe Nested Property Access \u00e2\u20ac\u201d Top 10 Components. Add optional chaining to all pickup/dropoff and other nested reads on API data in the top 10 components most likely to crash on partial payloads.",
+      "id": "S-101",
+      "description": "Add subscription_tier column to companies table + wire through sql-auth.ts mapper. ALTER TABLE companies ADD COLUMN subscription_tier VARCHAR(30) DEFAULT 'Records Vault' AFTER subscription_status. Update SqlCompanyRow interface and mapCompanyRowToApiCompany() in server/lib/sql-auth.ts.",
       "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [
-        "components/AnalyticsDashboard.tsx",
-        "components/CalendarView.tsx",
-        "components/CustomerPortalView.tsx",
-        "components/DriverMobileHome.tsx",
-        "components/GlobalMapView.tsx",
-        "components/GlobalMapViewEnhanced.tsx",
-        "components/Intelligence.tsx",
-        "components/LoadBoardEnhanced.tsx",
-        "components/LoadList.tsx",
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "1A",
+      "phase_type": "migration",
+      "scope": ["server/migrations/027_add_subscription_tier.sql", "server/lib/sql-auth.ts"],
+      "complexity": "simple",
       "acceptanceCriteria": [
-        {
-          "id": "R-W1-01a",
-          "criterion": "All pickup/dropoff reads on API data use optional chaining \u00e2\u20ac\u201d verified by reading each file diff",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-01b",
-          "criterion": "Spot-verify 3 files confirming no unguarded nested reads remain",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-VPC-201",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P1-01", "criterion": "Migration 027 applies without error and column exists with default Records Vault", "testType": "functional"},
+        {"id": "R-P1-02", "criterion": "mapCompanyRowToApiCompany returns subscriptionTier field, null defaults to Records Vault", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/AnalyticsDashboard src/__tests__/components/CalendarView src/__tests__/components/LoadList src/__tests__/components/SafetyView",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave1",
+      "dependsOn": []
     },
     {
-      "id": "H-202",
-      "description": "Fix Unsafe Nested Property Access \u00e2\u20ac\u201d Remaining 7 Components. Add optional chaining to all nested reads on API data in the remaining 7 components identified in the stability audit.",
+      "id": "S-102",
+      "description": "Add Stripe columns (stripe_customer_id, stripe_subscription_id, subscription_period_end) to companies table + wire through sql-auth.ts mapper + add Stripe fields to Company interface in types.ts.",
       "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [
-        "components/ExportModal.tsx",
-        "components/OperationalMessaging.tsx",
-        "components/QuoteManager.tsx",
-        "components/Settlements.tsx",
-        "components/CommandCenterView.tsx",
-        "components/BookingPortal.tsx",
-        "components/IntelligenceHub.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "1A",
+      "phase_type": "migration",
+      "scope": ["server/migrations/028_stripe_subscriptions.sql", "server/lib/sql-auth.ts", "types.ts"],
+      "complexity": "simple",
       "acceptanceCriteria": [
-        {
-          "id": "R-W1-01c",
-          "criterion": "All pickup/dropoff/nested reads on API data use optional chaining in all listed files",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-VPC-202",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P1-03", "criterion": "Migration 028 applies and all 3 nullable columns exist in companies table", "testType": "functional"},
+        {"id": "R-P1-04", "criterion": "Company interface in types.ts has stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd fields", "testType": "unit"},
+        {"id": "R-P1-05", "criterion": "mapCompanyRowToApiCompany returns stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/QuoteManager src/__tests__/components/Settlements src/__tests__/components/CommandCenterView src/__tests__/components/BookingPortal src/__tests__/components/IntelligenceHub",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave1",
+      "dependsOn": []
     },
     {
-      "id": "H-203",
-      "description": "Remove Non-null Assertions on API Data. Replace all TypeScript non-null assertion operators (!) on API response data with proper optional chaining or type guards in the identified components.",
+      "id": "S-103",
+      "description": "Add QuickBooks OAuth token storage table. CREATE TABLE quickbooks_tokens with id, company_id (UNIQUE), realm_id, access_token, refresh_token, token_type, expires_at, created_at, updated_at.",
       "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [
-        "components/BookingPortal.tsx",
-        "components/IntelligenceHub.tsx",
-        "components/NetworkPortal.tsx",
-        "components/OperationalMessaging.tsx",
-        "components/CompanyProfile.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "1A",
+      "phase_type": "migration",
+      "scope": ["server/migrations/029_quickbooks_tokens.sql"],
+      "complexity": "simple",
       "acceptanceCriteria": [
-        {
-          "id": "R-W1-02a",
-          "criterion": "grep -Pn '\\w+!\\.' returns 0 non-null assertion matches on API data for each file",
-          "testType": "grep"
-        },
-        {
-          "id": "R-W1-02b",
-          "criterion": "No 'as any' casts added to replace assertions \u00e2\u20ac\u201d actual type fixes only",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-VPC-203",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P1-06", "criterion": "Migration 029 creates quickbooks_tokens table with UNIQUE constraint on company_id", "testType": "functional"},
+        {"id": "R-P1-07", "criterion": "DOWN migration drops table cleanly", "testType": "functional"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave1",
+      "dependsOn": []
     },
     {
-      "id": "H-204",
-      "description": "Guard All Array/Object Method Calls. Add null/undefined guards before all .map()/.filter()/.reduce()/.forEach() calls and Object.entries/keys/values() calls on API data that could be undefined or null.",
+      "id": "S-104",
+      "description": "Add GPS positions table. CREATE TABLE gps_positions with id, company_id, vehicle_id, driver_id, latitude DECIMAL(10,7), longitude DECIMAL(10,7), speed, heading, recorded_at, provider, provider_vehicle_id, created_at. Index on (company_id, vehicle_id, recorded_at DESC).",
       "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [
-        "components/IntelligenceHub.tsx",
-        "components/ExceptionConsole.tsx",
-        "components/Dashboard.tsx",
-        "components/AccountingPortal.tsx",
-        "components/IFTAEvidenceReview.tsx",
-        "components/CommandCenterView.tsx",
-        "components/Intelligence.tsx",
-        "components/NetworkPortal.tsx",
-        "components/LoadBoardEnhanced.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "1B",
+      "phase_type": "migration",
+      "scope": ["server/migrations/030_gps_positions.sql"],
+      "complexity": "simple",
       "acceptanceCriteria": [
-        {
-          "id": "R-W1-03a",
-          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no .map()/.filter()/.reduce()/.forEach() is called on a variable that could be undefined without a guard",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-04a",
-          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no Object.entries/keys/values() is called on a variable that could be null without ?? {}",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-VPC-204",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P1-08", "criterion": "Migration 030 creates gps_positions table with compound index", "testType": "functional"},
+        {"id": "R-P1-09", "criterion": "Can insert and query positions ordered by recorded_at DESC", "testType": "functional"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave1",
+      "dependsOn": []
     },
     {
-      "id": "H-205",
-      "description": "Fix All setTimeout Memory Leaks + Stale Closure. Extract auto-feedback pattern into a reusable hook, replace all raw setTimeout feedback patterns in components, and fix stale closure in App.tsx refreshData.",
-      "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [
-        "hooks/useAutoFeedback.ts",
-        "components/IntelligenceHub.tsx",
-        "components/CommandCenterView.tsx",
-        "components/CompanyProfile.tsx",
-        "components/AccountingPortal.tsx",
-        "components/BookingPortal.tsx",
-        "components/SafetyView.tsx",
-        "components/Settlements.tsx",
-        "App.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "1B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W1-05a",
-          "criterion": "hooks/useAutoFeedback.ts exists with unit tests covering: show message, auto-clear after duration, cleanup on unmount",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W1-05b",
-          "criterion": "No raw setTimeout(() => set...null patterns remain in any component listed \u00e2\u20ac\u201d verify by reading each file",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-06a",
-          "criterion": "App.tsx refreshData useCallback deps include companyId",
-          "testType": "review"
-        },
-        {
-          "id": "R-W1-VPC-205",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for each modified component",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/hooks/useAutoFeedback",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "H-206",
-      "description": "Wave 1 Verification. Run full frontend and backend test suites and Playwright smoke tests to confirm all Wave 1 crash-proofing stories pass without regressions.",
-      "phase": 1,
-      "phase_type": "crash-proofing",
-      "component": "components/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-201",
-        "H-202",
-        "H-203",
-        "H-204",
-        "H-205"
-      ],
-      "parallelGroup": "1C",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W1-07",
-          "criterion": "npx vitest run passes with >= 3,290 FE tests",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W1-08",
-          "criterion": "cd server && npx vitest run passes with >= 1,869 BE tests",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W1-VPC-206",
-          "criterion": "Playwright: Dashboard, Load Board, Accounting, Intelligence Hub, Operations Center all render with 0 console errors",
-          "testType": "e2e"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "H-301",
-      "description": "Global 401/403 Interceptor + Session Expired Modal. Add auth error interception to apiFetch(), emit session-expired event, and build a SessionExpiredModal component that handles deduplication.",
+      "id": "S-201",
+      "description": "Create Stripe payment service. npm install stripe. Implement createCheckoutSession, createBillingPortalSession, handleWebhookEvent with tier-to-price mapping, DB updates on webhook events, idempotent event processing, and graceful fallback when STRIPE_SECRET_KEY missing.",
       "phase": 2,
-      "phase_type": "session-mutation-safety",
-      "component": "services/",
-      "scope": [
-        "services/api.ts",
-        "components/ui/SessionExpiredModal.tsx",
-        "App.tsx",
-        "services/storageService.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "2A",
+      "phase_type": "service",
+      "scope": ["server/services/stripe.service.ts", "server/package.json"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W2-01a",
-          "criterion": "apiFetch() detects 401 and emits auth:session-expired event",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-01b",
-          "criterion": "apiFetch() detects 403 and throws ForbiddenError",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-01c",
-          "criterion": "storageService.ts no longer returns empty arrays on auth errors \u00e2\u20ac\u201d it lets the error propagate",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-02a",
-          "criterion": "SessionExpiredModal renders with role='alertdialog' and aria-modal='true'",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-02b",
-          "criterion": "Clicking Sign In calls logout and navigates to login",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-02c",
-          "criterion": "Multiple rapid 401s only show one modal",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-VPC-301",
-          "criterion": "VPC: unit tests pass, tsc clean, vitest pass for api.ts, storageService.ts, App.tsx, SessionExpiredModal",
-          "testType": "unit"
-        }
+        {"id": "R-P2-01", "criterion": "createCheckoutSession returns valid session URL with correct price ID for each of 4 tiers", "testType": "unit"},
+        {"id": "R-P2-02", "criterion": "handleWebhookEvent updates companies table on checkout.session.completed, invoice.payment_failed, customer.subscription.deleted", "testType": "functional"},
+        {"id": "R-P2-03", "criterion": "Webhook is idempotent — same event.id processed twice does not duplicate DB updates", "testType": "unit"},
+        {"id": "R-P2-04", "criterion": "Missing STRIPE_SECRET_KEY returns { available: false, reason: no_api_key }", "testType": "unit"},
+        {"id": "R-P2-05", "criterion": "Invalid webhook signature returns error without crash", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/api src/__tests__/components/ui/SessionExpiredModal",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave2",
+      "dependsOn": ["S-102"]
     },
     {
-      "id": "H-302",
-      "description": "Double-Submit Protection on All Write Forms. Add isSubmitting state with disabled button and try/finally cleanup to all write forms that currently lack double-submit protection.",
+      "id": "S-202",
+      "description": "Implement Twilio SMS in notification delivery service. npm install twilio. Replace SMS stub in notification-delivery.service.ts with real Twilio client.messages.create(). Graceful fallback when Twilio not configured.",
       "phase": 2,
-      "phase_type": "session-mutation-safety",
-      "component": "components/",
-      "scope": [
-        "components/AccountingBillForm.tsx",
-        "components/BrokerManager.tsx",
-        "components/CompanyProfile.tsx",
-        "components/OperationalMessaging.tsx",
-        "components/DataImportWizard.tsx",
-        "components/NetworkPortal.tsx",
-        "components/IFTAManager.tsx",
-        "components/BolGenerator.tsx",
-        "components/QuoteManager.tsx",
-        "components/LoadSetupModal.tsx",
-        "components/BookingPortal.tsx",
-        "components/SafetyView.tsx",
-        "components/EditUserModal.tsx"
-      ],
+      "phase_type": "service",
+      "scope": ["server/services/notification-delivery.service.ts", "server/package.json"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "2A",
       "acceptanceCriteria": [
-        {
-          "id": "R-W2-03a",
-          "criterion": "Every submit/save button in every listed form has disabled={isSubmitting} or equivalent",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-03b",
-          "criterion": "Every submit button shows loading text during submission",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-03c",
-          "criterion": "Read each modified file to confirm try/finally pattern (setIsSubmitting(false) in finally)",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-VPC-302",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P2-06", "criterion": "SMS channel sends via Twilio when configured, returns SENT with message SID", "testType": "unit"},
+        {"id": "R-P2-07", "criterion": "Missing Twilio config returns { status: FAILED, sync_error: Twilio not configured }", "testType": "unit"},
+        {"id": "R-P2-08", "criterion": "Recipients without phone numbers are skipped, not errored", "testType": "unit"},
+        {"id": "R-P2-09", "criterion": "Existing email delivery tests still pass unchanged (regression)", "testType": "unit"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave2",
+      "dependsOn": []
     },
     {
-      "id": "H-303",
-      "description": "Consistent Success/Error Feedback on Write Flows. Ensure every form submit shows success toast or inline error message, and no catch block silently ignores errors.",
+      "id": "S-203",
+      "description": "Create GPS provider interface + Samsara adapter. Provider-agnostic GpsProvider interface with getVehicleLocations/getVehicleLocation. SamsaraAdapter calls Samsara Fleet API with 5s timeout, 60s cache, mock fallback. Factory function getGpsProvider() returns adapter based on GPS_PROVIDER env var.",
       "phase": 2,
-      "phase_type": "session-mutation-safety",
-      "component": "components/",
-      "scope": [
-        "components/AccountingBillForm.tsx",
-        "components/BrokerManager.tsx",
-        "components/CompanyProfile.tsx",
-        "components/OperationalMessaging.tsx",
-        "components/DataImportWizard.tsx",
-        "components/NetworkPortal.tsx",
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-302"
-      ],
-      "parallelGroup": "2B",
+      "phase_type": "service",
+      "scope": ["server/services/gps/gps-provider.interface.ts", "server/services/gps/samsara.adapter.ts", "server/services/gps/index.ts"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W2-04a",
-          "criterion": "Every form submit shows either success toast or error message",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-04b",
-          "criterion": "Read each modified file \u00e2\u20ac\u201d confirm no catch block silently ignores errors",
-          "testType": "review"
-        },
-        {
-          "id": "R-W2-VPC-303",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P2-10", "criterion": "GpsProvider interface is provider-agnostic with no Samsara-specific types", "testType": "unit"},
+        {"id": "R-P2-11", "criterion": "Samsara adapter returns parsed GpsPosition array from API, with 5s timeout and 60s cache", "testType": "unit"},
+        {"id": "R-P2-12", "criterion": "Missing SAMSARA_API_TOKEN returns mock positions with isMock: true", "testType": "unit"},
+        {"id": "R-P2-13", "criterion": "Factory returns SamsaraAdapter for samsara, throws for unknown provider", "testType": "unit"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave2",
+      "dependsOn": ["S-104"]
     },
     {
-      "id": "H-304",
-      "description": "Wave 2 Verification. Run full test suites and Playwright to confirm all Wave 2 session/mutation safety stories pass without regressions.",
+      "id": "S-204",
+      "description": "Create QuickBooks OAuth service. npm install intuit-oauth. Implement getAuthorizationUrl, handleCallback (token exchange + AES-256-GCM encryption), getClient (decrypt + refresh), syncInvoiceToQBO, syncBillToQBO, getConnectionStatus. Graceful fallback when not configured.",
       "phase": 2,
-      "phase_type": "session-mutation-safety",
-      "component": "components/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-301",
-        "H-302",
-        "H-303"
-      ],
-      "parallelGroup": "2C",
+      "phase_type": "service",
+      "scope": ["server/services/quickbooks.service.ts", "server/package.json"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W2-05",
-          "criterion": "npx vitest run passes with >= previous FE test count",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-06",
-          "criterion": "cd server && npx vitest run passes all BE tests",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W2-VPC-304",
-          "criterion": "Playwright: Accounting, Broker Manager, Company Profile render with no console errors; SessionExpiredModal verified",
-          "testType": "e2e"
-        }
+        {"id": "R-P2-14", "criterion": "getAuthorizationUrl returns valid Intuit OAuth URL with correct client_id and redirect_uri", "testType": "unit"},
+        {"id": "R-P2-15", "criterion": "handleCallback exchanges auth code, encrypts tokens with AES-256-GCM, stores in quickbooks_tokens table", "testType": "functional"},
+        {"id": "R-P2-16", "criterion": "getClient decrypts tokens, refreshes if expired, re-encrypts and stores new tokens", "testType": "unit"},
+        {"id": "R-P2-17", "criterion": "syncInvoiceToQBO creates Invoice via Intuit API with correct field mapping", "testType": "unit"},
+        {"id": "R-P2-18", "criterion": "Token encrypt/decrypt roundtrip preserves original token value", "testType": "unit"},
+        {"id": "R-P2-19", "criterion": "Missing env vars returns { available: false, reason: no_api_key }", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave2",
+      "dependsOn": ["S-103"]
     },
     {
-      "id": "H-401",
-      "description": "Form Validation Standardization. Add required-field validation and inline error messages to all major forms that currently lack production-grade validation.",
+      "id": "S-205",
+      "description": "Remove weather feature flag. Modify weather.service.ts to remove WEATHER_ENABLED check, keep WEATHER_API_KEY presence check following FMCSA pattern. Update tests to remove WEATHER_ENABLED references.",
+      "phase": 2,
+      "phase_type": "service",
+      "scope": ["server/services/weather.service.ts", "server/__tests__/services/weather.service.test.ts"],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {"id": "R-P2-20", "criterion": "Weather works when WEATHER_API_KEY set (no WEATHER_ENABLED needed)", "testType": "unit"},
+        {"id": "R-P2-21", "criterion": "Returns { available: false, reason: no_api_key } when key not set", "testType": "unit"},
+        {"id": "R-P2-22", "criterion": "No reference to WEATHER_ENABLED remains in codebase", "testType": "unit"}
+      ],
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave2",
+      "dependsOn": []
+    },
+    {
+      "id": "S-301",
+      "description": "Add Stripe webhook + checkout routes. POST /api/stripe/create-checkout-session (requireAuth), POST /api/stripe/create-billing-portal (requireAuth), POST /api/stripe/webhook (NO auth, raw body). Webhook route registered BEFORE express.json() in index.ts.",
       "phase": 3,
-      "phase_type": "ux-consistency",
-      "component": "components/",
-      "scope": [
-        "components/AccountingBillForm.tsx",
-        "components/IFTAManager.tsx",
-        "components/EditUserModal.tsx",
-        "components/BrokerManager.tsx",
-        "components/OperationalMessaging.tsx",
-        "components/DataImportWizard.tsx",
-        "components/BookingPortal.tsx",
-        "components/BolGenerator.tsx",
-        "components/LoadSetupModal.tsx",
-        "components/QuoteManager.tsx",
-        "components/NetworkPortal.tsx",
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "3A",
+      "phase_type": "route",
+      "scope": ["server/routes/stripe.ts", "server/index.ts"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W3-01a",
-          "criterion": "Each listed form validates required fields before submit",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-01b",
-          "criterion": "Each listed form shows inline error messages below invalid fields",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-01c",
-          "criterion": "All input type='password' have autocomplete='current-password' or 'new-password'",
-          "testType": "grep"
-        },
-        {
-          "id": "R-W3-01d",
-          "criterion": "All input type='email' validate format on blur and show error",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-VPC-401",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P3-01", "criterion": "POST /api/stripe/create-checkout-session returns 200 with sessionId and url when Stripe configured", "testType": "integration"},
+        {"id": "R-P3-02", "criterion": "POST /api/stripe/create-checkout-session returns 401 without auth token", "testType": "integration"},
+        {"id": "R-P3-03", "criterion": "POST /api/stripe/webhook returns 200 on valid event, 400 on invalid signature", "testType": "integration"},
+        {"id": "R-P3-04", "criterion": "Webhook endpoint accessible without auth token (public)", "testType": "integration"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": ["S-201"]
     },
     {
-      "id": "H-402",
-      "description": "Loading/Error/Empty States \u00e2\u20ac\u201d Batch 1 (6 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the first batch of 6 components.",
+      "id": "S-302",
+      "description": "Replace QuickBooks 501 stub with real routes. Create server/routes/quickbooks.ts with GET /api/quickbooks/auth-url, GET /api/quickbooks/callback, POST /api/quickbooks/sync-invoice, POST /api/quickbooks/sync-bill, GET /api/quickbooks/status. Remove 501 stub from accounting.ts.",
       "phase": 3,
-      "phase_type": "ux-consistency",
-      "component": "components/",
-      "scope": [
-        "components/CommsOverlay.tsx",
-        "components/LoadList.tsx",
-        "components/CommandCenterView.tsx",
-        "components/Settlements.tsx",
-        "components/BrokerManager.tsx",
-        "components/NetworkPortal.tsx",
-        "components/ui/EmptyState.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "3A",
+      "phase_type": "route",
+      "scope": ["server/routes/quickbooks.ts", "server/routes/accounting.ts", "server/index.ts"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W3-02a",
-          "criterion": "Each component shows LoadingSkeleton during initial data fetch",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-03a",
-          "criterion": "Each component shows ErrorState with Retry button on fetch failure",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-04a",
-          "criterion": "Each component shows meaningful empty state (icon + text + optional CTA)",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-VPC-402",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P3-05", "criterion": "501 stub removed from accounting.ts", "testType": "unit"},
+        {"id": "R-P3-06", "criterion": "GET /api/quickbooks/auth-url returns OAuth URL when configured, 503 when not", "testType": "integration"},
+        {"id": "R-P3-07", "criterion": "POST /api/quickbooks/sync-invoice syncs invoice and returns QBO reference ID", "testType": "integration"},
+        {"id": "R-P3-08", "criterion": "All routes enforce requireAuth + requireTenant", "testType": "integration"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": ["S-204"]
     },
     {
-      "id": "H-403",
-      "description": "Loading/Error/Empty States \u00e2\u20ac\u201d Batch 2 (5 Components). Add LoadingSkeleton, ErrorState with Retry, and meaningful empty states to the second batch of 5 components.",
+      "id": "S-303",
+      "description": "Add GPS live tracking route. GET /api/tracking/live (requireAuth) and POST /api/tracking/webhook (X-GPS-API-Key header auth). Live route calls getGpsProvider() and stores positions in gps_positions table. Existing GET /api/loads/tracking unchanged.",
       "phase": 3,
-      "phase_type": "ux-consistency",
-      "component": "components/",
-      "scope": [
-        "components/DriverMobileHome.tsx",
-        "components/IFTAManager.tsx",
-        "components/FileVault.tsx",
-        "components/BookingPortal.tsx",
-        "components/IntelligenceHub.tsx"
-      ],
+      "phase_type": "route",
+      "scope": ["server/routes/tracking.ts"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "3B",
       "acceptanceCriteria": [
-        {
-          "id": "R-W3-02b",
-          "criterion": "Each Batch 2 component shows LoadingSkeleton during initial data fetch",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-03b",
-          "criterion": "Each Batch 2 component shows ErrorState with Retry button on fetch failure",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-04b",
-          "criterion": "Each Batch 2 component shows meaningful empty state",
-          "testType": "review"
-        },
-        {
-          "id": "R-W3-VPC-403",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P3-09", "criterion": "GET /api/tracking/live returns positions from GPS provider, stores in DB", "testType": "integration"},
+        {"id": "R-P3-10", "criterion": "POST /api/tracking/webhook validates X-GPS-API-Key header, rejects invalid/missing", "testType": "integration"},
+        {"id": "R-P3-11", "criterion": "Existing GET /api/loads/tracking still works unchanged (backward compatible)", "testType": "integration"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": ["S-203"]
     },
     {
-      "id": "H-404",
-      "description": "Wave 3 Verification. Run full test suites and Playwright to confirm all Wave 3 UX consistency stories pass without regressions.",
+      "id": "S-304",
+      "description": "Wire legacy sendNotification in server/helpers.ts to real notification-delivery service. Replace logger-only stub with async call to deliverNotification(). Fire-and-forget pattern.",
       "phase": 3,
-      "phase_type": "ux-consistency",
-      "component": "components/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-401",
-        "H-402",
-        "H-403"
-      ],
-      "parallelGroup": "3C",
+      "phase_type": "wiring",
+      "scope": ["server/helpers.ts"],
+      "complexity": "simple",
       "acceptanceCriteria": [
-        {
-          "id": "R-W3-05",
-          "criterion": "npx vitest run passes all FE tests",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W3-06",
-          "criterion": "Playwright: all 15 major pages show data, loading, or empty state \u00e2\u20ac\u201d no blank screens, 0 console errors",
-          "testType": "e2e"
-        },
-        {
-          "id": "R-W3-VPC-404",
-          "criterion": "npx tsc --noEmit \u00e2\u20ac\u201d 0 errors; cd server && npx vitest run passes",
-          "testType": "unit"
-        }
+        {"id": "R-P3-12", "criterion": "sendNotification calls deliverNotification with channel email and correct recipients", "testType": "unit"},
+        {"id": "R-P3-13", "criterion": "Notification failure does NOT throw (fire-and-forget, catches errors)", "testType": "unit"},
+        {"id": "R-P3-14", "criterion": "Empty emails array is a no-op", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": []
     },
     {
-      "id": "H-501",
-      "description": "Form Labels & Input Accessibility \u00e2\u20ac\u201d Batch 1. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the first batch of 15 components.",
+      "id": "S-305",
+      "description": "Update .env.example with all new integration environment variables. Add Stripe (6 vars), Twilio (3 vars), QuickBooks (5 vars), GPS (3 vars) sections. Remove WEATHER_ENABLED.",
+      "phase": 3,
+      "phase_type": "docs",
+      "scope": [".env.example"],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {"id": "R-P3-15", "criterion": "All integration env vars documented with descriptions and required/optional status", "testType": "unit"},
+        {"id": "R-P3-16", "criterion": "No real API keys or secrets in the file", "testType": "unit"}
+      ],
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": []
+    },
+    {
+      "id": "S-306",
+      "description": "Clean up IFTA client-side stub comment in services/dispatchIntelligence.ts. Update comment to accurately describe server-side IFTA calculation. netTaxDue = 0 stays.",
+      "phase": 3,
+      "phase_type": "docs",
+      "scope": ["services/dispatchIntelligence.ts"],
+      "complexity": "trivial",
+      "acceptanceCriteria": [
+        {"id": "R-P3-17", "criterion": "Comment accurately describes server-side IFTA calculation via /api/accounting/ifta-summary", "testType": "unit"},
+        {"id": "R-P3-18", "criterion": "netTaxDue = 0 unchanged and existing IFTA tests pass", "testType": "unit"}
+      ],
+      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "wave3",
+      "dependsOn": []
+    },
+    {
+      "id": "S-401",
+      "description": "Replace Auth.tsx payment form with Stripe Checkout redirect. Remove cardNumber/cardExpiry/cardCVC state vars and inline inputs. Add Subscribe with Stripe button and Start Free Trial button. Handle Stripe return URL with session_id verification.",
       "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [
-        "components/Auth.tsx",
-        "components/CompanyProfile.tsx",
-        "components/EditLoadForm.tsx",
-        "components/AccountingBillForm.tsx",
-        "components/EditUserModal.tsx",
-        "components/BrokerManager.tsx",
-        "components/IFTAManager.tsx",
-        "components/DataImportWizard.tsx",
-        "components/LoadSetupModal.tsx",
-        "components/BolGenerator.tsx",
-        "components/QuoteManager.tsx",
-        "components/BookingPortal.tsx",
-        "components/NetworkPortal.tsx",
-        "components/SafetyView.tsx",
-        "components/OperationalMessaging.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "4A",
+      "phase_type": "frontend",
+      "scope": ["components/Auth.tsx"],
+      "complexity": "complex",
       "acceptanceCriteria": [
-        {
-          "id": "R-W4-01a",
-          "criterion": "Every input in Batch 1 components has either matching label htmlFor or aria-label attribute",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-01b",
-          "criterion": "Every select in Batch 1 has a label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-01c",
-          "criterion": "Every textarea in Batch 1 has a label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-VPC-501",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P4-01", "criterion": "No input for card number, expiry, or CVC exists in rendered output (PCI compliance)", "testType": "unit"},
+        {"id": "R-P4-02", "criterion": "Subscribe with Stripe button calls checkout session API with successUrl and cancelUrl", "testType": "unit"},
+        {"id": "R-P4-03", "criterion": "Start Free Trial button bypasses payment, logs in with trial status", "testType": "unit"},
+        {"id": "R-P4-04", "criterion": "When Stripe not configured, payment step auto-falls through to trial", "testType": "unit"},
+        {"id": "R-P4-05", "criterion": "Existing signup flow tests still pass (regression)", "testType": "unit"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave4",
+      "dependsOn": ["S-301"]
     },
     {
-      "id": "H-502",
-      "description": "Icon Button Accessibility + Heading Hierarchy \u00e2\u20ac\u201d Batch 1. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the first batch of 15 components.",
+      "id": "S-402",
+      "description": "Add subscription management and QuickBooks connection to CompanyProfile. Billing section with tier badge, status, period end. Manage Subscription and Connect QuickBooks buttons with redirect. Hide sections when not configured.",
       "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [
-        "components/IntelligenceHub.tsx",
-        "components/CommandCenterView.tsx",
-        "components/Dashboard.tsx",
-        "components/AccountingPortal.tsx",
-        "components/LoadBoardEnhanced.tsx",
-        "components/QuoteManager.tsx",
-        "components/BookingPortal.tsx",
-        "components/NetworkPortal.tsx",
-        "components/SafetyView.tsx",
-        "components/BrokerManager.tsx",
-        "components/Settlements.tsx",
-        "components/IFTAManager.tsx",
-        "components/CompanyProfile.tsx",
-        "components/ExportModal.tsx",
-        "components/FileVault.tsx"
-      ],
+      "phase_type": "frontend",
+      "scope": ["components/CompanyProfile.tsx"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-501"
-      ],
-      "parallelGroup": "4A-seq",
       "acceptanceCriteria": [
-        {
-          "id": "R-W4-02a",
-          "criterion": "All icon-only buttons in Batch 1 components have descriptive aria-label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-05a",
-          "criterion": "Heading elements in Batch 1 follow sequential order (H1\u00e2\u2020\u2019H2\u00e2\u2020\u2019H3) \u00e2\u20ac\u201d no skipped levels",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-VPC-502",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P4-06", "criterion": "Billing section shows current tier name and status badge", "testType": "unit"},
+        {"id": "R-P4-07", "criterion": "Manage Subscription button calls billing portal API and redirects", "testType": "unit"},
+        {"id": "R-P4-08", "criterion": "Connect QuickBooks button calls auth-url API and redirects", "testType": "unit"},
+        {"id": "R-P4-09", "criterion": "Sections hidden when API returns 503 (not configured)", "testType": "unit"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave4",
+      "dependsOn": ["S-301", "S-302"]
     },
     {
-      "id": "H-503",
-      "description": "Focus Trap for Modal Dialogs. Create a useFocusTrap hook and wire it into all modal dialog components to ensure keyboard users cannot escape the modal.",
+      "id": "S-403",
+      "description": "Update GlobalMapViewEnhanced to consume live GPS data from /api/tracking/live. Poll every 30s, merge live positions with static data, pulsing indicator for live positions, cleanup on unmount.",
       "phase": 4,
-      "phase_type": "accessibility",
-      "component": "hooks/",
-      "scope": [
-        "hooks/useFocusTrap.ts",
-        "components/ConfirmDialog.tsx",
-        "components/InputDialog.tsx",
-        "components/EditUserModal.tsx",
-        "components/LoadSetupModal.tsx",
-        "components/ExportModal.tsx",
-        "components/ui/SessionExpiredModal.tsx"
-      ],
+      "phase_type": "frontend",
+      "scope": ["components/GlobalMapViewEnhanced.tsx"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "4B",
       "acceptanceCriteria": [
-        {
-          "id": "R-W4-03a",
-          "criterion": "Tab key cycles within open ConfirmDialog/InputDialog",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W4-03b",
-          "criterion": "Escape key closes modal",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W4-03c",
-          "criterion": "useFocusTrap hook has unit tests",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W4-VPC-503",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
+        {"id": "R-P4-10", "criterion": "Map shows live GPS positions when API returns data, updates every 30 seconds", "testType": "unit"},
+        {"id": "R-P4-11", "criterion": "Fallback to static data when GPS provider not configured (no visual regression)", "testType": "unit"},
+        {"id": "R-P4-12", "criterion": "Polling stops on component unmount (cleanup — no memory leak)", "testType": "unit"}
       ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/hooks/useFocusTrap",
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": "wave4",
+      "dependsOn": ["S-303"]
     },
     {
-      "id": "H-504",
-      "description": "Permission Explanation UX. Add explanatory title or aria-label to all disabled buttons due to role restrictions, and add section-level info banners for non-admin views.",
-      "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [
-        "components/IssueSidebar.tsx",
-        "components/CompanyProfile.tsx",
-        "components/EditLoadForm.tsx",
-        "components/Dashboard.tsx",
-        "components/AccountingPortal.tsx",
-        "components/LoadList.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "4B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W4-04a",
-          "criterion": "Every disabled button due to role restrictions has explanatory title or aria-label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-04b",
-          "criterion": "At least one section-level info banner exists for non-admin view",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-VPC-504",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-506",
-      "description": "Form Labels & Input Accessibility \u00e2\u20ac\u201d Batch 2. Add matching label htmlFor or aria-label attributes to every input, select, and textarea in the second batch of 18 components.",
-      "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [
-        "components/Dashboard.tsx",
-        "components/LoadList.tsx",
-        "components/LoadBoardEnhanced.tsx",
-        "components/CommandCenterView.tsx",
-        "components/IntelligenceHub.tsx",
-        "components/GlobalMapView.tsx",
-        "components/GlobalMapViewEnhanced.tsx",
-        "components/ExceptionConsole.tsx",
-        "components/FileVault.tsx",
-        "components/DriverMobileHome.tsx",
-        "components/Settlements.tsx",
-        "components/CalendarView.tsx",
-        "components/CustomerPortalView.tsx",
-        "components/Intelligence.tsx",
-        "components/AnalyticsDashboard.tsx",
-        "components/CommsOverlay.tsx",
-        "components/IssueSidebar.tsx",
-        "components/EditLoadForm.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "4A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W4-01d",
-          "criterion": "Every input/select/textarea in Batch 2 components has either label htmlFor or aria-label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-VPC-506",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-507",
-      "description": "Icon Button Accessibility + Heading Hierarchy \u00e2\u20ac\u201d Batch 2. Add descriptive aria-labels to all icon-only buttons and fix heading hierarchy in the second batch of 17 components.",
-      "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [
-        "components/OperationalMessaging.tsx",
-        "components/DataImportWizard.tsx",
-        "components/BolGenerator.tsx",
-        "components/LoadSetupModal.tsx",
-        "components/EditUserModal.tsx",
-        "components/DriverMobileHome.tsx",
-        "components/CalendarView.tsx",
-        "components/CustomerPortalView.tsx",
-        "components/GlobalMapView.tsx",
-        "components/GlobalMapViewEnhanced.tsx",
-        "components/AnalyticsDashboard.tsx",
-        "components/Intelligence.tsx",
-        "components/ExceptionConsole.tsx",
-        "components/CommsOverlay.tsx",
-        "components/IssueSidebar.tsx",
-        "components/LoadList.tsx",
-        "components/EditLoadForm.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-506"
-      ],
-      "parallelGroup": "4A-seq",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W4-02b",
-          "criterion": "All icon-only buttons in Batch 2 components have descriptive aria-label",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-05b",
-          "criterion": "Heading elements in Batch 2 follow sequential order \u00e2\u20ac\u201d no skipped levels",
-          "testType": "review"
-        },
-        {
-          "id": "R-W4-VPC-507",
-          "criterion": "VPC: unit tests pass, tsc clean for each modified component",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-505",
-      "description": "Wave 4 Verification. Run full test suites and Playwright to confirm all Wave 4 accessibility stories pass, covering all 54 components across both batches.",
-      "phase": 4,
-      "phase_type": "accessibility",
-      "component": "components/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-501",
-        "H-502",
-        "H-503",
-        "H-504",
-        "H-506",
-        "H-507"
-      ],
-      "parallelGroup": "4C",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W4-06",
-          "criterion": "npx vitest run passes all FE tests; npx tsc --noEmit 0 errors",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W4-VPC-505",
-          "criterion": "Playwright: 5 form-heavy pages \u00e2\u20ac\u201d inputs have labels; tab through modal \u00e2\u20ac\u201d focus trapped; 0 console errors; all 4 batch stories verified (full 54-component coverage)",
-          "testType": "e2e"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-601",
-      "description": "Mobile Tap Target Fix. Ensure all interactive buttons meet the 44px minimum tap target size on mobile viewports across key forms and navigation elements.",
+      "id": "S-501",
+      "description": "Create subscription tier enforcement middleware. requireTier(...allowedTiers) factory checks subscription_tier + subscription_status from companies table. Allows active/trial, blocks past_due or wrong tier. Caches per-request.",
       "phase": 5,
-      "phase_type": "mobile-upload",
-      "component": "components/",
-      "scope": [],
+      "phase_type": "middleware",
+      "scope": ["server/middleware/requireTier.ts"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "5A",
       "acceptanceCriteria": [
-        {
-          "id": "R-W5-01a",
-          "criterion": "Login submit button >= 44px height on mobile viewport",
-          "testType": "e2e"
-        },
-        {
-          "id": "R-W5-01b",
-          "criterion": "Spot-check 5 key forms on mobile viewport \u00e2\u20ac\u201d all buttons tappable",
-          "testType": "e2e"
-        },
-        {
-          "id": "R-W5-VPC-601",
-          "criterion": "VPC: unit tests pass, tsc clean for modified components",
-          "testType": "unit"
-        }
+        {"id": "R-P5-01", "criterion": "Allowed tier + active status calls next()", "testType": "unit"},
+        {"id": "R-P5-02", "criterion": "Disallowed tier returns 403 with required_tiers, current_tier, upgrade_url", "testType": "unit"},
+        {"id": "R-P5-03", "criterion": "Past_due status returns 403 regardless of tier", "testType": "unit"},
+        {"id": "R-P5-04", "criterion": "Missing tier defaults to Records Vault", "testType": "unit"},
+        {"id": "R-P5-05", "criterion": "Tier lookup cached per-request (1 DB query even with multiple requireTier calls)", "testType": "unit"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": null,
+      "dependsOn": ["S-101"]
     },
     {
-      "id": "H-602",
-      "description": "File Upload UX Verification & Polish. Add progress indicators, error messages for failures, and clear rejection messages for oversized or invalid MIME type uploads in FileVault.",
+      "id": "S-502",
+      "description": "Apply tier gates to premium routes. Add requireTier() middleware to AI endpoints (Automation Pro+), fleet management (Fleet Core+), enterprise analytics (Fleet Command). Records Vault base tier remains ungated.",
       "phase": 5,
-      "phase_type": "mobile-upload",
-      "component": "components/",
-      "scope": [
-        "components/FileVault.tsx",
-        "services/storage/vault.ts"
-      ],
+      "phase_type": "route",
+      "scope": ["server/routes/ai.ts"],
       "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "5A",
       "acceptanceCriteria": [
-        {
-          "id": "R-W5-02a",
-          "criterion": "Upload shows progress indicator (bar, spinner, or percentage)",
-          "testType": "review"
-        },
-        {
-          "id": "R-W5-03a",
-          "criterion": "Failed upload shows error message with explanation (not silent)",
-          "testType": "review"
-        },
-        {
-          "id": "R-W5-03b",
-          "criterion": "Oversized file (>10MB) shows clear rejection message",
-          "testType": "review"
-        },
-        {
-          "id": "R-W5-03c",
-          "criterion": "Invalid MIME type shows clear rejection message",
-          "testType": "review"
-        },
-        {
-          "id": "R-W5-VPC-602",
-          "criterion": "Playwright: Navigate to FileVault, verify page renders, verify no console errors",
-          "testType": "e2e"
-        }
+        {"id": "R-P5-06", "criterion": "AI endpoints return 403 for Records Vault tier, 200 for Automation Pro", "testType": "integration"},
+        {"id": "R-P5-07", "criterion": "Base CRUD endpoints (loads, quotes, invoices) accessible by Records Vault tier (regression)", "testType": "integration"},
+        {"id": "R-P5-08", "criterion": "GPS tracking returns 403 for Records Vault and Automation Pro, 200 for Fleet Core+", "testType": "integration"}
       ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
+      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
       "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-603",
-      "description": "AbortController for API Requests. Add AbortSignal support to apiFetch() and wire cleanup in useEffect hooks in the three highest-traffic components to prevent stale request handling.",
-      "phase": 5,
-      "phase_type": "mobile-upload",
-      "component": "services/",
-      "scope": [
-        "services/api.ts",
-        "components/Dashboard.tsx",
-        "components/IntelligenceHub.tsx",
-        "components/CommandCenterView.tsx",
-        "src/__tests__/services/api.test.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "5B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W5-04a",
-          "criterion": "apiFetch() accepts and forwards signal parameter",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W5-04b",
-          "criterion": "Dashboard, IntelligenceHub, CommandCenterView pass AbortSignal from useEffect cleanup",
-          "testType": "review"
-        },
-        {
-          "id": "R-W5-04c",
-          "criterion": "Aborting a request does not show an error toast (AbortError is silently caught)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W5-VPC-603",
-          "criterion": "VPC: unit tests pass, tsc clean for api.ts and modified components",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/api",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-604",
-      "description": "Wave 5 Verification + Final Audit. Run full test suites, build check, bundle size audit, and comprehensive Playwright sweep across all 15 pages on desktop and mobile viewports.",
-      "phase": 5,
-      "phase_type": "mobile-upload",
-      "component": "components/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-601",
-        "H-602",
-        "H-603"
-      ],
-      "parallelGroup": "5C",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W5-05",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; npm run build succeeds",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W5-BUNDLE",
-          "criterion": "No route chunk exceeds 250KB (excl vendor/xlsx) \u00e2\u20ac\u201d verify with npx vite build 2>&1 | grep -E 'kB|chunk'",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W5-VPC-604",
-          "criterion": "Playwright: Full 15-page navigation sweep \u00e2\u20ac\u201d all render, 0 console errors; mobile viewport \u00e2\u20ac\u201d login, accounting, load list render correctly; all audit grades improved (no D or F grades)",
-          "testType": "e2e"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-701",
-      "description": "Implement Disk Storage Adapter. Create a server-side disk storage adapter that writes uploaded files to disk, generates download URLs, and serves files via download endpoint.",
-      "phase": 6,
-      "phase_type": "file-persistence",
-      "component": "server/services/",
-      "scope": [
-        "server/services/disk-storage-adapter.ts",
-        "server/routes/documents.ts",
-        "server/routes/vault-docs.ts",
-        "server/services/document.service.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-404"
-      ],
-      "parallelGroup": "6A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W6-01a",
-          "criterion": "uploadBlob() writes file to server/uploads/<tenant>/<filename>",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W6-01b",
-          "criterion": "File exists on disk after upload API call",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W6-02a",
-          "criterion": "getSignedUrl() returns a URL path that resolves to the download endpoint",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W6-02b",
-          "criterion": "Download endpoint returns file with correct MIME type and Content-Disposition header",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W6-VPC-701",
-          "criterion": "VPC: unit tests pass, tsc clean for documents.ts and vault-docs.ts",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run src/__tests__/services/disk-storage-adapter src/__tests__/routes/documents",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-702",
-      "description": "Wire FileVault Upload-Download Round Trip. Connect the FileVault frontend to the disk storage adapter, enabling upload, list, download, and delete of files with full persistence.",
-      "phase": 6,
-      "phase_type": "file-persistence",
-      "component": "components/",
-      "scope": [
-        "components/FileVault.tsx",
-        "services/storage/vault.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-404"
-      ],
-      "parallelGroup": "6A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W6-03a",
-          "criterion": "Upload a file via FileVault \u00e2\u2020\u2019 file persists on server \u00e2\u2020\u2019 appears in document list",
-          "testType": "review"
-        },
-        {
-          "id": "R-W6-03b",
-          "criterion": "Click download on uploaded file \u00e2\u2020\u2019 browser downloads the file with correct name",
-          "testType": "review"
-        },
-        {
-          "id": "R-W6-03c",
-          "criterion": "Delete a file \u00e2\u2020\u2019 file removed from disk and database",
-          "testType": "review"
-        },
-        {
-          "id": "R-W6-VPC-702",
-          "criterion": "VPC: unit tests pass, tsc clean for FileVault.tsx",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-703",
-      "description": "Wave 6 Verification. Run full test suites and Playwright to confirm all Wave 6 file persistence stories pass, including upload-download round-trip verification.",
-      "phase": 6,
-      "phase_type": "file-persistence",
-      "component": "server/services/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-701",
-        "H-702"
-      ],
-      "parallelGroup": "6B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W6-04",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Playwright: FileVault renders with no console errors; upload\u00e2\u2020\u2019list\u00e2\u2020\u2019download round-trip confirmed",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-801",
-      "description": "Email Delivery Service. Implement a real notification delivery service using nodemailer (or equivalent) that transitions notification job status to SENT or FAILED based on delivery outcome.",
-      "phase": 7,
-      "phase_type": "notification-delivery",
-      "component": "server/services/",
-      "scope": [
-        "server/services/notification-delivery.service.ts",
-        "server/routes/notification-jobs.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "7A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W7-01a",
-          "criterion": "With SMTP configured: POST /api/notification-jobs with channel=email sends real email",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-01b",
-          "criterion": "Without SMTP configured: job created with status=FAILED, sync_error='SMTP not configured'",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-02a",
-          "criterion": "Job status is SENT (with sent_at timestamp) on success",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-02b",
-          "criterion": "Job status is FAILED (with sync_error message) on delivery failure",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-VPC-801",
-          "criterion": "VPC: unit tests pass, tsc clean; mock nodemailer transport \u00e2\u20ac\u201d verify sendMail called with correct to/subject/body",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run src/__tests__/services/notification-delivery",
-        "typecheck": "cd server && npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-802",
-      "description": "Driver Certificate Expiry Alerts. Implement a cert expiry checker service that identifies expiring certificates, creates notification jobs, and optionally sends emails when SMTP is configured.",
-      "phase": 7,
-      "phase_type": "notification-delivery",
-      "component": "server/services/",
-      "scope": [
-        "server/services/cert-expiry-checker.ts",
-        "server/routes/safety.ts"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "7A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W7-03a",
-          "criterion": "GET /api/safety/cert-expiry-check returns list of expiring certificates with days-until-expiry",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-03b",
-          "criterion": "Each expiring cert creates a notification job in the DB",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-03c",
-          "criterion": "If SMTP configured, email is actually sent for each expiring cert",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W7-VPC-802",
-          "criterion": "Unit tests: mock DB with 3 certs (expired, 7-day, 60-day) \u00e2\u20ac\u201d verify 2 notification jobs created",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/services/cert-expiry-checker",
-        "typecheck": "cd server && npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-803",
-      "description": "Notification Status in Frontend. Add notification status badges in the frontend and integrate real cert expiry warnings from the backend API into SafetyView.",
-      "phase": 7,
-      "phase_type": "notification-delivery",
-      "component": "components/",
-      "scope": [
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-801",
-        "H-802"
-      ],
-      "parallelGroup": "7B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W7-02-FE",
-          "criterion": "Notification status badges render correctly for each status (PENDING/SENT/FAILED)",
-          "testType": "review"
-        },
-        {
-          "id": "R-W7-03-FE",
-          "criterion": "SafetyView displays real cert expiry warnings from GET /api/safety/cert-expiry-check",
-          "testType": "review"
-        },
-        {
-          "id": "R-W7-VPC-803",
-          "criterion": "VPC: unit tests pass, tsc clean for modified components",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-804",
-      "description": "Wave 7 Verification. Run full test suites and Playwright to confirm all Wave 7 notification delivery stories pass, including integration testing of notification status transitions.",
-      "phase": 7,
-      "phase_type": "notification-delivery",
-      "component": "server/services/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-801",
-        "H-802",
-        "H-803"
-      ],
-      "parallelGroup": "7C",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W7-04",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; Integration: create notification job via API \u00e2\u20ac\u201d verify status transitions to SENT or FAILED; Playwright: notification/safety views render correctly",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-901",
-      "description": "FMCSA Safety Score API Integration. Implement real FMCSA API calls in the safety service with caching, graceful fallback, and display of live safety ratings in SafetyView.",
-      "phase": 8,
-      "phase_type": "feature-completion",
-      "component": "server/services/",
-      "scope": [
-        "server/services/fmcsa.service.ts",
-        "server/routes/safety.ts",
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "8A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W8-01a",
-          "criterion": "GET /api/safety/fmcsa/123456 returns FMCSA data or graceful fallback",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W8-01b",
-          "criterion": "SafetyView displays real safety rating when DOT number is configured",
-          "testType": "review"
-        },
-        {
-          "id": "R-W8-01c",
-          "criterion": "Results cached \u00e2\u20ac\u201d second call within 24h returns cached data",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W8-VPC-901",
-          "criterion": "Unit tests: mock FMCSA API response \u00e2\u20ac\u201d verify parsing and caching; tsc clean",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run src/__tests__/services/fmcsa",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-902",
-      "description": "Scanner Live Camera Capture. Add live camera capture capability to the Scanner component, with graceful fallback to file picker when camera permission is denied.",
-      "phase": 8,
-      "phase_type": "feature-completion",
-      "component": "components/",
-      "scope": [
-        "components/Scanner.tsx"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "8A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W8-02a",
-          "criterion": "Scanner shows Use Camera button on devices with camera access",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W8-02b",
-          "criterion": "Camera preview renders in component when permission granted",
-          "testType": "review"
-        },
-        {
-          "id": "R-W8-02c",
-          "criterion": "Capture button takes snapshot and sends to AI extraction",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W8-02d",
-          "criterion": "Permission denied falls back to file picker with no error",
-          "testType": "unit"
-        },
-        {
-          "id": "R-W8-VPC-902",
-          "criterion": "Unit tests: mock navigator.mediaDevices \u00e2\u20ac\u201d verify camera flow; tsc clean",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/Scanner",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "H-903",
-      "description": "Configuration Documentation + .env.example. Update .env.example to list every environment variable the app uses with explanatory comments, and update PROJECT_BRIEF.md to reference it.",
-      "phase": 8,
-      "phase_type": "feature-completion",
-      "component": "server/services/",
-      "scope": [
-        ".env.example",
-        "PROJECT_BRIEF.md"
-      ],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "8A",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W8-03a",
-          "criterion": ".env.example lists every env var the app uses",
-          "testType": "review"
-        },
-        {
-          "id": "R-W8-03b",
-          "criterion": "Each var has a comment explaining what feature it enables",
-          "testType": "review"
-        },
-        {
-          "id": "R-W8-03c",
-          "criterion": "PROJECT_BRIEF.md references .env.example for setup",
-          "testType": "review"
-        }
-      ],
-      "gateCmds": {},
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "H-904",
-      "description": "Wave 8 Verification. Run full test suites and Playwright to confirm all Wave 8 feature completion stories pass, including FMCSA integration, camera capture, and documentation completeness.",
-      "phase": 8,
-      "phase_type": "feature-completion",
-      "component": "server/services/",
-      "scope": [],
-      "complexity": "moderate",
-      "effort": "M",
-      "maxTurns": 150,
-      "dependsOn": [
-        "H-901",
-        "H-902",
-        "H-903"
-      ],
-      "parallelGroup": "8B",
-      "acceptanceCriteria": [
-        {
-          "id": "R-W8-04",
-          "criterion": "npx vitest run all FE tests pass; cd server && npx vitest run all BE tests pass; npx tsc --noEmit 0 errors; .env.example is complete and accurate; Playwright: Scanner page renders, FMCSA data displays or graceful fallback",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run",
-        "typecheck": "npx tsc --noEmit"
-      },
-      "passed": false,
-      "verificationRef": null
+      "verificationRef": "",
+      "parallelGroup": null,
+      "dependsOn": ["S-501"]
     }
   ]
 }
