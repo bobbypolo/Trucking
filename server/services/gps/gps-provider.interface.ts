@@ -2,7 +2,7 @@
  * GPS Provider Interface for LoadPilot
  *
  * Provider-agnostic interface for vehicle location tracking.
- * Implementations are in separate adapter files (e.g., samsara.adapter.ts).
+ * Each GPS vendor has its own adapter file implementing this interface.
  *
  * No provider-specific types are exposed by this interface.
  * Each adapter translates its provider's API response into the
