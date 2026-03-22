@@ -1,4 +1,6 @@
 # Tests R-P2-14, R-P2-15, R-P2-16, R-P2-17, R-P2-18, R-P2-19
+# Covers: import quickbooks.service (server/services/quickbooks.service.ts)
+# Covers: import intuit-oauth (server/types/intuit-oauth.d.ts)
 """
 S-204: QuickBooks OAuth service.
 
