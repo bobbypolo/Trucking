@@ -52,6 +52,9 @@ import {
   History,
   Navigation,
   User as UserIcon,
+  CreditCard,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import type { AccountType } from "../types";
 import { EditUserModal } from "./EditUserModal";
@@ -93,6 +96,15 @@ export const CompanyProfile: React.FC<Props> = ({
   >([]);
   const [timeLogsLoading, setTimeLogsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingAvailable, setBillingAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [qbStatus, setQbStatus] = useState<{
+    available: boolean | null;
+    connected: boolean;
+    companyName?: string;
+  }>({ available: null, connected: false });
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const isAdmin =
     user.role === "admin" ||
@@ -115,6 +127,45 @@ export const CompanyProfile: React.FC<Props> = ({
     };
     load();
   }, [user]);
+
+  // Fetch QuickBooks connection status
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkQb = async () => {
+      try {
+        const res = await fetch("/api/quickbooks/status", {
+          headers: { "Content-Type": "application/json" },
+        });
+        if (res.status === 503) {
+          setQbStatus({ available: false, connected: false });
+          return;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          setQbStatus({
+            available: true,
+            connected: data.connected || false,
+            companyName: data.companyName,
+          });
+        } else {
+          setQbStatus({ available: false, connected: false });
+        }
+      } catch {
+        setQbStatus({ available: false, connected: false });
+      }
+    };
+    checkQb();
+  }, [isAdmin]);
+
+  // Determine billing availability from company stripe data
+  useEffect(() => {
+    if (!isAdmin || !company) return;
+    if (company.stripeCustomerId) {
+      setBillingAvailable(true);
+    } else {
+      setBillingAvailable(false);
+    }
+  }, [isAdmin, company]);
 
   useEffect(() => {
     if (!isDriver) return;
@@ -186,6 +237,51 @@ export const CompanyProfile: React.FC<Props> = ({
     } catch (err) {
       console.error("[CompanyProfile] Clock-out failed:", err);
       showMsg("Clock-out failed. Please try again.", 3000);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!company?.stripeCustomerId) return;
+    setBillingLoading(true);
+    try {
+      const res = await fetch("/api/stripe/create-billing-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stripeCustomerId: company.stripeCustomerId,
+          returnUrl: window.location.href,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.assign(data.url);
+        }
+      } else {
+        showMsg("Unable to open billing portal. Please try again.", 4000);
+      }
+    } catch {
+      showMsg("Unable to open billing portal. Please try again.", 4000);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleConnectQuickBooks = async () => {
+    try {
+      const res = await fetch("/api/quickbooks/auth-url", {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.assign(data.url);
+        }
+      } else {
+        showMsg("Unable to connect QuickBooks. Please try again.", 4000);
+      }
+    } catch {
+      showMsg("Unable to connect QuickBooks. Please try again.", 4000);
     }
   };
 
@@ -544,6 +640,114 @@ export const CompanyProfile: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+
+            {/* Billing & Subscription Section */}
+            {billingAvailable && company.stripeCustomerId && (
+              <div
+                data-testid="billing-section"
+                className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8"
+              >
+                <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-emerald-500" /> Billing &
+                  Subscription
+                </h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        Current Plan
+                      </div>
+                      <div className="text-lg font-black text-white uppercase tracking-tight">
+                        {company.subscriptionTier || "Free"}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        company.subscriptionStatus === "active"
+                          ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                          : company.subscriptionStatus === "trial"
+                            ? "bg-amber-600/20 text-amber-400 border border-amber-500/30"
+                            : "bg-red-600/20 text-red-400 border border-red-500/30"
+                      }`}
+                    >
+                      {company.subscriptionStatus || "unknown"}
+                    </span>
+                  </div>
+                  {company.subscriptionPeriodEnd && (
+                    <div data-testid="billing-period-end">
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-1">
+                        Period Ends
+                      </div>
+                      <div className="text-xs text-slate-300 font-bold">
+                        {new Date(
+                          company.subscriptionPeriodEnd,
+                        ).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    data-testid="manage-subscription-btn"
+                    onClick={handleManageSubscription}
+                    disabled={billingLoading}
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-60"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    {billingLoading
+                      ? "Opening Portal..."
+                      : "Manage Subscription"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* QuickBooks Integration Section */}
+            {qbStatus.available !== false && (
+              <div
+                data-testid="quickbooks-section"
+                className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8"
+              >
+                <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
+                  <Link2 className="w-5 h-5 text-blue-500" /> QuickBooks
+                  Integration
+                </h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        Connection Status
+                      </div>
+                      <div className="text-sm font-bold text-white">
+                        {qbStatus.connected
+                          ? qbStatus.companyName || "Connected"
+                          : "Not Connected"}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        qbStatus.connected
+                          ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                          : "bg-slate-700/30 text-slate-400 border border-slate-600/30"
+                      }`}
+                    >
+                      {qbStatus.connected ? "Connected" : "Disconnected"}
+                    </span>
+                  </div>
+                  {!qbStatus.connected && (
+                    <button
+                      data-testid="connect-quickbooks-btn"
+                      onClick={handleConnectQuickBooks}
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Connect QuickBooks
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
