@@ -24,6 +24,7 @@ import {
   Save,
   Users,
   DollarSign,
+  Info,
   Lock,
   ShieldCheck,
   MapPin,
@@ -347,8 +348,8 @@ export const CompanyProfile: React.FC<Props> = ({
 
       <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar pb-24 bg-slate-900/50">
         {!isAdmin && !isDriver && (
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3" role="status">
-            <Lock className="w-4 h-4 text-blue-400 shrink-0" />
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3" role="status" aria-live="polite">
+            <Info className="w-4 h-4 text-blue-400 shrink-0" />
             <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
               Viewing as read-only — Only administrators can modify company settings
             </p>
