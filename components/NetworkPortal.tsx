@@ -1801,7 +1801,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 {rate.unitType || "FLAT"}
                               </td>
                               <td className="px-6 py-4 text-center">
-                                <button className="text-slate-800 group-hover:text-slate-400 transition-all">
+                                <button className="text-slate-800 group-hover:text-slate-400 transition-all" aria-label="More options">
                                   <MoreVertical className="w-4 h-4" />
                                 </button>
                               </td>

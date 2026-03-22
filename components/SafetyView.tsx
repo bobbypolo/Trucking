@@ -329,7 +329,7 @@ export const SafetyView: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={clearFeedback}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>

@@ -293,7 +293,7 @@ const AccountingPortal: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={clearFeedback}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -366,9 +366,9 @@ const AccountingPortal: React.FC<Props> = ({
             <div className="grid grid-cols-3 gap-10">
               <div className="col-span-2 space-y-8">
                 <div className="flex justify-between items-end">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                     Load P&L
-                  </h3>
+                  </h2>
                   <button className="text-[10px] font-black text-emerald-500 uppercase hover:underline">
                     View All Loads
                   </button>
@@ -447,9 +447,9 @@ const AccountingPortal: React.FC<Props> = ({
 
               <div className="space-y-8">
                 <div className="flex justify-between items-end">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                     Settlement Queue
-                  </h3>
+                  </h2>
                   <button
                     onClick={() => setActiveTab("SETTLEMENTS")}
                     className="text-[10px] font-black text-emerald-500 uppercase hover:underline"
@@ -495,9 +495,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Accounts Receivable
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Invoicing & Collections Control
                 </p>
@@ -607,7 +607,7 @@ const AccountingPortal: React.FC<Props> = ({
                                 <Phone className="w-4 h-4" />
                               </button>
                             )}
-                            <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
+                            <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </div>
@@ -635,9 +635,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Accounts Payable
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Vendor Bills & Expense Allocations
                 </p>
@@ -745,7 +745,7 @@ const AccountingPortal: React.FC<Props> = ({
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
+                          <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
@@ -793,9 +793,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Maintenance Financials
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Repair Tickets -&gt; A/P Bills -&gt; Cost Per Mile
                 </p>
@@ -991,9 +991,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Operational Audit Trail
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Post-Lock Event Log
                 </p>
@@ -1070,9 +1070,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Automation Center
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Enterprise Rules Engine
                 </p>
@@ -1207,9 +1207,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Operational Audit Trail
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Post-Lock Event Log
                 </p>

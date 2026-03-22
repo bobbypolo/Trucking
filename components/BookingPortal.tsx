@@ -385,7 +385,7 @@ export const BookingPortal: React.FC<Props> = ({
             )}
             {feedback.msg}
           </div>
-          <button onClick={clearFeedback}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -785,7 +785,7 @@ export const BookingPortal: React.FC<Props> = ({
                       <h4 className="text-[10px] font-black text-slate-500 uppercase">
                         Accessorial Templates
                       </h4>
-                      <button className="text-blue-500 hover:text-blue-400 transition-colors">
+                      <button className="text-blue-500 hover:text-blue-400 transition-colors" aria-label="Add item">
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>

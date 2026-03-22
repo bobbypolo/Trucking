@@ -428,13 +428,14 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all">
+                      <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all" aria-label="Download file">
                         <Download className="w-3.5 h-3.5 text-slate-400" />
                       </button>
-                      <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all">
+                      <button className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-white/5 transition-all" aria-label="View file history">
                         <History className="w-3.5 h-3.5 text-slate-400" />
                       </button>
                       <button
+                        aria-label="Delete file"
                         className="p-2 bg-slate-800 hover:bg-red-500/20 rounded-lg border border-white/5 transition-all group/del"
                         disabled={doc.isLocked}
                       >

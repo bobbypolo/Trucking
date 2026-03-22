@@ -578,7 +578,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     {m.type}
                   </div>
                 </div>
-                <button className="text-slate-700 hover:text-red-500 transition-colors">
+                <button className="text-slate-700 hover:text-red-500 transition-colors" aria-label="Delete entry">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>

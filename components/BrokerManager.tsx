@@ -217,7 +217,7 @@ export const BrokerManager: React.FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-2.5">
-            <button className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95">
+            <button className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95" aria-label="Scan brokers">
               <Scan className="w-4 h-4" />
             </button>
             <button

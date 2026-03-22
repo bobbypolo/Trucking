@@ -293,9 +293,9 @@ export const Dashboard: React.FC<Props> = ({
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
               <TrendingUp className="w-24 h-24 text-blue-400" />
             </div>
-            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <DollarSign className="w-3 h-3" /> Money & Performance
-            </h3>
+            </h2>
             <div className="space-y-6">
               <div className="flex justify-between items-end border-b border-white/5 pb-4">
                 <div className="text-[10px] font-bold text-slate-500 uppercase">
@@ -321,9 +321,9 @@ export const Dashboard: React.FC<Props> = ({
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
               <Globe className="w-24 h-24 text-orange-400" />
             </div>
-            <h3 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <Zap className="w-3 h-3" /> IFTA Automation
-            </h3>
+            </h2>
             <div className="space-y-6">
               <div className="flex justify-between items-center bg-orange-500/10 p-4 rounded-2xl border border-orange-500/20">
                 <div className="text-[10px] font-black text-orange-300 uppercase">
@@ -355,9 +355,9 @@ export const Dashboard: React.FC<Props> = ({
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
               <Shield className="w-24 h-24 text-purple-400" />
             </div>
-            <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <CheckCircle2 className="w-3 h-3" /> Compliance Health
-            </h3>
+            </h2>
             <div className="space-y-4">
               <div className="p-4 bg-slate-950 rounded-2xl border border-white/5 flex items-center gap-4">
                 <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-500">
@@ -395,9 +395,9 @@ export const Dashboard: React.FC<Props> = ({
         {/* Critical Status Grid */}
         <div className="lg:col-span-2 space-y-6">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
               <Shield className="w-4 h-4 text-blue-500" /> Action Items
-            </h3>
+            </h2>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {cards
@@ -466,9 +466,9 @@ export const Dashboard: React.FC<Props> = ({
               <AlertTriangle className="w-5 h-5 text-red-500" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest">
+              <h2 className="text-sm font-black text-white uppercase tracking-widest">
                 Active Issues
-              </h3>
+              </h2>
               <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest mt-0.5">
                 High Severity Actions
               </p>
@@ -523,9 +523,9 @@ export const Dashboard: React.FC<Props> = ({
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-2 bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">
               Fleet Overview
-            </h4>
+            </h2>
             <div className="flex items-center gap-4 mt-4">
               <div className="text-2xl font-black text-white">
                 {stats.activeLoads}{" "}

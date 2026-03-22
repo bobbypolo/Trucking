@@ -323,7 +323,7 @@ export const Settlements: React.FC<Props> = ({
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-bold">{feedback}</span>
           </div>
-          <button onClick={clearFeedback}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>

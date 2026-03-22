@@ -986,7 +986,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                   {item.description}
                                 </div>
                               </div>
-                              <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all">
+                              <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all" aria-label="Mark as complete">
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
                             </div>
@@ -1084,7 +1084,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   >
                     Log Contact
                   </button>
-                  <button className="p-3 bg-slate-800 text-slate-300 rounded-lg">
+                  <button className="p-3 bg-slate-800 text-slate-300 rounded-lg" aria-label="More options">
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                 </div>
