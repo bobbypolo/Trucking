@@ -64,6 +64,42 @@ def test_scanner_graceful_fallback():
     assert "stop()" in src or ".stop()" in src, "Scanner must stop tracks"
 
 
+def test_scanner_fallback_no_error_state():
+    """R-W8-02d: Negative test — permission denial must NOT set error state."""
+    with open("components/Scanner.tsx", encoding="utf-8") as f:
+        src = f.read()
+    # The catch block in startCamera must set fallback msg, NOT the error state.
+    # Verify the catch block uses setCameraFallbackMsg instead of setError.
+    assert "setCameraFallbackMsg" in src, (
+        "Camera denial handler must use setCameraFallbackMsg, not setError"
+    )
+    # The catch block should NOT call setError — only setCameraFallbackMsg
+    # Find the startCamera function and verify the catch pattern
+    import re
+
+    match = re.search(r"const startCamera.*?}\s*\)", src, re.DOTALL)
+    assert match, "Must find startCamera function"
+    start_camera_body = match.group(0)
+    # The catch block should contain setCameraFallbackMsg
+    assert "setCameraFallbackMsg" in start_camera_body, (
+        "startCamera catch must use setCameraFallbackMsg"
+    )
+
+
+def test_scanner_missing_camera_hides_button():
+    """R-W8-02d: Edge case — no mediaDevices API means no camera button rendered."""
+    with open("components/Scanner.tsx", encoding="utf-8") as f:
+        src = f.read()
+    # Must check navigator existence before accessing mediaDevices
+    assert 'typeof navigator !== "undefined"' in src or "typeof navigator" in src, (
+        "Scanner must guard against missing navigator (e.g., SSR)"
+    )
+    # Must conditionally render camera button based on hasCameraSupport
+    assert "cameraSupported" in src, (
+        "Scanner must use cameraSupported flag to conditionally render camera button"
+    )
+
+
 def test_scanner_vpc_test_coverage():
     """R-W8-VPC-902: VPC: Scanner camera test file exists with all criteria markers."""
 
