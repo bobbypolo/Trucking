@@ -234,8 +234,27 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
         setError("Invalid credentials.");
         setPassword("");
       }
-    } catch {
-      setError("Sign in failed. Please try again.");
+    } catch (err: unknown) {
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as { code: string }).code
+          : "";
+      const message = err instanceof Error ? err.message : "";
+
+      if (
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found" ||
+        code === "auth/invalid-credential"
+      ) {
+        setError("Invalid credentials.");
+      } else if (
+        code === "auth/network-request-failed" ||
+        message.includes("Failed to fetch")
+      ) {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError("Sign-in failed. Please try again.");
+      }
       setPassword("");
     } finally {
       setIsProcessing(false);

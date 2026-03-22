@@ -80,7 +80,11 @@ describe("InputDialog", () => {
 
   it("calls onCancel on Escape key", () => {
     render(<InputDialog {...defaultProps} />);
-    fireEvent.keyDown(window, { key: "Escape" });
+    // useFocusTrap listens on the container element, not window
+    const panel = screen
+      .getByRole("dialog")
+      .querySelector("div.relative") as HTMLElement;
+    fireEvent.keyDown(panel, { key: "Escape" });
     expect(defaultProps.onCancel).toHaveBeenCalledTimes(1);
   });
 

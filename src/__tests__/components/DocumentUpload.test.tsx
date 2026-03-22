@@ -97,8 +97,12 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
 
   const user = userEvent.setup();
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    // Provide docs by default so the vault UI renders instead of EmptyState.
+    // Tests that need different data override with mockResolvedValueOnce.
+    const { getVaultDocs } = await import("../../../services/financialService");
+    vi.mocked(getVaultDocs).mockResolvedValue(mockDocs);
   });
 
   it("renders FileVault component without crashing", async () => {

@@ -145,7 +145,11 @@ import {
   getLoads,
   saveLoad,
 } from "../../../services/storageService";
-import { fetchLoads as apiFetchLoads, createLoad as apiCreateLoad, searchLoadsApi } from "../../../services/loadService";
+import {
+  fetchLoads as apiFetchLoads,
+  createLoad as apiCreateLoad,
+  searchLoadsApi,
+} from "../../../services/loadService";
 import { getCompany, getStoredUsers } from "../../../services/authService";
 import { getBrokers } from "../../../services/brokerService";
 import { getBookings } from "../../../services/storage/bookings";
@@ -221,9 +225,7 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns null if quote not found for booking", async () => {
-      mockGetBookings.mockResolvedValue([
-        { id: "b1", quoteId: "q-missing" },
-      ]);
+      mockGetBookings.mockResolvedValue([{ id: "b1", quoteId: "q-missing" }]);
       mockGetQuotes.mockResolvedValue([]);
       const user = { id: "u1", companyId: "c1" } as any;
       const result = await convertBookingToLoad("b1", user);
@@ -395,7 +397,9 @@ describe("storageService — gap coverage", () => {
   // ─── searchLoads ─────────────────────────────────────────────────────
   describe("searchLoads", () => {
     it("delegates to searchLoadsApi", async () => {
-      mockSearchLoadsApi.mockResolvedValue([{ id: "l1", loadNumber: "LD-100" }]);
+      mockSearchLoadsApi.mockResolvedValue([
+        { id: "l1", loadNumber: "LD-100" },
+      ]);
 
       const results = await searchLoads("LD-100");
       expect(results).toHaveLength(1);
@@ -467,20 +471,21 @@ describe("storageService — gap coverage", () => {
         id: "TRK-501",
         type: "Truck",
         maintenanceHistory: [
-          { date: "2026-03-01", type: "Oil Change", description: "Full synthetic", cost: 150 },
+          {
+            date: "2026-03-01",
+            type: "Oil Change",
+            description: "Full synthetic",
+            cost: 150,
+          },
         ],
       } as any;
 
-      expect(() =>
-        generateMaintenanceLogPDF(eq, "Test Fleet"),
-      ).not.toThrow();
+      expect(() => generateMaintenanceLogPDF(eq, "Test Fleet")).not.toThrow();
     });
 
     it("handles empty maintenance history", () => {
       const eq = { id: "TRK-502", type: "Truck" } as any;
-      expect(() =>
-        generateMaintenanceLogPDF(eq, "Test"),
-      ).not.toThrow();
+      expect(() => generateMaintenanceLogPDF(eq, "Test")).not.toThrow();
     });
   });
 
@@ -650,9 +655,7 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns summary for known broker", async () => {
-      mockGetBrokers.mockResolvedValue([
-        { id: "b1", name: "Acme Freight" },
-      ]);
+      mockGetBrokers.mockResolvedValue([{ id: "b1", name: "Acme Freight" }]);
       mockGetRawRequests.mockResolvedValue([]);
       mockGetRawCalls.mockResolvedValue([]);
 
@@ -665,6 +668,10 @@ describe("storageService — gap coverage", () => {
   // ─── getRecord360Data ────────────────────────────────────────────────
   describe("getRecord360Data", () => {
     it("returns null for unsupported type", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
       const result = await getRecord360Data("UNKNOWN" as any, "x");
       expect(result).toBeNull();
     });
@@ -684,9 +691,11 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns data for BROKER type", async () => {
-      mockGetBrokers.mockResolvedValue([
-        { id: "b1", name: "Acme" },
-      ]);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
+      mockGetBrokers.mockResolvedValue([{ id: "b1", name: "Acme" }]);
 
       const result = await getRecord360Data("BROKER", "b1");
       expect(result).toBeDefined();

@@ -558,6 +558,12 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
         expect(screen.getByText(/Registration/)).toBeInTheDocument();
       });
 
+      // Fill in required description field so the submit button is enabled
+      const descriptionInput = screen.getByPlaceholderText(
+        "e.g. Annual Inspection and Oil Change",
+      );
+      await user.type(descriptionInput, "Routine brake inspection");
+
       const submitBtn = screen.getByRole("button", { name: /Submit/i });
       await user.click(submitBtn);
 

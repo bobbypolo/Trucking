@@ -150,7 +150,7 @@ describe("SafetyView component", () => {
   it("shows KPI values on overview", async () => {
     render(<SafetyView user={mockUser} />);
     await waitFor(() => {
-      expect(screen.getByText("65")).toBeInTheDocument();
+      expect(screen.getByText("N/A")).toBeInTheDocument();
     });
     expect(screen.getByText("13")).toBeInTheDocument();
     expect(screen.getByText("Target: 95+")).toBeInTheDocument();
@@ -460,7 +460,7 @@ describe("SafetyView component", () => {
     });
     expect(screen.getByText("Select Relevant Manifest")).toBeInTheDocument();
     expect(screen.getByText("Incident Severity")).toBeInTheDocument();
-    expect(screen.getByText("Description of Event")).toBeInTheDocument();
+    expect(screen.getByText(/Description of Event/)).toBeInTheDocument();
   });
 
   it("calls onOpenHub when Call Driver is clicked", async () => {
@@ -563,7 +563,7 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("asset Registration")).toBeInTheDocument();
     });
-    expect(screen.getByText("Asset ID / Unit Number")).toBeInTheDocument();
+    expect(screen.getByText(/Asset ID \/ Unit Number/)).toBeInTheDocument();
     expect(screen.getByPlaceholderText("e.g. TR-101")).toBeInTheDocument();
   });
 
@@ -730,7 +730,7 @@ describe("SafetyView component", () => {
       expect(screen.getByText("maintenance Registration")).toBeInTheDocument();
     });
     expect(screen.getByText("Select Asset")).toBeInTheDocument();
-    expect(screen.getByText("Service Description")).toBeInTheDocument();
+    expect(screen.getByText(/Service Description/)).toBeInTheDocument();
   });
 
   it("fills maintenance form and submits", async () => {

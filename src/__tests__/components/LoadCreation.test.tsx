@@ -206,20 +206,16 @@ describe("LoadSetupModal — load creation entry point (R-FS-06-01)", () => {
     });
   });
 
-  it("displays error when Scan Doc is clicked without broker and driver (validation error display)", async () => {
-    const user = userEvent.setup();
+  it("disables Scan Doc button when broker and driver are not selected (validation error prevention)", async () => {
     render(<LoadSetupModal {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByText(/Setup New Load/i)).toBeInTheDocument();
     });
 
-    const scanDocButton = screen.getByText(/Scan Doc/);
+    // The Scan Doc button is disabled when no broker/driver is selected
+    const scanDocButton = screen.getByText(/Scan Doc/).closest("button")!;
     expect(scanDocButton).toBeInTheDocument();
-    await user.click(scanDocButton);
-    await waitFor(() => {
-      const bodyText = document.body.textContent || "";
-      expect(bodyText).toContain("select both a broker and a driver");
-    });
+    expect(scanDocButton).toBeDisabled();
   });
 });

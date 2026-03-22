@@ -266,10 +266,12 @@ describe("ExceptionConsole component", () => {
       screen.getByText("Mark this exception as resolved?"),
     ).toBeInTheDocument();
 
-    // Click Resolve in the dialog
-    const resolveDialogBtn = screen.getByRole("button", {
-      name: /Resolve/i,
-    });
+    // Click the confirm button in the dialog (labeled "Resolve")
+    // Use the ConfirmDialog's confirm button which is inside the dialog panel
+    const dialog = screen.getByRole("dialog");
+    const resolveDialogBtn = within(dialog).getAllByRole("button").find(
+      (btn) => btn.textContent === "Resolve",
+    )!;
     await user.click(resolveDialogBtn);
     expect(updateException).toHaveBeenCalledWith("exc-1", {
       status: "RESOLVED",

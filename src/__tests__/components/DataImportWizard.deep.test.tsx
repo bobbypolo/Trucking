@@ -147,6 +147,15 @@ vi.mock("papaparse", () => ({
 }));
 
 // ---------------------------------------------------------------------------
+// Constants — all 3 required target fields must be mapped for dry run to proceed
+// ---------------------------------------------------------------------------
+const ALL_REQUIRED_MAPPINGS = [
+  { index: 0, value: "date" },
+  { index: 1, value: "stateCode" },
+  { index: 2, value: "gallons" },
+];
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 async function uploadCSVAndGoToMapping(
@@ -211,10 +220,7 @@ describe("DataImportWizard deep coverage", () => {
   describe("dry run execution and results display", () => {
     it("advances to step 3 after running integrity check with valid mappings", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [
-        { index: 0, value: "date" },
-        { index: 1, value: "stateCode" },
-      ]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Data Integrity Verified")).toBeInTheDocument();
       });
@@ -222,7 +228,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("shows total rows, valid rows, and error count", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         const text = document.body.textContent || "";
         expect(text).toMatch(/Processed \d+ records/);
@@ -233,7 +239,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("shows Sample Output Buffer heading", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Sample Output Buffer")).toBeInTheDocument();
       });
@@ -241,10 +247,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("renders preview table rows from dry run", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [
-        { index: 0, value: "date" },
-        { index: 1, value: "stateCode" },
-      ]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         // Preview should have data rows in the sample table
         const tables = document.querySelectorAll("table");
@@ -256,10 +259,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("shows success banner with checkmark when no errors", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [
-        { index: 0, value: "date" },
-        { index: 1, value: "stateCode" },
-      ]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Data Integrity Verified")).toBeInTheDocument();
       });
@@ -267,7 +267,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("shows Commit to Database button on successful dry run", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Commit to Database")).toBeInTheDocument();
       });
@@ -275,7 +275,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("enables Commit to Database when dry run succeeds", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         const commitBtn = screen.getByText("Commit to Database");
         expect(commitBtn.closest("button")).not.toBeDisabled();
@@ -284,9 +284,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("calls onImport with fileData when Commit to Database is clicked", async () => {
       const user = userEvent.setup();
-      const { onImport: importFn } = await setupMappingsAndRunDryRun(user, [
-        { index: 0, value: "date" },
-      ]);
+      const { onImport: importFn } = await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Commit to Database")).toBeInTheDocument();
       });
@@ -303,13 +301,16 @@ describe("DataImportWizard deep coverage", () => {
   describe("dry run with validation errors", () => {
     it("shows failure banner when gallons mapping has invalid data", async () => {
       const user = userEvent.setup();
-      // Map gallons to stateCode (which has string values like "TX") to trigger validation
-      await setupMappingsAndRunDryRun(user, [{ index: 2, value: "stateCode" }]);
+      // Map all 3 required fields so runDryRun proceeds, but map gallons to
+      // stateCode (string values like "TX") to trigger validation.
+      // NaN <= 0 is false so gallons validation won't flag it, but we still
+      // reach step 3 which is the point of this test.
+      await setupMappingsAndRunDryRun(user, [
+        { index: 0, value: "date" },
+        { index: 1, value: "stateCode" },
+        { index: 2, value: "stateCode" },
+      ]);
       await waitFor(() => {
-        // The gallons validation checks Number(val) <= 0 on string "TX" => NaN <= 0 is false
-        // So it may or may not trigger depending on the parse.
-        // The date validation checks !Date.parse(val) and since no date mapping, no error
-        // Let's just verify we reached step 3
         const text = document.body.textContent || "";
         expect(
           text.includes("Data Integrity Verified") ||
@@ -320,10 +321,12 @@ describe("DataImportWizard deep coverage", () => {
 
     it("disables Commit to Database when dry run has errors", async () => {
       const user = userEvent.setup();
-      // Map 'date' to a non-date column to cause validation error
-      // and 'gallons' to stateCode (string) which will cause gallons <= 0 check
+      // Map all 3 required fields so runDryRun proceeds.
+      // Map 'date' target to a non-date source (stateCode) to cause date validation error,
+      // and 'gallons' target to 'date' source (string) to attempt gallons validation.
       await setupMappingsAndRunDryRun(user, [
         { index: 0, value: "stateCode" },
+        { index: 1, value: "date" },
         { index: 2, value: "date" },
       ]);
       await waitFor(() => {
@@ -344,7 +347,7 @@ describe("DataImportWizard deep coverage", () => {
   describe("step navigation from dry run", () => {
     it("shows Previous Step button on step 3", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Previous Step")).toBeInTheDocument();
       });
@@ -352,7 +355,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("navigates back to mapping step from dry run", async () => {
       const user = userEvent.setup();
-      await setupMappingsAndRunDryRun(user, [{ index: 0, value: "date" }]);
+      await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Previous Step")).toBeInTheDocument();
       });
@@ -364,9 +367,7 @@ describe("DataImportWizard deep coverage", () => {
 
     it("Cancel Import still works from step 3", async () => {
       const user = userEvent.setup();
-      const { onClose: closeFn } = await setupMappingsAndRunDryRun(user, [
-        { index: 0, value: "date" },
-      ]);
+      const { onClose: closeFn } = await setupMappingsAndRunDryRun(user, ALL_REQUIRED_MAPPINGS);
       await waitFor(() => {
         expect(screen.getByText("Commit to Database")).toBeInTheDocument();
       });

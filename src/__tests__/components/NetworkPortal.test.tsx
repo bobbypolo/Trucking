@@ -718,6 +718,17 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
+    // Fill in required company name on step 1 so wizard validation passes
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      ).toBeInTheDocument();
+    });
+    await user.type(
+      screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      "Test Company LLC",
+    );
+
     for (let i = 0; i < 4; i++) {
       await waitFor(() => {
         expect(screen.getByText("Next Phase")).toBeInTheDocument();
@@ -746,6 +757,17 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
+    // Fill in required company name on step 1 so wizard validation passes
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      ).toBeInTheDocument();
+    });
+    await user.type(
+      screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      "Test Company LLC",
+    );
+
     for (let i = 0; i < 4; i++) {
       await waitFor(() => {
         expect(screen.getByText("Next Phase")).toBeInTheDocument();
@@ -771,6 +793,17 @@ describe("NetworkPortal component", () => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
+
+    // Fill in required company name on step 1 so wizard validation passes
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      ).toBeInTheDocument();
+    });
+    await user.type(
+      screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      "Test Company LLC",
+    );
 
     for (let i = 0; i < 4; i++) {
       await waitFor(() => {

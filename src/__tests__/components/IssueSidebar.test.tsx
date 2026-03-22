@@ -184,10 +184,11 @@ describe("IssueSidebar component", () => {
     expect(screen.queryByText("Trailer tire blowout")).not.toBeInTheDocument();
   });
 
-  it("shows No Priority Issues for driver role (no access)", () => {
+  it("shows no-access message for driver role", () => {
     const driverUser = { ...mockUser, role: "driver" as const };
     render(<IssueSidebar {...defaultProps} currentUser={driverUser} />);
-    expect(screen.getByText("No Priority Issues")).toBeInTheDocument();
+    // Driver role is not in the role-mapped list, so shows the non-mapped message
+    expect(screen.getByText("No actions available for your role")).toBeInTheDocument();
   });
 
   it("calls onClose when the close button is clicked", async () => {
