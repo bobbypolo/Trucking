@@ -238,7 +238,7 @@ Multiple stories modify shared files. Ralph agents with worktree isolation must 
 
 **S-204: Create QuickBooks OAuth service**
 
-- Files: `server/services/quickbooks.service.ts` (new), `server/package.json` (add `intuit-oauth`)
+- Files: `server/services/quickbooks.service.ts` (new), `server/package.json` (add `intuit-oauth`), `server/types/intuit-oauth.d.ts` (new), `server/__tests__/services/quickbooks.service.test.ts` (new), `server/__tests__/services/quickbooks-crypto.test.ts` (new), `server/package-lock.json` (mod), `.claude/hooks/tests/test_r_p2_14.py` (new)
 - Functions: `isQbConfigured()`, `getAuthorizationUrl(companyId)`, `handleCallback(companyId, authCode, realmId)`, `getClient(companyId)`, `syncInvoiceToQBO(companyId, invoiceData)`, `syncBillToQBO(companyId, billData)`, `getConnectionStatus(companyId)`
 - Token encryption: AES-256-GCM before DB storage
 - Acceptance Criteria:

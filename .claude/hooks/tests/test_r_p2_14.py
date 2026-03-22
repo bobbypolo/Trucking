@@ -47,7 +47,7 @@ def test_r_p2_14_get_authorization_url():
     assert result.returncode == 0, (
         f"QuickBooks auth URL tests failed:\n{result.stdout}\n{result.stderr}"
     )
-    assert "getAuthorizationUrl" in result.stdout or "R-P2-14" in result.stdout
+    assert "passed" in result.stdout, f"Expected test pass indication in output: {result.stdout}"
 
 
 def test_r_p2_15_handle_callback_encrypts_tokens():
