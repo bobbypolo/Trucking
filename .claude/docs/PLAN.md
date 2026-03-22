@@ -629,6 +629,18 @@ if (items.length === 0) return <EmptyState icon={<Package />} title="No loads fo
 - R-W3-04a: Each component shows meaningful empty state (icon + text + optional CTA)
 - VPC for each modified component (including Playwright spot-check for page-level components)
 
+**Changes Table**:
+| Action | File | Description | Test |
+|--------|------|-------------|------|
+| MODIFY | components/CommsOverlay.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| MODIFY | components/LoadList.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| MODIFY | components/CommandCenterView.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| MODIFY | components/Settlements.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| MODIFY | components/BrokerManager.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| MODIFY | components/NetworkPortal.tsx | Add LoadingSkeleton, ErrorState, EmptyState integration | .claude/hooks/tests/test_r_w3_02.py |
+| CREATE | components/ui/EmptyState.tsx | Reusable EmptyState component with icon, title, description, CTA | .claude/hooks/tests/test_r_w3_02.py |
+| CREATE | .claude/hooks/tests/test_r_w3_02.py | Python QA tests for R-W3-02a/03a/04a and VPC-402 | .claude/hooks/tests/test_r_w3_02.py |
+
 ### H-403: Loading/Error/Empty States — Batch 2 (5 Components)
 **Requirement IDs**: R-W3-02, R-W3-03, R-W3-04
 **Agent**: Frontend
@@ -646,6 +658,17 @@ Same pattern as H-402 for remaining components.
 | IntelligenceHub | has partial | has partial | YES |
 
 **Done When**: Same criteria as H-402. VPC for each.
+
+#### Changes Table
+
+| Action | File | Purpose | Test File |
+|--------|------|---------|-----------|
+| MODIFY | components/DriverMobileHome.tsx | Add isLoading/loadError/onRetry props, LoadingSkeleton/ErrorState/EmptyState | .claude/hooks/tests/test_r_w3_02b.py |
+| MODIFY | components/IFTAManager.tsx | Add loadError state, LoadingSkeleton/ErrorState/EmptyState early returns | .claude/hooks/tests/test_r_w3_02b.py |
+| MODIFY | components/FileVault.tsx | Add LoadingSkeleton/ErrorState/EmptyState integration | .claude/hooks/tests/test_r_w3_02b.py |
+| MODIFY | components/BookingPortal.tsx | Add initLoading/initError state, LoadingSkeleton/ErrorState/EmptyState | .claude/hooks/tests/test_r_w3_02b.py |
+| MODIFY | components/IntelligenceHub.tsx | Add LoadingSkeleton/ErrorState/EmptyState early returns | .claude/hooks/tests/test_r_w3_02b.py |
+| CREATE | .claude/hooks/tests/test_r_w3_02b.py | Python QA tests for R-W3-02b/03b/04b and VPC-403 | .claude/hooks/tests/test_r_w3_02b.py |
 
 ### H-404: Wave 3 Verification
 **Requirement IDs**: R-W3-01 through R-W3-06
@@ -1286,6 +1309,13 @@ Add `navigator.mediaDevices.getUserMedia()` to Scanner.tsx for live camera captu
 - R-W8-02d: Permission denied → falls back to file picker with no error
 - Unit tests: mock navigator.mediaDevices → verify camera flow
 - VPC for Scanner.tsx
+
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|-----------|
+| MODIFY | src/__tests__/components/Scanner.camera.test.tsx | Fix criteria alignment, add R-W8-02c capture test, add R-W8-02d no-error test | src/__tests__/components/Scanner.camera.test.tsx |
+| MODIFY | .claude/hooks/tests/test_r_w8_02.py | Fix criteria alignment for R-W8-02c (capture) and R-W8-02d (fallback) | .claude/hooks/tests/test_r_w8_02.py |
 
 ### H-903: Configuration Documentation + .env.example
 **Requirement IDs**: R-W8-03
