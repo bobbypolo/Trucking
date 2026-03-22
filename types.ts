@@ -909,6 +909,9 @@ export interface Company {
   dotNumber?: string; // Critical for DOT Compliance
   subscriptionStatus?: "active" | "trial" | "past_due";
   subscriptionTier?: SubscriptionTier;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  subscriptionPeriodEnd?: string;
   maxUsers?: number;
   supportedFreightTypes: FreightType[]; // Multi-selection capability
   defaultFreightType: FreightType;
