@@ -525,8 +525,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": []
     },
@@ -555,8 +555,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": []
     },
@@ -585,8 +585,8 @@
         "unit": "npx vitest run",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": []
     },
