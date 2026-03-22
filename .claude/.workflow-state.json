@@ -1,0 +1,17 @@
+{
+  "needs_verify": null,
+  "stop_block_count": 0,
+  "ralph": {
+    "consecutive_skips": 0,
+    "stories_passed": 0,
+    "stories_skipped": 0,
+    "feature_branch": "ralph/full-saas-integration-sprint",
+    "current_story_id": "",
+    "current_attempt": 1,
+    "max_attempts": 4,
+    "prior_failure_summary": "",
+    "current_step": "",
+    "checkpoint_hash": "",
+    "cumulative_drift_warnings": 0
+  }
+}

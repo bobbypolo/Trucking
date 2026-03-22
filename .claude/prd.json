@@ -1,20 +1,35 @@
 {
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
-  "plan_hash": "6ad60e0cf869bb4e258d5e4f9dc741510ce294f2a49f5762f8ea24114dda6aaa",
+  "plan_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "stories": [
     {
       "id": "S-101",
       "description": "Add subscription_tier column to companies table + wire through sql-auth.ts mapper. ALTER TABLE companies ADD COLUMN subscription_tier VARCHAR(30) DEFAULT 'Records Vault' AFTER subscription_status. Update SqlCompanyRow interface and mapCompanyRowToApiCompany() in server/lib/sql-auth.ts.",
       "phase": 1,
       "phase_type": "migration",
-      "scope": ["server/migrations/027_add_subscription_tier.sql", "server/lib/sql-auth.ts"],
+      "scope": [
+        "server/migrations/027_add_subscription_tier.sql",
+        "server/lib/sql-auth.ts",
+        "server/__tests__/lib/"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P1-01", "criterion": "Migration 027 applies without error and column exists with default Records Vault", "testType": "functional"},
-        {"id": "R-P1-02", "criterion": "mapCompanyRowToApiCompany returns subscriptionTier field, null defaults to Records Vault", "testType": "unit"}
+        {
+          "id": "R-P1-01",
+          "criterion": "Migration 027 applies without error and column exists with default Records Vault",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P1-02",
+          "criterion": "mapCompanyRowToApiCompany returns subscriptionTier field, null defaults to Records Vault",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave1",
@@ -25,14 +40,33 @@
       "description": "Add Stripe columns (stripe_customer_id, stripe_subscription_id, subscription_period_end) to companies table + wire through sql-auth.ts mapper + add Stripe fields to Company interface in types.ts.",
       "phase": 1,
       "phase_type": "migration",
-      "scope": ["server/migrations/028_stripe_subscriptions.sql", "server/lib/sql-auth.ts", "types.ts"],
+      "scope": [
+        "server/migrations/028_stripe_subscriptions.sql",
+        "server/lib/sql-auth.ts",
+        "types.ts"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P1-03", "criterion": "Migration 028 applies and all 3 nullable columns exist in companies table", "testType": "functional"},
-        {"id": "R-P1-04", "criterion": "Company interface in types.ts has stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd fields", "testType": "unit"},
-        {"id": "R-P1-05", "criterion": "mapCompanyRowToApiCompany returns stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd", "testType": "unit"}
+        {
+          "id": "R-P1-03",
+          "criterion": "Migration 028 applies and all 3 nullable columns exist in companies table",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P1-04",
+          "criterion": "Company interface in types.ts has stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd fields",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "mapCompanyRowToApiCompany returns stripeCustomerId, stripeSubscriptionId, subscriptionPeriodEnd",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave1",
@@ -43,15 +77,30 @@
       "description": "Add QuickBooks OAuth token storage table. CREATE TABLE quickbooks_tokens with id, company_id (UNIQUE), realm_id, access_token, refresh_token, token_type, expires_at, created_at, updated_at.",
       "phase": 1,
       "phase_type": "migration",
-      "scope": ["server/migrations/029_quickbooks_tokens.sql"],
+      "scope": [
+        "server/migrations/029_quickbooks_tokens.sql",
+        "server/__tests__/migrations/",
+        "server/__tests__/services/"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P1-06", "criterion": "Migration 029 creates quickbooks_tokens table with UNIQUE constraint on company_id", "testType": "functional"},
-        {"id": "R-P1-07", "criterion": "DOWN migration drops table cleanly", "testType": "functional"}
+        {
+          "id": "R-P1-06",
+          "criterion": "Migration 029 creates quickbooks_tokens table with UNIQUE constraint on company_id",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "DOWN migration drops table cleanly",
+          "testType": "functional"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
-      "passed": false,
-      "verificationRef": "",
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
+      "passed": true,
+      "verificationRef": ".claude/runtime/receipts/S-103/attempt-1/qa-receipt.json",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
@@ -60,13 +109,26 @@
       "description": "Add GPS positions table. CREATE TABLE gps_positions with id, company_id, vehicle_id, driver_id, latitude DECIMAL(10,7), longitude DECIMAL(10,7), speed, heading, recorded_at, provider, provider_vehicle_id, created_at. Index on (company_id, vehicle_id, recorded_at DESC).",
       "phase": 1,
       "phase_type": "migration",
-      "scope": ["server/migrations/030_gps_positions.sql"],
+      "scope": [
+        "server/migrations/030_gps_positions.sql"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P1-08", "criterion": "Migration 030 creates gps_positions table with compound index", "testType": "functional"},
-        {"id": "R-P1-09", "criterion": "Can insert and query positions ordered by recorded_at DESC", "testType": "functional"}
+        {
+          "id": "R-P1-08",
+          "criterion": "Migration 030 creates gps_positions table with compound index",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P1-09",
+          "criterion": "Can insert and query positions ordered by recorded_at DESC",
+          "testType": "functional"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave1",
@@ -77,35 +139,85 @@
       "description": "Create Stripe payment service. npm install stripe. Implement createCheckoutSession, createBillingPortalSession, handleWebhookEvent with tier-to-price mapping, DB updates on webhook events, idempotent event processing, and graceful fallback when STRIPE_SECRET_KEY missing.",
       "phase": 2,
       "phase_type": "service",
-      "scope": ["server/services/stripe.service.ts", "server/package.json"],
+      "scope": [
+        "server/services/stripe.service.ts",
+        "server/package.json"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P2-01", "criterion": "createCheckoutSession returns valid session URL with correct price ID for each of 4 tiers", "testType": "unit"},
-        {"id": "R-P2-02", "criterion": "handleWebhookEvent updates companies table on checkout.session.completed, invoice.payment_failed, customer.subscription.deleted", "testType": "functional"},
-        {"id": "R-P2-03", "criterion": "Webhook is idempotent — same event.id processed twice does not duplicate DB updates", "testType": "unit"},
-        {"id": "R-P2-04", "criterion": "Missing STRIPE_SECRET_KEY returns { available: false, reason: no_api_key }", "testType": "unit"},
-        {"id": "R-P2-05", "criterion": "Invalid webhook signature returns error without crash", "testType": "unit"}
+        {
+          "id": "R-P2-01",
+          "criterion": "createCheckoutSession returns valid session URL with correct price ID for each of 4 tiers",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-02",
+          "criterion": "handleWebhookEvent updates companies table on checkout.session.completed, invoice.payment_failed, customer.subscription.deleted",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P2-03",
+          "criterion": "Webhook is idempotent — same event.id processed twice does not duplicate DB updates",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-04",
+          "criterion": "Missing STRIPE_SECRET_KEY returns { available: false, reason: no_api_key }",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-05",
+          "criterion": "Invalid webhook signature returns error without crash",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave2",
-      "dependsOn": ["S-102"]
+      "dependsOn": [
+        "S-102"
+      ]
     },
     {
       "id": "S-202",
       "description": "Implement Twilio SMS in notification delivery service. npm install twilio. Replace SMS stub in notification-delivery.service.ts with real Twilio client.messages.create(). Graceful fallback when Twilio not configured.",
       "phase": 2,
       "phase_type": "service",
-      "scope": ["server/services/notification-delivery.service.ts", "server/package.json"],
+      "scope": [
+        "server/services/notification-delivery.service.ts",
+        "server/package.json"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P2-06", "criterion": "SMS channel sends via Twilio when configured, returns SENT with message SID", "testType": "unit"},
-        {"id": "R-P2-07", "criterion": "Missing Twilio config returns { status: FAILED, sync_error: Twilio not configured }", "testType": "unit"},
-        {"id": "R-P2-08", "criterion": "Recipients without phone numbers are skipped, not errored", "testType": "unit"},
-        {"id": "R-P2-09", "criterion": "Existing email delivery tests still pass unchanged (regression)", "testType": "unit"}
+        {
+          "id": "R-P2-06",
+          "criterion": "SMS channel sends via Twilio when configured, returns SENT with message SID",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-07",
+          "criterion": "Missing Twilio config returns { status: FAILED, sync_error: Twilio not configured }",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-08",
+          "criterion": "Recipients without phone numbers are skipped, not errored",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-09",
+          "criterion": "Existing email delivery tests still pass unchanged (regression)",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave2",
@@ -116,54 +228,129 @@
       "description": "Create GPS provider interface + Samsara adapter. Provider-agnostic GpsProvider interface with getVehicleLocations/getVehicleLocation. SamsaraAdapter calls Samsara Fleet API with 5s timeout, 60s cache, mock fallback. Factory function getGpsProvider() returns adapter based on GPS_PROVIDER env var.",
       "phase": 2,
       "phase_type": "service",
-      "scope": ["server/services/gps/gps-provider.interface.ts", "server/services/gps/samsara.adapter.ts", "server/services/gps/index.ts"],
+      "scope": [
+        "server/services/gps/gps-provider.interface.ts",
+        "server/services/gps/samsara.adapter.ts",
+        "server/services/gps/index.ts"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P2-10", "criterion": "GpsProvider interface is provider-agnostic with no Samsara-specific types", "testType": "unit"},
-        {"id": "R-P2-11", "criterion": "Samsara adapter returns parsed GpsPosition array from API, with 5s timeout and 60s cache", "testType": "unit"},
-        {"id": "R-P2-12", "criterion": "Missing SAMSARA_API_TOKEN returns mock positions with isMock: true", "testType": "unit"},
-        {"id": "R-P2-13", "criterion": "Factory returns SamsaraAdapter for samsara, throws for unknown provider", "testType": "unit"}
+        {
+          "id": "R-P2-10",
+          "criterion": "GpsProvider interface is provider-agnostic with no Samsara-specific types",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-11",
+          "criterion": "Samsara adapter returns parsed GpsPosition array from API, with 5s timeout and 60s cache",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-12",
+          "criterion": "Missing SAMSARA_API_TOKEN returns mock positions with isMock: true",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-13",
+          "criterion": "Factory returns SamsaraAdapter for samsara, throws for unknown provider",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave2",
-      "dependsOn": ["S-104"]
+      "dependsOn": [
+        "S-104"
+      ]
     },
     {
       "id": "S-204",
       "description": "Create QuickBooks OAuth service. npm install intuit-oauth. Implement getAuthorizationUrl, handleCallback (token exchange + AES-256-GCM encryption), getClient (decrypt + refresh), syncInvoiceToQBO, syncBillToQBO, getConnectionStatus. Graceful fallback when not configured.",
       "phase": 2,
       "phase_type": "service",
-      "scope": ["server/services/quickbooks.service.ts", "server/package.json"],
+      "scope": [
+        "server/services/quickbooks.service.ts",
+        "server/package.json"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P2-14", "criterion": "getAuthorizationUrl returns valid Intuit OAuth URL with correct client_id and redirect_uri", "testType": "unit"},
-        {"id": "R-P2-15", "criterion": "handleCallback exchanges auth code, encrypts tokens with AES-256-GCM, stores in quickbooks_tokens table", "testType": "functional"},
-        {"id": "R-P2-16", "criterion": "getClient decrypts tokens, refreshes if expired, re-encrypts and stores new tokens", "testType": "unit"},
-        {"id": "R-P2-17", "criterion": "syncInvoiceToQBO creates Invoice via Intuit API with correct field mapping", "testType": "unit"},
-        {"id": "R-P2-18", "criterion": "Token encrypt/decrypt roundtrip preserves original token value", "testType": "unit"},
-        {"id": "R-P2-19", "criterion": "Missing env vars returns { available: false, reason: no_api_key }", "testType": "unit"}
+        {
+          "id": "R-P2-14",
+          "criterion": "getAuthorizationUrl returns valid Intuit OAuth URL with correct client_id and redirect_uri",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-15",
+          "criterion": "handleCallback exchanges auth code, encrypts tokens with AES-256-GCM, stores in quickbooks_tokens table",
+          "testType": "functional"
+        },
+        {
+          "id": "R-P2-16",
+          "criterion": "getClient decrypts tokens, refreshes if expired, re-encrypts and stores new tokens",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-17",
+          "criterion": "syncInvoiceToQBO creates Invoice via Intuit API with correct field mapping",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-18",
+          "criterion": "Token encrypt/decrypt roundtrip preserves original token value",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-19",
+          "criterion": "Missing env vars returns { available: false, reason: no_api_key }",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave2",
-      "dependsOn": ["S-103"]
+      "dependsOn": [
+        "S-103"
+      ]
     },
     {
       "id": "S-205",
       "description": "Remove weather feature flag. Modify weather.service.ts to remove WEATHER_ENABLED check, keep WEATHER_API_KEY presence check following FMCSA pattern. Update tests to remove WEATHER_ENABLED references.",
       "phase": 2,
       "phase_type": "service",
-      "scope": ["server/services/weather.service.ts", "server/__tests__/services/weather.service.test.ts"],
+      "scope": [
+        "server/services/weather.service.ts",
+        "server/__tests__/services/weather.service.test.ts"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P2-20", "criterion": "Weather works when WEATHER_API_KEY set (no WEATHER_ENABLED needed)", "testType": "unit"},
-        {"id": "R-P2-21", "criterion": "Returns { available: false, reason: no_api_key } when key not set", "testType": "unit"},
-        {"id": "R-P2-22", "criterion": "No reference to WEATHER_ENABLED remains in codebase", "testType": "unit"}
+        {
+          "id": "R-P2-20",
+          "criterion": "Weather works when WEATHER_API_KEY set (no WEATHER_ENABLED needed)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-21",
+          "criterion": "Returns { available: false, reason: no_api_key } when key not set",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-22",
+          "criterion": "No reference to WEATHER_ENABLED remains in codebase",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave2",
@@ -174,70 +361,155 @@
       "description": "Add Stripe webhook + checkout routes. POST /api/stripe/create-checkout-session (requireAuth), POST /api/stripe/create-billing-portal (requireAuth), POST /api/stripe/webhook (NO auth, raw body). Webhook route registered BEFORE express.json() in index.ts.",
       "phase": 3,
       "phase_type": "route",
-      "scope": ["server/routes/stripe.ts", "server/index.ts"],
+      "scope": [
+        "server/routes/stripe.ts",
+        "server/index.ts"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P3-01", "criterion": "POST /api/stripe/create-checkout-session returns 200 with sessionId and url when Stripe configured", "testType": "integration"},
-        {"id": "R-P3-02", "criterion": "POST /api/stripe/create-checkout-session returns 401 without auth token", "testType": "integration"},
-        {"id": "R-P3-03", "criterion": "POST /api/stripe/webhook returns 200 on valid event, 400 on invalid signature", "testType": "integration"},
-        {"id": "R-P3-04", "criterion": "Webhook endpoint accessible without auth token (public)", "testType": "integration"}
+        {
+          "id": "R-P3-01",
+          "criterion": "POST /api/stripe/create-checkout-session returns 200 with sessionId and url when Stripe configured",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-02",
+          "criterion": "POST /api/stripe/create-checkout-session returns 401 without auth token",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-03",
+          "criterion": "POST /api/stripe/webhook returns 200 on valid event, 400 on invalid signature",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "Webhook endpoint accessible without auth token (public)",
+          "testType": "integration"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
-      "dependsOn": ["S-201"]
+      "dependsOn": [
+        "S-201"
+      ]
     },
     {
       "id": "S-302",
       "description": "Replace QuickBooks 501 stub with real routes. Create server/routes/quickbooks.ts with GET /api/quickbooks/auth-url, GET /api/quickbooks/callback, POST /api/quickbooks/sync-invoice, POST /api/quickbooks/sync-bill, GET /api/quickbooks/status. Remove 501 stub from accounting.ts.",
       "phase": 3,
       "phase_type": "route",
-      "scope": ["server/routes/quickbooks.ts", "server/routes/accounting.ts", "server/index.ts"],
+      "scope": [
+        "server/routes/quickbooks.ts",
+        "server/routes/accounting.ts",
+        "server/index.ts"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P3-05", "criterion": "501 stub removed from accounting.ts", "testType": "unit"},
-        {"id": "R-P3-06", "criterion": "GET /api/quickbooks/auth-url returns OAuth URL when configured, 503 when not", "testType": "integration"},
-        {"id": "R-P3-07", "criterion": "POST /api/quickbooks/sync-invoice syncs invoice and returns QBO reference ID", "testType": "integration"},
-        {"id": "R-P3-08", "criterion": "All routes enforce requireAuth + requireTenant", "testType": "integration"}
+        {
+          "id": "R-P3-05",
+          "criterion": "501 stub removed from accounting.ts",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-06",
+          "criterion": "GET /api/quickbooks/auth-url returns OAuth URL when configured, 503 when not",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-07",
+          "criterion": "POST /api/quickbooks/sync-invoice syncs invoice and returns QBO reference ID",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-08",
+          "criterion": "All routes enforce requireAuth + requireTenant",
+          "testType": "integration"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
-      "dependsOn": ["S-204"]
+      "dependsOn": [
+        "S-204"
+      ]
     },
     {
       "id": "S-303",
       "description": "Add GPS live tracking route. GET /api/tracking/live (requireAuth) and POST /api/tracking/webhook (X-GPS-API-Key header auth). Live route calls getGpsProvider() and stores positions in gps_positions table. Existing GET /api/loads/tracking unchanged.",
       "phase": 3,
       "phase_type": "route",
-      "scope": ["server/routes/tracking.ts"],
+      "scope": [
+        "server/routes/tracking.ts"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P3-09", "criterion": "GET /api/tracking/live returns positions from GPS provider, stores in DB", "testType": "integration"},
-        {"id": "R-P3-10", "criterion": "POST /api/tracking/webhook validates X-GPS-API-Key header, rejects invalid/missing", "testType": "integration"},
-        {"id": "R-P3-11", "criterion": "Existing GET /api/loads/tracking still works unchanged (backward compatible)", "testType": "integration"}
+        {
+          "id": "R-P3-09",
+          "criterion": "GET /api/tracking/live returns positions from GPS provider, stores in DB",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-10",
+          "criterion": "POST /api/tracking/webhook validates X-GPS-API-Key header, rejects invalid/missing",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P3-11",
+          "criterion": "Existing GET /api/loads/tracking still works unchanged (backward compatible)",
+          "testType": "integration"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
-      "dependsOn": ["S-203"]
+      "dependsOn": [
+        "S-203"
+      ]
     },
     {
       "id": "S-304",
       "description": "Wire legacy sendNotification in server/helpers.ts to real notification-delivery service. Replace logger-only stub with async call to deliverNotification(). Fire-and-forget pattern.",
       "phase": 3,
       "phase_type": "wiring",
-      "scope": ["server/helpers.ts"],
+      "scope": [
+        "server/helpers.ts"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P3-12", "criterion": "sendNotification calls deliverNotification with channel email and correct recipients", "testType": "unit"},
-        {"id": "R-P3-13", "criterion": "Notification failure does NOT throw (fire-and-forget, catches errors)", "testType": "unit"},
-        {"id": "R-P3-14", "criterion": "Empty emails array is a no-op", "testType": "unit"}
+        {
+          "id": "R-P3-12",
+          "criterion": "sendNotification calls deliverNotification with channel email and correct recipients",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-13",
+          "criterion": "Notification failure does NOT throw (fire-and-forget, catches errors)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-14",
+          "criterion": "Empty emails array is a no-op",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
@@ -248,13 +520,26 @@
       "description": "Update .env.example with all new integration environment variables. Add Stripe (6 vars), Twilio (3 vars), QuickBooks (5 vars), GPS (3 vars) sections. Remove WEATHER_ENABLED.",
       "phase": 3,
       "phase_type": "docs",
-      "scope": [".env.example"],
+      "scope": [
+        ".env.example"
+      ],
       "complexity": "simple",
       "acceptanceCriteria": [
-        {"id": "R-P3-15", "criterion": "All integration env vars documented with descriptions and required/optional status", "testType": "unit"},
-        {"id": "R-P3-16", "criterion": "No real API keys or secrets in the file", "testType": "unit"}
+        {
+          "id": "R-P3-15",
+          "criterion": "All integration env vars documented with descriptions and required/optional status",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-16",
+          "criterion": "No real API keys or secrets in the file",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
@@ -265,13 +550,26 @@
       "description": "Clean up IFTA client-side stub comment in services/dispatchIntelligence.ts. Update comment to accurately describe server-side IFTA calculation. netTaxDue = 0 stays.",
       "phase": 3,
       "phase_type": "docs",
-      "scope": ["services/dispatchIntelligence.ts"],
+      "scope": [
+        "services/dispatchIntelligence.ts"
+      ],
       "complexity": "trivial",
       "acceptanceCriteria": [
-        {"id": "R-P3-17", "criterion": "Comment accurately describes server-side IFTA calculation via /api/accounting/ifta-summary", "testType": "unit"},
-        {"id": "R-P3-18", "criterion": "netTaxDue = 0 unchanged and existing IFTA tests pass", "testType": "unit"}
+        {
+          "id": "R-P3-17",
+          "criterion": "Comment accurately describes server-side IFTA calculation via /api/accounting/ifta-summary",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-18",
+          "criterion": "netTaxDue = 0 unchanged and existing IFTA tests pass",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "npx vitest run",
+        "lint": "npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave3",
@@ -282,95 +580,211 @@
       "description": "Replace Auth.tsx payment form with Stripe Checkout redirect. Remove cardNumber/cardExpiry/cardCVC state vars and inline inputs. Add Subscribe with Stripe button and Start Free Trial button. Handle Stripe return URL with session_id verification.",
       "phase": 4,
       "phase_type": "frontend",
-      "scope": ["components/Auth.tsx"],
+      "scope": [
+        "components/Auth.tsx"
+      ],
       "complexity": "complex",
       "acceptanceCriteria": [
-        {"id": "R-P4-01", "criterion": "No input for card number, expiry, or CVC exists in rendered output (PCI compliance)", "testType": "unit"},
-        {"id": "R-P4-02", "criterion": "Subscribe with Stripe button calls checkout session API with successUrl and cancelUrl", "testType": "unit"},
-        {"id": "R-P4-03", "criterion": "Start Free Trial button bypasses payment, logs in with trial status", "testType": "unit"},
-        {"id": "R-P4-04", "criterion": "When Stripe not configured, payment step auto-falls through to trial", "testType": "unit"},
-        {"id": "R-P4-05", "criterion": "Existing signup flow tests still pass (regression)", "testType": "unit"}
+        {
+          "id": "R-P4-01",
+          "criterion": "No input for card number, expiry, or CVC exists in rendered output (PCI compliance)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "Subscribe with Stripe button calls checkout session API with successUrl and cancelUrl",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "Start Free Trial button bypasses payment, logs in with trial status",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "When Stripe not configured, payment step auto-falls through to trial",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "Existing signup flow tests still pass (regression)",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "npx vitest run",
+        "lint": "npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave4",
-      "dependsOn": ["S-301"]
+      "dependsOn": [
+        "S-301"
+      ]
     },
     {
       "id": "S-402",
       "description": "Add subscription management and QuickBooks connection to CompanyProfile. Billing section with tier badge, status, period end. Manage Subscription and Connect QuickBooks buttons with redirect. Hide sections when not configured.",
       "phase": 4,
       "phase_type": "frontend",
-      "scope": ["components/CompanyProfile.tsx"],
+      "scope": [
+        "components/CompanyProfile.tsx"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P4-06", "criterion": "Billing section shows current tier name and status badge", "testType": "unit"},
-        {"id": "R-P4-07", "criterion": "Manage Subscription button calls billing portal API and redirects", "testType": "unit"},
-        {"id": "R-P4-08", "criterion": "Connect QuickBooks button calls auth-url API and redirects", "testType": "unit"},
-        {"id": "R-P4-09", "criterion": "Sections hidden when API returns 503 (not configured)", "testType": "unit"}
+        {
+          "id": "R-P4-06",
+          "criterion": "Billing section shows current tier name and status badge",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "Manage Subscription button calls billing portal API and redirects",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "Connect QuickBooks button calls auth-url API and redirects",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "Sections hidden when API returns 503 (not configured)",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "npx vitest run",
+        "lint": "npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave4",
-      "dependsOn": ["S-301", "S-302"]
+      "dependsOn": [
+        "S-301",
+        "S-302"
+      ]
     },
     {
       "id": "S-403",
       "description": "Update GlobalMapViewEnhanced to consume live GPS data from /api/tracking/live. Poll every 30s, merge live positions with static data, pulsing indicator for live positions, cleanup on unmount.",
       "phase": 4,
       "phase_type": "frontend",
-      "scope": ["components/GlobalMapViewEnhanced.tsx"],
+      "scope": [
+        "components/GlobalMapViewEnhanced.tsx"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P4-10", "criterion": "Map shows live GPS positions when API returns data, updates every 30 seconds", "testType": "unit"},
-        {"id": "R-P4-11", "criterion": "Fallback to static data when GPS provider not configured (no visual regression)", "testType": "unit"},
-        {"id": "R-P4-12", "criterion": "Polling stops on component unmount (cleanup — no memory leak)", "testType": "unit"}
+        {
+          "id": "R-P4-10",
+          "criterion": "Map shows live GPS positions when API returns data, updates every 30 seconds",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-11",
+          "criterion": "Fallback to static data when GPS provider not configured (no visual regression)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-12",
+          "criterion": "Polling stops on component unmount (cleanup — no memory leak)",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "npx vitest run", "lint": "npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "npx vitest run",
+        "lint": "npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": "wave4",
-      "dependsOn": ["S-303"]
+      "dependsOn": [
+        "S-303"
+      ]
     },
     {
       "id": "S-501",
       "description": "Create subscription tier enforcement middleware. requireTier(...allowedTiers) factory checks subscription_tier + subscription_status from companies table. Allows active/trial, blocks past_due or wrong tier. Caches per-request.",
       "phase": 5,
       "phase_type": "middleware",
-      "scope": ["server/middleware/requireTier.ts"],
+      "scope": [
+        "server/middleware/requireTier.ts"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P5-01", "criterion": "Allowed tier + active status calls next()", "testType": "unit"},
-        {"id": "R-P5-02", "criterion": "Disallowed tier returns 403 with required_tiers, current_tier, upgrade_url", "testType": "unit"},
-        {"id": "R-P5-03", "criterion": "Past_due status returns 403 regardless of tier", "testType": "unit"},
-        {"id": "R-P5-04", "criterion": "Missing tier defaults to Records Vault", "testType": "unit"},
-        {"id": "R-P5-05", "criterion": "Tier lookup cached per-request (1 DB query even with multiple requireTier calls)", "testType": "unit"}
+        {
+          "id": "R-P5-01",
+          "criterion": "Allowed tier + active status calls next()",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-02",
+          "criterion": "Disallowed tier returns 403 with required_tiers, current_tier, upgrade_url",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-03",
+          "criterion": "Past_due status returns 403 regardless of tier",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-04",
+          "criterion": "Missing tier defaults to Records Vault",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-05",
+          "criterion": "Tier lookup cached per-request (1 DB query even with multiple requireTier calls)",
+          "testType": "unit"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": null,
-      "dependsOn": ["S-101"]
+      "dependsOn": [
+        "S-101"
+      ]
     },
     {
       "id": "S-502",
       "description": "Apply tier gates to premium routes. Add requireTier() middleware to AI endpoints (Automation Pro+), fleet management (Fleet Core+), enterprise analytics (Fleet Command). Records Vault base tier remains ungated.",
       "phase": 5,
       "phase_type": "route",
-      "scope": ["server/routes/ai.ts"],
+      "scope": [
+        "server/routes/ai.ts"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
-        {"id": "R-P5-06", "criterion": "AI endpoints return 403 for Records Vault tier, 200 for Automation Pro", "testType": "integration"},
-        {"id": "R-P5-07", "criterion": "Base CRUD endpoints (loads, quotes, invoices) accessible by Records Vault tier (regression)", "testType": "integration"},
-        {"id": "R-P5-08", "criterion": "GPS tracking returns 403 for Records Vault and Automation Pro, 200 for Fleet Core+", "testType": "integration"}
+        {
+          "id": "R-P5-06",
+          "criterion": "AI endpoints return 403 for Records Vault tier, 200 for Automation Pro",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P5-07",
+          "criterion": "Base CRUD endpoints (loads, quotes, invoices) accessible by Records Vault tier (regression)",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P5-08",
+          "criterion": "GPS tracking returns 403 for Records Vault and Automation Pro, 200 for Fleet Core+",
+          "testType": "integration"
+        }
       ],
-      "gateCmds": {"unit": "cd server && npx vitest run", "lint": "cd server && npx tsc --noEmit"},
+      "gateCmds": {
+        "unit": "cd server && npx vitest run",
+        "lint": "cd server && npx tsc --noEmit"
+      },
       "passed": false,
       "verificationRef": "",
       "parallelGroup": null,
-      "dependsOn": ["S-501"]
+      "dependsOn": [
+        "S-501"
+      ]
     }
   ]
 }
