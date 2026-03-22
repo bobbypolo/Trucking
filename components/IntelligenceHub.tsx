@@ -1833,6 +1833,7 @@ const IntelligenceHub: React.FC<{
         {onAction && (
           <button
             onClick={onAction}
+            aria-label={`Add ${title}`}
             className="p-2 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -2313,6 +2314,7 @@ const IntelligenceHub: React.FC<{
             <button
               className="p-2 bg-white/5 rounded-xl text-slate-500 hover:text-white"
               onClick={onClose}
+              aria-label="Close detail panel"
             >
               <X className="w-5 h-5" />
             </button>
@@ -2597,6 +2599,7 @@ const IntelligenceHub: React.FC<{
                     </div>
                     <button
                       onClick={handleInitiateGlobalInbound}
+                      aria-label="Initiate global inbound"
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[9px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
                     >
                       <Plus className="w-3 h-3" />
