@@ -1,5 +1,9 @@
 # Tests R-P3-17, R-P3-18
-"""S-306: Verify IFTA comment accuracy and netTaxDue = 0 preservation."""
+# Covers: services/dispatchIntelligence.ts (comment-only changes)
+"""S-306: Verify IFTA comment accuracy and netTaxDue = 0 preservation.
+
+Validates content from dispatchIntelligence module via file reads (comment-only docs change).
+"""
 import re
 from pathlib import Path
 
