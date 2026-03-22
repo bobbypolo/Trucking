@@ -40,16 +40,16 @@ describe("R-P2-18: AES-256-GCM token encrypt/decrypt roundtrip", () => {
   });
 
   it("different IVs produce different ciphertexts for same plaintext", () => {
-    const token = "same-token-for-both";
+    const plaintext = "same-value-for-both";
 
     const iv1 = randomBytes(12);
     const cipher1 = createCipheriv("aes-256-gcm", key, iv1);
-    const enc1 = Buffer.concat([cipher1.update(token, "utf8"), cipher1.final()]);
+    const enc1 = Buffer.concat([cipher1.update(plaintext, "utf8"), cipher1.final()]);
     const stored1 = Buffer.concat([iv1, cipher1.getAuthTag(), enc1]).toString("base64");
 
     const iv2 = randomBytes(12);
     const cipher2 = createCipheriv("aes-256-gcm", key, iv2);
-    const enc2 = Buffer.concat([cipher2.update(token, "utf8"), cipher2.final()]);
+    const enc2 = Buffer.concat([cipher2.update(plaintext, "utf8"), cipher2.final()]);
     const stored2 = Buffer.concat([iv2, cipher2.getAuthTag(), enc2]).toString("base64");
 
     // Different IVs mean different ciphertexts
@@ -66,16 +66,16 @@ describe("R-P2-18: AES-256-GCM token encrypt/decrypt roundtrip", () => {
     dec2.setAuthTag(raw2.subarray(12, 28));
     const plain2 = Buffer.concat([dec2.update(raw2.subarray(28)), dec2.final()]).toString("utf8");
 
-    expect(plain1).toBe(token);
-    expect(plain2).toBe(token);
+    expect(plain1).toBe(plaintext);
+    expect(plain2).toBe(plaintext);
   });
 
   it("tampered ciphertext fails authentication", () => {
-    const token = "sensitive-token";
+    const plaintext = "sensitive-data-value";
 
     const iv = randomBytes(12);
     const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const encrypted = Buffer.concat([cipher.update(token, "utf8"), cipher.final()]);
+    const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
     const stored = Buffer.concat([iv, cipher.getAuthTag(), encrypted]);
 
     // Tamper with the ciphertext (flip a bit)
