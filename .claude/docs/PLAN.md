@@ -730,6 +730,25 @@ Common icon buttons to find: close (X), delete (Trash2), edit (Pencil), expand (
 - R-W4-05a: Heading elements in Batch 1 follow sequential order (H1→H2→H3) — no skipped levels
 - VPC for modified components
 
+
+**Changes Table**:
+
+| Action | File | Description | Test File |
+|--------|------|-------------|----------|
+| MODIFY | components/IntelligenceHub.tsx | Add aria-labels to 3 icon-only buttons | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/AccountingPortal.tsx | Add aria-labels to 3 icon-only buttons, fix heading hierarchy h3->h2 | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/Dashboard.tsx | Fix heading hierarchy h3->h2, h4->h3 | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/QuoteManager.tsx | Add aria-labels to 2 icon-only buttons | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/BookingPortal.tsx | Add aria-labels to 2 icon-only buttons | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/NetworkPortal.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/SafetyView.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/BrokerManager.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/Settlements.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/IFTAManager.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/ExportModal.tsx | Add aria-label to 1 icon-only button | .claude/hooks/tests/test_r_w4_02.py |
+| MODIFY | components/FileVault.tsx | Add aria-labels to 3 icon-only buttons | .claude/hooks/tests/test_r_w4_02.py |
+| CREATE | .claude/hooks/tests/test_r_w4_02.py | Python QA tests for R-W4-02a, R-W4-05a, R-W4-VPC-502 | .claude/hooks/tests/test_r_w4_02.py |
+
 ### H-503: Focus Trap for Modal Dialogs
 **Requirement IDs**: R-W4-03
 **Agent**: Frontend
