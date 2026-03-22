@@ -150,12 +150,20 @@ def test_webhook_route_is_public():
         "router.post('/api/stripe/webhook'...) not found in stripe.ts"
     )
     middleware_args = webhook_match.group(1)
-    assert "requireAuth" not in middleware_args, (
-        "Webhook route must NOT use requireAuth (it must be public). "
-        f"Found middleware: {middleware_args}"
+    # Count auth middleware occurrences -- must be exactly 0
+    auth_count = middleware_args.count("requireAuth")
+    tenant_count = middleware_args.count("requireTenant")
+    assert auth_count == 0, (
+        f"Webhook route has {auth_count} requireAuth references "
+        f"(expected 0 for public endpoint)"
     )
-    assert "requireTenant" not in middleware_args, (
-        "Webhook route must NOT use requireTenant (it must be public)"
+    assert tenant_count == 0, (
+        f"Webhook route has {tenant_count} requireTenant references "
+        f"(expected 0 for public endpoint)"
+    )
+    # Verify express.raw is used instead of express.json for webhook
+    assert "express.raw" in middleware_args, (
+        "Webhook route must use express.raw() for raw body access"
     )
 
 
@@ -181,7 +189,7 @@ def test_billing_portal_endpoint_defined():
 
 # ---- Negative / error tests ----
 
-def test_checkout_session_handles_stripe_not_configured():
+def test_checkout_session_error_when_stripe_not_configured():
     """R-P3-01 (negative): checkout session returns 503 when Stripe not configured."""
     content = _read_route()
     assert "503" in content, (
@@ -192,7 +200,7 @@ def test_checkout_session_handles_stripe_not_configured():
     )
 
 
-def test_webhook_handles_missing_signature():
+def test_webhook_reject_missing_signature():
     """R-P3-03 (negative): webhook returns 400 when signature header is missing."""
     content = _read_route()
     assert "Missing stripe-signature" in content, (
@@ -200,7 +208,7 @@ def test_webhook_handles_missing_signature():
     )
 
 
-def test_checkout_session_handles_invalid_tier():
+def test_checkout_session_invalid_tier_returns_error():
     """R-P3-01 (negative): checkout session returns error for invalid tier."""
     content = _read_route()
     assert "invalid_tier" in content, (
@@ -208,7 +216,7 @@ def test_checkout_session_handles_invalid_tier():
     )
 
 
-def test_billing_portal_handles_missing_customer_id():
+def test_billing_portal_reject_missing_customer_id():
     """R-P3-01 (negative): billing portal returns 400 when customerId missing."""
     content = _read_route()
     assert "stripeCustomerId is required" in content, (
