@@ -140,32 +140,49 @@ def test_no_duplicate_ids(component):
 # and the gate command (npx tsc --noEmit)
 def test_batch2_component_count():
     """R-W4-VPC-506: All 18 batch-2 components exist and are readable."""
+    assert len(BATCH_2_COMPONENTS) == 18, "Expected exactly 18 batch-2 components"
     for comp in BATCH_2_COMPONENTS:
         fullpath = os.path.join(PROJECT_ROOT, comp)
         assert os.path.isfile(fullpath), f"Component {comp} not found"
         lines = _read_component(comp)
         assert len(lines) > 10, f"Component {comp} seems empty"
+        # Verify file contains valid JSX/TSX content
+        content = "".join(lines)
+        assert "export" in content or "function" in content, (
+            f"{comp} does not appear to be a valid React component"
+        )
 
 
 def test_batch2_accessibility_attributes_present():
     """R-W4-VPC-506: Components with form elements have accessibility attributes."""
+    components_with_inputs = 0
     for comp in BATCH_2_COMPONENTS:
         lines = _read_component(comp)
         content = "".join(lines)
         # Count form elements (excluding hidden/file/checkbox)
         inputs = re.findall(r"<(input|select|textarea)", content)
         labels = re.findall(r"htmlFor=|aria-label=", content)
-        # At least some accessibility attributes should exist
         if len(inputs) > 0:
-            assert len(labels) > 0, (
+            components_with_inputs += 1
+            # Every component with inputs must have at least one label attribute
+            assert len(labels) >= 1, (
                 f"{comp} has {len(inputs)} form elements but no htmlFor/aria-label"
             )
+            # Label count should match or exceed input count (each input gets a label)
+            unlabeled = _find_unlabeled_inputs(lines)
+            assert unlabeled == [], (
+                f"{comp} has unlabeled form elements at lines: {unlabeled}"
+            )
+    # At least some batch-2 components should have form elements
+    assert components_with_inputs >= 5, (
+        f"Expected at least 5 components with form elements, found {components_with_inputs}"
+    )
 
 
-# --- Negative tests: prove the detection logic catches real problems ---
+# --- Negative / edge / boundary tests ---
 
 
-def test_unlabeled_input_detected():
+def test_fail_unlabeled_input_detected():
     """R-W4-01d (negative): _find_unlabeled_inputs catches a bare <input> with no label."""
     lines = [
         "<div>" + chr(10),
@@ -176,7 +193,32 @@ def test_unlabeled_input_detected():
     assert unlabeled == [2], f"Expected unlabeled at line 2, got {unlabeled}"
 
 
-def test_labeled_input_not_flagged():
+def test_reject_select_without_label():
+    """R-W4-01d (negative): bare <select> without id or aria-label is flagged."""
+    lines = [
+        "<div>" + chr(10),
+        '  <select className="w-full">' + chr(10),
+        "    <option>A</option>" + chr(10),
+        "  </select>" + chr(10),
+        "</div>" + chr(10),
+    ]
+    unlabeled = _find_unlabeled_inputs(lines)
+    assert unlabeled == [2], f"Expected unlabeled select at line 2, got {unlabeled}"
+
+
+def test_reject_textarea_without_label():
+    """R-W4-01d (negative): bare <textarea> without id or aria-label is flagged."""
+    lines = [
+        "<div>" + chr(10),
+        '  <textarea className="w-full">' + chr(10),
+        "  </textarea>" + chr(10),
+        "</div>" + chr(10),
+    ]
+    unlabeled = _find_unlabeled_inputs(lines)
+    assert unlabeled == [2], f"Expected unlabeled textarea at line 2, got {unlabeled}"
+
+
+def test_invalid_labeled_input_not_flagged():
     """R-W4-01d (negative): _find_unlabeled_inputs allows inputs with id or aria-label."""
     lines_id = ['<input id="myInput" type="text" />' + chr(10)]
     assert _find_unlabeled_inputs(lines_id) == []
@@ -185,8 +227,8 @@ def test_labeled_input_not_flagged():
     assert _find_unlabeled_inputs(lines_aria) == []
 
 
-def test_hidden_and_file_inputs_skipped():
-    """R-W4-01d (negative): hidden and file inputs are excluded from labeling checks."""
+def test_boundary_hidden_and_file_inputs_skipped():
+    """R-W4-01d (boundary): hidden and file inputs are excluded from labeling checks."""
     lines = [
         '<input type="hidden" name="csrf" />' + chr(10),
         '<input type="file" accept=".csv" />' + chr(10),
@@ -194,8 +236,51 @@ def test_hidden_and_file_inputs_skipped():
     assert _find_unlabeled_inputs(lines) == []
 
 
-def test_duplicate_id_detected():
+def test_boundary_checkbox_inputs_skipped():
+    """R-W4-01d (boundary): checkbox inputs are excluded from labeling checks."""
+    lines = [
+        '<input type="checkbox" checked />' + chr(10),
+    ]
+    assert _find_unlabeled_inputs(lines) == []
+
+
+def test_fail_duplicate_id_detected():
     """R-W4-01d (negative): _find_duplicate_ids catches repeated id values."""
     content = '<input id="dup" /><select id="dup" />'
     dupes = _find_duplicate_ids(content)
     assert dupes == {"dup"}
+
+
+def test_edge_sr_only_label_detected():
+    """R-W4-01d (edge): sr-only labels are detected as accessibility issue."""
+    content = '<label htmlFor="x" class="sr-only">Hidden</label><input id="x" />'
+    assert _has_sr_only_labels(content) is True
+
+    content_visible = (
+        '<label htmlFor="x" class="text-sm">Visible</label><input id="x" />'
+    )
+    assert _has_sr_only_labels(content_visible) is False
+
+
+def test_edge_wrapped_in_label_accepted():
+    """R-W4-01d (edge): input wrapped in parent <label> element is accepted."""
+    lines = [
+        '<label className="block">' + chr(10),
+        "  Select File" + chr(10),
+        '  <input type="text" className="w-full" />' + chr(10),
+        "</label>" + chr(10),
+    ]
+    assert _find_unlabeled_inputs(lines) == []
+
+
+def test_edge_empty_component_no_inputs():
+    """R-W4-01d (edge): component with no form elements has zero unlabeled inputs."""
+    lines = [
+        "<div>" + chr(10),
+        "  <h1>Title</h1>" + chr(10),
+        "  <p>Content</p>" + chr(10),
+        "</div>" + chr(10),
+    ]
+    assert _find_unlabeled_inputs(lines) == []
+    content = "".join(lines)
+    assert _find_duplicate_ids(content) == set()
