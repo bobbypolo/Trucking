@@ -281,7 +281,13 @@
       "phase_type": "service",
       "scope": [
         "server/services/quickbooks.service.ts",
-        "server/package.json"
+        "server/package.json",
+        "server/package-lock.json",
+        "server/types/intuit-oauth.d.ts",
+        "server/__tests__/services/quickbooks.service.test.ts",
+        "server/__tests__/services/quickbooks-crypto.test.ts",
+        ".claude/hooks/tests/test_r_p2_14.py",
+        ".claude/docs/PLAN.md"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -320,8 +326,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
         "S-103"
@@ -358,8 +364,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": []
     },
