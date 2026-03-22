@@ -178,8 +178,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
         "S-102"
@@ -192,7 +192,11 @@
       "phase_type": "service",
       "scope": [
         "server/services/notification-delivery.service.ts",
-        "server/package.json"
+        "server/package.json",
+        "server/package-lock.json",
+        "server/__tests__/services/notification-delivery-sms.service.test.ts",
+        "server/__tests__/services/notification-delivery.service.test.ts",
+        ".claude/hooks/tests/test_r_p2_06.py"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -221,8 +225,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": []
     },
@@ -263,8 +267,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
         "S-104"
