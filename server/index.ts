@@ -50,23 +50,21 @@ import notificationJobsRouter from "./routes/notification-jobs";
 import vaultDocsRouter from "./routes/vault-docs";
 import documentsRouter from "./routes/documents";
 import healthRouter from "./routes/health";
+import quickbooksRouter from "./routes/quickbooks";
+import stripeRouter from "./routes/stripe";
 
 const app = express();
 const port = process.env.PORT || 5000;
 
-// Trust proxy headers (X-Forwarded-For) when behind reverse proxies (Cloud Run, Cloudflare Tunnel)
-app.set("trust proxy", 1);
-
+app.set("trust proxy", 1); // Trust proxy headers behind reverse proxies
 app.use(helmet());
 app.use(compression());
 app.use(cors({ origin: getCorsOrigin(), credentials: true }));
+app.use(stripeRouter); // BEFORE express.json() so webhook receives raw body
 app.use(express.json());
 app.use(correlationId);
 app.use(metricsMiddleware);
-
-// Health check — unauthenticated, used by load balancers; registered before rate limiter
-// so high-frequency polling from GCP/ALB does not consume rate-limit budget.
-app.use(healthRouter);
+app.use(healthRouter); // Unauthenticated, before rate limiter
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -86,6 +84,7 @@ app.use(dispatchRouter);
 app.use(complianceRouter);
 app.use(incidentsRouter);
 app.use(accountingRouter);
+app.use(quickbooksRouter);
 app.use(exceptionsRouter);
 app.use(trackingRouter);
 app.use(weatherRouter);

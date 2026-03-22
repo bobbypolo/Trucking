@@ -1158,16 +1158,4 @@ router.post(
   },
 );
 
-// QB Sync — not yet implemented
-router.post(
-  "/api/accounting/sync-qb",
-  requireAuth,
-  requireTenant,
-  (_req: any, res: any) => {
-    res
-      .status(501)
-      .json({ error: "QuickBooks integration is not yet available." });
-  },
-);
-
 export default router;

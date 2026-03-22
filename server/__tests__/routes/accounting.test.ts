@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Tests R-P3-09, R-P3-11
+// Tests R-P3-05
 
 /**
- * Accounting Route — Unimplemented Feature Tests
+ * Accounting Route - QuickBooks Stub Removal Verification
  *
  * Verifies that:
- *   - POST /api/accounting/sync-qb returns 501 (R-P3-09)
- *   - No "Sync queued" text appears in the response body (R-P3-11)
+ *   - POST /api/accounting/sync-qb no longer exists (R-P3-05: stub removed by S-302)
+ *   - QuickBooks functionality has moved to /api/quickbooks/* routes
  */
 
 const TEST_TENANT_ID = "tenant-test-abc123";
@@ -129,47 +129,28 @@ beforeEach(() => {
 });
 
 // ============================================================
-// R-P3-09: POST /api/accounting/sync-qb returns 501
+// R-P3-05: 501 stub removed from accounting.ts (S-302)
 // ============================================================
 
-describe("R-P3-09: POST /api/accounting/sync-qb returns 501", () => {
-  it("returns HTTP 501 with unimplemented error message", async () => {
+describe("R-P3-05: POST /api/accounting/sync-qb stub removed", () => {
+  it("POST /api/accounting/sync-qb no longer exists (returns 404)", async () => {
     const app = buildApp();
     const res = await request(app)
       .post("/api/accounting/sync-qb")
       .set("Authorization", AUTH_HEADER)
       .send();
 
-    expect(res.status).toBe(501);
-    expect(res.body.error).toBeTruthy();
-    expect(res.body.error).toContain("QuickBooks");
+    // Route was removed - should be 404 (no matching route in accounting router)
+    expect(res.status).toBe(404);
   });
 
-  it("does not return 200 or fake success for sync-qb", async () => {
-    const app = buildApp();
-    const res = await request(app)
-      .post("/api/accounting/sync-qb")
-      .set("Authorization", AUTH_HEADER)
-      .send();
-
-    expect(res.status).not.toBe(200);
-    expect(res.status).not.toBe(201);
-  });
-});
-
-// ============================================================
-// R-P3-11: Response body does not contain "Sync queued"
-// ============================================================
-
-describe("R-P3-11: sync-qb response does not contain Sync queued text", () => {
-  it("response body does not contain 'Sync queued'", async () => {
-    const app = buildApp();
-    const res = await request(app)
-      .post("/api/accounting/sync-qb")
-      .set("Authorization", AUTH_HEADER)
-      .send();
-
-    const bodyText = JSON.stringify(res.body);
-    expect(bodyText).not.toContain("Sync queued");
+  it("accounting.ts source does not contain 501 stub", async () => {
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    const accountingPath = path.resolve(__dirname, "../../routes/accounting.ts");
+    const content = fs.readFileSync(accountingPath, "utf8");
+    expect(content).not.toContain("501");
+    expect(content).not.toContain("QuickBooks integration is not yet available");
+    expect(content).not.toContain("sync-qb");
   });
 });
