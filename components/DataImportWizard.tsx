@@ -218,6 +218,7 @@ export const DataImportWizard: React.FC<Props> = ({
           </div>
           <button
             onClick={onClose}
+            aria-label="Close import wizard"
             className="p-4 bg-white/5 hover:bg-white/10 rounded-3xl transition-all"
           >
             <X className="w-6 h-6 text-slate-500" />

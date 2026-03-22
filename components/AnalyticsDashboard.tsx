@@ -182,15 +182,15 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                 <Users className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                <h2 className="text-sm font-black text-white uppercase tracking-widest">
                   Broker Scorecard
-                </h3>
+                </h2>
                 <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">
                   Payment &amp; Yield Performance
                 </p>
               </div>
             </div>
-            <button className="p-2 text-slate-600 hover:text-white transition-colors">
+            <button aria-label="Broker scorecard options" className="p-2 text-slate-600 hover:text-white transition-colors">
               <MoreVertical className="w-4 h-4" />
             </button>
           </div>
@@ -238,15 +238,15 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                 <MapPin className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <h3 className="text-sm font-black text-white uppercase tracking-widest">
+                <h2 className="text-sm font-black text-white uppercase tracking-widest">
                   Lane Profitability
-                </h3>
+                </h2>
                 <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">
                   Top Lanes by Marginal Health
                 </p>
               </div>
             </div>
-            <button className="p-2 text-slate-600 hover:text-white transition-colors">
+            <button aria-label="Lane profitability options" className="p-2 text-slate-600 hover:text-white transition-colors">
               <MoreVertical className="w-4 h-4" />
             </button>
           </div>

@@ -133,6 +133,7 @@ export const LoadSetupModal: React.FC<Props> = ({
           </div>
           <button
             onClick={onCancel}
+            aria-label="Close modal"
             className="text-slate-500 hover:text-white transition-colors"
           >
             <X className="w-6 h-6" />

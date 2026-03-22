@@ -180,9 +180,9 @@ export const GlobalMapView: React.FC<Props> = ({
             <div className="absolute top-8 left-1/2 -translate-x-1/2 w-56 bg-[#0a0f1e] border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] p-4 opacity-0 group-hover:opacity-100 transition-all pointer-events-none translate-y-2 group-hover:translate-y-0">
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h4 className="text-[10px] font-black text-white uppercase tracking-tight">
+                  <h2 className="text-[10px] font-black text-white uppercase tracking-tight">
                     {vehicle.driver.name}
-                  </h4>
+                  </h2>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     {vehicle.isOnline ? (
                       <Wifi className="w-2.5 h-2.5 text-green-500" />
@@ -291,13 +291,13 @@ export const GlobalMapView: React.FC<Props> = ({
         </div>
 
         <div className="bg-[#0a0f1e]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 flex items-center gap-2 shadow-2xl">
-          <button className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg transition-transform active:scale-90">
+          <button aria-label="Toggle map layers" className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg transition-transform active:scale-90">
             <Layers className="w-4 h-4" />
           </button>
-          <button className="p-2.5 text-slate-500 hover:text-white transition-colors">
+          <button aria-label="Maximize map" className="p-2.5 text-slate-500 hover:text-white transition-colors">
             <Maximize2 className="w-4 h-4" />
           </button>
-          <button className="p-2.5 text-slate-500 hover:text-white transition-colors">
+          <button aria-label="Change map style" className="p-2.5 text-slate-500 hover:text-white transition-colors">
             <MapIcon className="w-4 h-4" />
           </button>
         </div>

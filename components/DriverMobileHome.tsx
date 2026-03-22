@@ -297,6 +297,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </h1>
           <button
             onClick={() => onOpenHub?.("messaging")}
+            aria-label="Open messages"
             className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20"
           >
             <MessageSquare className="w-4 h-4" />
@@ -660,12 +661,13 @@ export const DriverMobileHome: React.FC<Props> = ({
               <Phone className="w-4 h-4" />
             </a>
           )}
-          <button onClick={() => onOpenHub?.("messaging")} className="relative">
+          <button onClick={() => onOpenHub?.("messaging")} aria-label="Open messages" className="relative">
             <MessageSquare className="w-5 h-5 text-slate-400" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0a0f1e]" />
           </button>
           <button
             onClick={onLogout}
+            aria-label="Log out"
             className="text-slate-500 hover:text-red-400 transition-colors"
           >
             <LogOut className="w-5 h-5" />

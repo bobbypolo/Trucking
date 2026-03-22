@@ -90,7 +90,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                             <button onClick={() => setViewScope('all')} className={`px-5 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewScope === 'all' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Fleet Network</button>
                         </div>
                     )}
-                    <button onClick={() => setSortDirection(s => s === 'asc' ? 'desc' : 'asc')} className="bg-slate-900 border border-slate-800 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
+                    <button onClick={() => setSortDirection(s => s === 'asc' ? 'desc' : 'asc')} aria-label="Toggle sort direction" className="bg-slate-900 border border-slate-800 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
                         <Filter className="w-4 h-4" />
                     </button>
                 </div>

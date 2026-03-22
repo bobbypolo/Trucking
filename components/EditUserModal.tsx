@@ -112,6 +112,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
           </div>
           <button
             onClick={onCancel}
+            aria-label="Close modal"
             className="p-3 text-slate-500 hover:text-white transition-colors bg-slate-800 rounded-full"
           >
             <X />
@@ -251,10 +252,10 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
           {activeTab === "financials" && (
             <div className="space-y-8 animate-fade-in">
               <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 space-y-6">
-                <h4 className="text-[10px] text-slate-600 uppercase font-black flex items-center gap-2">
+                <h3 className="text-[10px] text-slate-600 uppercase font-black flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-green-500" /> Core Pay
                   Model
-                </h4>
+                </h3>
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { id: "percent", label: "Load Revenue %", icon: Percent },
@@ -327,10 +328,10 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
           {activeTab === "access" && (
             <div className="space-y-6 animate-fade-in">
               <div className="bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-xl">
-                <h4 className="text-[10px] text-slate-600 uppercase font-black mb-8 flex items-center gap-2">
+                <h3 className="text-[10px] text-slate-600 uppercase font-black mb-8 flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-red-500" /> Sensitivity
                   Controls
-                </h4>
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[
                     { key: "createLoads", label: "Create Manifests" },

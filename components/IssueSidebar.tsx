@@ -102,11 +102,11 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
     <div className="fixed inset-y-0 right-0 z-[60] w-96 bg-[#0a0f18] border-l border-slate-800 shadow-2xl flex flex-col animate-fade-in-right">
       <div className="p-4 border-b border-slate-800 flex flex-col gap-4 bg-slate-900/90 backdrop-blur-md">
         <div className="flex justify-between items-center">
-          <h3 className="text-xs font-black text-white flex items-center gap-2 uppercase tracking-widest">
+          <h2 className="text-xs font-black text-white flex items-center gap-2 uppercase tracking-widest">
             <AlertTriangle className="w-4 h-4 text-orange-500" /> Action Center
             <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{filteredIssues.length}</span>
-          </h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+          </h2>
+          <button onClick={onClose} aria-label="Close sidebar" className="text-slate-500 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
         </div>
 
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
@@ -189,9 +189,9 @@ export const IssueSidebar: React.FC<Props> = ({ isOpen, onClose, loads, currentU
             {/* Handoff/Action Required Section */}
             {loads.filter(l => l.isActionRequired).length > 0 && (
               <div className="mt-8 space-y-3">
-                <h4 className="text-[8px] font-black text-yellow-600 uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
+                <h3 className="text-[8px] font-black text-yellow-600 uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
                   <AlertCircle className="w-3 h-3" /> Required Approvals / Handoffs
-                </h4>
+                </h3>
                 {loads.filter(l => l.isActionRequired).map(load => (
                   <div key={load.id} className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 space-y-3">
                     <div className="flex justify-between items-center">

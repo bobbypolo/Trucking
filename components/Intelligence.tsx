@@ -245,7 +245,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                                         {activeTab === 'facilities' ? (item.riskScore < 20 ? 'Optimal' : 'Delayed') : `${item.onTimeRate.toFixed(0)}% OTD`}
                                     </div>
                                 </div>
-                                <button className="p-2 bg-slate-800 rounded-lg text-slate-600 group-hover:text-blue-500 transition-colors shadow-inner"><ChevronRight className="w-4 h-4"/></button>
+                                <button aria-label="View details" className="p-2 bg-slate-800 rounded-lg text-slate-600 group-hover:text-blue-500 transition-colors shadow-inner"><ChevronRight className="w-4 h-4"/></button>
                             </div>
                         </div>
                     ))}
@@ -269,7 +269,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                                 </p>
                             </div>
                         </div>
-                        <button onClick={() => setSelectedEntity(null)} className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-500 transition-all shadow-md"><X className="w-5 h-5"/></button>
+                        <button onClick={() => setSelectedEntity(null)} aria-label="Close details" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-500 transition-all shadow-md"><X className="w-5 h-5"/></button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-hide">

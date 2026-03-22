@@ -443,11 +443,12 @@ export const ExceptionConsole: React.FC<Props> = ({
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleResolve(ex.id)}
+                          aria-label="Resolve exception"
                           className="p-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white border border-emerald-500/20 rounded-xl transition-all"
                         >
                           <CheckCircle2 className="w-4 h-4" />
                         </button>
-                        <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-white/5 rounded-xl transition-all">
+                        <button aria-label="Exception options" className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-white/5 rounded-xl transition-all">
                           <MoreVertical className="w-4 h-4" />
                         </button>
                       </div>
@@ -493,10 +494,10 @@ export const ExceptionConsole: React.FC<Props> = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-sm font-black text-white uppercase tracking-tight leading-none">
+                    <h2 className="text-sm font-black text-white uppercase tracking-tight leading-none">
                       {types.find((t) => t.typeCode === ex.type)?.displayName ||
                         ex.type}
-                    </h3>
+                    </h2>
                     <p className="text-[10px] text-slate-500 font-bold uppercase mt-1">
                       Ref: {ex.entityType} #{ex.entityId}
                     </p>

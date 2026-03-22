@@ -142,6 +142,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                   onClick={onLogout}
                   className="text-slate-500 hover:text-red-400 transition-colors"
                   title="Sign out"
+                  aria-label="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -244,11 +245,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                         <span className="px-3 py-1 bg-blue-600/10 text-blue-500 rounded-full text-[10px] font-black border border-blue-500/20 uppercase tracking-widest">
                           Tracking ID: {selectedLoad.loadNumber}
                         </span>
-                        <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter">
                           {selectedLoad.pickup?.city ?? ""}{" "}
                           <ArrowRight className="inline-block w-8 h-8 text-blue-500 mx-2" />{" "}
                           {selectedLoad.dropoff?.city ?? ""}
-                        </h1>
+                        </h2>
                       </div>
                       <div className="text-right space-y-1">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">

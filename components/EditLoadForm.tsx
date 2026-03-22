@@ -239,9 +239,9 @@ export const EditLoadForm: React.FC<Props> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Column 1: Identity & Reference */}
           <div className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Hash className="w-4 h-4 text-blue-500" /> Reference Matrix
-            </h3>
+            </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label htmlFor="elfProNo" className="text-[9px] font-bold text-slate-500 uppercase">
@@ -332,9 +332,9 @@ export const EditLoadForm: React.FC<Props> = ({
 
           {/* Column 2: Customer & Dispatcher */}
           <div className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <MapPin className="w-4 h-4 text-purple-500" /> Relationships
-            </h3>
+            </h2>
             <div className="space-y-1">
               <label htmlFor="elfCustomerBroker" className="text-[9px] font-bold text-slate-500 uppercase">
                 Customer / Broker <span className="text-red-500">*</span>
@@ -410,10 +410,10 @@ export const EditLoadForm: React.FC<Props> = ({
 
           {/* Column 3: Financial Synthesis */}
           <div className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-green-500" /> Settlement
               Deepening
-            </h3>
+            </h2>
             <div className="space-y-1">
               <label htmlFor="elfGrossPayRevenue" className="text-[9px] font-bold text-slate-500 uppercase">
                 Gross Pay (Revenue)
@@ -569,10 +569,10 @@ export const EditLoadForm: React.FC<Props> = ({
         {/* Load Stops Execution Table */}
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Navigation className="w-4 h-4 text-blue-500" /> Stop Matrix
               (Sequential)
-            </h3>
+            </h2>
             <div className="flex gap-2">
               <button
                 onClick={() => addLeg("Pickup")}
@@ -779,10 +779,10 @@ export const EditLoadForm: React.FC<Props> = ({
 
         {/* Documents Integration Matrix */}
         <div className="space-y-4">
-          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+          <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
             <FileText className="w-4 h-4 text-amber-500" /> Digital Artifacts
             Matrix
-          </h3>
+          </h2>
           <div className="bg-[#0a0f18] border border-slate-800 rounded-xl p-8 text-center border-dashed group cursor-pointer hover:border-blue-500 transition-all">
             <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
               <Plus className="w-6 h-6 text-slate-600" />

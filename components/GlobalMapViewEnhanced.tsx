@@ -363,9 +363,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
           <div className="text-center p-8 bg-slate-900/80 border border-slate-700 rounded-2xl max-w-md">
             <MapIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-white mb-2">
+            <h2 className="text-lg font-bold text-white mb-2">
               Map Unavailable
-            </h3>
+            </h2>
             <p className="text-sm text-slate-400 mb-4">
               Google Maps API key is not configured. Fleet tracking data is
               available via the tracking API endpoint.
@@ -707,9 +707,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               />
             </div>
             <div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">
                 {selectedDriverOverlay.driver.name}
-              </h3>
+              </h2>
               <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 Ref ID: {selectedDriverOverlay.driver.id.slice(0, 8)}
               </div>

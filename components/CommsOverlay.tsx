@@ -192,9 +192,9 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                             <Phone className={`w-5 h-5 ${activeCallSession ? 'animate-pulse' : ''}`} />
                         </div>
                         <div>
-                            <h3 className="text-[13px] font-black text-white uppercase tracking-tight">
+                            <h2 className="text-[13px] font-black text-white uppercase tracking-tight">
                                 {activeCallSession ? 'Active Interaction' : 'Operational Comms'}
-                            </h3>
+                            </h2>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${activeCallSession ? 'bg-red-500' : 'bg-slate-600'}`} />
                                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
@@ -204,10 +204,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setOverlayState(overlayState === 'docked' ? 'floating' : 'docked')} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                        <button onClick={() => setOverlayState(overlayState === 'docked' ? 'floating' : 'docked')} aria-label={overlayState === 'docked' ? 'Undock panel' : 'Dock panel'} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
                             {overlayState === 'docked' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => setOverlayState('collapsed')} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                        <button onClick={() => setOverlayState('collapsed')} aria-label="Collapse panel" className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
                             <Minus className="w-4 h-4" />
                         </button>
                     </div>
@@ -351,8 +351,8 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                             />
                             <div className="flex items-center justify-between">
                                 <div className="flex gap-2">
-                                    <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><Zap className="w-3.5 h-3.5" /></button>
-                                    <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><AlertTriangle className="w-3.5 h-3.5" /></button>
+                                    <button aria-label="Priority action" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><Zap className="w-3.5 h-3.5" /></button>
+                                    <button aria-label="Flag alert" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><AlertTriangle className="w-3.5 h-3.5" /></button>
                                 </div>
                                 <button
                                     onClick={handleAddNote}
@@ -414,10 +414,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                 {!isLoading && !loadError && activeCallSession && activeTab === 'requests' && (
                     <div className="space-y-4">
                         <div className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl mb-6">
-                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Context</h4>
+                            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Context</h3>
                             <p className="text-[11px] font-bold text-white uppercase">{session.primaryContext?.label || 'Direct Interaction'}</p>
                         </div>
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Operational Requests</h4>
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Operational Requests</h3>
                         <div className="grid grid-cols-2 gap-3">
                             {[
                                 { label: 'Detention', type: 'DETENTION' },
