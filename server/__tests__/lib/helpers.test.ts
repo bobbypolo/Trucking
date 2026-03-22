@@ -10,8 +10,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
  * - getVisibilitySettings: fetches driver visibility settings from company
  */
 
-const { mockQuery } = vi.hoisted(() => ({
+const { mockQuery, mockDeliverNotification } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
+  mockDeliverNotification: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
@@ -27,6 +28,10 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     debug: vi.fn(),
   },
+}));
+
+vi.mock("../../services/notification-delivery.service", () => ({
+  deliverNotification: mockDeliverNotification,
 }));
 
 import {
@@ -212,6 +217,28 @@ describe("helpers.ts", () => {
   });
 
   describe("sendNotification", () => {
+    beforeEach(() => {
+      mockDeliverNotification.mockResolvedValue({ status: "SENT", sent_at: new Date().toISOString() });
+    });
+
+    it("calls deliverNotification with channel email and correct recipients (R-P3-12)", () => {
+      sendNotification(
+        ["admin@test.com", "driver@test.com"],
+        "Load Update",
+        "Load #123 status changed",
+      );
+
+      expect(mockDeliverNotification).toHaveBeenCalledWith({
+        channel: "email",
+        subject: "Load Update",
+        message: "Load #123 status changed",
+        recipients: [
+          { email: "admin@test.com" },
+          { email: "driver@test.com" },
+        ],
+      });
+    });
+
     it("logs notification info when emails are provided", () => {
       sendNotification(
         ["admin@test.com", "driver@test.com"],
@@ -229,16 +256,28 @@ describe("helpers.ts", () => {
       );
     });
 
-    it("does nothing when emails array is empty", () => {
+    it("does not throw when deliverNotification rejects (R-P3-13)", () => {
+      mockDeliverNotification.mockRejectedValue(new Error("SMTP down"));
+
+      // fire-and-forget: sendNotification must not throw
+      expect(() => {
+        sendNotification(["fail@test.com"], "Subject", "Body");
+      }).not.toThrow();
+    });
+
+    it("does nothing when emails array is empty (R-P3-14)", () => {
       sendNotification([], "Subject", "Message");
+      expect(mockDeliverNotification).not.toHaveBeenCalled();
       expect(logger.info).not.toHaveBeenCalled();
     });
 
     it("does nothing when emails is null/undefined", () => {
       sendNotification(null as any, "Subject", "Message");
+      expect(mockDeliverNotification).not.toHaveBeenCalled();
       expect(logger.info).not.toHaveBeenCalled();
 
       sendNotification(undefined as any, "Subject", "Message");
+      expect(mockDeliverNotification).not.toHaveBeenCalled();
       expect(logger.info).not.toHaveBeenCalled();
     });
   });
