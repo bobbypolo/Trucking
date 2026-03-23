@@ -345,7 +345,10 @@
         "server/middleware/requireTenant.ts",
         "server/routes/clients.ts",
         "server/routes/equipment.ts",
-        "server/routes/dispatch.ts"
+        "server/routes/dispatch.ts",
+        "hooks/useHasRole.ts",
+        "server/__tests__/middleware/tenant.test.ts",
+        "src/__tests__/hooks/useHasRole.test.tsx"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -364,7 +367,7 @@
         "unit": "cd server && npx vitest run --reporter=verbose && cd .. && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": [
@@ -378,8 +381,12 @@
       "phase_type": "http-fix",
       "scope": [
         "components/SafetyView.tsx",
-        "components/LoadDetailView.tsx",
-        "services/aiService.ts"
+        "components/Scanner.tsx",
+        "components/GlobalMapViewEnhanced.tsx",
+        "services/storageService.ts",
+        "services/validationGuards.ts",
+        "services/weatherService.ts",
+        "src/__tests__/services/"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -398,7 +405,7 @@
         "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": [
