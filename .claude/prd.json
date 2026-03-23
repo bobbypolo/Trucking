@@ -5,17 +5,18 @@
   "stories": [
     {
       "id": "S-1.1",
-      "description": "Replace raw fetch() in financialService.ts \u00e2\u20ac\u201d convert all 20 functions to use api.get/post/patch/delete helpers from services/api.ts which auto-inject auth via getIdTokenAsync()",
+      "description": "Replace raw fetch() in financialService.ts â€” convert all 20 functions to use api.get/post/patch/delete helpers from services/api.ts which auto-inject auth via getIdTokenAsync()",
       "phase": 1,
       "phase_type": "auth",
       "scope": [
-        "services/financialService.ts"
+        "services/financialService.ts",
+        "src/__tests__/services/financialService.test.ts"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "grep -c fetch( services/financialService.ts returns 0 \u00e2\u20ac\u201d all raw fetch() calls replaced with api.* helpers",
+          "criterion": "grep -c fetch( services/financialService.ts returns 0 â€” all raw fetch() calls replaced with api.* helpers",
           "testType": "unit"
         },
         {
@@ -28,14 +29,14 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": []
     },
     {
       "id": "S-1.2",
-      "description": "Replace raw fetch() in storageService.ts \u00e2\u20ac\u201d convert 4 functions (getDispatchEvents, getTimeLogs, logTime, logDispatchEvent) to api.* helpers. Remove duplicate 401/403 checks.",
+      "description": "Replace raw fetch() in storageService.ts â€” convert 4 functions (getDispatchEvents, getTimeLogs, logTime, logDispatchEvent) to api.* helpers. Remove duplicate 401/403 checks.",
       "phase": 1,
       "phase_type": "auth",
       "scope": [
@@ -45,7 +46,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P1-03",
-          "criterion": "grep -c fetch( services/storageService.ts returns 0 \u00e2\u20ac\u201d all raw fetch() calls replaced",
+          "criterion": "grep -c fetch( services/storageService.ts returns 0 â€” all raw fetch() calls replaced",
           "testType": "unit"
         },
         {
@@ -67,7 +68,7 @@
     },
     {
       "id": "S-1.3",
-      "description": "Add auth readiness gate in App.tsx \u00e2\u20ac\u201d add isAuthReady state, set true AFTER refreshData() completes in onUserChange callback, gate render so children mount only after token confirmed. Reset on logout.",
+      "description": "Add auth readiness gate in App.tsx â€” add isAuthReady state, set true AFTER refreshData() completes in onUserChange callback, gate render so children mount only after token confirmed. Reset on logout.",
       "phase": 1,
       "phase_type": "auth",
       "scope": [
@@ -77,12 +78,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P1-05",
-          "criterion": "isAuthReady state added \u00e2\u20ac\u201d children render blocked until refreshData() completes",
+          "criterion": "isAuthReady state added â€” children render blocked until refreshData() completes",
           "testType": "unit"
         },
         {
           "id": "R-P1-06",
-          "criterion": "Login produces no 401 console errors \u00e2\u20ac\u201d children mount only after auth ready",
+          "criterion": "Login produces no 401 console errors â€” children mount only after auth ready",
           "testType": "functional"
         },
         {
@@ -176,7 +177,7 @@
     },
     {
       "id": "S-2.1",
-      "description": "Fix schema conflicts + update migration runner. Part A: Remove 5 duplicate CREATE TABLEs from 001_baseline.sql (quotes, leads, bookings, messages, work_items \u00e2\u20ac\u201d authoritative versions in 017/018/019). Remove ALTER TABLE messages from 003_operational_entities.sql. Part B: Update MIGRATION_ORDER in docker-mysql.ts to include all migrations through 032. Part C: Document dev DB reset instructions.",
+      "description": "Fix schema conflicts + update migration runner. Part A: Remove 5 duplicate CREATE TABLEs from 001_baseline.sql (quotes, leads, bookings, messages, work_items â€” authoritative versions in 017/018/019). Remove ALTER TABLE messages from 003_operational_entities.sql. Part B: Update MIGRATION_ORDER in docker-mysql.ts to include all migrations through 032. Part C: Document dev DB reset instructions.",
       "phase": 2,
       "phase_type": "schema",
       "scope": [
@@ -220,7 +221,7 @@
     },
     {
       "id": "S-2.2",
-      "description": "Create migration 032 \u00e2\u20ac\u201d parties subsystem. 8 new tables: parties, party_contacts, party_documents, rate_rows, rate_tiers, constraint_sets, constraint_rules, party_catalog_links. All with company_id index for tenant isolation. Schema sourced from server/routes/clients.ts lines 283-600.",
+      "description": "Create migration 032 â€” parties subsystem. 8 new tables: parties, party_contacts, party_documents, rate_rows, rate_tiers, constraint_sets, constraint_rules, party_catalog_links. All with company_id index for tenant isolation. Schema sourced from server/routes/clients.ts lines 283-600.",
       "phase": 2,
       "phase_type": "schema",
       "scope": [
@@ -272,7 +273,7 @@
         },
         {
           "id": "R-P2-09",
-          "criterion": "GET /api/companies/{id} returns 200 after signup \u00e2\u20ac\u201d no more 404",
+          "criterion": "GET /api/companies/{id} returns 200 after signup â€” no more 404",
           "testType": "integration"
         }
       ],
@@ -300,17 +301,17 @@
       "acceptanceCriteria": [
         {
           "id": "R-P2-10",
-          "criterion": "GET /api/dashboard/cards returns 200 with valid auth \u00e2\u20ac\u201d no more 500",
+          "criterion": "GET /api/dashboard/cards returns 200 with valid auth â€” no more 500",
           "testType": "integration"
         },
         {
           "id": "R-P2-11",
-          "criterion": "Dispatch events route accessible from frontend path \u00e2\u20ac\u201d no more 404",
+          "criterion": "Dispatch events route accessible from frontend path â€” no more 404",
           "testType": "integration"
         },
         {
           "id": "R-P2-12",
-          "criterion": "Equipment route accessible with tenant-scoped path \u00e2\u20ac\u201d no more 404",
+          "criterion": "Equipment route accessible with tenant-scoped path â€” no more 404",
           "testType": "integration"
         }
       ],
@@ -327,7 +328,7 @@
     },
     {
       "id": "S-3.1",
-      "description": "Fix 403 permission errors (26 errors). Two sources: A) Tenant mismatch from missing company record (resolved by S-2.3). B) Role-based access \u00e2\u20ac\u201d correct behavior for driver role. Verify 403 count drops from 26 to <5 after S-2.3 fix. Ensure frontend hides role-gated buttons for insufficient roles.",
+      "description": "Fix 403 permission errors (26 errors). Two sources: A) Tenant mismatch from missing company record (resolved by S-2.3). B) Role-based access â€” correct behavior for driver role. Verify 403 count drops from 26 to <5 after S-2.3 fix. Ensure frontend hides role-gated buttons for insufficient roles.",
       "phase": 3,
       "phase_type": "http-fix",
       "scope": [
@@ -396,7 +397,7 @@
     },
     {
       "id": "C-1",
-      "description": "SafetyView full remediation \u00e2\u20ac\u201d remove 12 hardcoded values (quiz scores 85/42/98, test scores 95%/100%/65%, \"324 Certified Units\", safety score \"75\", \"90 Days\", \"Unit 101\"/\"Unit 102\") and wire 4 buttons (Service\u00e2\u2020\u2019toast, History\u00e2\u2020\u2019toast, View Financials\u00e2\u2020\u2019navigate('/accounting'), Manage\u00e2\u2020\u2019toast). Replace hardcoded arrays with useState([])+useEffect API calls. Show \"No data yet\" empty states.",
+      "description": "SafetyView full remediation â€” remove 12 hardcoded values (quiz scores 85/42/98, test scores 95%/100%/65%, \"324 Certified Units\", safety score \"75\", \"90 Days\", \"Unit 101\"/\"Unit 102\") and wire 4 buttons (Serviceâ†’toast, Historyâ†’toast, View Financialsâ†’navigate('/accounting'), Manageâ†’toast). Replace hardcoded arrays with useState([])+useEffect API calls. Show \"No data yet\" empty states.",
       "phase": 4,
       "phase_type": "remediation",
       "scope": [
@@ -406,17 +407,17 @@
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "All 12 hardcoded values removed from SafetyView.tsx \u00e2\u20ac\u201d data fetched from API or shows empty state",
+          "criterion": "All 12 hardcoded values removed from SafetyView.tsx â€” data fetched from API or shows empty state",
           "testType": "unit"
         },
         {
           "id": "R-P4-02",
-          "criterion": "4 SafetyView buttons wired \u00e2\u20ac\u201d Service/History/Manage show toast, View Financials navigates",
+          "criterion": "4 SafetyView buttons wired â€” Service/History/Manage show toast, View Financials navigates",
           "testType": "unit"
         },
         {
           "id": "R-P4-03",
-          "criterion": "Zero silent no-ops remain \u00e2\u20ac\u201d every button produces visible result",
+          "criterion": "Zero silent no-ops remain â€” every button produces visible result",
           "testType": "functional"
         }
       ],
@@ -433,7 +434,7 @@
     },
     {
       "id": "C-2",
-      "description": "AccountingPortal full remediation \u00e2\u20ac\u201d remove 10 hardcoded values (\"14\" pending docs, \"$2,840\" IFTA, 3 automation rule objects, setTimeout mock matching, glAccountId \"5000\", 4 audit log entries, \"1 hour ago\", \"42.5 hrs\", \"14\" active triggers) and wire 3 buttons (View All Loads\u00e2\u2020\u2019navigate('/loads'), Create New Rule\u00e2\u2020\u2019toast, More options\u00e2\u2020\u2019toast). Use computed values from actual data.",
+      "description": "AccountingPortal full remediation â€” remove 10 hardcoded values (\"14\" pending docs, \"$2,840\" IFTA, 3 automation rule objects, setTimeout mock matching, glAccountId \"5000\", 4 audit log entries, \"1 hour ago\", \"42.5 hrs\", \"14\" active triggers) and wire 3 buttons (View All Loadsâ†’navigate('/loads'), Create New Ruleâ†’toast, More optionsâ†’toast). Use computed values from actual data.",
       "phase": 4,
       "phase_type": "remediation",
       "scope": [
@@ -443,12 +444,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P4-04",
-          "criterion": "All 10 hardcoded values removed from AccountingPortal.tsx \u00e2\u20ac\u201d values computed from real data or API",
+          "criterion": "All 10 hardcoded values removed from AccountingPortal.tsx â€” values computed from real data or API",
           "testType": "unit"
         },
         {
           "id": "R-P4-05",
-          "criterion": "3 AccountingPortal buttons wired \u00e2\u20ac\u201d View All Loads navigates, Create New Rule and More options show toast",
+          "criterion": "3 AccountingPortal buttons wired â€” View All Loads navigates, Create New Rule and More options show toast",
           "testType": "unit"
         },
         {
@@ -470,7 +471,7 @@
     },
     {
       "id": "C-3",
-      "description": "IntelligenceHub full remediation \u00e2\u20ac\u201d remove 8 mock values (CS-9901 call session, \"888-555-0000\", \"800-SAFE-KCI\", \"45-60 mins\" ETA, \"John Doe\" stats, \"Trucker Tom\", mockCallers array) and add Reports tab showing call metrics (count, avg duration) and interaction summary (calls vs messages count). Use real data or empty states.",
+      "description": "IntelligenceHub full remediation â€” remove 8 mock values (CS-9901 call session, \"888-555-0000\", \"800-SAFE-KCI\", \"45-60 mins\" ETA, \"John Doe\" stats, \"Trucker Tom\", mockCallers array) and add Reports tab showing call metrics (count, avg duration) and interaction summary (calls vs messages count). Use real data or empty states.",
       "phase": 4,
       "phase_type": "remediation",
       "scope": [
@@ -480,7 +481,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P4-07",
-          "criterion": "All 8 mock values removed from IntelligenceHub.tsx \u00e2\u20ac\u201d init empty arrays, use real data",
+          "criterion": "All 8 mock values removed from IntelligenceHub.tsx â€” init empty arrays, use real data",
           "testType": "unit"
         },
         {
@@ -507,7 +508,7 @@
     },
     {
       "id": "C-4",
-      "description": "Settlements full remediation \u00e2\u20ac\u201d wire chevron expand toggle (setExpandedRow), wire Batch Print to generate PDF via jsPDF, wire Finalize to PATCH /api/settlements/batch endpoint (add if absent), add Export CSV button. Remove all mock showFeedback-only operations.",
+      "description": "Settlements full remediation â€” wire chevron expand toggle (setExpandedRow), wire Batch Print to generate PDF via jsPDF, wire Finalize to PATCH /api/settlements/batch endpoint (add if absent), add Export CSV button. Remove all mock showFeedback-only operations.",
       "phase": 5,
       "phase_type": "remediation",
       "scope": [
@@ -550,7 +551,7 @@
     },
     {
       "id": "S-4.4",
-      "description": "Remove remaining hardcoded values \u00e2\u20ac\u201d ExceptionConsole: compute SLA countdown from ex.slaDueAt, compute elapsed time from ex.createdAt, compute avg resolution from resolved exceptions. LoadGantt: use load.pickupTime and load.estimatedDeliveryTime instead of \"04:00 AM\"/\"ETA: 06:30 PM\". QuoteManager: use selectedQuote.customerName/Phone instead of \"Acme Global\"/\"3125550199\". NetworkPortal: replace \"NEW CONTACT\"/\"PENDING@MAIL.COM\"/\"000-000-000\" with empty strings. AccountingView: change misleading \"Mocking\" comment to \"Compute\".",
+      "description": "Remove remaining hardcoded values â€” ExceptionConsole: compute SLA countdown from ex.slaDueAt, compute elapsed time from ex.createdAt, compute avg resolution from resolved exceptions. LoadGantt: use load.pickupTime and load.estimatedDeliveryTime instead of \"04:00 AM\"/\"ETA: 06:30 PM\". QuoteManager: use selectedQuote.customerName/Phone instead of \"Acme Global\"/\"3125550199\". NetworkPortal: replace \"NEW CONTACT\"/\"PENDING@MAIL.COM\"/\"000-000-000\" with empty strings. AccountingView: change misleading \"Mocking\" comment to \"Compute\".",
       "phase": 4,
       "phase_type": "remediation",
       "scope": [
@@ -569,17 +570,17 @@
         },
         {
           "id": "R-P4-11",
-          "criterion": "LoadGantt uses load.pickupTime and load.estimatedDeliveryTime \u00e2\u20ac\u201d no hardcoded times",
+          "criterion": "LoadGantt uses load.pickupTime and load.estimatedDeliveryTime â€” no hardcoded times",
           "testType": "unit"
         },
         {
           "id": "R-P4-12",
-          "criterion": "QuoteManager uses selectedQuote data \u00e2\u20ac\u201d no hardcoded customer names or phone numbers",
+          "criterion": "QuoteManager uses selectedQuote data â€” no hardcoded customer names or phone numbers",
           "testType": "unit"
         },
         {
           "id": "R-P4-13",
-          "criterion": "NetworkPortal uses empty string defaults \u00e2\u20ac\u201d no fake placeholder data",
+          "criterion": "NetworkPortal uses empty string defaults â€” no fake placeholder data",
           "testType": "unit"
         },
         {
@@ -611,17 +612,17 @@
       "acceptanceCriteria": [
         {
           "id": "R-P5-05",
-          "criterion": "8 REAL buttons call APIs or navigate \u00e2\u20ac\u201d Print BOL, Load Stops, Documents, Audit Logs, Tag, Lock, +Pickup, +Drop",
+          "criterion": "8 REAL buttons call APIs or navigate â€” Print BOL, Load Stops, Documents, Audit Logs, Tag, Lock, +Pickup, +Drop",
           "testType": "functional"
         },
         {
           "id": "R-P5-06",
-          "criterion": "2 TOAST buttons show visible notification \u00e2\u20ac\u201d Carrier Rates and Show Route",
+          "criterion": "2 TOAST buttons show visible notification â€” Carrier Rates and Show Route",
           "testType": "unit"
         },
         {
           "id": "R-P5-07",
-          "criterion": "Zero silent no-ops remain in LoadDetailView \u00e2\u20ac\u201d every button produces visible result",
+          "criterion": "Zero silent no-ops remain in LoadDetailView â€” every button produces visible result",
           "testType": "functional"
         }
       ],
@@ -653,7 +654,7 @@
         },
         {
           "id": "R-P6-02",
-          "criterion": "Chart data computed from existing props \u00e2\u20ac\u201d zero hardcoded chart data",
+          "criterion": "Chart data computed from existing props â€” zero hardcoded chart data",
           "testType": "unit"
         },
         {
@@ -686,7 +687,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P6-04",
-          "criterion": "+New button is clickable and not obscured by other z-index layers \u00e2\u20ac\u201d opens new load form or navigates",
+          "criterion": "+New button is clickable and not obscured by other z-index layers â€” opens new load form or navigates",
           "testType": "functional"
         }
       ],
@@ -805,7 +806,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P6-10",
-          "criterion": "createChangeRequest() calls POST /api/loads/:id/change-requests API \u00e2\u20ac\u201d not in-memory",
+          "criterion": "createChangeRequest() calls POST /api/loads/:id/change-requests API â€” not in-memory",
           "testType": "integration"
         },
         {
@@ -916,7 +917,7 @@
     },
     {
       "id": "S-7.2",
-      "description": "Exhaustive static grep verification \u00e2\u20ac\u201d every hardcoded value must be gone. Run grep checks for all 42 remediated values across SafetyView, AccountingPortal, IntelligenceHub, ExceptionConsole, LoadGantt, QuoteManager, NetworkPortal, DispatcherTimeline, DriverMobileHome. Each grep MUST return 0 matches.",
+      "description": "Exhaustive static grep verification â€” every hardcoded value must be gone. Run grep checks for all 42 remediated values across SafetyView, AccountingPortal, IntelligenceHub, ExceptionConsole, LoadGantt, QuoteManager, NetworkPortal, DispatcherTimeline, DriverMobileHome. Each grep MUST return 0 matches.",
       "phase": 7,
       "phase_type": "verification",
       "scope": [],
@@ -941,7 +942,7 @@
     },
     {
       "id": "S-7.3",
-      "description": "Dead button audit \u00e2\u20ac\u201d verify no onClick={undefined} in remediated components. Every button element in LoadDetailView, AccountingPortal, SafetyView, Settlements must have an onClick handler.",
+      "description": "Dead button audit â€” verify no onClick={undefined} in remediated components. Every button element in LoadDetailView, AccountingPortal, SafetyView, Settlements must have an onClick handler.",
       "phase": 7,
       "phase_type": "verification",
       "scope": [],
@@ -966,7 +967,7 @@
     },
     {
       "id": "S-7.4",
-      "description": "Endpoint regression \u00e2\u20ac\u201d verify 15 endpoints return correct status codes. 9 endpoints must return 200 (were 500): quotes, leads, bookings, work-items, kci-requests, dashboard/cards, providers, contacts, safety/vendors. 2 endpoints must return 200 (were 401): accounting/accounts, accounting/invoices. 3 endpoints must return 200 (were 404): companies/{id}, dispatch-events, equipment.",
+      "description": "Endpoint regression â€” verify 15 endpoints return correct status codes. 9 endpoints must return 200 (were 500): quotes, leads, bookings, work-items, kci-requests, dashboard/cards, providers, contacts, safety/vendors. 2 endpoints must return 200 (were 401): accounting/accounts, accounting/invoices. 3 endpoints must return 200 (were 404): companies/{id}, dispatch-events, equipment.",
       "phase": 7,
       "phase_type": "verification",
       "scope": [],
@@ -1001,7 +1002,7 @@
     },
     {
       "id": "S-7.5",
-      "description": "Console error regression with hard targets. Navigate every page via Playwright, intercept all fetch calls, count errors by category. Targets: HTTP 500 must be 0, HTTP 401 must be 0, HTTP 404 must be \u00e2\u2030\u00a42, HTTP 403 must be \u00e2\u2030\u00a43 (role-based only), HTTP 400 must be \u00e2\u2030\u00a42. Total must be \u00e2\u2030\u00a412 (down from 120).",
+      "description": "Console error regression with hard targets. Navigate every page via Playwright, intercept all fetch calls, count errors by category. Targets: HTTP 500 must be 0, HTTP 401 must be 0, HTTP 404 must be â‰¤2, HTTP 403 must be â‰¤3 (role-based only), HTTP 400 must be â‰¤2. Total must be â‰¤12 (down from 120).",
       "phase": 7,
       "phase_type": "verification",
       "scope": [],
@@ -1044,7 +1045,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P7-12",
-          "criterion": "All 9 Phase 6 features verified per checklist \u00e2\u20ac\u201d each meets its PASS criteria",
+          "criterion": "All 9 Phase 6 features verified per checklist â€” each meets its PASS criteria",
           "testType": "functional"
         }
       ],
