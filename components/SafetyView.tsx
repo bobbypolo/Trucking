@@ -1238,7 +1238,10 @@ export const SafetyView: React.FC<Props> = ({
                       {s.desc}
                     </div>
                   </div>
-                  <button className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-lg text-xs font-bold border border-slate-700 transition-colors">
+                  <button
+                    onClick={() => showFeedback(`Edit "${s.label}" coming soon`)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
+                  >
                     {s.value}
                   </button>
                 </div>

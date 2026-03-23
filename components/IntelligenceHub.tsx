@@ -4307,7 +4307,10 @@ const IntelligenceHub: React.FC<{
                       )}
                     </button>
                   ))}
-                  <button className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:border-blue-500/50 hover:text-blue-500 transition-all flex items-center justify-center gap-3">
+                  <button
+                    onClick={() => setToast({ message: "Add Temporary Vendor form coming soon", type: "info" })}
+                    className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:border-blue-500/50 hover:text-blue-500 transition-all flex items-center justify-center gap-3"
+                  >
                     <Plus className="w-4 h-4" /> Add Temporary Vendor
                   </button>
                 </div>

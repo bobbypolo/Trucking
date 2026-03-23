@@ -524,7 +524,14 @@ export const Settlements: React.FC<Props> = ({
                           })}
                         </div>
                       </div>
-                      <button className="text-slate-500 hover:text-white transition-colors">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedUser(isExpanded ? null : u.id);
+                        }}
+                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        className="text-slate-500 hover:text-white transition-colors"
+                      >
                         {isExpanded ? (
                           <ChevronUp className="w-7 h-7" />
                         ) : (

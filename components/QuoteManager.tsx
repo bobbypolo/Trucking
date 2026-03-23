@@ -481,10 +481,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
+                  <button
+                    onClick={() => setToast({ message: "Version history coming soon", type: "info" })}
+                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                  >
                     <FileText className="w-4 h-4" /> Version History
                   </button>
-                  <button className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
+                  <button
+                    onClick={() => setToast({ message: "Send update coming soon", type: "info" })}
+                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                  >
                     <Send className="w-4 h-4" /> Send Update
                   </button>
                   {selectedQuote.status === "Accepted" && (
@@ -986,7 +992,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                   {item.description}
                                 </div>
                               </div>
-                              <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all" aria-label="Mark as complete">
+                              <button
+                                onClick={() => setToast({ message: `Work item "${item.label}" marked complete`, type: "success" })}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all"
+                                aria-label="Mark as complete"
+                              >
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
                             </div>
@@ -1084,7 +1094,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   >
                     Log Contact
                   </button>
-                  <button className="p-3 bg-slate-800 text-slate-300 rounded-lg" aria-label="More options">
+                  <button
+                    onClick={() => setToast({ message: "More options menu coming soon", type: "info" })}
+                    className="p-3 bg-slate-800 text-slate-300 rounded-lg"
+                    aria-label="More options"
+                  >
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                 </div>
