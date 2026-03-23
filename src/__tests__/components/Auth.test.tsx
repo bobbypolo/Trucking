@@ -16,6 +16,10 @@ vi.mock("../../../services/authService", () => ({
   login: (...args: unknown[]) => mockLogin(...args),
   registerCompany: (...args: unknown[]) => mockRegisterCompany(...args),
   updateCompany: (...args: unknown[]) => mockUpdateCompany(...args),
+  getAuthHeaders: vi.fn().mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "",
+  }),
 }));
 
 // Mock config
@@ -838,7 +842,9 @@ describe("Auth component", () => {
       await goToPayment();
 
       // Card fields must NOT exist (PCI compliance)
-      expect(screen.queryByPlaceholderText("Card Number")).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Card Number"),
+      ).not.toBeInTheDocument();
       expect(screen.queryByPlaceholderText("MM/YY")).not.toBeInTheDocument();
       expect(screen.queryByPlaceholderText("CVC")).not.toBeInTheDocument();
 
@@ -860,7 +866,9 @@ describe("Auth component", () => {
     it("calls registerCompany and onLogin on free trial signup", async () => {
       const user = await goToPayment();
 
-      await user.click(screen.getByRole("button", { name: /start free trial/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         expect(mockRegisterCompany).toHaveBeenCalledWith(
@@ -889,7 +897,9 @@ describe("Auth component", () => {
       mockRegisterCompany.mockRejectedValue(new Error("API Error"));
       const user = await goToPayment();
 
-      await user.click(screen.getByRole("button", { name: /start free trial/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         // Error message may vary - check for any error indicator
@@ -1021,7 +1031,9 @@ describe("Auth component", () => {
       await waitFor(() => {
         expect(screen.getByText("Secure Hub")).toBeInTheDocument();
       });
-      await user.click(screen.getByRole("button", { name: /start free trial/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         expect(onLogin).toHaveBeenCalled();

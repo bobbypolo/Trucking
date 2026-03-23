@@ -30,7 +30,12 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { login, registerCompany, updateCompany } from "../services/authService";
+import {
+  login,
+  registerCompany,
+  updateCompany,
+  getAuthHeaders,
+} from "../services/authService";
 import { InputDialog } from "./ui/InputDialog";
 import {
   User as UserType,
@@ -342,112 +347,121 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     setView("payment");
   };
 
+  // Core account creation logic shared by both trial signup and Stripe checkout.
+  // Creates the Firebase user, registers the company, patches with wizard data,
+  // and returns the created user. Does NOT call onLogin — callers decide when
+  // to finalize the session.
+  const createAccount = async (): Promise<UserType> => {
+    const { user, company } = await registerCompany(
+      companyName,
+      email,
+      name,
+      signupType,
+      password,
+      1 + additionalSeats,
+      selectedFreightTypes,
+      primaryFreightType,
+      tier,
+    );
+
+    // Patch Company with full robust data
+    const updatedCompany: Company = {
+      ...company,
+      subscriptionTier: tier,
+      mcNumber,
+      taxId,
+      address,
+      city,
+      state,
+      zip,
+      equipmentRegistry: [
+        ...(truckUnitId
+          ? [
+              {
+                id: truckUnitId,
+                type: "Truck" as const,
+                status: "Active" as const,
+                ownershipType: "Company Owned" as const,
+                providerName: "Internal",
+                dailyCost: 45,
+              },
+            ]
+          : []),
+        ...(trailerUnitId
+          ? [
+              {
+                id: trailerUnitId,
+                type: (primaryFreightType === "Intermodal"
+                  ? "Chassis"
+                  : "Trailer") as any,
+                status: "Active" as const,
+                ownershipType: "Company Owned" as const,
+                providerName: "Internal",
+                dailyCost: 20,
+              },
+            ]
+          : []),
+        ...company.equipmentRegistry,
+      ],
+      automationSettings:
+        tier === "Automation Pro"
+          ? {
+              rules: [
+                {
+                  id: uuidv4(),
+                  name: "RateCon Auto-Intake",
+                  enabled: true,
+                  trigger: "doc_upload",
+                  docType: "RateCon",
+                  action: "create_load",
+                  configuration: {
+                    autoApprove: false,
+                    extractFields: ["rate", "broker", "pickup", "delivery"],
+                  },
+                },
+                {
+                  id: uuidv4(),
+                  name: "Fuel Receipt Scan",
+                  enabled: true,
+                  trigger: "photo_scan",
+                  docType: "FuelReceipt",
+                  action: "create_expense",
+                  configuration: { tagAs: ["Fuel"] },
+                },
+              ],
+              docNamingRules,
+            }
+          : undefined,
+      iftaSettings:
+        tier === "Automation Pro"
+          ? {
+              baseJurisdiction,
+              quarters: ["Q1", "Q2", "Q3", "Q4"],
+              mileageSource: "Manual",
+            }
+          : undefined,
+      moneySettings:
+        tier === "Automation Pro"
+          ? {
+              defaultExpenseCategories: expenseCategories,
+              reimbursementRules,
+              payStructure: "Independent",
+            }
+          : undefined,
+    };
+
+    await updateCompany(updatedCompany);
+    clearWizardState();
+    return user;
+  };
+
   // Complete signup with trial status (no Stripe payment)
   const processSignup = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setIsProcessing(true);
 
     try {
-      const { user, company } = await registerCompany(
-        companyName,
-        email,
-        name,
-        signupType,
-        password,
-        1 + additionalSeats,
-        selectedFreightTypes,
-        primaryFreightType,
-        tier,
-      );
-
-      // Patch Company with full robust data
-      const updatedCompany: Company = {
-        ...company,
-        subscriptionTier: tier,
-        mcNumber,
-        taxId,
-        address,
-        city,
-        state,
-        zip,
-        equipmentRegistry: [
-          ...(truckUnitId
-            ? [
-                {
-                  id: truckUnitId,
-                  type: "Truck" as const,
-                  status: "Active" as const,
-                  ownershipType: "Company Owned" as const,
-                  providerName: "Internal",
-                  dailyCost: 45,
-                },
-              ]
-            : []),
-          ...(trailerUnitId
-            ? [
-                {
-                  id: trailerUnitId,
-                  type: (primaryFreightType === "Intermodal"
-                    ? "Chassis"
-                    : "Trailer") as any,
-                  status: "Active" as const,
-                  ownershipType: "Company Owned" as const,
-                  providerName: "Internal",
-                  dailyCost: 20,
-                },
-              ]
-            : []),
-          ...company.equipmentRegistry,
-        ],
-        automationSettings:
-          tier === "Automation Pro"
-            ? {
-                rules: [
-                  {
-                    id: uuidv4(),
-                    name: "RateCon Auto-Intake",
-                    enabled: true,
-                    trigger: "doc_upload",
-                    docType: "RateCon",
-                    action: "create_load",
-                    configuration: {
-                      autoApprove: false,
-                      extractFields: ["rate", "broker", "pickup", "delivery"],
-                    },
-                  },
-                  {
-                    id: uuidv4(),
-                    name: "Fuel Receipt Scan",
-                    enabled: true,
-                    trigger: "photo_scan",
-                    docType: "FuelReceipt",
-                    action: "create_expense",
-                    configuration: { tagAs: ["Fuel"] },
-                  },
-                ],
-                docNamingRules,
-              }
-            : undefined,
-        iftaSettings:
-          tier === "Automation Pro"
-            ? {
-                baseJurisdiction,
-                quarters: ["Q1", "Q2", "Q3", "Q4"],
-                mileageSource: "Manual",
-              }
-            : undefined,
-        moneySettings:
-          tier === "Automation Pro"
-            ? {
-                defaultExpenseCategories: expenseCategories,
-                reimbursementRules,
-                payStructure: "Independent",
-              }
-            : undefined,
-      };
-
-      await updateCompany(updatedCompany);
-      clearWizardState(); // Clear persisted wizard state on successful completion
+      const user = await createAccount();
       onLogin(user);
     } catch (e) {
       setError("Signup failed. Please try again.");
@@ -456,12 +470,28 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     }
   };
 
-  // Redirect to Stripe Checkout for paid subscription
+  // Redirect to Stripe Checkout for paid subscription.
+  // Flow: create account first (so we have Firebase auth + a valid token),
+  // then attempt the Stripe checkout redirect. If Stripe fails at any point
+  // the user already has a trial account and is logged in normally.
   const handleStripeCheckout = async () => {
     setIsProcessing(true);
     setError("");
 
+    let user: UserType | undefined;
+
     try {
+      // Step 1: Create the account so we have Firebase auth + a valid token.
+      user = await createAccount();
+    } catch {
+      setError("Signup failed. Please try again.");
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      // Step 2: Attempt Stripe checkout with the newly acquired auth token.
+      const headers = await getAuthHeaders();
       const successUrl = `${window.location.origin}/signup/success?session_id={CHECKOUT_SESSION_ID}`;
       const cancelUrl = `${window.location.origin}/signup/cancel`;
 
@@ -469,7 +499,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
         `${API_URL}/stripe/create-checkout-session`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             tier,
             successUrl,
@@ -478,22 +508,20 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
         },
       );
 
-      if (!response.ok) {
-        // Stripe not configured or API error — fall through to trial
-        await processSignup();
-        return;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.url) {
+          // Redirect to Stripe — webhook will upgrade tier on payment success
+          window.location.href = data.url;
+          return;
+        }
       }
 
-      const data = await response.json();
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        // No checkout URL returned — fall through to trial
-        await processSignup();
-      }
+      // Stripe not configured or no checkout URL — user already has trial account
+      onLogin(user);
     } catch {
-      // Network error or Stripe unavailable — fall through to trial
-      await processSignup();
+      // Network error or Stripe unavailable — user already has trial account
+      onLogin(user);
     } finally {
       setIsProcessing(false);
     }
@@ -587,7 +615,8 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <div className="space-y-4">
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                  <input aria-label="Email address"
+                  <input
+                    aria-label="Email address"
                     type="email"
                     required
                     aria-required="true"
@@ -610,7 +639,8 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                  <input aria-label="Password"
+                  <input
+                    aria-label="Password"
                     type="password"
                     required
                     aria-required="true"
@@ -717,10 +747,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="authLegalName" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authLegalName"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Legal Name <span className="text-red-500">*</span>
                   </label>
-                  <input id="authLegalName"
+                  <input
+                    id="authLegalName"
                     required
                     placeholder="Legal Name"
                     value={name}
@@ -729,10 +763,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="authCompanyName" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authCompanyName"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Company Name <span className="text-red-500">*</span>
                   </label>
-                  <input id="authCompanyName"
+                  <input
+                    id="authCompanyName"
                     required
                     placeholder="Company Name"
                     value={companyName}
@@ -743,10 +781,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="authEmail" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authEmail"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Email <span className="text-red-500">*</span>
                   </label>
-                  <input id="authEmail"
+                  <input
+                    id="authEmail"
                     required
                     type="email"
                     placeholder="Email"
@@ -763,10 +805,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="authPassword" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authPassword"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Password <span className="text-red-500">*</span>
                   </label>
-                  <input id="authPassword"
+                  <input
+                    id="authPassword"
                     required
                     type="password"
                     placeholder="Password"
@@ -884,10 +930,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="authMcNumberOptional" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authMcNumberOptional"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     MC Number (Optional)
                   </label>
-                  <input id="authMcNumberOptional"
+                  <input
+                    id="authMcNumberOptional"
                     placeholder="e.g., MC-123456"
                     value={mcNumber}
                     onChange={(e) => setMcNumber(e.target.value)}
@@ -895,10 +945,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="authTaxIDEIN" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authTaxIDEIN"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Tax ID / EIN *
                   </label>
-                  <input id="authTaxIDEIN"
+                  <input
+                    id="authTaxIDEIN"
                     required
                     placeholder="00-0000000"
                     value={taxId}
@@ -908,10 +962,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label htmlFor="authBillingStreetAddress" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                <label
+                  htmlFor="authBillingStreetAddress"
+                  className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                >
                   Billing Street Address *
                 </label>
-                <input id="authBillingStreetAddress"
+                <input
+                  id="authBillingStreetAddress"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -920,21 +978,24 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 />
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <input aria-label="City"
+                <input
+                  aria-label="City"
                   required
                   placeholder="City"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
-                <input aria-label="State"
+                <input
+                  aria-label="State"
                   required
                   placeholder="State"
                   value={state}
                   onChange={(e) => setState(e.target.value)}
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
-                <input aria-label="ZIP"
+                <input
+                  aria-label="ZIP"
                   required
                   placeholder="ZIP"
                   value={zip}
@@ -978,7 +1039,8 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <div className="p-3 bg-blue-600 rounded-xl">
                     <Truck className="w-6 h-6 text-white" />
                   </div>
-                  <input aria-label="Power Unit # (Truck ID)"
+                  <input
+                    aria-label="Power Unit # (Truck ID)"
                     placeholder="Power Unit # (Truck ID)"
                     value={truckUnitId}
                     onChange={(e) => setTruckUnitId(e.target.value)}
@@ -989,7 +1051,8 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   <div className="p-3 bg-orange-600 rounded-xl">
                     <Container className="w-6 h-6 text-white" />
                   </div>
-                  <input aria-label="Trailing Unit # (Trailer/Chassis)"
+                  <input
+                    aria-label="Trailing Unit # (Trailer/Chassis)"
                     placeholder="Trailing Unit # (Trailer/Chassis)"
                     value={trailerUnitId}
                     onChange={(e) => setTrailerUnitId(e.target.value)}
@@ -1078,10 +1141,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="authReimbursementRules" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authReimbursementRules"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Reimbursement Rules
                   </label>
-                  <input id="authReimbursementRules"
+                  <input
+                    id="authReimbursementRules"
                     value={reimbursementRules}
                     onChange={(e) => setReimbursementRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm"
@@ -1122,10 +1189,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label htmlFor="authBaseJurisdictionState" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authBaseJurisdictionState"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Base Jurisdiction (State)
                   </label>
-                  <input id="authBaseJurisdictionState"
+                  <input
+                    id="authBaseJurisdictionState"
                     required
                     value={baseJurisdiction}
                     onChange={(e) => setBaseJurisdiction(e.target.value)}
@@ -1134,10 +1205,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label htmlFor="authMileageCaptureMode" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authMileageCaptureMode"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Mileage Capture Mode
                   </label>
-                  <select id="authMileageCaptureMode" className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none">
+                  <select
+                    id="authMileageCaptureMode"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none"
+                  >
                     <option value="Manual">Manual Entry</option>
                     <option value="CSV">CSV Import</option>
                     <option value="ELD">ELD Integration</option>
@@ -1177,10 +1254,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label htmlFor="authDocumentNamingRule" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authDocumentNamingRule"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Document Naming Rule
                   </label>
-                  <input id="authDocumentNamingRule"
+                  <input
+                    id="authDocumentNamingRule"
                     value={docNamingRules}
                     onChange={(e) => setDocNamingRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs"
@@ -1236,12 +1317,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label htmlFor="authAccountantSeatOptional" className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authAccountantSeatOptional"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Accountant Seat (Optional)
                   </label>
                   <div className="relative">
                     <Users className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
-                    <input id="authAccountantSeatOptional"
+                    <input
+                      id="authAccountantSeatOptional"
                       type="email"
                       value={accountantEmail}
                       onChange={(e) => setAccountantEmail(e.target.value)}

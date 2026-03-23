@@ -11,11 +11,13 @@ import type { User, Company } from "../../../types";
 const mockLogin = vi.fn();
 const mockRegisterCompany = vi.fn();
 const mockUpdateCompany = vi.fn();
+const mockGetAuthHeaders = vi.fn();
 
 vi.mock("../../../services/authService", () => ({
   login: (...args: unknown[]) => mockLogin(...args),
   registerCompany: (...args: unknown[]) => mockRegisterCompany(...args),
   updateCompany: (...args: unknown[]) => mockUpdateCompany(...args),
+  getAuthHeaders: (...args: unknown[]) => mockGetAuthHeaders(...args),
 }));
 
 // Mock config
@@ -106,6 +108,10 @@ beforeEach(() => {
     company: mockCompany,
   });
   mockUpdateCompany.mockResolvedValue(undefined);
+  mockGetAuthHeaders.mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "Bearer mock-token",
+  });
 
   // Mock global fetch for Stripe checkout session API
   global.fetch = vi.fn();
@@ -128,9 +134,7 @@ async function goToPayment() {
   await user.type(screen.getByPlaceholderText("Company Name"), "Fleet Co");
   await user.type(screen.getByPlaceholderText("Email"), "jane@fleet.com");
   await user.type(screen.getByPlaceholderText("Password"), "Pass123!");
-  await user.click(
-    screen.getByRole("button", { name: /continue registry/i }),
-  );
+  await user.click(screen.getByRole("button", { name: /continue registry/i }));
 
   await waitFor(() => {
     expect(screen.getByText("Step 2: Company Details")).toBeInTheDocument();
@@ -147,14 +151,10 @@ async function goToPayment() {
   await user.click(screen.getByRole("button", { name: /verify & next/i }));
 
   await waitFor(() => {
-    expect(
-      screen.getByText("Step 3: Initial Registry"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Step 3: Initial Registry")).toBeInTheDocument();
   });
 
-  await user.click(
-    screen.getByRole("button", { name: /complete registry/i }),
-  );
+  await user.click(screen.getByRole("button", { name: /complete registry/i }));
 
   await waitFor(() => {
     expect(screen.getByText("Secure Hub")).toBeInTheDocument();
@@ -170,7 +170,9 @@ describe("S-401: Auth Stripe Checkout", () => {
   describe("PCI Compliance (R-P4-01)", () => {
     it("does not render card number input", async () => {
       await goToPayment();
-      expect(screen.queryByPlaceholderText("Card Number")).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText("Card Number"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not render card expiry input", async () => {
@@ -203,10 +205,11 @@ describe("S-401: Auth Stripe Checkout", () => {
       ).toBeInTheDocument();
     });
 
-    it("calls checkout session API with successUrl and cancelUrl on click", async () => {
+    it("creates account first, then calls checkout session API with auth token", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({ url: "https://checkout.stripe.com/session123" }),
+        json: () =>
+          Promise.resolve({ url: "https://checkout.stripe.com/session123" }),
       });
 
       const user = await goToPayment();
@@ -214,18 +217,27 @@ describe("S-401: Auth Stripe Checkout", () => {
         screen.getByRole("button", { name: /subscribe with stripe/i }),
       );
 
+      // Account is created before the Stripe API call
+      await waitFor(() => {
+        expect(mockRegisterCompany).toHaveBeenCalled();
+      });
+
       await waitFor(() => {
         expect(global.fetch).toHaveBeenCalledWith(
           expect.stringContaining("/api/stripe/create-checkout-session"),
           expect.objectContaining({
             method: "POST",
+            headers: expect.objectContaining({
+              Authorization: "Bearer mock-token",
+            }),
             body: expect.stringContaining("successUrl"),
           }),
         );
       });
 
       // Also verify cancelUrl is in the request body
-      const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+      const fetchCall = (global.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0];
       const body = JSON.parse(fetchCall[1].body);
       expect(body).toHaveProperty("successUrl");
       expect(body).toHaveProperty("cancelUrl");

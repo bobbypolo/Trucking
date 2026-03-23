@@ -15,6 +15,10 @@ vi.mock("../../../services/authService", () => ({
   login: vi.fn(),
   registerCompany: vi.fn(),
   updateCompany: vi.fn(),
+  getAuthHeaders: vi.fn().mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "",
+  }),
 }));
 
 vi.mock("../../../services/config", () => ({
