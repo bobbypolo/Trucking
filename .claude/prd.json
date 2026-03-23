@@ -228,7 +228,8 @@
       "phase": 2,
       "phase_type": "schema",
       "scope": [
-        "server/migrations/032_parties_subsystem.sql"
+        "server/migrations/032_parties_subsystem.sql",
+        "server/__tests__/services/migration-rehearsal.test.ts"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -250,9 +251,10 @@
       ],
       "gateCmds": {
         "unit": "cd server && npx vitest run --reporter=verbose",
-        "lint": "cd server && npx tsc --noEmit"
+        "lint": "cd server && npx tsc --noEmit",
+        "integration": "cd server && npx vitest run --reporter=verbose"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": [
@@ -265,7 +267,10 @@
       "phase": 2,
       "phase_type": "schema",
       "scope": [
-        "server/routes/users.ts"
+        "server/routes/users.ts",
+        "server/routes/clients.ts",
+        "server/lib/sql-auth.ts",
+        "server/__tests__/routes"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -282,9 +287,10 @@
       ],
       "gateCmds": {
         "unit": "cd server && npx vitest run --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/routes/company-signup.test.ts --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": [
