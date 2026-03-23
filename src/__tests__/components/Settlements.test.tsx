@@ -19,6 +19,7 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
     name: "Test Admin",
   }),
+  onUserChange: vi.fn(() => () => {}),
 }));
 
 vi.mock("../../../services/financialService", () => ({

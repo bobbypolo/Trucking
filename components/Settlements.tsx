@@ -35,7 +35,8 @@ import {
   Scissors,
 } from "lucide-react";
 import { generateInvoicePDF, settleLoad } from "../services/storageService";
-import { addDriver, getCurrentUser } from "../services/authService";
+import { addDriver } from "../services/authService";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   createSettlement,
   uploadToVault,
@@ -79,7 +80,7 @@ export const Settlements: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const currentUser = getCurrentUser();
+  const currentUser = useCurrentUser();
 
   const loadAccountingData = async () => {
     setIsLoading(true);

@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { getVaultDocs, createARInvoice } from "../services/financialService";
 import { saveLoad } from "../services/storageService";
-import { getCurrentUser } from "../services/authService";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -92,7 +92,7 @@ export const LoadDetailView: React.FC<Props> = ({
   const driver = users.find((u) => u.id === load.driverId);
   const dispatcher = users.find((u) => u.id === load.dispatcherId);
   const broker = brokers.find((b) => b.id === load.brokerId);
-  const currentUser = getCurrentUser();
+  const currentUser = useCurrentUser();
 
   const profit = (load.carrierRate || 0) - (load.driverPay || 0);
   const marginPercentage = load.carrierRate
