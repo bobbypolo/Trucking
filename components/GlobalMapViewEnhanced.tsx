@@ -197,6 +197,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const [livePositions, setLivePositions] = useState<LiveGpsPosition[]>([]);
   const [hasLiveData, setHasLiveData] = useState(false);
   const [hasMockPositions, setHasMockPositions] = useState(false);
+  const showMockIndicators = (import.meta as any).env.DEV;
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchLivePositions = useCallback(async () => {
@@ -214,7 +215,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
       setLivePositions(positions);
       setHasLiveData(positions.length > 0 && positions.some((p) => !p.isMock));
-      setHasMockPositions(positions.some((p) => p.isMock));
+      setHasMockPositions(showMockIndicators && positions.some((p) => p.isMock));
     } catch {
       // Network/parse error — fall back to static data
       setLivePositions([]);
@@ -489,7 +490,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
               Live
             </span>
-            {hasMockPositions && (
+            {hasMockPositions && showMockIndicators && (
               <span className="text-[9px] text-amber-400 font-semibold">
                 (simulated)
               </span>
@@ -569,7 +570,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: pos.isMock ? "#f59e0b" : "#22c55e",
+                        fillColor: (pos.isMock && showMockIndicators) ? "#f59e0b" : "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,
