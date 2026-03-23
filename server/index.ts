@@ -51,6 +51,7 @@ import vaultDocsRouter from "./routes/vault-docs";
 import documentsRouter from "./routes/documents";
 import healthRouter from "./routes/health";
 import quickbooksRouter from "./routes/quickbooks";
+import callLogsRouter from "./routes/call-logs";
 import stripeRouter from "./routes/stripe";
 
 const app = express();
@@ -105,6 +106,7 @@ app.use(safetyRouter);
 app.use(notificationJobsRouter);
 app.use(vaultDocsRouter);
 app.use(documentsRouter);
+app.use(callLogsRouter);
 
 app.use(errorHandler);
 
