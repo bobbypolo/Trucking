@@ -184,4 +184,49 @@ describe("R-P1-05: requireTenant middleware", () => {
       expect(nextFn.mock.calls[0][0]).toBeUndefined();
     });
   });
+
+  describe("S-3.1: Null tenantId handling (TENANT_NOT_RESOLVED)", () => {
+    const userNoTenant = {
+      uid: "user-no-tenant",
+      tenantId: "",
+      role: "dispatcher",
+      email: "orphan@example.com",
+      firebaseUid: "fb-uid-orphan",
+    };
+
+    it("returns TENANT_NOT_RESOLVED when tenantId is empty and URL has companyId", () => {
+      const req = mockReq(userNoTenant, { companyId: "company-A" });
+      const res = mockRes();
+
+      requireTenant(req, res, nextFn);
+
+      expect(nextFn).toHaveBeenCalledOnce();
+      const err = nextFn.mock.calls[0][0];
+      expect(err).toBeInstanceOf(ForbiddenError);
+      expect(err.statusCode).toBe(403);
+      expect(err.error_code).toBe("TENANT_NOT_RESOLVED");
+    });
+
+    it("returns TENANT_NOT_RESOLVED when tenantId is empty and body has company_id", () => {
+      const req = mockReq(userNoTenant, {}, { company_id: "company-A" });
+      const res = mockRes();
+
+      requireTenant(req, res, nextFn);
+
+      expect(nextFn).toHaveBeenCalledOnce();
+      const err = nextFn.mock.calls[0][0];
+      expect(err).toBeInstanceOf(ForbiddenError);
+      expect(err.error_code).toBe("TENANT_NOT_RESOLVED");
+    });
+
+    it("passes through when tenantId is empty but no companyId in params or body", () => {
+      const req = mockReq(userNoTenant, {}, {});
+      const res = mockRes();
+
+      requireTenant(req, res, nextFn);
+
+      expect(nextFn).toHaveBeenCalledOnce();
+      expect(nextFn.mock.calls[0][0]).toBeUndefined();
+    });
+  });
 });
