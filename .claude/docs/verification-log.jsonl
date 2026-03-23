@@ -85,3 +85,5 @@
 {"story_id": "S-7.2", "timestamp": "2026-03-23T10:43:04.573879", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-04"], "production_violations": [], "receipt_hash": "64c1b116"}
 {"story_id": "S-7.3", "timestamp": "2026-03-23T10:43:04.573879", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-05"], "production_violations": [], "receipt_hash": "3da3203a"}
 {"story_id": "S-7.4", "timestamp": "2026-03-23T10:43:04.573879", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-06", "R-P7-07", "R-P7-08"], "production_violations": [], "receipt_hash": "f63fe1e5"}
+{"story_id": "S-7.5", "timestamp": "2026-03-23T12:27:42.956853", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-09", "R-P7-10", "R-P7-11"], "production_violations": [], "receipt_hash": "0a1a3567"}
+{"story_id": "S-7.6", "timestamp": "2026-03-23T12:27:42.956853", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-12"], "production_violations": [], "receipt_hash": "5787fdbb"}
