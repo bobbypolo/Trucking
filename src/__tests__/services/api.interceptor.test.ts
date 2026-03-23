@@ -9,6 +9,7 @@ vi.mock("../../../services/config", () => ({
 
 vi.mock("../../../services/authService", () => ({
   getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
 }));
 
 import { apiFetch } from "../../../services/api";
@@ -23,13 +24,21 @@ describe("apiFetch 401/403 interception", () => {
     vi.restoreAllMocks();
   });
 
-  // R-W2-01a: 401 emits auth:session-expired custom event
-  it("emits auth:session-expired CustomEvent on 401 response", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue({
-      ok: false,
-      status: 401,
-      json: () => Promise.resolve({ error: "Unauthorized" }),
-    } as Response);
+  // R-W2-01a: 401 emits auth:session-expired custom event (after retry also fails)
+  it("emits auth:session-expired CustomEvent on 401 response after retry", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch");
+    // Both original and retry return 401
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({ error: "Unauthorized" }),
+      } as Response);
 
     await expect(apiFetch("/loads")).rejects.toThrow();
 

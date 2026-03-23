@@ -1,6 +1,6 @@
 import { API_URL } from "./config";
 
-import { getIdTokenAsync } from "./authService";
+import { getIdTokenAsync, forceRefreshToken } from "./authService";
 
 /** Thrown when the server responds with 403 Forbidden. */
 export class ForbiddenError extends Error {
@@ -41,10 +41,47 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
   if (!response.ok) {
     if (response.status === 401) {
-      // Session truly expired — Firebase token auto-refresh should have prevented this.
-      // Emit a global event so the App can show the SessionExpiredModal.
-      window.dispatchEvent(new CustomEvent("auth:session-expired"));
-      throw new Error("Unauthorized: session expired");
+      // First 401: force-refresh token and retry once before giving up.
+      const freshToken = await forceRefreshToken();
+
+      const retryHeaders = {
+        "Content-Type": "application/json",
+        ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}),
+        ...(customHeaders || {}),
+      };
+
+      let retryResponse: Response;
+      try {
+        retryResponse = await fetch(`${API_URL}${endpoint}`, {
+          ...restOptions,
+          headers: retryHeaders,
+          ...(signal ? { signal } : {}),
+        });
+      } catch (retryErr: unknown) {
+        if (retryErr instanceof DOMException && retryErr.name === "AbortError") {
+          return undefined;
+        }
+        throw retryErr;
+      }
+
+      if (retryResponse.ok) {
+        return retryResponse.json();
+      }
+
+      if (retryResponse.status === 401) {
+        // Retry also failed with 401 — session is truly expired.
+        window.dispatchEvent(new CustomEvent("auth:session-expired"));
+        throw new Error("Unauthorized: session expired");
+      }
+
+      // Retry returned a different error — fall through to normal error handling
+      const retryErrorData = await retryResponse.json().catch(() => ({}));
+      if (retryResponse.status === 403) {
+        throw new ForbiddenError(retryErrorData.error || "Forbidden");
+      }
+      throw new Error(
+        retryErrorData.error || `API Request failed: ${retryResponse.status}`,
+      );
     }
 
     if (response.status === 403) {

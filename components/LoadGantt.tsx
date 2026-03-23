@@ -83,12 +83,12 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                                     </div>
                                 </div>
 
-                                {/* Milestone Times (Mock) */}
+                                {/* Milestone Times */}
                                 <div className="absolute bottom-1 left-8 flex items-center gap-1 text-[7px] font-black text-slate-600">
-                                    <Clock className="w-2 h-2" /> 04:00 AM
+                                    <Clock className="w-2 h-2" /> {load.pickupDate ? new Date(load.pickupDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                 </div>
                                 <div className="absolute bottom-1 right-8 flex items-center gap-1 text-[7px] font-black text-slate-600">
-                                    ETA: 06:30 PM
+                                    ETA: {load.dropoffDate ? new Date(load.dropoffDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
                                 </div>
                             </div>
                         </div>

@@ -96,6 +96,7 @@ interface Props {
     | "MAINTENANCE"
     | "AUTOMATION";
   currentUser: UserType;
+  onNavigate?: (tab: string, subTab?: string) => void;
 }
 
 const AccountingPortal: React.FC<Props> = ({
@@ -104,6 +105,7 @@ const AccountingPortal: React.FC<Props> = ({
   currentUser,
   onUserUpdate,
   initialTab = "DASHBOARD",
+  onNavigate,
 }) => {
   const [activeTab, setActiveTab] = useState<
     | "DASHBOARD"
@@ -120,33 +122,7 @@ const AccountingPortal: React.FC<Props> = ({
   const [invoices, setInvoices] = useState<ARInvoice[]>([]);
   const [bills, setBills] = useState<APBill[]>([]);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
-  const [automationRules, setAutomationRules] = useState<AutomationRule[]>([
-    {
-      id: "1",
-      name: "Fuel Receipt Auto-Match",
-      enabled: true,
-      trigger: "doc_upload",
-      action: "match_receipt",
-      configuration: { matchTolerance: 0.05, lookbackDays: 7 },
-    },
-    {
-      id: "2",
-      name: "Auto-IFTA Analysis",
-      enabled: true,
-      trigger: "load_status_change",
-      condition: { field: "status", operator: "equals", value: "delivered" },
-      action: "update_ifta",
-      configuration: {},
-    },
-    {
-      id: "3",
-      name: "Compliance Guard: Lock on POD",
-      enabled: false,
-      trigger: "doc_upload",
-      action: "notify_accounting",
-      configuration: {},
-    },
-  ]);
+  const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -157,23 +133,35 @@ const AccountingPortal: React.FC<Props> = ({
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
   >(null);
 
-  const handleRunEngine = async () => {
-    const rule = automationRules.find((r) => r.action === "match_receipt");
-    if (!rule || !rule.enabled) {
-      showFeedback("Fuel Matching rule is disabled or missing.");
-      return;
-    }
+  // Derive repair expense GL account ID from loaded accounts
+  const REPAIR_EXPENSE_ACCT_NUMBER = "5000";
+  const repairExpenseAcctId = useMemo(() => {
+    const acct = accounts.find(
+      (a) => a.accountNumber === REPAIR_EXPENSE_ACCT_NUMBER,
+    );
+    return acct?.id || "";
+  }, [accounts]);
 
+  const handleRunEngine = async () => {
     showFeedback("Engine running: Scanning Vault for unlinked receipts...");
 
-    // Mocking the scan - in real life this pulls from getBills() and getVaultDocs()
-    setTimeout(() => {
-      const results = { matched: 12, orphaned: 2 };
+    try {
+      const rule = automationRules.find((r) => r.action === "match_receipt") || {
+        id: "default",
+        name: "Fuel Receipt Auto-Match",
+        enabled: true,
+        trigger: "doc_upload" as const,
+        action: "match_receipt",
+        configuration: { matchTolerance: 0.05, lookbackDays: 7 },
+      };
+      const results = await executeFuelMatchingRule([], [], rule as AutomationRule);
       showFeedback(
-        `Sync Complete: Auto-Matched ${results.matched} receipts. ${results.orphaned} require manual verification.`,
+        `Sync Complete: Auto-Matched ${results?.matched ?? 0} receipts. ${results?.orphaned ?? 0} require manual verification.`,
         4000,
       );
-    }, 1500);
+    } catch {
+      showFeedback("Engine run failed. Please try again.");
+    }
   };
 
   const handleAction = (action: string) => {
@@ -332,16 +320,16 @@ const AccountingPortal: React.FC<Props> = ({
                 },
                 {
                   label: "Pending Docs",
-                  val: "14",
+                  val: `${(Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length}`,
                   sub: "Missing POD/BOL",
-                  trend: "!",
+                  trend: (Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length > 0 ? "!" : "OK",
                   color: "text-orange-500",
                   bg: "bg-orange-500/5",
                 },
                 {
                   label: "IFTA Liability",
-                  val: "$2,840",
-                  sub: "Q4 Estimated",
+                  val: "$0.00",
+                  sub: "Current Quarter",
                   trend: "Accrued",
                   color: "text-blue-500",
                   bg: "bg-blue-500/5",
@@ -378,7 +366,10 @@ const AccountingPortal: React.FC<Props> = ({
                   <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                     Load P&L
                   </h2>
-                  <button className="text-[10px] font-black text-emerald-500 uppercase hover:underline">
+                  <button
+                    onClick={() => onNavigate?.("loads")}
+                    className="text-[10px] font-black text-emerald-500 uppercase hover:underline"
+                  >
                     View All Loads
                   </button>
                 </div>
@@ -616,7 +607,11 @@ const AccountingPortal: React.FC<Props> = ({
                                 <Phone className="w-4 h-4" />
                               </button>
                             )}
-                            <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
+                            <button
+                              onClick={() => showFeedback("Line item actions coming soon")}
+                              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                              aria-label="More options"
+                            >
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </div>
@@ -754,7 +749,11 @@ const AccountingPortal: React.FC<Props> = ({
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
+                          <button
+                            onClick={() => showFeedback("Line item actions coming soon")}
+                            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
+                            aria-label="More options"
+                          >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
@@ -968,7 +967,7 @@ const AccountingPortal: React.FC<Props> = ({
                                   amount: tk.amount,
                                   allocationType: "Truck" as any,
                                   allocationId: tk.unit,
-                                  glAccountId: "5000", // Repair Expense
+                                  glAccountId: repairExpenseAcctId,
                                 },
                               ] as any,
                             };
@@ -1019,57 +1018,14 @@ const AccountingPortal: React.FC<Props> = ({
 
             <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] p-10 backdrop-blur-md">
               <div className="space-y-6">
-                {[
-                  {
-                    event: "Load #1024 Locked",
-                    user: "Admin",
-                    time: "2 mins ago",
-                    color: "text-emerald-500",
-                  },
-                  {
-                    event: "Invoice #INV-902 Sent to HUB Group",
-                    user: "System",
-                    time: "1 hour ago",
-                    color: "text-blue-500",
-                  },
-                  {
-                    event: "Settlement Adjustment: Fuel Rebate",
-                    user: "Accounting",
-                    time: "3 hours ago",
-                    color: "text-orange-500",
-                  },
-                  {
-                    event: "New Vendor Bill: MHC Kenworth",
-                    user: "Dispatch",
-                    time: "5 hours ago",
-                    color: "text-indigo-500",
-                  },
-                ].map((log, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-6 p-4 bg-white/5 rounded-2xl border border-white/5"
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full ${log.color.replace("text-", "bg-")}`}
-                    />
-                    <div className="flex-1">
-                      <div className="text-[11px] font-black text-white uppercase tracking-tighter">
-                        {log.event}
-                      </div>
-                      <div className="text-[9px] text-slate-500 font-bold uppercase">
-                        {log.user} • {log.time}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleAction(`Comparing Versions for ${log.event}`)
-                      }
-                      className="text-[9px] font-black text-slate-500 hover:text-white uppercase transition-colors"
-                    >
-                      Compare Versions
-                    </button>
+                <div className="text-center py-12">
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                    No audit events recorded yet
                   </div>
-                ))}
+                  <p className="text-[9px] text-slate-700 mt-2">
+                    Audit entries will appear here as financial operations are performed.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -1093,7 +1049,12 @@ const AccountingPortal: React.FC<Props> = ({
                 >
                   <Activity className="w-4 h-4" /> Run Full Audit
                 </button>
-                <button className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest">
+                <button
+                  onClick={() =>
+                    showFeedback("Automation rule builder coming soon")
+                  }
+                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
+                >
                   <Plus className="w-4 h-4" /> Create New Rule
                 </button>
               </div>
@@ -1103,19 +1064,19 @@ const AccountingPortal: React.FC<Props> = ({
               {[
                 {
                   label: "Rules Executed",
-                  value: "1,248",
+                  value: "0",
                   icon: Cpu,
                   color: "text-blue-500",
                 },
                 {
                   label: "Time Saved (Est)",
-                  value: "42.5 hrs",
+                  value: "\u2014",
                   icon: Clock,
                   color: "text-emerald-500",
                 },
                 {
                   label: "Active Triggers",
-                  value: "14",
+                  value: `${automationRules.filter((r) => r.enabled).length}`,
                   icon: Zap,
                   color: "text-orange-500",
                 },
@@ -1212,84 +1173,6 @@ const AccountingPortal: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "GL" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-end">
-              <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  Operational Audit Trail
-                </h2>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                  Post-Lock Event Log
-                </p>
-              </div>
-              <button
-                onClick={() =>
-                  showFeedback("Fleet Audit Log PDF generating...")
-                }
-                className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl border border-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
-              >
-                <Download className="w-4 h-4" /> Export Audit Log (PDF)
-              </button>
-            </div>
-
-            <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] p-10 backdrop-blur-md">
-              <div className="space-y-6">
-                {[
-                  {
-                    event: "Load #1024 Locked",
-                    user: "Admin",
-                    time: "2 mins ago",
-                    color: "text-emerald-500",
-                  },
-                  {
-                    event: "Invoice #INV-902 Sent to HUB Group",
-                    user: "System",
-                    time: "1 hour ago",
-                    color: "text-blue-500",
-                  },
-                  {
-                    event: "Settlement Adjustment: Fuel Rebate",
-                    user: "Accounting",
-                    time: "3 hours ago",
-                    color: "text-orange-500",
-                  },
-                  {
-                    event: "New Vendor Bill: MHC Kenworth",
-                    user: "Dispatch",
-                    time: "5 hours ago",
-                    color: "text-indigo-500",
-                  },
-                ].map((log, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center gap-6 p-4 bg-white/5 rounded-2xl border border-white/5"
-                  >
-                    <div
-                      className={`w-2 h-2 rounded-full ${log.color.replace("text-", "bg-")}`}
-                    />
-                    <div className="flex-1">
-                      <div className="text-[11px] font-black text-white uppercase tracking-tighter">
-                        {log.event}
-                      </div>
-                      <div className="text-[9px] text-slate-500 font-bold uppercase">
-                        {log.user} • {log.time}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() =>
-                        handleAction(`Comparing Versions for ${log.event}`)
-                      }
-                      className="text-[9px] font-black text-slate-500 hover:text-white uppercase transition-colors"
-                    >
-                      Compare Versions
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {showBillForm && (

@@ -12,6 +12,7 @@ import {
   createBillSchema,
   createDocumentVaultSchema,
   batchImportSchema,
+  batchUpdateSettlementsSchema,
 } from "../schemas/accounting";
 import { createChildLogger } from "../lib/logger";
 
@@ -640,6 +641,37 @@ router.post(
       res.status(500).json({ error: "Failed to create settlement" });
     } finally {
       connection.release();
+    }
+  },
+);
+
+// Batch Update Settlement Status
+router.patch(
+  "/api/accounting/settlements/batch",
+  requireAuth,
+  requireTenant,
+  validateBody(batchUpdateSettlementsSchema),
+  async (req: any, res) => {
+    const tenantId = req.user.tenantId;
+    const { ids, status } = req.body;
+    try {
+      const placeholders = ids.map(() => "?").join(",");
+      const [result]: any = await pool.query(
+        `UPDATE driver_settlements SET status = ? WHERE tenant_id = ? AND id IN (${placeholders})`,
+        [status, tenantId, ...ids],
+      );
+      const updated = result.affectedRows || 0;
+      res.json({ updated });
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "PATCH /api/accounting/settlements/batch",
+      });
+      log.error(
+        { err: error },
+        "SERVER ERROR [PATCH /api/accounting/settlements/batch]",
+      );
+      res.status(500).json({ error: "Failed to batch update settlements" });
     }
   },
 );

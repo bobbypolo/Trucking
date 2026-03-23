@@ -6,7 +6,7 @@ import { Settlements } from "../../../components/Settlements";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
 vi.mock("../../../services/storageService", () => ({ generateInvoicePDF: vi.fn().mockResolvedValue(undefined), settleLoad: vi.fn().mockResolvedValue(undefined) }));
-vi.mock("../../../services/authService", () => ({ addDriver: vi.fn(), getCurrentUser: vi.fn().mockReturnValue({ id: "user-1", role: "admin", companyId: "company-1", name: "Test Admin" }) }));
+vi.mock("../../../services/authService", () => ({ addDriver: vi.fn(), getCurrentUser: vi.fn().mockReturnValue({ id: "user-1", role: "admin", companyId: "company-1", name: "Test Admin" }), onUserChange: vi.fn(() => () => {}) }));
 vi.mock("../../../services/financialService", () => ({ createSettlement: vi.fn().mockResolvedValue(undefined), uploadToVault: vi.fn().mockResolvedValue(undefined), getSettlements: vi.fn().mockResolvedValue([]), getBills: vi.fn().mockResolvedValue([]) }));
 vi.mock("../../../services/syncService", () => ({ generateQBSummaryJournal: vi.fn(), exportToCSV: vi.fn() }));
 vi.mock("../../../services/firebase", () => ({ DEMO_MODE: false }));

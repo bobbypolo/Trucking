@@ -18,6 +18,7 @@ vi.mock("../../../services/authService", () => ({
     role: "admin",
     companyId: "company-1",
   }),
+  onUserChange: vi.fn(() => () => {}),
 }));
 
 const mockLoads: LoadData[] = [

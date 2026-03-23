@@ -481,10 +481,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <button className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
+                  <button
+                    onClick={() => setToast({ message: "Version history coming soon", type: "info" })}
+                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                  >
                     <FileText className="w-4 h-4" /> Version History
                   </button>
-                  <button className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2">
+                  <button
+                    onClick={() => setToast({ message: "Send update coming soon", type: "info" })}
+                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                  >
                     <Send className="w-4 h-4" /> Send Update
                   </button>
                   {selectedQuote.status === "Accepted" && (
@@ -986,7 +992,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                   {item.description}
                                 </div>
                               </div>
-                              <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all" aria-label="Mark as complete">
+                              <button
+                                onClick={() => setToast({ message: `Work item "${item.label}" marked complete`, type: "success" })}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all"
+                                aria-label="Mark as complete"
+                              >
                                 <CheckCircle2 className="w-5 h-5" />
                               </button>
                             </div>
@@ -1084,7 +1094,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   >
                     Log Contact
                   </button>
-                  <button className="p-3 bg-slate-800 text-slate-300 rounded-lg" aria-label="More options">
+                  <button
+                    onClick={() => setToast({ message: "More options menu coming soon", type: "info" })}
+                    className="p-3 bg-slate-800 text-slate-300 rounded-lg"
+                    aria-label="More options"
+                  >
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
                 </div>
@@ -1186,7 +1200,9 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                         className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                         placeholder="Enter Prospect or Customer Name"
                         value={
-                          selectedQuote?.notes ? "Acme Global Logistics" : ""
+                          selectedQuote?.leadId
+                            ? leads.find((l) => l.id === selectedQuote.leadId)?.customerName || ""
+                            : ""
                         }
                         readOnly={!!selectedQuote?.notes}
                       />
@@ -1199,14 +1215,20 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                         <input id="qmContactIntelligence"
                           className="flex-1 bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                           placeholder="(555) 000-0000"
-                          value={selectedQuote?.notes ? "(312) 555-0199" : ""}
+                          value={
+                            selectedQuote?.leadId
+                              ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone || ""
+                              : ""
+                          }
                           readOnly={!!selectedQuote?.notes}
                         />
                         <button
                           className="bg-blue-600 hover:bg-blue-500 text-white w-12 rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-500/20 active:scale-90"
                           onClick={() =>
                             handlePhoneInteraction(
-                              "3125550199",
+                              (selectedQuote?.leadId
+                                ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone
+                                : "") || "",
                               "New Opportunity Intake",
                             )
                           }

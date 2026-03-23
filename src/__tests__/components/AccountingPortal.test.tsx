@@ -256,7 +256,7 @@ describe("AccountingPortal component", () => {
     });
   });
 
-  it("switches to Rules Engine tab and shows automation rules", async () => {
+  it("switches to Rules Engine tab and shows Automation Center", async () => {
     const user = userEvent.setup();
     render(<AccountingPortal {...defaultProps} />);
     await waitFor(() => {
@@ -265,9 +265,9 @@ describe("AccountingPortal component", () => {
 
     await user.click(screen.getByText("Rules Engine"));
     await waitFor(() => {
-      // Automation rules include Fuel Receipt Auto-Match
+      // Automation rules are initially empty (fetched from API)
       expect(
-        screen.getByText("Fuel Receipt Auto-Match"),
+        screen.getByText("Automation Center"),
       ).toBeInTheDocument();
     });
   });

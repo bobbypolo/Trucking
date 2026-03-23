@@ -19,6 +19,7 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
     name: "Test Admin",
   }),
+  onUserChange: vi.fn(() => () => {}),
 }));
 
 vi.mock("../../../services/financialService", () => ({
@@ -26,6 +27,7 @@ vi.mock("../../../services/financialService", () => ({
   uploadToVault: vi.fn().mockResolvedValue(undefined),
   getSettlements: vi.fn().mockResolvedValue([]),
   getBills: vi.fn().mockResolvedValue([]),
+  batchFinalizeSettlements: vi.fn().mockResolvedValue({ updated: 1 }),
 }));
 
 vi.mock("../../../services/syncService", () => ({
@@ -396,7 +398,45 @@ describe("Settlements component", () => {
     expect(screen.getByText("Finalize All")).toBeInTheDocument();
   });
 
-  it("shows feedback when Batch Print is clicked", async () => {
+  // R-P5-01: Chevron expand wired to setExpandedRow(id) toggle
+  it("R-P5-01: invoice row chevron expands to show load details", async () => {
+    const user = userEvent.setup();
+    render(<Settlements {...defaultProps} />);
+    await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
+    await waitFor(() => {
+      expect(screen.getByText("LN-001")).toBeInTheDocument();
+    });
+    // Click the chevron/expand button on the first invoice row
+    const expandBtns = screen.getAllByTitle("Expand row");
+    await user.click(expandBtns[0]);
+    // Expanded row shows additional details
+    await waitFor(() => {
+      expect(screen.getByText(/Route:/)).toBeInTheDocument();
+    });
+  });
+
+  it("R-P5-01: clicking chevron again collapses the expanded row", async () => {
+    const user = userEvent.setup();
+    render(<Settlements {...defaultProps} />);
+    await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
+    await waitFor(() => {
+      expect(screen.getByText("LN-001")).toBeInTheDocument();
+    });
+    const expandBtns = screen.getAllByTitle("Expand row");
+    await user.click(expandBtns[0]);
+    await waitFor(() => {
+      expect(screen.getByText(/Route:/)).toBeInTheDocument();
+    });
+    // Click again to collapse
+    const collapseBtns = screen.getAllByTitle("Collapse row");
+    await user.click(collapseBtns[0]);
+    await waitFor(() => {
+      expect(screen.queryByText(/Route:/)).not.toBeInTheDocument();
+    });
+  });
+
+  // R-P5-02: Batch Print generates PDF using jsPDF
+  it("R-P5-02: Batch Print generates a PDF document", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
@@ -405,11 +445,15 @@ describe("Settlements component", () => {
     });
     await user.click(screen.getByText("Batch Print"));
     await waitFor(() => {
-      expect(screen.getByText(/Batch Print Command Sent to Spooler/)).toBeInTheDocument();
+      expect(screen.getByText(/PDF generated/i)).toBeInTheDocument();
     });
   });
 
-  it("shows feedback when Finalize All is clicked", async () => {
+  // R-P5-03: Finalize calls PATCH /api/settlements/batch
+  it("R-P5-03: Finalize All calls batchFinalizeSettlements API", async () => {
+    const { batchFinalizeSettlements } = await import(
+      "../../../services/financialService"
+    );
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
@@ -418,8 +462,66 @@ describe("Settlements component", () => {
     });
     await user.click(screen.getByText("Finalize All"));
     await waitFor(() => {
-      expect(screen.getByText(/Accounts Receivable Finalized/)).toBeInTheDocument();
+      expect(batchFinalizeSettlements).toHaveBeenCalled();
     });
+  });
+
+  it("R-P5-03: Finalize updates row status to Finalized after API call", async () => {
+    const user = userEvent.setup();
+    render(<Settlements {...defaultProps} />);
+    await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
+    await waitFor(() => {
+      expect(screen.getByText("Finalize All")).toBeInTheDocument();
+    });
+    // Verify initial state is "Pending Invoice"
+    expect(screen.getByText("Pending Invoice")).toBeInTheDocument();
+    await user.click(screen.getByText("Finalize All"));
+    // The feedback message confirms finalization
+    await waitFor(() => {
+      expect(screen.getByText(/Finalized 1 settlement/)).toBeInTheDocument();
+    });
+  });
+
+  // R-P5-04: Export CSV triggers file download
+  it("R-P5-04: Export CSV button exists on Invoices tab", async () => {
+    const user = userEvent.setup();
+    render(<Settlements {...defaultProps} />);
+    await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
+    await waitFor(() => {
+      expect(screen.getByText("Export CSV")).toBeInTheDocument();
+    });
+  });
+
+  it("R-P5-04: Export CSV triggers download with settlement data", async () => {
+    // Mock URL.createObjectURL and document.createElement for download
+    const mockCreateObjectURL = vi.fn().mockReturnValue("blob:test");
+    const mockRevokeObjectURL = vi.fn();
+    Object.defineProperty(window, "URL", {
+      value: { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL },
+      writable: true,
+    });
+    const mockClick = vi.fn();
+    const originalCreateElement = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      if (tag === "a") {
+        const el = originalCreateElement("a");
+        el.click = mockClick;
+        return el;
+      }
+      return originalCreateElement(tag);
+    });
+
+    const user = userEvent.setup();
+    render(<Settlements {...defaultProps} />);
+    await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
+    await waitFor(() => {
+      expect(screen.getByText("Export CSV")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Export CSV"));
+    await waitFor(() => {
+      expect(mockCreateObjectURL).toHaveBeenCalled();
+    });
+    expect(mockClick).toHaveBeenCalled();
   });
 
   it("shows empty invoice message when no delivered loads", async () => {

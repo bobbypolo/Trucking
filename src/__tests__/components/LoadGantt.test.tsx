@@ -123,13 +123,17 @@ describe("LoadGantt component", () => {
       expect(deliveryLabels.length).toBe(loads.length);
     });
 
-    it("renders milestone times", () => {
+    it("renders milestone times from load data", () => {
       render(<LoadGantt loads={loads} />);
-      // Each row has departure and ETA times
-      const departures = screen.getAllByText(/04:00 AM/);
-      expect(departures.length).toBe(loads.length);
-      const etas = screen.getAllByText(/ETA: 06:30 PM/);
-      expect(etas.length).toBe(loads.length);
+      // After S-4.4: times are dynamically computed from load.pickupDate and load.dropoffDate
+      // pickupDate "2025-12-01" renders as locale time, dropoffDate undefined renders as "--:--"
+      // Clock SVG splits text nodes, so use container query
+      const container = document.body;
+      expect(container.textContent).toMatch(/ETA:/);
+      expect(container.textContent).toMatch(/--:--/);
+      // Verify no hardcoded "04:00 AM" or "06:30 PM"
+      expect(container.textContent).not.toContain("04:00 AM");
+      expect(container.textContent).not.toContain("06:30 PM");
     });
   });
 

@@ -69,7 +69,7 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
   }, [loads]);
 
   const chartData = useMemo(() => {
-    // Mocking trend data based on loads
+    // Compute trend data based on loads
     const last7Days = [...Array(7)].map((_, i) => {
       const date = new Date();
       date.setDate(date.getDate() - (6 - i));

@@ -39,6 +39,7 @@ import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
 import { v4 as uuidv4 } from "uuid";
+import { api } from "../services/api";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
@@ -147,8 +148,25 @@ export const DriverMobileHome: React.FC<Props> = ({
     setSelectedLoadIdState(id);
   };
 
-  // Mock Change Requests & Docs for MVP
-  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
+  // API-backed change requests and documents
+  const [changeRequests, setChangeRequests] = useState<
+    Array<{
+      id: string;
+      label: string;
+      status: string;
+      created_at: string;
+      entity_id: string;
+    }>
+  >([]);
+  const [loadDocuments, setLoadDocuments] = useState<
+    Array<{
+      id: string;
+      document_type: string;
+      original_name: string;
+      status: string;
+      created_at: string;
+    }>
+  >([]);
 
   const activeLoads = useMemo(
     () =>
@@ -163,6 +181,68 @@ export const DriverMobileHome: React.FC<Props> = ({
     () => loads.find((l) => l.id === selectedLoadId),
     [loads, selectedLoadId],
   );
+
+  // Stable list of driver load IDs for useEffect dependency
+  const driverLoadIds = useMemo(
+    () =>
+      loads
+        .filter((l) => l.driverId === user.id)
+        .map((l) => l.id)
+        .join(","),
+    [loads, user.id],
+  );
+
+  // Fetch change requests only when on "changes" tab
+  useEffect(() => {
+    if (activeTab !== "changes") return;
+    if (!driverLoadIds) return;
+    let cancelled = false;
+    const ids = driverLoadIds.split(",");
+
+    Promise.all(
+      ids.map((loadId) =>
+        api
+          .get(`/loads/${loadId}/change-requests`)
+          .then((data: any) => data?.changeRequests || [])
+          .catch(() => []),
+      ),
+    )
+      .then((results) => {
+        if (cancelled) return;
+        const allRequests = results.flat();
+        allRequests.sort(
+          (a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+        setChangeRequests(allRequests);
+      })
+      .catch(() => {
+        /* ignore */
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [driverLoadIds, activeTab]);
+
+  // Fetch documents for the selected load
+  useEffect(() => {
+    if (!selectedLoadId) return;
+    let cancelled = false;
+    api
+      .get(`/documents?load_id=${selectedLoadId}`)
+      .then((data: any) => {
+        if (!cancelled && data?.documents) {
+          setLoadDocuments(data.documents);
+        }
+      })
+      .catch(() => {
+        /* ignore fetch errors silently */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLoadId]);
 
   // Visibility Logic
   const v = {
@@ -209,19 +289,23 @@ export const DriverMobileHome: React.FC<Props> = ({
     setIsCapturingDoc(false);
   };
 
-  const createChangeRequest = (type: ChangeRequest["type"]) => {
-    const newReq: ChangeRequest = {
-      id: uuidv4(),
-      loadId: selectedLoadId || "GENERAL",
-      driverId: user.id,
-      type,
-      status: "PENDING",
-      notes: "",
-      isUrgent: false,
-      createdAt: new Date().toISOString(),
-    };
-    setChangeRequests([newReq, ...changeRequests]);
-    setIsCreatingChange(false);
+  const createChangeRequest = async (type: ChangeRequest["type"]) => {
+    const loadId = selectedLoadId || "GENERAL";
+    try {
+      const result: any = await api.post(`/loads/${loadId}/change-requests`, {
+        type,
+        notes: "",
+        isUrgent: false,
+      });
+      if (result) {
+        setChangeRequests((prev) => [result, ...prev]);
+      }
+      setIsCreatingChange(false);
+      setToast({ message: `${type} request submitted`, type: "success" });
+    } catch {
+      setToast({ message: "Failed to submit change request", type: "error" });
+      setIsCreatingChange(false);
+    }
   };
 
   // Sub-components
@@ -394,7 +478,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           <section className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                <FileText className="w-3 h-3" /> Required Documents
+                <FileText className="w-3 h-3" /> Documents
               </h3>
               <button
                 onClick={() => setIsCapturingDoc(true)}
@@ -404,17 +488,36 @@ export const DriverMobileHome: React.FC<Props> = ({
               </button>
             </div>
             <div className="space-y-2">
-              {["BOL (Pickup)", "Weight Scale", "POD (Delivery)"].map((doc) => (
-                <div
-                  key={doc}
-                  className="bg-[#0a0f1e] p-4 rounded-2xl border border-white/5 flex justify-between items-center"
-                >
-                  <div className="text-xs font-bold text-slate-300 uppercase">
-                    {doc}
-                  </div>
-                  <AlertTriangle className="w-4 h-4 text-orange-500/50" />
-                </div>
-              ))}
+              {loadDocuments.length > 0
+                ? loadDocuments.map((doc) => (
+                    <div
+                      key={doc.id}
+                      className="bg-[#0a0f1e] p-4 rounded-2xl border border-white/5 flex justify-between items-center"
+                    >
+                      <div>
+                        <div className="text-xs font-bold text-slate-300 uppercase">
+                          {doc.document_type}
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          {doc.original_name}
+                        </div>
+                      </div>
+                      <CheckCircle2 className="w-4 h-4 text-green-500/50" />
+                    </div>
+                  ))
+                : ["BOL (Pickup)", "Weight Scale", "POD (Delivery)"].map(
+                    (doc) => (
+                      <div
+                        key={doc}
+                        className="bg-[#0a0f1e] p-4 rounded-2xl border border-white/5 flex justify-between items-center"
+                      >
+                        <div className="text-xs font-bold text-slate-300 uppercase">
+                          {doc}
+                        </div>
+                        <AlertTriangle className="w-4 h-4 text-orange-500/50" />
+                      </div>
+                    ),
+                  )}
             </div>
           </section>
 
@@ -661,7 +764,11 @@ export const DriverMobileHome: React.FC<Props> = ({
               <Phone className="w-4 h-4" />
             </a>
           )}
-          <button onClick={() => onOpenHub?.("messaging")} aria-label="Open messages" className="relative">
+          <button
+            onClick={() => onOpenHub?.("messaging")}
+            aria-label="Open messages"
+            className="relative"
+          >
             <MessageSquare className="w-5 h-5 text-slate-400" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0a0f1e]" />
           </button>
@@ -780,26 +887,35 @@ export const DriverMobileHome: React.FC<Props> = ({
               </button>
             </div>
             <div className="space-y-4">
-              {changeRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="bg-[#0a0f1e] p-5 rounded-2xl border border-white/5 flex justify-between items-center"
-                >
-                  <div>
-                    <div className="text-xs font-black text-white uppercase tracking-tight">
-                      {req.type}
-                    </div>
-                    <div className="text-xs text-slate-500 font-bold uppercase mt-1">
-                      {new Date(req.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <span
-                    className={`px-2 py-1 rounded text-xs font-black uppercase ${req.status === "PENDING" ? "bg-orange-500/10 text-orange-500" : "bg-green-500/10 text-green-500"}`}
+              {changeRequests.map((req) => {
+                const statusColors: Record<string, string> = {
+                  PENDING: "bg-orange-500/10 text-orange-500",
+                  APPROVED: "bg-green-500/10 text-green-500",
+                  REJECTED: "bg-red-500/10 text-red-500",
+                };
+                const badgeClass =
+                  statusColors[req.status] || "bg-slate-500/10 text-slate-500";
+                return (
+                  <div
+                    key={req.id}
+                    className="bg-[#0a0f1e] p-5 rounded-2xl border border-white/5 flex justify-between items-center"
                   >
-                    {req.status}
-                  </span>
-                </div>
-              ))}
+                    <div>
+                      <div className="text-xs font-black text-white uppercase tracking-tight">
+                        {req.label}
+                      </div>
+                      <div className="text-xs text-slate-500 font-bold uppercase mt-1">
+                        {new Date(req.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 rounded text-xs font-black uppercase ${badgeClass}`}
+                    >
+                      {req.status}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

@@ -10,6 +10,10 @@ import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
+import {
+  findSqlCompanyById,
+  mapCompanyRowToApiCompany,
+} from "../lib/sql-auth";
 
 const router = Router();
 
@@ -197,10 +201,20 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     try {
+      // Try Firestore first (primary source for company settings)
       const doc = await db.collection("companies").doc(req.params.id).get();
-      if (!doc.exists)
-        return res.status(404).json({ error: "Company not found" });
-      res.json(doc.data());
+      if (doc.exists) {
+        return res.json(doc.data());
+      }
+
+      // Fallback to MySQL — company may have been created during signup
+      // but not yet mirrored to Firestore
+      const sqlCompany = await findSqlCompanyById(req.params.id);
+      if (sqlCompany) {
+        return res.json(mapCompanyRowToApiCompany(sqlCompany));
+      }
+
+      return res.status(404).json({ error: "Company not found" });
     } catch (error) {
       const log = createChildLogger({
         correlationId: req.correlationId,

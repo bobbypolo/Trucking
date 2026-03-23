@@ -33,14 +33,17 @@ import {
   Phone,
   Activity,
   Scissors,
+  Download,
 } from "lucide-react";
 import { generateInvoicePDF, settleLoad } from "../services/storageService";
-import { addDriver, getCurrentUser } from "../services/authService";
+import { addDriver } from "../services/authService";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   createSettlement,
   uploadToVault,
   getSettlements,
   getBills,
+  batchFinalizeSettlements,
 } from "../services/financialService";
 import { v4 as uuidv4 } from "uuid";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
@@ -72,6 +75,8 @@ export const Settlements: React.FC<Props> = ({
     end: "2025-12-31",
   });
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [finalizedLoads, setFinalizedLoads] = useState<Set<string>>(new Set());
   const [feedback, showFeedback, clearFeedback] =
     useAutoFeedback<string | null>(null);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
@@ -79,7 +84,7 @@ export const Settlements: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const currentUser = getCurrentUser();
+  const currentUser = useCurrentUser();
 
   const loadAccountingData = async () => {
     setIsLoading(true);
@@ -201,6 +206,95 @@ export const Settlements: React.FC<Props> = ({
     showFeedback(
       `Audit-Ready Statement generated and saved to Vault for ${user.name}`,
     );
+  };
+
+  const handleBatchPrint = async () => {
+    const deliveredLoads = loads.filter((l) => l.status === "delivered");
+    if (deliveredLoads.length === 0) {
+      showFeedback("No delivered loads to print.");
+      return;
+    }
+    try {
+      const jsPDFModule = await import("jspdf");
+      const jsPDF = jsPDFModule.default || jsPDFModule.jsPDF;
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text("Settlement Batch Report", 14, 22);
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 30);
+
+      let yPos = 40;
+      deliveredLoads.forEach((load, idx) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.setFontSize(11);
+        doc.text(`${idx + 1}. Load #${load.loadNumber}`, 14, yPos);
+        doc.setFontSize(9);
+        doc.text(`Customer: ${load.pickup?.facilityName ?? "N/A"}`, 20, yPos + 6);
+        doc.text(`Amount: $${(load.carrierRate || 0).toLocaleString()}`, 20, yPos + 12);
+        doc.text(
+          `Route: ${load.pickup?.city ?? ""}, ${load.pickup?.state ?? ""} → ${load.dropoff?.city ?? ""}, ${load.dropoff?.state ?? ""}`,
+          20,
+          yPos + 18,
+        );
+        yPos += 26;
+      });
+
+      doc.save("settlement-batch-report.pdf");
+      showFeedback(`PDF generated — ${deliveredLoads.length} settlement(s) printed.`);
+    } catch (err) {
+      console.error("[Settlements] Batch Print PDF error:", err);
+      showFeedback("Failed to generate PDF. Please try again.");
+    }
+  };
+
+  const handleFinalizeAll = async () => {
+    const deliveredLoads = loads.filter((l) => l.status === "delivered");
+    if (deliveredLoads.length === 0) {
+      showFeedback("No delivered loads to finalize.");
+      return;
+    }
+    try {
+      const ids = deliveredLoads.map((l) => l.id);
+      await batchFinalizeSettlements(ids, "Finalized");
+      setFinalizedLoads(new Set(ids));
+      showFeedback(
+        `Finalized ${deliveredLoads.length} settlement(s). Ledger updated.`,
+      );
+    } catch (err) {
+      console.error("[Settlements] Finalize error:", err);
+      showFeedback("Failed to finalize settlements. Please try again.");
+    }
+  };
+
+  const handleExportCSV = () => {
+    const deliveredLoads = loads.filter((l) => l.status === "delivered");
+    if (deliveredLoads.length === 0) {
+      showFeedback("No delivered loads to export.");
+      return;
+    }
+    const headers = ["Load #", "Customer", "Amount", "Status", "Pickup City", "Pickup State", "Dropoff City", "Dropoff State"];
+    const rows = deliveredLoads.map((l) => [
+      l.loadNumber || "",
+      l.pickup?.facilityName ?? "",
+      (l.carrierRate || 0).toString(),
+      finalizedLoads.has(l.id) ? "Finalized" : "Pending Invoice",
+      l.pickup?.city ?? "",
+      l.pickup?.state ?? "",
+      l.dropoff?.city ?? "",
+      l.dropoff?.state ?? "",
+    ]);
+    const csvContent = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `settlements-export-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    showFeedback(`CSV exported — ${deliveredLoads.length} settlement(s).`);
   };
 
   const pnlStats = useMemo(() => {
@@ -430,7 +524,14 @@ export const Settlements: React.FC<Props> = ({
                           })}
                         </div>
                       </div>
-                      <button className="text-slate-500 hover:text-white transition-colors">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedUser(isExpanded ? null : u.id);
+                        }}
+                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        className="text-slate-500 hover:text-white transition-colors"
+                      >
                         {isExpanded ? (
                           <ChevronUp className="w-7 h-7" />
                         ) : (
@@ -639,19 +740,19 @@ export const Settlements: React.FC<Props> = ({
               </h2>
               <div className="flex gap-3">
                 <button
-                  onClick={() =>
-                    showFeedback("Batch Print Command Sent to Spooler")
-                  }
+                  onClick={handleExportCSV}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-bold border border-slate-700 flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" /> Export CSV
+                </button>
+                <button
+                  onClick={handleBatchPrint}
                   className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-bold border border-slate-700 flex items-center gap-2"
                 >
                   <Printer className="w-4 h-4" /> Batch Print
                 </button>
                 <button
-                  onClick={() =>
-                    showFeedback(
-                      "Accounts Receivable Finalized & Ledger Updated",
-                    )
-                  }
+                  onClick={handleFinalizeAll}
                   className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 shadow-sm"
                 >
                   <Send className="w-4 h-4" /> Finalize All
@@ -663,6 +764,7 @@ export const Settlements: React.FC<Props> = ({
               <table className="w-full text-left">
                 <thead className="bg-slate-950 border-b border-slate-800">
                   <tr>
+                    <th className="px-3 py-4 text-[10px] font-bold text-slate-500 uppercase w-10"></th>
                     <th className="px-6 py-4 text-[10px] font-bold text-slate-500 uppercase">
                       Load #
                     </th>
@@ -683,41 +785,92 @@ export const Settlements: React.FC<Props> = ({
                 <tbody className="divide-y divide-slate-800">
                   {loads
                     .filter((l) => l.status === "delivered")
-                    .map((load) => (
-                      <tr
-                        key={load.id}
-                        className="hover:bg-slate-800/50 transition-colors"
-                      >
-                        <td className="px-6 py-4 text-sm font-bold text-white">
-                          {load.loadNumber}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-400">
-                          {load.pickup?.facilityName ?? ''}
-                        </td>
-                        <td className="px-6 py-4 text-sm font-mono text-white">
-                          ${(load.carrierRate || 0).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="text-[10px] font-bold text-blue-400 bg-blue-900/20 px-2 py-1 rounded-full border border-blue-900/50 uppercase">
-                            Pending Invoice
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right space-x-2">
-                          <button
-                            onClick={async () => await generateInvoicePDF(load)}
-                            className="text-slate-500 hover:text-white"
-                            title="Generate PDF"
-                          >
-                            <FileText className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    .map((load) => {
+                      const isRowExpanded = expandedRow === load.id;
+                      return (
+                        <React.Fragment key={load.id}>
+                          <tr className="hover:bg-slate-800/50 transition-colors">
+                            <td className="px-3 py-4">
+                              <button
+                                onClick={() =>
+                                  setExpandedRow(isRowExpanded ? null : load.id)
+                                }
+                                className="text-slate-500 hover:text-white transition-colors"
+                                title={isRowExpanded ? "Collapse row" : "Expand row"}
+                              >
+                                {isRowExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </button>
+                            </td>
+                            <td className="px-6 py-4 text-sm font-bold text-white">
+                              {load.loadNumber}
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-400">
+                              {load.pickup?.facilityName ?? ''}
+                            </td>
+                            <td className="px-6 py-4 text-sm font-mono text-white">
+                              ${(load.carrierRate || 0).toLocaleString()}
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border uppercase ${
+                                finalizedLoads.has(load.id)
+                                  ? "text-green-400 bg-green-900/20 border-green-900/50"
+                                  : "text-blue-400 bg-blue-900/20 border-blue-900/50"
+                              }`}>
+                                {finalizedLoads.has(load.id) ? "Finalized" : "Pending Invoice"}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-right space-x-2">
+                              <button
+                                onClick={async () => await generateInvoicePDF(load)}
+                                className="text-slate-500 hover:text-white"
+                                title="Generate PDF"
+                              >
+                                <FileText className="w-5 h-5" />
+                              </button>
+                            </td>
+                          </tr>
+                          {isRowExpanded && (
+                            <tr className="bg-slate-950/70">
+                              <td colSpan={6} className="px-8 py-4">
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                  <div>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">Route:</span>
+                                    <span className="text-slate-300 ml-2">
+                                      {load.pickup?.city ?? ""}, {load.pickup?.state ?? ""} → {load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">Driver Pay:</span>
+                                    <span className="text-slate-300 ml-2 font-mono">
+                                      ${(load.driverPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">Pickup Date:</span>
+                                    <span className="text-slate-300 ml-2">{load.pickupDate ?? "N/A"}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">Carrier Rate:</span>
+                                    <span className="text-slate-300 ml-2 font-mono">
+                                      ${(load.carrierRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   {loads.filter((l) => l.status === "delivered").length ===
                     0 && (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-12 text-center text-slate-500 bg-slate-900/50 italic text-sm"
                       >
                         No pending deliveries found for invoicing.

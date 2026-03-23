@@ -3,7 +3,8 @@ import React, { useMemo, useState } from 'react';
 import { LoadData, LOAD_STATUS, LoadStatus, Company, User } from '../types';
 import { Download, FileDown, Search, ArrowRight, DollarSign, Layers, Calendar, MapPin, Building2, ChevronDown, ChevronUp, FileText, Printer, Filter, X, Lock, AlertTriangle, AlertCircle, ThermometerSnowflake, Mail, CheckCircle, Truck, User as UserIcon, Eye, AlertOctagon, Wrench, Ban, Clock, TrainFront, Headset, Users, Container, Construction, Undo2, Hash, Edit2, Map, Box, Phone } from 'lucide-react';
 import { generateInvoicePDF, saveLoad } from '../services/storageService';
-import { getCompany, getCurrentUser } from '../services/authService';
+import { getCompany } from '../services/authService';
+import { useCurrentUser } from '../hooks/useCurrentUser';
 import { ExportModal } from './ExportModal';
 import { v4 as uuidv4 } from 'uuid';
 import { LoadingSkeleton } from './ui/LoadingSkeleton';
@@ -26,7 +27,7 @@ interface Props {
 }
 
 export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, selectedDriverId, onClearFilter, canViewRates = true, users = [], onOpenHub, isLoading, loadError, onRetryLoad }) => {
-    const currentUser = getCurrentUser();
+    const currentUser = useCurrentUser();
     const [filter, setFilter] = useState('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 

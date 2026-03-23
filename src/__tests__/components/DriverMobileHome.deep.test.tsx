@@ -1,7 +1,14 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  type MockedFunction,
+} from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
 
@@ -31,6 +38,27 @@ vi.mock("../../../components/Scanner", () => ({
 // Mock GlobalMapViewEnhanced to avoid Google Maps API
 vi.mock("../../../components/GlobalMapViewEnhanced", () => ({
   GlobalMapViewEnhanced: () => <div data-testid="map-mock">Map</div>,
+}));
+
+// Mock api to prevent real API calls from useEffect hooks
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockImplementation((url: string) => {
+      if (url.includes("change-requests"))
+        return Promise.resolve({ changeRequests: [] });
+      if (url.includes("documents")) return Promise.resolve({ documents: [] });
+      return Promise.resolve([]);
+    }),
+    post: vi.fn().mockResolvedValue({
+      id: "cr-new",
+      type: "CHANGE_REQUEST",
+      label: "DETENTION",
+      status: "PENDING",
+      entity_id: "load-1",
+      created_at: new Date().toISOString(),
+    }),
+  },
+  apiFetch: vi.fn(),
 }));
 
 // Mock Toast to render visible content
@@ -74,7 +102,9 @@ vi.mock("../../../components/ui/ConfirmDialog", () => ({
     onCancel: () => void;
   }) =>
     open ? (
-      <div data-testid={`confirm-dialog-${title.replace(/\s+/g, "-").toLowerCase()}`}>
+      <div
+        data-testid={`confirm-dialog-${title.replace(/\s+/g, "-").toLowerCase()}`}
+      >
         <span>{title}</span>
         <span>{message}</span>
         <button onClick={onConfirm}>{confirmLabel || "Confirm"}</button>
@@ -102,16 +132,16 @@ vi.mock("../../../components/ui/InputDialog", () => ({
     onCancel: () => void;
   }) =>
     open ? (
-      <div data-testid={`input-dialog-${title.replace(/\s+/g, "-").toLowerCase()}`}>
+      <div
+        data-testid={`input-dialog-${title.replace(/\s+/g, "-").toLowerCase()}`}
+      >
         <span>{title}</span>
         <input
           data-testid="breakdown-notes-input"
           placeholder={placeholder}
           defaultValue=""
         />
-        <button
-          onClick={() => onSubmit("Engine overheating on I-40")}
-        >
+        <button onClick={() => onSubmit("Engine overheating on I-40")}>
           {submitLabel || "Submit"}
         </button>
         <button onClick={onCancel}>Cancel</button>
@@ -146,12 +176,19 @@ const makeLoad = (overrides: Partial<LoadData> = {}): LoadData => ({
 describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
   let onSaveLoad: MockedFunction<(load: LoadData) => Promise<void>>;
   let onLogout: MockedFunction<() => void>;
-  let onOpenHub: MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
+  let onOpenHub: MockedFunction<
+    (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
+  >;
 
   beforeEach(() => {
-    onSaveLoad = vi.fn<(load: LoadData) => Promise<void>>().mockResolvedValue(undefined);
+    onSaveLoad = vi
+      .fn<(load: LoadData) => Promise<void>>()
+      .mockResolvedValue(undefined);
     onLogout = vi.fn<() => void>();
-    onOpenHub = vi.fn<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>();
+    onOpenHub =
+      vi.fn<
+        (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
+      >();
     localStorage.clear();
   });
 
@@ -173,6 +210,31 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
     });
 
     it("shows created change requests after creating one from detail view", async () => {
+      const { api: apiMock } = await import("../../../services/api");
+      // After a POST, simulate GET returning the created item
+      let createdRequests: any[] = [];
+      (apiMock.post as any).mockImplementation(
+        async (_url: string, body: any) => {
+          const item = {
+            id: "cr-new",
+            type: "CHANGE_REQUEST",
+            label: body.type,
+            status: "PENDING",
+            entity_id: "load-1",
+            created_at: new Date().toISOString(),
+          };
+          createdRequests.push(item);
+          return item;
+        },
+      );
+      (apiMock.get as any).mockImplementation((url: string) => {
+        if (url.includes("change-requests"))
+          return Promise.resolve({ changeRequests: [...createdRequests] });
+        if (url.includes("documents"))
+          return Promise.resolve({ documents: [] });
+        return Promise.resolve([]);
+      });
+
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -195,11 +257,37 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
       // Navigate to changes tab to see the created change request
       await user.click(screen.getByText("Back"));
       await user.click(screen.getByText("Alerts"));
-      expect(screen.getByText("DETENTION")).toBeInTheDocument();
-      expect(screen.getByText("PENDING")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("DETENTION")).toBeInTheDocument();
+        expect(screen.getByText("PENDING")).toBeInTheDocument();
+      });
     });
 
     it("shows LUMPER change request type and date after creation", async () => {
+      const { api: apiMock } = await import("../../../services/api");
+      let createdRequests: any[] = [];
+      (apiMock.post as any).mockImplementation(
+        async (_url: string, body: any) => {
+          const item = {
+            id: "cr-new-2",
+            type: "CHANGE_REQUEST",
+            label: body.type,
+            status: "PENDING",
+            entity_id: "load-1",
+            created_at: new Date().toISOString(),
+          };
+          createdRequests.push(item);
+          return item;
+        },
+      );
+      (apiMock.get as any).mockImplementation((url: string) => {
+        if (url.includes("change-requests"))
+          return Promise.resolve({ changeRequests: [...createdRequests] });
+        if (url.includes("documents"))
+          return Promise.resolve({ documents: [] });
+        return Promise.resolve([]);
+      });
+
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -221,7 +309,9 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
       // Go to changes tab
       await user.click(screen.getByText("Back"));
       await user.click(screen.getByText("Alerts"));
-      expect(screen.getByText("LUMPER")).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText("LUMPER")).toBeInTheDocument();
+      });
     });
   });
 

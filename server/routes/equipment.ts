@@ -14,6 +14,31 @@ import { equipmentRepository } from "../repositories/equipment.repository";
 
 const router = Router();
 
+// Tenant-scoped GET /api/equipment — extracts companyId from auth token (R-P2-12)
+router.get(
+  "/api/equipment",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    try {
+      const companyId = req.user.tenantId;
+      const [rows]: any = await pool.query(
+        "SELECT * FROM equipment WHERE company_id = ?",
+        [companyId],
+      );
+      const settings = await getVisibilitySettings(companyId);
+      res.json(redactData(rows, req.user.role, settings));
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/equipment",
+      });
+      log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 // Equipment — single definition (duplicate from original removed per AC3)
 router.get(
   "/api/equipment/:companyId",

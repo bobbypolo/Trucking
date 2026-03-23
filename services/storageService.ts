@@ -1,4 +1,3 @@
-import { API_URL } from "./config";
 import {
   Message,
   LoadData,
@@ -67,6 +66,8 @@ import {
   searchLoadsApi,
   deleteLoadApi,
 } from "./loadService";
+import { api, ApiFetchOptions, ForbiddenError } from "./api";
+import { validateDispatchEvent } from "./validationGuards";
 
 // --- Re-export domain modules for backward compatibility ---
 // Consumers can import from storageService or directly from domain modules.
@@ -157,15 +158,10 @@ export const getLoads = async (user: User): Promise<LoadData[]> => {
     } else {
       return loads.filter((l) => l.driverId === user.id);
     }
-  } catch (e: any) {
-    // Re-throw auth errors so the session-expired interceptor can handle them
-    if (
-      e?.message?.startsWith("Unauthorized") ||
-      e?.name === "ForbiddenError"
-    ) {
-      throw e;
-    }
-    // Return cached loads only for non-auth network failures
+  } catch {
+    // Auth errors (401/403) are handled centrally by api.ts:
+    // 401 fires auth:session-expired event before throwing; 403 throws ForbiddenError.
+    // No duplicate auth checks needed — return cached data for all failures.
     return _cachedLoads;
   }
 };
@@ -208,17 +204,13 @@ export const updateLoadStatus = async (
 
 export const logTime = async (log: Partial<TimeLog>) => {
   try {
-    await fetch(`${API_URL}/time-logs`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...log,
-        user_id: log.userId,
-        load_id: log.loadId,
-        activity_type: log.activityType,
-        location_lat: log.location?.lat,
-        location_lng: log.location?.lng,
-      }),
+    await api.post("/time-logs", {
+      ...log,
+      user_id: log.userId,
+      load_id: log.loadId,
+      activity_type: log.activityType,
+      location_lat: log.location?.lat,
+      location_lng: log.location?.lng,
     });
   } catch (e) {
     console.error("[storageService] logTime sync failed:", e);
@@ -226,16 +218,25 @@ export const logTime = async (log: Partial<TimeLog>) => {
 };
 
 export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
+  // R-P3-03: Validate required fields before sending to prevent 400 errors
+  const validation = validateDispatchEvent({
+    load_id: event.loadId,
+    event_type: event.eventType,
+    message: event.message,
+    payload: (event as any).payload,
+  });
+  if (!validation.valid) {
+    console.warn(
+      `[storageService] logDispatchEvent skipped — missing required fields: ${validation.errors.join(", ")}`,
+    );
+    return;
+  }
   try {
-    await fetch(`${API_URL}/dispatch-events`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...event,
-        load_id: event.loadId,
-        dispatcher_id: event.dispatcherId,
-        event_type: event.eventType,
-      }),
+    await api.post("/dispatch-events", {
+      ...event,
+      load_id: event.loadId,
+      dispatcher_id: event.dispatcherId,
+      event_type: event.eventType,
     });
   } catch (e) {
     console.error("[storageService] logDispatchEvent failed:", e);
@@ -246,31 +247,20 @@ export const getDispatchEvents = async (
   companyId: string,
   signal?: AbortSignal,
 ): Promise<DispatchEvent[]> => {
-  let res: Response;
   try {
-    res = await fetch(`${API_URL}/dispatch-events/${companyId}`, {
-      headers: await getAuthHeaders(),
-      ...(signal ? { signal } : {}),
-    });
+    const data = await api.get(`/dispatch-events/${companyId}`, { signal });
+    if (!data) return []; // request was aborted
+    return data.map((e: any) => ({
+      ...e,
+      loadId: e.load_id,
+      dispatcherId: e.dispatcher_id,
+      eventType: e.event_type,
+      createdAt: e.created_at,
+    }));
   } catch (e) {
-    console.warn("[storageService] API fallback:", e);
+    console.warn("[storageService] getDispatchEvents failed:", e);
     return [];
   }
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(`Auth error: ${res.status}`);
-  }
-  if (!res.ok) {
-    console.warn("[storageService] getDispatchEvents failed:", res.status);
-    return [];
-  }
-  const data = await res.json();
-  return data.map((e: any) => ({
-    ...e,
-    loadId: e.load_id,
-    dispatcherId: e.dispatcher_id,
-    eventType: e.event_type,
-    createdAt: e.created_at,
-  }));
 };
 
 export const getTimeLogs = async (
@@ -278,39 +268,28 @@ export const getTimeLogs = async (
   isCompany = false,
   signal?: AbortSignal,
 ): Promise<TimeLog[]> => {
-  const url = isCompany
-    ? `${API_URL}/time-logs/company/${userIdOrCompanyId}`
-    : `${API_URL}/time-logs/${userIdOrCompanyId}`;
-  let res: Response;
+  const endpoint = isCompany
+    ? `/time-logs/company/${userIdOrCompanyId}`
+    : `/time-logs/${userIdOrCompanyId}`;
   try {
-    res = await fetch(url, {
-      headers: await getAuthHeaders(),
-      ...(signal ? { signal } : {}),
-    });
+    const data = await api.get(endpoint, { signal });
+    if (!data) return []; // request was aborted
+    return data.map((t: any) => ({
+      ...t,
+      userId: t.user_id,
+      loadId: t.load_id,
+      activityType: t.activity_type,
+      clockIn: t.clock_in,
+      clockOut: t.clock_out,
+      location: {
+        lat: t.location_lat,
+        lng: t.location_lng,
+      },
+    }));
   } catch (e) {
-    console.warn("[storageService] API fallback:", e);
+    console.warn("[storageService] getTimeLogs failed:", e);
     return [];
   }
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(`Auth error: ${res.status}`);
-  }
-  if (!res.ok) {
-    console.warn("[storageService] getTimeLogs failed:", res.status);
-    return [];
-  }
-  const data = await res.json();
-  return data.map((t: any) => ({
-    ...t,
-    userId: t.user_id,
-    loadId: t.load_id,
-    activityType: t.activity_type,
-    clockIn: t.clock_in,
-    clockOut: t.clock_out,
-    location: {
-      lat: t.location_lat,
-      lng: t.location_lng,
-    },
-  }));
 };
 
 // Consolidated Work Item logic at the end of the file
@@ -571,47 +550,36 @@ export const generateMaintenanceLogPDF = (eq: FleetEquipment, name: string) => {
 export const getIncidents = async (
   signal?: AbortSignal,
 ): Promise<Incident[]> => {
-  let res: Response;
   try {
-    res = await fetch(`${API_URL}/incidents`, {
-      headers: await getAuthHeaders(),
-      ...(signal ? { signal } : {}),
-    });
+    const data = await api.get("/incidents", { signal });
+    if (!data) return []; // request was aborted
+    return data.map((inc: any) => ({
+      ...inc,
+      loadId: inc.load_id,
+      reportedAt: inc.reported_at,
+      slaDeadline: inc.sla_deadline,
+      location: {
+        lat: Number(inc.location_lat),
+        lng: Number(inc.location_lng),
+      },
+      timeline:
+        inc.timeline?.map((t: any) => ({
+          ...t,
+          actorName: t.actor_name,
+          timestamp: t.timestamp,
+        })) || [],
+      billingItems:
+        inc.billingItems?.map((b: any) => ({
+          ...b,
+          providerVendor: b.provider_vendor,
+          approvedBy: b.approved_by,
+          receiptUrl: b.receipt_url,
+        })) || [],
+    }));
   } catch (e) {
     console.warn("[storageService] getIncidents API unavailable:", e);
     return [];
   }
-  if (res.status === 401 || res.status === 403) {
-    throw new Error(`Auth error: ${res.status}`);
-  }
-  if (!res.ok) {
-    console.warn("[storageService] getIncidents API unavailable:", res.status);
-    return [];
-  }
-  const data = await res.json();
-  return data.map((inc: any) => ({
-    ...inc,
-    loadId: inc.load_id,
-    reportedAt: inc.reported_at,
-    slaDeadline: inc.sla_deadline,
-    location: {
-      lat: Number(inc.location_lat),
-      lng: Number(inc.location_lng),
-    },
-    timeline:
-      inc.timeline?.map((t: any) => ({
-        ...t,
-        actorName: t.actor_name,
-        timestamp: t.timestamp,
-      })) || [],
-    billingItems:
-      inc.billingItems?.map((b: any) => ({
-        ...b,
-        providerVendor: b.provider_vendor,
-        approvedBy: b.approved_by,
-        receiptUrl: b.receipt_url,
-      })) || [],
-  }));
 };
 
 // seedIncidents: kept as no-op for backward compatibility (STORY-019)
@@ -628,21 +596,14 @@ export const createIncident = async (incident: Partial<Incident>) => {
   };
 
   try {
-    const res = await fetch(`${API_URL}/incidents`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...incToSave,
-        load_id: incToSave.loadId,
-        sla_deadline: incToSave.slaDeadline,
-        location_lat: incToSave.location?.lat,
-        location_lng: incToSave.location?.lng,
-      }),
+    await api.post("/incidents", {
+      ...incToSave,
+      load_id: incToSave.loadId,
+      sla_deadline: incToSave.slaDeadline,
+      location_lat: incToSave.location?.lat,
+      location_lng: incToSave.location?.lng,
     });
-
-    if (res.ok) {
-      return true;
-    }
+    return true;
   } catch (e) {
     console.error("[storageService] createIncident API call failed:", e);
   }
@@ -654,25 +615,19 @@ export const createIncident = async (incident: Partial<Incident>) => {
 export const saveIncident = async (incident: Incident) => {
   try {
     // API is sole source of truth for incidents
-    const res = await fetch(`${API_URL}/incidents`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        id: incident.id,
-        load_id: incident.loadId,
-        type: incident.type,
-        severity: incident.severity,
-        status: incident.status,
-        sla_deadline: incident.slaDeadline,
-        description: incident.description,
-        location_lat: incident.location?.lat,
-        location_lng: incident.location?.lng,
-        recovery_plan: incident.recoveryPlan,
-      }),
+    await api.post("/incidents", {
+      id: incident.id,
+      load_id: incident.loadId,
+      type: incident.type,
+      severity: incident.severity,
+      status: incident.status,
+      sla_deadline: incident.slaDeadline,
+      description: incident.description,
+      location_lat: incident.location?.lat,
+      location_lng: incident.location?.lng,
+      recovery_plan: incident.recoveryPlan,
     });
-    if (res.ok) {
-      return true;
-    }
+    return true;
   } catch (e) {
     console.warn("[storageService] saveIncident API call failed:", e);
   }
@@ -686,17 +641,11 @@ export const saveIncidentAction = async (
   action: Partial<IncidentAction>,
 ) => {
   try {
-    const res = await fetch(`${API_URL}/incidents/${incidentId}/actions`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...action,
-        actor_name: action.actorName,
-      }),
+    await api.post(`/incidents/${incidentId}/actions`, {
+      ...action,
+      actor_name: action.actorName,
     });
-    if (res.ok) {
-      return true;
-    }
+    return true;
   } catch (e) {
     console.error("[storageService] saveIncidentAction API call failed:", e);
   }
@@ -717,11 +666,7 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
   };
 
   try {
-    await fetch(`${API_URL}/issues`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...newIssue, load_id: loadId }),
-    });
+    await api.post("/issues", { ...newIssue, load_id: loadId });
   } catch (e) {
     console.error("[storageService] saveIssue sync failed:", e);
   }
@@ -743,17 +688,13 @@ export const saveIncidentCharge = async (
   charge: Partial<EmergencyCharge>,
 ) => {
   try {
-    const res = await fetch(`${API_URL}/incidents/${incidentId}/charges`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...charge,
-        provider_vendor: charge.providerVendor,
-        approved_by: charge.approvedBy,
-        receipt_url: charge.receiptUrl,
-      }),
+    await api.post(`/incidents/${incidentId}/charges`, {
+      ...charge,
+      provider_vendor: charge.providerVendor,
+      approved_by: charge.approvedBy,
+      receipt_url: charge.receiptUrl,
     });
-    return res.ok;
+    return true;
   } catch (e) {
     return false;
   }
@@ -771,11 +712,7 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
   };
 
   try {
-    await fetch(`${API_URL}/call-logs`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(newCall),
-    });
+    await api.post("/call-logs", newCall);
   } catch (e) {
     console.error("[storageService] saveCallLog sync failed:", e);
   }
@@ -1053,18 +990,10 @@ export const globalSearch = async (
   if (!query) return [];
   const q = query.toLowerCase();
 
-  // Try to fetch from backend first for 360 degree intelligence
+  // Try to fetch from backend first for 360-degree intelligence
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(
-      `${API_URL}/global-search?query=${encodeURIComponent(query)}`,
-      {
-        headers,
-      },
-    );
-    if (res.ok) {
-      return await res.json();
-    }
+    const data = await api.get(`/global-search?query=${encodeURIComponent(query)}`);
+    if (data) return data;
   } catch (e) {
     console.error("[storageService] globalSearch API failed:", e);
   }

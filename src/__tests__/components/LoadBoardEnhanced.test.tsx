@@ -13,6 +13,7 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
   }),
   getCompany: vi.fn().mockResolvedValue({ id: "company-1", name: "Test Co" }),
+  onUserChange: vi.fn(() => () => {}),
 }));
 
 // Mock storageService since LoadList uses generateInvoicePDF/saveLoad

@@ -310,7 +310,7 @@ describe("R-P1-08: Database Migration Framework", () => {
       expect(content).toContain("-- DOWN");
     });
 
-    it("001_baseline.sql UP creates all tables from schema.sql", async () => {
+    it("001_baseline.sql UP creates core tables (quotes/leads/bookings/messages/work_items moved to authoritative migrations)", async () => {
       const fs = await import("fs");
       const { parseMigrationFile } = await import("../../lib/migrator");
 
@@ -324,7 +324,7 @@ describe("R-P1-08: Database Migration Framework", () => {
       const content = fs.readFileSync(migrationPath, "utf-8");
       const { up } = parseMigrationFile(content);
 
-      // All tables from schema.sql must be present
+      // Core tables that remain in 001_baseline.sql
       const expectedTables = [
         "companies",
         "users",
@@ -342,15 +342,16 @@ describe("R-P1-08: Database Migration Framework", () => {
         "training_courses",
         "driver_time_logs",
         "dispatch_events",
-        "messages",
-        "leads",
-        "quotes",
-        "bookings",
-        "work_items",
       ];
 
       for (const table of expectedTables) {
         expect(up).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
+      }
+
+      // These 5 tables were moved to their authoritative migrations (017/018/019)
+      const movedTables = ["messages", "leads", "quotes", "bookings", "work_items"];
+      for (const table of movedTables) {
+        expect(up).not.toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
       }
     });
 

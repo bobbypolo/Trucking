@@ -154,3 +154,44 @@ describe("R-P3-05: POST /api/accounting/sync-qb stub removed", () => {
     expect(content).not.toContain("sync-qb");
   });
 });
+
+// ============================================================
+// R-P5-03: PATCH /api/accounting/settlements/batch (C-4)
+// ============================================================
+
+describe("R-P5-03: PATCH /api/accounting/settlements/batch", () => {
+  it("updates settlement status for given IDs and returns count", async () => {
+    mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 3 }, []]);
+    const app = buildApp();
+    const res = await request(app)
+      .patch("/api/accounting/settlements/batch")
+      .set("Authorization", AUTH_HEADER)
+      .send({ ids: ["s1", "s2", "s3"], status: "Finalized" });
+    expect(res.status).toBe(200);
+    expect(res.body.updated).toBe(3);
+  });
+
+  it("scopes update to tenant_id from auth context", async () => {
+    mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    const app = buildApp();
+    await request(app)
+      .patch("/api/accounting/settlements/batch")
+      .set("Authorization", AUTH_HEADER)
+      .send({ ids: ["s1"], status: "Paid" });
+    expect(mockPoolQuery).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE driver_settlements SET status"),
+      expect.arrayContaining([TEST_TENANT_ID]),
+    );
+  });
+
+  it("returns 500 on database error", async () => {
+    mockPoolQuery.mockRejectedValueOnce(new Error("DB failure"));
+    const app = buildApp();
+    const res = await request(app)
+      .patch("/api/accounting/settlements/batch")
+      .set("Authorization", AUTH_HEADER)
+      .send({ ids: ["s1"], status: "Finalized" });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Failed to batch update settlements");
+  });
+});

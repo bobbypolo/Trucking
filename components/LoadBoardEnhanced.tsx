@@ -245,6 +245,19 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
           </div>
         </div>
 
+        {/* +New Load Floating Action Button */}
+        {onCreateLoad && (
+          <button
+            onClick={onCreateLoad}
+            className="absolute bottom-20 right-6 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-2xl z-40 hover:scale-110 transition-all flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="text-xs font-black uppercase tracking-widest">
+              New
+            </span>
+          </button>
+        )}
+
         {/* Sidebar Toggle Handle */}
         {!isSidebarOpen && (
           <button

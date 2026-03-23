@@ -10,6 +10,7 @@ vi.mock("../../../services/authService", () => ({
       "Content-Type": "application/json",
       Authorization: "Bearer test-token",
     }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
   getCurrentUser: vi.fn().mockReturnValue({ companyId: "test-co" }),
 }));
 vi.mock("../../../services/firebase", () => ({

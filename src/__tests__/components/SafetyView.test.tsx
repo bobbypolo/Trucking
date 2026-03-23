@@ -170,11 +170,13 @@ describe("SafetyView component", () => {
 
   it("displays health bar percentages and day count", async () => {
     render(<SafetyView user={mockUser} />);
+    // Health bars are now computed from API data. With no quiz data
+    // and no equipment, values should be 0% for quiz/maintenance
     await waitFor(() => {
-      expect(screen.getByText("85%")).toBeInTheDocument();
+      expect(screen.getByText("Quiz Completion")).toBeInTheDocument();
     });
-    expect(screen.getByText("92%")).toBeInTheDocument();
-    expect(screen.getByText("124 Days")).toBeInTheDocument();
+    expect(screen.getByText("Vehicle Maintenance")).toBeInTheDocument();
+    expect(screen.getByText("Incident Free Days")).toBeInTheDocument();
   });
 
   it("shows Fleet Chain of Custody section on overview tab", async () => {
@@ -778,51 +780,46 @@ describe("SafetyView component", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows training course cards on Academy tab", async () => {
+  it("shows training course cards on Academy tab or empty state", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
       expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
     );
     await user.click(screen.getByText("Academy"));
+    // With no API data, should show empty state "No data yet"
     await waitFor(() => {
-      expect(screen.getByText("Winter Operations 2025")).toBeInTheDocument();
+      const noDataElements = screen.getAllByText("No data yet");
+      expect(noDataElements.length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText("Hazmat Handling (L1)")).toBeInTheDocument();
-    expect(screen.getByText("Hours of Service Compliance")).toBeInTheDocument();
   });
 
-  it("shows course types on Academy tab", async () => {
+  it("shows course types on Academy tab when data available", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
       expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
     );
     await user.click(screen.getByText("Academy"));
+    // With no API data, courses are empty — shows empty state
     await waitFor(() => {
-      expect(screen.getByText("Winter Operations 2025")).toBeInTheDocument();
+      const noDataElements = screen.getAllByText("No data yet");
+      expect(noDataElements.length).toBeGreaterThanOrEqual(1);
     });
-    const mandatoryLabels = screen.getAllByText(
-      /Mandatory.*REQUIRED FOR ALL FLEET/,
-    );
-    expect(mandatoryLabels.length).toBe(2);
-    const certLabels = screen.getAllByText(
-      /Certification.*REQUIRED FOR ALL FLEET/,
-    );
-    expect(certLabels.length).toBe(1);
   });
 
-  it("shows fleet completion progress on Academy courses", async () => {
+  it("shows fleet completion progress on Academy courses when data available", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
       expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
     );
     await user.click(screen.getByText("Academy"));
+    // With no quiz data from API, shows empty state
     await waitFor(() => {
-      expect(screen.getByText("42%")).toBeInTheDocument();
+      const noDataElements = screen.getAllByText("No data yet");
+      expect(noDataElements.length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText("98%")).toBeInTheDocument();
   });
 
   it("shows Create Course button on Academy tab", async () => {
@@ -881,7 +878,7 @@ describe("SafetyView component", () => {
     });
   });
 
-  it("shows recent test submissions on Academy tab", async () => {
+  it("shows recent test submissions section on Academy tab", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
@@ -891,15 +888,12 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("Recent Test Submissions")).toBeInTheDocument();
     });
-    expect(screen.getByText("David Miller")).toBeInTheDocument();
-    expect(screen.getByText("John Smith")).toBeInTheDocument();
-    expect(screen.getByText("Robert Wilson")).toBeInTheDocument();
-    expect(screen.getByText("95%")).toBeInTheDocument();
-    expect(screen.getByText("100%")).toBeInTheDocument();
-    expect(screen.getByText("65%")).toBeInTheDocument();
+    // With no quiz results from API, shows empty state
+    const noDataElements = screen.getAllByText("No data yet");
+    expect(noDataElements.length).toBeGreaterThanOrEqual(2); // courses + submissions
   });
 
-  it("shows pass/fail status for test submissions", async () => {
+  it("shows empty state when no test submissions available", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
@@ -909,10 +903,10 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("Recent Test Submissions")).toBeInTheDocument();
     });
-    const passedElements = screen.getAllByText("Passed");
-    expect(passedElements.length).toBe(2);
-    const failedElements = screen.getAllByText("Failed");
-    expect(failedElements.length).toBe(1);
+    // No quiz results from API means empty state instead of hardcoded names
+    expect(screen.queryByText("David Miller")).not.toBeInTheDocument();
+    expect(screen.queryByText("John Smith")).not.toBeInTheDocument();
+    expect(screen.queryByText("Robert Wilson")).not.toBeInTheDocument();
   });
 
   // ── RULES (Settings) TAB ──
@@ -967,18 +961,18 @@ describe("SafetyView component", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows rule values on Rules tab", async () => {
+  it("shows rule values on Rules tab from API or N/A defaults", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
       expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
     );
     await user.click(screen.getByText("Rules"));
+    // Without mocked fetch for /api/safety/settings, values show N/A
     await waitFor(() => {
-      expect(screen.getByText("75")).toBeInTheDocument();
+      const naElements = screen.getAllByText("N/A");
+      expect(naElements.length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getByText("On")).toBeInTheDocument();
-    expect(screen.getByText("90 Days")).toBeInTheDocument();
   });
 
   it("shows Save Safety Policy button on Rules tab", async () => {

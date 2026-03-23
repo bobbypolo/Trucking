@@ -17,6 +17,7 @@ vi.mock("../../../services/authService", () => ({
     role: "dispatcher",
     companyId: "company-1",
   }),
+  onUserChange: vi.fn(() => () => {}),
 }));
 
 const mockUsers: User[] = [

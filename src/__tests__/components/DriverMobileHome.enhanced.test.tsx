@@ -40,6 +40,22 @@ vi.mock("../../../components/GlobalMapViewEnhanced", () => ({
   GlobalMapViewEnhanced: () => <div data-testid="map-mock">Map</div>,
 }));
 
+// Mock api to prevent real API calls from useEffect hooks
+vi.mock("../../../services/api", () => {
+  const mockGet = vi.fn().mockImplementation((url: string) => {
+    if (url.includes("change-requests"))
+      return Promise.resolve({ changeRequests: [] });
+    if (url.includes("documents")) return Promise.resolve({ documents: [] });
+    return Promise.resolve([]);
+  });
+  const mockPost = vi.fn().mockResolvedValue({});
+  return {
+    api: { get: mockGet, post: mockPost, patch: vi.fn(), delete: vi.fn() },
+    apiFetch: vi.fn().mockResolvedValue(undefined),
+    ForbiddenError: class ForbiddenError extends Error {},
+  };
+});
+
 // Mock Toast to control timer behavior
 vi.mock("../../../components/Toast", () => ({
   Toast: ({
@@ -343,7 +359,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
       expect(screen.getByText("Dropoff")).toBeInTheDocument();
     });
 
-    it("shows Required Documents section", async () => {
+    it("shows Documents section", async () => {
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -355,7 +371,8 @@ describe("DriverMobileHome — enhanced coverage", () => {
         />,
       );
       await user.click(screen.getByText("Dallas → Houston"));
-      expect(screen.getByText("Required Documents")).toBeInTheDocument();
+      expect(screen.getByText("Documents")).toBeInTheDocument();
+      // When no API documents are loaded, the fallback placeholders show
       expect(screen.getByText("BOL (Pickup)")).toBeInTheDocument();
       expect(screen.getByText("Weight Scale")).toBeInTheDocument();
       expect(screen.getByText("POD (Delivery)")).toBeInTheDocument();

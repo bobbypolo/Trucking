@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { LoadData, LoadStatus, User, Broker, LoadLeg } from "../types";
 import {
   Truck,
@@ -36,8 +36,8 @@ import {
   Activity,
 } from "lucide-react";
 import { getVaultDocs, createARInvoice } from "../services/financialService";
-import { saveLoad } from "../services/storageService";
-import { getCurrentUser } from "../services/authService";
+import { saveLoad, generateBolPDF } from "../services/storageService";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -53,6 +53,7 @@ interface Props {
     tab: "messaging" | "safety" | "command" | "directory",
     showCallForm?: boolean,
   ) => void;
+  onNavigate?: (tab: string, context?: string) => void;
 }
 
 export const LoadDetailView: React.FC<Props> = ({
@@ -63,6 +64,7 @@ export const LoadDetailView: React.FC<Props> = ({
   users = [],
   brokers = [],
   onOpenHub,
+  onNavigate,
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -74,6 +76,12 @@ export const LoadDetailView: React.FC<Props> = ({
     type: "success" | "error" | "info";
   } | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [addingStopType, setAddingStopType] = useState<"pickup" | "dropoff" | null>(null);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [showDocuments, setShowDocuments] = useState(false);
+  const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
+  const [localIsFlagged, setLocalIsFlagged] = useState(load.isActionRequired ?? false);
+  const stopMatrixRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -92,7 +100,7 @@ export const LoadDetailView: React.FC<Props> = ({
   const driver = users.find((u) => u.id === load.driverId);
   const dispatcher = users.find((u) => u.id === load.dispatcherId);
   const broker = brokers.find((b) => b.id === load.brokerId);
-  const currentUser = getCurrentUser();
+  const currentUser = useCurrentUser();
 
   const profit = (load.carrierRate || 0) - (load.driverPay || 0);
   const marginPercentage = load.carrierRate
@@ -171,6 +179,72 @@ export const LoadDetailView: React.FC<Props> = ({
     }
   };
 
+  const handleUtilityClick = useCallback(async (util: string) => {
+    setShowUtilities(false);
+    switch (util) {
+      case "Print BOL":
+        generateBolPDF(load);
+        setToast({ message: "BOL PDF generated", type: "success" });
+        break;
+      case "Carrier Rates":
+        setToast({ message: "Rate card coming soon", type: "info" });
+        break;
+      case "Load Stops":
+        stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      case "Documents":
+        try {
+          const resp = await fetch(`/api/documents?loadId=${load.id}`, {
+            headers: { "Content-Type": "application/json" },
+          });
+          if (resp.ok) {
+            const docs = await resp.json();
+            setDocuments(docs);
+          }
+          setShowDocuments(true);
+        } catch {
+          setToast({ message: "Failed to load documents", type: "error" });
+        }
+        break;
+      case "Show Route":
+        setToast({ message: "Requires Google Maps API key", type: "info" });
+        break;
+      case "Audit Logs":
+        onNavigate?.("audit", load.id);
+        break;
+    }
+  }, [load, onNavigate]);
+
+  const handleTagForAction = useCallback(async () => {
+    if (!currentUser) return;
+    const newFlagged = !localIsFlagged;
+    try {
+      await saveLoad({ ...load, isActionRequired: newFlagged }, currentUser);
+      setLocalIsFlagged(newFlagged);
+      setToast({
+        message: newFlagged ? "Load tagged for action" : "Action tag removed",
+        type: "success",
+      });
+    } catch {
+      setToast({ message: "Failed to update tag", type: "error" });
+    }
+  }, [load, currentUser, localIsFlagged]);
+
+  const handleToggleLock = useCallback(async () => {
+    if (!currentUser) return;
+    const newLocked = !localIsLocked;
+    try {
+      await saveLoad({ ...load, isLocked: newLocked }, currentUser);
+      setLocalIsLocked(newLocked);
+      setToast({
+        message: newLocked ? "Load locked" : "Load unlocked",
+        type: "success",
+      });
+    } catch {
+      setToast({ message: "Failed to toggle lock", type: "error" });
+    }
+  }, [load, currentUser, localIsLocked]);
+
   return (
     <div className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
       {toast && (
@@ -237,6 +311,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   ].map((util) => (
                     <button
                       key={util}
+                      onClick={() => handleUtilityClick(util)}
                       className="w-full text-left px-4 py-2.5 hover:bg-blue-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors text-slate-300 hover:text-white"
                     >
                       {util}
@@ -245,18 +320,22 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
               )}
             </div>
-            <button className="flex items-center gap-2 px-5 py-2 bg-slate-800 border border-slate-700 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all">
-              <AlertTriangle className="w-4 h-4" /> Tag for Action
+            <button
+              onClick={handleTagForAction}
+              className={`flex items-center gap-2 px-5 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all ${localIsFlagged ? "bg-amber-900/20 border-amber-500/30 text-amber-500" : "bg-slate-800 border-slate-700 text-slate-400"}`}
+            >
+              <AlertTriangle className="w-4 h-4" /> {localIsFlagged ? "Tagged" : "Tag for Action"}
             </button>
             <button
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${load.isLocked ? "bg-red-900/20 border-red-500/30 text-red-500" : "bg-green-900/20 border-green-500/30 text-green-500"}`}
+              onClick={handleToggleLock}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localIsLocked ? "bg-red-900/20 border-red-500/30 text-red-500" : "bg-green-900/20 border-green-500/30 text-green-500"}`}
             >
-              {load.isLocked ? (
+              {localIsLocked ? (
                 <Lock className="w-4 h-4" />
               ) : (
                 <Unlock className="w-4 h-4" />
               )}
-              {load.isLocked ? "Locked" : "Unlocked"}
+              {localIsLocked ? "Locked" : "Unlocked"}
             </button>
           </div>
         </div>
@@ -454,21 +533,102 @@ export const LoadDetailView: React.FC<Props> = ({
           </div>
 
           {/* Stop Matrix Section (Live Data Connect) */}
-          <div className="space-y-5">
+          <div className="space-y-5" ref={stopMatrixRef} id="stop-matrix">
             <div className="flex justify-between items-center px-2">
               <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
                 <Navigation className="w-4 h-4 text-blue-500" /> Stop Matrix
                 (Sequential)
               </h3>
               <div className="flex gap-4">
-                <button className="px-5 py-2 bg-slate-800 border border-slate-700 text-[9px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-white transition-all">
+                <button
+                  onClick={() => setAddingStopType("pickup")}
+                  className="px-5 py-2 bg-slate-800 border border-slate-700 text-[9px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-white transition-all"
+                >
                   + Add Pickup
                 </button>
-                <button className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg shadow-blue-900/40 active:scale-95 transition-all">
+                <button
+                  onClick={() => setAddingStopType("dropoff")}
+                  className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg shadow-blue-900/40 active:scale-95 transition-all"
+                >
                   + Add Drop
                 </button>
               </div>
             </div>
+
+            {/* Add Stop Form */}
+            {addingStopType && (
+              <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-[10px] font-black text-white uppercase tracking-widest">
+                    New {addingStopType === "pickup" ? "Pickup" : "Drop-off"} Stop
+                  </h4>
+                  <button
+                    onClick={() => setAddingStopType(null)}
+                    className="text-slate-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                      Facility Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter facility name"
+                      className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                      Address
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter address"
+                      className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="City"
+                      className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                      Appointment Date/Time
+                    </label>
+                    <input
+                      type="datetime-local"
+                      className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setAddingStopType(null)}
+                    className="px-5 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      setToast({ message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`, type: "success" });
+                      setAddingStopType(null);
+                    }}
+                    className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
+                  >
+                    Add Stop
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="bg-[#0a0f18] border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
               <table className="w-full border-collapse">
@@ -663,6 +823,49 @@ export const LoadDetailView: React.FC<Props> = ({
             </div>
           </div>
         </div>
+
+        {/* Documents Panel */}
+        {showDocuments && (
+          <div className="px-10 pb-4">
+            <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[10px] font-black text-white uppercase tracking-widest">
+                  Load Documents
+                </h4>
+                <button
+                  onClick={() => setShowDocuments(false)}
+                  className="text-slate-500 hover:text-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {documents.length === 0 ? (
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                  No documents found for this load.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {documents.map((doc: any) => (
+                    <div
+                      key={doc.id}
+                      className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 space-y-2"
+                    >
+                      <div className="text-[11px] font-black text-white uppercase truncate">
+                        {doc.filename}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          {doc.type}
+                        </span>
+                        <span className="text-[9px] text-slate-400">{doc.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Footer Actions (Matches EditLoadForm) */}
         <div className="p-8 bg-slate-900 border-t border-slate-800 flex justify-end items-center gap-6 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.5)] z-20">

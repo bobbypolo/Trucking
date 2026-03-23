@@ -27,9 +27,44 @@ interface Props {
 // Helper
 const formatDateKey = (date: Date) => date.toISOString().split("T")[0];
 
+/**
+ * Determine if a load is active on a given date.
+ * A load spans from pickupDate through dropoffDate (inclusive).
+ * If dropoffDate is absent or equals pickupDate, it's single-day.
+ */
+const isLoadOnDate = (load: LoadData, dateKey: string): boolean => {
+  const pickup = load.pickupDate;
+  const dropoff = load.dropoffDate;
+  if (!dropoff || dropoff === pickup) {
+    return pickup === dateKey;
+  }
+  return dateKey >= pickup && dateKey <= dropoff;
+};
+
+/**
+ * Determine the span position of a load on a given date.
+ * Returns null for single-day loads or loads not on this date.
+ */
+type SpanPosition = "start" | "middle" | "end";
+const getSpanPosition = (load: LoadData, dateKey: string): SpanPosition | null => {
+  const pickup = load.pickupDate;
+  const dropoff = load.dropoffDate;
+  if (!dropoff || dropoff === pickup) return null;
+  if (dateKey === pickup) return "start";
+  if (dateKey === dropoff) return "end";
+  if (dateKey > pickup && dateKey < dropoff) return "middle";
+  return null;
+};
+
+interface DayCellLoadEntry {
+  load: LoadData;
+  spanPosition: SpanPosition | null;
+  isMultiDay: boolean;
+}
+
 interface DayCellProps {
   date: Date;
-  loads: LoadData[];
+  loadEntries: DayCellLoadEntry[];
   onEdit: (load: LoadData) => void;
   onMoveLoad?: (loadId: string, newDate: string) => void;
   draggedLoadId: string | null;
@@ -39,7 +74,7 @@ interface DayCellProps {
 
 const DayCell: React.FC<DayCellProps> = ({
   date,
-  loads,
+  loadEntries,
   onEdit,
   onMoveLoad,
   draggedLoadId,
@@ -70,7 +105,7 @@ const DayCell: React.FC<DayCellProps> = ({
         >
           {date.getDate()}
         </span>
-        {onMoveLoad && loads.length === 0 && (
+        {onMoveLoad && loadEntries.length === 0 && (
           <div className="hidden group-hover:block text-[10px] text-slate-600">
             Drop
           </div>
@@ -78,7 +113,7 @@ const DayCell: React.FC<DayCellProps> = ({
       </div>
 
       <div className="flex-1 flex flex-col gap-1.5">
-        {loads.map((load) => (
+        {loadEntries.map(({ load, spanPosition, isMultiDay }) => (
           <div
             key={load.id}
             draggable={!!onMoveLoad}
@@ -87,6 +122,7 @@ const DayCell: React.FC<DayCellProps> = ({
               e.stopPropagation();
               onEdit(load);
             }}
+            {...(isMultiDay ? { "data-multiday": "true", "data-span-position": spanPosition } : {})}
             className={`
                         cursor-move select-none text-[10px] p-1.5 rounded border shadow-sm transition-transform hover:scale-[1.02]
                         flex items-start gap-1 relative overflow-hidden group/card
@@ -96,6 +132,9 @@ const DayCell: React.FC<DayCellProps> = ({
                             : "bg-blue-900/20 border-blue-800/50 text-blue-200"
                         }
                         ${draggedLoadId === load.id ? "opacity-50" : "opacity-100"}
+                        ${isMultiDay && spanPosition === "start" ? "rounded-r-none border-r-0" : ""}
+                        ${isMultiDay && spanPosition === "middle" ? "rounded-none border-l-0 border-r-0" : ""}
+                        ${isMultiDay && spanPosition === "end" ? "rounded-l-none border-l-0" : ""}
                     `}
           >
             <div
@@ -179,16 +218,24 @@ const MonthSection: React.FC<MonthSectionProps> = ({
           ></div>
         ))}
         {/* Days */}
-        {days.map((date) => (
-          <DayCell
-            key={date.toISOString()}
-            date={date}
-            loads={visibleLoads.filter(
-              (l) => l.pickupDate === formatDateKey(date),
-            )}
-            {...props}
-          />
-        ))}
+        {days.map((date) => {
+          const dateKey = formatDateKey(date);
+          const entries: DayCellLoadEntry[] = visibleLoads
+            .filter((l) => isLoadOnDate(l, dateKey))
+            .map((load) => {
+              const spanPosition = getSpanPosition(load, dateKey);
+              const isMultiDay = spanPosition !== null;
+              return { load, spanPosition, isMultiDay };
+            });
+          return (
+            <DayCell
+              key={date.toISOString()}
+              date={date}
+              loadEntries={entries}
+              {...props}
+            />
+          );
+        })}
       </div>
     </div>
   );

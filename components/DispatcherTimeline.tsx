@@ -86,8 +86,7 @@ export const DispatcherTimeline: React.FC<Props> = ({ events, timeLogs, loads })
                         {item.type === 'log' && (item.data as TimeLog).location && (
                             <div className="mt-3 flex items-center gap-2 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                                 <MapPin className="w-3 h-3 text-orange-500" />
-                                {/* Mock location text since we only have coords */}
-                                Geocoded Terminal Entry (Lat: {(item.data as TimeLog).location?.lat.toFixed(2)})
+                                Location: {(item.data as TimeLog).location?.lat.toFixed(4)}, {(item.data as TimeLog).location?.lng.toFixed(4)}
                             </div>
                         )}
 

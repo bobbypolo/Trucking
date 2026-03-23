@@ -219,7 +219,7 @@ describe("DispatcherTimeline component", () => {
   });
 
   describe("location display", () => {
-    it("shows geocoded location for time logs with location data", () => {
+    it("shows coordinates in readable format for time logs with location data (R-P6-14)", () => {
       render(
         <DispatcherTimeline
           events={[]}
@@ -227,9 +227,24 @@ describe("DispatcherTimeline component", () => {
           loads={mockLoads}
         />,
       );
+      // R-P6-14: Location text shows coordinates in readable format
       expect(
-        screen.getByText(/Geocoded Terminal Entry.*41.88/),
+        screen.getByText(/Location:\s*41\.8800,\s*-87\.6300/),
       ).toBeInTheDocument();
+    });
+
+    it("does not contain any reference to Geocoded Terminal Entry (R-P6-15)", () => {
+      render(
+        <DispatcherTimeline
+          events={[]}
+          timeLogs={mockTimeLogs}
+          loads={mockLoads}
+        />,
+      );
+      // R-P6-15: No reference to 'Geocoded Terminal Entry' remains in component
+      expect(
+        screen.queryByText(/Geocoded Terminal/i),
+      ).not.toBeInTheDocument();
     });
 
     it("does not show location for time logs without location", () => {
@@ -249,8 +264,31 @@ describe("DispatcherTimeline component", () => {
         />,
       );
       expect(
-        screen.queryByText(/Geocoded Terminal/),
+        screen.queryByText(/Location:/),
       ).not.toBeInTheDocument();
+    });
+
+    it("formats coordinates with 4 decimal places (R-P6-14)", () => {
+      const precisionLogs: TimeLog[] = [
+        {
+          id: "tl-prec",
+          userId: "driver-1",
+          clockIn: "2025-12-01T08:00:00Z",
+          activityType: "Driving",
+          location: { lat: 33.4484, lng: -112.074 },
+        },
+      ];
+      render(
+        <DispatcherTimeline
+          events={[]}
+          timeLogs={precisionLogs}
+          loads={[]}
+        />,
+      );
+      // Should show 4 decimal places
+      expect(
+        screen.getByText(/Location:\s*33\.4484,\s*-112\.0740/),
+      ).toBeInTheDocument();
     });
   });
 

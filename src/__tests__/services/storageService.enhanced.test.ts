@@ -9,6 +9,7 @@ vi.mock("../../../services/authService", () => ({
     "Content-Type": "application/json",
     Authorization: "Bearer test-token",
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
   getCurrentUser: vi.fn().mockReturnValue({ companyId: "test-co" }),
 }));
 
@@ -57,6 +58,19 @@ vi.mock("../../../services/loadService", () => ({
   searchLoadsApi: vi.fn().mockResolvedValue([]),
   deleteLoadApi: vi.fn().mockResolvedValue({}),
 }));
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockResolvedValue(undefined),
+    post: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
+  ApiFetchOptions: {},
+  ForbiddenError: class ForbiddenError extends Error {
+    constructor(msg = "Forbidden") { super(msg); this.name = "ForbiddenError"; }
+  },
+}));
 
 import {
   getLoads,
@@ -78,6 +92,7 @@ import {
 } from "../../../services/storageService";
 import { fetchLoads as apiFetchLoads, createLoad as apiCreateLoad, updateLoadStatusApi, deleteLoadApi } from "../../../services/loadService";
 import { getCompany, updateCompany, getAuthHeaders } from "../../../services/authService";
+import { api } from "../../../services/api";
 
 const mockApiFetchLoads = apiFetchLoads as ReturnType<typeof vi.fn>;
 const mockApiCreateLoad = apiCreateLoad as ReturnType<typeof vi.fn>;
@@ -85,6 +100,7 @@ const mockUpdateLoadStatusApi = updateLoadStatusApi as ReturnType<typeof vi.fn>;
 const mockDeleteLoadApi = deleteLoadApi as ReturnType<typeof vi.fn>;
 const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockUpdateCompany = updateCompany as ReturnType<typeof vi.fn>;
+const mockApiGet = api.get as ReturnType<typeof vi.fn>;
 
 describe("storageService — enhanced coverage", () => {
   let localStorageMock: Record<string, string>;
@@ -251,10 +267,9 @@ describe("storageService — enhanced coverage", () => {
 
   // ─── logTime ─────────────────────────────────────────────────────────
   describe("logTime", () => {
-    it("posts time log to API", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-      } as any);
+    it("posts time log to API via api.post", async () => {
+      const mockApiPost = api.post as ReturnType<typeof vi.fn>;
+      mockApiPost.mockResolvedValueOnce({});
 
       await logTime({
         userId: "u1",
@@ -263,14 +278,18 @@ describe("storageService — enhanced coverage", () => {
         location: { lat: 41.8, lng: -87.6 },
       });
 
-      expect(fetchSpy).toHaveBeenCalled();
-      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
-      expect(body.user_id).toBe("u1");
-      expect(body.load_id).toBe("l1");
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/time-logs",
+        expect.objectContaining({
+          user_id: "u1",
+          load_id: "l1",
+        }),
+      );
     });
 
     it("handles API failure gracefully", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      const mockApiPost = api.post as ReturnType<typeof vi.fn>;
+      mockApiPost.mockRejectedValueOnce(new Error("offline"));
 
       await expect(
         logTime({ userId: "u1" }),
@@ -280,10 +299,9 @@ describe("storageService — enhanced coverage", () => {
 
   // ─── logDispatchEvent ────────────────────────────────────────────────
   describe("logDispatchEvent", () => {
-    it("posts dispatch event to API", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-      } as any);
+    it("posts dispatch event to API via api.post", async () => {
+      const mockApiPost = api.post as ReturnType<typeof vi.fn>;
+      mockApiPost.mockResolvedValueOnce({});
 
       await logDispatchEvent({
         loadId: "l1",
@@ -291,14 +309,18 @@ describe("storageService — enhanced coverage", () => {
         eventType: "StatusChange",
       });
 
-      expect(fetchSpy).toHaveBeenCalled();
-      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
-      expect(body.load_id).toBe("l1");
-      expect(body.dispatcher_id).toBe("disp-1");
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/dispatch-events",
+        expect.objectContaining({
+          load_id: "l1",
+          dispatcher_id: "disp-1",
+        }),
+      );
     });
 
     it("handles API failure gracefully", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      const mockApiPost = api.post as ReturnType<typeof vi.fn>;
+      mockApiPost.mockRejectedValueOnce(new Error("offline"));
 
       await expect(
         logDispatchEvent({ loadId: "l1" }),
@@ -308,30 +330,27 @@ describe("storageService — enhanced coverage", () => {
 
   // ─── getDispatchEvents ───────────────────────────────────────────────
   describe("getDispatchEvents", () => {
-    it("fetches and maps dispatch events", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            {
-              id: "e1",
-              load_id: "l1",
-              dispatcher_id: "d1",
-              event_type: "assigned",
-              created_at: "2026-03-15",
-            },
-          ]),
-      } as any);
+    it("fetches and maps dispatch events via api.get", async () => {
+      mockApiGet.mockResolvedValueOnce([
+        {
+          id: "e1",
+          load_id: "l1",
+          dispatcher_id: "d1",
+          event_type: "assigned",
+          created_at: "2026-03-15",
+        },
+      ]);
 
       const events = await getDispatchEvents("c1");
       expect(events).toHaveLength(1);
       expect(events[0].loadId).toBe("l1");
       expect(events[0].dispatcherId).toBe("d1");
       expect(events[0].eventType).toBe("assigned");
+      expect(mockApiGet).toHaveBeenCalledWith("/dispatch-events/c1", expect.anything());
     });
 
     it("returns empty array on API failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockApiGet.mockRejectedValueOnce(new Error("offline"));
       const events = await getDispatchEvents("c1");
       expect(events).toEqual([]);
     });
@@ -339,23 +358,19 @@ describe("storageService — enhanced coverage", () => {
 
   // ─── getTimeLogs ─────────────────────────────────────────────────────
   describe("getTimeLogs", () => {
-    it("fetches user time logs", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            {
-              id: "t1",
-              user_id: "u1",
-              load_id: "l1",
-              activity_type: "driving",
-              clock_in: "2026-03-15T08:00:00Z",
-              clock_out: "2026-03-15T16:00:00Z",
-              location_lat: 41.8,
-              location_lng: -87.6,
-            },
-          ]),
-      } as any);
+    it("fetches user time logs via api.get", async () => {
+      mockApiGet.mockResolvedValueOnce([
+        {
+          id: "t1",
+          user_id: "u1",
+          load_id: "l1",
+          activity_type: "driving",
+          clock_in: "2026-03-15T08:00:00Z",
+          clock_out: "2026-03-15T16:00:00Z",
+          location_lat: 41.8,
+          location_lng: -87.6,
+        },
+      ]);
 
       const logs = await getTimeLogs("u1");
       expect(logs).toHaveLength(1);
@@ -364,18 +379,18 @@ describe("storageService — enhanced coverage", () => {
       expect(logs[0].location.lat).toBe(41.8);
     });
 
-    it("fetches company time logs", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      } as any);
+    it("fetches company time logs via api.get", async () => {
+      mockApiGet.mockResolvedValueOnce([]);
 
       await getTimeLogs("c1", true);
-      expect(fetchSpy.mock.calls[0][0]).toContain("company/c1");
+      expect(mockApiGet).toHaveBeenCalledWith(
+        "/time-logs/company/c1",
+        expect.anything(),
+      );
     });
 
     it("returns empty array on API failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockApiGet.mockRejectedValueOnce(new Error("offline"));
       const logs = await getTimeLogs("u1");
       expect(logs).toEqual([]);
     });
@@ -547,21 +562,20 @@ describe("storageService — enhanced coverage", () => {
     });
 
     it("returns results from API when available", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            { id: "r1", type: "load", label: "LD-1234" },
-          ]),
-      } as any);
+      mockApiGet.mockResolvedValueOnce([
+        { id: "r1", type: "load", label: "LD-1234" },
+      ]);
 
       const results = await globalSearch("1234");
       expect(results).toHaveLength(1);
       expect(results[0].label).toBe("LD-1234");
+      expect(mockApiGet).toHaveBeenCalledWith(
+        expect.stringContaining("/global-search?query=1234"),
+      );
     });
 
     it("falls back to local search when API fails", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockApiGet.mockRejectedValueOnce(new Error("offline"));
 
       // Populate cache first
       mockApiFetchLoads.mockResolvedValue([
@@ -579,7 +593,7 @@ describe("storageService — enhanced coverage", () => {
       await getLoads(user);
 
       // Now search (API will fail, fallback to local)
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockApiGet.mockRejectedValueOnce(new Error("offline"));
       const results = await globalSearch("5555");
       expect(results.length).toBeGreaterThanOrEqual(1);
     });

@@ -413,4 +413,96 @@ router.delete(
   },
 );
 
+// ── Change Requests ─────────────────────────────────────────────────────────
+// Change requests are stored as work_items with type="CHANGE_REQUEST".
+// The entity_id links to the load, entity_type="load".
+
+const VALID_CHANGE_REQUEST_TYPES = [
+  "DETENTION",
+  "LUMPER",
+  "LAYOVER",
+  "TONU",
+  "REWORK",
+  "OTHER",
+];
+
+router.post(
+  "/api/loads/:id/change-requests",
+  requireAuth,
+  requireTenant,
+  async (req: any, res, next) => {
+    const loadId = req.params.id;
+    const companyId = req.user.tenantId;
+    const { type, notes, isUrgent } = req.body;
+
+    if (!type || !VALID_CHANGE_REQUEST_TYPES.includes(type)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid or missing change request type" });
+    }
+
+    try {
+      // Verify load belongs to this tenant
+      const [loadRows]: any = await pool.query(
+        "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        [loadId, companyId],
+      );
+
+      if (loadRows.length === 0) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      const id = uuidv4();
+      const priority = isUrgent ? "High" : "Medium";
+
+      await pool.query(
+        `INSERT INTO work_items
+          (id, company_id, type, priority, label, description, entity_id, entity_type, status, due_date)
+         VALUES (?, ?, 'CHANGE_REQUEST', ?, ?, ?, ?, 'load', 'PENDING', NULL)`,
+        [id, companyId, priority, type, notes || "", loadId],
+      );
+
+      const [rows]: any = await pool.query(
+        "SELECT * FROM work_items WHERE id = ? AND company_id = ?",
+        [id, companyId],
+      );
+
+      res.status(201).json(rows[0]);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.get(
+  "/api/loads/:id/change-requests",
+  requireAuth,
+  requireTenant,
+  async (req: any, res, next) => {
+    const loadId = req.params.id;
+    const companyId = req.user.tenantId;
+
+    try {
+      // Verify load belongs to this tenant
+      const [loadRows]: any = await pool.query(
+        "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        [loadId, companyId],
+      );
+
+      if (loadRows.length === 0) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      const [rows]: any = await pool.query(
+        "SELECT * FROM work_items WHERE entity_id = ? AND entity_type = 'load' AND type = 'CHANGE_REQUEST' AND company_id = ? ORDER BY created_at DESC",
+        [loadId, companyId],
+      );
+
+      res.json({ changeRequests: rows });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 export default router;

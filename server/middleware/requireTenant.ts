@@ -34,8 +34,23 @@ export function requireTenant(
 
   const userTenantId = authReq.user.tenantId;
 
-  // Check URL parameter :companyId
+  // Guard: if user's tenantId is not set (company record missing or not yet
+  // created), return a specific error instead of a confusing "tenant mismatch".
+  // After S-2.3, signup always creates the company record so this should be rare.
   const paramCompanyId = req.params.companyId;
+  const bodyCompanyId = req.body?.company_id || req.body?.companyId;
+
+  if ((paramCompanyId || bodyCompanyId) && !userTenantId) {
+    return next(
+      new ForbiddenError(
+        "Access denied: user tenant not resolved. Please complete signup or contact support.",
+        {},
+        "TENANT_NOT_RESOLVED",
+      ),
+    );
+  }
+
+  // Check URL parameter :companyId
   if (paramCompanyId && paramCompanyId !== userTenantId) {
     return next(
       new ForbiddenError(
@@ -47,17 +62,14 @@ export function requireTenant(
   }
 
   // Check request body for company_id or companyId (POST/PUT/PATCH)
-  if (req.body) {
-    const bodyCompanyId = req.body.company_id || req.body.companyId;
-    if (bodyCompanyId && bodyCompanyId !== userTenantId) {
-      return next(
-        new ForbiddenError(
-          "Access denied: tenant mismatch.",
-          {},
-          "TENANT_MISMATCH_001",
-        ),
-      );
-    }
+  if (bodyCompanyId && bodyCompanyId !== userTenantId) {
+    return next(
+      new ForbiddenError(
+        "Access denied: tenant mismatch.",
+        {},
+        "TENANT_MISMATCH_001",
+      ),
+    );
   }
 
   next();

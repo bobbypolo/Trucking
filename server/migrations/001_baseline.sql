@@ -257,18 +257,7 @@ CREATE TABLE IF NOT EXISTS dispatch_events (
   FOREIGN KEY (dispatcher_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- 17. Operational Messaging (Real-time Chat)
-CREATE TABLE IF NOT EXISTS messages (
-  id VARCHAR(36) PRIMARY KEY,
-  load_id VARCHAR(36) NOT NULL,
-  sender_id VARCHAR(36) NOT NULL,
-  sender_name VARCHAR(255),
-  text TEXT,
-  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  attachments JSON,
-  FOREIGN KEY (load_id) REFERENCES loads(id) ON DELETE CASCADE,
-  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
-);
+-- 17. Operational Messaging — moved to 018_messages_threads.sql (authoritative)
 
 -- 18. Agile Authorization & Workspaces
 ALTER TABLE companies ADD COLUMN operating_mode ENUM('Small Team', 'Split Roles', 'Enterprise') DEFAULT 'Small Team';
@@ -276,89 +265,13 @@ ALTER TABLE users ADD COLUMN primary_workspace ENUM('Quotes', 'Dispatch', 'Balan
 ALTER TABLE users ADD COLUMN duty_mode ENUM('Pricing', 'Dispatch', 'Both') DEFAULT 'Both';
 ALTER TABLE users ADD COLUMN assigned_capabilities JSON;
 
--- 19. Intake, Quotes & Bookings
-CREATE TABLE IF NOT EXISTS leads (
-  id VARCHAR(36) PRIMARY KEY,
-  company_id VARCHAR(36) NOT NULL,
-  caller_name VARCHAR(255),
-  caller_phone VARCHAR(50),
-  caller_email VARCHAR(255),
-  customer_name VARCHAR(255) NOT NULL,
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
-);
+-- 19. Intake, Quotes & Bookings — moved to 017_quotes_leads_bookings.sql (authoritative)
 
-CREATE TABLE IF NOT EXISTS quotes (
-  id VARCHAR(36) PRIMARY KEY,
-  lead_id VARCHAR(36),
-  company_id VARCHAR(36) NOT NULL,
-  status ENUM('Draft', 'Sent', 'Negotiating', 'Accepted', 'Declined', 'Expired') DEFAULT 'Draft',
-  pickup_city VARCHAR(100),
-  pickup_state VARCHAR(50),
-  pickup_facility VARCHAR(255),
-  dropoff_city VARCHAR(100),
-  dropoff_state VARCHAR(50),
-  dropoff_facility VARCHAR(255),
-  equipment_type VARCHAR(100),
-  linehaul DECIMAL(10, 2) DEFAULT 0,
-  fuel_surcharge DECIMAL(10, 2) DEFAULT 0,
-  total_rate DECIMAL(10, 2) DEFAULT 0,
-  margin DECIMAL(10, 2),
-  version INT DEFAULT 1,
-  valid_until TIMESTAMP NULL,
-  owner_id VARCHAR(36),
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE SET NULL,
-  FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL
-);
+-- 20. Operational Work Items — moved to 019_tasks_workitems.sql (authoritative)
 
-CREATE TABLE IF NOT EXISTS bookings (
-  id VARCHAR(36) PRIMARY KEY,
-  quote_id VARCHAR(36) NOT NULL,
-  company_id VARCHAR(36) NOT NULL,
-  status ENUM('Accepted', 'Tendered', 'Pending_Docs', 'Ready_for_Dispatch') DEFAULT 'Accepted',
-  tender_doc_url TEXT,
-  load_id VARCHAR(36),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE,
-  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
-  FOREIGN KEY (load_id) REFERENCES loads(id) ON DELETE SET NULL
-);
-
--- 20. Operational Work Items (Unified Triage)
-CREATE TABLE IF NOT EXISTS work_items (
-  id VARCHAR(36) PRIMARY KEY,
-  company_id VARCHAR(36) NOT NULL,
-  type ENUM('QUOTE_FOLLOWUP', 'LOAD_EXCEPTION', 'APPROVAL_REQUEST', 'SAFETY_ALARM') NOT NULL,
-  priority ENUM('High', 'Medium', 'Low') DEFAULT 'Medium',
-  label VARCHAR(255) NOT NULL,
-  description TEXT,
-  entity_id VARCHAR(36),
-  entity_type VARCHAR(50),
-  status ENUM('Open', 'In-Progress', 'Resolved') DEFAULT 'Open',
-  due_date TIMESTAMP NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
-);
-
--- Indexes for performance
-CREATE INDEX idx_quote_company ON quotes(company_id);
-CREATE INDEX idx_quote_lead ON quotes(lead_id);
-CREATE INDEX idx_booking_quote ON bookings(quote_id);
-CREATE INDEX idx_workitem_company ON work_items(company_id);
-CREATE INDEX idx_workitem_status ON work_items(status);
+-- Indexes for quotes/bookings/work_items — moved to their authoritative migrations
 
 -- DOWN
-
--- Drop indexes
-DROP INDEX idx_workitem_status ON work_items;
-DROP INDEX idx_workitem_company ON work_items;
-DROP INDEX idx_booking_quote ON bookings;
-DROP INDEX idx_quote_lead ON quotes;
-DROP INDEX idx_quote_company ON quotes;
 
 -- Drop columns added by ALTER TABLE (section 18)
 ALTER TABLE users DROP COLUMN assigned_capabilities;
@@ -367,11 +280,7 @@ ALTER TABLE users DROP COLUMN primary_workspace;
 ALTER TABLE companies DROP COLUMN operating_mode;
 
 -- Drop tables in reverse dependency order (children before parents)
-DROP TABLE IF EXISTS work_items;
-DROP TABLE IF EXISTS bookings;
-DROP TABLE IF EXISTS quotes;
-DROP TABLE IF EXISTS leads;
-DROP TABLE IF EXISTS messages;
+-- work_items, bookings, quotes, leads, messages — dropped by their authoritative migrations
 DROP TABLE IF EXISTS dispatch_events;
 DROP TABLE IF EXISTS driver_time_logs;
 DROP TABLE IF EXISTS training_courses;

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import {
   TrendingUp,
   BarChart3,
-  PieChart,
+  PieChart as PieChartIcon,
   Calendar,
   ArrowUpRight,
   ArrowDownRight,
@@ -17,8 +17,30 @@ import {
   Clock,
   Package,
 } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import { LoadData, User, Broker } from "../types";
 import { EmptyState } from "./EmptyState";
+
+const CHART_COLORS = [
+  "#3b82f6",
+  "#8b5cf6",
+  "#10b981",
+  "#f59e0b",
+  "#ef4444",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
+];
 
 interface Props {
   user: User;
@@ -56,8 +78,9 @@ export const AnalyticsDashboard: React.FC<Props> = ({
       const totalMiles = brokerLoads.reduce((s, l) => s + (l.miles || 0), 0);
       const rpm = totalMiles > 0 ? totalRate / totalMiles : 0;
       return {
+        id: b.id,
         name: b.name,
-        rpm,
+        rpm: Math.round(rpm * 100) / 100,
         loadCount: brokerLoads.length,
       };
     });
@@ -67,15 +90,16 @@ export const AnalyticsDashboard: React.FC<Props> = ({
   const topLanes = useMemo(() => {
     const laneMap: Record<
       string,
-      { vol: number; totalProfit: number; totalMiles: number }
+      { vol: number; totalProfit: number; totalMiles: number; totalRevenue: number }
     > = {};
     loads.forEach((l) => {
       const key = `${l.pickup?.city ?? ""}, ${l.pickup?.state ?? ""} \u2192 ${l.dropoff?.city ?? ""}, ${l.dropoff?.state ?? ""}`;
       if (!laneMap[key])
-        laneMap[key] = { vol: 0, totalProfit: 0, totalMiles: 0 };
+        laneMap[key] = { vol: 0, totalProfit: 0, totalMiles: 0, totalRevenue: 0 };
       laneMap[key].vol += 1;
       laneMap[key].totalProfit += (l.carrierRate || 0) - (l.driverPay || 0);
       laneMap[key].totalMiles += l.miles || 0;
+      laneMap[key].totalRevenue += l.carrierRate || 0;
     });
     return Object.entries(laneMap)
       .map(([lane, data]) => ({
@@ -83,9 +107,10 @@ export const AnalyticsDashboard: React.FC<Props> = ({
         vol: data.vol,
         avgProfit: data.vol > 0 ? data.totalProfit / data.vol : 0,
         rpm: data.totalMiles > 0 ? data.totalProfit / data.totalMiles : 0,
+        revenue: data.totalRevenue,
       }))
       .sort((a, b) => b.avgProfit - a.avgProfit)
-      .slice(0, 3);
+      .slice(0, 5);
   }, [loads]);
 
   if (loads.length === 0) {
@@ -197,6 +222,41 @@ export const AnalyticsDashboard: React.FC<Props> = ({
 
           {brokerScorecards.length > 0 ? (
             <div className="space-y-4">
+              {/* Broker RPM BarChart */}
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={brokerScorecards}>
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#94a3b8", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "0.75rem",
+                        color: "#fff",
+                      }}
+                    />
+                    <Bar dataKey="rpm" name="RPM" radius={[6, 6, 0, 0]}>
+                      {brokerScorecards.map((_, idx) => (
+                        <Cell
+                          key={`broker-cell-${idx}`}
+                          fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Broker list with drill-down */}
               <div className="grid grid-cols-3 px-4 text-[9px] font-black text-slate-600 uppercase tracking-widest border-b border-white/5 pb-2">
                 <div className="col-span-2">Partner</div>
                 <div>RPM</div>
@@ -204,6 +264,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({
               {brokerScorecards.map((b, i) => (
                 <div
                   key={i}
+                  onClick={() => onNavigate?.("loads", `broker:${b.id}`)}
                   className="grid grid-cols-3 px-4 py-3 bg-slate-950/40 border border-white/5 rounded-2xl items-center group hover:bg-slate-900 transition-all cursor-pointer"
                 >
                   <div className="col-span-2 text-xs font-bold text-white uppercase">
@@ -253,13 +314,49 @@ export const AnalyticsDashboard: React.FC<Props> = ({
 
           {topLanes.length > 0 ? (
             <div className="space-y-4">
+              {/* Lane Revenue PieChart */}
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={topLanes}
+                      dataKey="revenue"
+                      nameKey="lane"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={70}
+                      label={false}
+                    >
+                      {topLanes.map((_, idx) => (
+                        <Cell
+                          key={`lane-cell-${idx}`}
+                          fill={CHART_COLORS[idx % CHART_COLORS.length]}
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#1e293b",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "0.75rem",
+                        color: "#fff",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              {/* Lane list with drill-down */}
               {topLanes.map((l, i) => (
                 <div
                   key={i}
+                  onClick={() => onNavigate?.("loads", `lane:${l.lane}`)}
                   className="p-4 bg-slate-950/40 border border-white/5 rounded-2xl flex items-center justify-between hover:bg-slate-900 transition-all cursor-pointer group"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                    />
                     <div>
                       <div className="text-xs font-bold text-white uppercase">
                         {l.lane}

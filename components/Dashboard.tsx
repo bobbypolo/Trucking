@@ -1,5 +1,17 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
+import {
   Users,
   Truck,
   DollarSign,
@@ -150,6 +162,65 @@ export const Dashboard: React.FC<Props> = ({
       iftaPct,
     };
   }, [loads, exceptions]);
+
+  // Chart data: RPM by day (last 7 days)
+  const rpmByDay = useMemo(() => {
+    if (loads.length === 0) return [];
+    const now = new Date();
+    const days: { date: string; rpm: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const dayLoads = loads.filter((l) => l.pickupDate === key);
+      const totalRevenue = dayLoads.reduce((s, l) => s + (l.carrierRate || 0), 0);
+      const totalMiles = dayLoads.reduce((s, l) => s + (l.miles || 0), 0);
+      const rpm = totalMiles > 0 ? totalRevenue / totalMiles : 0;
+      const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      days.push({ date: label, rpm: parseFloat(rpm.toFixed(2)) });
+    }
+    return days;
+  }, [loads]);
+
+  // Chart data: Exception count by day (last 7 days)
+  const exceptionsByDay = useMemo(() => {
+    if (exceptions.length === 0) return [];
+    const now = new Date();
+    const days: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const count = exceptions.filter((ex) => {
+        const exDate = ex.createdAt ? ex.createdAt.split("T")[0] : "";
+        return exDate === key;
+      }).length;
+      const label = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+      days.push({ date: label, count });
+    }
+    return days;
+  }, [exceptions]);
+
+  // Chart data: Revenue vs Cost by week (last 4 weeks)
+  const revenueCostByWeek = useMemo(() => {
+    if (loads.length === 0) return [];
+    const now = new Date();
+    const weeks: { week: string; revenue: number; cost: number }[] = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekEnd = new Date(now);
+      weekEnd.setDate(weekEnd.getDate() - w * 7);
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 6);
+      const startKey = weekStart.toISOString().split("T")[0];
+      const endKey = weekEnd.toISOString().split("T")[0];
+      const weekLoads = loads.filter((l) => l.pickupDate >= startKey && l.pickupDate <= endKey);
+      const revenue = weekLoads.reduce((s, l) => s + (l.carrierRate || 0), 0);
+      const cost = weekLoads.reduce((s, l) => s + (l.driverPay || 0), 0);
+      const label = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+      weeks.push({ week: label, revenue, cost });
+    }
+    return weeks;
+  }, [loads]);
 
   const getIcon = (key?: string) => {
     switch (key) {
@@ -386,6 +457,85 @@ export const Dashboard: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHARTS SECTION */}
+      {!loading && !error && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* RPM by Day BarChart */}
+          <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> RPM by Day
+            </h3>
+            {rpmByDay.length > 0 ? (
+              <div style={{ width: "100%", height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={rpmByDay}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 9 }} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 9 }} />
+                    <Tooltip />
+                    <Bar dataKey="rpm" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
+                No data for this period
+              </div>
+            )}
+          </div>
+
+          {/* Exception Trend LineChart */}
+          <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> Exception Trend
+            </h3>
+            {exceptionsByDay.length > 0 ? (
+              <div style={{ width: "100%", height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={exceptionsByDay}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 9 }} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 9 }} allowDecimals={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="count" stroke="#ef4444" strokeWidth={2} dot={{ fill: "#ef4444" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
+                No data for this period
+              </div>
+            )}
+          </div>
+
+          {/* Revenue vs Cost BarChart */}
+          <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-500" /> Revenue vs Cost
+            </h3>
+            {revenueCostByWeek.length > 0 ? (
+              <div style={{ width: "100%", height: 200 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={revenueCostByWeek}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="week" tick={{ fill: "#64748b", fontSize: 8 }} />
+                    <YAxis tick={{ fill: "#64748b", fontSize: 9 }} />
+                    <Tooltip />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="cost" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
+                No data for this period
+              </div>
+            )}
           </div>
         </div>
       )}
