@@ -112,11 +112,6 @@ const QuoteManager = React.lazy(() =>
     default: m.QuoteManager,
   })),
 );
-const IssueSidebar = React.lazy(() =>
-  import("./components/IssueSidebar").then((m) => ({
-    default: m.IssueSidebar,
-  })),
-);
 import {
   LayoutDashboard,
   Calendar,
@@ -252,7 +247,6 @@ export default function App() {
     AccountingPortalTab | string | undefined
   >();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isIssueSidebarOpen, setIsIssueSidebarOpen] = useState(false);
 
   const [isAdding, setIsAdding] = useState(false);
   const [scanMode, setScanMode] = useState(false);
@@ -714,22 +708,6 @@ export default function App() {
   // 4. Global Overlay Elements (Accessible everywhere)
   const globalOverlays = (
     <>
-      <Suspense fallback={<LoadingSkeleton variant="list" count={3} />}>
-        <IssueSidebar
-          isOpen={isIssueSidebarOpen}
-          onClose={() => setIsIssueSidebarOpen(false)}
-          loads={loads}
-          currentUser={user}
-          onViewLoad={(load) => {
-            setViewingLoad(null);
-            setEditingLoad(load);
-            setIsAdding(false);
-            setIsIssueSidebarOpen(false);
-          }}
-          onRefresh={() => refreshData(user)}
-        />
-      </Suspense>
-
       {showLoadSetup && (
         <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
           <LoadSetupModal
@@ -1031,32 +1009,6 @@ export default function App() {
           </header>
 
           <div className="flex-1 overflow-hidden p-4 md:p-6 relative flex flex-col">
-            <div className="hidden md:flex absolute top-6 right-6 z-20">
-              <button
-                onClick={() => setIsIssueSidebarOpen(true)}
-                className="bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-xs font-bold transition-all"
-              >
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
-                Issues
-                {loads.reduce(
-                  (acc, l) =>
-                    acc +
-                    (l.issues?.filter((i) => i.status === "Open")?.length || 0),
-                  0,
-                ) > 0 && (
-                  <span className="bg-red-600 text-white px-1.5 py-0.5 rounded-full text-[10px] animate-pulse">
-                    {loads.reduce(
-                      (acc, l) =>
-                        acc +
-                        (l.issues?.filter((i) => i.status === "Open")?.length ||
-                          0),
-                      0,
-                    )}
-                  </span>
-                )}
-              </button>
-            </div>
-
             <div className="flex-1 min-h-0 w-full overflow-y-auto no-scrollbar">
               {activeTab === "operations-hub" && (
                 <Suspense
@@ -1099,7 +1051,7 @@ export default function App() {
                     }}
                     onNavigate={handleNavigate}
                     users={companyUsers}
-                    onOpenIssues={() => setIsIssueSidebarOpen(true)}
+                    onOpenIssues={() => setActiveTab("exceptions")}
                   />
                 </Suspense>
               )}
