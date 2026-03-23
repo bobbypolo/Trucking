@@ -238,6 +238,7 @@ type AccountingPortalTab =
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [loads, setLoads] = useState<LoadData[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [companyUsers, setCompanyUsers] = useState<User[]>([]);
@@ -308,6 +309,9 @@ export default function App() {
       setUser(updatedUser);
       if (updatedUser) {
         await refreshData(updatedUser);
+        setIsAuthReady(true);
+      } else {
+        setIsAuthReady(false);
       }
     });
 
@@ -422,6 +426,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await logout();
+    setIsAuthReady(false);
     setUser(null);
     setLoads([]);
     setActiveTab("dashboard");
@@ -567,6 +572,13 @@ export default function App() {
       <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
         <Auth onLogin={handleLogin} />
       </Suspense>
+    );
+
+  if (!isAuthReady)
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <LoadingSkeleton variant="card" count={3} />
+      </div>
     );
 
   const categories: NavCategory[] = [
