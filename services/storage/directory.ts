@@ -4,19 +4,14 @@
  * All CRUD goes through /api/contacts and /api/providers.
  */
 import { Contact, Provider } from "../../types";
-import { API_URL } from "../config";
-import { getAuthHeaders } from "../authService";
+import { api, apiFetch } from "../api";
 
 // --- Providers ---
 
 export const getProviders = async (): Promise<Provider[]> => {
   try {
-    const res = await fetch(API_URL + "/providers", {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return Array.isArray(json.providers) ? json.providers : [];
+    const json = await api.get("/providers");
+    return Array.isArray(json?.providers) ? json.providers : [];
   } catch {
     return [];
   }
@@ -24,17 +19,11 @@ export const getProviders = async (): Promise<Provider[]> => {
 
 export const saveProvider = async (provider: Provider): Promise<Provider> => {
   const isNew = !provider.id;
-  const method = isNew ? "POST" : "PATCH";
-  const url = isNew
-    ? API_URL + "/providers"
-    : API_URL + "/providers/" + provider.id;
-  const res = await fetch(url, {
-    method,
-    headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify(provider),
-  });
-  if (!res.ok) throw new Error("saveProvider failed: " + res.status);
-  const json = await res.json();
+  if (isNew) {
+    const json = await api.post("/providers", provider);
+    return json.provider ?? provider;
+  }
+  const json = await api.patch(`/providers/${provider.id}`, provider);
   return json.provider ?? provider;
 };
 
@@ -42,12 +31,8 @@ export const saveProvider = async (provider: Provider): Promise<Provider> => {
 
 export const getContacts = async (): Promise<Contact[]> => {
   try {
-    const res = await fetch(API_URL + "/contacts", {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return Array.isArray(json.contacts) ? json.contacts : [];
+    const json = await api.get("/contacts");
+    return Array.isArray(json?.contacts) ? json.contacts : [];
   } catch {
     return [];
   }
@@ -55,17 +40,11 @@ export const getContacts = async (): Promise<Contact[]> => {
 
 export const saveContact = async (contact: Contact): Promise<Contact> => {
   const isNew = !contact.id;
-  const method = isNew ? "POST" : "PATCH";
-  const url = isNew
-    ? API_URL + "/contacts"
-    : API_URL + "/contacts/" + contact.id;
-  const res = await fetch(url, {
-    method,
-    headers: { ...(await getAuthHeaders()), "Content-Type": "application/json" },
-    body: JSON.stringify(contact),
-  });
-  if (!res.ok) throw new Error("saveContact failed: " + res.status);
-  const json = await res.json();
+  if (isNew) {
+    const json = await api.post("/contacts", contact);
+    return json.contact ?? contact;
+  }
+  const json = await api.patch(`/contacts/${contact.id}`, contact);
   return json.contact ?? contact;
 };
 

@@ -909,8 +909,24 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const { quarter, year } = req.query;
-      // Mock state tax rates for calculation
-      const ST_RATES: any = { TX: 0.2, OK: 0.19, AR: 0.21, MO: 0.17, KS: 0.24 };
+
+      // Determine quarter end date for rate lookup
+      const qNum = parseInt(quarter as string, 10) || 4;
+      const yNum = parseInt(year as string, 10) || new Date().getFullYear();
+      const quarterEndMonth = qNum * 3;
+      const quarterEnd = `${yNum}-${String(quarterEndMonth).padStart(2, "0")}-30`;
+
+      // Query per-jurisdiction tax rates from the ifta_tax_rates table
+      const [rateRows]: any = await pool.query(
+        `SELECT r.state_code, r.rate_per_gallon FROM ifta_tax_rates r
+         INNER JOIN (SELECT state_code, MAX(effective_date) as max_date FROM ifta_tax_rates WHERE effective_date <= ? GROUP BY state_code) latest
+         ON r.state_code = latest.state_code AND r.effective_date = latest.max_date`,
+        [quarterEnd],
+      );
+      const rateMap: Record<string, number> = {};
+      for (const r of rateRows) {
+        rateMap[r.state_code] = Number(r.rate_per_gallon);
+      }
 
       const [mileageRows]: any = await pool.query(
         "SELECT state_code, SUM(miles) as total_miles FROM mileage_jurisdiction WHERE tenant_id = ? GROUP BY state_code",
@@ -921,18 +937,40 @@ router.get(
         [tenantId],
       );
 
+      // Calculate fleet average MPG from totals
+      const totalMilesAll = mileageRows.reduce(
+        (sum: number, r: any) => sum + Number(r.total_miles),
+        0,
+      );
+      const totalGallonsAll = fuelRows.reduce(
+        (sum: number, r: any) => sum + Number(r.total_gallons),
+        0,
+      );
+      const fleetAvgMpg =
+        totalGallonsAll > 0 ? totalMilesAll / totalGallonsAll : 6.0;
+
       const rows = mileageRows.map((m: any) => {
         const f = fuelRows.find(
           (fr: any) => fr.state_code === m.state_code,
         ) || { total_gallons: 0, total_cost: 0 };
-        const taxRate = ST_RATES[m.state_code] || 0.2;
-        const taxDue = (m.total_miles / 6) * taxRate; // Rough calc
+        const totalMiles = Number(m.total_miles);
+        const stateGallons = Number(f.total_gallons);
+        const taxRate = rateMap[m.state_code] ?? 0.20;
+        const taxableGallons =
+          fleetAvgMpg > 0 ? totalMiles / fleetAvgMpg : 0;
+        const taxDue = taxableGallons * taxRate;
+        const taxPaidAtPump = stateGallons * taxRate;
+        const netTax = taxDue - taxPaidAtPump;
         return {
           stateCode: m.state_code,
-          totalMiles: m.total_miles,
-          totalGallons: f.total_gallons,
-          taxPaidAtPump: f.total_gallons * taxRate, // Simplified
-          taxDue: taxDue,
+          totalMiles,
+          totalGallons: stateGallons,
+          taxableGallons: Math.round(taxableGallons * 100) / 100,
+          taxRate,
+          taxRateSource: "IRP",
+          taxDue: Math.round(taxDue * 100) / 100,
+          taxPaidAtPump: Math.round(taxPaidAtPump * 100) / 100,
+          netTax: Math.round(netTax * 100) / 100,
         };
       });
 
@@ -945,7 +983,7 @@ router.get(
         0,
       );
       const netTaxDue = rows.reduce(
-        (s: number, r: any) => s + (r.taxDue - r.taxPaidAtPump),
+        (s: number, r: any) => s + r.netTax,
         0,
       );
 
@@ -955,7 +993,8 @@ router.get(
         rows,
         totalMiles,
         totalGallons,
-        netTaxDue,
+        fleetAvgMpg: Math.round(fleetAvgMpg * 100) / 100,
+        netTaxDue: Math.round(netTaxDue * 100) / 100,
       });
     } catch (error) {
       const log = createChildLogger({

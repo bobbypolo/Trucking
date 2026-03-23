@@ -8,18 +8,13 @@ import {
   KCIRequest,
   RequestStatus,
 } from "../../types";
-import { API_URL } from "../config";
-import { getAuthHeaders } from "../authService";
+import { api } from "../api";
 
 // --- Crisis Actions ---
 
 export const getRawCrisisActions = async (): Promise<CrisisAction[]> => {
   try {
-    const res = await fetch(API_URL + "/crisis-actions", {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await api.get("/crisis-actions");
     return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn("[recovery] getRawCrisisActions failed:", e);
@@ -32,33 +27,18 @@ export const saveCrisisAction = async (
 ): Promise<CrisisAction> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/crisis-actions/" + action.id, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(action),
-    });
-    if (patchRes.ok) return patchRes.json();
-  } catch (_) {
+    return await api.patch(`/crisis-actions/${action.id}`, action);
+  } catch {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/crisis-actions", {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(action),
-  });
-  if (!res.ok) throw new Error("Failed to save crisis action");
-  return res.json();
+  return api.post("/crisis-actions", action);
 };
 
 // --- KCI Requests ---
 
 export const getRawRequests = async (): Promise<KCIRequest[]> => {
   try {
-    const res = await fetch(API_URL + "/kci-requests", {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await api.get("/kci-requests");
     return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn("[recovery] getRawRequests failed:", e);
@@ -88,22 +68,11 @@ export const getRequests = async (filters?: {
 export const saveRequest = async (request: KCIRequest): Promise<KCIRequest> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/kci-requests/" + request.id, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(request),
-    });
-    if (patchRes.ok) return patchRes.json();
-  } catch (_) {
+    return await api.patch(`/kci-requests/${request.id}`, request);
+  } catch {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/kci-requests", {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(request),
-  });
-  if (!res.ok) throw new Error("Failed to save KCI request");
-  return res.json();
+  return api.post("/kci-requests", request);
 };
 
 export const updateRequestStatus = async (
@@ -139,16 +108,7 @@ export const updateRequestStatus = async (
   }
 
   try {
-    const res = await fetch(API_URL + "/kci-requests/" + requestId, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(patch),
-    });
-    if (!res.ok) {
-      console.error("[recovery] updateRequestStatus failed:", res.status);
-      return null;
-    }
-    return res.json();
+    return await api.patch(`/kci-requests/${requestId}`, patch);
   } catch (e) {
     console.error("[recovery] updateRequestStatus error:", e);
     return null;
@@ -174,11 +134,7 @@ export const getUnresolvedRequests = async (): Promise<KCIRequest[]> => {
 
 export const getRawServiceTickets = async (): Promise<ServiceTicket[]> => {
   try {
-    const res = await fetch(API_URL + "/service-tickets", {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await api.get("/service-tickets");
     return Array.isArray(data) ? data : [];
   } catch (e) {
     console.warn("[recovery] getRawServiceTickets failed:", e);
@@ -191,20 +147,9 @@ export const saveServiceTicket = async (
 ): Promise<ServiceTicket> => {
   // Try PATCH first (update), then POST (create)
   try {
-    const patchRes = await fetch(API_URL + "/service-tickets/" + ticket.id, {
-      method: "PATCH",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(ticket),
-    });
-    if (patchRes.ok) return patchRes.json();
-  } catch (_) {
+    return await api.patch(`/service-tickets/${ticket.id}`, ticket);
+  } catch {
     // fall through to create
   }
-  const res = await fetch(API_URL + "/service-tickets", {
-    method: "POST",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(ticket),
-  });
-  if (!res.ok) throw new Error("Failed to save service ticket");
-  return res.json();
+  return api.post("/service-tickets", ticket);
 };

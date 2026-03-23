@@ -107,7 +107,6 @@ vi.mock("../../../services/storage/directory", () => ({
 vi.mock("../../../services/storage/vault", () => ({
   STORAGE_KEY_VAULT_DOCS: "vault_docs_v1",
   getRawVaultDocs: vi.fn().mockReturnValue([]),
-  saveVaultDoc: vi.fn(),
   uploadVaultDoc: vi.fn(),
 }));
 vi.mock("../../../services/storage/notifications", () => ({
@@ -123,7 +122,6 @@ import {
   saveContact,
   getDirectory,
   getRawVaultDocs,
-  saveVaultDoc,
   uploadVaultDoc,
   getRawNotificationJobs,
   saveNotificationJob,
@@ -227,11 +225,6 @@ describe("storageService deep coverage", () => {
   describe("vault re-exports (lines 109-114)", () => {
     it("getRawVaultDocs", () => {
       expect(Array.isArray(getRawVaultDocs())).toBe(true);
-    });
-    it("saveVaultDoc", async () => {
-      await saveVaultDoc({ id: "d1" } as any);
-      const m = await import("../../../services/storage/vault");
-      expect(m.saveVaultDoc).toHaveBeenCalled();
     });
     it("uploadVaultDoc", async () => {
       await uploadVaultDoc(new File([], "test.pdf"), "BOL", "test-tenant");

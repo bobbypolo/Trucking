@@ -412,10 +412,8 @@ export const getCompany = async (
   companyId: string,
 ): Promise<Company | undefined> => {
   try {
-    const res = await fetch(`${API_URL}/companies/${companyId}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (res.ok) return await res.json();
+    const { api } = await import("./api");
+    return await api.get(`/companies/${companyId}`);
   } catch (e) {
     console.warn("[authService] API fallback:", e);
   }
@@ -424,11 +422,8 @@ export const getCompany = async (
 
 export const updateCompany = async (company: Company) => {
   try {
-    await fetch(`${API_URL}/companies`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(company),
-    });
+    const { api } = await import("./api");
+    await api.post("/companies", company);
   } catch (e) {
     console.warn("[authService] API fallback:", e);
   }
@@ -443,11 +438,8 @@ export const updateCompany = async (company: Company) => {
 
 export const updateUser = async (user: User) => {
   try {
-    await fetch(`${API_URL}/users`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(user),
-    });
+    const { api } = await import("./api");
+    await api.post("/users", user);
   } catch (e) {
     console.warn("[authService] API fallback:", e);
   }
@@ -888,10 +880,8 @@ export const addDriver = async (
 
 export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
   try {
-    const res = await fetch(`${API_URL}/users/${companyId}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (res.ok) return await res.json();
+    const { api } = await import("./api");
+    return await api.get(`/users/${companyId}`);
   } catch (e) {
     console.warn("[authService] API fallback:", e);
   }

@@ -4,17 +4,12 @@
  */
 import { CallSession, RecordLink, EntityType } from "../../types";
 import { v4 as uuidv4 } from "uuid";
-import { API_URL } from "../config";
-import { getAuthHeaders } from "../authService";
+import { api, apiFetch } from "../api";
 
 export const getRawCalls = async (): Promise<CallSession[]> => {
   try {
-    const res = await fetch(`${API_URL}/call-sessions`, {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.sessions || []).map((s: any) => ({
+    const data = await api.get("/call-sessions");
+    return ((data?.sessions as any[]) || []).map((s: any) => ({
       id: s.id,
       startTime: s.start_time,
       endTime: s.end_time,
@@ -47,19 +42,13 @@ export const saveCallSession = async (session: CallSession): Promise<void> => {
   };
 
   // Try PUT first; fall back to POST for new sessions
-  const putRes = await fetch(`${API_URL}/call-sessions/${session.id}`, {
-    method: "PUT",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!putRes.ok) {
-    const postRes = await fetch(`${API_URL}/call-sessions`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...body, id: session.id }),
+  try {
+    await apiFetch(`/call-sessions/${session.id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
     });
-    if (!postRes.ok)
-      throw new Error(`Failed to save call session: ${postRes.status}`);
+  } catch {
+    await api.post("/call-sessions", { ...body, id: session.id });
   }
 };
 

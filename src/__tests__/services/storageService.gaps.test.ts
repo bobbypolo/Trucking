@@ -111,7 +111,6 @@ vi.mock("../../../services/storage/directory", () => ({
 vi.mock("../../../services/storage/vault", () => ({
   STORAGE_KEY_VAULT_DOCS: "vault_docs_v1",
   getRawVaultDocs: vi.fn().mockReturnValue([]),
-  saveVaultDoc: vi.fn(),
   uploadVaultDoc: vi.fn(),
 }));
 vi.mock("../../../services/storage/notifications", () => ({

@@ -52,6 +52,7 @@ import documentsRouter from "./routes/documents";
 import healthRouter from "./routes/health";
 import quickbooksRouter from "./routes/quickbooks";
 import callLogsRouter from "./routes/call-logs";
+import geofenceRouter from "./routes/geofence";
 import stripeRouter from "./routes/stripe";
 
 const app = express();
@@ -107,6 +108,7 @@ app.use(notificationJobsRouter);
 app.use(vaultDocsRouter);
 app.use(documentsRouter);
 app.use(callLogsRouter);
+app.use(geofenceRouter);
 
 app.use(errorHandler);
 

@@ -1,4 +1,5 @@
 import { LoadData, User, LOAD_STATUS, LoadStatus } from "../types";
+import { api } from "./api";
 
 export interface DispatchOpportunity {
   driverId: string;
@@ -77,65 +78,49 @@ export const getRegion = (city: string) => {
  */
 export const DispatchIntelligence = {
   /**
-   * Finds the best driver for a given load based on actual GPS logs, HOS, and Performance.
+   * Finds the best driver for a given load based on real GPS positions,
+   * home terminal fallback, and safety scores — all computed server-side.
    */
   getBestMatches: async (
     load: LoadData,
-    drivers: User[],
+    _drivers?: User[],
   ): Promise<DispatchOpportunity[]> => {
-    // 1. Get current driver location from mock/logs
-    // For this scenario, Driver 1 is near Hays, KS (38.8794, -99.3267)
-    // Driver 2 is near Salina, KS (38.8403, -97.6114) -> ~100 miles away.
-    const disabledLat = 38.8794;
-    const disabledLng = -99.3267;
+    const response = await api.post("/api/dispatch/best-matches", {
+      loadId: load.id,
+    });
 
-    const opportunities: DispatchOpportunity[] = drivers
-      .filter((d) => d.role === "driver" || d.role === "owner_operator")
-      .filter((d) => d.id !== load.driverId) // Don't match the disabled driver
-      .map((driver) => {
-        // Determine Distance (Mocking coords for other drivers if logs missing)
-        let lat = 38.8403; // Salina, KS (Alex Trucker)
-        let lng = -97.6114;
+    if (!response || !Array.isArray(response)) {
+      return [];
+    }
 
-        // If not Alex, place them further away (e.g., Kansas City)
-        if (driver.name.includes("John")) {
-          lat = 39.0997;
-          lng = -94.5786;
-        }
-
-        // In geoUtils.ts (available in global scope usually or imported)
-        const dist =
-          Math.sqrt(
-            Math.pow(lat - disabledLat, 2) + Math.pow(lng - disabledLng, 2),
-          ) * 69; // Quick approx
-
-        // Hos check (Elite drivers usually have more managed hours)
-        const hos = driver.safetyScore && driver.safetyScore > 95 ? 10 : 6;
-
-        let score = 100;
-        if (hos < 4) score -= 40;
-        if (dist > 150) score -= 50;
-        if (dist < 50) score += 10; // Extra points for being very close
-
+    return response.map(
+      (match: {
+        driverId: string;
+        driverName: string;
+        distanceMiles: number;
+        score: number;
+        safetyScore: number | null;
+        estimatedArrivalHours: number;
+      }) => {
+        const score = match.score;
         let recommendation: "STRONG_MATCH" | "CONSIDER" | "DO_NOT_ASSIGN" =
           "CONSIDER";
         if (score > 85) recommendation = "STRONG_MATCH";
         else if (score <= 50) recommendation = "DO_NOT_ASSIGN";
 
         return {
-          driverId: driver.id,
-          driverName: driver.name,
+          driverId: match.driverId,
+          driverName: match.driverName,
           matchScore: Math.max(0, score),
-          hosAvailable: hos,
-          distanceToPickup: Math.round(dist),
+          hosAvailable: 0, // HOS not tracked in this endpoint; reserved for future ELD integration
+          distanceToPickup: Math.round(match.distanceMiles),
           estimatedArrival: new Date(
-            Date.now() + (dist / 55) * 3600000,
+            Date.now() + match.estimatedArrivalHours * 3600000,
           ).toISOString(),
-          recommendation: recommendation,
+          recommendation,
         };
-      });
-
-    return opportunities.sort((a, b) => b.matchScore - a.matchScore);
+      },
+    );
   },
 
   predictExceptionRisk: (

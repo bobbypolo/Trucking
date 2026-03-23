@@ -1,33 +1,29 @@
 /**
  * Tests for services/storage/leads.ts
- * Leads domain -- API-backed CRUD.
+ * Leads domain -- API-backed CRUD via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import { getLeads, saveLead } from "../../../../services/storage/leads";
 
 describe("leads.ts", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const sampleLeads = [
@@ -56,25 +52,18 @@ describe("leads.ts", () => {
   ];
 
   describe("getLeads", () => {
-    it("calls GET /api/leads and filters by companyId", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleLeads,
-      });
+    it("calls api.get /leads and filters by companyId", async () => {
+      mockApi.get.mockResolvedValueOnce(sampleLeads);
 
       const result = await getLeads("co-1");
 
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/leads");
+      expect(mockApi.get).toHaveBeenCalledWith("/leads");
       expect(result).toHaveLength(2);
-      expect(result.every((l) => l.companyId === "co-1")).toBe(true);
+      expect(result.every((l: any) => l.companyId === "co-1")).toBe(true);
     });
 
     it("handles data.leads wrapper format", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ leads: sampleLeads }),
-      });
+      mockApi.get.mockResolvedValueOnce({ leads: sampleLeads });
 
       const result = await getLeads("co-1");
       expect(result).toHaveLength(2);
@@ -90,26 +79,24 @@ describe("leads.ts", () => {
           createdAt: "2026-01-04",
         },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => leadsWithMissing,
-      });
+      mockApi.get.mockResolvedValueOnce(leadsWithMissing);
 
       const result = await getLeads("co-1");
-      // lead-4 has no companyId, so !l.companyId is true -> included
-      expect(result.some((l) => l.id === "lead-4")).toBe(true);
+      expect(result.some((l: any) => l.id === "lead-4")).toBe(true);
     });
 
-    it("throws on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    it("throws on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
+      );
 
       await expect(getLeads("co-1")).rejects.toThrow(
-        "Failed to fetch leads: 500",
+        "API Request failed: 500",
       );
     });
 
     it("propagates network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Offline"));
+      mockApi.get.mockRejectedValueOnce(new Error("Offline"));
 
       await expect(getLeads("co-1")).rejects.toThrow("Offline");
     });
@@ -118,16 +105,11 @@ describe("leads.ts", () => {
   describe("saveLead", () => {
     it("sends PATCH for existing lead (has id)", async () => {
       const lead = sampleLeads[0];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => lead,
-      });
+      mockApi.patch.mockResolvedValueOnce(lead);
 
       const result = await saveLead(lead as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/leads/lead-1");
-      expect(opts.method).toBe("PATCH");
+      expect(mockApi.patch).toHaveBeenCalledWith("/leads/lead-1", lead);
       expect(result).toEqual(lead);
     });
 
@@ -138,40 +120,22 @@ describe("leads.ts", () => {
         companyId: "co-1",
         createdAt: "2026-01-05T00:00:00Z",
       };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ...newLead, id: "lead-new" }),
-      });
+      mockApi.post.mockResolvedValueOnce({ ...newLead, id: "lead-new" });
 
       const result = await saveLead(newLead as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/leads");
-      expect(opts.method).toBe("POST");
+      expect(mockApi.post).toHaveBeenCalledWith("/leads", newLead);
       expect(result.id).toBe("lead-new");
     });
 
-    it("throws on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 422 });
+    it("throws on API error", async () => {
+      mockApi.patch.mockRejectedValueOnce(
+        new Error("API Request failed: 422"),
+      );
 
-      await expect(
-        saveLead({ id: "lead-1" } as any),
-      ).rejects.toThrow("Failed to save lead: 422");
-    });
-
-    it("sends lead data as JSON body", async () => {
-      const lead = sampleLeads[0];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => lead,
-      });
-
-      await saveLead(lead as any);
-
-      const [, opts] = mockFetch.mock.calls[0];
-      const body = JSON.parse(opts.body);
-      expect(body.callerName).toBe("Alice Johnson");
-      expect(body.customerName).toBe("Acme Corp");
+      await expect(saveLead({ id: "lead-1" } as any)).rejects.toThrow(
+        "API Request failed: 422",
+      );
     });
   });
 });

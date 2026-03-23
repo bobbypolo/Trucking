@@ -495,7 +495,7 @@ router.post(
         for (const r of rates) {
           const rid = r.id || uuidv4();
           await connection.query(
-            "INSERT INTO rate_rows (id, tenant_id, party_id, catalog_item_id, variant_id, direction, currency, price_type, unit_type, base_amount, unit_amount, min_charge, max_charge, free_units, effective_start, effective_end, taxable_flag, rounding_rule, notes_internal, approval_required) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO rate_rows (id, company_id, party_id, catalog_item_id, variant_id, direction, currency, price_type, unit_type, base_amount, unit_amount, min_charge, max_charge, free_units, effective_start, effective_end, taxable_flag, rounding_rule, notes_internal, approval_required) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
               rid,
               finalTenantId,
@@ -545,7 +545,7 @@ router.post(
         for (const cs of constraintSets) {
           const csid = cs.id || uuidv4();
           await connection.query(
-            "INSERT INTO constraint_sets (id, tenant_id, party_id, applies_to, priority, status, effective_start, effective_end) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO constraint_sets (id, company_id, party_id, applies_to, priority, status, effective_start, effective_end) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
               csid,
               finalTenantId,

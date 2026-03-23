@@ -94,9 +94,6 @@ const Intelligence = React.lazy(() =>
     default: m.Intelligence,
   })),
 );
-const Settlements = React.lazy(() =>
-  import("./components/Settlements").then((m) => ({ default: m.Settlements })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -403,7 +400,7 @@ export default function App() {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
-    refreshData(loggedInUser);
+    // refreshData is triggered by the onUserChange listener in useEffect
     if (features.seedSystem) {
       seedDatabase();
     }
