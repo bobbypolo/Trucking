@@ -112,3 +112,12 @@ export const batchImportSchema = z.object({
   type: z.enum(["Fuel", "Bills", "Invoices", "Settlements"]),
   data: z.array(z.object({}).passthrough()).min(1),
 });
+
+/**
+ * Schema for PATCH /api/accounting/settlements/batch — batch-updating settlement status.
+ * Used by the Finalize All button in Settlements component.
+ */
+export const batchUpdateSettlementsSchema = z.object({
+  ids: z.array(z.string().min(1)).min(1),
+  status: z.enum(["Draft", "Calculated", "Approved", "Paid", "Finalized"]),
+});

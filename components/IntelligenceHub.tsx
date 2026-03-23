@@ -512,28 +512,7 @@ const IntelligenceHub: React.FC<{
   };
 
   const [isIncomingCall, setIsIncomingCall] = useState(false);
-  const [commQueue, setCommQueue] = useState<CallSession[]>([
-    {
-      id: "CS-9901",
-      status: "WAITING",
-      startTime: new Date(Date.now() - 300000).toISOString(),
-      participants: [{ id: "D-12", name: "Mark Stevens", role: "DRIVER" }],
-      lastActivityAt: new Date(Date.now() - 300000).toISOString(),
-      links: [],
-      team: "SAFETY",
-    },
-    {
-      id: "CS-9902",
-      status: "ACTIVE",
-      startTime: new Date(Date.now() - 60000).toISOString(),
-      participants: [
-        { id: "B-88", name: "Choptank Logistics", role: "BROKER" },
-      ],
-      lastActivityAt: new Date(Date.now() - 60000).toISOString(),
-      links: [],
-      team: "DISPATCH",
-    },
-  ]);
+  const [commQueue, setCommQueue] = useState<CallSession[]>([]);
 
   // 360 Search State
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
@@ -1233,13 +1212,13 @@ const IntelligenceHub: React.FC<{
         id: "c-driver",
         name: active360Data.driver?.name || "Driver",
         role: "Driver",
-        phone: active360Data.driver?.phone || "888-555-0000",
+        phone: active360Data.driver?.phone || "",
       });
       contacts.push({
         id: "c-safety",
         name: "Safety Team",
         role: "Internal",
-        phone: "800-SAFE-KCI",
+        phone: "",
       });
     }
 
@@ -1410,7 +1389,7 @@ const IntelligenceHub: React.FC<{
           : "Roadside assistance requested"),
       estimatedCost: 0,
       assignedVendorId: selectedVendorForRoadside.id,
-      eta: "45-60 mins",
+      eta: "TBD",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -1600,25 +1579,30 @@ const IntelligenceHub: React.FC<{
     showSuccessMessage("Trailer Drop Verified", 3000);
   };
 
-  // Mock stats
+  // Compute stats from active load data (no mock values)
   const stats = activeLoad
     ? {
-        driver: { name: "John Doe" },
+        driver: { name: active360Data?.driver?.name || "No active load" },
         customer: {
-          name: "Global Logistics",
-          loadCount: 45,
-          onTime: "98%",
-          revenue: 125000,
+          name: active360Data?.broker?.name || "Unknown",
+          loadCount: loads.filter((l) => l.brokerId === activeLoad.brokerId)
+            .length,
+          onTime: "N/A",
+          revenue: loads
+            .filter((l) => l.brokerId === activeLoad.brokerId)
+            .reduce((sum, l) => sum + (l.carrierRate || 0), 0),
         },
       }
     : null;
 
-  // Simplified user access
-  const incomingCallSource = {
-    id: "D-101",
-    name: "Trucker Tom",
-    type: "DRIVER",
-  };
+  // Incoming call source from real data (empty when no active call)
+  const incomingCallSource = activeCallSession?.participants?.[0]
+    ? {
+        id: activeCallSession.participants[0].id,
+        name: activeCallSession.participants[0].name,
+        type: activeCallSession.participants[0].role,
+      }
+    : null;
 
   useEffect(() => {
     const performSearch = async () => {
@@ -1699,39 +1683,37 @@ const IntelligenceHub: React.FC<{
   const handleTimelineEventClick = (event: OperationalEvent) => {};
   const handleTimelineAction = (eventId: string, action: string) => {};
   const handleInitiateGlobalInbound = async () => {
-    const mockCallers = [
-      { id: "D-5501", name: "Mike Thompson", role: "DRIVER", team: "DISPATCH" },
-      {
-        id: "B-2209",
-        name: "Choptank Logistics",
-        role: "BROKER",
-        team: "OPERATIONS",
-      },
-      {
-        id: "P-9901",
-        name: "Blue Star Towing",
-        role: "PROVIDER",
-        team: "SAFETY",
-      },
-    ];
-    const randomCaller =
-      mockCallers[Math.floor(Math.random() * mockCallers.length)];
-
-    const newCall: CallSession = {
-      id: `CALL-IN-${uuidv4().slice(0, 4).toUpperCase()}`,
-      startTime: new Date().toISOString(),
-      status: "WAITING",
-      participants: [randomCaller],
-      lastActivityAt: new Date().toISOString(),
-      links: [],
-      team: randomCaller.team,
-    };
-    await saveCallSession(newCall);
+    // Populate call queue from real triage data instead of mock callers
     const queues = await getTriageQueues();
-    setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
-    showSuccessMessage(
-      `Tactical Inbound Initiated: ${randomCaller.name} (${randomCaller.role})`,
+    const realCallers = (queues.calls || []).filter(
+      (c: CallSession) => c.status === "WAITING",
     );
+    if (realCallers.length > 0) {
+      setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
+      const firstCaller = realCallers[0];
+      const callerName = firstCaller.participants?.[0]?.name || "Unknown";
+      const callerRole = firstCaller.participants?.[0]?.role || "UNKNOWN";
+      showSuccessMessage(
+        `Tactical Inbound Initiated: ${callerName} (${callerRole})`,
+      );
+    } else {
+      // No waiting calls — create a placeholder session from real user context
+      const newCall: CallSession = {
+        id: `CALL-IN-${uuidv4().slice(0, 4).toUpperCase()}`,
+        startTime: new Date().toISOString(),
+        status: "WAITING",
+        participants: [{ id: user.id, name: user.name, role: "DISPATCHER" }],
+        lastActivityAt: new Date().toISOString(),
+        links: [],
+        team: "DISPATCH",
+      };
+      await saveCallSession(newCall);
+      const updatedQueues = await getTriageQueues();
+      setTriageQueues((prev) => ({ ...prev, calls: [...updatedQueues.calls] }));
+      showSuccessMessage(
+        `Tactical Inbound Initiated: ${user.name} (DISPATCHER)`,
+      );
+    }
   };
 
   const RecordPicker = ({ onSelect, selectedRecord }: any) => (
@@ -2301,6 +2283,7 @@ const IntelligenceHub: React.FC<{
                 { label: "SALES/CRM", tab: "crm" },
                 { label: "SAFETY", tab: "safety" },
                 { label: "NETWORK", tab: "directory" },
+                { label: "REPORTS", tab: "reports" },
               ].map((chip) => (
                 <button
                   key={chip.label}
@@ -2554,6 +2537,96 @@ const IntelligenceHub: React.FC<{
               {selectedTab === "directory" && (
                 <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617]">
                   <NetworkPortal companyId={user.companyId} />
+                </div>
+              )}
+
+              {selectedTab === "reports" && (
+                <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617] p-6">
+                  <h2 className="text-lg font-bold text-white mb-4">
+                    <BarChart3 className="w-5 h-5 inline mr-2" />
+                    Communication Reports
+                  </h2>
+                  {commQueue.length === 0 && threads.length === 0 ? (
+                    <div className="text-center py-12">
+                      <BarChart3 className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+                      <p className="text-slate-400 text-sm">
+                        No data available
+                      </p>
+                      <p className="text-slate-600 text-xs mt-1">
+                        Call metrics and interaction summaries will appear here
+                        once data is recorded.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Call Metrics */}
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <h3 className="text-sm font-bold text-white mb-3">
+                          Call Metrics
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-lg p-3">
+                            <p className="text-xs text-slate-400">
+                              Total Calls
+                            </p>
+                            <p className="text-2xl font-bold text-blue-400">
+                              {commQueue.length}
+                            </p>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3">
+                            <p className="text-xs text-slate-400">
+                              Avg Duration
+                            </p>
+                            <p className="text-2xl font-bold text-green-400">
+                              {commQueue.length > 0
+                                ? (() => {
+                                    const withDuration = commQueue.filter(
+                                      (c) => c.durationSeconds,
+                                    );
+                                    if (withDuration.length === 0) return "N/A";
+                                    const avg = Math.round(
+                                      withDuration.reduce(
+                                        (sum, c) =>
+                                          sum + (c.durationSeconds || 0),
+                                        0,
+                                      ) / withDuration.length,
+                                    );
+                                    return `${Math.floor(avg / 60)}m ${avg % 60}s`;
+                                  })()
+                                : "N/A"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interaction Summary */}
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                        <h3 className="text-sm font-bold text-white mb-3">
+                          Interaction Summary
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/5 rounded-lg p-3 flex items-center gap-3">
+                            <Phone className="w-5 h-5 text-blue-400" />
+                            <div>
+                              <p className="text-xs text-slate-400">Calls</p>
+                              <p className="text-lg font-bold text-white">
+                                {commQueue.length}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-3 flex items-center gap-3">
+                            <MessageSquare className="w-5 h-5 text-purple-400" />
+                            <div>
+                              <p className="text-xs text-slate-400">Messages</p>
+                              <p className="text-lg font-bold text-white">
+                                {threads.length}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -69,6 +69,10 @@ export const updateDocStatus = async (id: string, status: string, isLocked: bool
     await api.patch(`/accounting/docs/${id}`, { status, is_locked: isLocked, updatedBy });
 };
 
+export const batchFinalizeSettlements = async (ids: string[], status: string = 'Finalized'): Promise<{ updated: number }> => {
+    return api.patch('/accounting/settlements/batch', { ids, status });
+};
+
 export const getIFTASummary = async (quarter?: number, year?: number): Promise<IFTASummary> => {
     const query = new URLSearchParams({
         quarter: (quarter || 0).toString(),
