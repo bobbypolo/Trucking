@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mock authService before importing financialService (which imports api.ts -> authService)
 vi.mock("../../../services/authService", () => ({
   getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
 }));
 
 import {

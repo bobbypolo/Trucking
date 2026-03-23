@@ -8,6 +8,7 @@ vi.mock("../../../services/config", () => ({
 // Mock authService
 vi.mock("../../../services/authService", () => ({
   getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
 }));
 
 import { apiFetch, api } from "../../../services/api";

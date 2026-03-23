@@ -51,6 +51,19 @@ export const getIdTokenAsync = async (): Promise<string | null> => {
   return null;
 };
 
+/**
+ * Force-refresh the Firebase ID token, bypassing the cache.
+ * Used by the 401-retry interceptor in api.ts to recover from expired tokens.
+ * Returns the fresh token string, or null if no user is signed in.
+ */
+export const forceRefreshToken = async (): Promise<string | null> => {
+  if (auth.currentUser) {
+    _idToken = await getIdToken(auth.currentUser, /* forceRefresh */ true);
+    return _idToken;
+  }
+  return null;
+};
+
 // Listen for auth changes to update token and session
 let _userChangeListeners: ((user: User | null) => void)[] = [];
 
