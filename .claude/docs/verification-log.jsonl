@@ -81,3 +81,4 @@
 {"story_id": "S-6.5", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-08", "R-P6-09"], "production_violations": [], "receipt_hash": "669eebfd"}
 {"story_id": "S-6.8", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-10", "R-P6-11", "R-P6-12", "R-P6-13"], "production_violations": [], "receipt_hash": "3a32b6fe"}
 {"story_id": "S-6.9", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-14", "R-P6-15"], "production_violations": [], "receipt_hash": "af615604"}
+{"story_id": "S-7.1", "timestamp": "2026-03-23T08:36:49.018419", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P7-01", "R-P7-02", "R-P7-03"], "production_violations": [], "receipt_hash": "65c12277"}
