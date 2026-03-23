@@ -9,6 +9,7 @@ vi.mock("../../../services/authService", () => ({
     "Content-Type": "application/json",
     Authorization: "Bearer test-token",
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
   getCurrentUser: vi.fn().mockReturnValue({ companyId: "test-co" }),
 }));
 
@@ -236,7 +237,7 @@ describe("storageService — gap coverage", () => {
   // ─── createIncident ──────────────────────────────────────────────────
   describe("createIncident", () => {
     it("posts incident to API and saves to localStorage", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const result = await createIncident({
         type: "Breakdown",
@@ -249,7 +250,7 @@ describe("storageService — gap coverage", () => {
     });
 
     it("assigns default ID and reportedAt when missing", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       await createIncident({ type: "Accident" });
 
@@ -283,7 +284,7 @@ describe("storageService — gap coverage", () => {
         { id: "inc-1", timeline: [], billingItems: [] },
       ]);
 
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const result = await saveIncidentAction("inc-1", {
         action: "DISPATCHED_TOW",
@@ -308,7 +309,7 @@ describe("storageService — gap coverage", () => {
   // ─── saveIssue ───────────────────────────────────────────────────────
   describe("saveIssue", () => {
     it("posts issue to API and returns new issue", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const issue = await saveIssue({
         category: "Maintenance",
@@ -331,7 +332,7 @@ describe("storageService — gap coverage", () => {
   // ─── saveIncidentCharge ──────────────────────────────────────────────
   describe("saveIncidentCharge", () => {
     it("returns true on API success", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const result = await saveIncidentCharge("inc-1", {
         amount: 500,
@@ -363,7 +364,7 @@ describe("storageService — gap coverage", () => {
   // ─── saveCallLog ─────────────────────────────────────────────────────
   describe("saveCallLog", () => {
     it("posts call log to API and returns the new call", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const callLog = await saveCallLog({
         type: "Operational",
@@ -762,7 +763,7 @@ describe("storageService — gap coverage", () => {
     it("creates request, task, and logs event", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
-        .mockResolvedValue({ ok: true } as any);
+        .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       // Populate load cache first
       mockApiFetchLoads.mockResolvedValue([
@@ -783,7 +784,7 @@ describe("storageService — gap coverage", () => {
     it("logs dispatch event", async () => {
       const fetchSpy = vi
         .spyOn(globalThis, "fetch")
-        .mockResolvedValue({ ok: true } as any);
+        .mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const user = { id: "u1", name: "Dispatcher" } as any;
       await verifyTrailerDrop("l1", user, {
