@@ -67,6 +67,7 @@ import {
   deleteLoadApi,
 } from "./loadService";
 import { api, ApiFetchOptions, ForbiddenError } from "./api";
+import { validateDispatchEvent } from "./validationGuards";
 
 // --- Re-export domain modules for backward compatibility ---
 // Consumers can import from storageService or directly from domain modules.
@@ -217,6 +218,19 @@ export const logTime = async (log: Partial<TimeLog>) => {
 };
 
 export const logDispatchEvent = async (event: Partial<DispatchEvent>) => {
+  // R-P3-03: Validate required fields before sending to prevent 400 errors
+  const validation = validateDispatchEvent({
+    load_id: event.loadId,
+    event_type: event.eventType,
+    message: event.message,
+    payload: (event as any).payload,
+  });
+  if (!validation.valid) {
+    console.warn(
+      `[storageService] logDispatchEvent skipped — missing required fields: ${validation.errors.join(", ")}`,
+    );
+    return;
+  }
   try {
     await api.post("/dispatch-events", {
       ...event,

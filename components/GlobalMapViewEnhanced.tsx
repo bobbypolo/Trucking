@@ -34,6 +34,7 @@ import {
 } from "lucide-react";
 import { User, LoadData, LOAD_STATUS, LoadStatus, Incident } from "../types";
 import { getDirections } from "../services/directionsService";
+import { validateCoordinates } from "../services/validationGuards";
 
 /** Live GPS position from /api/tracking/live endpoint */
 interface LiveGpsPosition {
@@ -283,6 +284,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
   const fetchWeather = useCallback(async (lat: number, lng: number) => {
     try {
+      // R-P3-03: Validate coordinates before weather API call
+      if (!validateCoordinates(lat, lng)) {
+        setWeather(null);
+        return;
+      }
       if (!WEATHER_API_KEY) {
         setWeather(null);
         return;

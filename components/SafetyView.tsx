@@ -97,6 +97,7 @@ import {
   type NotificationStatus,
 } from "./ui/NotificationStatusBadge";
 import { CertExpiryWarnings } from "./ui/CertExpiryWarnings";
+import { validateQuizForm } from "../services/validationGuards";
 
 interface NotificationJob {
   id: string;
@@ -164,6 +165,8 @@ export const SafetyView: React.FC<Props> = ({
     if (showForm === "asset") return !!formData.id?.trim();
     if (showForm === "maintenance") return !!formData.description?.trim();
     if (showForm === "incident") return !!formData.description?.trim();
+    // R-P3-03: Quiz form requires a non-empty title
+    if (showForm === "quiz") return validateQuizForm(formData).valid;
     return true;
   })();
   const [fmcsaData, setFmcsaData] = useState<{
@@ -1406,6 +1409,10 @@ export const SafetyView: React.FC<Props> = ({
                   }
                   if (showForm === "incident") {
                     if (!formData.description?.trim()) errs.description = "Description is required";
+                  }
+                  // R-P3-03: Validate quiz title before submission
+                  if (showForm === "quiz") {
+                    if (!formData.title?.trim()) errs.title = "Course title is required";
                   }
                   if (Object.keys(errs).length > 0) {
                     setSafetyFormErrors(errs);

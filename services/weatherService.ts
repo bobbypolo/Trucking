@@ -1,9 +1,11 @@
 /**
  * Weather Service for LoadPilot
- * 
+ *
  * Fetches real-time weather data using Azure Maps (primary) or OpenWeatherMap (fallback).
  * REQUIRES a valid API key to be configured in .env
  */
+
+import { validateCoordinates } from "./validationGuards";
 
 export interface WeatherData {
     temp: number;
@@ -22,6 +24,13 @@ export interface WeatherData {
  * @throws Error if no API key is configured
  */
 export const fetchWeatherData = async (lat: number, lng: number): Promise<WeatherData> => {
+    // R-P3-03: Validate coordinates before making API call to prevent 400 errors
+    if (!validateCoordinates(lat, lng)) {
+        throw new Error(
+            'Invalid coordinates provided. Latitude must be between -90 and 90, longitude between -180 and 180.'
+        );
+    }
+
     // Check if we have real API keys
     const azureMapsKey = import.meta.env.VITE_WEATHER_API_KEY;
     const openWeatherKey = import.meta.env.VITE_OPENWEATHER_API_KEY;

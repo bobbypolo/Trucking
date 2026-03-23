@@ -11,6 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { getIdTokenAsync } from "../services/authService";
+import { validateImageBase64 } from "../services/validationGuards";
 // AI calls proxied through server — no client-side Gemini SDK
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
 
@@ -19,6 +20,10 @@ async function aiPost(
   imageBase64: string,
   mimeType: string,
 ): Promise<unknown> {
+  // R-P3-04: Guard against missing imageBase64 to prevent 400 errors
+  if (!validateImageBase64(imageBase64)) {
+    throw new Error("Cannot process: no image data provided. Please capture or upload an image first.");
+  }
   const token = (await getIdTokenAsync()) ?? "";
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method: "POST",
