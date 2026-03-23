@@ -248,6 +248,14 @@ router.get(
 );
 
 /**
+ * In-memory rate limiter for GPS webhook.
+ * Tracks request counts per API key within a sliding window.
+ */
+const webhookRateLimit = new Map<string, { count: number; resetAt: number }>();
+const WEBHOOK_RATE_LIMIT = 1000; // max requests per minute per API key
+const WEBHOOK_RATE_WINDOW = 60_000; // 1 minute
+
+/**
  * POST /api/tracking/webhook
  * Accepts GPS position pings from ELD/GPS providers.
  * Auth: X-GPS-API-Key header validated against GPS_WEBHOOK_SECRET env var.
@@ -271,9 +279,32 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
     return res.status(401).json({ error: "Invalid API key" });
   }
 
+  // Rate limit per API key
+  const now = Date.now();
+  const rateKey = apiKey as string;
+  const entry = webhookRateLimit.get(rateKey);
+  if (entry && now < entry.resetAt) {
+    entry.count++;
+    if (entry.count > WEBHOOK_RATE_LIMIT) {
+      return res.status(429).json({ error: "Rate limit exceeded" });
+    }
+  } else {
+    webhookRateLimit.set(rateKey, {
+      count: 1,
+      resetAt: now + WEBHOOK_RATE_WINDOW,
+    });
+  }
+
   // Validate required fields
-  const { vehicleId, latitude, longitude, speed, heading, driverId } =
-    req.body;
+  const {
+    vehicleId,
+    latitude,
+    longitude,
+    speed,
+    heading,
+    driverId,
+    companyId,
+  } = req.body;
 
   const missing: string[] = [];
   if (!vehicleId) missing.push("vehicleId");
@@ -286,6 +317,15 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
       .json({ error: `Missing required fields: ${missing.join(", ")}` });
   }
 
+  // Resolve company ID from request body, fallback to "unresolved"
+  const resolvedCompanyId = companyId || "unresolved";
+  if (!companyId) {
+    log.warn(
+      { vehicleId },
+      "GPS webhook missing companyId — stored as 'unresolved'",
+    );
+  }
+
   try {
     const id = randomUUID();
     await pool.query(
@@ -295,7 +335,7 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        "webhook", // company_id placeholder for webhook-sourced data
+        resolvedCompanyId,
         vehicleId,
         driverId || null,
         latitude,
