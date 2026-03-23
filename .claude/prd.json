@@ -746,7 +746,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -773,7 +773,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -805,7 +805,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -848,7 +848,7 @@
         "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -880,7 +880,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [

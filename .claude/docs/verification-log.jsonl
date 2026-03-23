@@ -76,3 +76,8 @@
 {"story_id": "S-5.1", "timestamp": "2026-03-23T06:37:23.092251", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P5-05", "R-P5-06", "R-P5-07"], "production_violations": [], "receipt_hash": "0ee95f59"}
 {"story_id": "S-6.1", "timestamp": "2026-03-23T06:37:23.092251", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-01", "R-P6-02", "R-P6-03"], "production_violations": [], "receipt_hash": "692818386"}
 {"story_id": "S-6.2", "timestamp": "2026-03-23T06:37:23.092251", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-04"], "production_violations": [], "receipt_hash": "674e2775"}
+{"story_id": "S-6.3", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-05", "R-P6-06"], "production_violations": [], "receipt_hash": "c9c65db1"}
+{"story_id": "S-6.4", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-07"], "production_violations": [], "receipt_hash": "9b64670b"}
+{"story_id": "S-6.5", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-08", "R-P6-09"], "production_violations": [], "receipt_hash": "669eebfd"}
+{"story_id": "S-6.8", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-10", "R-P6-11", "R-P6-12", "R-P6-13"], "production_violations": [], "receipt_hash": "3a32b6fe"}
+{"story_id": "S-6.9", "timestamp": "2026-03-23T07:50:01.452169", "attempt": 1, "overall_result": "PASS", "criteria_verified": ["R-P6-14", "R-P6-15"], "production_violations": [], "receipt_hash": "af615604"}
