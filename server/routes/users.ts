@@ -3,7 +3,6 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "../auth";
-import pool from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -17,10 +16,12 @@ import {
 } from "../schemas/users";
 import { createChildLogger } from "../lib/logger";
 import {
+  ensureMySqlCompany,
   findSqlUserById,
   findSqlUsersByCompany,
   linkSqlUserToFirebaseUid,
   mapUserRowToApiUser,
+  mirrorCompanyToFirestore,
   mirrorUserToFirestore,
   resolveSqlPrincipalByFirebaseUid,
   upsertSqlUser,
@@ -282,12 +283,23 @@ router.post(
           email.split("@")[0].charAt(0).toUpperCase() +
           email.split("@")[0].slice(1);
 
-        // Create company
-        await pool.query(
-          `INSERT INTO companies (id, name, account_type, email, subscription_status)
-           VALUES (?, ?, 'owner_operator', ?, 'active')`,
-          [newCompanyId, `${displayName}'s Company`, email],
-        );
+        // Create company in MySQL (idempotent)
+        await ensureMySqlCompany({
+          id: newCompanyId,
+          name: `${displayName}'s Company`,
+          accountType: "owner_operator",
+          email,
+          subscriptionStatus: "active",
+        });
+
+        // Mirror company to Firestore so GET /api/companies/:id works
+        await mirrorCompanyToFirestore({
+          id: newCompanyId,
+          name: `${displayName}'s Company`,
+          accountType: "owner_operator",
+          email,
+          subscriptionStatus: "active",
+        });
 
         // Create admin user
         await upsertSqlUser({

@@ -342,3 +342,62 @@ export async function mirrorUserToFirestore(
     );
   }
 }
+
+export interface CompanyWriteInput {
+  id: string;
+  name: string;
+  accountType?: string;
+  email?: string | null;
+  subscriptionStatus?: string;
+}
+
+/**
+ * Idempotent MySQL company insert. Uses INSERT IGNORE to avoid duplicates.
+ * This ensures the companies table has the record before any user FK references it.
+ */
+export async function ensureMySqlCompany(
+  input: CompanyWriteInput,
+): Promise<void> {
+  await pool.query(
+    `INSERT IGNORE INTO companies (id, name, account_type, email, subscription_status)
+     VALUES (?, ?, ?, ?, ?)`,
+    [
+      input.id,
+      input.name,
+      input.accountType ?? "owner_operator",
+      input.email ?? null,
+      input.subscriptionStatus ?? "active",
+    ],
+  );
+}
+
+/**
+ * Mirror a company record to Firestore so GET /api/companies/:id (Firestore path) works.
+ * Failures are non-fatal — MySQL remains authoritative.
+ */
+export async function mirrorCompanyToFirestore(
+  input: CompanyWriteInput,
+): Promise<void> {
+  try {
+    const { default: db } = await import("../firestore");
+    await db
+      .collection("companies")
+      .doc(input.id)
+      .set(
+        {
+          id: input.id,
+          name: input.name,
+          account_type: input.accountType ?? "owner_operator",
+          email: input.email ?? null,
+          subscription_status: input.subscriptionStatus ?? "active",
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true },
+      );
+  } catch (error) {
+    logger.warn(
+      { err: error, companyId: input.id },
+      "Firestore company mirror failed; MySQL record remains authoritative.",
+    );
+  }
+}
