@@ -43,6 +43,15 @@ const MIGRATION_ORDER = [
   "021_contacts_providers.sql",
   "022_client_archive.sql",
   "023_add_loads_deleted_at.sql",
+  "024_safety_domain.sql",
+  "025_vault_docs.sql",
+  "026_notification_jobs.sql",
+  "027_add_subscription_tier.sql",
+  "028_stripe_subscriptions.sql",
+  "029_quickbooks_tokens.sql",
+  "030_gps_positions.sql",
+  "031_stripe_webhook_events.sql",
+  "032_parties_subsystem.sql",
 ];
 
 export function isContainerRunning(): boolean {

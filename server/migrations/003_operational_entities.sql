@@ -1,7 +1,7 @@
 -- Migration: 003_operational_entities
--- Description: Add company_id tenant scoping to incidents and messages;
+-- Description: Add company_id tenant scoping to incidents;
 --              create call_sessions table for call log data.
---              work_items already has company_id from 001_baseline.
+--              messages company_id moved to 018_messages_threads.sql.
 -- Author: ralph-story
 -- Date: 2026-03-08
 
@@ -22,18 +22,7 @@ ALTER TABLE incidents
   ADD CONSTRAINT fk_incidents_company
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
 
--- 2. Add company_id to messages (tenant scoping)
-ALTER TABLE messages
-  ADD COLUMN company_id VARCHAR(36) NULL AFTER id;
-
-UPDATE messages m
-  JOIN loads l ON m.load_id = l.id
-  SET m.company_id = l.company_id
-  WHERE m.company_id IS NULL;
-
-ALTER TABLE messages
-  ADD CONSTRAINT fk_messages_company
-    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE;
+-- 2. messages company_id — handled by 018_messages_threads.sql (authoritative)
 
 -- 3. Create call_sessions table (does not exist in baseline)
 CREATE TABLE IF NOT EXISTS call_sessions (
@@ -56,4 +45,4 @@ CREATE TABLE IF NOT EXISTS call_sessions (
 -- Index for tenant-scoped queries
 CREATE INDEX idx_call_sessions_company_id ON call_sessions (company_id);
 CREATE INDEX idx_incidents_company_id ON incidents (company_id);
-CREATE INDEX idx_messages_company_id ON messages (company_id);
+-- idx_messages_company_id — handled by 018_messages_threads.sql (authoritative)
