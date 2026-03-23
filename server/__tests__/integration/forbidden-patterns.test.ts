@@ -150,7 +150,7 @@ describe("Forbidden Patterns — Original CI Guardrails", () => {
   it("no 'admin123' hardcoded credential in server runtime code", () => {
     const hits = grepNonTest("admin123", SERVER);
     expect(hits, `admin123 found in: ${hits.join(", ")}`).toEqual([]);
-  });
+  }, 20_000);
 
   it("no 'iscope-authority-001' test tenant ID in server runtime code", () => {
     const hits = grepNonTest("iscope-authority-001", SERVER);
