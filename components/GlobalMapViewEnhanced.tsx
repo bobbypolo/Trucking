@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   GoogleMap,
   LoadScript,
@@ -222,7 +228,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
     fetchLivePositions();
 
     // Set up 30-second polling
-    pollTimerRef.current = setInterval(fetchLivePositions, LIVE_GPS_POLL_INTERVAL_MS);
+    pollTimerRef.current = setInterval(
+      fetchLivePositions,
+      LIVE_GPS_POLL_INTERVAL_MS,
+    );
 
     // Cleanup on unmount — stop polling (R-P4-12)
     return () => {
@@ -481,7 +490,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               Live
             </span>
             {hasMockPositions && (
-              <span className="text-[9px] text-amber-400 font-semibold">(simulated)</span>
+              <span className="text-[9px] text-amber-400 font-semibold">
+                (simulated)
+              </span>
             )}
             <Radio className="w-3 h-3 text-green-400" />
           </div>
@@ -644,7 +655,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             Live
           </span>
           {hasMockPositions && (
-            <span className="text-[9px] text-amber-400 font-semibold">(simulated)</span>
+            <span className="text-[9px] text-amber-400 font-semibold">
+              (simulated)
+            </span>
           )}
           <Radio className="w-3 h-3 text-green-400" />
         </div>
