@@ -166,6 +166,33 @@ router.get(
   },
 );
 
+// Tenant-scoped alias: GET /api/dispatch/events — extracts companyId from auth token (R-P2-11)
+router.get(
+  "/api/dispatch/events",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    try {
+      const [rows] = await pool.query(
+        "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",
+        [user.tenantId],
+      );
+      res.json(rows);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "GET /api/dispatch/events",
+      });
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [GET /api/dispatch/events]",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
 router.post(
   "/api/dispatch-events",
   requireAuth,
@@ -316,10 +343,8 @@ router.get(
   requireTenant,
   async (req: Request, res: Response) => {
     try {
-      const { user } = req as AuthenticatedRequest;
       const [rows] = await pool.query(
-        "SELECT * FROM dashboard_card WHERE company_id = ? OR company_id IS NULL ORDER BY sort_order ASC",
-        [user.tenantId],
+        "SELECT * FROM dashboard_card ORDER BY sort_order ASC",
       );
       res.json(rows);
     } catch (error) {
