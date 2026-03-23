@@ -20,12 +20,14 @@ const {
   mockCreateCheckoutSession,
   mockCreateBillingPortalSession,
   mockHandleWebhookEvent,
+  mockQuery,
 } = vi.hoisted(() => {
   return {
     mockIsStripeConfigured: vi.fn(),
     mockCreateCheckoutSession: vi.fn(),
     mockCreateBillingPortalSession: vi.fn(),
     mockHandleWebhookEvent: vi.fn(),
+    mockQuery: vi.fn(),
   };
 });
 
@@ -57,6 +59,11 @@ vi.mock("../../middleware/requireTenant", () => ({
   requireTenant: mockRequireTenant,
 }));
 
+// --- DB pool mock ---
+vi.mock("../../db", () => ({
+  default: { query: mockQuery },
+}));
+
 // --- Logger mock ---
 vi.mock("../../lib/logger", () => ({
   logger: {
@@ -86,31 +93,29 @@ function buildApp() {
 }
 
 function setupAuthPass() {
-  mockRequireAuth.mockImplementation(
-    (req: any, _res: any, next: any) => {
-      req.user = {
-        id: "user-1",
-        uid: "user-1",
-        tenantId: "tenant-1",
-        companyId: "company-1",
-        role: "admin",
-        email: "test@example.com",
-        firebaseUid: "fb-uid-1",
-      };
-      next();
-    },
-  );
-  mockRequireTenant.mockImplementation(
-    (_req: any, _res: any, next: any) => next(),
+  mockRequireAuth.mockImplementation((req: any, _res: any, next: any) => {
+    req.user = {
+      id: "user-1",
+      uid: "user-1",
+      tenantId: "tenant-1",
+      companyId: "company-1",
+      role: "admin",
+      email: "test@example.com",
+      firebaseUid: "fb-uid-1",
+    };
+    next();
+  });
+  mockRequireTenant.mockImplementation((_req: any, _res: any, next: any) =>
+    next(),
   );
 }
 
 function setupAuthFail() {
-  mockRequireAuth.mockImplementation(
-    (_req: any, res: any, _next: any) => {
-      res.status(401).json({ error: "Authentication required. Bearer token missing." });
-    },
-  );
+  mockRequireAuth.mockImplementation((_req: any, res: any, _next: any) => {
+    res
+      .status(401)
+      .json({ error: "Authentication required. Bearer token missing." });
+  });
 }
 
 describe("Stripe Routes — S-301", () => {
@@ -196,6 +201,8 @@ describe("Stripe Routes — S-301", () => {
     it("returns 200 with url when Stripe configured", async () => {
       setupAuthPass();
       mockIsStripeConfigured.mockReturnValue(true);
+      // Mock DB lookup for stripe_customer_id from the authenticated user's company
+      mockQuery.mockResolvedValue([[{ stripe_customer_id: "cus_abc123" }]]);
       mockCreateBillingPortalSession.mockResolvedValue({
         url: "https://billing.stripe.com/session/portal_abc",
       });
@@ -203,7 +210,6 @@ describe("Stripe Routes — S-301", () => {
       const res = await request(buildApp())
         .post("/api/stripe/create-billing-portal")
         .send({
-          stripeCustomerId: "cus_abc123",
           returnUrl: "https://app.example.com/settings",
         });
 
@@ -259,7 +265,8 @@ describe("Stripe Routes — S-301", () => {
     it("R-P3-03: returns 400 on invalid signature", async () => {
       mockHandleWebhookEvent.mockResolvedValue({
         received: false,
-        error: "No signatures found matching the expected signature for payload",
+        error:
+          "No signatures found matching the expected signature for payload",
       });
 
       const res = await request(buildApp())

@@ -86,14 +86,14 @@ describe("R-PV-04: Migration Execution Order", () => {
     expect(first).toBe("001_baseline.sql");
   });
 
-  it("Tests R-PV-04 — gps_positions (030) is the highest numbered migration", () => {
+  it("Tests R-PV-04 — stripe_webhook_events (031) is the highest numbered migration", () => {
     const numberedFiles = listMigrationFiles()
       .filter((f) => /^\d{3}_/.test(f))
       .filter((f) => !f.includes("rollback"));
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(30);
+    expect(maxPrefix).toBe(31);
   });
 });
 

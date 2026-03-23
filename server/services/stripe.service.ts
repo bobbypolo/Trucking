@@ -59,7 +59,11 @@ export function isStripeConfigured(): boolean {
  */
 export type CheckoutSessionResult =
   | { sessionId: string; url: string }
-  | { available: false; reason: "no_api_key" | "invalid_tier" | "stripe_error"; error?: string };
+  | {
+      available: false;
+      reason: "no_api_key" | "invalid_tier" | "stripe_error";
+      error?: string;
+    };
 
 export type BillingPortalResult =
   | { url: string }
@@ -115,13 +119,28 @@ export async function createCheckoutSession(
       "Checkout session created",
     );
 
+    if (!session.url) {
+      log.error(
+        { sessionId: session.id },
+        "Stripe returned session without URL",
+      );
+      return {
+        available: false,
+        reason: "stripe_error",
+        error: "No checkout URL returned",
+      };
+    }
+
     return {
       sessionId: session.id,
-      url: session.url!,
+      url: session.url,
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ err: message, companyId, tier }, "Stripe checkout session creation failed");
+    log.error(
+      { err: message, companyId, tier },
+      "Stripe checkout session creation failed",
+    );
     return { available: false, reason: "stripe_error", error: message };
   }
 }
@@ -153,7 +172,10 @@ export async function createBillingPortalSession(
     return { url: session.url };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ err: message }, "Stripe billing portal session creation failed");
+    log.error(
+      { err: message },
+      "Stripe billing portal session creation failed",
+    );
     return { available: false, reason: "stripe_error", error: message };
   }
 }
@@ -219,7 +241,10 @@ export async function handleWebhookEvent(
         const tier = session.metadata?.tier;
 
         if (!companyId) {
-          log.warn({ eventId: event.id }, "checkout.session.completed missing companyId metadata");
+          log.warn(
+            { eventId: event.id },
+            "checkout.session.completed missing companyId metadata",
+          );
           break;
         }
 
@@ -286,7 +311,10 @@ export async function handleWebhookEvent(
       }
 
       default:
-        log.info({ eventId: event.id, type: event.type }, "Unhandled webhook event type");
+        log.info(
+          { eventId: event.id, type: event.type },
+          "Unhandled webhook event type",
+        );
     }
 
     // 4. Record processed event for idempotency
@@ -298,7 +326,10 @@ export async function handleWebhookEvent(
     return { received: true };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    log.error({ err: message, eventId: event.id }, "Webhook event processing failed");
+    log.error(
+      { err: message, eventId: event.id },
+      "Webhook event processing failed",
+    );
     return { received: false, error: message };
   }
 }

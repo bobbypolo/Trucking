@@ -24,9 +24,24 @@ import {
 import { requireAuth, AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { createChildLogger } from "../lib/logger";
+import pool from "../db";
 
 const log = createChildLogger({ route: "stripe" });
 const router = Router();
+
+// ─── Redirect URL validation ─────────────────────────────────────
+// Prevents open redirect attacks by ensuring redirect URLs point
+// back to our own application origin.
+
+function isAllowedRedirectUrl(url: string, req: Request): boolean {
+  try {
+    const parsed = new URL(url);
+    const appHost = req.get("host") || "";
+    return parsed.host === appHost;
+  } catch {
+    return false;
+  }
+}
 
 // ─── Webhook (NO auth, raw body) ─────────────────────────────────
 // This route MUST be registered before express.json() middleware
@@ -76,12 +91,24 @@ router.post(
     const authReq = req as AuthenticatedRequest;
     const { tier, email, successUrl, cancelUrl } = req.body;
 
+    const defaultSuccessUrl = `${req.protocol}://${req.get("host")}/billing/success`;
+    const defaultCancelUrl = `${req.protocol}://${req.get("host")}/billing/cancel`;
+
+    const safeSuccessUrl =
+      successUrl && isAllowedRedirectUrl(successUrl, req)
+        ? successUrl
+        : defaultSuccessUrl;
+    const safeCancelUrl =
+      cancelUrl && isAllowedRedirectUrl(cancelUrl, req)
+        ? cancelUrl
+        : defaultCancelUrl;
+
     const result = await createCheckoutSession(
       authReq.user.companyId,
       tier || "",
       email || authReq.user.email,
-      successUrl || `${req.protocol}://${req.get("host")}/billing/success`,
-      cancelUrl || `${req.protocol}://${req.get("host")}/billing/cancel`,
+      safeSuccessUrl,
+      safeCancelUrl,
     );
 
     if ("sessionId" in result) {
@@ -92,9 +119,10 @@ router.post(
     } else {
       const statusCode = result.reason === "invalid_tier" ? 400 : 502;
       res.status(statusCode).json({
-        error: result.reason === "invalid_tier"
-          ? `Invalid subscription tier: ${tier}`
-          : result.error || "Stripe error",
+        error:
+          result.reason === "invalid_tier"
+            ? `Invalid subscription tier: ${tier}`
+            : result.error || "Stripe error",
       });
     }
   },
@@ -113,23 +141,41 @@ router.post(
       return;
     }
 
-    const { stripeCustomerId, returnUrl } = req.body;
+    const authReq = req as AuthenticatedRequest;
+    const { returnUrl } = req.body;
 
+    // Look up stripeCustomerId from the authenticated user's company (IDOR prevention)
+    const [rows]: any = await pool.query(
+      "SELECT stripe_customer_id FROM companies WHERE id = ?",
+      [authReq.user.companyId],
+    );
+
+    const stripeCustomerId = rows?.[0]?.stripe_customer_id;
     if (!stripeCustomerId) {
-      res.status(400).json({ error: "stripeCustomerId is required" });
+      res
+        .status(400)
+        .json({ error: "No Stripe customer ID found for your company" });
       return;
     }
 
+    const defaultReturnUrl = `${req.protocol}://${req.get("host")}/settings`;
+    const safeReturnUrl =
+      returnUrl && isAllowedRedirectUrl(returnUrl, req)
+        ? returnUrl
+        : defaultReturnUrl;
+
     const result = await createBillingPortalSession(
       stripeCustomerId,
-      returnUrl || `${req.protocol}://${req.get("host")}/settings`,
+      safeReturnUrl,
     );
 
     if ("url" in result && !("available" in result)) {
       res.status(200).json({ url: result.url });
     } else {
       res.status(502).json({
-        error: ("error" in result ? result.error : null) || "Stripe billing portal error",
+        error:
+          ("error" in result ? result.error : null) ||
+          "Stripe billing portal error",
       });
     }
   },
