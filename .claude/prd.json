@@ -981,7 +981,7 @@
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
-        "S-7.2"
+        "S-7.1"
       ]
     },
     {
@@ -1016,7 +1016,7 @@
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
-        "S-7.3"
+        "S-7.1"
       ]
     },
     {
@@ -1051,6 +1051,8 @@
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
+        "S-7.2",
+        "S-7.3",
         "S-7.4"
       ]
     },
@@ -1076,7 +1078,9 @@
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
-        "S-7.5"
+        "S-7.2",
+        "S-7.3",
+        "S-7.4"
       ]
     }
   ]
