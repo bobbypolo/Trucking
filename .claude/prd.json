@@ -952,7 +952,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
@@ -977,7 +977,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
@@ -1010,9 +1010,10 @@
       ],
       "gateCmds": {
         "unit": "cd server && npx vitest run --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/regression/endpoint-status-regression.test.ts --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave3",
       "dependsOn": [
