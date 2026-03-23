@@ -184,7 +184,8 @@
       "scope": [
         "server/migrations/001_baseline.sql",
         "server/migrations/003_operational_entities.sql",
-        "server/__tests__/helpers/docker-mysql.ts"
+        "server/__tests__/helpers/docker-mysql.ts",
+        "server/__tests__/lib/migrator.test.ts"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -213,7 +214,7 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave1",
       "dependsOn": [
