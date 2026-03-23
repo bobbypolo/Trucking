@@ -82,6 +82,8 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("returns 400 when load has no pickup coordinates", async () => {
+    // tenant check — load belongs to user's company
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // load_legs query returns no rows
     mockQuery.mockResolvedValueOnce([[]]);
 
@@ -95,6 +97,8 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("returns matched drivers sorted by score descending", async () => {
+    // 0. tenant check
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // 1. load_legs — pickup coords (Dallas, TX)
     mockQuery.mockResolvedValueOnce([
       [{ latitude: 32.7767, longitude: -96.797 }],
@@ -146,6 +150,8 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("falls back to home terminal when no GPS data", async () => {
+    // tenant check
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // load_legs
     mockQuery.mockResolvedValueOnce([
       [{ latitude: 33.749, longitude: -84.388 }],
@@ -179,10 +185,10 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("excludes drivers with no location data at all", async () => {
+    // tenant check
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // load_legs
-    mockQuery.mockResolvedValueOnce([
-      [{ latitude: 40.0, longitude: -74.0 }],
-    ]);
+    mockQuery.mockResolvedValueOnce([[{ latitude: 40.0, longitude: -74.0 }]]);
     // driver with null home terminal
     mockQuery.mockResolvedValueOnce([
       [
@@ -210,10 +216,10 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("respects maxCandidates limit", async () => {
+    // tenant check
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // load_legs
-    mockQuery.mockResolvedValueOnce([
-      [{ latitude: 32.0, longitude: -96.0 }],
-    ]);
+    mockQuery.mockResolvedValueOnce([[{ latitude: 32.0, longitude: -96.0 }]]);
     // 3 drivers
     mockQuery.mockResolvedValueOnce([
       [
@@ -267,10 +273,10 @@ describe("POST /api/dispatch/best-matches", () => {
   });
 
   it("gives safety bonus for score > 95", async () => {
+    // tenant check
+    mockQuery.mockResolvedValueOnce([[{ company_id: "company-aaa" }]]);
     // load_legs
-    mockQuery.mockResolvedValueOnce([
-      [{ latitude: 32.0, longitude: -96.0 }],
-    ]);
+    mockQuery.mockResolvedValueOnce([[{ latitude: 32.0, longitude: -96.0 }]]);
     // Two drivers at same location, different safety
     mockQuery.mockResolvedValueOnce([
       [

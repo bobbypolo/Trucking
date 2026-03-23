@@ -375,13 +375,26 @@ router.post(
     const limit = maxCandidates && maxCandidates > 0 ? maxCandidates : 10;
 
     try {
+      // 0. Verify load belongs to user's tenant
+      const [loadCheck]: any = await pool.query(
+        "SELECT company_id FROM loads WHERE id = ?",
+        [loadId],
+      );
+      if (!loadCheck.length || loadCheck[0].company_id !== user.tenantId) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
       // 1. Get load pickup coordinates
       const [legRows]: any = await pool.query(
         "SELECT latitude, longitude FROM load_legs WHERE load_id = ? AND type = 'Pickup' LIMIT 1",
         [loadId],
       );
 
-      if (!legRows.length || legRows[0].latitude == null || legRows[0].longitude == null) {
+      if (
+        !legRows.length ||
+        legRows[0].latitude == null ||
+        legRows[0].longitude == null
+      ) {
         return res
           .status(400)
           .json({ error: "Load has no pickup coordinates" });
@@ -468,8 +481,7 @@ router.post(
           lastGpsAt,
           score: Math.round(score * 10) / 10,
           safetyScore,
-          estimatedArrivalHours:
-            Math.round(estimatedArrivalHours * 100) / 100,
+          estimatedArrivalHours: Math.round(estimatedArrivalHours * 100) / 100,
         });
       }
 

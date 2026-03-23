@@ -913,8 +913,16 @@ router.get(
       // Determine quarter end date for rate lookup
       const qNum = parseInt(quarter as string, 10) || 4;
       const yNum = parseInt(year as string, 10) || new Date().getFullYear();
-      const quarterEndMonth = qNum * 3;
-      const quarterEnd = `${yNum}-${String(quarterEndMonth).padStart(2, "0")}-30`;
+      if (qNum < 1 || qNum > 4) {
+        return res.status(400).json({ error: "quarter must be 1-4" });
+      }
+      const quarterEndDays: Record<number, string> = {
+        1: "03-31",
+        2: "06-30",
+        3: "09-30",
+        4: "12-31",
+      };
+      const quarterEnd = `${yNum}-${quarterEndDays[qNum]}`;
 
       // Query per-jurisdiction tax rates from the ifta_tax_rates table
       const [rateRows]: any = await pool.query(
@@ -955,9 +963,8 @@ router.get(
         ) || { total_gallons: 0, total_cost: 0 };
         const totalMiles = Number(m.total_miles);
         const stateGallons = Number(f.total_gallons);
-        const taxRate = rateMap[m.state_code] ?? 0.20;
-        const taxableGallons =
-          fleetAvgMpg > 0 ? totalMiles / fleetAvgMpg : 0;
+        const taxRate = rateMap[m.state_code] ?? 0.2;
+        const taxableGallons = fleetAvgMpg > 0 ? totalMiles / fleetAvgMpg : 0;
         const taxDue = taxableGallons * taxRate;
         const taxPaidAtPump = stateGallons * taxRate;
         const netTax = taxDue - taxPaidAtPump;
@@ -982,10 +989,7 @@ router.get(
         (s: number, r: any) => s + r.totalGallons,
         0,
       );
-      const netTaxDue = rows.reduce(
-        (s: number, r: any) => s + r.netTax,
-        0,
-      );
+      const netTaxDue = rows.reduce((s: number, r: any) => s + r.netTax, 0);
 
       res.json({
         quarter,
