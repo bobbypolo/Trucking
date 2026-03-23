@@ -1186,7 +1186,9 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                         className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                         placeholder="Enter Prospect or Customer Name"
                         value={
-                          selectedQuote?.notes ? "Acme Global Logistics" : ""
+                          selectedQuote?.leadId
+                            ? leads.find((l) => l.id === selectedQuote.leadId)?.customerName || ""
+                            : ""
                         }
                         readOnly={!!selectedQuote?.notes}
                       />
@@ -1199,14 +1201,20 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                         <input id="qmContactIntelligence"
                           className="flex-1 bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                           placeholder="(555) 000-0000"
-                          value={selectedQuote?.notes ? "(312) 555-0199" : ""}
+                          value={
+                            selectedQuote?.leadId
+                              ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone || ""
+                              : ""
+                          }
                           readOnly={!!selectedQuote?.notes}
                         />
                         <button
                           className="bg-blue-600 hover:bg-blue-500 text-white w-12 rounded-2xl flex items-center justify-center transition-all shadow-lg shadow-blue-500/20 active:scale-90"
                           onClick={() =>
                             handlePhoneInteraction(
-                              "3125550199",
+                              (selectedQuote?.leadId
+                                ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone
+                                : "") || "",
                               "New Opportunity Intake",
                             )
                           }

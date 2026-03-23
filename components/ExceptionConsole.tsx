@@ -427,7 +427,13 @@ export const ExceptionConsole: React.FC<Props> = ({
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                           <div className="text-[9px] font-black text-red-500 uppercase">
-                            SLA: 24m Left
+                            SLA: {ex.slaDueAt ? (() => {
+                              const diff = new Date(ex.slaDueAt).getTime() - Date.now();
+                              if (diff <= 0) return "Overdue";
+                              const mins = Math.floor(diff / 60000);
+                              const hrs = Math.floor(mins / 60);
+                              return hrs > 0 ? `${hrs}h ${mins % 60}m Left` : `${mins}m Left`;
+                            })() : "No SLA"}
                           </div>
                         </div>
                       </div>
@@ -522,7 +528,13 @@ export const ExceptionConsole: React.FC<Props> = ({
                       Time Lapsed
                     </div>
                     <div className="text-xs font-mono font-bold text-slate-300">
-                      01:42:00
+                      {(() => {
+                        const elapsed = Date.now() - new Date(ex.createdAt).getTime();
+                        const hrs = Math.floor(elapsed / 3600000);
+                        const mins = Math.floor((elapsed % 3600000) / 60000);
+                        const secs = Math.floor((elapsed % 60000) / 1000);
+                        return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -568,7 +580,18 @@ export const ExceptionConsole: React.FC<Props> = ({
           </div>
         </div>
         <div className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">
-          Average Resolution: 1h 14m
+          Average Resolution: {(() => {
+            const resolved = exceptions.filter((e) => e.resolvedAt && e.createdAt);
+            if (resolved.length === 0) return "N/A";
+            const totalMs = resolved.reduce((sum, e) => {
+              return sum + (new Date(e.resolvedAt!).getTime() - new Date(e.createdAt).getTime());
+            }, 0);
+            const avgMs = totalMs / resolved.length;
+            const avgMins = Math.floor(avgMs / 60000);
+            const hrs = Math.floor(avgMins / 60);
+            const mins = avgMins % 60;
+            return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+          })()}
         </div>
       </div>
     </div>

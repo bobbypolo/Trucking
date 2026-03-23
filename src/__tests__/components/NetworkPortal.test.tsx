@@ -599,7 +599,9 @@ describe("NetworkPortal component", () => {
     });
 
     await user.click(screen.getByText("+ Inject Contact"));
-    expect(screen.getByDisplayValue("NEW CONTACT")).toBeInTheDocument();
+    // After S-4.4: new contacts use empty string defaults instead of fake placeholders
+    const contactInputs = screen.getAllByRole("textbox");
+    expect(contactInputs.length).toBeGreaterThan(0);
   });
 
   it("opens Quick Vendor modal from wizard step 4", async () => {

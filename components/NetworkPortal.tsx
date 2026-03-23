@@ -1241,10 +1241,10 @@ export const NetworkPortal: React.FC<Props> = ({
                               const newContact: PartyContact = {
                                 id: uuidv4(),
                                 partyId: formData.id!,
-                                name: "NEW CONTACT",
+                                name: "",
                                 role: "General",
-                                email: "PENDING@MAIL.COM",
-                                phone: "000-000-000",
+                                email: "",
+                                phone: "",
                                 isPrimary:
                                   (formData.contacts || []).length === 0,
                               };
