@@ -835,6 +835,10 @@ export default function App() {
               setHubInitialTab(tab);
               setShowIntelligenceHub(true);
             }}
+            onNavigate={(tab, context) => {
+              setViewingLoad(null);
+              handleNavigate(tab);
+            }}
           />
         </Suspense>
       )}
@@ -1131,7 +1135,7 @@ export default function App() {
               )}
               {activeTab === "loads" && (
                 <div className="h-full flex flex-col">
-                  <div className="flex justify-between items-center mb-6 shrink-0">
+                  <div className="flex justify-between items-center mb-6 shrink-0 relative z-40">
                     <h1 className="text-2xl font-bold text-white tracking-tighter uppercase">
                       Load Board
                     </h1>
@@ -1175,6 +1179,11 @@ export default function App() {
                         }}
                         users={companyUsers}
                         brokers={brokers}
+                        onCreateLoad={
+                          permissions.createLoads
+                            ? () => handleNavigate("quotes")
+                            : undefined
+                        }
                       />
                     </Suspense>
                   </div>
@@ -1254,6 +1263,7 @@ export default function App() {
                     }}
                     onRecordAction={handleRecordAction}
                     openRecordWorkspace={openRecordWorkspace}
+                    onNavigate={handleNavigate}
                   />
                 </Suspense>
               )}
@@ -1267,6 +1277,7 @@ export default function App() {
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
+                    onNavigate={handleNavigate}
                   />
                 </Suspense>
               )}
@@ -1280,6 +1291,7 @@ export default function App() {
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
+                    onNavigate={handleNavigate}
                   />
                 </Suspense>
               )}
