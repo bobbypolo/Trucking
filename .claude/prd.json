@@ -442,7 +442,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -479,7 +479,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -516,7 +516,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -559,7 +559,7 @@
         "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -610,7 +610,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -623,7 +623,9 @@
       "phase": 5,
       "phase_type": "buttons",
       "scope": [
-        "components/LoadDetailView.tsx"
+        "components/LoadDetailView.tsx",
+        "App.tsx",
+        "src/__tests__/components/LoadDetailView.buttons.test.tsx"
       ],
       "complexity": "complex",
       "acceptanceCriteria": [
@@ -647,7 +649,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -684,7 +686,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
@@ -712,7 +714,7 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
+      "passed": true,
       "verificationRef": "verification-log.jsonl",
       "parallelGroup": "wave2",
       "dependsOn": [
