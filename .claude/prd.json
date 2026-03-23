@@ -772,7 +772,8 @@
       "phase": 5,
       "phase_type": "route",
       "scope": [
-        "server/routes/ai.ts"
+        "server/routes/ai.ts",
+        "server/routes/tracking.ts"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
@@ -796,8 +797,8 @@
         "unit": "cd server && npx vitest run",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": null,
       "dependsOn": [
         "S-501"
