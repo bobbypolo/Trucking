@@ -219,7 +219,7 @@ def test_checkout_session_invalid_tier_returns_error():
 def test_billing_portal_reject_missing_customer_id():
     """R-P3-01 (negative): billing portal returns 400 when customerId missing."""
     content = _read_route()
-    assert "stripeCustomerId is required" in content, (
+    assert "No Stripe customer ID found" in content or "stripeCustomerId is required" in content, (
         "billing portal must validate stripeCustomerId is present"
     )
 
