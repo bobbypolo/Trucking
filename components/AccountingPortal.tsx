@@ -1,4 +1,13 @@
-import React, { useState, useEffect, useMemo, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  Suspense,
+  useCallback,
+} from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
 import { API_URL } from "../services/config";
 import {
   DollarSign,
@@ -138,32 +147,31 @@ const AccountingPortal: React.FC<Props> = ({
       configuration: {},
     },
   ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] =
+    useAutoFeedback<string | null>(null);
   const [showBillForm, setShowBillForm] = useState(false);
   const [importType, setImportType] = useState<
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
   >(null);
 
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
-
   const handleRunEngine = async () => {
     const rule = automationRules.find((r) => r.action === "match_receipt");
     if (!rule || !rule.enabled) {
-      setFeedback("Fuel Matching rule is disabled or missing.");
+      showFeedback("Fuel Matching rule is disabled or missing.");
       return;
     }
 
-    setFeedback("Engine running: Scanning Vault for unlinked receipts...");
+    showFeedback("Engine running: Scanning Vault for unlinked receipts...");
 
     // Mocking the scan - in real life this pulls from getBills() and getVaultDocs()
     setTimeout(() => {
       const results = { matched: 12, orphaned: 2 };
-      setFeedback(
+      showFeedback(
         `Sync Complete: Auto-Matched ${results.matched} receipts. ${results.orphaned} require manual verification.`,
+        4000,
       );
     }, 1500);
   };
@@ -173,9 +181,39 @@ const AccountingPortal: React.FC<Props> = ({
     // In a real scenario, this would open a specific sub-modal or trigger a service call
   };
 
-  useEffect(() => {
-    loadData();
+  const loadData = useCallback(async (signal?: AbortSignal) => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const [accs, invs, bs, sets] = await Promise.all([
+        getGLAccounts(signal),
+        getInvoices(signal),
+        getBills(signal),
+        getSettlements(undefined, signal),
+      ]);
+      if (signal?.aborted) return;
+      setAccounts(Array.isArray(accs) ? accs : []);
+      setInvoices(Array.isArray(invs) ? invs : []);
+      setBills(Array.isArray(bs) ? bs : []);
+      setSettlements(Array.isArray(sets) ? sets : []);
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      if (signal?.aborted) return;
+      setLoadError("Failed to load accounting data. Please try again.");
+    } finally {
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => {
+      controller.abort();
+    };
+  }, [loadData]);
 
   useEffect(() => {
     if (initialTab) {
@@ -183,22 +221,25 @@ const AccountingPortal: React.FC<Props> = ({
     }
   }, [initialTab]);
 
-  const loadData = async () => {
-    try {
-      const [accs, invs, bs, sets] = await Promise.all([
-        getGLAccounts(),
-        getInvoices(),
-        getBills(),
-        getSettlements(),
-      ]);
-      setAccounts(Array.isArray(accs) ? accs : []);
-      setInvoices(Array.isArray(invs) ? invs : []);
-      setBills(Array.isArray(bs) ? bs : []);
-      setSettlements(Array.isArray(sets) ? sets : []);
-    } catch (error) {
-      // Error handled silently — data loads on next refresh
-    }
-  };
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading accounting data"
+        className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter p-10"
+      >
+        <LoadingSkeleton variant="card" count={4} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">
+        <ErrorState message={loadError} onRetry={loadData} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">
@@ -261,7 +302,7 @@ const AccountingPortal: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -334,9 +375,9 @@ const AccountingPortal: React.FC<Props> = ({
             <div className="grid grid-cols-3 gap-10">
               <div className="col-span-2 space-y-8">
                 <div className="flex justify-between items-end">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                     Load P&L
-                  </h3>
+                  </h2>
                   <button className="text-[10px] font-black text-emerald-500 uppercase hover:underline">
                     View All Loads
                   </button>
@@ -415,9 +456,9 @@ const AccountingPortal: React.FC<Props> = ({
 
               <div className="space-y-8">
                 <div className="flex justify-between items-end">
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                  <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                     Settlement Queue
-                  </h3>
+                  </h2>
                   <button
                     onClick={() => setActiveTab("SETTLEMENTS")}
                     className="text-[10px] font-black text-emerald-500 uppercase hover:underline"
@@ -463,9 +504,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Accounts Receivable
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Invoicing & Collections Control
                 </p>
@@ -566,7 +607,7 @@ const AccountingPortal: React.FC<Props> = ({
                             {inv.status === "Sent" && (
                               <button
                                 onClick={() =>
-                                  setFeedback(
+                                  showFeedback(
                                     `Sent collection reminder for ${inv.invoiceNumber}`,
                                   )
                                 }
@@ -575,7 +616,7 @@ const AccountingPortal: React.FC<Props> = ({
                                 <Phone className="w-4 h-4" />
                               </button>
                             )}
-                            <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
+                            <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
                               <MoreVertical className="w-4 h-4" />
                             </button>
                           </div>
@@ -603,9 +644,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Accounts Payable
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Vendor Bills & Expense Allocations
                 </p>
@@ -681,7 +722,7 @@ const AccountingPortal: React.FC<Props> = ({
                         <div className="flex items-center gap-3">
                           <button
                             onClick={() =>
-                              setFeedback(
+                              showFeedback(
                                 `Scheduled payment for bill ${bill.id.slice(0, 4)} on Friday`,
                               )
                             }
@@ -704,7 +745,7 @@ const AccountingPortal: React.FC<Props> = ({
                           {bill.status !== "Approved" && (
                             <button
                               onClick={() =>
-                                setFeedback(
+                                showFeedback(
                                   `Bill ${bill.id.slice(0, 4)} Approved`,
                                 )
                               }
@@ -713,7 +754,7 @@ const AccountingPortal: React.FC<Props> = ({
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5">
+                          <button className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5" aria-label="More options">
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
@@ -737,14 +778,14 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "IFTA" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="table" count={3} />}>
             <IFTAManager loads={loads} />
           </Suspense>
         )}
 
         {activeTab === "SETTLEMENTS" && (
           <div className="h-full -m-10">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="table" count={3} />}>
               <Settlements
                 loads={loads}
                 users={users}
@@ -761,9 +802,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Maintenance Financials
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Repair Tickets -&gt; A/P Bills -&gt; Cost Per Mile
                 </p>
@@ -932,7 +973,7 @@ const AccountingPortal: React.FC<Props> = ({
                               ] as any,
                             };
                             await createAPBill(bill);
-                            setFeedback(
+                            showFeedback(
                               `Ticket ${tk.id} successfully converted to A/P Bill and posted to General Ledger.`,
                             );
                           }}
@@ -950,7 +991,7 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "VAULT" && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
             <FileVault currentUser={currentUser} loads={loads} />
           </Suspense>
         )}
@@ -959,9 +1000,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Operational Audit Trail
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Post-Lock Event Log
                 </p>
@@ -1038,9 +1079,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Automation Center
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Enterprise Rules Engine
                 </p>
@@ -1175,9 +1216,9 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="flex justify-between items-end">
               <div>
-                <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                   Operational Audit Trail
-                </h3>
+                </h2>
                 <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
                   Post-Lock Event Log
                 </p>
@@ -1252,7 +1293,7 @@ const AccountingPortal: React.FC<Props> = ({
       </div>
 
       {showBillForm && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <AccountingBillForm
             loads={loads}
             onClose={() => setShowBillForm(false)}
@@ -1271,7 +1312,7 @@ const AccountingPortal: React.FC<Props> = ({
       )}
 
       {importType && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <DataImportWizard
             type={importType}
             onClose={() => setImportType(null)}

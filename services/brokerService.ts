@@ -2,21 +2,6 @@ import { API_URL } from "./config";
 import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
 
-const BROKERS_KEY = "loadpilot_brokers_v1";
-
-export const getRawBrokers = (): Broker[] => {
-  try {
-    const data = localStorage.getItem(BROKERS_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    console.warn(
-      "[brokerService] Failed to parse brokers from localStorage:",
-      e,
-    );
-    return [];
-  }
-};
-
 export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
   try {
     const url = companyId
@@ -41,11 +26,10 @@ export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
   } catch (e) {
     console.warn("[brokerService] API fetch brokers failed:", e);
   }
-  return getRawBrokers().sort((a, b) => a.name.localeCompare(b.name));
+  return [];
 };
 
 export const saveBroker = async (broker: Broker) => {
-  // Save to backend
   try {
     const response = await fetch(`${API_URL}/clients`, {
       method: "POST",
@@ -60,17 +44,6 @@ export const saveBroker = async (broker: Broker) => {
   } catch (e) {
     console.warn("[brokerService] API save broker failed:", e);
   }
-
-  // Fallback/Parallel save to localStorage
-  const brokers = getRawBrokers();
-  const index = brokers.findIndex((b) => b.id === broker.id);
-
-  if (index >= 0) {
-    brokers[index] = broker;
-  } else {
-    brokers.push(broker);
-  }
-  localStorage.setItem(BROKERS_KEY, JSON.stringify(brokers));
 };
 
 export const getBrokerById = async (

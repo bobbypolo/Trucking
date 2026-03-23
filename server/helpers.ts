@@ -1,6 +1,7 @@
 import pool from './db';
 import { calculateDistance } from './geoUtils';
 import { logger } from './lib/logger';
+import { deliverNotification } from './services/notification-delivery.service';
 
 // Redaction Helper (Security Hardening)
 export const redactData = (data: any, role: string, settings: any) => {
@@ -52,6 +53,16 @@ export const redactData = (data: any, role: string, settings: any) => {
 export const sendNotification = (emails: string[], subject: string, message: string) => {
     if (!emails || emails.length === 0) return;
     logger.info({ to: emails.join(', '), subject, message }, 'Email notification dispatched');
+
+    // Fire-and-forget: call real delivery service, catch all errors
+    deliverNotification({
+        channel: 'email',
+        subject,
+        message,
+        recipients: emails.map(email => ({ email })),
+    }).catch((err) => {
+        logger.error({ err, subject }, 'Notification delivery failed (non-blocking)');
+    });
 };
 
 /**

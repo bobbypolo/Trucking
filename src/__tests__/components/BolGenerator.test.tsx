@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -27,13 +27,13 @@ function makeLoad(overrides: Partial<LoadData> = {}): LoadData {
 }
 
 describe("BolGenerator", () => {
-  let onSave: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSave: MockedFunction<(bolData: BolData) => void>;
+  let onCancel: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    onSave = vi.fn();
-    onCancel = vi.fn();
+    onSave = vi.fn<(bolData: BolData) => void>();
+    onCancel = vi.fn<() => void>();
     user = userEvent.setup();
   });
 

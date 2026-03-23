@@ -39,11 +39,17 @@ import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
 import { v4 as uuidv4 } from "uuid";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   user: User;
   company?: Company;
   loads: LoadData[];
+  isLoading?: boolean;
+  loadError?: string | null;
+  onRetry?: () => void;
   onLogout: () => void;
   onSaveLoad: (load: LoadData) => Promise<void>;
   onOpenHub?: (tab?: "feed" | "messaging" | "intelligence" | "reports") => void;
@@ -66,6 +72,9 @@ export const DriverMobileHome: React.FC<Props> = ({
   user,
   company,
   loads,
+  isLoading,
+  loadError,
+  onRetry,
   onLogout,
   onSaveLoad,
   onOpenHub,
@@ -239,7 +248,7 @@ export const DriverMobileHome: React.FC<Props> = ({
         </div>
       </div>
       <h3 className="text-lg font-black text-white uppercase tracking-tight">
-        {load.pickup.city} → {load.dropoff.city}
+        {load.pickup?.city ?? ""} → {load.dropoff?.city ?? ""}
       </h3>
       <div className="flex items-center gap-4 py-2 border-t border-white/5">
         <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase">
@@ -253,6 +262,22 @@ export const DriverMobileHome: React.FC<Props> = ({
   );
 
   // --- MAIN RENDER LOGIC ---
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter p-6">
+        <LoadingSkeleton variant="list" count={4} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter">
+        <ErrorState message={loadError} onRetry={onRetry ?? (() => {})} />
+      </div>
+    );
+  }
 
   if (selectedLoad) {
     return (
@@ -272,6 +297,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </h1>
           <button
             onClick={() => onOpenHub?.("messaging")}
+            aria-label="Open messages"
             className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-500 border border-blue-500/20"
           >
             <MessageSquare className="w-4 h-4" />
@@ -284,12 +310,13 @@ export const DriverMobileHome: React.FC<Props> = ({
             <div className="flex justify-between items-start">
               <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-none">
                 {v.customerName
-                  ? selectedLoad.pickup.facilityName || "N/A"
+                  ? selectedLoad.pickup?.facilityName || "N/A"
                   : "Confidential Facility"}
               </h2>
             </div>
             <p className="text-xs text-slate-500 font-bold uppercase">
-              {selectedLoad.pickup.city}, {selectedLoad.pickup.state}
+              {selectedLoad.pickup?.city ?? ""},{" "}
+              {selectedLoad.pickup?.state ?? ""}
             </p>
           </div>
 
@@ -354,8 +381,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-white/5">
                     <div className="text-xs font-bold text-slate-400 uppercase">
-                      Destination: {selectedLoad.dropoff.city},{" "}
-                      {selectedLoad.dropoff.state}
+                      Destination: {selectedLoad.dropoff?.city ?? ""},{" "}
+                      {selectedLoad.dropoff?.state ?? ""}
                     </div>
                   </div>
                 </div>
@@ -634,12 +661,13 @@ export const DriverMobileHome: React.FC<Props> = ({
               <Phone className="w-4 h-4" />
             </a>
           )}
-          <button onClick={() => onOpenHub?.("messaging")} className="relative">
+          <button onClick={() => onOpenHub?.("messaging")} aria-label="Open messages" className="relative">
             <MessageSquare className="w-5 h-5 text-slate-400" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-[#0a0f1e]" />
           </button>
           <button
             onClick={onLogout}
+            aria-label="Log out"
             className="text-slate-500 hover:text-red-400 transition-colors"
           >
             <LogOut className="w-5 h-5" />
@@ -685,12 +713,11 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <LoadCard key={load.id} load={load} />
               ))}
               {activeLoads.length === 0 && (
-                <div className="p-12 text-center bg-slate-900/20 rounded-[3rem] border border-dashed border-white/5">
-                  <Shield className="w-12 h-12 text-white/5 mx-auto mb-4" />
-                  <p className="text-xs font-black text-slate-600 uppercase tracking-widest">
-                    No loads assigned
-                  </p>
-                </div>
+                <EmptyState
+                  icon={<Truck className="w-12 h-12" />}
+                  title="No Active Loads"
+                  description="You have no loads currently assigned. Check back soon for new dispatch assignments."
+                />
               )}
             </div>
           </div>
@@ -701,11 +728,19 @@ export const DriverMobileHome: React.FC<Props> = ({
             <h2 className="text-xl font-black text-white uppercase tracking-tighter">
               Load History
             </h2>
-            <div className="space-y-4">
-              {loads.map((load) => (
-                <LoadCard key={load.id} load={load} />
-              ))}
-            </div>
+            {loads.length === 0 ? (
+              <EmptyState
+                icon={<Clock className="w-12 h-12" />}
+                title="No Load History"
+                description="Your completed and past loads will appear here."
+              />
+            ) : (
+              <div className="space-y-4">
+                {loads.map((load) => (
+                  <LoadCard key={load.id} load={load} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { CommsOverlay } from "../../../components/CommsOverlay";
@@ -360,7 +360,6 @@ describe("CommsOverlay component", () => {
   describe("attach search", () => {
     it("shows search input when attach button is clicked", async () => {
       render(<CommsOverlay {...defaultProps} />);
-      // Find and click the link/attach button (LinkIcon) near "Primary Evidence"
       const evidenceText = screen.getByText("Primary Evidence");
       const container = evidenceText.closest("div.flex");
       expect(container).not.toBeNull();
@@ -370,6 +369,67 @@ describe("CommsOverlay component", () => {
       expect(
         screen.getByPlaceholderText("Search records to link..."),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("dock/float toggle (line 269)", () => {
+    it("toggles overlay state between floating and docked", async () => {
+      render(<CommsOverlay {...defaultProps} overlayState="floating" />);
+      const buttons = screen.getAllByRole("button");
+      for (const btn of buttons) {
+        await user.click(btn);
+        if (
+          defaultProps.setOverlayState.mock.calls.some(
+            (c: unknown[]) => c[0] === "docked",
+          )
+        ) {
+          break;
+        }
+        defaultProps.setOverlayState.mockClear();
+      }
+      expect(defaultProps.setOverlayState).toHaveBeenCalledWith("docked");
+    });
+  });
+
+  describe("context panel and call recording (lines 359-384)", () => {
+    it("renders active call session footer with end interaction button", () => {
+      render(
+        <CommsOverlay
+          {...defaultProps}
+          activeCallSession={makeCallSession()}
+        />,
+      );
+      expect(screen.getByText("Active Call Session")).toBeInTheDocument();
+      expect(screen.getByText("End Interaction")).toBeInTheDocument();
+    });
+
+    it("renders tasks tab", async () => {
+      render(
+        <CommsOverlay
+          {...defaultProps}
+          activeCallSession={makeCallSession()}
+        />,
+      );
+      await user.click(screen.getByText("Tasks"));
+      // Tab should be clickable without errors
+      expect(screen.getByText("Tasks")).toBeInTheDocument();
+    });
+  });
+
+  describe("messages tab", () => {
+    it("shows empty messages state when messages tab is active with no messages", async () => {
+      render(
+        <CommsOverlay
+          {...defaultProps}
+          activeCallSession={makeCallSession()}
+        />,
+      );
+      await user.click(screen.getByText("Messages"));
+      await waitFor(() => {
+        expect(
+          screen.getByText("No Strategic Messages"),
+        ).toBeInTheDocument();
+      });
     });
   });
 });

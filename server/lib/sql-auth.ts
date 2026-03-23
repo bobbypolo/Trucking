@@ -45,6 +45,10 @@ export interface SqlCompanyRow extends RowDataPacket {
   mc_number?: string | null;
   dot_number?: string | null;
   subscription_status?: string | null;
+  subscription_tier?: string | null;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_period_end?: string | null;
   load_numbering_config?: unknown;
   accessorial_rates?: unknown;
   operating_mode?: string | null;
@@ -126,6 +130,11 @@ export function mapCompanyRowToApiCompany(row: SqlCompanyRow) {
     dotNumber: row.dot_number ?? undefined,
     subscription_status: row.subscription_status ?? undefined,
     subscriptionStatus: row.subscription_status ?? undefined,
+    subscription_tier: row.subscription_tier ?? "Records Vault",
+    subscriptionTier: row.subscription_tier ?? "Records Vault",
+    stripeCustomerId: row.stripe_customer_id ?? undefined,
+    stripeSubscriptionId: row.stripe_subscription_id ?? undefined,
+    subscriptionPeriodEnd: row.subscription_period_end ?? undefined,
     load_numbering_config: parseJsonColumn(row.load_numbering_config),
     loadNumberingConfig: parseJsonColumn(row.load_numbering_config),
     accessorial_rates: parseJsonColumn(row.accessorial_rates),

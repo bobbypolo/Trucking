@@ -529,8 +529,8 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
     expect(allInsertParams).not.toContain("DEFAULT");
   });
 
-  it("POST /api/accounting/sync-qb — returns 501 (QuickBooks not yet available)", async () => {
-    // R-S30-02: sync-qb endpoint must return 501, not insert into DB
+  it("POST /api/accounting/sync-qb — stub removed (R-P3-05, S-302)", async () => {
+    // R-P3-05: 501 stub removed from accounting.ts; QuickBooks routes now in quickbooks.ts
     const app = buildApp();
     const res = await request(app)
       .post("/api/accounting/sync-qb")
@@ -540,10 +540,8 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT tenant_id", () =
         entityId: "inv-001",
       });
 
-    expect(res.status).toBe(501);
-    expect(res.body.error).toBe("QuickBooks integration is not yet available.");
-    // Must NOT touch the database
-    expect(mockPoolQuery).not.toHaveBeenCalled();
+    // Route removed — should return 404 (no matching route in accounting router)
+    expect(res.status).toBe(404);
   });
 });
 

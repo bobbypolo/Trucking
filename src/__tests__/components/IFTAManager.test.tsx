@@ -244,9 +244,10 @@ describe("IFTAManager component", () => {
       expect(screen.getByRole("button", { name: /Add Manual Entry/i })).toBeInTheDocument();
     });
     await user.click(screen.getByRole("button", { name: /Add Manual Entry/i }));
-    expect(screen.getByText("Truck ID")).toBeInTheDocument();
-    expect(screen.getByText("State Code")).toBeInTheDocument();
-    expect(screen.getByText("Miles")).toBeInTheDocument();
+    // Labels include asterisk for required fields
+    expect(screen.getByText("Truck ID *")).toBeInTheDocument();
+    expect(screen.getByText("State Code *")).toBeInTheDocument();
+    expect(screen.getByText("Miles *")).toBeInTheDocument();
   });
 
   it("can close mileage modal with Cancel", async () => {

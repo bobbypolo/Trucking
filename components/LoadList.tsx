@@ -6,6 +6,9 @@ import { generateInvoicePDF, saveLoad } from '../services/storageService';
 import { getCompany, getCurrentUser } from '../services/authService';
 import { ExportModal } from './ExportModal';
 import { v4 as uuidv4 } from 'uuid';
+import { LoadingSkeleton } from './ui/LoadingSkeleton';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './ui/EmptyState';
 
 interface Props {
     loads: LoadData[];
@@ -17,9 +20,12 @@ interface Props {
     canViewRates?: boolean;
     users?: User[];
     onOpenHub?: (tab: 'messaging', startCall?: boolean) => void;
+    isLoading?: boolean;
+    loadError?: string | null;
+    onRetryLoad?: () => void;
 }
 
-export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, selectedDriverId, onClearFilter, canViewRates = true, users = [], onOpenHub }) => {
+export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, selectedDriverId, onClearFilter, canViewRates = true, users = [], onOpenHub, isLoading, loadError, onRetryLoad }) => {
     const currentUser = getCurrentUser();
     const [filter, setFilter] = useState('');
     const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -34,7 +40,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
             const term = filter.toLowerCase();
             result = result.filter(l =>
                 l.loadNumber.toLowerCase().includes(term) ||
-                l.pickup.city.toLowerCase().includes(term) ||
+                (l.pickup?.city ?? "").toLowerCase().includes(term) ||
                 l.containerNumber?.toLowerCase().includes(term) ||
                 l.chassisNumber?.toLowerCase().includes(term)
             );
@@ -71,6 +77,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                     <input
                         type="text"
                         placeholder="QUERY MANIFEST, CONTAINER, OR CHASSIS..."
+                        aria-label="Search loads by manifest, container, or chassis"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-[10px] text-white font-black uppercase tracking-[0.2em] focus:border-blue-500 outline-none shadow-inner placeholder:text-slate-700"
@@ -83,14 +90,20 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                             <button onClick={() => setViewScope('all')} className={`px-5 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewScope === 'all' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Fleet Network</button>
                         </div>
                     )}
-                    <button onClick={() => setSortDirection(s => s === 'asc' ? 'desc' : 'asc')} className="bg-slate-900 border border-slate-800 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
+                    <button onClick={() => setSortDirection(s => s === 'asc' ? 'desc' : 'asc')} aria-label="Toggle sort direction" className="bg-slate-900 border border-slate-800 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
                         <Filter className="w-4 h-4" />
                     </button>
                 </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar pb-24">
-                {processedLoads.map(load => (
+                {isLoading && (
+                    <LoadingSkeleton variant="list" count={5} />
+                )}
+                {!isLoading && loadError && (
+                    <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+                )}
+                {!isLoading && !loadError && processedLoads.map(load => (
                     <div
                         key={load.id}
                         className={`bg-slate-900 p-4 rounded-2xl border ${load.isActionRequired
@@ -132,13 +145,13 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                         <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 group-hover:border-slate-700/50 transition-all relative overflow-hidden">
                             <div className="space-y-1.5 border-r border-slate-800 pr-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Origin</div>
-                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup.city}, {load.pickup.state}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup.facilityName || 'LOGISTICS HUB'}</div>
+                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || 'LOGISTICS HUB'}</div>
                             </div>
                             <div className="space-y-1.5 pl-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Destination</div>
-                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff.city}, {load.dropoff.state}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff.facilityName || 'TERMINAL DOCK'}</div>
+                                <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || 'TERMINAL DOCK'}</div>
                             </div>
                         </div>
 
@@ -167,14 +180,12 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                         </div>
                     </div>
                 ))}
-                {processedLoads.length === 0 && (
-                    <div className="py-32 text-center space-y-6">
-                        <div className="w-24 h-24 bg-slate-900 rounded-[3rem] border border-slate-800 flex items-center justify-center mx-auto shadow-2xl"><Layers className="w-12 h-12 text-slate-800 animate-pulse" /></div>
-                        <div className="space-y-2">
-                            <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-xs">No loads to show</p>
-                            <p className="text-slate-700 text-[10px] font-bold uppercase tracking-widest">No active manifests detected in local subspace</p>
-                        </div>
-                    </div>
+                {!isLoading && !loadError && processedLoads.length === 0 && (
+                    <EmptyState
+                        icon={<Layers className="w-12 h-12" />}
+                        title="No loads to show"
+                        description="No active manifests detected. Create a new load to get started."
+                    />
                 )}
             </div>
         </div>

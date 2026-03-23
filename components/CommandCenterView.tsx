@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   AlertTriangle,
   ShieldAlert,
@@ -76,6 +77,9 @@ import {
   checkDriverCompliance,
 } from "../services/safetyService";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   session: WorkspaceSession;
@@ -100,6 +104,9 @@ interface Props {
   onNotify?: () => void;
   setSuccessMessage?: (msg: string | null) => void;
   refreshQueues?: () => Promise<void>;
+  isLoading?: boolean;
+  loadError?: string | null;
+  onRetryLoad?: () => void;
 }
 
 export const CommandCenterView: React.FC<Props> = ({
@@ -124,7 +131,35 @@ export const CommandCenterView: React.FC<Props> = ({
   onRoadside,
   onNotify,
   setSuccessMessage,
+  isLoading,
+  loadError,
+  onRetryLoad,
 }) => {
+  // Managed feedback: auto-clears with cleanup on unmount, syncs to optional prop
+  const msgTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (msgTimerRef.current !== null) {
+        clearTimeout(msgTimerRef.current);
+        msgTimerRef.current = null;
+      }
+    };
+  }, []);
+  const showManagedMessage = useCallback(
+    (msg: string | null, durationMs = 3000) => {
+      if (!setSuccessMessage) return;
+      if (msgTimerRef.current !== null) clearTimeout(msgTimerRef.current);
+      setSuccessMessage(msg);
+      msgTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) setSuccessMessage(null);
+        msgTimerRef.current = null;
+      }, durationMs);
+    },
+    [setSuccessMessage],
+  );
   const [localIncidents, setLocalIncidents] = useState<Incident[]>([]);
   const incidents = useMemo(() => {
     if (Array.isArray(propsIncidents) && propsIncidents.length > 0)
@@ -159,15 +194,25 @@ export const CommandCenterView: React.FC<Props> = ({
   }, [windowWidth]);
 
   useEffect(() => {
+    const controller = new AbortController();
     const fetchLocal = async () => {
-      if (!propsIncidents || propsIncidents.length === 0) {
-        const incs = await getIncidents();
-        setLocalIncidents(incs);
+      try {
+        if (!propsIncidents || propsIncidents.length === 0) {
+          const incs = await getIncidents();
+          if (controller.signal.aborted) return;
+          setLocalIncidents(incs);
+        }
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        if (controller.signal.aborted) return;
       }
     };
     fetchLocal();
     const interval = setInterval(fetchLocal, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, [propsIncidents]);
 
   const selectedIncident = useMemo(
@@ -255,7 +300,10 @@ export const CommandCenterView: React.FC<Props> = ({
   const handleAction = async (actionType: string) => {
     if (!selectedIncident) return;
 
-    let updatedIncident = { ...selectedIncident };
+    let updatedIncident = {
+      ...selectedIncident,
+      timeline: selectedIncident.timeline ?? [],
+    };
     const timestamp = new Date().toISOString();
 
     if (actionType === "CLOSE") {
@@ -330,19 +378,15 @@ export const CommandCenterView: React.FC<Props> = ({
 
     // Integrated UI feedback for testing
     if (actionType === "REPOWER") {
-      if (setSuccessMessage) {
-        setSuccessMessage(
-          "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
-        );
-        setTimeout(() => setSuccessMessage(null), 4000);
-      }
+      showManagedMessage(
+        "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
+        4000,
+      );
     } else if (actionType === "ROADSIDE") {
-      if (setSuccessMessage) {
-        setSuccessMessage(
-          "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
-        );
-        setTimeout(() => setSuccessMessage(null), 4000);
-      }
+      showManagedMessage(
+        "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
+        4000,
+      );
     }
   };
 
@@ -361,8 +405,26 @@ export const CommandCenterView: React.FC<Props> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-[#020617] h-full overflow-hidden font-inter">
-      {/* Redundant top bar removed to reduce clutter within IntelligenceHub */}
-
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-8">
+          <LoadingSkeleton variant="card" count={4} />
+        </div>
+      )}
+      {!isLoading && loadError && (
+        <div className="flex-1 flex items-center justify-center">
+          <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+        </div>
+      )}
+      {!isLoading && !loadError && incidents.length === 0 && loads.length === 0 && (
+        <div className="flex-1 flex items-center justify-center">
+          <EmptyState
+            icon={<AlertTriangle className="w-12 h-12" />}
+            title="No incidents or loads"
+            description="The command center is clear. Incidents and loads will appear here when detected."
+          />
+        </div>
+      )}
+      {!isLoading && !loadError && (incidents.length > 0 || loads.length > 0) && (
       <div className="flex-1 flex overflow-hidden">
         {/* Left: Detail Drawer (Unified Incident & Record Workspace) */}
         <aside
@@ -386,6 +448,7 @@ export const CommandCenterView: React.FC<Props> = ({
                       <input
                         type="text"
                         placeholder="Search triage..."
+                        aria-label="Search triage queue"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="bg-slate-950 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[10px] text-white outline-none focus:border-blue-500/50 transition-all w-48"
@@ -478,12 +541,10 @@ export const CommandCenterView: React.FC<Props> = ({
                           icon: Layers,
                           color: "text-slate-400",
                           action: () => {
-                            if (setSuccessMessage) {
-                              setSuccessMessage(
-                                "Connecting record - select which item to link...",
-                              );
-                              setTimeout(() => setSuccessMessage(null), 3000);
-                            }
+                            showManagedMessage(
+                              "Connecting record - select which item to link...",
+                              3000,
+                            );
                           },
                         },
                       ].map((opt, idx) => (
@@ -1362,12 +1423,10 @@ export const CommandCenterView: React.FC<Props> = ({
                         </div>
                         <button
                           onClick={() => {
-                            if (setSuccessMessage) {
-                              setSuccessMessage(
-                                "SETTLEMENT: Redirecting to Unified Settlement Queue...",
-                              );
-                              setTimeout(() => setSuccessMessage(null), 3000);
-                            }
+                            showManagedMessage(
+                              "SETTLEMENT: Redirecting to Unified Settlement Queue...",
+                              3000,
+                            );
                           }}
                           className="px-6 py-3 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all shadow-lg shadow-blue-500/20"
                         >
@@ -1556,6 +1615,7 @@ export const CommandCenterView: React.FC<Props> = ({
           </div>
         </main>
       </div>
+      )}
     </div>
   );
 };

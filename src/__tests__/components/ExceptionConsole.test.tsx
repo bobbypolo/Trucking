@@ -213,7 +213,7 @@ describe("ExceptionConsole component", () => {
     // Click the grid view button (second button in the view toggle)
     const viewToggles = screen
       .getByText("Issue Tracker")
-      .closest("div[class*='border-b']")!;
+      .closest("div[class*='border-b']") as HTMLElement;
     const buttons = within(viewToggles).getAllByRole("button");
     // Grid button is after list button - find by checking SVG content
     // The grid button contains a LayoutGrid icon
@@ -266,10 +266,12 @@ describe("ExceptionConsole component", () => {
       screen.getByText("Mark this exception as resolved?"),
     ).toBeInTheDocument();
 
-    // Click Resolve in the dialog
-    const resolveDialogBtn = screen.getByRole("button", {
-      name: /Resolve/i,
-    });
+    // Click the confirm button in the dialog (labeled "Resolve")
+    // Use the ConfirmDialog's confirm button which is inside the dialog panel
+    const dialog = screen.getByRole("dialog");
+    const resolveDialogBtn = within(dialog).getAllByRole("button").find(
+      (btn) => btn.textContent === "Resolve",
+    )!;
     await user.click(resolveDialogBtn);
     expect(updateException).toHaveBeenCalledWith("exc-1", {
       status: "RESOLVED",
@@ -328,5 +330,111 @@ describe("ExceptionConsole component", () => {
       expect(screen.getByText("Missing POD")).toBeInTheDocument();
       expect(screen.queryByText("Late Delivery")).not.toBeInTheDocument();
     });
+  });
+
+  it("renders the Issue Tracker heading", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Issue Tracker")).toBeInTheDocument();
+    });
+  });
+
+  it("shows loading state initially before data resolves", () => {
+    vi.mocked(getExceptions).mockReturnValue(new Promise(() => {}));
+    vi.mocked(getExceptionTypes).mockReturnValue(new Promise(() => {}));
+    render(<ExceptionConsole {...defaultProps} />);
+    expect(
+      screen.getByText("Synching Command Center..."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows No Active Exceptions when exceptions list is empty (line 220)", async () => {
+    vi.mocked(getExceptions).mockResolvedValue([]);
+    vi.mocked(getExceptionTypes).mockResolvedValue([]);
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("No Active Exceptions")).toBeInTheDocument();
+    });
+  });
+
+  it("filters exceptions using the search input (line 233)", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Late Delivery")).toBeInTheDocument();
+    });
+
+    const searchInput = screen.getByPlaceholderText(/Filter by Load/i);
+    await user.type(searchInput, "load-1");
+    expect(screen.getByText("Late Delivery")).toBeInTheDocument();
+    expect(screen.queryByText("Damaged Freight")).not.toBeInTheDocument();
+  });
+
+  it("renders filter buttons including Triage and Missing Docs (line 538)", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Late Delivery")).toBeInTheDocument();
+    });
+    expect(screen.getByText("Triage")).toBeInTheDocument();
+    expect(screen.getByText("Missing Docs")).toBeInTheDocument();
+    expect(screen.getByText("Unallocated")).toBeInTheDocument();
+    expect(screen.getByText("Not Billed")).toBeInTheDocument();
+    expect(screen.getByText("Negative Margin")).toBeInTheDocument();
+    expect(screen.getByText("Disputes")).toBeInTheDocument();
+    expect(screen.getByText("Holds")).toBeInTheDocument();
+  });
+
+  it("calls loadData on Refresh button click", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("Late Delivery")).toBeInTheDocument();
+    });
+    vi.mocked(getExceptions).mockClear();
+    await user.click(screen.getByText("Refresh"));
+    expect(getExceptions).toHaveBeenCalled();
+  });
+
+  it("shows bottom summary bar with severity counts", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("1 Critical Exceptions")).toBeInTheDocument();
+      expect(screen.getByText("1 High Priority")).toBeInTheDocument();
+    });
+  });
+
+  it("shows AI Risk Predictions filter button", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("AI Risk Predictions")).toBeInTheDocument();
+    });
+  });
+
+  it("shows Average Resolution metric in footer", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText(/Average Resolution/)).toBeInTheDocument();
+    });
+  });
+
+  it("renders entity link with type and ID", async () => {
+    render(<ExceptionConsole {...defaultProps} />);
+    await waitFor(() => {
+      expect(screen.getByText("LOAD #load-1")).toBeInTheDocument();
+      expect(screen.getByText("LOAD #load-2")).toBeInTheDocument();
+    });
+  });
+
+  it("calls onViewDetail when entity link is clicked", async () => {
+    const user = (await import("@testing-library/user-event")).default.setup();
+    const onViewDetail = vi.fn();
+    render(
+      <ExceptionConsole {...defaultProps} onViewDetail={onViewDetail} />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("LOAD #load-1")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("LOAD #load-1"));
+    expect(onViewDetail).toHaveBeenCalledWith("LOAD", "load-1");
   });
 });

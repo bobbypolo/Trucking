@@ -3,7 +3,6 @@
  * Re-exports everything so consumers can import from "services/storage"
  * or individual domain modules for reduced coupling.
  */
-export { getTenantKey, migrateKey } from "./core";
 export { getQuotes, saveQuote } from "./quotes";
 export { getLeads, saveLead } from "./leads";
 export { getBookings, saveBooking } from "./bookings";
@@ -39,14 +38,5 @@ export {
   saveContact,
   getDirectory,
 } from "./directory";
-export {
-  STORAGE_KEY_VAULT_DOCS,
-  getRawVaultDocs,
-  saveVaultDoc,
-  uploadVaultDoc,
-} from "./vault";
-export {
-  STORAGE_KEY_NOTIFICATION_JOBS,
-  getRawNotificationJobs,
-  saveNotificationJob,
-} from "./notifications";
+export { getRawVaultDocs, saveVaultDoc, uploadVaultDoc } from "./vault";
+export { getRawNotificationJobs, saveNotificationJob } from "./notifications";

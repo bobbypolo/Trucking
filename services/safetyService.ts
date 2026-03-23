@@ -12,124 +12,206 @@ import {
   ServiceTicket,
   Provider,
 } from "../types";
-import { v4 as uuidv4 } from "uuid";
-import { getLoads, getTenantKey } from "./storageService";
-import { getCompany, updateCompany, updateUser } from "./authService";
+import { getLoads } from "./storageService";
+import { getCompany, updateCompany, getAuthHeaders } from "./authService";
 
-// Tenant-scoped key accessors (F-008 fix) — replaces static string constants
-const QUIZZES_KEY = (): string => getTenantKey("quizzes_v1");
-const QUIZ_RESULTS_KEY = (): string => getTenantKey("quiz_results_v1");
-const MAINTENANCE_KEY = (): string => getTenantKey("maintenance_v2");
-const TICKETS_KEY = (): string => getTenantKey("service_tickets_v1");
-const VENDORS_KEY = (): string => getTenantKey("vendors_v1");
-const SAFETY_ACTIVITY_KEY = (): string => getTenantKey("safety_activity_v1");
+// ── Quizzes ────────────────────────────────────────────────────────────────
 
-const safeParse = <T>(key: string, fallback: T): T => {
+export const getStoredQuizzes = async (): Promise<SafetyQuiz[]> => {
   try {
-    const data = localStorage.getItem(key);
-    if (!data) return fallback;
-    return JSON.parse(data);
-  } catch (e) {
-    return fallback;
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/quizzes`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
   }
 };
 
-export const getStoredQuizzes = (): SafetyQuiz[] =>
-  safeParse(QUIZZES_KEY(), []);
-export const getStoredResults = (): QuizResult[] =>
-  safeParse(QUIZ_RESULTS_KEY(), []);
-export const getStoredSafetyActivity = (): ActivityLogEntry[] =>
-  safeParse(SAFETY_ACTIVITY_KEY(), []);
-export const getMaintenanceRecords = (): MaintenanceRecord[] =>
-  safeParse(MAINTENANCE_KEY(), []);
-export const getServiceTickets = (): ServiceTicket[] =>
-  safeParse(TICKETS_KEY(), []);
-export const getVendors = (): Provider[] => safeParse(VENDORS_KEY(), []);
+export const saveQuiz = async (quiz: SafetyQuiz): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/quizzes`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(quiz),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Quiz Results ──────────────────────────────────────────────────────────
+
+export const getStoredResults = async (): Promise<QuizResult[]> => {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/quiz-results`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+export const saveQuizResult = async (result: QuizResult): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/quiz-results`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(result),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Safety Activity ───────────────────────────────────────────────────────
+
+export const getStoredSafetyActivity = async (): Promise<
+  ActivityLogEntry[]
+> => {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/activity`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+export const logSafetyActivity = async (
+  message: string,
+  type: "Status" | "Alert" | "Notification",
+  user?: string,
+): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/activity`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ action: message, entity_type: type, actor: user }),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Maintenance ───────────────────────────────────────────────────────────
+
+export const getMaintenanceRecords = async (): Promise<MaintenanceRecord[]> => {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/maintenance`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+export const saveMaintenanceRecord = async (
+  record: MaintenanceRecord,
+): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/maintenance`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(record),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Service Tickets ───────────────────────────────────────────────────────
+
+export const getServiceTickets = async (): Promise<ServiceTicket[]> => {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/service-tickets`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+export const saveServiceTicket = async (
+  ticket: ServiceTicket,
+): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/service-tickets`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(ticket),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Vendors ───────────────────────────────────────────────────────────────
+
+export const getVendors = async (): Promise<Provider[]> => {
+  try {
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/safety/vendors`, { headers });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+};
+
+export const saveVendor = async (vendor: Provider): Promise<void> => {
+  try {
+    const headers = await getAuthHeaders();
+    await fetch(`${API_URL}/safety/vendors`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(vendor),
+    });
+  } catch {
+    // silently ignore
+  }
+};
+
+// ── Equipment ─────────────────────────────────────────────────────────────
 
 export const getEquipment = async (
   companyId: string,
 ): Promise<FleetEquipment[]> => {
   try {
-    const res = await fetch(`${API_URL}/equipment/${companyId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/equipment/${companyId}`, { headers });
     return await res.json();
-  } catch (e) {
+  } catch {
     return [];
   }
 };
 
 export const getComplianceRecords = async (userId: string): Promise<any[]> => {
   try {
-    const res = await fetch(`${API_URL}/compliance/${userId}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+    const headers = await getAuthHeaders();
+    const res = await fetch(`${API_URL}/compliance/${userId}`, { headers });
     return await res.json();
-  } catch (e) {
+  } catch {
     return [];
   }
 };
 
-export const saveMaintenanceRecord = (record: MaintenanceRecord) => {
-  const list = getMaintenanceRecords();
-  list.unshift(record);
-  localStorage.setItem(MAINTENANCE_KEY(), JSON.stringify(list));
-};
-
-export const saveServiceTicket = (ticket: ServiceTicket) => {
-  const list = getServiceTickets();
-  const idx = list.findIndex((t) => t.id === ticket.id);
-  if (idx >= 0) list[idx] = ticket;
-  else list.unshift(ticket);
-  localStorage.setItem(TICKETS_KEY(), JSON.stringify(list));
-};
-
-export const saveVendor = (vendor: Provider) => {
-  const list = getVendors();
-  const idx = list.findIndex((v) => v.id === vendor.id);
-  if (idx >= 0) list[idx] = vendor;
-  else list.push(vendor);
-  localStorage.setItem(VENDORS_KEY(), JSON.stringify(list));
-};
-
-export const logSafetyActivity = (
-  message: string,
-  type: "Status" | "Alert" | "Notification",
-  user?: string,
-) => {
-  const logs = getStoredSafetyActivity();
-  logs.unshift({
-    id: uuidv4(),
-    type,
-    message,
-    timestamp: new Date().toISOString(),
-    user,
-  });
-  localStorage.setItem(
-    SAFETY_ACTIVITY_KEY(),
-    JSON.stringify(logs.slice(0, 50)),
-  );
-};
-
-export const saveQuiz = (quiz: SafetyQuiz) => {
-  const list = getStoredQuizzes();
-  const idx = list.findIndex((q) => q.id === quiz.id);
-  if (idx >= 0) list[idx] = quiz;
-  else list.push(quiz);
-  localStorage.setItem(QUIZZES_KEY(), JSON.stringify(list));
-};
-
-export const saveQuizResult = (result: QuizResult) => {
-  const list = getStoredResults();
-  list.push(result);
-  localStorage.setItem(QUIZ_RESULTS_KEY(), JSON.stringify(list));
-};
+// ── Driver Logic ──────────────────────────────────────────────────────────
 
 export const checkDriverCompliance = (
   user: User,
+  quizzes: SafetyQuiz[] = [],
+  results: QuizResult[] = [],
 ): { isCompliant: boolean; blockingReasons: string[]; safetyScore: number } => {
-  const quizzes = getStoredQuizzes();
-  const results = getStoredResults();
   const blockingReasons: string[] = [];
   let score = user.safetyScore || 100;
 
@@ -184,7 +266,12 @@ export const calculateDriverPerformance = async (
     minimumDispatchScore: 75,
     weights: { safety: 0.5, onTime: 0.3, paperwork: 0.2 },
   };
-  const compliance = checkDriverCompliance(user);
+
+  const [quizzes, results] = await Promise.all([
+    getStoredQuizzes(),
+    getStoredResults(),
+  ]);
+  const compliance = checkDriverCompliance(user, quizzes, results);
 
   const allLoads = (await getLoads(user)) as LoadData[];
   const driverLoads = allLoads.filter(
@@ -232,9 +319,11 @@ export const calculateDriverPerformance = async (
   };
 };
 
-export const getDriverQuizzes = (driverId: string) => {
-  const quizzes = getStoredQuizzes();
-  const results = getStoredResults();
+export const getDriverQuizzes = async (driverId: string) => {
+  const [quizzes, results] = await Promise.all([
+    getStoredQuizzes(),
+    getStoredResults(),
+  ]);
   return quizzes
     .filter(
       (q) => q.assignedTo.includes("all") || q.assignedTo.includes(driverId),
@@ -271,7 +360,7 @@ export const registerAsset = async (
     ],
   };
   await updateCompany(updatedCompany);
-  logSafetyActivity(
+  await logSafetyActivity(
     `New Asset Registered: ${asset.id} (${asset.type})`,
     "Notification",
     user.name,

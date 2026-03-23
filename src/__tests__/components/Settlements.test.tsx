@@ -153,36 +153,46 @@ describe("Settlements component", () => {
 
   // --- Payroll tab ---
 
-  it("shows driver name in payroll section", () => {
+  it("shows driver name in payroll section", async () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText("Test Driver")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Test Driver")).toBeInTheDocument();
+    });
   });
 
-  it("shows Ready for Payroll status on driver card", () => {
+  it("shows Ready for Payroll status on driver card", async () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText("Ready for Payroll")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Ready for Payroll")).toBeInTheDocument();
+    });
   });
 
-  it("shows TOTAL PAYABLE label on driver card", () => {
+  it("shows TOTAL PAYABLE label on driver card", async () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText("TOTAL PAYABLE")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("TOTAL PAYABLE")).toBeInTheDocument();
+    });
   });
 
-  it("shows payModel badge on driver card", () => {
+  it("shows payModel badge on driver card", async () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText("percent")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("percent")).toBeInTheDocument();
+    });
   });
 
-  it("shows empty state when no users provided", () => {
+  it("shows empty state when no users provided", async () => {
     render(<Settlements loads={mockLoads} users={[]} />);
-    expect(screen.getByText("System Data Syncing")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("No personnel found")).toBeInTheDocument();
+    });
   });
 
   it("expands driver card on click and shows financial breakdown", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     // Click the driver card to expand
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Gross Earnings")).toBeInTheDocument();
     });
@@ -194,7 +204,7 @@ describe("Settlements component", () => {
   it("shows Validated Loads table in expanded card", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Validated Loads")).toBeInTheDocument();
     });
@@ -205,7 +215,7 @@ describe("Settlements component", () => {
   it("shows Authorize & Pay button in expanded card", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText(/Authorize & Pay/)).toBeInTheDocument();
     });
@@ -214,7 +224,7 @@ describe("Settlements component", () => {
   it("shows Generate Statement button in expanded card", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Generate Statement")).toBeInTheDocument();
     });
@@ -226,7 +236,7 @@ describe("Settlements component", () => {
     );
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText(/Authorize & Pay/)).toBeInTheDocument();
     });
@@ -239,7 +249,7 @@ describe("Settlements component", () => {
   it("shows feedback after Authorize & Pay is clicked", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText(/Authorize & Pay/)).toBeInTheDocument();
     });
@@ -255,7 +265,7 @@ describe("Settlements component", () => {
     );
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Generate Statement")).toBeInTheDocument();
     });
@@ -268,7 +278,7 @@ describe("Settlements component", () => {
   it("shows feedback after Generate Statement is clicked", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Generate Statement")).toBeInTheDocument();
     });
@@ -281,11 +291,11 @@ describe("Settlements component", () => {
   it("collapses expanded card when clicked again", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText("Gross Earnings")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.queryByText("Gross Earnings")).not.toBeInTheDocument();
     });
@@ -299,28 +309,32 @@ describe("Settlements component", () => {
     };
     const user = userEvent.setup();
     render(<Settlements loads={mockLoads} users={[driverNoLoads]} />);
-    await user.click(screen.getByText("Empty Driver"));
+    await user.click(await screen.findByText("Empty Driver"));
     await waitFor(() => {
       expect(screen.getByText("No activity.")).toBeInTheDocument();
     });
   });
 
-  it("renders salary pay model driver", () => {
+  it("renders salary pay model driver", async () => {
     render(<Settlements loads={mockLoads} users={[mockSalaryDriver]} />);
-    expect(screen.getByText("Salary Driver")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Salary Driver")).toBeInTheDocument();
+    });
     expect(screen.getByText("salary")).toBeInTheDocument();
   });
 
-  it("renders mileage pay model driver", () => {
+  it("renders mileage pay model driver", async () => {
     render(<Settlements loads={mockLoads} users={[mockMileageDriver]} />);
-    expect(screen.getByText("Mileage Driver")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Mileage Driver")).toBeInTheDocument();
+    });
     expect(screen.getByText("mileage")).toBeInTheDocument();
   });
 
   it("dismisses feedback when X is clicked", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
-    await user.click(screen.getByText("Test Driver"));
+    await user.click(await screen.findByText("Test Driver"));
     await waitFor(() => {
       expect(screen.getByText(/Authorize & Pay/)).toBeInTheDocument();
     });
@@ -459,14 +473,16 @@ describe("Settlements component", () => {
     expect(onUserUpdate).toHaveBeenCalledTimes(1);
   });
 
-  it("renders multiple users with distinct pay data", () => {
+  it("renders multiple users with distinct pay data", async () => {
     render(
       <Settlements
         loads={mockLoads}
         users={[mockDriver, mockSalaryDriver, mockMileageDriver]}
       />,
     );
-    expect(screen.getByText("Test Driver")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Test Driver")).toBeInTheDocument();
+    });
     expect(screen.getByText("Salary Driver")).toBeInTheDocument();
     expect(screen.getByText("Mileage Driver")).toBeInTheDocument();
   });

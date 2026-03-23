@@ -41,8 +41,8 @@ vi.mock("../../../services/storageService", () => ({
   seedDemoLoads: vi.fn(),
 }));
 
+// Tests R-P1-30, R-P1-31, R-P1-32
 import {
-  getRawBrokers,
   getBrokers,
   saveBroker,
   getBrokerById,
@@ -51,19 +51,13 @@ import {
   checkSafetyScore,
 } from "../../../services/brokerService";
 
-describe("brokerService", () => {
-  let localStorageMock: Record<string, string>;
+describe("brokerService (API-only, no localStorage)", () => {
+  let localStorageGetSpy: ReturnType<typeof vi.spyOn>;
+  let localStorageSetSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    localStorageMock = {};
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(
-      (key: string) => localStorageMock[key] ?? null,
-    );
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
-      (key: string, value: string) => {
-        localStorageMock[key] = value;
-      },
-    );
+    localStorageGetSpy = vi.spyOn(Storage.prototype, "getItem");
+    localStorageSetSpy = vi.spyOn(Storage.prototype, "setItem");
     vi.spyOn(globalThis, "fetch").mockReset();
   });
 
@@ -71,29 +65,8 @@ describe("brokerService", () => {
     vi.restoreAllMocks();
   });
 
-  // ─── getRawBrokers ───────────────────────────────────────────────────
-  describe("getRawBrokers", () => {
-    it("returns empty array when nothing stored", () => {
-      expect(getRawBrokers()).toEqual([]);
-    });
-
-    it("returns parsed brokers from localStorage", () => {
-      localStorageMock["loadpilot_brokers_v1"] = JSON.stringify([
-        { id: "b1", name: "Broker One" },
-      ]);
-      const brokers = getRawBrokers();
-      expect(brokers).toHaveLength(1);
-      expect(brokers[0].name).toBe("Broker One");
-    });
-
-    it("returns empty array on parse error", () => {
-      localStorageMock["loadpilot_brokers_v1"] = "invalid-json";
-      expect(getRawBrokers()).toEqual([]);
-    });
-  });
-
-  // ─── getBrokers ──────────────────────────────────────────────────────
-  describe("getBrokers", () => {
+  // R-P1-30, R-P1-31: no localStorage in brokerService, BROKERS_KEY removed
+  describe("getBrokers (API-only)", () => {
     it("returns brokers from API sorted by name", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
@@ -139,15 +112,23 @@ describe("brokerService", () => {
       expect(brokers[0].clientType).toBe("shipper");
     });
 
-    it("falls back to localStorage when API fails", async () => {
+    it("returns empty array (not localStorage fallback) when API fails", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      localStorageMock["loadpilot_brokers_v1"] = JSON.stringify([
-        { id: "b1", name: "Local Broker" },
-      ]);
 
       const brokers = await getBrokers();
-      expect(brokers).toHaveLength(1);
-      expect(brokers[0].name).toBe("Local Broker");
+      // R-P1-30: no localStorage access on failure
+      expect(localStorageGetSpy).not.toHaveBeenCalled();
+      expect(brokers).toEqual([]);
+    });
+
+    it("does not read localStorage on API success", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
+
+      await getBrokers();
+      expect(localStorageGetSpy).not.toHaveBeenCalled();
     });
 
     it("uses companyId-specific URL when provided", async () => {
@@ -162,9 +143,9 @@ describe("brokerService", () => {
     });
   });
 
-  // ─── saveBroker ──────────────────────────────────────────────────────
-  describe("saveBroker", () => {
-    it("saves broker to API and localStorage", async () => {
+  // R-P1-32: saveBroker does not write to localStorage
+  describe("saveBroker (API-only)", () => {
+    it("saves broker to API only — does not write to localStorage", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
       } as any);
@@ -178,24 +159,8 @@ describe("brokerService", () => {
 
       await saveBroker(broker);
 
-      // Check localStorage was updated
-      const stored = JSON.parse(localStorageMock["loadpilot_brokers_v1"]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].name).toBe("New Broker");
-    });
-
-    it("updates existing broker in localStorage", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
-
-      localStorageMock["loadpilot_brokers_v1"] = JSON.stringify([
-        { id: "b1", name: "Old Name" },
-      ]);
-
-      await saveBroker({ id: "b1", name: "Updated Name" } as any);
-
-      const stored = JSON.parse(localStorageMock["loadpilot_brokers_v1"]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].name).toBe("Updated Name");
+      // R-P1-32: no localStorage writes
+      expect(localStorageSetSpy).not.toHaveBeenCalled();
     });
 
     it("sends type and chassis_requirements to API", async () => {
@@ -215,18 +180,17 @@ describe("brokerService", () => {
       expect(body.chassis_requirements).toEqual(["TRAC"]);
     });
 
-    it("continues with localStorage save when API fails", async () => {
+    it("does not write to localStorage when API fails", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
       await saveBroker({ id: "b1", name: "Offline Broker" } as any);
 
-      const stored = JSON.parse(localStorageMock["loadpilot_brokers_v1"]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].name).toBe("Offline Broker");
+      // R-P1-32: no localStorage fallback at all
+      expect(localStorageSetSpy).not.toHaveBeenCalled();
     });
   });
 
-  // ─── getBrokerById ───────────────────────────────────────────────────
+  // getBrokerById
   describe("getBrokerById", () => {
     it("returns broker matching the id", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -254,7 +218,7 @@ describe("brokerService", () => {
     });
   });
 
-  // ─── getContracts ────────────────────────────────────────────────────
+  // getContracts
   describe("getContracts", () => {
     it("returns contracts from API", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -298,7 +262,7 @@ describe("brokerService", () => {
     });
   });
 
-  // ─── saveContract ────────────────────────────────────────────────────
+  // saveContract
   describe("saveContract", () => {
     it("sends contract to API", async () => {
       const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
@@ -321,7 +285,7 @@ describe("brokerService", () => {
     });
   });
 
-  // ─── checkSafetyScore ────────────────────────────────────────────────
+  // checkSafetyScore
   describe("checkSafetyScore", () => {
     it("returns null (no real FMCSA integration yet)", () => {
       expect(checkSafetyScore("MC-123456")).toBeNull();

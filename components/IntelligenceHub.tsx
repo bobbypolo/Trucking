@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import { API_URL } from "../services/config";
 import {
   Gauge,
@@ -126,6 +127,9 @@ import { features } from "../config/features";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./EmptyState";
 
 interface Thread {
   id: string;
@@ -176,6 +180,9 @@ const IntelligenceHub: React.FC<{
     recordId: string,
     recordType: EntityType,
   ) => Promise<void>;
+  isLoading?: boolean;
+  loadError?: string | null;
+  onRetry?: () => void;
 }> = (props) => {
   const {
     user,
@@ -416,7 +423,8 @@ const IntelligenceHub: React.FC<{
   const [showIssueForm, setShowIssueForm] = useState(false);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showDocForm, setShowDocForm] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successMessage, showSuccessMessage, clearSuccessMessage] =
+    useAutoFeedback<string | null>(null);
   const [activeTimelineFilter, setActiveTimelineFilter] = useState<
     | "ALL"
     | "MESSAGE"
@@ -494,7 +502,7 @@ const IntelligenceHub: React.FC<{
     }
 
     setShowRepowerPanel(false);
-    setSuccessMessage(
+    showSuccessMessage(
       `Repower Handoff successful: ${driverName} is now assigned. Stakeholders notified.`,
     );
 
@@ -635,7 +643,7 @@ const IntelligenceHub: React.FC<{
     const queues = await getTriageQueues();
     setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
 
-    setSuccessMessage(`Interaction Started: ${newSession.id}`);
+    showSuccessMessage(`Interaction Started: ${newSession.id}`);
   };
 
   const wrapUpInteraction = async () => {
@@ -695,7 +703,7 @@ const IntelligenceHub: React.FC<{
     setInteractionState("WRAP-UP");
     if (setActiveCallSession) setActiveCallSession(updatedSession);
 
-    setSuccessMessage(
+    showSuccessMessage(
       `Interaction wrapped & audit log created: ${sessionToWrap.id}`,
     );
 
@@ -745,15 +753,17 @@ const IntelligenceHub: React.FC<{
     };
 
     await handleActionLogging(event);
-    setSuccessMessage(`Note attached to interaction: ${currentCallSession.id}`);
+    showSuccessMessage(
+      `Note attached to interaction: ${currentCallSession.id}`,
+    );
   };
 
   const handleCreateRequest = async () => {
     if (!requestData.attachedRecord) {
-      setSuccessMessage(
+      showSuccessMessage(
         "ERROR: Strategic Attachment Required to process request.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -827,7 +837,7 @@ const IntelligenceHub: React.FC<{
     });
 
     setShowRequestForm(false);
-    setSuccessMessage(`Request Created: ${newRequest.id}`);
+    showSuccessMessage(`Request Created: ${newRequest.id}`);
 
     // Refresh queues
     const queues = await getTriageQueues();
@@ -869,11 +879,11 @@ const IntelligenceHub: React.FC<{
           score: bestMatch.matchScore,
         },
       });
-      setSuccessMessage(
+      showSuccessMessage(
         `Auto-Assigned ${bestMatch.driverName} to Load #${load.loadNumber}`,
       );
     } else {
-      setSuccessMessage(
+      showSuccessMessage(
         `No high-confidence match found for Load #${load.loadNumber}`,
       );
     }
@@ -957,6 +967,7 @@ const IntelligenceHub: React.FC<{
   >("PROVIDERS");
   const [directorySearchQuery, setDirectorySearchQuery] = useState("");
   const [allProviders, setAllProviders] = useState<Provider[]>([]);
+  const [roadsideVendors, setRoadsideVendors] = useState<Provider[]>([]);
   const [allContacts, setAllContacts] = useState<Contact[]>([]);
   const [recordResults, setRecordResults] = useState<GlobalSearchResult[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -989,16 +1000,26 @@ const IntelligenceHub: React.FC<{
     }
   }, [activeRecord?.id, activeRecord?.activeSubTab]);
 
-  const fetchQueues = async () => {
-    const queues = await getTriageQueues();
-    const workItems = await getWorkItems(user.companyId);
-    setTriageQueues({ ...queues, workItems });
+  const fetchQueues = async (signal?: AbortSignal) => {
+    try {
+      const queues = await getTriageQueues();
+      const workItems = await getWorkItems(user.companyId);
+      if (signal?.aborted) return;
+      setTriageQueues({ ...queues, workItems });
+    } catch (err: unknown) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (signal?.aborted) return;
+    }
   };
 
   useEffect(() => {
-    fetchQueues();
-    const interval = setInterval(fetchQueues, 10000);
-    return () => clearInterval(interval);
+    const controller = new AbortController();
+    fetchQueues(controller.signal);
+    const interval = setInterval(() => fetchQueues(controller.signal), 10000);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -1007,6 +1028,10 @@ const IntelligenceHub: React.FC<{
       getContacts().then(setAllContacts);
     }
   }, [showDirectoryDrawer]);
+
+  useEffect(() => {
+    getVendors().then(setRoadsideVendors);
+  }, []);
 
   useEffect(() => {
     const performDirectorySearch = async () => {
@@ -1025,10 +1050,10 @@ const IntelligenceHub: React.FC<{
 
   const handleSafetyEscalate = async (load?: LoadData) => {
     if (!load && !activeRecord) {
-      setSuccessMessage(
+      showSuccessMessage(
         "SYSTEM: Protocol requires an active record context for safety escalation.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1068,7 +1093,7 @@ const IntelligenceHub: React.FC<{
       message: `Dispatcher ${user.name} escalated Load #${load?.loadNumber || activeRecord?.label} to Safety`,
       payload: { category: "Escalation", action: "Safety Handoff" },
     });
-    setSuccessMessage(
+    showSuccessMessage(
       "SAFETY PROTOCOL TRIGGERED: Handoff Created for Safety & Compliance",
     );
     fetchQueues();
@@ -1085,7 +1110,7 @@ const IntelligenceHub: React.FC<{
         item.id,
         type as EntityType,
       );
-      setSuccessMessage(
+      showSuccessMessage(
         `${type} ${item.name || item.label || item.id} linked to active call.`,
       );
       return;
@@ -1118,7 +1143,10 @@ const IntelligenceHub: React.FC<{
     });
 
     if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident };
+      const updated = {
+        ...active360Data.incident,
+        timeline: active360Data.incident.timeline ?? [],
+      };
       updated.timeline.push({
         id: uuidv4(),
         timestamp: new Date().toISOString(),
@@ -1131,17 +1159,16 @@ const IntelligenceHub: React.FC<{
       setActive360Data(data);
     }
 
-    setSuccessMessage(
+    showSuccessMessage(
       `${item.name || item.label || item.id} attached to ${activeRecord.label}`,
     );
   };
 
   const handleSystemSeed = async () => {
-    setSuccessMessage("COMMENCING SYSTEM SEEDING...");
+    showSuccessMessage("COMMENCING SYSTEM SEEDING...");
     await seedMockData(user);
     await fetchQueues();
-    setSuccessMessage("OPERATIONAL ENVIRONMENT READY - SYSTEM HOT");
-    setTimeout(() => setSuccessMessage(null), 4000);
+    showSuccessMessage("OPERATIONAL ENVIRONMENT READY - SYSTEM HOT", 4000);
   };
   const [callData, setCallData] = useState({
     type: "Driver",
@@ -1186,15 +1213,10 @@ const IntelligenceHub: React.FC<{
       payload: { category: "Linking", sessionId, recordId, recordType },
     });
 
-    setSuccessMessage(`Session Successfully Linked to Record`);
+    showSuccessMessage(`Session Successfully Linked to Record`);
   };
 
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
+  // Auto-clear is now handled by useAutoFeedback hook
 
   const activeThread = useMemo(() => {
     if (!selectedThreadId) return null;
@@ -1279,10 +1301,10 @@ const IntelligenceHub: React.FC<{
 
   const sendNotificationJob = async () => {
     if (selectedContacts.length === 0) {
-      setSuccessMessage(
+      showSuccessMessage(
         "PROTOCOL ERROR: Recipient selection required for broadcast.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1344,7 +1366,7 @@ const IntelligenceHub: React.FC<{
     }
 
     setShowNotifyPicker(false);
-    setSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
+    showSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
 
     const data = await getRecord360Data(activeRecord.type, activeRecord.id);
     setActive360Data(data);
@@ -1363,10 +1385,10 @@ const IntelligenceHub: React.FC<{
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
     if (!selectedVendorForRoadside || !loadId) {
-      setSuccessMessage(
+      showSuccessMessage(
         "SYSTEM ERROR: Valid vendor selection required for roadside dispatch.",
+        3000,
       );
-      setTimeout(() => setSuccessMessage(null), 3000);
       return;
     }
 
@@ -1450,10 +1472,10 @@ const IntelligenceHub: React.FC<{
 
     await fetchQueues();
     setShowRoadsideForm(false);
-    setSuccessMessage(
+    showSuccessMessage(
       `Roadside Assistance Dispatched: ${selectedVendorForRoadside.name}`,
+      4000,
     );
-    setTimeout(() => setSuccessMessage(null), 4000);
 
     const data = await getRecord360Data(activeRecord.type, activeRecord.id);
     setActive360Data(data);
@@ -1462,7 +1484,7 @@ const IntelligenceHub: React.FC<{
   const handleEscalate = async () => {
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    setSuccessMessage("Escalating to Leadership...");
+    showSuccessMessage("Escalating to Leadership...");
 
     await handleActionLogging({
       id: uuidv4(),
@@ -1510,7 +1532,7 @@ const IntelligenceHub: React.FC<{
 
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    setSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
+    showSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
 
     await handleActionLogging({
       id: uuidv4(),
@@ -1546,7 +1568,7 @@ const IntelligenceHub: React.FC<{
     const loadId =
       activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
     if (!loadId) {
-      setSuccessMessage("No related load found to verify drop");
+      showSuccessMessage("No related load found to verify drop");
       return;
     }
 
@@ -1575,8 +1597,7 @@ const IntelligenceHub: React.FC<{
       await saveIncident(updated);
     }
 
-    setSuccessMessage("Trailer Drop Verified");
-    setTimeout(() => setSuccessMessage(null), 3000);
+    showSuccessMessage("Trailer Drop Verified", 3000);
   };
 
   // Mock stats
@@ -1708,7 +1729,7 @@ const IntelligenceHub: React.FC<{
     await saveCallSession(newCall);
     const queues = await getTriageQueues();
     setTriageQueues((prev) => ({ ...prev, calls: [...queues.calls] }));
-    setSuccessMessage(
+    showSuccessMessage(
       `Tactical Inbound Initiated: ${randomCaller.name} (${randomCaller.role})`,
     );
   };
@@ -1812,6 +1833,7 @@ const IntelligenceHub: React.FC<{
         {onAction && (
           <button
             onClick={onAction}
+            aria-label={`Add ${title}`}
             className="p-2 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -1882,7 +1904,7 @@ const IntelligenceHub: React.FC<{
 
       if (action === "SNOOZE") {
         setSnoozedIds((prev) => new Set([...prev, item.id]));
-        setSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
+        showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
       } else if (action === "TAKE") {
         if (type === "INCIDENT") {
           const incs = await getIncidents();
@@ -1900,7 +1922,7 @@ const IntelligenceHub: React.FC<{
           };
           await saveWorkItem(updatedItem);
         }
-        setSuccessMessage(`Record ${item.id} Assigned to You`);
+        showSuccessMessage(`Record ${item.id} Assigned to You`);
       } else if (action === "ESCALATE") {
         if (type === "INCIDENT") {
           const incs = await getIncidents();
@@ -1919,7 +1941,7 @@ const IntelligenceHub: React.FC<{
             await saveWorkItem(wi);
           }
         }
-        setSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+        showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
       }
 
       await handleActionLogging({
@@ -1943,7 +1965,7 @@ const IntelligenceHub: React.FC<{
       }
 
       await fetchQueues();
-      setTimeout(() => setSuccessMessage(null), 3000);
+      // auto-cleared by useAutoFeedback
     };
 
     const priority =
@@ -2107,6 +2129,40 @@ const IntelligenceHub: React.FC<{
     );
   };
 
+  if (props.isLoading) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-start justify-center p-8">
+        <div className="w-full max-w-4xl space-y-6">
+          <LoadingSkeleton variant="card" count={3} />
+          <LoadingSkeleton variant="table" count={5} />
+        </div>
+      </div>
+    );
+  }
+
+  if (props.loadError) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-center justify-center">
+        <ErrorState
+          message={props.loadError}
+          onRetry={props.onRetry ?? (() => {})}
+        />
+      </div>
+    );
+  }
+
+  if (loads.length === 0 && incidents.length === 0) {
+    return (
+      <div className="flex h-full w-full bg-[#0a0c10] items-center justify-center">
+        <EmptyState
+          icon={<Brain className="w-12 h-12" />}
+          title="Intelligence Hub Ready"
+          description="No operational data yet. Create loads and start dispatching to populate the command center."
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full w-full bg-[#0a0c10] overflow-hidden text-slate-300 font-inter relative">
       {toast && (
@@ -2177,6 +2233,7 @@ const IntelligenceHub: React.FC<{
                 <input
                   type="text"
                   placeholder="SEARCH COMMAND..."
+                  aria-label="Search intelligence commands"
                   className={`w-full bg-slate-900 border border-white/5 rounded-xl pl-10 pr-4 ${isHighObstruction ? "py-1 text-[11px] font-black" : "py-2 text-[10px]"} text-white outline-none focus:border-indigo-500/50 transition-all`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
@@ -2257,6 +2314,7 @@ const IntelligenceHub: React.FC<{
             <button
               className="p-2 bg-white/5 rounded-xl text-slate-500 hover:text-white"
               onClick={onClose}
+              aria-label="Close detail panel"
             >
               <X className="w-5 h-5" />
             </button>
@@ -2303,10 +2361,10 @@ const IntelligenceHub: React.FC<{
                             status: "AUTHORIZED",
                           },
                         });
-                        setSuccessMessage(
+                        showSuccessMessage(
                           "FINANCIAL PROTOCOL: High-value exception authorized for settlement queue.",
+                          4000,
                         );
-                        setTimeout(() => setSuccessMessage(null), 4000);
                       },
                     },
                   ]}
@@ -2438,7 +2496,11 @@ const IntelligenceHub: React.FC<{
                     setSelectedLoadForDetail(load);
                     setShowLoadDetail(true);
                   }}
-                  setSuccessMessage={setSuccessMessage}
+                  setSuccessMessage={(msg) =>
+                    msg === null
+                      ? clearSuccessMessage()
+                      : showSuccessMessage(msg)
+                  }
                 />
               )}
 
@@ -2481,7 +2543,7 @@ const IntelligenceHub: React.FC<{
                     onSaveIncident={async (inc) => {
                       await coreCreateIncident(inc);
                       await fetchQueues();
-                      setSuccessMessage(
+                      showSuccessMessage(
                         "CRISIS PROTOCOL INITIATED: Incident Logged & Triage Updated",
                       );
                     }}
@@ -2537,6 +2599,7 @@ const IntelligenceHub: React.FC<{
                     </div>
                     <button
                       onClick={handleInitiateGlobalInbound}
+                      aria-label="Initiate global inbound"
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[9px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
                     >
                       <Plus className="w-3 h-3" />
@@ -2553,7 +2616,7 @@ const IntelligenceHub: React.FC<{
                         c.id
                           .toLowerCase()
                           .includes(commSearchQuery.toLowerCase()) ||
-                        c.participants.some((p) =>
+                        (c.participants ?? []).some((p) =>
                           p.name
                             .toLowerCase()
                             .includes(commSearchQuery.toLowerCase()),
@@ -2825,6 +2888,7 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="space-y-8">
               <select
+                aria-label="Select operator for handoff"
                 className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white outline-none focus:border-blue-500/50"
                 value={handoffData.assignedTo}
                 onChange={(e) =>
@@ -2849,6 +2913,7 @@ const IntelligenceHub: React.FC<{
               <textarea
                 className="w-full bg-slate-950 border border-white/10 rounded-[2rem] p-6 text-sm text-white h-40 resize-none outline-none focus:border-blue-500/50"
                 placeholder="Strategic briefing for the next operator..."
+                aria-label="Strategic briefing for handoff"
                 value={handoffData.notes}
                 onChange={(e) =>
                   setHandoffData({ ...handoffData, notes: e.target.value })
@@ -2911,7 +2976,7 @@ const IntelligenceHub: React.FC<{
 
                   await fetchQueues();
                   setShowHandoffForm(false);
-                  setSuccessMessage(
+                  showSuccessMessage(
                     `Operational Handoff Committed to ${assignedUser.name}`,
                   );
                 }}
@@ -2946,10 +3011,14 @@ const IntelligenceHub: React.FC<{
             <div className="p-8 space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label
+                    htmlFor="call-entity-type"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                  >
                     Entity Type
                   </label>
                   <select
+                    id="call-entity-type"
                     className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                     value={callData.type}
                     onChange={(e) =>
@@ -2963,10 +3032,14 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                  <label
+                    htmlFor="call-category"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                  >
                     Category
                   </label>
                   <select
+                    id="call-category"
                     className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                     value={callData.category}
                     onChange={(e) =>
@@ -2981,10 +3054,14 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="call-notes"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Notes
                 </label>
                 <textarea
+                  id="call-notes"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-blue-500/50"
                   placeholder="Enter operational notes here..."
                   value={callData.notes}
@@ -3009,8 +3086,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...callData },
                   });
                   setShowCallLogForm(false);
-                  setSuccessMessage("Operational Log Saved");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Operational Log Saved", 3000);
                 }}
                 className="w-full py-4 bg-teal-600 shadow-xl shadow-teal-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-teal-500 transition-all"
               >
@@ -3042,10 +3118,14 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="task-title"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Task Title
                 </label>
                 <input
+                  id="task-title"
                   type="text"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-orange-500/50"
                   placeholder="What needs to be done?"
@@ -3056,10 +3136,14 @@ const IntelligenceHub: React.FC<{
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="task-assignee"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Assignee
                 </label>
                 <select
+                  id="task-assignee"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                   value={taskData.assignedTo}
                   onChange={(e) =>
@@ -3090,8 +3174,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...taskData, status: "PENDING" },
                   });
                   setShowTaskForm(false);
-                  setSuccessMessage("Task Created");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Task Created", 3000);
                 }}
                 className="w-full py-4 bg-orange-600 shadow-xl shadow-orange-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-orange-500 transition-all"
               >
@@ -3123,10 +3206,14 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="issue-category"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Category
                 </label>
                 <select
+                  id="issue-category"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
                   value={issueData.category}
                   onChange={(e) =>
@@ -3140,10 +3227,14 @@ const IntelligenceHub: React.FC<{
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="issue-description"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                >
                   Description
                 </label>
                 <textarea
+                  id="issue-description"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-red-500/50"
                   placeholder="Describe the issue in detail..."
                   value={issueData.description}
@@ -3175,8 +3266,7 @@ const IntelligenceHub: React.FC<{
                     payload: { ...issueData, status: "OPEN" },
                   });
                   setShowIssueForm(false);
-                  setSuccessMessage("Issue Logged");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage("Issue Logged", 3000);
                 }}
                 className="w-full py-4 bg-red-600 shadow-xl shadow-red-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-red-500 transition-all"
               >
@@ -3216,7 +3306,10 @@ const IntelligenceHub: React.FC<{
             <div className="p-10 space-y-8 overflow-y-auto no-scrollbar">
               {/* Context Grid */}
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="request-asset-context"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Asset Context (Required)
                 </label>
                 <div className="relative group">
@@ -3225,6 +3318,7 @@ const IntelligenceHub: React.FC<{
                     type="text"
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-[13px] text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner placeholder:text-slate-800"
                     placeholder="SEARCH LOAD, CUSTOMER, OR DRIVER..."
+                    id="request-asset-context"
                     value={
                       requestData.attachedRecord
                         ? requestData.attachedRecord.label
@@ -3281,10 +3375,14 @@ const IntelligenceHub: React.FC<{
 
               <div className="grid grid-cols-2 gap-8">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label
+                    htmlFor="request-type"
+                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                  >
                     Type Designation
                   </label>
                   <select
+                    id="request-type"
                     value={requestData.type}
                     onChange={(e) =>
                       setRequestData({
@@ -3305,7 +3403,10 @@ const IntelligenceHub: React.FC<{
                   </select>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                  <label
+                    htmlFor="request-amount"
+                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                  >
                     Quantum (USD)
                   </label>
                   <div className="relative">
@@ -3313,6 +3414,7 @@ const IntelligenceHub: React.FC<{
                       $
                     </span>
                     <input
+                      id="request-amount"
                       type="number"
                       className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-white font-mono outline-none focus:border-blue-500 transition-all shadow-inner"
                       placeholder="0.00"
@@ -3329,10 +3431,14 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="request-justification"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Mission Justification
                 </label>
                 <textarea
+                  id="request-justification"
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
                   placeholder="PROVIDE OPERATIONAL RATIONALE FOR THIS EXCEPTION..."
                   value={requestData.notes}
@@ -3421,6 +3527,7 @@ const IntelligenceHub: React.FC<{
                 <input
                   type="text"
                   placeholder={`SEARCH ${directoryTab}...`}
+                  aria-label={`Search ${directoryTab.toLowerCase()}`}
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-xs text-white outline-none focus:border-blue-500/50"
                   value={directorySearchQuery}
                   onChange={(e) => setDirectorySearchQuery(e.target.value)}
@@ -3472,7 +3579,7 @@ const IntelligenceHub: React.FC<{
                       </div>
                       <div className="space-y-2 mb-5 text-[11px] text-slate-400 relative z-10 opacity-80">
                         <div className="flex gap-2 flex-wrap">
-                          {provider.capabilities.map((c) => (
+                          {(provider.capabilities ?? []).map((c) => (
                             <span
                               key={c}
                               className="px-2.5 py-1 bg-white/[0.05] rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest"
@@ -3483,7 +3590,7 @@ const IntelligenceHub: React.FC<{
                         </div>
                         <p className="flex items-center gap-1.5 font-bold uppercase tracking-tight">
                           <MapPin className="w-4 h-4 text-slate-600" />{" "}
-                          {provider.coverage.regions?.join(", ") ||
+                          {provider.coverage?.regions?.join(", ") ||
                             "Global Network"}
                         </p>
                       </div>
@@ -3492,7 +3599,7 @@ const IntelligenceHub: React.FC<{
                           onClick={() => {
                             setInteractionState("ACTIVE");
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Directing Link to ${provider.name}...`,
                             );
                           }}
@@ -3503,7 +3610,7 @@ const IntelligenceHub: React.FC<{
                         <button
                           onClick={() => {
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Opening Liaison Thread for ${provider.name}...`,
                             );
                           }}
@@ -3580,7 +3687,7 @@ const IntelligenceHub: React.FC<{
                   .filter(
                     (c) =>
                       !directorySearchQuery ||
-                      c.name
+                      (c.name ?? "")
                         .toLowerCase()
                         .includes(directorySearchQuery.toLowerCase()),
                   )
@@ -3592,7 +3699,7 @@ const IntelligenceHub: React.FC<{
                       <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500">
-                            {contact.name.charAt(0)}
+                            {(contact.name ?? "?").charAt(0)}
                           </div>
                           <div>
                             <h4 className="text-xs font-black text-white uppercase">
@@ -3617,7 +3724,7 @@ const IntelligenceHub: React.FC<{
                           onClick={() => {
                             setInteractionState("ACTIVE");
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Directing Link to ${contact.name}...`,
                             );
                           }}
@@ -3628,7 +3735,7 @@ const IntelligenceHub: React.FC<{
                         <button
                           onClick={() => {
                             setSelectedTab("messaging");
-                            setSuccessMessage(
+                            showSuccessMessage(
                               `Opening SMS Channel for ${contact.name}...`,
                             );
                           }}
@@ -3661,7 +3768,7 @@ const IntelligenceHub: React.FC<{
                       className="hidden"
                       accept=".csv"
                       onChange={() =>
-                        setSuccessMessage(
+                        showSuccessMessage(
                           "Import Simulated: 42 Contacts created",
                         )
                       }
@@ -3921,10 +4028,14 @@ const IntelligenceHub: React.FC<{
               </div>
 
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
+                <label
+                  htmlFor="doc-discrepancy-log"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
+                >
                   Discrepancy Log (Optional)
                 </label>
                 <textarea
+                  id="doc-discrepancy-log"
                   className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-28 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
                   placeholder="SPECIFY ANY OSD OR CARGO DISCREPANCIES DETECTED DURING INTAKE..."
                 ></textarea>
@@ -3960,8 +4071,10 @@ const IntelligenceHub: React.FC<{
                     },
                   });
                   setShowDocForm(false);
-                  setSuccessMessage("BOL Successfully Uploaded to Depository");
-                  setTimeout(() => setSuccessMessage(null), 3000);
+                  showSuccessMessage(
+                    "BOL Successfully Uploaded to Depository",
+                    3000,
+                  );
                 }}
                 className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-lg shadow-indigo-900/40 active:scale-95 transition-all outline-none"
               >
@@ -4015,7 +4128,7 @@ const IntelligenceHub: React.FC<{
                     <div
                       className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${selectedContacts.includes(contact.id) ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-500"}`}
                     >
-                      {contact.name.charAt(0)}
+                      {(contact.name ?? "?").charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-[11px] font-black text-white uppercase truncate">
@@ -4032,10 +4145,14 @@ const IntelligenceHub: React.FC<{
                 ))}
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="notify-briefing"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                >
                   Emergency Briefing
                 </label>
                 <textarea
+                  id="notify-briefing"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner"
                   placeholder="Enter the message for broadcast..."
                   value={notificationMessage}
@@ -4091,7 +4208,7 @@ const IntelligenceHub: React.FC<{
                   Verified Vendor Network
                 </label>
                 <div className="space-y-3">
-                  {getVendors().map((vendor) => (
+                  {roadsideVendors.map((vendor) => (
                     <button
                       key={vendor.id}
                       onClick={() => setSelectedVendorForRoadside(vendor)}
@@ -4123,10 +4240,14 @@ const IntelligenceHub: React.FC<{
                 </div>
               </div>
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                <label
+                  htmlFor="roadside-damage-report"
+                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                >
                   Tactical Damage Report
                 </label>
                 <textarea
+                  id="roadside-damage-report"
                   className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-24 resize-none outline-none focus:border-orange-500 transition-all shadow-inner"
                   placeholder="Specify repair requirements..."
                   value={roadsideNotes}

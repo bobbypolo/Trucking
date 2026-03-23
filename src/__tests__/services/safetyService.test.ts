@@ -1,4 +1,4 @@
-// Tests R-P4-05
+// Tests R-P1-16, R-P1-17, R-P1-18, R-P1-19, R-P1-20, R-P4-05
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock authService
@@ -6,21 +6,17 @@ vi.mock("../../../services/authService", () => ({
   getCompany: vi.fn(),
   updateCompany: vi.fn(),
   getStoredUsers: vi.fn().mockReturnValue([]),
-  getAuthHeaders: vi.fn().mockResolvedValue({}),
+  getAuthHeaders: vi.fn().mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "Bearer test-token",
+  }),
   getCurrentUser: vi.fn(),
 }));
 
-// Mock storageService to avoid circular dependency + heavy deps
+// Mock storageService
 vi.mock("../../../services/storageService", () => ({
   getLoads: vi.fn().mockResolvedValue([]),
-  getTenantKey: vi.fn((baseName: string) => {
-    // Mock implementation: returns tenant-scoped key
-    const user = (
-      getCurrentUser as unknown as () => { companyId?: string } | null
-    )();
-    if (!user?.companyId) return `loadpilot_${baseName}`;
-    return `loadpilot_${user.companyId}_${baseName}`;
-  }),
+  getTenantKey: vi.fn((baseName: string) => `loadpilot_${baseName}`),
 }));
 
 vi.mock("../../../services/firebase", () => ({
@@ -38,38 +34,56 @@ import { getCurrentUser } from "../../../services/authService";
 
 const mockGetCurrentUser = getCurrentUser as ReturnType<typeof vi.fn>;
 
-describe("safetyService — tenant-scoped keys (R-P4-05)", () => {
-  let localStorageMock: Record<string, string>;
-
+describe("safetyService — API-based functions (R-P1-16 through R-P1-20, R-P4-05)", () => {
   beforeEach(() => {
-    localStorageMock = {};
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(
-      (key: string) => localStorageMock[key] ?? null,
-    );
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
-      (key: string, value: string) => {
-        localStorageMock[key] = value;
-      },
-    );
-    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(
-      (key: string) => {
-        delete localStorageMock[key];
-      },
-    );
+    mockGetCurrentUser.mockReturnValue({ companyId: "safety-co" });
+    vi.spyOn(globalThis, "fetch").mockReset();
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("getStoredQuizzes returns empty array when no quizzes stored", () => {
-    mockGetCurrentUser.mockReturnValue({ companyId: "safety-co" });
-    const quizzes = getStoredQuizzes();
+  it("getStoredQuizzes returns empty array when API returns empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    } as any);
+
+    const quizzes = await getStoredQuizzes();
     expect(quizzes).toEqual([]);
   });
 
-  it("saveQuiz stores quiz under tenant-scoped key", () => {
-    mockGetCurrentUser.mockReturnValue({ companyId: "safety-co" });
+  it("getStoredQuizzes fetches from /api/safety/quizzes", async () => {
+    const mockQuiz = {
+      id: "quiz-1",
+      title: "Test Quiz",
+      description: "Test",
+      isMandatory: true,
+      assignedTo: ["all"],
+      createdAt: new Date().toISOString(),
+      questions: [],
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([mockQuiz]),
+    } as any);
+
+    const quizzes = await getStoredQuizzes();
+    expect(quizzes).toHaveLength(1);
+    expect(quizzes[0].id).toBe("quiz-1");
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(fetchCall[0]).toContain("/safety/quizzes");
+  });
+
+  it("saveQuiz POSTs to /api/safety/quizzes", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: "quiz-1" }),
+    } as any);
+
     const quiz = {
       id: "quiz-1",
       title: "Test Quiz",
@@ -79,57 +93,35 @@ describe("safetyService — tenant-scoped keys (R-P4-05)", () => {
       createdAt: new Date().toISOString(),
       questions: [],
     };
-    saveQuiz(quiz);
-    // The key should contain the companyId
-    const tenantKey = Object.keys(localStorageMock).find((k) =>
-      k.includes("safety-co"),
-    );
-    expect(tenantKey).toBeTruthy();
-    const stored = JSON.parse(localStorageMock[tenantKey!]);
-    expect(stored).toHaveLength(1);
-    expect(stored[0].id).toBe("quiz-1");
+    await saveQuiz(quiz);
+
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(fetchCall[0]).toContain("/safety/quizzes");
+    expect(fetchCall[1].method).toBe("POST");
   });
 
-  it("getMaintenanceRecords returns empty array when nothing stored", () => {
-    mockGetCurrentUser.mockReturnValue({ companyId: "fleet-co" });
-    const records = getMaintenanceRecords();
+  it("getMaintenanceRecords returns empty array when API returns empty", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    } as any);
+
+    const records = await getMaintenanceRecords();
     expect(records).toEqual([]);
   });
 
-  it("two tenants store quizzes independently", () => {
-    // Tenant A saves a quiz
-    mockGetCurrentUser.mockReturnValue({ companyId: "tenant-a" });
-    saveQuiz({
-      id: "quiz-a",
-      title: "Quiz A",
-      description: "A",
-      isMandatory: false,
-      assignedTo: [],
-      createdAt: new Date().toISOString(),
-      questions: [],
-    });
+  it("saveMaintenanceRecord POSTs to /api/safety/maintenance", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ id: "mr-1" }),
+    } as any);
 
-    // Tenant B saves a different quiz
-    mockGetCurrentUser.mockReturnValue({ companyId: "tenant-b" });
-    saveQuiz({
-      id: "quiz-b",
-      title: "Quiz B",
-      description: "B",
-      isMandatory: false,
-      assignedTo: [],
-      createdAt: new Date().toISOString(),
-      questions: [],
-    });
+    await saveMaintenanceRecord({ id: "mr-1" } as any);
 
-    // Tenant A keys and tenant B keys should be separate
-    const keysA = Object.keys(localStorageMock).filter((k) =>
-      k.includes("tenant-a"),
-    );
-    const keysB = Object.keys(localStorageMock).filter((k) =>
-      k.includes("tenant-b"),
-    );
-    expect(keysA.length).toBeGreaterThan(0);
-    expect(keysB.length).toBeGreaterThan(0);
-    expect(keysA[0]).not.toBe(keysB[0]);
+    const fetchCall = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+      .calls[0];
+    expect(fetchCall[0]).toContain("/safety/maintenance");
+    expect(fetchCall[1].method).toBe("POST");
   });
 });

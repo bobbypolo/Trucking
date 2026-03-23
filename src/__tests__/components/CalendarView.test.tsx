@@ -1,7 +1,7 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { CalendarView } from "../../../components/CalendarView";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
@@ -69,7 +69,7 @@ const mockUsers: User[] = [
   },
 ];
 
-// jsdom doesn't implement scrollTo — stub it globally
+// jsdom doesn't implement scrollTo - stub it globally
 beforeAll(() => {
   Element.prototype.scrollTo = vi.fn();
 });
@@ -236,5 +236,69 @@ describe("CalendarView component", () => {
     const loadEl = screen.getByText("#LN-001").closest("[draggable]");
     // Without onMoveLoad, draggable should be false
     expect(loadEl?.getAttribute("draggable")).toBe("false");
+  });
+
+  it("navigates months when Today button is clicked (lines 388-436)", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    const todayBtn = screen.getByRole("button", { name: /Today/i });
+    await user.click(todayBtn);
+    const currentMonth = today.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    expect(screen.getAllByText(currentMonth).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows Reset to Today button in date picker", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    const currentMonth = today.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    const monthButtons = screen.getAllByText(currentMonth);
+    await user.click(monthButtons[0].closest("button")!);
+    expect(screen.getByText("Reset to Today")).toBeInTheDocument();
+  });
+
+  it("shows year selector and month grid in date picker", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    const currentMonth = today.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    const monthButtons = screen.getAllByText(currentMonth);
+    await user.click(monthButtons[0].closest("button")!);
+    expect(screen.getByText("Select Year")).toBeInTheDocument();
+    expect(screen.getByText("Jan")).toBeInTheDocument();
+    expect(screen.getByText("Dec")).toBeInTheDocument();
+  });
+
+  it("shows manual date input field in date picker", async () => {
+    const user = userEvent.setup();
+    render(<CalendarView {...defaultProps} />);
+    const currentMonth = today.toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+    });
+    const monthButtons = screen.getAllByText(currentMonth);
+    await user.click(monthButtons[0].closest("button")!);
+    expect(screen.getByText("Type Specific Date")).toBeInTheDocument();
+  });
+
+  it("renders driver filter sidebar when users and onSelectDriver are provided", () => {
+    render(
+      <CalendarView
+        {...defaultProps}
+        users={mockUsers}
+        onSelectDriver={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Drivers")).toBeInTheDocument();
+    expect(screen.getByText("All Company Loads")).toBeInTheDocument();
+    expect(screen.getByText("Driver One")).toBeInTheDocument();
+    expect(screen.getByText("Driver Two")).toBeInTheDocument();
   });
 });

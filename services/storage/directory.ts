@@ -1,6 +1,6 @@
 /**
  * Directory domain -- Contacts & Providers via server API.
- * Migrated by STORY-018 (Phase 2 cutover from localStorage).
+ * Migrated by STORY-018 (Phase 2 cutover from browser storage to server API).
  * All CRUD goes through /api/contacts and /api/providers.
  */
 import { Contact, Provider } from "../../types";

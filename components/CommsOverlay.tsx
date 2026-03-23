@@ -7,6 +7,9 @@ import {
 } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { CallSession, WorkspaceSession, OperationalEvent, KCIRequest, RecordLink, EntityType } from '../types';
+import { LoadingSkeleton } from './ui/LoadingSkeleton';
+import { ErrorState } from './ui/ErrorState';
+import { EmptyState } from './ui/EmptyState';
 
 interface CommsOverlayProps {
     session: WorkspaceSession;
@@ -20,6 +23,9 @@ interface CommsOverlayProps {
     setOverlayState: (state: 'floating' | 'docked' | 'collapsed') => void;
     user: { id: string, name: string };
     allLoads: any[];
+    isLoading?: boolean;
+    loadError?: string | null;
+    onRetryLoad?: () => void;
 }
 
 export const CommsOverlay: React.FC<CommsOverlayProps> = ({
@@ -33,7 +39,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
     setOverlayState,
     user,
     allLoads,
-    onLinkSessionToRecord
+    onLinkSessionToRecord,
+    isLoading,
+    loadError,
+    onRetryLoad
 }) => {
     const [activeTab, setActiveTab] = useState<'notes' | 'messages' | 'requests' | 'tasks'>('notes');
     const [noteText, setNoteText] = useState('');
@@ -183,9 +192,9 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                             <Phone className={`w-5 h-5 ${activeCallSession ? 'animate-pulse' : ''}`} />
                         </div>
                         <div>
-                            <h3 className="text-[13px] font-black text-white uppercase tracking-tight">
+                            <h2 className="text-[13px] font-black text-white uppercase tracking-tight">
                                 {activeCallSession ? 'Active Interaction' : 'Operational Comms'}
-                            </h3>
+                            </h2>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${activeCallSession ? 'bg-red-500' : 'bg-slate-600'}`} />
                                 <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
@@ -195,10 +204,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setOverlayState(overlayState === 'docked' ? 'floating' : 'docked')} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                        <button onClick={() => setOverlayState(overlayState === 'docked' ? 'floating' : 'docked')} aria-label={overlayState === 'docked' ? 'Undock panel' : 'Dock panel'} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
                             {overlayState === 'docked' ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                         </button>
-                        <button onClick={() => setOverlayState('collapsed')} className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
+                        <button onClick={() => setOverlayState('collapsed')} aria-label="Collapse panel" className="p-2 hover:bg-white/10 rounded-lg text-slate-400 transition-colors">
                             <Minus className="w-4 h-4" />
                         </button>
                     </div>
@@ -236,6 +245,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 autoFocus
                                 type="text"
                                 placeholder="Search records to link..."
+                                aria-label="Search records to link"
                                 className="w-full bg-slate-950 border border-blue-500/30 rounded-xl pl-9 pr-4 py-3 text-[11px] text-white outline-none focus:border-blue-500"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -304,25 +314,26 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
 
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto no-scrollbar p-6 bg-slate-950/40">
-                {!activeCallSession && (
-                    <div className="h-full flex flex-col items-center justify-center text-center space-y-6">
-                        <div className="w-20 h-20 rounded-full bg-blue-600/5 flex items-center justify-center border border-blue-500/10">
-                            <Phone className="w-8 h-8 text-blue-500/30" />
-                        </div>
-                        <div className="space-y-2">
-                            <h4 className="text-[13px] font-black text-white uppercase tracking-wider">No Active Interaction</h4>
-                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-relaxed px-10">Start an interaction to begin logging timeline events</p>
-                        </div>
-                        <button
-                            onClick={startSession}
-                            className="px-8 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-blue-500 hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-900/40 flex items-center gap-3"
-                        >
-                            <Plus className="w-4 h-4" /> Start Interaction
-                        </button>
+                {isLoading && (
+                    <div className="h-full flex items-center justify-center">
+                        <LoadingSkeleton variant="list" count={3} />
                     </div>
                 )}
+                {!isLoading && loadError && (
+                    <div className="h-full flex items-center justify-center">
+                        <ErrorState message={loadError} onRetry={onRetryLoad ?? (() => {})} />
+                    </div>
+                )}
+                {!isLoading && !loadError && !activeCallSession && (
+                    <EmptyState
+                        icon={<Phone className="w-12 h-12" />}
+                        title="No Active Interaction"
+                        description="Start an interaction to begin logging timeline events"
+                        action={{ label: "Start Interaction", onClick: startSession }}
+                    />
+                )}
 
-                {activeCallSession && activeTab === 'notes' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'notes' && (
                     <div className="h-full flex flex-col">
                         <div className="flex-1 space-y-4 mb-4">
                             {/* Previous session events would go here - for now just show current draft */}
@@ -336,11 +347,12 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 onChange={(e) => setNoteText(e.target.value)}
                                 className="w-full bg-transparent text-[13px] text-white placeholder-slate-600 resize-none outline-none h-24 mb-4"
                                 placeholder="Type operational note..."
+                                aria-label="Operational note"
                             />
                             <div className="flex items-center justify-between">
                                 <div className="flex gap-2">
-                                    <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><Zap className="w-3.5 h-3.5" /></button>
-                                    <button className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><AlertTriangle className="w-3.5 h-3.5" /></button>
+                                    <button aria-label="Priority action" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><Zap className="w-3.5 h-3.5" /></button>
+                                    <button aria-label="Flag alert" className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-slate-500"><AlertTriangle className="w-3.5 h-3.5" /></button>
                                 </div>
                                 <button
                                     onClick={handleAddNote}
@@ -353,7 +365,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                     </div>
                 )}
 
-                {activeCallSession && activeTab === 'messages' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'messages' && (
                     <div className="h-full flex flex-col">
                         <div className="flex-1 space-y-4 mb-4 overflow-y-auto no-scrollbar">
                             {(allLoads.find(l => l.id === session.primaryContext?.id)?.messages || []).length === 0 ? (
@@ -377,6 +389,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                 type="text"
                                 className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white outline-none focus:border-blue-500"
                                 placeholder="Send tactical message..."
+                                aria-label="Send tactical message"
                                 onKeyDown={async (e) => {
                                     if (e.key === 'Enter' && e.currentTarget.value.trim()) {
                                         const text = e.currentTarget.value;
@@ -398,13 +411,13 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                     </div>
                 )}
 
-                {activeCallSession && activeTab === 'requests' && (
+                {!isLoading && !loadError && activeCallSession && activeTab === 'requests' && (
                     <div className="space-y-4">
                         <div className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl mb-6">
-                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Context</h4>
+                            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Active Context</h3>
                             <p className="text-[11px] font-bold text-white uppercase">{session.primaryContext?.label || 'Direct Interaction'}</p>
                         </div>
-                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Operational Requests</h4>
+                        <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Operational Requests</h3>
                         <div className="grid grid-cols-2 gap-3">
                             {[
                                 { label: 'Detention', type: 'DETENTION' },

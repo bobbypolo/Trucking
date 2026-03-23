@@ -18,8 +18,13 @@ import * as path from "path";
 const ROUTES_DIR = path.resolve(__dirname, "../../routes");
 const INDEX_PATH = path.resolve(__dirname, "../../index.ts");
 
-// Production public allowlist: ONLY /api/health
-const PRODUCTION_PUBLIC_ROUTES = new Set(["GET /api/health"]);
+// Production public allowlist: /api/health + webhook endpoints that use
+// their own auth mechanisms (not Firebase auth)
+const PRODUCTION_PUBLIC_ROUTES = new Set([
+  "GET /api/health",
+  "POST /api/stripe/webhook", // Stripe signature verification
+  "POST /api/tracking/webhook", // X-GPS-API-Key header auth
+]);
 
 // Dev/staging adds provisioning endpoints (Firebase-backed)
 const DEV_STAGING_PUBLIC_ROUTES = new Set([
@@ -189,8 +194,8 @@ describe("R-P1-05: Route Protection Audit", () => {
   });
 
   describe("AC3: Public endpoint allowlist enforcement", () => {
-    it("/api/health is the only public endpoint in production", () => {
-      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(1);
+    it("production public routes are health + webhooks only", () => {
+      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(3);
       expect(PRODUCTION_PUBLIC_ROUTES.has("GET /api/health")).toBe(true);
     });
 

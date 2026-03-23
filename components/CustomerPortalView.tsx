@@ -56,7 +56,7 @@ export const CustomerPortalView: React.FC<Props> = ({
   const filteredLoads = customerLoads.filter(
     (l) =>
       l.loadNumber.includes(searchTerm) ||
-      l.dropoff.city.toLowerCase().includes(searchTerm.toLowerCase()),
+      (l.dropoff?.city ?? "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const selectedLoad = customerLoads.find((l) => l.id === selectedLoadId);
@@ -142,6 +142,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                   onClick={onLogout}
                   className="text-slate-500 hover:text-red-400 transition-colors"
                   title="Sign out"
+                  aria-label="Sign out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
@@ -158,6 +159,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                     <input
                       className="w-full bg-[#0a0f1e] border border-white/5 rounded-2xl pl-12 pr-4 py-4 text-xs font-bold text-white placeholder:text-slate-600 outline-none focus:border-blue-500 transition-all"
                       placeholder="SEARCH BY LOAD # OR CITY..."
+                      aria-label="Search shipments by load number or city"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -183,7 +185,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                             Load #{load.loadNumber}
                           </div>
                           <div className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">
-                            {load.pickup.city} → {load.dropoff.city}
+                            {load.pickup?.city ?? ""} → {load.dropoff?.city ?? ""}
                           </div>
                         </div>
                         <div className="bg-slate-950 px-2 py-1 rounded-lg border border-white/5">
@@ -243,11 +245,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                         <span className="px-3 py-1 bg-blue-600/10 text-blue-500 rounded-full text-[10px] font-black border border-blue-500/20 uppercase tracking-widest">
                           Tracking ID: {selectedLoad.loadNumber}
                         </span>
-                        <h1 className="text-4xl font-black text-white uppercase tracking-tighter">
-                          {selectedLoad.pickup.city}{" "}
+                        <h2 className="text-4xl font-black text-white uppercase tracking-tighter">
+                          {selectedLoad.pickup?.city ?? ""}{" "}
                           <ArrowRight className="inline-block w-8 h-8 text-blue-500 mx-2" />{" "}
-                          {selectedLoad.dropoff.city}
-                        </h1>
+                          {selectedLoad.dropoff?.city ?? ""}
+                        </h2>
                       </div>
                       <div className="text-right space-y-1">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -270,8 +272,8 @@ export const CustomerPortalView: React.FC<Props> = ({
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          {selectedLoad.pickup.city},{" "}
-                          {selectedLoad.pickup.state}
+                          {selectedLoad.pickup?.city ?? ""},{" "}
+                          {selectedLoad.pickup?.state ?? ""}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -284,8 +286,8 @@ export const CustomerPortalView: React.FC<Props> = ({
                           </span>
                         </div>
                         <div className="text-sm font-black text-white uppercase">
-                          {selectedLoad.dropoff.city},{" "}
-                          {selectedLoad.dropoff.state}
+                          {selectedLoad.dropoff?.city ?? ""},{" "}
+                          {selectedLoad.dropoff?.state ?? ""}
                         </div>
                       </div>
                       <div className="bg-slate-950/50 p-6 rounded-3xl border border-white/5 space-y-4">
@@ -396,7 +398,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                                   {l.loadNumber}
                                 </td>
                                 <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
-                                  {l.pickup.city} → {l.dropoff.city}
+                                  {l.pickup?.city ?? ""} → {l.dropoff?.city ?? ""}
                                 </td>
                                 <td className="px-8 py-5 text-[10px] font-bold text-slate-500">
                                   {l.dropoffDate || l.pickupDate}
@@ -460,20 +462,22 @@ export const CustomerPortalView: React.FC<Props> = ({
                   >
                     <div className="grid grid-cols-2 gap-8">
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                        <label htmlFor="quote-origin" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                           Origin City
                         </label>
                         <input
+                          id="quote-origin"
                           value={quoteOrigin}
                           onChange={(e) => setQuoteOrigin(e.target.value)}
                           className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
                         />
                       </div>
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                        <label htmlFor="quote-destination" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                           Destination City
                         </label>
                         <input
+                          id="quote-destination"
                           value={quoteDestination}
                           onChange={(e) => setQuoteDestination(e.target.value)}
                           className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all"
@@ -481,10 +485,11 @@ export const CustomerPortalView: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
+                      <label htmlFor="quote-equipment" className="text-[10px] font-black text-slate-600 uppercase tracking-widest pl-1">
                         Equipment Type
                       </label>
                       <select
+                        id="quote-equipment"
                         value={quoteEquipment}
                         onChange={(e) => setQuoteEquipment(e.target.value)}
                         className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs font-bold text-white focus:border-blue-500 outline-none transition-all appearance-none"

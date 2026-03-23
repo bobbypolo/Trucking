@@ -1,3 +1,4 @@
+// Tests R-P1-18, R-P1-19, R-P1-20
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Mock authService
@@ -5,7 +6,10 @@ vi.mock("../../../services/authService", () => ({
   getCompany: vi.fn(),
   updateCompany: vi.fn(),
   getStoredUsers: vi.fn().mockReturnValue([]),
-  getAuthHeaders: vi.fn().mockResolvedValue({}),
+  getAuthHeaders: vi.fn().mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "Bearer test-token",
+  }),
   getCurrentUser: vi.fn(),
   updateUser: vi.fn(),
 }));
@@ -13,13 +17,7 @@ vi.mock("../../../services/authService", () => ({
 // Mock storageService to avoid circular dependency + heavy deps
 vi.mock("../../../services/storageService", () => ({
   getLoads: vi.fn().mockResolvedValue([]),
-  getTenantKey: vi.fn((baseName: string) => {
-    const user = (
-      getCurrentUser as unknown as () => { companyId?: string } | null
-    )();
-    if (!user?.companyId) return `loadpilot_${baseName}`;
-    return `loadpilot_${user.companyId}_${baseName}`;
-  }),
+  getTenantKey: vi.fn((baseName: string) => `loadpilot_${baseName}`),
 }));
 
 vi.mock("../../../services/firebase", () => ({
@@ -49,7 +47,11 @@ import {
   seedSafetyData,
   calculateDriverPerformance,
 } from "../../../services/safetyService";
-import { getCurrentUser, getCompany, updateCompany } from "../../../services/authService";
+import {
+  getCurrentUser,
+  getCompany,
+  updateCompany,
+} from "../../../services/authService";
 import { getLoads } from "../../../services/storageService";
 
 const mockGetCurrentUser = getCurrentUser as ReturnType<typeof vi.fn>;
@@ -57,24 +59,21 @@ const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockUpdateCompany = updateCompany as ReturnType<typeof vi.fn>;
 const mockGetLoads = getLoads as ReturnType<typeof vi.fn>;
 
-describe("safetyService — enhanced coverage", () => {
-  let localStorageMock: Record<string, string>;
+// Helper to mock fetch for a single response
+function mockFetch(data: unknown, ok = true) {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue({
+    ok,
+    json: () => Promise.resolve(data),
+  } as any);
+}
 
+// Helper to mock fetch to fail (network error)
+function mockFetchFail() {
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
+}
+
+describe("safetyService — enhanced coverage (API-based)", () => {
   beforeEach(() => {
-    localStorageMock = {};
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(
-      (key: string) => localStorageMock[key] ?? null,
-    );
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(
-      (key: string, value: string) => {
-        localStorageMock[key] = value;
-      },
-    );
-    vi.spyOn(Storage.prototype, "removeItem").mockImplementation(
-      (key: string) => {
-        delete localStorageMock[key];
-      },
-    );
     mockGetCurrentUser.mockReturnValue({ companyId: "test-co" });
     vi.spyOn(globalThis, "fetch").mockReset();
   });
@@ -85,39 +84,54 @@ describe("safetyService — enhanced coverage", () => {
 
   // ─── Storage getters ─────────────────────────────────────────────────
   describe("storage getters", () => {
-    it("getStoredQuizzes returns empty array when nothing stored", () => {
-      expect(getStoredQuizzes()).toEqual([]);
+    it("getStoredQuizzes returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getStoredQuizzes()).toEqual([]);
     });
 
-    it("getStoredResults returns empty array when nothing stored", () => {
-      expect(getStoredResults()).toEqual([]);
+    it("getStoredResults returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getStoredResults()).toEqual([]);
     });
 
-    it("getStoredSafetyActivity returns empty array when nothing stored", () => {
-      expect(getStoredSafetyActivity()).toEqual([]);
+    it("getStoredSafetyActivity returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getStoredSafetyActivity()).toEqual([]);
     });
 
-    it("getMaintenanceRecords returns empty array when nothing stored", () => {
-      expect(getMaintenanceRecords()).toEqual([]);
+    it("getMaintenanceRecords returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getMaintenanceRecords()).toEqual([]);
     });
 
-    it("getServiceTickets returns empty array when nothing stored", () => {
-      expect(getServiceTickets()).toEqual([]);
+    it("getServiceTickets returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getServiceTickets()).toEqual([]);
     });
 
-    it("getVendors returns empty array when nothing stored", () => {
-      expect(getVendors()).toEqual([]);
+    it("getVendors returns empty array on network failure", async () => {
+      mockFetchFail();
+      expect(await getVendors()).toEqual([]);
     });
 
-    it("safeParse returns fallback for corrupted data", () => {
-      localStorageMock["loadpilot_test-co_quizzes_v1"] = "not-json";
-      expect(getStoredQuizzes()).toEqual([]);
+    it("getStoredQuizzes returns data from API", async () => {
+      mockFetch([{ id: "q1", title: "Test" }]);
+      const result = await getStoredQuizzes();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe("q1");
+    });
+
+    it("getStoredResults returns empty array when API returns non-ok", async () => {
+      mockFetch([], false);
+      expect(await getStoredResults()).toEqual([]);
     });
   });
 
   // ─── saveMaintenanceRecord ───────────────────────────────────────────
   describe("saveMaintenanceRecord", () => {
-    it("adds record to front of list", () => {
+    it("POSTs record to /api/safety/maintenance", async () => {
+      mockFetch({ id: "mr-1" });
+
       const record = {
         id: "mr-1",
         equipmentId: "eq-1",
@@ -128,125 +142,90 @@ describe("safetyService — enhanced coverage", () => {
         performedBy: "Mechanic",
       } as any;
 
-      saveMaintenanceRecord(record);
+      await saveMaintenanceRecord(record);
 
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("maintenance"),
-      );
-      expect(key).toBeTruthy();
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].id).toBe("mr-1");
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls).toHaveLength(1);
+      expect(calls[0][0]).toContain("/safety/maintenance");
+      expect(calls[0][1].method).toBe("POST");
+      expect(JSON.parse(calls[0][1].body).id).toBe("mr-1");
     });
 
-    it("prepends new records (most recent first)", () => {
-      saveMaintenanceRecord({ id: "mr-1" } as any);
-      saveMaintenanceRecord({ id: "mr-2" } as any);
-
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("maintenance"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored[0].id).toBe("mr-2"); // most recent first
-      expect(stored[1].id).toBe("mr-1");
+    it("does not throw on network failure", async () => {
+      mockFetchFail();
+      await expect(
+        saveMaintenanceRecord({ id: "mr-1" } as any),
+      ).resolves.not.toThrow();
     });
   });
 
   // ─── saveServiceTicket ───────────────────────────────────────────────
   describe("saveServiceTicket", () => {
-    it("creates new ticket", () => {
-      saveServiceTicket({ id: "st-1", title: "Fix brakes" } as any);
+    it("POSTs ticket to /api/safety/service-tickets", async () => {
+      mockFetch({ id: "st-1" });
 
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("service_tickets"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].title).toBe("Fix brakes");
+      await saveServiceTicket({ id: "st-1", title: "Fix brakes" } as any);
+
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][0]).toContain("/safety/service-tickets");
+      expect(calls[0][1].method).toBe("POST");
     });
 
-    it("updates existing ticket by id", () => {
-      saveServiceTicket({ id: "st-1", title: "Fix brakes" } as any);
-      saveServiceTicket({ id: "st-1", title: "Fix brakes - URGENT" } as any);
-
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("service_tickets"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].title).toBe("Fix brakes - URGENT");
+    it("does not throw on network failure", async () => {
+      mockFetchFail();
+      await expect(
+        saveServiceTicket({ id: "st-1" } as any),
+      ).resolves.not.toThrow();
     });
   });
 
   // ─── saveVendor ──────────────────────────────────────────────────────
   describe("saveVendor", () => {
-    it("creates new vendor", () => {
-      saveVendor({ id: "v-1", name: "AutoParts Inc" } as any);
+    it("POSTs vendor to /api/safety/vendors", async () => {
+      mockFetch({ id: "v-1" });
 
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("vendors"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].name).toBe("AutoParts Inc");
+      await saveVendor({ id: "v-1", name: "AutoParts Inc" } as any);
+
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][0]).toContain("/safety/vendors");
+      expect(calls[0][1].method).toBe("POST");
     });
 
-    it("updates existing vendor by id", () => {
-      saveVendor({ id: "v-1", name: "Old Name" } as any);
-      saveVendor({ id: "v-1", name: "New Name" } as any);
-
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("vendors"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].name).toBe("New Name");
+    it("does not throw on network failure", async () => {
+      mockFetchFail();
+      await expect(saveVendor({ id: "v-1" } as any)).resolves.not.toThrow();
     });
   });
 
   // ─── logSafetyActivity ───────────────────────────────────────────────
   describe("logSafetyActivity", () => {
-    it("logs an activity entry", () => {
-      logSafetyActivity("Test event", "Status", "admin");
+    it("POSTs to /api/safety/activity", async () => {
+      mockFetch({ id: "act-1" });
 
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("safety_activity"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].message).toBe("Test event");
-      expect(stored[0].type).toBe("Status");
-      expect(stored[0].user).toBe("admin");
+      await logSafetyActivity("Test event", "Status", "admin");
+
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][0]).toContain("/safety/activity");
+      expect(calls[0][1].method).toBe("POST");
+
+      const body = JSON.parse(calls[0][1].body);
+      expect(body.action).toBe("Test event");
+      expect(body.entity_type).toBe("Status");
+      expect(body.actor).toBe("admin");
     });
 
-    it("prepends new entries (most recent first)", () => {
-      logSafetyActivity("First", "Alert");
-      logSafetyActivity("Second", "Notification");
-
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("safety_activity"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored[0].message).toBe("Second");
-    });
-
-    it("limits log to 50 entries", () => {
-      for (let i = 0; i < 55; i++) {
-        logSafetyActivity(`Event ${i}`, "Status");
-      }
-
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("safety_activity"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored.length).toBeLessThanOrEqual(50);
+    it("does not throw on network failure", async () => {
+      mockFetchFail();
+      await expect(logSafetyActivity("Event", "Alert")).resolves.not.toThrow();
     });
   });
 
   // ─── saveQuizResult ──────────────────────────────────────────────────
   describe("saveQuizResult", () => {
-    it("appends quiz result", () => {
-      saveQuizResult({
+    it("POSTs to /api/safety/quiz-results", async () => {
+      mockFetch({ id: "qr-1" });
+
+      await saveQuizResult({
         quizId: "q1",
         driverId: "d1",
         passed: true,
@@ -254,12 +233,9 @@ describe("safetyService — enhanced coverage", () => {
         completedAt: "2026-03-15",
       } as any);
 
-      const key = Object.keys(localStorageMock).find((k) =>
-        k.includes("quiz_results"),
-      );
-      const stored = JSON.parse(localStorageMock[key!]);
-      expect(stored).toHaveLength(1);
-      expect(stored[0].passed).toBe(true);
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][0]).toContain("/safety/quiz-results");
+      expect(calls[0][1].method).toBe("POST");
     });
   });
 
@@ -267,50 +243,57 @@ describe("safetyService — enhanced coverage", () => {
   describe("checkDriverCompliance", () => {
     it("returns compliant for driver with no requirements", () => {
       const user = { id: "d1", safetyScore: 100, restricted: false } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.isCompliant).toBe(true);
       expect(result.blockingReasons).toHaveLength(0);
       expect(result.safetyScore).toBe(100);
     });
 
     it("blocks driver with incomplete mandatory quiz", () => {
-      // Store mandatory quiz
-      saveQuiz({
-        id: "q1",
-        title: "Hazmat Safety",
-        isMandatory: true,
-        assignedTo: ["all"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Hazmat Safety",
+          isMandatory: true,
+          assignedTo: ["all"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ] as any[];
 
       const user = { id: "d1", safetyScore: 100, restricted: false } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, quizzes, []);
       expect(result.isCompliant).toBe(false);
-      expect(result.blockingReasons).toContain("Training: Hazmat Safety Required");
+      expect(result.blockingReasons).toContain(
+        "Training: Hazmat Safety Required",
+      );
       expect(result.safetyScore).toBe(90); // -10 for missing quiz
     });
 
     it("passes driver who completed mandatory quiz", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Safety 101",
-        isMandatory: true,
-        assignedTo: ["d1"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Safety 101",
+          isMandatory: true,
+          assignedTo: ["d1"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ] as any[];
 
-      saveQuizResult({
-        quizId: "q1",
-        driverId: "d1",
-        passed: true,
-        score: 85,
-        completedAt: "2026-03-10",
-      } as any);
+      const results = [
+        {
+          quizId: "q1",
+          driverId: "d1",
+          passed: true,
+          score: 85,
+          completedAt: "2026-03-10",
+        },
+      ] as any[];
 
       const user = { id: "d1", safetyScore: 100, restricted: false } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, quizzes, results);
       expect(result.isCompliant).toBe(true);
     });
 
@@ -323,7 +306,7 @@ describe("safetyService — enhanced coverage", () => {
           { type: "CDL", status: "Expired", isMandatory: true },
         ],
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.isCompliant).toBe(false);
       expect(result.blockingReasons).toContain("Compliance: CDL Expired");
       expect(result.safetyScore).toBe(85); // -15 for expired doc
@@ -338,7 +321,7 @@ describe("safetyService — enhanced coverage", () => {
           { type: "Drug Test", status: "Failed", isMandatory: true },
         ],
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.isCompliant).toBe(false);
       expect(result.blockingReasons).toContain("Compliance: Drug Test Failed");
     });
@@ -352,7 +335,7 @@ describe("safetyService — enhanced coverage", () => {
           { type: "First Aid", status: "Expired", isMandatory: false },
         ],
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.isCompliant).toBe(true);
     });
 
@@ -363,7 +346,7 @@ describe("safetyService — enhanced coverage", () => {
         restricted: true,
         restrictionReason: "Suspended license",
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.isCompliant).toBe(false);
       expect(result.blockingReasons).toContain("Suspended license");
       expect(result.safetyScore).toBeLessThanOrEqual(50);
@@ -375,28 +358,29 @@ describe("safetyService — enhanced coverage", () => {
         safetyScore: 100,
         restricted: true,
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.blockingReasons).toContain("Administrative Lockout");
     });
 
     it("safetyScore never goes below 0", () => {
-      // Multiple deductions to push below 0
-      saveQuiz({
-        id: "q1",
-        title: "Quiz 1",
-        isMandatory: true,
-        assignedTo: ["all"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
-      saveQuiz({
-        id: "q2",
-        title: "Quiz 2",
-        isMandatory: true,
-        assignedTo: ["all"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Quiz 1",
+          isMandatory: true,
+          assignedTo: ["all"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+        {
+          id: "q2",
+          title: "Quiz 2",
+          isMandatory: true,
+          assignedTo: ["all"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ] as any[];
 
       const user = {
         id: "d1",
@@ -406,109 +390,176 @@ describe("safetyService — enhanced coverage", () => {
           { type: "CDL", status: "Expired", isMandatory: true },
         ],
       } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, quizzes, []);
       expect(result.safetyScore).toBeGreaterThanOrEqual(0);
     });
 
     it("uses default safetyScore of 100 when not set", () => {
       const user = { id: "d1", restricted: false } as any;
-      const result = checkDriverCompliance(user);
+      const result = checkDriverCompliance(user, [], []);
       expect(result.safetyScore).toBe(100);
     });
   });
 
   // ─── getDriverQuizzes ────────────────────────────────────────────────
   describe("getDriverQuizzes", () => {
-    it("returns empty array when no quizzes exist", () => {
-      const result = getDriverQuizzes("d1");
+    it("returns empty array when no quizzes exist", async () => {
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
+
+      const result = await getDriverQuizzes("d1");
       expect(result).toEqual([]);
     });
 
-    it("returns quizzes assigned to driver with Pending status", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Safety Quiz",
-        isMandatory: true,
-        assignedTo: ["d1"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+    it("returns quizzes assigned to driver with Pending status", async () => {
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Safety Quiz",
+          isMandatory: true,
+          assignedTo: ["d1"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(quizzes),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
 
-      const result = getDriverQuizzes("d1");
+      const result = await getDriverQuizzes("d1");
       expect(result).toHaveLength(1);
       expect(result[0].status).toBe("Pending");
     });
 
-    it("shows Passed status when driver passed the quiz", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Safety Quiz",
-        isMandatory: true,
-        assignedTo: ["d1"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+    it("shows Passed status when driver passed the quiz", async () => {
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Safety Quiz",
+          isMandatory: true,
+          assignedTo: ["d1"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ];
+      const results = [
+        {
+          quizId: "q1",
+          driverId: "d1",
+          passed: true,
+          score: 95,
+          completedAt: "2026-03-10",
+        },
+      ];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(quizzes),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(results),
+        } as any);
 
-      saveQuizResult({
-        quizId: "q1",
-        driverId: "d1",
-        passed: true,
-        score: 95,
-        completedAt: "2026-03-10",
-      } as any);
-
-      const result = getDriverQuizzes("d1");
+      const result = await getDriverQuizzes("d1");
       expect(result[0].status).toBe("Passed");
       expect(result[0].score).toBe(95);
     });
 
-    it("shows Failed status when driver failed the quiz", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Safety Quiz",
-        isMandatory: true,
-        assignedTo: ["d1"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+    it("shows Failed status when driver failed the quiz", async () => {
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Safety Quiz",
+          isMandatory: true,
+          assignedTo: ["d1"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ];
+      const results = [
+        {
+          quizId: "q1",
+          driverId: "d1",
+          passed: false,
+          score: 40,
+          completedAt: "2026-03-10",
+        },
+      ];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(quizzes),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(results),
+        } as any);
 
-      saveQuizResult({
-        quizId: "q1",
-        driverId: "d1",
-        passed: false,
-        score: 40,
-        completedAt: "2026-03-10",
-      } as any);
-
-      const result = getDriverQuizzes("d1");
+      const result = await getDriverQuizzes("d1");
       expect(result[0].status).toBe("Failed");
     });
 
-    it("includes quizzes assigned to 'all'", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Universal Quiz",
-        isMandatory: false,
-        assignedTo: ["all"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+    it("includes quizzes assigned to 'all'", async () => {
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Universal Quiz",
+          isMandatory: false,
+          assignedTo: ["all"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(quizzes),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
 
-      const result = getDriverQuizzes("any-driver");
+      const result = await getDriverQuizzes("any-driver");
       expect(result).toHaveLength(1);
     });
 
-    it("excludes quizzes not assigned to driver", () => {
-      saveQuiz({
-        id: "q1",
-        title: "Other Driver Quiz",
-        isMandatory: true,
-        assignedTo: ["d2"],
-        createdAt: "2026-03-01",
-        questions: [],
-      } as any);
+    it("excludes quizzes not assigned to driver", async () => {
+      const quizzes = [
+        {
+          id: "q1",
+          title: "Other Driver Quiz",
+          isMandatory: true,
+          assignedTo: ["d2"],
+          createdAt: "2026-03-01",
+          questions: [],
+        },
+      ];
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve(quizzes),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
 
-      const result = getDriverQuizzes("d1");
+      const result = await getDriverQuizzes("d1");
       expect(result).toHaveLength(0);
     });
   });
@@ -516,7 +567,12 @@ describe("safetyService — enhanced coverage", () => {
   // ─── calculateDriverPerformance ──────────────────────────────────────
   describe("calculateDriverPerformance", () => {
     it("returns Elite grade for driver with 100% scores", async () => {
-      const user = { id: "d1", companyId: "c1", safetyScore: 100, restricted: false } as any;
+      const user = {
+        id: "d1",
+        companyId: "c1",
+        safetyScore: 100,
+        restricted: false,
+      } as any;
       mockGetCompany.mockResolvedValue({
         scoringConfig: {
           minimumDispatchScore: 75,
@@ -525,9 +581,19 @@ describe("safetyService — enhanced coverage", () => {
       });
       mockGetLoads.mockResolvedValue([]);
 
+      // getStoredQuizzes and getStoredResults both return empty
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
+
       const perf = await calculateDriverPerformance(user);
       expect(perf.driverId).toBe("d1");
-      // No loads = 100% on all metrics
       expect(perf.totalScore).toBe(100);
       expect(perf.grade).toBe("Elite");
       expect(perf.status).toBe("Ready");
@@ -551,11 +617,19 @@ describe("safetyService — enhanced coverage", () => {
         {
           driverId: "d1",
           status: "delivered",
-          issues: [
-            { category: "Dispatch", description: "Late delivery" },
-          ],
+          issues: [{ category: "Dispatch", description: "Late delivery" }],
         },
       ]);
+
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.grade).toBe("At Risk");
@@ -563,12 +637,33 @@ describe("safetyService — enhanced coverage", () => {
     });
 
     it("counts on-time and paperwork metrics", async () => {
-      const user = { id: "d1", companyId: "c1", safetyScore: 100, restricted: false } as any;
+      const user = {
+        id: "d1",
+        companyId: "c1",
+        safetyScore: 100,
+        restricted: false,
+      } as any;
       mockGetCompany.mockResolvedValue(null); // Uses defaults
       mockGetLoads.mockResolvedValue([
         { driverId: "d1", status: "delivered", bolNumber: "BOL-1", issues: [] },
-        { driverId: "d1", status: "delivered", bolNumber: "", bolUrls: [], issues: [{ category: "Dispatch", description: "late" }] },
+        {
+          driverId: "d1",
+          status: "delivered",
+          bolNumber: "",
+          bolUrls: [],
+          issues: [{ category: "Dispatch", description: "late" }],
+        },
       ]);
+
+      vi.spyOn(globalThis, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve([]),
+        } as any);
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.metrics.loadCount).toBe(2);
@@ -579,13 +674,19 @@ describe("safetyService — enhanced coverage", () => {
 
   // ─── getEquipment ────────────────────────────────────────────────────
   describe("getEquipment", () => {
-    it("fetches equipment from API", async () => {
+    it("fetches equipment from API using getAuthHeaders", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         json: () => Promise.resolve([{ id: "eq-1", type: "Truck" }]),
       } as any);
 
       const equipment = await getEquipment("c1");
       expect(equipment).toHaveLength(1);
+
+      // Verify it uses getAuthHeaders (not localStorage.getItem('token'))
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][1].headers).toMatchObject({
+        Authorization: "Bearer test-token",
+      });
     });
 
     it("returns empty array on API failure", async () => {
@@ -597,13 +698,19 @@ describe("safetyService — enhanced coverage", () => {
 
   // ─── getComplianceRecords ────────────────────────────────────────────
   describe("getComplianceRecords", () => {
-    it("fetches compliance records from API", async () => {
+    it("fetches compliance records from API using getAuthHeaders", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         json: () => Promise.resolve([{ id: "cr-1" }]),
       } as any);
 
       const records = await getComplianceRecords("u1");
       expect(records).toHaveLength(1);
+
+      // Verify it uses getAuthHeaders (not localStorage.getItem('token'))
+      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
+      expect(calls[0][1].headers).toMatchObject({
+        Authorization: "Bearer test-token",
+      });
     });
 
     it("returns empty array on API failure", async () => {
@@ -626,6 +733,11 @@ describe("safetyService — enhanced coverage", () => {
         name: "Test Co",
         equipmentRegistry: [],
       });
+      // Mock logSafetyActivity fetch
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({}),
+      } as any);
 
       const asset = { id: "eq-1", type: "Truck" } as any;
       const user = { name: "Admin" } as any;
@@ -641,7 +753,11 @@ describe("safetyService — enhanced coverage", () => {
     it("does nothing when company not found", async () => {
       mockGetCompany.mockResolvedValue(null);
 
-      await registerAsset("nonexistent", { id: "eq-1" } as any, { name: "Admin" } as any);
+      await registerAsset(
+        "nonexistent",
+        { id: "eq-1" } as any,
+        { name: "Admin" } as any,
+      );
 
       expect(mockUpdateCompany).not.toHaveBeenCalled();
     });
@@ -723,7 +839,6 @@ describe("safetyService — enhanced coverage", () => {
   // ─── seedSafetyData ──────────────────────────────────────────────────
   describe("seedSafetyData", () => {
     it("is a no-op (deprecated)", () => {
-      // Should not throw and do nothing
       expect(() => seedSafetyData()).not.toThrow();
       expect(() => seedSafetyData(true)).not.toThrow();
     });

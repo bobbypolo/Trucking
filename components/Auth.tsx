@@ -30,7 +30,12 @@ import {
   X,
   Zap,
 } from "lucide-react";
-import { login, registerCompany, updateCompany } from "../services/authService";
+import {
+  login,
+  registerCompany,
+  updateCompany,
+  getAuthHeaders,
+} from "../services/authService";
 import { InputDialog } from "./ui/InputDialog";
 import {
   User as UserType,
@@ -112,6 +117,13 @@ function clearWizardState(): void {
   }
 }
 
+const TIER_PRICES: Record<string, string> = {
+  "Records Vault": "$19.00",
+  "Automation Pro": "$69.00",
+  "Fleet Core": "$49.00",
+  "Fleet Command": "$149.00",
+};
+
 interface Props {
   onLogin: (user: UserType) => void;
 }
@@ -156,9 +168,6 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     useState<FreightType>("Dry Van");
 
   // Payment States
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCVC, setCardCVC] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [additionalSeats, setAdditionalSeats] = useState(0);
 
@@ -224,9 +233,41 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const user = await login(email, password);
-    if (user) onLogin(user);
-    else setError("Invalid credentials.");
+    setError("");
+    setIsProcessing(true);
+    try {
+      const user = await login(email, password);
+      if (user) {
+        onLogin(user);
+      } else {
+        setError("Invalid credentials.");
+        setPassword("");
+      }
+    } catch (err: unknown) {
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as { code: string }).code
+          : "";
+      const message = err instanceof Error ? err.message : "";
+
+      if (
+        code === "auth/wrong-password" ||
+        code === "auth/user-not-found" ||
+        code === "auth/invalid-credential"
+      ) {
+        setError("Invalid credentials.");
+      } else if (
+        code === "auth/network-request-failed" ||
+        message.includes("Failed to fetch")
+      ) {
+        setError("Network error. Please check your connection.");
+      } else {
+        setError("Sign-in failed. Please try again.");
+      }
+      setPassword("");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleForgotPassword = async (emailInput: string) => {
@@ -306,114 +347,181 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     setView("payment");
   };
 
-  const processSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Core account creation logic shared by both trial signup and Stripe checkout.
+  // Creates the Firebase user, registers the company, patches with wizard data,
+  // and returns the created user. Does NOT call onLogin — callers decide when
+  // to finalize the session.
+  const createAccount = async (): Promise<UserType> => {
+    const { user, company } = await registerCompany(
+      companyName,
+      email,
+      name,
+      signupType,
+      password,
+      1 + additionalSeats,
+      selectedFreightTypes,
+      primaryFreightType,
+      tier,
+    );
+
+    // Patch Company with full robust data
+    const updatedCompany: Company = {
+      ...company,
+      subscriptionTier: tier,
+      mcNumber,
+      taxId,
+      address,
+      city,
+      state,
+      zip,
+      equipmentRegistry: [
+        ...(truckUnitId
+          ? [
+              {
+                id: truckUnitId,
+                type: "Truck" as const,
+                status: "Active" as const,
+                ownershipType: "Company Owned" as const,
+                providerName: "Internal",
+                dailyCost: 45,
+              },
+            ]
+          : []),
+        ...(trailerUnitId
+          ? [
+              {
+                id: trailerUnitId,
+                type: (primaryFreightType === "Intermodal"
+                  ? "Chassis"
+                  : "Trailer") as any,
+                status: "Active" as const,
+                ownershipType: "Company Owned" as const,
+                providerName: "Internal",
+                dailyCost: 20,
+              },
+            ]
+          : []),
+        ...company.equipmentRegistry,
+      ],
+      automationSettings:
+        tier === "Automation Pro"
+          ? {
+              rules: [
+                {
+                  id: uuidv4(),
+                  name: "RateCon Auto-Intake",
+                  enabled: true,
+                  trigger: "doc_upload",
+                  docType: "RateCon",
+                  action: "create_load",
+                  configuration: {
+                    autoApprove: false,
+                    extractFields: ["rate", "broker", "pickup", "delivery"],
+                  },
+                },
+                {
+                  id: uuidv4(),
+                  name: "Fuel Receipt Scan",
+                  enabled: true,
+                  trigger: "photo_scan",
+                  docType: "FuelReceipt",
+                  action: "create_expense",
+                  configuration: { tagAs: ["Fuel"] },
+                },
+              ],
+              docNamingRules,
+            }
+          : undefined,
+      iftaSettings:
+        tier === "Automation Pro"
+          ? {
+              baseJurisdiction,
+              quarters: ["Q1", "Q2", "Q3", "Q4"],
+              mileageSource: "Manual",
+            }
+          : undefined,
+      moneySettings:
+        tier === "Automation Pro"
+          ? {
+              defaultExpenseCategories: expenseCategories,
+              reimbursementRules,
+              payStructure: "Independent",
+            }
+          : undefined,
+    };
+
+    await updateCompany(updatedCompany);
+    clearWizardState();
+    return user;
+  };
+
+  // Complete signup with trial status (no Stripe payment)
+  const processSignup = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsProcessing(true);
 
     try {
-      const { user, company } = await registerCompany(
-        companyName,
-        email,
-        name,
-        signupType,
-        password,
-        1 + additionalSeats,
-        selectedFreightTypes,
-        primaryFreightType,
-        tier,
-      );
-
-      // Patch Company with full robust data
-      const updatedCompany: Company = {
-        ...company,
-        subscriptionTier: tier,
-        mcNumber,
-        taxId,
-        address,
-        city,
-        state,
-        zip,
-        equipmentRegistry: [
-          ...(truckUnitId
-            ? [
-                {
-                  id: truckUnitId,
-                  type: "Truck" as const,
-                  status: "Active" as const,
-                  ownershipType: "Company Owned" as const,
-                  providerName: "Internal",
-                  dailyCost: 45,
-                },
-              ]
-            : []),
-          ...(trailerUnitId
-            ? [
-                {
-                  id: trailerUnitId,
-                  type: (primaryFreightType === "Intermodal"
-                    ? "Chassis"
-                    : "Trailer") as any,
-                  status: "Active" as const,
-                  ownershipType: "Company Owned" as const,
-                  providerName: "Internal",
-                  dailyCost: 20,
-                },
-              ]
-            : []),
-          ...company.equipmentRegistry,
-        ],
-        automationSettings:
-          tier === "Automation Pro"
-            ? {
-                rules: [
-                  {
-                    id: uuidv4(),
-                    name: "RateCon Auto-Intake",
-                    enabled: true,
-                    trigger: "doc_upload",
-                    docType: "RateCon",
-                    action: "create_load",
-                    configuration: {
-                      autoApprove: false,
-                      extractFields: ["rate", "broker", "pickup", "delivery"],
-                    },
-                  },
-                  {
-                    id: uuidv4(),
-                    name: "Fuel Receipt Scan",
-                    enabled: true,
-                    trigger: "photo_scan",
-                    docType: "FuelReceipt",
-                    action: "create_expense",
-                    configuration: { tagAs: ["Fuel"] },
-                  },
-                ],
-                docNamingRules,
-              }
-            : undefined,
-        iftaSettings:
-          tier === "Automation Pro"
-            ? {
-                baseJurisdiction,
-                quarters: ["Q1", "Q2", "Q3", "Q4"],
-                mileageSource: "Manual",
-              }
-            : undefined,
-        moneySettings:
-          tier === "Automation Pro"
-            ? {
-                defaultExpenseCategories: expenseCategories,
-                reimbursementRules,
-                payStructure: "Independent",
-              }
-            : undefined,
-      };
-
-      await updateCompany(updatedCompany);
-      clearWizardState(); // Clear persisted wizard state on successful completion
+      const user = await createAccount();
       onLogin(user);
     } catch (e) {
       setError("Signup failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Redirect to Stripe Checkout for paid subscription.
+  // Flow: create account first (so we have Firebase auth + a valid token),
+  // then attempt the Stripe checkout redirect. If Stripe fails at any point
+  // the user already has a trial account and is logged in normally.
+  const handleStripeCheckout = async () => {
+    setIsProcessing(true);
+    setError("");
+
+    let user: UserType | undefined;
+
+    try {
+      // Step 1: Create the account so we have Firebase auth + a valid token.
+      user = await createAccount();
+    } catch {
+      setError("Signup failed. Please try again.");
+      setIsProcessing(false);
+      return;
+    }
+
+    try {
+      // Step 2: Attempt Stripe checkout with the newly acquired auth token.
+      const headers = await getAuthHeaders();
+      const successUrl = `${window.location.origin}/signup/success?session_id={CHECKOUT_SESSION_ID}`;
+      const cancelUrl = `${window.location.origin}/signup/cancel`;
+
+      const response = await fetch(
+        `${API_URL}/stripe/create-checkout-session`,
+        {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            tier,
+            successUrl,
+            cancelUrl,
+          }),
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.url) {
+          // Redirect to Stripe — webhook will upgrade tier on payment success
+          window.location.href = data.url;
+          return;
+        }
+      }
+
+      // Stripe not configured or no checkout URL — user already has trial account
+      onLogin(user);
+    } catch {
+      // Network error or Stripe unavailable — user already has trial account
+      onLogin(user);
     } finally {
       setIsProcessing(false);
     }
@@ -508,14 +616,20 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <div className="relative">
                   <User className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
                   <input
+                    aria-label="Email address"
                     type="email"
                     required
+                    aria-required="true"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
                     onBlur={(e) => validateEmail(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="you@company.com"
                     autoComplete="email"
+                    disabled={isProcessing}
                   />
                   {emailError && (
                     <p className="text-red-400 text-xs font-bold mt-1 ml-1">
@@ -526,13 +640,19 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <div className="relative">
                   <Lock className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
                   <input
+                    aria-label="Password"
                     type="password"
                     required
+                    aria-required="true"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setError("");
+                    }}
                     className="w-full bg-slate-800 border border-slate-700 rounded-2xl pl-12 pr-4 py-3.5 text-white font-black"
                     placeholder="••••••••"
                     autoComplete="current-password"
+                    disabled={isProcessing}
                   />
                 </div>
               </div>
@@ -543,9 +663,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               )}
               <button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
+                disabled={isProcessing}
+                className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:cursor-not-allowed text-white font-black py-4 rounded-2xl uppercase tracking-[0.2em] shadow-xl transition-all active:scale-95"
               >
-                Sign In
+                {isProcessing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Signing In...
+                  </span>
+                ) : (
+                  "Sign In"
+                )}
               </button>
               <button
                 type="button"
@@ -553,7 +681,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   setForgotPasswordMessage("");
                   setForgotPasswordOpen(true);
                 }}
-                className="w-full text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
+                className="w-full flex items-center justify-center text-blue-400 text-xs font-black uppercase tracking-widest hover:text-blue-300 transition-colors"
                 data-testid="forgot-password-link"
               >
                 Forgot Password?
@@ -566,7 +694,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               <button
                 type="button"
                 onClick={() => setView("signup")}
-                className="w-full text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                className="w-full flex items-center justify-center text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
               >
                 Create Account
               </button>
@@ -582,7 +710,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("login")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -619,10 +747,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authLegalName"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Legal Name <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="authLegalName"
                     required
                     placeholder="Legal Name"
                     value={name}
@@ -631,10 +763,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authCompanyName"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Company Name <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="authCompanyName"
                     required
                     placeholder="Company Name"
                     value={companyName}
@@ -645,10 +781,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authEmail"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="authEmail"
                     required
                     type="email"
                     placeholder="Email"
@@ -665,10 +805,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   )}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authPassword"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Password <span className="text-red-500">*</span>
                   </label>
                   <input
+                    id="authPassword"
                     required
                     type="password"
                     placeholder="Password"
@@ -697,7 +841,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("signup")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -771,7 +915,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("signup")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -786,10 +930,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authMcNumberOptional"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     MC Number (Optional)
                   </label>
                   <input
+                    id="authMcNumberOptional"
                     placeholder="e.g., MC-123456"
                     value={mcNumber}
                     onChange={(e) => setMcNumber(e.target.value)}
@@ -797,10 +945,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authTaxIDEIN"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Tax ID / EIN *
                   </label>
                   <input
+                    id="authTaxIDEIN"
                     required
                     placeholder="00-0000000"
                     value={taxId}
@@ -810,10 +962,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                <label
+                  htmlFor="authBillingStreetAddress"
+                  className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                >
                   Billing Street Address *
                 </label>
                 <input
+                  id="authBillingStreetAddress"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
@@ -823,6 +979,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <input
+                  aria-label="City"
                   required
                   placeholder="City"
                   value={city}
@@ -830,6 +987,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
                 <input
+                  aria-label="State"
                   required
                   placeholder="State"
                   value={state}
@@ -837,6 +995,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   className="bg-slate-800 border border-slate-700 rounded-xl p-3 text-sm text-white"
                 />
                 <input
+                  aria-label="ZIP"
                   required
                   placeholder="ZIP"
                   value={zip}
@@ -862,7 +1021,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("regulatory")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -881,6 +1040,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     <Truck className="w-6 h-6 text-white" />
                   </div>
                   <input
+                    aria-label="Power Unit # (Truck ID)"
                     placeholder="Power Unit # (Truck ID)"
                     value={truckUnitId}
                     onChange={(e) => setTruckUnitId(e.target.value)}
@@ -892,6 +1052,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     <Container className="w-6 h-6 text-white" />
                   </div>
                   <input
+                    aria-label="Trailing Unit # (Trailer/Chassis)"
                     placeholder="Trailing Unit # (Trailer/Chassis)"
                     value={trailerUnitId}
                     onChange={(e) => setTrailerUnitId(e.target.value)}
@@ -934,7 +1095,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("equipment")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -973,17 +1134,21 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     ))}
                     <button
                       type="button"
-                      className="bg-slate-900 border border-slate-800 border-dashed px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-white uppercase"
+                      className="bg-slate-900 border border-slate-800 border-dashed px-3 py-1.5 rounded-lg text-[10px] font-black text-slate-500 hover:text-white uppercase flex items-center justify-center"
                     >
                       + Add Category
                     </button>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authReimbursementRules"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Reimbursement Rules
                   </label>
                   <input
+                    id="authReimbursementRules"
                     value={reimbursementRules}
                     onChange={(e) => setReimbursementRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm"
@@ -1009,7 +1174,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("money")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1024,10 +1189,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authBaseJurisdictionState"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Base Jurisdiction (State)
                   </label>
                   <input
+                    id="authBaseJurisdictionState"
                     required
                     value={baseJurisdiction}
                     onChange={(e) => setBaseJurisdiction(e.target.value)}
@@ -1036,10 +1205,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authMileageCaptureMode"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Mileage Capture Mode
                   </label>
-                  <select className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none">
+                  <select
+                    id="authMileageCaptureMode"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-black text-sm outline-none appearance-none"
+                  >
                     <option value="Manual">Manual Entry</option>
                     <option value="CSV">CSV Import</option>
                     <option value="ELD">ELD Integration</option>
@@ -1064,7 +1239,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("ifta")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1079,10 +1254,14 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authDocumentNamingRule"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Document Naming Rule
                   </label>
                   <input
+                    id="authDocumentNamingRule"
                     value={docNamingRules}
                     onChange={(e) => setDocNamingRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs"
@@ -1123,7 +1302,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 <button
                   type="button"
                   onClick={() => setView("templates")}
-                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1138,12 +1317,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
               </div>
               <div className="space-y-4">
                 <div className="space-y-1">
-                  <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
+                  <label
+                    htmlFor="authAccountantSeatOptional"
+                    className="text-[10px] text-slate-600 font-black uppercase ml-1"
+                  >
                     Accountant Seat (Optional)
                   </label>
                   <div className="relative">
                     <Users className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
                     <input
+                      id="authAccountantSeatOptional"
                       type="email"
                       value={accountantEmail}
                       onChange={(e) => setAccountantEmail(e.target.value)}
@@ -1182,10 +1365,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
           )}
 
           {view === "payment" && (
-            <form
-              onSubmit={processSignup}
-              className="space-y-8 animate-fade-in h-full flex flex-col justify-center"
-            >
+            <div className="space-y-8 animate-fade-in h-full flex flex-col justify-center">
               <div className="text-center relative">
                 <button
                   type="button"
@@ -1210,41 +1390,52 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     Subscription Plan
                   </span>
                   <span className="text-2xl font-black text-blue-400 font-mono">
-                    $49.00<span className="text-xs text-slate-600">/mo</span>
+                    {TIER_PRICES[tier] || "$49.00"}
+                    <span className="text-xs text-slate-600">/mo</span>
                   </span>
                 </div>
-                <div className="space-y-4">
-                  <input
-                    placeholder="Card Number"
-                    value={cardNumber}
-                    onChange={(e) => setCardNumber(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-mono"
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <input
-                      placeholder="MM/YY"
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
-                    />
-                    <input
-                      placeholder="CVC"
-                      className="bg-slate-900 border border-slate-700 rounded-xl p-3 text-white"
-                    />
-                  </div>
+                <div className="text-center py-4">
+                  <span className="text-lg font-black text-white uppercase tracking-tight">
+                    {tier}
+                  </span>
+                  <p className="text-slate-400 text-xs mt-2">
+                    Payment is securely handled by Stripe. No card details are
+                    stored on our servers.
+                  </p>
                 </div>
               </div>
-              <button
-                disabled={isProcessing}
-                type="submit"
-                className="w-full bg-green-600 py-5 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl active:scale-95 flex items-center justify-center gap-4"
-              >
-                {isProcessing ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <ShieldCheck />
-                )}{" "}
-                Get Started
-              </button>
-            </form>
+              {error && (
+                <p className="text-red-400 text-sm text-center">{error}</p>
+              )}
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={handleStripeCheckout}
+                  className="w-full bg-blue-600 py-5 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl active:scale-95 flex items-center justify-center gap-4"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <CreditCard />
+                  )}{" "}
+                  Subscribe with Stripe
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessing}
+                  onClick={() => processSignup()}
+                  className="w-full bg-slate-700 py-4 rounded-3xl text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl active:scale-95 flex items-center justify-center gap-4 hover:bg-slate-600 transition-colors"
+                >
+                  {isProcessing ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <ShieldCheck />
+                  )}{" "}
+                  Start Free Trial
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

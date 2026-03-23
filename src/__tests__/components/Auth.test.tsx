@@ -16,6 +16,10 @@ vi.mock("../../../services/authService", () => ({
   login: (...args: unknown[]) => mockLogin(...args),
   registerCompany: (...args: unknown[]) => mockRegisterCompany(...args),
   updateCompany: (...args: unknown[]) => mockUpdateCompany(...args),
+  getAuthHeaders: vi.fn().mockResolvedValue({
+    "Content-Type": "application/json",
+    Authorization: "",
+  }),
 }));
 
 // Mock config
@@ -834,19 +838,22 @@ describe("Auth component", () => {
       return user;
     }
 
-    it("renders payment form with card fields", async () => {
+    it("renders payment step with Stripe and trial buttons (no card fields)", async () => {
       await goToPayment();
 
-      expect(screen.getByPlaceholderText("Card Number")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("MM/YY")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("CVC")).toBeInTheDocument();
-    });
-
-    it("renders Get Started submit button", async () => {
-      await goToPayment();
-
+      // Card fields must NOT exist (PCI compliance)
       expect(
-        screen.getByRole("button", { name: /get started/i }),
+        screen.queryByPlaceholderText("Card Number"),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("MM/YY")).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("CVC")).not.toBeInTheDocument();
+
+      // Stripe and trial buttons must exist
+      expect(
+        screen.getByRole("button", { name: /subscribe with stripe/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /start free trial/i }),
       ).toBeInTheDocument();
     });
 
@@ -856,10 +863,12 @@ describe("Auth component", () => {
       expect(screen.getByText("Subscription Plan")).toBeInTheDocument();
     });
 
-    it("calls registerCompany and onLogin on successful signup", async () => {
+    it("calls registerCompany and onLogin on free trial signup", async () => {
       const user = await goToPayment();
 
-      await user.click(screen.getByRole("button", { name: /get started/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         expect(mockRegisterCompany).toHaveBeenCalledWith(
@@ -888,7 +897,9 @@ describe("Auth component", () => {
       mockRegisterCompany.mockRejectedValue(new Error("API Error"));
       const user = await goToPayment();
 
-      await user.click(screen.getByRole("button", { name: /get started/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         // Error message may vary - check for any error indicator
@@ -898,12 +909,12 @@ describe("Auth component", () => {
       expect(onLogin).not.toHaveBeenCalled();
     });
 
-    it("disables button while processing", async () => {
+    it("disables buttons while processing", async () => {
       // Make registerCompany hang
       mockRegisterCompany.mockImplementation(() => new Promise(() => {}));
       const user = await goToPayment();
 
-      const btn = screen.getByRole("button", { name: /get started/i });
+      const btn = screen.getByRole("button", { name: /start free trial/i });
       await user.click(btn);
 
       await waitFor(() => {
@@ -1020,7 +1031,9 @@ describe("Auth component", () => {
       await waitFor(() => {
         expect(screen.getByText("Secure Hub")).toBeInTheDocument();
       });
-      await user.click(screen.getByRole("button", { name: /get started/i }));
+      await user.click(
+        screen.getByRole("button", { name: /start free trial/i }),
+      );
 
       await waitFor(() => {
         expect(onLogin).toHaveBeenCalled();

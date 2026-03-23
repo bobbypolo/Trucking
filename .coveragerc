@@ -1,0 +1,38 @@
+# Coverage configuration for Claude Workflow ADE hooks
+#
+# Branch coverage is enabled globally. Per-module aspirational targets are
+# documented below as comments only — enforcement is via the global fail_under
+# floor (60%). Per-module enforcement requires a custom script and is deferred
+# to P2.
+#
+# Aspirational branch coverage targets:
+#
+#   Safety-critical modules (target: 85%):
+#     - _prod_patterns.py   (production violation scanner — high-confidence required)
+#     - pre_bash_guard.py   (bash command guard — security boundary)
+#     - _qa_lib.py          (QA validation library — correctness critical)
+#
+#   Core modules (target: 75%):
+#     - _lib.py             (workflow state management — frequently exercised)
+#     - qa_runner.py        (QA orchestrator — all steps should be exercised)
+#
+#   Utility / ancillary modules (target: 60%):
+#     - post_format.py, post_write_prod_scan.py, post_bash_capture.py,
+#       stop_verify_gate.py, prd_generator.py (supporting infrastructure)
+#
+# These targets guide future test investment. The global fail_under = 80
+# is the only hard gate today.
+
+[run]
+branch = true
+source = .claude/hooks
+
+[report]
+# Global minimum branch coverage floor.
+# Aspirational per-module targets are documented in the header comments above.
+fail_under = 80
+show_missing = true
+skip_covered = false
+
+[html]
+directory = .claude/runtime/coverage_html

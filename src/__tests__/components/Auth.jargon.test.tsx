@@ -113,9 +113,10 @@ describe("R-S20-04: Replacement table fully applied", () => {
     expect(authSource).toContain("Subscription Plan");
   });
 
-  it('Auth.tsx CTA uses "Get Started"', () => {
+  it('Auth.tsx CTA uses "Subscribe with Stripe" and "Start Free Trial"', () => {
     expect(authSource).not.toContain("Initialize Authority");
-    expect(authSource).toContain("Get Started");
+    expect(authSource).toContain("Subscribe with Stripe");
+    expect(authSource).toContain("Start Free Trial");
   });
 
   it('BookingPortal.tsx client label is "Client" (not "Client Authority")', () => {

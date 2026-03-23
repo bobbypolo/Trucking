@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "../auth";
+import pool from "../db";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -257,13 +258,65 @@ router.post(
       }
 
       if (!principal) {
-        log.warn(
-          { firebaseUid: decodedToken.uid, email: decodedToken.email },
-          "Identity verified but no SQL user record found",
+        // Auto-provision: create a default company + admin user for verified
+        // Firebase users who have no SQL record yet (e.g. created via console).
+        const email = decodedToken.email;
+        if (!email) {
+          log.warn(
+            { firebaseUid: decodedToken.uid },
+            "Identity verified but no email on token — cannot auto-provision",
+          );
+          return res.status(404).json({
+            error: "User profile not found. Please contact support.",
+          });
+        }
+
+        log.info(
+          { firebaseUid: decodedToken.uid, email },
+          "Auto-provisioning SQL user for verified Firebase identity",
         );
-        return res.status(404).json({
-          error: "User profile not found. Please contact support.",
+
+        const newCompanyId = uuidv4();
+        const newUserId = uuidv4();
+        const displayName =
+          email.split("@")[0].charAt(0).toUpperCase() +
+          email.split("@")[0].slice(1);
+
+        // Create company
+        await pool.query(
+          `INSERT INTO companies (id, name, account_type, email, subscription_status)
+           VALUES (?, ?, 'owner_operator', ?, 'active')`,
+          [newCompanyId, `${displayName}'s Company`, email],
+        );
+
+        // Create admin user
+        await upsertSqlUser({
+          id: newUserId,
+          companyId: newCompanyId,
+          email,
+          name: displayName,
+          role: "admin",
+          firebaseUid: decodedToken.uid,
+          onboardingStatus: "Completed",
+          safetyScore: 100,
         });
+
+        // Mirror to Firestore
+        await mirrorUserToFirestore({
+          id: newUserId,
+          companyId: newCompanyId,
+          email,
+          name: displayName,
+          role: "admin",
+          firebaseUid: decodedToken.uid,
+        });
+
+        principal = await resolveSqlPrincipalByFirebaseUid(decodedToken.uid);
+        if (!principal) {
+          return res.status(500).json({
+            error: "Auto-provisioning failed. Please contact support.",
+          });
+        }
       }
 
       const [userRow, company] = await Promise.all([

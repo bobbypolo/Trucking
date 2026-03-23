@@ -1,15 +1,22 @@
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+// Heavy libraries (xlsx, jspdf) are dynamically imported on demand so they are
+// NOT bundled into the route chunk of any component that imports this service.
 
-export const exportToExcel = (data: any[], filename: string) => {
+export const exportToExcel = async (data: unknown[], filename: string): Promise<void> => {
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Report");
     XLSX.writeFile(wb, `${filename}.xlsx`);
 };
 
-export const exportToPDF = (headers: string[], data: any[][], title: string, filename: string) => {
+export const exportToPDF = async (
+    headers: string[],
+    data: unknown[][],
+    title: string,
+    filename: string,
+): Promise<void> => {
+    const { jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
     const doc = new jsPDF() as any;
 
     doc.setFontSize(20);

@@ -18,7 +18,6 @@ import {
   getDispatchEvents,
   getTimeLogs,
   getIncidents,
-  seedIncidents,
   createIncident,
   saveIncidentAction,
   saveIncidentCharge,
@@ -59,7 +58,9 @@ const Auth = React.lazy(() =>
 const Dashboard = React.lazy(() =>
   import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
 );
-import { LoadList } from "./components/LoadList";
+const LoadList = React.lazy(() =>
+  import("./components/LoadList").then((m) => ({ default: m.LoadList })),
+);
 const LoadBoardEnhanced = React.lazy(() =>
   import("./components/LoadBoardEnhanced").then((m) => ({
     default: m.LoadBoardEnhanced,
@@ -88,14 +89,24 @@ const BrokerManager = React.lazy(() =>
 const SafetyView = React.lazy(() =>
   import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
 );
-import { Intelligence } from "./components/Intelligence";
-import { Settlements } from "./components/Settlements";
+const Intelligence = React.lazy(() =>
+  import("./components/Intelligence").then((m) => ({
+    default: m.Intelligence,
+  })),
+);
+const Settlements = React.lazy(() =>
+  import("./components/Settlements").then((m) => ({ default: m.Settlements })),
+);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
   })),
 );
-import { LoadSetupModal } from "./components/LoadSetupModal";
+const LoadSetupModal = React.lazy(() =>
+  import("./components/LoadSetupModal").then((m) => ({
+    default: m.LoadSetupModal,
+  })),
+);
 const QuoteManager = React.lazy(() =>
   import("./components/QuoteManager").then((m) => ({
     default: m.QuoteManager,
@@ -158,6 +169,7 @@ const AuditLogs = React.lazy(() =>
   import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
+import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -185,9 +197,16 @@ const NetworkPortal = React.lazy(() =>
   })),
 );
 import { getRecord360Data } from "./services/storageService";
-import { GoogleMapsAPITester } from "./components/GoogleMapsAPITester";
-import { CommandCenterView } from "./components/CommandCenterView";
-import { DEMO_MODE } from "./services/firebase";
+const GoogleMapsAPITester = React.lazy(() =>
+  import("./components/GoogleMapsAPITester").then((m) => ({
+    default: m.GoogleMapsAPITester,
+  })),
+);
+const CommandCenterView = React.lazy(() =>
+  import("./components/CommandCenterView").then((m) => ({
+    default: m.CommandCenterView,
+  })),
+);
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -279,18 +298,16 @@ export default function App() {
     message: string;
     type: "success" | "error" | "info";
   } | null>(null);
+  // Session expired modal — shown on first auth:session-expired event.
+  // A ref guards against multiple rapid 401s showing the modal more than once.
+  const sessionExpiredFiredRef = React.useRef(false);
+  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
   useEffect(() => {
-    if (features.seedSystem && DEMO_MODE) {
-      seedDatabase().then(() => seedSafetyData(true));
-    }
-
     const unsubscribe = onUserChange(async (updatedUser) => {
       setUser(updatedUser);
       if (updatedUser) {
         await refreshData(updatedUser);
-        const l = await getLoads(updatedUser);
-        if (DEMO_MODE && l.length > 0) await seedIncidents(l);
       }
     });
 
@@ -302,77 +319,96 @@ export default function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
 
+    // Listen for 401 session-expired events emitted by apiFetch()
+    const handleSessionExpired = () => {
+      if (!sessionExpiredFiredRef.current) {
+        sessionExpiredFiredRef.current = true;
+        setShowSessionExpiredModal(true);
+      }
+    };
+    window.addEventListener("auth:session-expired", handleSessionExpired);
+
     return () => {
       unsubscribe();
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("auth:session-expired", handleSessionExpired);
     };
   }, []);
 
-  const refreshData = useCallback(async (currentUser: User) => {
-    const results = await Promise.allSettled([
-      getLoads(currentUser),
-      getBrokers(currentUser.companyId),
-      getCompanyUsers(currentUser.companyId),
-      getCompany(currentUser.companyId),
-      getDispatchEvents(currentUser.companyId),
-      getTimeLogs(currentUser.companyId, true),
-      getIncidents(),
-    ]);
+  const refreshData = useCallback(
+    async (currentUser: User) => {
+      const results = await Promise.allSettled([
+        getLoads(currentUser),
+        getBrokers(currentUser.companyId),
+        getCompanyUsers(currentUser.companyId),
+        getCompany(currentUser.companyId),
+        getDispatchEvents(currentUser.companyId),
+        getTimeLogs(currentUser.companyId, true),
+        getIncidents(),
+      ]);
 
-    const [
-      loadsResult,
-      brokersResult,
-      usersResult,
-      companyResult,
-      eventsResult,
-      logsResult,
-      incidentsResult,
-    ] = results;
+      const [
+        loadsResult,
+        brokersResult,
+        usersResult,
+        companyResult,
+        eventsResult,
+        logsResult,
+        incidentsResult,
+      ] = results;
 
-    // Apply each result, falling back to current state on failure
-    setLoads((prev) =>
-      loadsResult.status === "fulfilled" ? loadsResult.value : prev,
-    );
-    setBrokers((prev) =>
-      brokersResult.status === "fulfilled" ? brokersResult.value : prev,
-    );
-    setCompany((prev) =>
-      companyResult.status === "fulfilled" ? companyResult.value || null : prev,
-    );
-    setDispatchEvents((prev) =>
-      eventsResult.status === "fulfilled" ? eventsResult.value : prev,
-    );
-    setTimeLogs((prev) =>
-      logsResult.status === "fulfilled" ? logsResult.value : prev,
-    );
-    setIncidents((prev) =>
-      incidentsResult.status === "fulfilled" ? incidentsResult.value : prev,
-    );
-    if (
-      ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
-        currentUser.role,
-      )
-    ) {
-      setCompanyUsers((prev) =>
-        usersResult.status === "fulfilled" ? usersResult.value : prev,
+      // Apply each result, falling back to current state on failure
+      setLoads((prev) =>
+        loadsResult.status === "fulfilled" ? loadsResult.value : prev,
       );
-    } else {
-      setCompanyUsers([currentUser]);
-    }
+      setBrokers((prev) =>
+        brokersResult.status === "fulfilled" ? brokersResult.value : prev,
+      );
+      setCompany((prev) =>
+        companyResult.status === "fulfilled"
+          ? companyResult.value || null
+          : prev,
+      );
+      setDispatchEvents((prev) =>
+        eventsResult.status === "fulfilled" ? eventsResult.value : prev,
+      );
+      setTimeLogs((prev) =>
+        logsResult.status === "fulfilled" ? logsResult.value : prev,
+      );
+      setIncidents((prev) =>
+        incidentsResult.status === "fulfilled" ? incidentsResult.value : prev,
+      );
+      if (
+        ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
+          currentUser.role,
+        )
+      ) {
+        setCompanyUsers((prev) =>
+          usersResult.status === "fulfilled" ? usersResult.value : prev,
+        );
+      } else {
+        setCompanyUsers([currentUser]);
+      }
 
-    // Show toast if any calls failed
-    const failures = results.filter((r) => r.status === "rejected");
-    if (failures.length > 0) {
-      setRefreshToast({
-        message: "Some data could not be loaded. Please retry.",
-        type: "error",
-      });
-    }
-  }, []);
+      // Show toast if any calls failed
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        setRefreshToast({
+          message: "Some data could not be loaded. Please retry.",
+          type: "error",
+        });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [user?.companyId],
+  );
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
     refreshData(loggedInUser);
+    if (features.seedSystem) {
+      seedDatabase();
+    }
 
     // Support Agile Workspace Entry
     if (loggedInUser.primaryWorkspace === "Quotes") {
@@ -528,7 +564,7 @@ export default function App() {
 
   if (!user)
     return (
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
         <Auth onLogin={handleLogin} />
       </Suspense>
     );
@@ -666,7 +702,7 @@ export default function App() {
   // 4. Global Overlay Elements (Accessible everywhere)
   const globalOverlays = (
     <>
-      <Suspense fallback={null}>
+      <Suspense fallback={<LoadingSkeleton variant="list" count={3} />}>
         <IssueSidebar
           isOpen={isIssueSidebarOpen}
           onClose={() => setIsIssueSidebarOpen(false)}
@@ -683,30 +719,32 @@ export default function App() {
       </Suspense>
 
       {showLoadSetup && (
-        <LoadSetupModal
-          currentUser={user!}
-          preSelectedBrokerId={showLoadSetup.brokerId}
-          onContinue={(bid, did, ln, cn, oft, imd) => {
-            setShowLoadSetup(null);
-            setEditingLoad({
-              brokerId: bid,
-              driverId: did,
-              loadNumber: ln,
-              phoneCallNotes: cn,
-              freightType: oft,
-              ...imd,
-            });
-            setIsAdding(true);
-            setScanMode(!ln);
-          }}
-          onCancel={() => setShowLoadSetup(null)}
-        />
+        <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
+          <LoadSetupModal
+            currentUser={user!}
+            preSelectedBrokerId={showLoadSetup.brokerId}
+            onContinue={(bid, did, ln, cn, oft, imd) => {
+              setShowLoadSetup(null);
+              setEditingLoad({
+                brokerId: bid,
+                driverId: did,
+                loadNumber: ln,
+                phoneCallNotes: cn,
+                freightType: oft,
+                ...imd,
+              });
+              setIsAdding(true);
+              setScanMode(!ln);
+            }}
+            onCancel={() => setShowLoadSetup(null)}
+          />
+        </Suspense>
       )}
 
       {(isAdding || editingLoad) && scanMode && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex items-center justify-center p-4">
           <div className="w-full max-w-lg relative">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
               <Scanner
                 onDataExtracted={(d, b) => {
                   setScanMode(false);
@@ -736,7 +774,7 @@ export default function App() {
       {(isAdding || editingLoad) && !scanMode && (
         <div className="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full h-full max-w-7xl">
-            <Suspense fallback={null}>
+            <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
               <EditLoadForm
                 initialData={editingLoad || {}}
                 onSave={handleSaveLoad}
@@ -769,7 +807,7 @@ export default function App() {
       )}
 
       {viewingLoad && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <LoadDetailView
             load={viewingLoad}
             onClose={() => setViewingLoad(null)}
@@ -1234,7 +1272,9 @@ export default function App() {
                 </Suspense>
               )}
               {activeTab === "audit" && (
-                <Suspense fallback={null}>
+                <Suspense
+                  fallback={<LoadingSkeleton variant="table" count={3} />}
+                >
                   <AuditLogs user={user} />
                 </Suspense>
               )}
@@ -1249,7 +1289,11 @@ export default function App() {
                 </Suspense>
               )}
               {features.apiTester && activeTab === "api-tester" && (
-                <GoogleMapsAPITester />
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={1} />}
+                >
+                  <GoogleMapsAPITester />
+                </Suspense>
               )}
             </div>
           </div>
@@ -1273,7 +1317,7 @@ export default function App() {
         {mainContent}
         {globalOverlays}
         {user && (
-          <Suspense fallback={null}>
+          <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
             <CommsOverlay
               session={session}
               activeCallSession={activeCallSession}
@@ -1291,6 +1335,14 @@ export default function App() {
             />
           </Suspense>
         )}
+        <SessionExpiredModal
+          open={showSessionExpiredModal}
+          onNavigateToLogin={() => {
+            sessionExpiredFiredRef.current = false;
+            setShowSessionExpiredModal(false);
+            setUser(null);
+          }}
+        />
       </div>
     </ErrorBoundary>
   );

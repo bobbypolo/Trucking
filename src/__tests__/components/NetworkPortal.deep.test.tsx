@@ -130,6 +130,12 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
       expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
     });
 
+    // Fill in required company name so wizard validation passes on step 5
+    await user.type(
+      screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      "Test Company LLC",
+    );
+
     // Step 1 -> 2
     await user.click(screen.getByText("Next Phase"));
 

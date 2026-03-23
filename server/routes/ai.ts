@@ -9,6 +9,7 @@
 import { Router, Request, Response } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { requireTier } from "../middleware/requireTier";
 import {
   extractLoadInfo,
   extractBrokerFromImage,
@@ -77,6 +78,7 @@ router.post(
   "/extract-load",
   requireAuth,
   requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -117,6 +119,7 @@ router.post(
   "/extract-broker",
   requireAuth,
   requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -157,6 +160,7 @@ router.post(
   "/extract-equipment",
   requireAuth,
   requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -197,6 +201,7 @@ router.post(
   "/generate-training",
   requireAuth,
   requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,
@@ -237,6 +242,7 @@ router.post(
   "/analyze-safety",
   requireAuth,
   requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
     const log = createChildLogger({
       correlationId: req.correlationId,

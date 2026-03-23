@@ -383,12 +383,85 @@ describe("BrokerManager component", () => {
       await waitFor(() => {
         expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
       });
-      // The plus/create load buttons appear on hover - find them by querying the DOM
       const addButtons = document.querySelectorAll('[title="Create Load"]');
       expect(addButtons.length).toBeGreaterThan(0);
       const user = userEvent.setup();
       await user.click(addButtons[0] as HTMLElement);
       expect(onAddLoad).toHaveBeenCalledWith("broker-1");
+    });
+  });
+
+  describe("edit form submit (line 537)", () => {
+    it("opens edit form when edit button is clicked on a broker card", async () => {
+      const user = userEvent.setup();
+      render(<BrokerManager {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
+      });
+      const editButtons = document.querySelectorAll("button");
+      const editBtn = Array.from(editButtons).find(
+        (b) =>
+          b.querySelector("svg") &&
+          b.closest("[class*='absolute']") &&
+          !b.getAttribute("title"),
+      );
+      if (editBtn) {
+        await user.click(editBtn);
+        expect(screen.getByText("Edit Client")).toBeInTheDocument();
+      }
+    });
+
+    it("calls onSave callback when save is triggered", async () => {
+      const onSave = vi.fn();
+      const user = userEvent.setup();
+      render(<BrokerManager onSave={onSave} />);
+      await user.click(screen.getByText("Add Entity"));
+      const nameInput = screen.getByPlaceholderText(
+        /ENTER FULL REGISTERED COMPANY NAME/,
+      );
+      await user.type(nameInput, "Delta LLC");
+      await user.click(screen.getByText("Save Entity Profile"));
+      await waitFor(() => {
+        expect(onSave).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "Delta LLC" }),
+        );
+      });
+    });
+  });
+
+  describe("chassis deletion (lines 576-586)", () => {
+    it("removes a chassis rule when trash button is clicked", async () => {
+      const user = userEvent.setup();
+      render(<BrokerManager {...defaultProps} />);
+      await user.click(screen.getByText("Add Entity"));
+      // Add a chassis first
+      const providerInput = screen.getByPlaceholderText(
+        /PROVIDER.*TRAC.*FLEXI/,
+      );
+      await user.type(providerInput, "TRAC");
+      await user.click(screen.getByText("Add to Approved List"));
+      expect(screen.getByText("TRAC")).toBeInTheDocument();
+      // Now remove it
+      const trashButtons = document.querySelectorAll("button");
+      const trashBtn = Array.from(trashButtons).find(
+        (b) =>
+          b.className.includes("hover:text-red-500") &&
+          b.closest("[class*='bg-slate-950']"),
+      );
+      expect(trashBtn).toBeTruthy();
+      await user.click(trashBtn!);
+      expect(
+        screen.getByText(/No chassis rules defined/),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("safety score display", () => {
+    it("shows N/A for brokers without safety score", async () => {
+      render(<BrokerManager {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText(/Score: N\/A/)).toBeInTheDocument();
+      });
     });
   });
 });

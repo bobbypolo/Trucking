@@ -149,6 +149,7 @@ export const LoadDetailView: React.FC<Props> = ({
 
   const doCloseLoad = async () => {
     setConfirmClose(false);
+    if (!currentUser) return;
     setIsClosing(true);
     try {
       const updatedLoad = {
@@ -157,7 +158,7 @@ export const LoadDetailView: React.FC<Props> = ({
         isLocked: true,
         financialStatus: "Unbilled" as const,
       };
-      await saveLoad(updatedLoad, currentUser!);
+      await saveLoad(updatedLoad, currentUser);
       setToast({
         message: "Load Closed and Locked for Settlement",
         type: "success",

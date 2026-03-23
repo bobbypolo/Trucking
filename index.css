@@ -47,3 +47,16 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Mobile tap target enforcement — WCAG 2.5.8 Target Size (Minimum)
+   Ensures all interactive elements meet the 44x44px minimum on mobile viewports */
+@media (max-width: 768px) {
+  button,
+  [role="button"],
+  a,
+  input[type="submit"],
+  select {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}

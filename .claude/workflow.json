@@ -26,10 +26,14 @@
         "max_duration_s": 120
       }
     },
-    "coverage": "",
+    "coverage": "python -m pytest .claude/hooks/tests/ --tb=short -q",
     "coverage_timeout_s": 1200,
     "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
-    "unit_timeout_s": 600
+    "unit_timeout_s": 600,
+    "_comment": "self_test commands verify the ADE workflow itself. project_* commands should be set when host project source code exists. They start as TODO placeholders; /health warns when unconfigured.",
+    "project_test": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
+    "project_lint": "npx tsc --noEmit",
+    "project_type_check": "npx tsc --noEmit"
   },
   "test_patterns": [
     "vitest",
@@ -45,8 +49,30 @@
         "*_test.*"
       ]
     },
-    "custom_steps": [],
-    "evidence_max_chars": 500
+    "custom_steps": [
+      {
+        "id": "vite_build",
+        "name": "Vite production build",
+        "command": "npx vite build",
+        "after_step": 3,
+        "severity": "block",
+        "timeout_s": 120,
+        "enabled": true
+      }
+    ],
+    "evidence_max_chars": 500,
+    "negative_test_min_pct": 15,
+    "behavioral_assertion_required": true,
+    "min_public_api_coverage_pct": 90,
+    "tdd_checkpoint_required": true,
+    "tdd_checkpoint_phase_types": [
+      "module",
+      "integration",
+      "e2e"
+    ],
+    "scope_enforcement_enabled": true,
+    "plan_identifier_check_enabled": true,
+    "r_marker_content_validation": "warn"
   },
   "test_quality": {
     "min_assertions_per_test": 1,
@@ -64,13 +90,14 @@
   },
   "external_scanners": {
     "bandit": {
-      "cmd": "bandit -r {changed_dir} -f json -q",
+      "cmd": "bandit -r {changed_dir} -f json -q --skip B101 --exclude '*/tests/*' --exit-zero",
       "enabled": true,
-      "strict_mode": false
+      "strict_mode": true
     },
     "semgrep": {
       "cmd": "semgrep --config=auto {changed_dir} --json -q",
-      "enabled": false
+      "enabled": true,
+      "strict_mode": false
     },
     "pip-audit": {
       "cmd": "pip-audit --format=json",
@@ -103,7 +130,7 @@
         2,
         6
       ],
-      "description": "Fast structural check — PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
+      "description": "Fast structural check â€” PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
     },
     "delivery": {
       "sections": [
@@ -112,7 +139,7 @@
         3,
         4
       ],
-      "description": "Production-relevant surfaces for release gating — plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
+      "description": "Production-relevant surfaces for release gating â€” plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
     },
     "full": {
       "sections": [
@@ -126,7 +153,7 @@
         8,
         9
       ],
-      "description": "Exhaustive audit — all 9 sections. Current default behavior, unchanged."
+      "description": "Exhaustive audit â€” all 9 sections. Current default behavior, unchanged."
     }
   },
   "languages": {
@@ -140,30 +167,20 @@
       ],
       "commands": {
         "lint": "ruff check .",
-        "type_check": "mypy .claude/hooks/ --exclude .claude/hooks/tests --ignore-missing-imports --no-error-summary",
+        "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
         "test": "python -m pytest .claude/hooks/tests/ -v"
-      }
-    },
-    "typescript": {
-      "extensions": [
-        ".ts",
-        ".tsx"
-      ],
-      "test_patterns": [
-        "*.test.ts",
-        "*.test.tsx"
-      ],
-      "commands": {
-        "lint": "npx tsc --noEmit",
-        "type_check": "npx tsc --noEmit",
-        "test": "npx vitest run --reporter=verbose",
-        "test_server": "cd server && npx vitest run --reporter=verbose"
       }
     }
   },
   "ralph": {
     "circuit_breaker_threshold": 3,
-    "drift_threshold": 3
+    "drift_threshold": 3,
+    "cumulative_drift_threshold": 10
   },
-  "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands."
+  "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",
+  "complexity": {
+    "enabled": true,
+    "warn_threshold": 10,
+    "fail_threshold": 25
+  }
 }

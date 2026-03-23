@@ -72,6 +72,13 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+// Mock requireTier to pass-through (hardening tests focus on validation, not tier gating)
+vi.mock("../../middleware/requireTier", () => ({
+  requireTier:
+    () => (_req: any, _res: any, next: any) =>
+      next(),
+}));
+
 vi.mock("../../middleware/validate", () => ({
   validateBody:
     (_schema: unknown) => (_req: unknown, _res: unknown, next: Function) =>

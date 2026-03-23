@@ -234,7 +234,7 @@ describe("financialService", () => {
         { gallons: 100, amount: 350, state: "IL" },
       ] as any);
 
-      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
       expect(body).toHaveLength(1);
       expect(body[0].gallons).toBe(100);
     });
@@ -270,7 +270,7 @@ describe("financialService", () => {
 
       await postIFTAToLedger({ quarter: 1, year: 2026, netTaxDue: 250 });
 
-      const body = JSON.parse(fetchSpy.mock.calls[0][1].body);
+      const body = JSON.parse(fetchSpy.mock.calls[0][1]!.body as string);
       expect(body.quarter).toBe(1);
       expect(body.netTaxDue).toBe(250);
     });
@@ -412,7 +412,7 @@ describe("financialService", () => {
       expect(fetchCall[0]).toContain("docs/doc-1");
       expect(fetchCall[1].method).toBe("PATCH");
 
-      const body = JSON.parse(fetchCall[1].body);
+      const body = JSON.parse(fetchCall[1]!.body as string);
       expect(body.status).toBe("approved");
       expect(body.is_locked).toBe(true);
       expect(body.updatedBy).toBe("admin");

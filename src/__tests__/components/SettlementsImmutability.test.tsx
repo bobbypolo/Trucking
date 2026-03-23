@@ -120,9 +120,11 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     expect(container.firstChild).toBeInTheDocument();
   });
 
-  it("displays driver name for payroll settlement view", () => {
+  it("displays driver name for payroll settlement view", async () => {
     render(<Settlements {...defaultProps} />);
-    expect(screen.getByText(/John Driver/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/John Driver/i)).toBeInTheDocument();
+    });
   });
 
   it("renders Authorize & Pay button when driver panel is expanded", async () => {
@@ -130,7 +132,7 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     render(<Settlements {...defaultProps} />);
 
     // Click on driver row to expand it and show payment buttons
-    const driverRow = screen.getByText(/John Driver/i);
+    const driverRow = await screen.findByText(/John Driver/i);
     await user.click(driverRow);
 
     await waitFor(() => {
@@ -194,7 +196,7 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     render(<Settlements {...defaultProps} />);
 
     // Click on driver row to expand the panel
-    const driverRow = screen.getByText(/John Driver/i);
+    const driverRow = await screen.findByText(/John Driver/i);
     await user.click(driverRow);
 
     await waitFor(() => {

@@ -108,7 +108,7 @@ const DayCell: React.FC<DayCellProps> = ({
                 <span>#{load.loadNumber}</span>
               </div>
               <div className="truncate opacity-80 flex items-center gap-1 mt-0.5">
-                <MapPin className="w-2.5 h-2.5 shrink-0" /> {load.dropoff.city}
+                <MapPin className="w-2.5 h-2.5 shrink-0" /> {load.dropoff?.city ?? ""}
               </div>
             </div>
           </div>
@@ -157,9 +157,9 @@ const MonthSection: React.FC<MonthSectionProps> = ({
       className="mb-8 scroll-mt-20"
     >
       <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur border-y border-slate-700 py-3 px-4 shadow-md flex justify-between items-center">
-        <h3 className="text-lg font-bold text-white tracking-tight">
+        <h2 className="text-lg font-bold text-white tracking-tight">
           {monthLabel}
-        </h3>
+        </h2>
       </div>
       <div className="grid grid-cols-7 border-l border-slate-700">
         {/* Days Header */}
@@ -296,21 +296,22 @@ export const CalendarView: React.FC<Props> = ({
       {showDatePicker && (
         <div className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-white font-bold flex items-center gap-2">
+            <h2 className="text-white font-bold flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-blue-400" /> Jump to Date
-            </h3>
-            <button onClick={() => setShowDatePicker(false)}>
+            </h2>
+            <button onClick={() => setShowDatePicker(false)} aria-label="Close date picker">
               <X className="w-4 h-4 text-slate-400 hover:text-white" />
             </button>
           </div>
 
           {/* Manual Input */}
           <div className="mb-4 bg-slate-900/50 p-2 rounded border border-slate-700">
-            <label className="text-[10px] text-slate-400 mb-1 block uppercase font-bold">
+            <label htmlFor="calendar-manual-date" className="text-[10px] text-slate-400 mb-1 block uppercase font-bold">
               Type Specific Date
             </label>
             <div className="flex gap-2">
               <input
+                id="calendar-manual-date"
                 type="date"
                 className="bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-sm w-full focus:border-blue-500 outline-none"
                 value={manualDateInput}
@@ -379,9 +380,9 @@ export const CalendarView: React.FC<Props> = ({
       {users.length > 0 && onSelectDriver && (
         <div className="hidden md:flex w-64 bg-slate-800 rounded-xl border border-slate-700 flex-col shrink-0 overflow-hidden">
           <div className="p-4 border-b border-slate-700 bg-slate-900/50">
-            <h3 className="font-bold text-slate-200 flex items-center gap-2">
+            <h2 className="font-bold text-slate-200 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-500" /> Drivers
-            </h3>
+            </h2>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
             <button

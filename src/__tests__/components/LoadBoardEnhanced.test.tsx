@@ -535,8 +535,11 @@ describe("LoadBoardEnhanced component", () => {
           ],
           fuelPurchases: [
             {
+              id: "fuel-1",
               state: "IL",
               gallons: 50,
+              cost: 175,
+              date: "2026-01-15",
               costPerGallon: 3.5,
               totalCost: 175,
             },
@@ -559,8 +562,11 @@ describe("LoadBoardEnhanced component", () => {
           ],
           fuelPurchases: [
             {
+              id: "fuel-2",
               state: "IL",
               gallons: 50,
+              cost: 175,
+              date: "2026-01-16",
               costPerGallon: 3.5,
               totalCost: 175,
             },

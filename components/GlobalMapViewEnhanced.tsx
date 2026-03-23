@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   GoogleMap,
   LoadScript,
@@ -30,9 +30,27 @@ import {
   ChevronRight,
   Activity,
   LayoutDashboard,
+  Radio,
 } from "lucide-react";
 import { User, LoadData, LOAD_STATUS, LoadStatus, Incident } from "../types";
 import { getDirections } from "../services/directionsService";
+
+/** Live GPS position from /api/tracking/live endpoint */
+interface LiveGpsPosition {
+  vehicleId: string;
+  driverId?: string;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  heading: number;
+  recordedAt: string;
+  provider: string;
+  providerVehicleId: string;
+  isMock?: boolean;
+}
+
+/** Polling interval for live GPS data (30 seconds) */
+const LIVE_GPS_POLL_INTERVAL_MS = 30_000;
 
 interface Weather {
   temp: number;
@@ -165,6 +183,54 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   useEffect(() => {
     setLocalOverlaysVisible(showSideOverlays);
   }, [showSideOverlays]);
+
+  // ---------------------------------------------------------------------------
+  // Live GPS polling (S-403)
+  // ---------------------------------------------------------------------------
+  const [livePositions, setLivePositions] = useState<LiveGpsPosition[]>([]);
+  const [hasLiveData, setHasLiveData] = useState(false);
+  const [hasMockPositions, setHasMockPositions] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchLivePositions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/tracking/live");
+      if (!res.ok) {
+        // API error — fall back to static data
+        setLivePositions([]);
+        setHasLiveData(false);
+        setHasMockPositions(false);
+        return;
+      }
+      const data = await res.json();
+      const positions: LiveGpsPosition[] = data.positions ?? [];
+
+      setLivePositions(positions);
+      setHasLiveData(positions.length > 0 && positions.some((p) => !p.isMock));
+      setHasMockPositions(positions.some((p) => p.isMock));
+    } catch {
+      // Network/parse error — fall back to static data
+      setLivePositions([]);
+      setHasLiveData(false);
+      setHasMockPositions(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchLivePositions();
+
+    // Set up 30-second polling
+    pollTimerRef.current = setInterval(fetchLivePositions, LIVE_GPS_POLL_INTERVAL_MS);
+
+    // Cleanup on unmount — stop polling (R-P4-12)
+    return () => {
+      if (pollTimerRef.current !== null) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [fetchLivePositions]);
 
   // Vehicle positions derived from DB-stored stop coordinates (not mock data)
   const activeVehicles: VehicleMarker[] = useMemo(() => {
@@ -315,8 +381,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
       for (const load of loads) {
         if (load.status === LOAD_STATUS.In_Transit && !routePaths[load.id]) {
           try {
-            const origin = `${load.pickup.city}, ${load.pickup.state}`;
-            const destination = `${load.dropoff.city}, ${load.dropoff.state}`;
+            const origin = `${load.pickup?.city ?? ""}, ${load.pickup?.state ?? ""}`;
+            const destination = `${load.dropoff?.city ?? ""}, ${load.dropoff?.state ?? ""}`;
             const directions = await getDirections(origin, destination);
 
             // Decode polyline (simple version for demo)
@@ -363,9 +429,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
           <div className="text-center p-8 bg-slate-900/80 border border-slate-700 rounded-2xl max-w-md">
             <MapIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-white mb-2">
+            <h2 className="text-lg font-bold text-white mb-2">
               Map Unavailable
-            </h3>
+            </h2>
             <p className="text-sm text-slate-400 mb-4">
               Google Maps API key is not configured. Fleet tracking data is
               available via the tracking API endpoint.
@@ -395,6 +461,25 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             </div>
           </div>
         </div>
+        {/* Live GPS Indicator in fallback view (S-403) */}
+        {(hasLiveData || hasMockPositions) && (
+          <div
+            className="absolute bottom-4 left-4 z-30 flex items-center gap-2 bg-[#0a0f1e]/90 backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2"
+            data-testid="live-gps-indicator"
+          >
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+            </span>
+            <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
+              Live
+            </span>
+            {hasMockPositions && (
+              <span className="text-[9px] text-amber-400 font-semibold">(simulated)</span>
+            )}
+            <Radio className="w-3 h-3 text-green-400" />
+          </div>
+        )}
       </div>
     );
   }
@@ -457,6 +542,28 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               />
             ))}
 
+            {/* Live GPS markers (S-403) — pulsing indicator for live positions */}
+            {livePositions.map((pos) => (
+              <Marker
+                key={`live-${pos.vehicleId}`}
+                position={{ lat: pos.latitude, lng: pos.longitude }}
+                data-is-live="true"
+                icon={
+                  typeof google !== "undefined"
+                    ? {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        fillColor: pos.isMock ? "#f59e0b" : "#22c55e",
+                        fillOpacity: 1,
+                        strokeColor: "#ffffff",
+                        strokeWeight: 2,
+                        rotation: pos.heading,
+                        scale: 6,
+                      }
+                    : undefined
+                }
+              />
+            ))}
+
             {Object.entries(routePaths).map(([id, path]) => (
               <Polyline
                 key={id}
@@ -499,8 +606,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                         #{selectedVehicle.activeLoad.loadNumber}
                       </div>
                       <div className="text-[9px] text-slate-600 italic">
-                        {selectedVehicle.activeLoad.pickup.city} →{" "}
-                        {selectedVehicle.activeLoad.dropoff.city}
+                        {selectedVehicle.activeLoad.pickup?.city ?? ""} →{" "}
+                        {selectedVehicle.activeLoad.dropoff?.city ?? ""}
                       </div>
                     </div>
                   )}
@@ -516,6 +623,26 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           </GoogleMap>
         </LoadScript>
       </div>
+
+      {/* Live GPS Indicator (S-403) — shown when receiving real GPS data */}
+      {(hasLiveData || hasMockPositions) && (
+        <div
+          className="absolute top-4 left-4 z-30 flex items-center gap-2 bg-[#0a0f1e]/90 backdrop-blur-xl border border-white/10 rounded-xl px-3 py-2"
+          data-testid="live-gps-indicator"
+        >
+          <span className="relative flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500" />
+          </span>
+          <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
+            Live
+          </span>
+          {hasMockPositions && (
+            <span className="text-[9px] text-amber-400 font-semibold">(simulated)</span>
+          )}
+          <Radio className="w-3 h-3 text-green-400" />
+        </div>
+      )}
 
       {/* Weather Overlay */}
       {weather && !isHighObstruction && (
@@ -631,6 +758,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               <input
                 type="text"
                 placeholder="Search drivers..."
+                aria-label="Search drivers"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-950 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-[9px] text-white outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-slate-700"
@@ -706,9 +834,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               />
             </div>
             <div>
-              <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">
                 {selectedDriverOverlay.driver.name}
-              </h3>
+              </h2>
               <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                 Ref ID: {selectedDriverOverlay.driver.id.slice(0, 8)}
               </div>
@@ -746,8 +874,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                 #{selectedDriverOverlay.activeLoad.loadNumber}
               </div>
               <div className="text-[10px] text-slate-400">
-                {selectedDriverOverlay.activeLoad.pickup.city} →{" "}
-                {selectedDriverOverlay.activeLoad.dropoff.city}
+                {selectedDriverOverlay.activeLoad.pickup?.city ?? ""} →{" "}
+                {selectedDriverOverlay.activeLoad.dropoff?.city ?? ""}
               </div>
             </div>
           )}

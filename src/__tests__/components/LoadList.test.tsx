@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LoadList } from "../../../components/LoadList";
@@ -103,5 +103,92 @@ describe("LoadList component", () => {
     await user.clear(searchInput);
     await user.type(searchInput, "LN-001");
     expect(screen.getByText(/LN-001/i)).toBeInTheDocument();
+  });
+
+  it("filters loads by city name search (lines 82-86)", () => {
+    render(<LoadList {...defaultProps} />);
+    const searchInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(searchInput, { target: { value: "Atlanta" } });
+    expect(screen.getByText(/LN-002/i)).toBeTruthy();
+    expect(screen.queryByText(/LN-001/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/LN-003/i)).not.toBeInTheDocument();
+  });
+
+  it("shows no loads message when search matches nothing (line 100)", () => {
+    render(<LoadList {...defaultProps} />);
+    const searchInput = screen.getAllByRole("textbox")[0];
+    fireEvent.change(searchInput, { target: { value: "NONEXISTENT_LOAD_XYZ" } });
+    expect(screen.getByText(/No loads to show/i)).toBeInTheDocument();
+  });
+
+  it("toggles sort direction when filter button is clicked (lines 160-165)", () => {
+    render(<LoadList {...defaultProps} />);
+    // Find the sort/filter button (has Filter icon)
+    const buttons = screen.getAllByRole("button");
+    const filterBtn = buttons.find((b) =>
+      b.querySelector("svg") && !b.textContent?.trim(),
+    );
+    expect(filterBtn).toBeTruthy();
+    fireEvent.click(filterBtn!);
+    // Loads should now be in desc order (LN-003 first)
+    const loadEls = screen.getAllByText(/Manifest LN-/);
+    expect(loadEls[0].textContent).toContain("LN-003");
+  });
+
+  it("calls onView when a load card is clicked", () => {
+    render(<LoadList {...defaultProps} />);
+    const loadCard = screen.getByText(/LN-001/i).closest("[class*='cursor-pointer']");
+    expect(loadCard).toBeTruthy();
+    fireEvent.click(loadCard!);
+    expect(defaultProps.onView).toHaveBeenCalledWith(mockLoads[0]);
+  });
+
+  it("calls onEdit when Modify button is clicked", () => {
+    render(<LoadList {...defaultProps} />);
+    const modifyBtns = screen.getAllByText("Modify");
+    fireEvent.click(modifyBtns[0]);
+    expect(defaultProps.onEdit).toHaveBeenCalledWith(mockLoads[0]);
+  });
+
+  it("hides rates when canViewRates is false", () => {
+    render(<LoadList {...defaultProps} canViewRates={false} />);
+    expect(screen.getAllByText("CONFIDENTIAL").length).toBeGreaterThan(0);
+    expect(screen.queryByText("$1,500")).not.toBeInTheDocument();
+  });
+
+  it("shows carrier rates when canViewRates is true", () => {
+    render(<LoadList {...defaultProps} canViewRates={true} />);
+    expect(screen.getByText("$1,500")).toBeInTheDocument();
+    expect(screen.getByText("$2,000")).toBeInTheDocument();
+  });
+
+  it("shows Action Required badge for flagged loads", () => {
+    const flaggedLoads = [
+      { ...mockLoads[0], isActionRequired: true },
+    ];
+    render(<LoadList {...defaultProps} loads={flaggedLoads} />);
+    expect(screen.getByText("Action Required")).toBeInTheDocument();
+  });
+
+  it("displays driver name from users prop", () => {
+    const singleLoad: LoadData[] = [mockLoads[0]];
+    const users = [
+      {
+        id: "driver-1",
+        name: "John Trucker",
+        role: "driver" as const,
+        companyId: "company-1",
+        email: "j@t.com",
+        onboardingStatus: "Completed" as const,
+        safetyScore: 90,
+      },
+    ];
+    render(<LoadList {...defaultProps} loads={singleLoad} users={users} />);
+    expect(screen.getByText("John Trucker")).toBeInTheDocument();
+  });
+
+  it("shows UNASSIGNED when driver is not found in users", () => {
+    render(<LoadList {...defaultProps} users={[]} />);
+    expect(screen.getAllByText("UNASSIGNED").length).toBeGreaterThan(0);
   });
 });

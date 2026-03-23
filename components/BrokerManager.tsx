@@ -28,6 +28,10 @@ import {
   getContracts,
   saveContract,
 } from "../services/brokerService";
+import { Toast } from "./Toast";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   brokers?: Broker[];
@@ -57,6 +61,11 @@ export const BrokerManager: React.FC<Props> = ({
     null,
   );
   const [activeTab, setActiveTab] = useState<"My" | "All">("My");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success" | "info";
+  } | null>(null);
 
   // New State for Chassis Form
   const [chassisForm, setChassisForm] = useState<Partial<ApprovedChassis>>({
@@ -65,14 +74,26 @@ export const BrokerManager: React.FC<Props> = ({
     prefixes: [],
   });
   const [prefixInput, setPrefixInput] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
-    const b = await getBrokers();
-    setBrokers(b);
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const b = await getBrokers();
+      setBrokers(b);
+    } catch (err) {
+      console.error("[BrokerManager] Failed to load brokers:", err);
+      setLoadError("Failed to load partner data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredBrokers = useMemo(() => {
@@ -84,14 +105,55 @@ export const BrokerManager: React.FC<Props> = ({
     );
   }, [brokers, searchTerm]);
 
-  const handleSave = async (broker: Broker) => {
-    await saveBroker(broker);
-    loadData();
-    if (onSave) onSave(broker);
-    setShowForm(false);
+  const validateBrokerForm = (): Record<string, string> => {
+    const errs: Record<string, string> = {};
+    if (!editingBroker?.name?.trim()) errs.name = "Entity name is required";
+    return errs;
   };
 
+  const isBrokerFormValid = !!editingBroker?.name?.trim();
+
+  const handleSave = async (broker: Broker) => {
+    const errs = validateBrokerForm();
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      return;
+    }
+    setFormErrors({});
+    setIsSubmitting(true);
+    try {
+      await saveBroker(broker);
+      loadData();
+      if (onSave) onSave(broker);
+      setShowForm(false);
+      setToast({
+        message: "Entity profile saved successfully.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error("[BrokerManager] Save failed:", err);
+      setToast({
+        message: "Failed to save entity. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const [chassisErrors, setChassisErrors] = useState<Record<string, string>>({});
+
   const handleAddChassis = () => {
+    const errs: Record<string, string> = {};
+    if (!chassisForm.provider?.trim()) errs.provider = "Provider is required";
+    if (prefixInput.trim() && !/^[a-zA-Z0-9,\s]+$/.test(prefixInput)) {
+      errs.prefixes = "Prefixes must be alphanumeric";
+    }
+    if (Object.keys(errs).length > 0) {
+      setChassisErrors(errs);
+      return;
+    }
+    setChassisErrors({});
     if (!chassisForm.provider) return;
 
     const newChassis: ApprovedChassis = {
@@ -131,6 +193,13 @@ export const BrokerManager: React.FC<Props> = ({
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* Header - High Density Version */}
       <div className="bg-[#0a0f1e]/80 backdrop-blur-md border-b border-white/5 px-8 py-6 sticky top-0 z-10">
         <div className="flex justify-between items-center mb-6">
@@ -148,7 +217,7 @@ export const BrokerManager: React.FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-2.5">
-            <button className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95">
+            <button className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95" aria-label="Scan brokers">
               <Scan className="w-4 h-4" />
             </button>
             <button
@@ -173,7 +242,7 @@ export const BrokerManager: React.FC<Props> = ({
         <div className="flex gap-6">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-            <input
+            <input aria-label="SEARCH BY ENTITY NAME, MC#, OR CONTACT..."
               className="w-full bg-[#020617] border border-slate-800/50 rounded-xl pl-12 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all"
               placeholder="SEARCH BY ENTITY NAME, MC#, OR CONTACT..."
               value={searchTerm}
@@ -199,7 +268,24 @@ export const BrokerManager: React.FC<Props> = ({
       </div>
 
       {/* Entity Grid */}
-      <div className="flex-1 overflow-y-auto p-8 pt-6 no-scrollbar grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+      <div className="flex-1 overflow-y-auto p-8 pt-6 no-scrollbar">
+        {isLoading && (
+          <div className="py-8">
+            <LoadingSkeleton variant="card" count={6} />
+          </div>
+        )}
+        {!isLoading && loadError && (
+          <ErrorState message={loadError} onRetry={loadData} />
+        )}
+        {!isLoading && !loadError && filteredBrokers.length === 0 && (
+          <EmptyState
+            icon={<Building2 className="w-12 h-12" />}
+            title="No partners found"
+            description="Add your first broker or shipper to build your network."
+          />
+        )}
+        {!isLoading && !loadError && filteredBrokers.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
         {filteredBrokers.map((broker) => (
           <div
             key={broker.id}
@@ -302,6 +388,8 @@ export const BrokerManager: React.FC<Props> = ({
             </div>
           </div>
         ))}
+        </div>
+        )}
       </div>
 
       {/* High-Fidelity Add/Edit Form Modal (Matches Mockups) */}
@@ -331,11 +419,11 @@ export const BrokerManager: React.FC<Props> = ({
               {/* Type & Visibility */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label htmlFor="bmClientType" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Client Type
                   </label>
                   <div className="relative">
-                    <select
+                    <select id="bmClientType"
                       className="w-full bg-[#020617] border border-white/5 rounded-2xl px-5 py-4 text-sm text-white font-bold appearance-none outline-none focus:border-blue-500 transition-all"
                       value={editingBroker.clientType}
                       onChange={(e) =>
@@ -382,10 +470,10 @@ export const BrokerManager: React.FC<Props> = ({
 
               {/* Name Input */}
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <label htmlFor="bmLegalEntityName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                   Legal Entity Name *
                 </label>
-                <input
+                <input id="bmLegalEntityName"
                   className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all"
                   placeholder="ENTER FULL REGISTERED COMPANY NAME"
                   value={editingBroker.name}
@@ -393,15 +481,16 @@ export const BrokerManager: React.FC<Props> = ({
                     setEditingBroker({ ...editingBroker, name: e.target.value })
                   }
                 />
+                {formErrors.name && <p className="text-red-400 text-xs mt-1">{formErrors.name}</p>}
               </div>
 
               {/* MC & DOT Numbers */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label htmlFor="bmMcNumber" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     MC Number
                   </label>
-                  <input
+                  <input id="bmMcNumber"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="e.g., MC-123456"
                     value={editingBroker.mcNumber}
@@ -414,10 +503,10 @@ export const BrokerManager: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label htmlFor="bmDotNumber" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     DOT Number
                   </label>
-                  <input
+                  <input id="bmDotNumber"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="e.g., 1234567"
                     value={editingBroker.dotNumber}
@@ -434,10 +523,10 @@ export const BrokerManager: React.FC<Props> = ({
               {/* Email & Phone */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label htmlFor="bmPrimaryEmail" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Primary Email
                   </label>
-                  <input
+                  <input id="bmPrimaryEmail"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="dispatch@client.com"
                     value={editingBroker.email}
@@ -450,10 +539,10 @@ export const BrokerManager: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label htmlFor="bmCentralPhone" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Central Phone
                   </label>
-                  <input
+                  <input id="bmCentralPhone"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="(555) 000-0000"
                     value={editingBroker.phone}
@@ -469,10 +558,10 @@ export const BrokerManager: React.FC<Props> = ({
 
               {/* Address */}
               <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <label htmlFor="bmMailingAddressCityState" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                   Mailing Address / City / State
                 </label>
-                <input
+                <input id="bmMailingAddressCityState"
                   className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                   placeholder="e.g. 123 Main St, Dallas, TX"
                   value={editingBroker.address}
@@ -497,7 +586,7 @@ export const BrokerManager: React.FC<Props> = ({
                 <div className="bg-[#020617] border border-white/5 rounded-2xl p-6 space-y-4 shadow-inner">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <input
+                      <input aria-label="PROVIDER (TRAC, FLEXI)"
                         className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
                         placeholder="PROVIDER (e.g. TRAC, FLEXI)"
                         value={chassisForm.provider}
@@ -508,9 +597,10 @@ export const BrokerManager: React.FC<Props> = ({
                           })
                         }
                       />
+                      {chassisErrors.provider && <p className="text-red-400 text-xs mt-1">{chassisErrors.provider}</p>}
                     </div>
                     <div className="relative">
-                      <select
+                      <select aria-label="Document type"
                         className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-black uppercase appearance-none outline-none focus:border-blue-500 transition-all"
                         value={chassisForm.type}
                         onChange={(e) =>
@@ -530,7 +620,7 @@ export const BrokerManager: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <input
+                  <input aria-label="PREFIXES (TRAC, TXZZ, TRLU) - COMMA SEPARATED"
                     className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
                     placeholder="PREFIXES (e.g. TRAC, TXZZ, TRLU) - COMMA SEPARATED"
                     value={prefixInput}
@@ -606,9 +696,10 @@ export const BrokerManager: React.FC<Props> = ({
               </button>
               <button
                 onClick={() => handleSave(editingBroker as Broker)}
-                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 transition-all active:scale-95"
+                disabled={isSubmitting || !isBrokerFormValid}
+                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-[1.2rem] text-xs font-black uppercase tracking-[0.2em] shadow-xl shadow-blue-900/20 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Save Entity Profile
+                {isSubmitting ? "Saving..." : "Save Entity Profile"}
               </button>
             </div>
           </div>

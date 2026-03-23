@@ -28,7 +28,6 @@ import {
 
 import seedFixtures from "../fixtures/test-users.json";
 
-const COMPANIES_KEY = "loadpilot_companies_v1";
 const SEED_COMPANY_ID = "iscope-authority-001";
 /** Dev-only default password sourced from fixtures/test-users.json. Never hardcoded. */
 const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
@@ -36,6 +35,7 @@ const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
 let _usersCache: User[] = [];
+let _companiesCache: Company[] = [];
 
 /**
  * Global token storage for API requests
@@ -390,22 +390,8 @@ export const CAPABILITY_PRESETS: Record<
   },
 };
 
-const safeParseCompanies = (): Company[] => {
-  try {
-    const data = localStorage.getItem(COMPANIES_KEY);
-    if (!data) return [];
-    return JSON.parse(data);
-  } catch (e) {
-    console.warn(
-      "[authService] Failed to parse companies from localStorage:",
-      e,
-    );
-    return [];
-  }
-};
-
 export const getStoredUsers = (): User[] => _usersCache;
-const getStoredCompanies = (): Company[] => safeParseCompanies();
+export const getStoredCompanies = (): Company[] => _companiesCache;
 
 export const getCurrentUser = (): User | null => _sessionCache;
 
@@ -434,14 +420,11 @@ export const updateCompany = async (company: Company) => {
     console.warn("[authService] API fallback:", e);
   }
 
-  const companies = getStoredCompanies();
-  const idx = companies.findIndex((c) => c.id === company.id);
+  const idx = _companiesCache.findIndex((c) => c.id === company.id);
   if (idx >= 0) {
-    companies[idx] = company;
-    localStorage.setItem(COMPANIES_KEY, JSON.stringify(companies));
+    _companiesCache[idx] = company;
   } else {
-    companies.push(company);
-    localStorage.setItem(COMPANIES_KEY, JSON.stringify(companies));
+    _companiesCache.push(company);
   }
 };
 

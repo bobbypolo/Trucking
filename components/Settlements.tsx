@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   LoadData,
   User,
@@ -42,7 +43,9 @@ import {
   getBills,
 } from "../services/financialService";
 import { v4 as uuidv4 } from "uuid";
-import { DEMO_MODE } from "../services/firebase";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
+import { EmptyState } from "./ui/EmptyState";
 
 interface Props {
   loads: LoadData[];
@@ -69,23 +72,31 @@ export const Settlements: React.FC<Props> = ({
     end: "2025-12-31",
   });
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] =
+    useAutoFeedback<string | null>(null);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
   const [bills, setBills] = useState<any[]>([]);
-
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const currentUser = getCurrentUser();
 
-  React.useEffect(() => {
-    const loadAccountingData = async () => {
+  const loadAccountingData = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
       const [sData, bData] = await Promise.all([getSettlements(), getBills()]);
       setSettlements(sData);
       setBills(bData);
-    };
+    } catch (err) {
+      console.error("[Settlements] Failed to load accounting data:", err);
+      setLoadError("Failed to load financial data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
     loadAccountingData();
   }, [feedback]);
 
@@ -112,29 +123,8 @@ export const Settlements: React.FC<Props> = ({
       earnings = userLoads.reduce((sum, l) => sum + (l.driverPay || 0), 0);
     }
 
-    // Demo mode sample deductions (standard 1099 items); empty in production
-    const deductions = DEMO_MODE
-      ? [
-          {
-            id: "ded-1",
-            type: "Deduction" as const,
-            description: "Occupational Accident Insurance",
-            amount: 35.0,
-          },
-          {
-            id: "ded-2",
-            type: "Deduction" as const,
-            description: "ELD / Dashcam Subscription",
-            amount: 12.5,
-          },
-          {
-            id: "ded-3",
-            type: "Deduction" as const,
-            description: "Fuel Advance (Settlement Offset)",
-            amount: 450.0,
-          },
-        ]
-      : [];
+    // Deductions come from the API/service layer (settlements data); default empty
+    const deductions: SettlementLine[] = [];
 
     const reimbursements = userLoads.reduce(
       (sum, l) => sum + (l.expenses?.reduce((s, e) => s + e.amount, 0) || 0),
@@ -195,14 +185,13 @@ export const Settlements: React.FC<Props> = ({
     const data = calculatePayData(user);
     const docId = uuidv4();
 
-    // Statement vault entry — URL is populated by real PDF generation in production;
-    // in demo mode a placeholder URL is used for illustration.
+    // Statement vault entry — URL is populated by real PDF generation in production.
     await uploadToVault({
       id: docId,
       tenantId: currentUser?.companyId || "",
       type: "Statement",
       filename: `Statement_${user.name.replace(" ", "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
-      url: DEMO_MODE ? "https://example.com/demo-statement.pdf" : "",
+      url: "",
       driverId: user.id,
       status: "Locked",
       isLocked: true,
@@ -213,7 +202,6 @@ export const Settlements: React.FC<Props> = ({
       `Audit-Ready Statement generated and saved to Vault for ${user.name}`,
     );
   };
-
 
   const pnlStats = useMemo(() => {
     const totalRev = loads.reduce((sum, l) => sum + (l.carrierRate || 0), 0);
@@ -272,7 +260,6 @@ export const Settlements: React.FC<Props> = ({
           </div>
 
           <div className="flex items-center gap-3">
-
             <button
               onClick={() => onUserUpdate?.()}
               className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl border border-slate-700 transition-all shadow-lg"
@@ -289,6 +276,7 @@ export const Settlements: React.FC<Props> = ({
                   type="text"
                   value="12/01/2025"
                   readOnly
+                  aria-label="Pay period start date"
                   className="bg-slate-900 border border-slate-700 rounded-md px-3 py-1 text-sm font-mono text-white w-28 text-center"
                 />
                 <span className="text-slate-500">-</span>
@@ -296,6 +284,7 @@ export const Settlements: React.FC<Props> = ({
                   type="text"
                   value="12/31/2025"
                   readOnly
+                  aria-label="Pay period end date"
                   className="bg-slate-900 border border-slate-700 rounded-md px-3 py-1 text-sm font-mono text-white w-28 text-center"
                 />
               </div>
@@ -334,25 +323,27 @@ export const Settlements: React.FC<Props> = ({
             <CheckCircle className="w-5 h-5" />
             <span className="text-sm font-bold">{feedback}</span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>
       )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar pb-24">
-        {activeTab === "payroll" && (
+        {isLoading && (
+          <LoadingSkeleton variant="table" count={5} />
+        )}
+        {!isLoading && loadError && (
+          <ErrorState message={loadError} onRetry={loadAccountingData} />
+        )}
+        {!isLoading && !loadError && activeTab === "payroll" && (
           <div className="max-w-6xl mx-auto space-y-4">
             {users.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-24 bg-slate-900/50 rounded-[3rem] border border-slate-800 border-dashed text-center">
-                <AlertOctagon className="w-16 h-16 text-slate-800 mb-6" />
-                <h3 className="text-xl font-black text-slate-700 uppercase tracking-tighter">
-                  System Data Syncing
-                </h3>
-                <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-2">
-                  Waiting for company personnel registry to synchronize.
-                </p>
-              </div>
+              <EmptyState
+                icon={<Users className="w-12 h-12" />}
+                title="No personnel found"
+                description="Waiting for company personnel registry to synchronize."
+              />
             )}
             {users.length > 0 && filteredPersonnel.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 bg-slate-900/50 rounded-[3rem] border border-slate-800 border-dashed text-center">
@@ -640,7 +631,7 @@ export const Settlements: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "invoices" && (
+        {!isLoading && !loadError && activeTab === "invoices" && (
           <div className="max-w-6xl mx-auto space-y-4">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-white">
@@ -701,7 +692,7 @@ export const Settlements: React.FC<Props> = ({
                           {load.loadNumber}
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-400">
-                          {load.pickup.facilityName}
+                          {load.pickup?.facilityName ?? ''}
                         </td>
                         <td className="px-6 py-4 text-sm font-mono text-white">
                           ${(load.carrierRate || 0).toLocaleString()}
@@ -739,7 +730,7 @@ export const Settlements: React.FC<Props> = ({
           </div>
         )}
 
-        {activeTab === "pnl" && (
+        {!isLoading && !loadError && activeTab === "pnl" && (
           <div className="max-w-6xl mx-auto space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {[

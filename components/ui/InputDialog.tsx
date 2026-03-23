@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 
 interface Props {
   open: boolean;
@@ -27,6 +28,8 @@ export const InputDialog: React.FC<Props> = ({
 }) => {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(panelRef, open, onCancel);
 
   useEffect(() => {
     if (open) {
@@ -34,15 +37,6 @@ export const InputDialog: React.FC<Props> = ({
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onCancel]);
 
   if (!open) return null;
 
@@ -63,7 +57,10 @@ export const InputDialog: React.FC<Props> = ({
         onClick={onCancel}
       />
       {/* Panel */}
-      <div className="relative bg-[#0a0f1e] border border-white/10 rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200">
+      <div
+        ref={panelRef}
+        className="relative bg-[#0a0f1e] border border-white/10 rounded-3xl shadow-2xl p-8 w-full max-w-md mx-4 animate-in zoom-in-95 duration-200"
+      >
         <h2
           id="input-dialog-title"
           className="text-lg font-black text-white uppercase tracking-tight mb-3"
@@ -94,14 +91,14 @@ export const InputDialog: React.FC<Props> = ({
         <div className="flex gap-3 justify-end">
           <button
             onClick={onCancel}
-            className="px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-400 bg-slate-800 hover:bg-slate-700 transition-all"
+            className="px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest text-slate-400 bg-slate-800 hover:bg-slate-700 transition-all flex items-center justify-center"
           >
             {cancelLabel}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!value.trim()}
-            className="px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2 rounded-2xl text-xs font-black uppercase tracking-widest text-white bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-900/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {submitLabel}
           </button>

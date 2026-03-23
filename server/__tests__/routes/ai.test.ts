@@ -44,6 +44,13 @@ vi.mock("../../services/gemini.service", () => ({
   analyzeSafetyCompliance: mockAnalyzeSafetyCompliance,
 }));
 
+// Mock requireTier to pass-through (these tests focus on AI functionality, not tier gating)
+vi.mock("../../middleware/requireTier", () => ({
+  requireTier:
+    () => (_req: any, _res: any, next: any) =>
+      next(),
+}));
+
 vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
     info: vi.fn(),

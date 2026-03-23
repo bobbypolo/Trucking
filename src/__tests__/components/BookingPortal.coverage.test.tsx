@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BookingPortal } from "../../../components/BookingPortal";
@@ -88,12 +88,13 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     // Go to quote step
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
-    // Fill in origin and destination
+    // Fill in origin and destination (use fireEvent.change for controlled inputs)
     const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
-    await user.type(cityInputs[0], "Chicago, IL");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
 
     // Fill in linehaul rate
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
@@ -114,7 +115,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -123,9 +123,12 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
 
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "3000");
 
@@ -144,7 +147,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -152,18 +154,19 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "1000");
 
     await user.click(screen.getByText("Finalize Professional Quote"));
     await waitFor(() => {
       expect(screen.getByText("Email Quote to Client")).toBeInTheDocument();
-      expect(
-        screen.getByText("Save as Working Concept"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Save as Working Concept")).toBeInTheDocument();
     });
   });
 
@@ -174,7 +177,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -182,9 +184,12 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "5000");
 
@@ -203,7 +208,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -211,9 +215,12 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "2000");
 
@@ -227,12 +234,8 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.click(screen.getByText("Accept Quote & Convert to Booking"));
     await waitFor(() => {
       expect(screen.getByText("Booking Solidified")).toBeInTheDocument();
-      expect(
-        screen.getByText("Go to Operational Board"),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText("Initiate New Quote Cycle"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Go to Operational Board")).toBeInTheDocument();
+      expect(screen.getByText("Initiate New Quote Cycle")).toBeInTheDocument();
     });
   });
 
@@ -243,7 +246,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -251,9 +253,12 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "1500");
 
@@ -266,9 +271,7 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
 
     await user.click(screen.getByText("Accept Quote & Convert to Booking"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Go to Operational Board"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Go to Operational Board")).toBeInTheDocument();
     });
 
     await user.click(screen.getByText("Go to Operational Board"));
@@ -282,7 +285,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -290,9 +292,12 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "1800");
 
@@ -305,9 +310,7 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
 
     await user.click(screen.getByText("Accept Quote & Convert to Booking"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Initiate New Quote Cycle"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Initiate New Quote Cycle")).toBeInTheDocument();
     });
 
     await user.click(screen.getByText("Initiate New Quote Cycle"));
@@ -323,7 +326,6 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await waitFor(() => {
       expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
     });
-    // Select broker via the <select> dropdown
     const selects = document.querySelectorAll("select");
     const brokerSelect = Array.from(selects).find((s) =>
       Array.from(s.options).some((o) => o.text === "Alpha Logistics"),
@@ -331,22 +333,23 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     await user.selectOptions(brokerSelect, "broker-1");
     await user.click(screen.getByText("Manual Phone Quote"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
 
+    const cityInputs = screen.getAllByPlaceholderText("CITY, ST");
+    fireEvent.change(cityInputs[0], { target: { value: "Chicago, IL" } });
+    fireEvent.change(cityInputs[1], { target: { value: "Dallas, TX" } });
     const linehaulInputs = document.querySelectorAll('input[type="number"]');
     await user.type(linehaulInputs[0] as HTMLInputElement, "4000");
 
     await user.click(screen.getByText("Finalize Professional Quote"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Return to Rate Matrix"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Return to Rate Matrix")).toBeInTheDocument();
     });
 
     await user.click(screen.getByText("Return to Rate Matrix"));
     await waitFor(() => {
-      expect(screen.getByText("Linehaul Rate")).toBeInTheDocument();
+      expect(screen.getByText(/Linehaul Rate/)).toBeInTheDocument();
     });
   });
 
@@ -354,7 +357,7 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     const user = userEvent.setup();
     render(<BookingPortal {...defaultProps} />);
 
-    await user.click(screen.getByText("Manual Phone Quote"));
+    await user.click(await screen.findByText("Manual Phone Quote"));
     await waitFor(() => {
       expect(screen.getByText("Fuel Surcharge (FSC)")).toBeInTheDocument();
     });
@@ -364,7 +367,7 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
     const user = userEvent.setup();
     render(<BookingPortal {...defaultProps} />);
 
-    await user.click(screen.getByText("Manual Phone Quote"));
+    await user.click(await screen.findByText("Manual Phone Quote"));
     await waitFor(() => {
       expect(screen.getByText(/Assumptions & Policy/)).toBeInTheDocument();
       expect(

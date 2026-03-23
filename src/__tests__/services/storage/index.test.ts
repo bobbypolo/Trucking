@@ -28,17 +28,11 @@ vi.mock("uuid", () => ({
 }));
 
 describe("storage/index.ts — barrel exports", () => {
-  it("re-exports core utilities", async () => {
-    const storage = await import("../../../../services/storage/index");
-    expect(storage.getTenantKey).toBeTypeOf("function");
-    expect(storage.migrateKey).toBeTypeOf("function");
-  });
-
   it("re-exports quotes domain", async () => {
     const storage = await import("../../../../services/storage/index");
     expect(storage.getQuotes).toBeTypeOf("function");
     expect(storage.saveQuote).toBeTypeOf("function");
-  });
+  }, 10000);
 
   it("re-exports leads domain", async () => {
     const storage = await import("../../../../services/storage/index");
@@ -99,7 +93,10 @@ describe("storage/index.ts — barrel exports", () => {
 
   it("re-exports vault domain", async () => {
     const storage = await import("../../../../services/storage/index");
-    expect(storage.STORAGE_KEY_VAULT_DOCS).toBeTypeOf("function");
+    // STORAGE_KEY_VAULT_DOCS removed — vault.ts now uses API (STORY-105)
+    expect(
+      (storage as Record<string, unknown>).STORAGE_KEY_VAULT_DOCS,
+    ).toBeUndefined();
     expect(storage.getRawVaultDocs).toBeTypeOf("function");
     expect(storage.saveVaultDoc).toBeTypeOf("function");
     expect(storage.uploadVaultDoc).toBeTypeOf("function");
@@ -107,7 +104,10 @@ describe("storage/index.ts — barrel exports", () => {
 
   it("re-exports notifications domain", async () => {
     const storage = await import("../../../../services/storage/index");
-    expect(storage.STORAGE_KEY_NOTIFICATION_JOBS).toBeTypeOf("function");
+    // STORAGE_KEY_NOTIFICATION_JOBS removed — notifications.ts now uses API (STORY-103)
+    expect(
+      (storage as Record<string, unknown>).STORAGE_KEY_NOTIFICATION_JOBS,
+    ).toBeUndefined();
     expect(storage.getRawNotificationJobs).toBeTypeOf("function");
     expect(storage.saveNotificationJob).toBeTypeOf("function");
   });

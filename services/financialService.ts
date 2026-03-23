@@ -4,9 +4,13 @@ import {
     IFTASummary, MileageEntry, VaultDoc, IFTATripEvidence, IFTATripAudit
 } from '../types';
 
-export const getGLAccounts = async (): Promise<GLAccount[]> => {
-    const res = await fetch(`${API_BASE}/accounting/accounts`);
-    return res.json();
+export const getGLAccounts = async (
+  signal?: AbortSignal,
+): Promise<GLAccount[]> => {
+  const res = await fetch(`${API_BASE}/accounting/accounts`, {
+    ...(signal ? { signal } : {}),
+  });
+  return res.json();
 };
 
 export const getLoadProfitLoss = async (loadId: string): Promise<any> => {
@@ -41,10 +45,15 @@ export const createJournalEntry = async (entry: Partial<JournalEntry>): Promise<
     return res.json();
 };
 
-export const getSettlements = async (driverId?: string): Promise<DriverSettlement[]> => {
-    const url = driverId ? `${API_BASE}/accounting/settlements?driverId=${driverId}` : `${API_BASE}/accounting/settlements`;
-    const res = await fetch(url);
-    return res.json();
+export const getSettlements = async (
+  driverId?: string,
+  signal?: AbortSignal,
+): Promise<DriverSettlement[]> => {
+  const url = driverId
+    ? `${API_BASE}/accounting/settlements?driverId=${driverId}`
+    : `${API_BASE}/accounting/settlements`;
+  const res = await fetch(url, { ...(signal ? { signal } : {}) });
+  return res.json();
 };
 
 export const createSettlement = async (settlement: Partial<DriverSettlement>): Promise<DriverSettlement> => {
@@ -63,14 +72,22 @@ export const importFuelPurchases = async (purchases: FuelEntry[]): Promise<void>
         body: JSON.stringify(purchases)
     });
 };
-export const getInvoices = async (): Promise<ARInvoice[]> => {
-    const res = await fetch(`${API_BASE}/accounting/invoices`);
-    return res.json();
+export const getInvoices = async (
+  signal?: AbortSignal,
+): Promise<ARInvoice[]> => {
+  const res = await fetch(`${API_BASE}/accounting/invoices`, {
+    ...(signal ? { signal } : {}),
+  });
+  return res.json();
 };
 
-export const getBills = async (): Promise<APBill[]> => {
-    const res = await fetch(`${API_BASE}/accounting/bills`);
-    return res.json();
+export const getBills = async (
+  signal?: AbortSignal,
+): Promise<APBill[]> => {
+  const res = await fetch(`${API_BASE}/accounting/bills`, {
+    ...(signal ? { signal } : {}),
+  });
+  return res.json();
 };
 
 export const getVaultDocs = async (filters: any): Promise<any[]> => {

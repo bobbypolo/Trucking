@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -29,7 +29,7 @@ function makeLoad(overrides: Partial<LoadData> = {}): LoadData {
 }
 
 describe("ExportModal", () => {
-  let onClose: ReturnType<typeof vi.fn>;
+  let onClose: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
   const loads = [
     makeLoad({ id: "1", loadNumber: "LD-100", pickupDate: "2026-03-01" }),
@@ -43,7 +43,7 @@ describe("ExportModal", () => {
   ];
 
   beforeEach(() => {
-    onClose = vi.fn();
+    onClose = vi.fn<() => void>();
     user = userEvent.setup();
     vi.clearAllMocks();
   });

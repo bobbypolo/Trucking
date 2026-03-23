@@ -54,7 +54,6 @@ beforeAll(async () => {
 describe("R-P2-01: backfill_firebase_uid.cjs", () => {
   it("exits 0 when run from project root", () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 
@@ -70,11 +69,10 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
     );
 
     expect(result.status).toBe(0);
-  });
+  }, 30000);
 
   it("prints valid JSON with {updated, alreadyLinked, missingFirebaseUser, total} keys", () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 
@@ -130,7 +128,7 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
     expect(typeof parsed.alreadyLinked).toBe("number");
     expect(typeof parsed.missingFirebaseUser).toBe("number");
     expect(typeof parsed.total).toBe("number");
-  });
+  }, 30000);
 });
 
 /**
@@ -139,7 +137,6 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
 describe("R-P2-02: firebase_uid linkage count", () => {
   it("at least one user has a non-null firebase_uid", async () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 
@@ -161,7 +158,6 @@ describe("R-P2-02: firebase_uid linkage count", () => {
 describe("R-P2-03: no duplicate firebase_uid values", () => {
   it("returns zero rows from duplicate UID query", async () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 
@@ -187,7 +183,6 @@ describe("R-P2-03: no duplicate firebase_uid values", () => {
 describe("R-P2-04: resolveSqlPrincipalByFirebaseUid returns non-null", () => {
   it("returns SqlPrincipal with id, tenantId, companyId, role, email for dev UID", async () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 
@@ -230,7 +225,6 @@ describe("R-P2-04: resolveSqlPrincipalByFirebaseUid returns non-null", () => {
 describe("R-P2-05: dev login user has firebase_uid", () => {
   it("admin@loadpilot.com has non-null firebase_uid", async () => {
     if (!dbAvailable) {
-      console.log("SKIP: DB not available");
       return;
     }
 

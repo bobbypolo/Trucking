@@ -40,8 +40,8 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
           bEntry.totalRate += load.carrierRate;
       };
       loads.forEach(load => {
-          processFacility(load.pickup.facilityName, load.pickup.city, load.pickup.state, load);
-          processFacility(load.dropoff.facilityName, load.dropoff.city, load.dropoff.state, load);
+          processFacility(load.pickup?.facilityName ?? "", load.pickup?.city ?? "", load.pickup?.state ?? "", load);
+          processFacility(load.dropoff?.facilityName ?? "", load.dropoff?.city ?? "", load.dropoff?.state ?? "", load);
       });
       return Array.from(map.values()).map(f => ({
           ...f, riskScore: (f.detentionCount / f.visits) * 100, onTimeScore: 100 - ((f.lateCount / f.visits) * 100),
@@ -63,7 +63,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
           entry.loads.push(load);
           if (load.status === 'cancelled') entry.cancelCount++;
           if (!load.issues?.some(i => i.category === 'Dispatch') && load.status !== 'cancelled') entry.onTimeCount++;
-          const lane = `${load.pickup.state} -> ${load.dropoff.state}`;
+          const lane = `${load.pickup?.state ?? ""} -> ${load.dropoff?.state ?? ""}`;
           entry.lanes.set(lane, (entry.lanes.get(lane) || 0) + 1);
       });
       return Array.from(map.values()).map(b => ({
@@ -205,7 +205,8 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                 <div className="relative mb-6">
                     <Search className="absolute left-4 top-3.5 w-5 h-5 text-slate-600" />
                     <input 
-                        placeholder={activeTab === 'facilities' ? "Filter Facilities..." : "Filter Brokers..."} 
+                        placeholder={activeTab === 'facilities' ? "Filter Facilities..." : "Filter Brokers..."}
+                        aria-label={activeTab === 'facilities' ? "Filter facilities" : "Filter brokers"}
                         value={filter}
                         onChange={e => setFilter(e.target.value)}
                         className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-12 pr-4 py-3.5 text-sm text-white font-black uppercase tracking-widest shadow-inner outline-none focus:border-blue-500"
@@ -244,7 +245,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                                         {activeTab === 'facilities' ? (item.riskScore < 20 ? 'Optimal' : 'Delayed') : `${item.onTimeRate.toFixed(0)}% OTD`}
                                     </div>
                                 </div>
-                                <button className="p-2 bg-slate-800 rounded-lg text-slate-600 group-hover:text-blue-500 transition-colors shadow-inner"><ChevronRight className="w-4 h-4"/></button>
+                                <button aria-label="View details" className="p-2 bg-slate-800 rounded-lg text-slate-600 group-hover:text-blue-500 transition-colors shadow-inner"><ChevronRight className="w-4 h-4"/></button>
                             </div>
                         </div>
                     ))}
@@ -268,7 +269,7 @@ export const Intelligence: React.FC<Props> = ({ loads, brokers, onViewLoad }) =>
                                 </p>
                             </div>
                         </div>
-                        <button onClick={() => setSelectedEntity(null)} className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-500 transition-all shadow-md"><X className="w-5 h-5"/></button>
+                        <button onClick={() => setSelectedEntity(null)} aria-label="Close details" className="p-3 bg-slate-800 hover:bg-slate-700 rounded-full text-slate-500 transition-all shadow-md"><X className="w-5 h-5"/></button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-10 space-y-10 scrollbar-hide">

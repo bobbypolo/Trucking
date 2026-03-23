@@ -402,7 +402,10 @@ export const DispatchIntelligence = {
   },
 
   /**
-   * IFTA Intelligence: Reconciles fuel purchases against states traveled.
+   * IFTA Intelligence: Client-side fuel-efficiency analytics and discrepancy alerts.
+   * Actual per-jurisdiction tax reconciliation is performed server-side via
+   * GET /api/accounting/ifta-summary, which queries mileage_jurisdiction and
+   * fuel_ledger tables, applies per-state tax rates, and returns netTaxDue.
    */
   reconcileIFTATax: (loads: LoadData[]): IFTAAudit => {
     const totalMiles = loads.reduce((acc, l) => acc + (l.miles || 0), 0);
@@ -423,10 +426,13 @@ export const DispatchIntelligence = {
     if (avgMpg < 4)
       alerts.push("Critically low MPG - potential fuel theft or leakage");
 
-    // IFTA tax calculation requires per-jurisdiction rates and is performed
-    // server-side via /api/accounting/ifta-summary. Client-side cannot
-    // replicate this without real state tax rate data — return 0 to avoid
-    // displaying fabricated financial figures.
+    // Net IFTA tax is computed server-side by GET /api/accounting/ifta-summary:
+    //   1. Per-state mileage from mileage_jurisdiction table
+    //   2. Per-state fuel gallons from fuel_ledger table
+    //   3. Per-state tax rates applied to derive taxDue per jurisdiction
+    //   4. netTaxDue = sum(taxDue - taxPaidAtPump) across all states
+    // Client returns 0 here; the UI should fetch the server endpoint for
+    // the authoritative netTaxDue value.
     const netTaxDue = 0;
 
     return {

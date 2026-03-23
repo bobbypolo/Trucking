@@ -123,6 +123,13 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+// Mock requireTier to pass-through (perf tests focus on latency, not tier gating)
+vi.mock("../../middleware/requireTier", () => ({
+  requireTier:
+    () => (_req: any, _res: any, next: any) =>
+      next(),
+}));
+
 import express from "express";
 import request from "supertest";
 import loadRoutes from "../../routes/loads";

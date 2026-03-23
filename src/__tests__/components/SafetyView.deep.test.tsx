@@ -36,9 +36,9 @@ vi.mock("../../../services/safetyService", () => ({
   getMaintenanceRecords: vi.fn().mockResolvedValue([]),
   saveMaintenanceRecord: (...args: unknown[]) =>
     mockSaveMaintenanceRecord(...args),
-  getServiceTickets: vi.fn().mockReturnValue([]),
+  getServiceTickets: vi.fn().mockResolvedValue([]),
   saveServiceTicket: vi.fn().mockResolvedValue(undefined),
-  getVendors: vi.fn().mockReturnValue([]),
+  getVendors: vi.fn().mockResolvedValue([]),
   getEquipment: vi.fn().mockResolvedValue([]),
   getComplianceRecords: (...args: unknown[]) =>
     mockGetComplianceRecords(...args),
@@ -136,6 +136,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
   describe("maintenance form submission (lines 1238-1242)", () => {
     it("opens maintenance form from Service tab and submits", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       // Navigate to Service tab
       await user.click(screen.getByText("Service"));
@@ -177,6 +180,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
   describe("quiz form submission (lines 1243-1250)", () => {
     it("opens quiz form from Academy tab and submits with correct shape", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       // Navigate to Academy tab
       await user.click(screen.getByText("Academy"));
@@ -229,6 +235,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
   describe("incident form submission (lines 1251-1297)", () => {
     it("opens incident form from Roster card and shows load-filtered fields", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       // Navigate to Roster tab
       await user.click(screen.getByText("Roster"));
@@ -259,6 +268,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
 
     it("submits incident and creates both incident and load issue", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Roster"));
       await waitFor(() => {
@@ -342,6 +354,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       ]);
 
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Roster"));
       await waitFor(() => {
@@ -378,6 +393,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       mockGetComplianceRecords.mockResolvedValue([]);
 
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Roster"));
       await waitFor(() => {
@@ -398,6 +416,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       mockGetComplianceRecords.mockResolvedValue([]);
 
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Roster"));
       await waitFor(() => {
@@ -447,6 +468,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
   describe("asset form submission (line 1235-1236)", () => {
     it("opens asset registration from Assets tab and submits", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Assets"));
       await waitFor(() => {
@@ -483,6 +507,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
   describe("form modal close behavior", () => {
     it("closes any form modal when X button is clicked", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Assets"));
       await waitFor(() => {
@@ -515,6 +542,9 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
 
     it("shows feedback toast after successful form submission", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
+      await waitFor(() =>
+        expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
+      );
 
       await user.click(screen.getByText("Service"));
       await waitFor(() => {
@@ -527,6 +557,12 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       await waitFor(() => {
         expect(screen.getByText(/Registration/)).toBeInTheDocument();
       });
+
+      // Fill in required description field so the submit button is enabled
+      const descriptionInput = screen.getByPlaceholderText(
+        "e.g. Annual Inspection and Oil Change",
+      );
+      await user.type(descriptionInput, "Routine brake inspection");
 
       const submitBtn = screen.getByRole("button", { name: /Submit/i });
       await user.click(submitBtn);

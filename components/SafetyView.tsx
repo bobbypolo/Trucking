@@ -1,4 +1,13 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
+import { LoadingSkeleton } from "./ui/LoadingSkeleton";
+import { ErrorState } from "./ui/ErrorState";
 import {
   User,
   SafetyQuiz,
@@ -8,6 +17,8 @@ import {
   Company,
   QuizResult,
   MaintenanceRecord,
+  ServiceTicket,
+  Provider,
 } from "../types";
 import {
   checkDriverCompliance,
@@ -71,13 +82,8 @@ import {
   MapPin,
   ClipboardList,
 } from "lucide-react";
-import {
-  saveLoad,
-  createIncident,
-  seedIncidents,
-} from "../services/storageService";
+import { saveLoad, createIncident } from "../services/storageService";
 import { v4 as uuidv4 } from "uuid";
-import { DEMO_MODE } from "../services/firebase";
 import { Scanner } from "./Scanner";
 import {
   getServiceTickets,
@@ -86,6 +92,20 @@ import {
   getEquipment,
   getComplianceRecords,
 } from "../services/safetyService";
+import {
+  NotificationStatusBadge,
+  type NotificationStatus,
+} from "./ui/NotificationStatusBadge";
+import { CertExpiryWarnings } from "./ui/CertExpiryWarnings";
+
+interface NotificationJob {
+  id: string;
+  message: string;
+  channel: string;
+  status: NotificationStatus;
+  sent_at: string;
+  sync_error?: string | boolean;
+}
 
 interface Props {
   user: User;
@@ -121,76 +141,163 @@ export const SafetyView: React.FC<Props> = ({
   >([]);
   const [fleetEquipment, setFleetEquipment] = useState<FleetEquipment[]>([]);
   const [complianceRecords, setComplianceRecords] = useState<any[]>([]);
+  const [serviceTickets, setServiceTickets] = useState<ServiceTicket[]>([]);
+  const [vendors, setVendors] = useState<Provider[]>([]);
   const [selectedDriverCompliance, setSelectedDriverCompliance] = useState<
     string | null
   >(null);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<
+    string | null
+  >(null);
   const [showForm, setShowForm] = useState<
     "asset" | "maintenance" | "quiz" | "incident" | "compliance" | null
   >(null);
   const [formData, setFormData] = useState<any>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [safetyFormErrors, setSafetyFormErrors] = useState<Record<string, string>>({});
+  const [notificationJobs, setNotificationJobs] = useState<NotificationJob[]>([]);
 
-  const showFeedback = (msg: string) => {
-    setFeedback(msg);
-    setTimeout(() => setFeedback(null), 3000);
-  };
+  const isSafetyFormValid = (() => {
+    if (!showForm) return false;
+    if (showForm === "asset") return !!formData.id?.trim();
+    if (showForm === "maintenance") return !!formData.description?.trim();
+    if (showForm === "incident") return !!formData.description?.trim();
+    return true;
+  })();
+  const [fmcsaData, setFmcsaData] = useState<{
+    available: boolean;
+    isMock?: boolean;
+    data?: {
+      dotNumber: string;
+      legalName: string;
+      safetyRating: string | null;
+      totalDrivers: number;
+      totalPowerUnits: number;
+      inspections: {
+        totalInspections: number;
+        driverOosRate: number;
+        vehicleOosRate: number;
+      } | null;
+    };
+  } | null>(null);
+
+  const loadPayload = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const c = await getCompany(user.companyId);
+      if (c) {
+        const allUsers = await getCompanyUsers(c.id);
+        // Standardize role check and filter for active operators
+        const safetyUsers = allUsers.filter((u) =>
+          [
+            "admin",
+            "dispatcher",
+            "safety_manager",
+            "driver",
+            "owner_operator",
+          ].includes(u.role),
+        );
+
+        const enrichedOperators = await Promise.all(
+          safetyUsers.map(async (u) => {
+            try {
+              const performance = await calculateDriverPerformance(u, c);
+              return { user: u, performance };
+            } catch (err) {
+              console.error(
+                "[SafetyView] Failed to calculate driver performance:",
+                err,
+              );
+              return {
+                user: u,
+                performance: {
+                  driverId: u.id,
+                  totalScore: 0,
+                  grade: "At Risk" as any,
+                  status: "Blocked" as any,
+                  metrics: {
+                    safetyScore: 0,
+                    onTimeRate: 0,
+                    paperworkScore: 0,
+                    loadCount: 0,
+                  },
+                },
+              } as any;
+            }
+          }),
+        );
+        setOperators(enrichedOperators);
+
+        // Fetch Equipment
+        const equips = await getEquipment(user.companyId);
+        setFleetEquipment(equips);
+
+        // Fetch service tickets and vendors
+        const [tickets, vendorList] = await Promise.all([
+          getServiceTickets(),
+          getVendors(),
+        ]);
+        setServiceTickets(tickets);
+        setVendors(vendorList);
+
+        // Fetch FMCSA safety score (non-blocking — uses company DOT if available)
+        const dotNumber = c?.dotNumber;
+        if (dotNumber) {
+          try {
+            const resp = await fetch(`/api/safety/fmcsa/${dotNumber}`);
+            if (resp.ok) {
+              const fmcsa = await resp.json();
+              setFmcsaData(fmcsa);
+            }
+          } catch {
+            // FMCSA fetch is non-critical — silently degrade
+          }
+        }
+
+        // Fetch notification jobs (non-blocking)
+        try {
+          const nResp = await fetch("/api/notification-jobs");
+          if (nResp.ok) {
+            const jobs: NotificationJob[] = await nResp.json();
+            setNotificationJobs(jobs);
+          }
+        } catch {
+          // Notification jobs fetch is non-critical — silently degrade
+        }
+      }
+    } catch (error) {
+      setLoadError("Failed to load safety data. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
-    const loadPayload = async () => {
-      try {
-        const c = await getCompany(user.companyId);
-        if (c) {
-          const allUsers = await getCompanyUsers(c.id);
-          // Standardize role check and filter for active operators
-          const safetyUsers = allUsers.filter((u) =>
-            [
-              "admin",
-              "dispatcher",
-              "safety_manager",
-              "driver",
-              "owner_operator",
-            ].includes(u.role),
-          );
-
-          const enrichedOperators = await Promise.all(
-            safetyUsers.map(async (u) => {
-              try {
-                const performance = await calculateDriverPerformance(u, c);
-                return { user: u, performance };
-              } catch (err) {
-                return {
-                  user: u,
-                  performance: {
-                    driverId: u.id,
-                    totalScore: 0,
-                    grade: "At Risk" as any,
-                    status: "Blocked" as any,
-                    metrics: {
-                      safetyScore: 0,
-                      onTimeRate: 0,
-                      paperworkScore: 0,
-                      loadCount: 0,
-                    },
-                  },
-                } as any;
-              }
-            }),
-          );
-          setOperators(enrichedOperators);
-
-          // Seed incidents if none exist (demo only)
-          if (DEMO_MODE) await seedIncidents(loads);
-
-          // Fetch Equipment
-          const equips = await getEquipment(user.companyId);
-          setFleetEquipment(equips);
-        }
-      } catch (error) {
-        showFeedback("Logic Sync Interrupted. Re-establishing connection...");
-      }
-    };
     loadPayload();
-  }, [user]);
+  }, [loadPayload]);
+
+  if (isLoading) {
+    return (
+      <div
+        role="status"
+        aria-label="Loading safety data"
+        className="h-full flex flex-col bg-[#020617] text-slate-100 p-10"
+      >
+        <LoadingSkeleton variant="card" count={4} />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="h-full flex flex-col bg-[#020617] text-slate-100">
+        <ErrorState message={loadError} onRetry={loadPayload} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100">
@@ -248,7 +355,7 @@ export const SafetyView: React.FC<Props> = ({
               {feedback}
             </span>
           </div>
-          <button onClick={() => setFeedback(null)}>
+          <button onClick={clearFeedback} aria-label="Dismiss feedback">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -261,9 +368,19 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Fleet Safety Score",
-                  value: "65",
-                  target: "Target: 95+",
-                  color: "text-red-400",
+                  value: fmcsaData?.available && fmcsaData.data?.safetyRating
+                    ? fmcsaData.data.safetyRating
+                    : "N/A",
+                  target: fmcsaData?.isMock
+                    ? "Mock Data"
+                    : fmcsaData?.available
+                      ? "FMCSA Verified"
+                      : "Target: 95+",
+                  color: fmcsaData?.available && fmcsaData.data?.safetyRating === "Satisfactory"
+                    ? "text-green-400"
+                    : fmcsaData?.available
+                      ? "text-yellow-400"
+                      : "text-red-400",
                 },
                 {
                   label: "Pending Maintenance",
@@ -400,6 +517,52 @@ export const SafetyView: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+
+            {/* Certificate Expiry Warnings — real data from API */}
+            <CertExpiryWarnings companyId={user.companyId} daysAhead={30} />
+
+            {/* Recent Notification Status */}
+            {notificationJobs.length > 0 && (
+              <div
+                data-testid="notification-jobs-section"
+                className="bg-slate-900 p-6 rounded-xl border border-slate-800"
+              >
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-3">
+                  <Activity className="w-5 h-5 text-blue-500" />
+                  Recent Notifications
+                  <span className="text-[9px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-900/50">
+                    {notificationJobs.length}
+                  </span>
+                </h4>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto no-scrollbar">
+                  {notificationJobs.slice(0, 10).map((job) => (
+                    <div
+                      key={job.id}
+                      data-testid="notification-job-item"
+                      className="flex items-center justify-between p-3 bg-slate-950 rounded-lg border border-slate-800 hover:border-slate-700 transition-all"
+                    >
+                      <div className="flex-1 min-w-0 mr-3">
+                        <div className="text-xs font-medium text-white truncate">
+                          {job.message}
+                        </div>
+                        <div className="text-[10px] text-slate-500 mt-0.5">
+                          {job.channel} &middot;{" "}
+                          {new Date(job.sent_at).toLocaleString()}
+                        </div>
+                      </div>
+                      <NotificationStatusBadge
+                        status={job.status}
+                        syncError={
+                          job.status === "FAILED" && job.sync_error
+                            ? String(job.sync_error)
+                            : undefined
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -618,7 +781,7 @@ export const SafetyView: React.FC<Props> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {getVendors().map((vendor) => (
+              {vendors.map((vendor) => (
                 <div
                   key={vendor.id}
                   className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all"
@@ -716,20 +879,19 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Open Tickets",
-                  value: getServiceTickets().filter(
-                    (t) => t.status !== "Closed",
-                  ).length,
+                  value: serviceTickets.filter((t) => t.status !== "Closed")
+                    .length,
                   color: "text-blue-500",
                 },
                 {
                   label: "Awaiting Vendor",
-                  value: getServiceTickets().filter((t) => t.status === "Open")
+                  value: serviceTickets.filter((t) => t.status === "Open")
                     .length,
                   color: "text-orange-500",
                 },
                 {
                   label: "In Progress",
-                  value: getServiceTickets().filter(
+                  value: serviceTickets.filter(
                     (t) => t.status === "In_Progress",
                   ).length,
                   color: "text-yellow-500",
@@ -773,7 +935,7 @@ export const SafetyView: React.FC<Props> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {getServiceTickets().map((ticket) => (
+                    {serviceTickets.map((ticket) => (
                       <tr
                         key={ticket.id}
                         className="hover:bg-white/5 transition-colors cursor-pointer group"
@@ -829,7 +991,7 @@ export const SafetyView: React.FC<Props> = ({
                         </td>
                       </tr>
                     ))}
-                    {getServiceTickets().length === 0 && (
+                    {serviceTickets.length === 0 && (
                       <tr>
                         <td colSpan={5} className="px-8 py-20 text-center">
                           <div className="opacity-10 mb-4 flex justify-center">
@@ -1053,24 +1215,25 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "asset" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      Asset ID / Unit Number
+                    <label htmlFor="svAssetIDUnitNumber" className="text-[10px] font-bold text-slate-500 uppercase">
+                      Asset ID / Unit Number *
                     </label>
-                    <input
+                    <input id="svAssetIDUnitNumber"
                       type="text"
                       placeholder="e.g. TR-101"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:border-blue-500 transition-colors outline-none"
+                      className={`w-full bg-slate-950 border ${safetyFormErrors.id ? "border-red-500" : "border-slate-800"} rounded-lg px-4 py-3 text-white focus:border-blue-500 transition-colors outline-none`}
                       onChange={(e) =>
                         setFormData({ ...formData, id: e.target.value })
                       }
                     />
+                    {safetyFormErrors.id && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.id}</p>}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svType" className="text-[10px] font-bold text-slate-500 uppercase">
                         Type
                       </label>
-                      <select
+                      <select id="svType"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, type: e.target.value })
@@ -1083,10 +1246,10 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svOwnership" className="text-[10px] font-bold text-slate-500 uppercase">
                         Ownership
                       </label>
-                      <select
+                      <select id="svOwnership"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({
@@ -1105,10 +1268,10 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "maintenance" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="svSelectAsset" className="text-[10px] font-bold text-slate-500 uppercase">
                       Select Asset
                     </label>
-                    <select
+                    <select id="svSelectAsset"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       onChange={(e) =>
                         setFormData({ ...formData, unitId: e.target.value })
@@ -1120,10 +1283,10 @@ export const SafetyView: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
-                      Service Description
+                    <label htmlFor="svServiceDescription" className="text-[10px] font-bold text-slate-500 uppercase">
+                      Service Description *
                     </label>
-                    <textarea
+                    <textarea id="svServiceDescription"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white h-24 outline-none"
                       placeholder="e.g. Annual Inspection and Oil Change"
                       onChange={(e) =>
@@ -1133,16 +1296,17 @@ export const SafetyView: React.FC<Props> = ({
                         })
                       }
                     />
+                    {safetyFormErrors.description && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.description}</p>}
                   </div>
                 </>
               )}
               {showForm === "quiz" && (
                 <>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label htmlFor="svCourseTitle" className="text-[10px] font-bold text-slate-500 uppercase">
                       Course Title
                     </label>
-                    <input
+                    <input id="svCourseTitle"
                       type="text"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       placeholder="e.g. Hazardous Materials Handling"
@@ -1175,10 +1339,10 @@ export const SafetyView: React.FC<Props> = ({
                 <>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svSelectRelevantManifest" className="text-[10px] font-bold text-slate-500 uppercase">
                         Select Relevant Manifest
                       </label>
-                      <select
+                      <select id="svSelectRelevantManifest"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, loadId: e.target.value })
@@ -1190,16 +1354,16 @@ export const SafetyView: React.FC<Props> = ({
                           .filter((l) => l.driverId === formData.driverId)
                           .map((l) => (
                             <option key={l.id} value={l.id}>
-                              PRO {l.loadNumber} - {l.pickup.city}
+                              PRO {l.loadNumber} - {l.pickup?.city ?? ""}
                             </option>
                           ))}
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label htmlFor="svIncidentSeverity" className="text-[10px] font-bold text-slate-500 uppercase">
                         Incident Severity
                       </label>
-                      <select
+                      <select id="svIncidentSeverity"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, category: e.target.value })
@@ -1211,10 +1375,10 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase">
-                        Description of Event
+                      <label htmlFor="svDescriptionOfEvent" className="text-[10px] font-bold text-slate-500 uppercase">
+                        Description of Event *
                       </label>
-                      <textarea
+                      <textarea id="svDescriptionOfEvent"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-4 text-sm text-white h-32 outline-none resize-none placeholder:text-slate-700"
                         placeholder="DESCRIBE THE INCIDENT IN DETAIL FOR AUDIT CONTROL..."
                         onChange={(e) =>
@@ -1231,82 +1395,110 @@ export const SafetyView: React.FC<Props> = ({
             </div>
             <div className="p-8 border-t border-slate-800 bg-slate-950/50">
               <button
+                disabled={isSubmitting || !isSafetyFormValid}
                 onClick={async () => {
-                  if (showForm === "asset")
-                    registerAsset(user.companyId, formData, user);
-                  else if (showForm === "maintenance")
-                    saveMaintenanceRecord({
-                      ...formData,
-                      id: uuidv4(),
-                      date: new Date().toISOString(),
-                    });
-                  else if (showForm === "quiz")
-                    saveQuiz({
-                      ...formData,
-                      id: uuidv4(),
-                      createdAt: new Date().toISOString(),
-                      questions: [],
-                      assignedTo: ["all"],
-                    });
-                  else if (showForm === "incident") {
-                    const newIncident = {
-                      id: uuidv4(),
-                      loadId: formData.loadId,
-                      type: formData.category || "Incident",
-                      severity:
-                        formData.category === "Safety" ? "Critical" : "High",
-                      status: "Open",
-                      description: formData.description,
-                      reportedAt: new Date().toISOString(),
-                      reportedBy: user.name,
-                      timeline: [
-                        {
-                          id: uuidv4(),
-                          timestamp: new Date().toISOString(),
-                          action: "Incident Created",
-                          notes: `Incident created by Safety Department: ${formData.description}`,
-                          actorName: user.name,
-                        },
-                      ],
-                      isAtRisk: true,
-                      serviceTickets: [],
-                      billingItems: [],
-                    };
-                    await createIncident(newIncident as any);
-
-                    // Also add an issue to the load for visibility in Dispatch Board
-                    const targetLoad = loads.find(
-                      (l) => l.id === formData.loadId,
-                    );
-                    if (targetLoad) {
-                      const newIssue = {
+                  const errs: Record<string, string> = {};
+                  if (showForm === "asset") {
+                    if (!formData.id?.trim()) errs.id = "Unit number is required";
+                  }
+                  if (showForm === "maintenance") {
+                    if (!formData.description?.trim()) errs.description = "Description is required";
+                  }
+                  if (showForm === "incident") {
+                    if (!formData.description?.trim()) errs.description = "Description is required";
+                  }
+                  if (Object.keys(errs).length > 0) {
+                    setSafetyFormErrors(errs);
+                    return;
+                  }
+                  setSafetyFormErrors({});
+                  setIsSubmitting(true);
+                  try {
+                    if (showForm === "asset")
+                      await registerAsset(user.companyId, formData, user);
+                    else if (showForm === "maintenance")
+                      await saveMaintenanceRecord({
+                        ...formData,
                         id: uuidv4(),
-                        category: formData.category || "Incident",
-                        description:
-                          formData.description || "No description provided.",
+                        date: new Date().toISOString(),
+                      });
+                    else if (showForm === "quiz")
+                      await saveQuiz({
+                        ...formData,
+                        id: uuidv4(),
+                        createdAt: new Date().toISOString(),
+                        questions: [],
+                        assignedTo: ["all"],
+                      });
+                    else if (showForm === "incident") {
+                      const newIncident = {
+                        id: uuidv4(),
+                        loadId: formData.loadId,
+                        type: formData.category || "Incident",
+                        severity:
+                          formData.category === "Safety" ? "Critical" : "High",
+                        status: "Open",
+                        description: formData.description,
                         reportedAt: new Date().toISOString(),
                         reportedBy: user.name,
-                        status: "Open" as const,
+                        timeline: [
+                          {
+                            id: uuidv4(),
+                            timestamp: new Date().toISOString(),
+                            action: "Incident Created",
+                            notes: `Incident created by Safety Department: ${formData.description}`,
+                            actorName: user.name,
+                          },
+                        ],
+                        isAtRisk: true,
+                        serviceTickets: [],
+                        billingItems: [],
                       };
-                      const updatedLoad = {
-                        ...targetLoad,
-                        issues: [...(targetLoad.issues || []), newIssue],
-                        isActionRequired: true,
-                        actionSummary: `CRISIS ALERT: ${formData.description}`,
-                      };
-                      saveLoad(updatedLoad, user);
-                    }
-                  }
+                      await createIncident(newIncident as any);
 
-                  showFeedback(
-                    `${showForm.charAt(0).toUpperCase() + showForm.slice(1)} Saved Successfully`,
-                  );
-                  setShowForm(null);
-                  setFormData({});
+                      // Also add an issue to the load for visibility in Dispatch Board
+                      const targetLoad = loads.find(
+                        (l) => l.id === formData.loadId,
+                      );
+                      if (targetLoad) {
+                        const newIssue = {
+                          id: uuidv4(),
+                          category: formData.category || "Incident",
+                          description:
+                            formData.description || "No description provided.",
+                          reportedAt: new Date().toISOString(),
+                          reportedBy: user.name,
+                          status: "Open" as const,
+                        };
+                        const updatedLoad = {
+                          ...targetLoad,
+                          issues: [...(targetLoad.issues || []), newIssue],
+                          isActionRequired: true,
+                          actionSummary: `CRISIS ALERT: ${formData.description}`,
+                        };
+                        await saveLoad(updatedLoad, user);
+                      }
+                    }
+
+                    showFeedback(
+                      `${showForm.charAt(0).toUpperCase() + showForm.slice(1)} Saved Successfully`,
+                    );
+                    setShowForm(null);
+                    setFormData({});
+                  } catch (err) {
+                    console.error(`Failed to save ${showForm}:`, err);
+                    showFeedback(
+                      `Failed to save ${showForm}. Please try again.`,
+                    );
+                  } finally {
+                    setIsSubmitting(false);
+                  }
                 }}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95"
+                className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Submit {showForm.replace("_", " ")}
+                {isSubmitting
+                  ? "Submitting..."
+                  : `Submit ${showForm?.replace("_", " ")}`}
               </button>
             </div>
           </div>

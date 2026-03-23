@@ -22,7 +22,7 @@ vi.mock("firebase/storage", () => ({
   getDownloadURL: vi.fn(),
 }));
 vi.mock("../../../services/brokerService", () => ({
-  getRawBrokers: vi.fn().mockReturnValue([]),
+  getBrokers: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("jspdf", () => {
   function MockJsPDF() {
@@ -145,9 +145,13 @@ import {
   getLoads,
   saveLoad,
 } from "../../../services/storageService";
-import { fetchLoads as apiFetchLoads, createLoad as apiCreateLoad, searchLoadsApi } from "../../../services/loadService";
+import {
+  fetchLoads as apiFetchLoads,
+  createLoad as apiCreateLoad,
+  searchLoadsApi,
+} from "../../../services/loadService";
 import { getCompany, getStoredUsers } from "../../../services/authService";
-import { getRawBrokers } from "../../../services/brokerService";
+import { getBrokers } from "../../../services/brokerService";
 import { getBookings } from "../../../services/storage/bookings";
 import { getQuotes } from "../../../services/storage/quotes";
 import { getRawRequests } from "../../../services/storage/recovery";
@@ -162,7 +166,7 @@ const mockApiCreateLoad = apiCreateLoad as ReturnType<typeof vi.fn>;
 const mockSearchLoadsApi = searchLoadsApi as ReturnType<typeof vi.fn>;
 const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockGetStoredUsers = getStoredUsers as ReturnType<typeof vi.fn>;
-const mockGetRawBrokers = getRawBrokers as ReturnType<typeof vi.fn>;
+const mockGetBrokers = getBrokers as ReturnType<typeof vi.fn>;
 const mockGetBookings = getBookings as ReturnType<typeof vi.fn>;
 const mockGetQuotes = getQuotes as ReturnType<typeof vi.fn>;
 const mockGetRawRequests = getRawRequests as ReturnType<typeof vi.fn>;
@@ -196,7 +200,7 @@ describe("storageService — gap coverage", () => {
     mockSearchLoadsApi.mockReset().mockResolvedValue([]);
     mockGetCompany.mockReset();
     mockGetStoredUsers.mockReset().mockReturnValue([]);
-    mockGetRawBrokers.mockReset().mockReturnValue([]);
+    mockGetBrokers.mockReset().mockResolvedValue([]);
     mockGetBookings.mockReset().mockResolvedValue([]);
     mockGetQuotes.mockReset().mockResolvedValue([]);
     mockGetRawRequests.mockReset().mockResolvedValue([]);
@@ -221,9 +225,7 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns null if quote not found for booking", async () => {
-      mockGetBookings.mockResolvedValue([
-        { id: "b1", quoteId: "q-missing" },
-      ]);
+      mockGetBookings.mockResolvedValue([{ id: "b1", quoteId: "q-missing" }]);
       mockGetQuotes.mockResolvedValue([]);
       const user = { id: "u1", companyId: "c1" } as any;
       const result = await convertBookingToLoad("b1", user);
@@ -263,11 +265,12 @@ describe("storageService — gap coverage", () => {
       }
     });
 
-    it("saves to localStorage even when API fails", async () => {
+    it("returns false when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      const result = await createIncident({ type: "Weather" });
-      expect(result).toBe(true);
+      // API is sole source of truth — no localStorage fallback, returns false on failure
+      const result = await createIncident({ type: "Weather Shutdown" });
+      expect(result).toBe(false);
     });
   });
 
@@ -291,18 +294,14 @@ describe("storageService — gap coverage", () => {
       expect(result).toBe(true);
     });
 
-    it("handles API failure gracefully", async () => {
-      const key = "loadpilot_test-co_incidents_v1";
-      localStorageMock[key] = JSON.stringify([
-        { id: "inc-1", timeline: [], billingItems: [] },
-      ]);
-
+    it("returns false when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
+      // API is sole source of truth — no localStorage fallback, returns false on failure
       const result = await saveIncidentAction("inc-1", {
         action: "NOTE_ADDED",
       });
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
   });
 
@@ -312,13 +311,13 @@ describe("storageService — gap coverage", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
 
       const issue = await saveIssue({
-        category: "Mechanical",
+        category: "Maintenance",
         description: "Flat tire",
       });
 
       expect(issue).toBeDefined();
       expect(issue.id).toBeTruthy();
-      expect(issue.category).toBe("Mechanical");
+      expect(issue.category).toBe("Maintenance");
     });
 
     it("handles API failure gracefully", async () => {
@@ -398,7 +397,9 @@ describe("storageService — gap coverage", () => {
   // ─── searchLoads ─────────────────────────────────────────────────────
   describe("searchLoads", () => {
     it("delegates to searchLoadsApi", async () => {
-      mockSearchLoadsApi.mockResolvedValue([{ id: "l1", loadNumber: "LD-100" }]);
+      mockSearchLoadsApi.mockResolvedValue([
+        { id: "l1", loadNumber: "LD-100" },
+      ]);
 
       const results = await searchLoads("LD-100");
       expect(results).toHaveLength(1);
@@ -470,20 +471,21 @@ describe("storageService — gap coverage", () => {
         id: "TRK-501",
         type: "Truck",
         maintenanceHistory: [
-          { date: "2026-03-01", type: "Oil Change", description: "Full synthetic", cost: 150 },
+          {
+            date: "2026-03-01",
+            type: "Oil Change",
+            description: "Full synthetic",
+            cost: 150,
+          },
         ],
       } as any;
 
-      expect(() =>
-        generateMaintenanceLogPDF(eq, "Test Fleet"),
-      ).not.toThrow();
+      expect(() => generateMaintenanceLogPDF(eq, "Test Fleet")).not.toThrow();
     });
 
     it("handles empty maintenance history", () => {
       const eq = { id: "TRK-502", type: "Truck" } as any;
-      expect(() =>
-        generateMaintenanceLogPDF(eq, "Test"),
-      ).not.toThrow();
+      expect(() => generateMaintenanceLogPDF(eq, "Test")).not.toThrow();
     });
   });
 
@@ -647,15 +649,13 @@ describe("storageService — gap coverage", () => {
   // ─── getBrokerSummary ────────────────────────────────────────────────
   describe("getBrokerSummary", () => {
     it("returns null for unknown broker", async () => {
-      mockGetRawBrokers.mockReturnValue([]);
+      mockGetBrokers.mockResolvedValue([]);
       const result = await getBrokerSummary("nonexistent");
       expect(result).toBeNull();
     });
 
     it("returns summary for known broker", async () => {
-      mockGetRawBrokers.mockReturnValue([
-        { id: "b1", name: "Acme Freight" },
-      ]);
+      mockGetBrokers.mockResolvedValue([{ id: "b1", name: "Acme Freight" }]);
       mockGetRawRequests.mockResolvedValue([]);
       mockGetRawCalls.mockResolvedValue([]);
 
@@ -668,6 +668,10 @@ describe("storageService — gap coverage", () => {
   // ─── getRecord360Data ────────────────────────────────────────────────
   describe("getRecord360Data", () => {
     it("returns null for unsupported type", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
       const result = await getRecord360Data("UNKNOWN" as any, "x");
       expect(result).toBeNull();
     });
@@ -687,9 +691,11 @@ describe("storageService — gap coverage", () => {
     });
 
     it("returns data for BROKER type", async () => {
-      mockGetRawBrokers.mockReturnValue([
-        { id: "b1", name: "Acme" },
-      ]);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as any);
+      mockGetBrokers.mockResolvedValue([{ id: "b1", name: "Acme" }]);
 
       const result = await getRecord360Data("BROKER", "b1");
       expect(result).toBeDefined();

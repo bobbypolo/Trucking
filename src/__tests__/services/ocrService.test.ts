@@ -1,12 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 
 // Mock firebase to control DEMO_MODE
 vi.mock("../../../services/firebase", () => ({
   DEMO_MODE: true,
-}));
-
-vi.mock("uuid", () => ({
-  v4: vi.fn(() => "mock-uuid-1234"),
 }));
 
 import { extractLoadData } from "../../../services/ocrService";
@@ -18,52 +14,24 @@ describe("ocrService", () => {
   });
 
   describe("extractLoadData", () => {
-    it("returns OCR result with load data in demo mode", async () => {
+    it("throws in demo mode with a clear error message (no fake data returned)", async () => {
+      // DEMO_MODE is mocked as true above
       const file = new File(["dummy"], "test-bol.pdf", {
         type: "application/pdf",
       });
-      const result = await extractLoadData(file);
-      expect(result.confidence).toBe(0.94);
-      expect(result.loadData).toBeDefined();
-      expect(result.loadData.carrierRate).toBe(1850.0);
-      expect(result.loadData.containerNumber).toBe("SZLU 928374");
-      expect(result.loadData.containerSize).toBe("40' High Cube");
-      expect(result.loadData.chassisProvider).toBe("DCLI");
-      expect(result.loadData.commodity).toBe("ELECTRONICS - FLAT PANEL TVS");
-      expect(result.loadData.weight).toBe(42500);
-    });
-
-    it("generates a load number with LD- prefix", async () => {
-      const file = new File(["dummy"], "test.pdf");
-      const result = await extractLoadData(file);
-      expect(result.loadData.loadNumber).toMatch(/^LD-\d{4}$/);
-    });
-
-    it("includes pickup and dropoff legs", async () => {
-      const file = new File(["dummy"], "test.pdf");
-      const result = await extractLoadData(file);
-      const legs = result.loadData.legs!;
-      expect(legs).toHaveLength(2);
-      expect(legs[0].type).toBe("Pickup");
-      expect(legs[0].location!.facilityName).toBe(
-        "APM TERMINALS - PIER 400",
+      await expect(extractLoadData(file)).rejects.toThrow(
+        "OCR extraction is not available in demo mode",
       );
-      expect(legs[0].location!.city).toBe("Los Angeles");
-      expect(legs[0].location!.state).toBe("CA");
-      expect(legs[0].completed).toBe(false);
-      expect(legs[1].type).toBe("Dropoff");
-      expect(legs[1].location!.facilityName).toBe("KCI WHSE - RIVERSIDE");
-      expect(legs[1].location!.city).toBe("Riverside");
     });
 
-    it("sets pickupDate to today", async () => {
+    it("demo mode error references server-side endpoint guidance", async () => {
       const file = new File(["dummy"], "test.pdf");
-      const result = await extractLoadData(file);
-      const today = new Date().toISOString().split("T")[0];
-      expect(result.loadData.pickupDate).toBe(today);
+      await expect(extractLoadData(file)).rejects.toThrow(
+        "server-side AI endpoint",
+      );
     });
 
-    it("throws in production mode (DEMO_MODE=false)", async () => {
+    it("throws in production mode (DEMO_MODE=false) directing to server endpoint", async () => {
       // Override DEMO_MODE for this test
       Object.defineProperty(firebase, "DEMO_MODE", {
         value: false,
@@ -78,6 +46,18 @@ describe("ocrService", () => {
         value: true,
         writable: true,
       });
+    });
+
+    it("never returns fake load data in demo mode", async () => {
+      const file = new File(["dummy"], "test.pdf");
+      let result: unknown = undefined;
+      try {
+        result = await extractLoadData(file);
+      } catch {
+        // expected
+      }
+      // Should have thrown — result should never be set
+      expect(result).toBeUndefined();
     });
   });
 });

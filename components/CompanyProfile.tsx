@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   User,
   Company,
@@ -23,6 +24,7 @@ import {
   Save,
   Users,
   DollarSign,
+  Info,
   Lock,
   ShieldCheck,
   MapPin,
@@ -50,6 +52,9 @@ import {
   History,
   Navigation,
   User as UserIcon,
+  CreditCard,
+  ExternalLink,
+  Link2,
 } from "lucide-react";
 import type { AccountType } from "../types";
 import { EditUserModal } from "./EditUserModal";
@@ -81,7 +86,7 @@ export const CompanyProfile: React.FC<Props> = ({
     role: "driver",
     onboardingStatus: "Pending",
   });
-  const [msg, setMsg] = useState("");
+  const [msg, showMsg] = useAutoFeedback<string>({ clearValue: "" });
   const [isClockedIn, setIsClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState<string | null>(null);
   const [clockNotes, setClockNotes] = useState("");
@@ -90,6 +95,16 @@ export const CompanyProfile: React.FC<Props> = ({
     { type: string; time: string; date: string; status: string }[]
   >([]);
   const [timeLogsLoading, setTimeLogsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [billingAvailable, setBillingAvailable] = useState<boolean | null>(
+    null,
+  );
+  const [qbStatus, setQbStatus] = useState<{
+    available: boolean | null;
+    connected: boolean;
+    companyName?: string;
+  }>({ available: null, connected: false });
+  const [billingLoading, setBillingLoading] = useState(false);
 
   const isAdmin =
     user.role === "admin" ||
@@ -113,6 +128,45 @@ export const CompanyProfile: React.FC<Props> = ({
     load();
   }, [user]);
 
+  // Fetch QuickBooks connection status
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkQb = async () => {
+      try {
+        const res = await fetch("/api/quickbooks/status", {
+          headers: { "Content-Type": "application/json" },
+        });
+        if (res.status === 503) {
+          setQbStatus({ available: false, connected: false });
+          return;
+        }
+        if (res.ok) {
+          const data = await res.json();
+          setQbStatus({
+            available: true,
+            connected: data.connected || false,
+            companyName: data.companyName,
+          });
+        } else {
+          setQbStatus({ available: false, connected: false });
+        }
+      } catch {
+        setQbStatus({ available: false, connected: false });
+      }
+    };
+    checkQb();
+  }, [isAdmin]);
+
+  // Determine billing availability from company stripe data
+  useEffect(() => {
+    if (!isAdmin || !company) return;
+    if (company.stripeCustomerId) {
+      setBillingAvailable(true);
+    } else {
+      setBillingAvailable(false);
+    }
+  }, [isAdmin, company]);
+
   useEffect(() => {
     if (!isDriver) return;
     const fetchLogs = async () => {
@@ -132,7 +186,8 @@ export const CompanyProfile: React.FC<Props> = ({
           status: log.clockOut ? "Completed" : "Active",
         }));
         setTimeLogs(recent);
-      } catch {
+      } catch (err) {
+        console.error("[CompanyProfile] Failed to load time logs:", err);
         setTimeLogs([]);
       } finally {
         setTimeLogsLoading(false);
@@ -143,41 +198,104 @@ export const CompanyProfile: React.FC<Props> = ({
 
   const handleClockIn = async () => {
     const now = new Date().toISOString();
-    const success = await logTime({
-      userId: user.id,
-      activityType: "Driving/Active Duty",
-      clockIn: now,
-      location: undefined,
-    });
-    if (success !== undefined) {
-      setIsClockedIn(true);
-      setClockInTime(now);
-      setMsg("Clocked In Successfully.");
-      setTimeout(() => setMsg(""), 3000);
+    try {
+      const success = await logTime({
+        userId: user.id,
+        activityType: "Driving/Active Duty",
+        clockIn: now,
+        location: undefined,
+      });
+      if (success !== undefined) {
+        setIsClockedIn(true);
+        setClockInTime(now);
+        showMsg("Clocked In Successfully.", 3000);
+      } else {
+        showMsg("Clock-in failed. Please try again.", 3000);
+      }
+    } catch (err) {
+      console.error("[CompanyProfile] Clock-in failed:", err);
+      showMsg("Clock-in failed. Please try again.", 3000);
     }
   };
 
   const handleClockOut = async () => {
-    const success = await logTime({
-      userId: user.id,
-      activityType: "Off Duty",
-      clockOut: new Date().toISOString(),
-    });
-    if (success !== undefined) {
-      setIsClockedIn(false);
-      setClockInTime(null);
-      setShowClockOutModal(false);
-      setClockNotes("");
-      setMsg("Shift ended.");
-      setTimeout(() => setMsg(""), 3000);
+    try {
+      const success = await logTime({
+        userId: user.id,
+        activityType: "Off Duty",
+        clockOut: new Date().toISOString(),
+      });
+      if (success !== undefined) {
+        setIsClockedIn(false);
+        setClockInTime(null);
+        setShowClockOutModal(false);
+        setClockNotes("");
+        showMsg("Shift ended.", 3000);
+      } else {
+        showMsg("Clock-out failed. Please try again.", 3000);
+      }
+    } catch (err) {
+      console.error("[CompanyProfile] Clock-out failed:", err);
+      showMsg("Clock-out failed. Please try again.", 3000);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (!company?.stripeCustomerId) return;
+    setBillingLoading(true);
+    try {
+      const res = await fetch("/api/stripe/create-billing-portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stripeCustomerId: company.stripeCustomerId,
+          returnUrl: window.location.href,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.assign(data.url);
+        }
+      } else {
+        showMsg("Unable to open billing portal. Please try again.", 4000);
+      }
+    } catch {
+      showMsg("Unable to open billing portal. Please try again.", 4000);
+    } finally {
+      setBillingLoading(false);
+    }
+  };
+
+  const handleConnectQuickBooks = async () => {
+    try {
+      const res = await fetch("/api/quickbooks/auth-url", {
+        headers: { "Content-Type": "application/json" },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.url) {
+          window.location.assign(data.url);
+        }
+      } else {
+        showMsg("Unable to connect QuickBooks. Please try again.", 4000);
+      }
+    } catch {
+      showMsg("Unable to connect QuickBooks. Please try again.", 4000);
     }
   };
 
   const handleSaveCompany = async () => {
-    if (company && isAdmin) {
+    if (!company || !isAdmin) return;
+    setIsSubmitting(true);
+    try {
       await updateCompany(company);
-      setMsg("Save Changes.");
-      setTimeout(() => setMsg(""), 4000);
+      showMsg("Save Changes.", 4000);
+    } catch (err) {
+      console.error("[CompanyProfile] Save company failed:", err);
+      showMsg("Failed to save changes. Please try again.", 4000);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -214,8 +332,7 @@ export const CompanyProfile: React.FC<Props> = ({
       operatingMode: mode,
       capabilityMatrix: CAPABILITY_PRESETS[mode],
     });
-    setMsg(`System reconfigured to ${mode} mode.`);
-    setTimeout(() => setMsg(""), 3000);
+    showMsg(`System reconfigured to ${mode} mode.`, 3000);
   };
 
   const freightOptions: {
@@ -274,12 +391,16 @@ export const CompanyProfile: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          {isAdmin && (
+          {!isDriver && (
             <button
-              onClick={handleSaveCompany}
-              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all"
+              onClick={isAdmin ? handleSaveCompany : undefined}
+              disabled={!isAdmin || isSubmitting}
+              title={!isAdmin ? "Only administrators can save changes" : undefined}
+              aria-label={!isAdmin ? "Save Changes - Only administrators can save changes" : undefined}
+              className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              <Save className="w-4 h-4" /> Save Changes
+              <Save className="w-4 h-4" />{" "}
+              {isSubmitting ? "Saving..." : "Save Changes"}
             </button>
           )}
         </div>
@@ -322,6 +443,14 @@ export const CompanyProfile: React.FC<Props> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar pb-24 bg-slate-900/50">
+        {!isAdmin && !isDriver && (
+          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3" role="status" aria-live="polite">
+            <Info className="w-4 h-4 text-blue-400 shrink-0" />
+            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
+              Viewing as read-only — Only administrators can modify company settings
+            </p>
+          </div>
+        )}
         {activeTab === "driver_cockpit" && (
           <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -435,24 +564,38 @@ export const CompanyProfile: React.FC<Props> = ({
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
                       MC #
                     </label>
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
+                    <div
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black"
+                      title="e.g., MC-123456"
+                      data-testid="mc-hint"
+                    >
                       {company.mcNumber || "Not provided"}
                     </div>
+                    <p className="text-[8px] text-slate-600 font-bold px-1">
+                      e.g., MC-123456
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] text-slate-500 uppercase font-black px-1">
                       DOT #
                     </label>
-                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black">
+                    <div
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-mono font-black"
+                      title="e.g., DOT-123456"
+                      data-testid="dot-hint"
+                    >
                       {company.dotNumber || "Not provided"}
                     </div>
+                    <p className="text-[8px] text-slate-600 font-bold px-1">
+                      e.g., DOT-123456
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpLegalName" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Legal Name
                   </label>
-                  <input
+                  <input id="cpLegalName"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black uppercase tracking-tight"
                     value={company.name}
                     readOnly
@@ -466,29 +609,29 @@ export const CompanyProfile: React.FC<Props> = ({
               </h3>
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpMainTerminalAddress" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Main Terminal Address
                   </label>
-                  <input
+                  <input id="cpMainTerminalAddress"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-bold"
                     value={company.address || ""}
                     readOnly
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <input
+                  <input aria-label="CITY"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold"
                     value={company.city || ""}
                     placeholder="CITY"
                     readOnly
                   />
-                  <input
+                  <input aria-label="ST"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.state || ""}
                     placeholder="ST"
                     readOnly
                   />
-                  <input
+                  <input aria-label="ZIP"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.zip || ""}
                     placeholder="ZIP"
@@ -497,6 +640,114 @@ export const CompanyProfile: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+
+            {/* Billing & Subscription Section */}
+            {billingAvailable && company.stripeCustomerId && (
+              <div
+                data-testid="billing-section"
+                className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8"
+              >
+                <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
+                  <CreditCard className="w-5 h-5 text-emerald-500" /> Billing &
+                  Subscription
+                </h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        Current Plan
+                      </div>
+                      <div className="text-lg font-black text-white uppercase tracking-tight">
+                        {company.subscriptionTier || "Free"}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        company.subscriptionStatus === "active"
+                          ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                          : company.subscriptionStatus === "trial"
+                            ? "bg-amber-600/20 text-amber-400 border border-amber-500/30"
+                            : "bg-red-600/20 text-red-400 border border-red-500/30"
+                      }`}
+                    >
+                      {company.subscriptionStatus || "unknown"}
+                    </span>
+                  </div>
+                  {company.subscriptionPeriodEnd && (
+                    <div data-testid="billing-period-end">
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-1">
+                        Period Ends
+                      </div>
+                      <div className="text-xs text-slate-300 font-bold">
+                        {new Date(
+                          company.subscriptionPeriodEnd,
+                        ).toLocaleDateString(undefined, {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <button
+                    data-testid="manage-subscription-btn"
+                    onClick={handleManageSubscription}
+                    disabled={billingLoading}
+                    className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all disabled:opacity-60"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    {billingLoading
+                      ? "Opening Portal..."
+                      : "Manage Subscription"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* QuickBooks Integration Section */}
+            {qbStatus.available !== false && (
+              <div
+                data-testid="quickbooks-section"
+                className="bg-slate-950 p-8 rounded-[2.5rem] border border-slate-800 shadow-2xl space-y-8"
+              >
+                <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
+                  <Link2 className="w-5 h-5 text-blue-500" /> QuickBooks
+                  Integration
+                </h3>
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        Connection Status
+                      </div>
+                      <div className="text-sm font-bold text-white">
+                        {qbStatus.connected
+                          ? qbStatus.companyName || "Connected"
+                          : "Not Connected"}
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        qbStatus.connected
+                          ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
+                          : "bg-slate-700/30 text-slate-400 border border-slate-600/30"
+                      }`}
+                    >
+                      {qbStatus.connected ? "Connected" : "Disconnected"}
+                    </span>
+                  </div>
+                  {!qbStatus.connected && (
+                    <button
+                      data-testid="connect-quickbooks-btn"
+                      onClick={handleConnectQuickBooks}
+                      className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Connect QuickBooks
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -531,10 +782,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpCompanyStructure" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Company Structure
                   </label>
-                  <select
+                  <select id="cpCompanyStructure"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase outline-none focus:border-blue-500 transition-all"
                     value={company.accountType}
                     onChange={(e) =>
@@ -606,10 +857,10 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpPrefix" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Prefix
                     </label>
-                    <input
+                    <input id="cpPrefix"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase"
                       value={company.loadNumberingConfig.prefix}
                       onChange={(e) =>
@@ -624,10 +875,10 @@ export const CompanyProfile: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpAutoSequence" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Auto-Sequence
                     </label>
-                    <input
+                    <input id="cpAutoSequence"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.loadNumberingConfig.nextSequence}
@@ -736,10 +987,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label htmlFor="cpMinSafetyScoreForDispatch" className="text-[9px] text-slate-500 uppercase font-black px-1">
                     Min. Safety Score for Dispatch
                   </label>
-                  <input
+                  <input id="cpMinSafetyScoreForDispatch"
                     type="range"
                     min="0"
                     max="100"
@@ -774,10 +1025,10 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpPreferredCurrency" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Preferred Currency
                     </label>
-                    <select
+                    <select id="cpPreferredCurrency"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black outline-none"
                       value={company.governance?.preferredCurrency || "USD"}
                       onChange={(e) =>
@@ -795,10 +1046,10 @@ export const CompanyProfile: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label htmlFor="cpMaxLoadsWeek" className="text-[9px] text-slate-500 uppercase font-black px-1">
                       Max Loads/Week
                     </label>
-                    <input
+                    <input id="cpMaxLoadsWeek"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.governance?.maxLoadsPerDriverPerWeek || 5}
@@ -947,10 +1198,10 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="p-10 space-y-8">
               <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                <label htmlFor="cpTripDutyCompletionNotes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
                   Trip / Duty Completion Notes
                 </label>
-                <textarea
+                <textarea id="cpTripDutyCompletionNotes"
                   className="w-full bg-slate-950 border border-slate-800 rounded-3xl p-6 text-white font-bold text-sm h-40 focus:border-red-500 outline-none shadow-inner placeholder:text-slate-800"
                   placeholder="Describe shifts, delays, or chassis observations..."
                   value={clockNotes}

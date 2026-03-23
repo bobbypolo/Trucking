@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
 import { BolGenerator } from "../../../components/BolGenerator";
 import type { LoadData, BolData } from "../../../types";
 
@@ -27,13 +27,13 @@ function makeLoad(overrides: Partial<LoadData> = {}): LoadData {
 }
 
 describe("BolGenerator deep coverage - uncovered lines 248-319", () => {
-  let onSave: ReturnType<typeof vi.fn>;
-  let onCancel: ReturnType<typeof vi.fn>;
+  let onSave: MockedFunction<(bolData: BolData) => void>;
+  let onCancel: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    onSave = vi.fn();
-    onCancel = vi.fn();
+    onSave = vi.fn<(bolData: BolData) => void>();
+    onCancel = vi.fn<() => void>();
     user = userEvent.setup();
   });
 
