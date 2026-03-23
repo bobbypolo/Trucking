@@ -1387,4 +1387,161 @@ describe("CommandCenterView", () => {
       expect(screen.getByText("Breakdown")).toBeInTheDocument();
     });
   });
+
+  /* ---- INCIDENT TIMELINE (R-P6-08, R-P6-09) ---- */
+
+  it("renders incident timeline as vertical timeline in detail drawer (R-P6-08)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const incidents = [
+      buildIncident({
+        id: "inc-tl-1",
+        timeline: [
+          {
+            id: "act-1",
+            timestamp: "2026-03-15T10:05:00Z",
+            actorName: "Jane Dispatch",
+            action: "Incident reported",
+            notes: "Engine failure on I-35",
+          },
+          {
+            id: "act-2",
+            timestamp: "2026-03-15T10:15:00Z",
+            actorName: "Mike Driver",
+            action: "Tow truck requested",
+          },
+          {
+            id: "act-3",
+            timestamp: "2026-03-15T10:45:00Z",
+            actorName: "System",
+            action: "Status updated to In_Progress",
+          },
+        ],
+      }),
+    ];
+    render(
+      <CommandCenterView
+        {...defaultProps}
+        incidents={incidents}
+        unifiedEvents={[]}
+      />,
+    );
+
+    // Wait for incident to be selected and switch to timeline tab
+    await waitFor(() => {
+      expect(screen.getByText("Chain of Custody")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Chain of Custody"));
+
+    // R-P6-08: Incident timeline section must exist with vertical layout
+    await waitFor(() => {
+      const timelineSection = screen.getByTestId("incident-timeline");
+      expect(timelineSection).toBeInTheDocument();
+    });
+
+    // Verify all 3 timeline entries are rendered
+    expect(screen.getByText("Incident reported")).toBeInTheDocument();
+    expect(screen.getByText("Tow truck requested")).toBeInTheDocument();
+    expect(screen.getByText("Status updated to In_Progress")).toBeInTheDocument();
+  });
+
+  it("shows action, actor, and timestamp for each timeline entry (R-P6-09)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const incidents = [
+      buildIncident({
+        id: "inc-tl-2",
+        timeline: [
+          {
+            id: "act-a",
+            timestamp: "2026-03-15T14:30:00Z",
+            actorName: "Jane Dispatch",
+            action: "Escalated to manager",
+          },
+        ],
+      }),
+    ];
+    render(
+      <CommandCenterView
+        {...defaultProps}
+        incidents={incidents}
+        unifiedEvents={[]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Chain of Custody")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Chain of Custody"));
+
+    // R-P6-09: Each entry shows action, actor, and timestamp
+    await waitFor(() => {
+      expect(screen.getByText("Escalated to manager")).toBeInTheDocument();
+    });
+    // Actor name rendered in the incident timeline entry
+    const timelineEl = screen.getByTestId("incident-timeline");
+    expect(within(timelineEl).getByText("Jane Dispatch")).toBeInTheDocument();
+    // Timestamp is rendered (format varies by locale -- verify a time-like element exists)
+    const timeStamps = within(timelineEl).getAllByText(/\d{1,2}:\d{2}/);
+    expect(timeStamps.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders empty state when incident timeline is empty (R-P6-08)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const incidents = [
+      buildIncident({
+        id: "inc-tl-empty",
+        timeline: [],
+      }),
+    ];
+    render(
+      <CommandCenterView
+        {...defaultProps}
+        incidents={incidents}
+        unifiedEvents={[]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Chain of Custody")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Chain of Custody"));
+
+    await waitFor(() => {
+      expect(screen.getByText(/No timeline entries/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders notes when present on a timeline entry (R-P6-09)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const incidents = [
+      buildIncident({
+        id: "inc-tl-notes",
+        timeline: [
+          {
+            id: "act-n",
+            timestamp: "2026-03-15T11:00:00Z",
+            actorName: "Ops Manager",
+            action: "Recovery plan approved",
+            notes: "ETA 2 hours for replacement driver",
+          },
+        ],
+      }),
+    ];
+    render(
+      <CommandCenterView
+        {...defaultProps}
+        incidents={incidents}
+        unifiedEvents={[]}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Chain of Custody")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Chain of Custody"));
+
+    await waitFor(() => {
+      expect(screen.getByText("Recovery plan approved")).toBeInTheDocument();
+      expect(screen.getByText("ETA 2 hours for replacement driver")).toBeInTheDocument();
+    });
+  });
 });

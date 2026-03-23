@@ -1268,6 +1268,66 @@ export const CommandCenterView: React.FC<Props> = ({
 
                   {activeDetailTab === "timeline" && (
                     <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                      {/* Incident Timeline — selectedIncident.timeline rendered as vertical timeline */}
+                      {selectedIncident && (
+                        <div data-testid="incident-timeline">
+                          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                            <History className="w-3.5 h-3.5" />
+                            Incident Timeline
+                          </h3>
+                          {(!selectedIncident.timeline || selectedIncident.timeline.length === 0) ? (
+                            <div className="text-center py-8 text-slate-500 text-[11px]">
+                              No timeline entries yet
+                            </div>
+                          ) : (
+                            <div className="relative pl-7 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[1px] before:bg-gradient-to-b before:from-amber-500/40 before:via-white/5 before:to-transparent">
+                              {selectedIncident.timeline.map((entry, idx) => {
+                                const getActionIcon = () => {
+                                  const a = entry.action.toLowerCase();
+                                  if (a.includes("report")) return { icon: AlertCircle, color: "text-red-400", border: "border-red-500/30" };
+                                  if (a.includes("escalat")) return { icon: ArrowUpRight, color: "text-orange-400", border: "border-orange-500/30" };
+                                  if (a.includes("recover") || a.includes("resolv")) return { icon: CheckCircle, color: "text-emerald-400", border: "border-emerald-500/30" };
+                                  if (a.includes("tow") || a.includes("repower")) return { icon: Truck, color: "text-cyan-400", border: "border-cyan-500/30" };
+                                  if (a.includes("status")) return { icon: RefreshCw, color: "text-blue-400", border: "border-blue-500/30" };
+                                  return { icon: Activity, color: "text-slate-400", border: "border-white/10" };
+                                };
+                                const cfg = getActionIcon();
+                                const Icon = cfg.icon;
+                                return (
+                                  <div key={entry.id || idx} className="relative mb-6 last:mb-0 group/tl">
+                                    <div className={`absolute -left-[35px] top-1 w-6 h-6 rounded-lg bg-[#0a0f1e] border ${cfg.border} flex items-center justify-center shadow-[0_0_15px_rgba(0,0,0,0.5)] z-10`}>
+                                      <Icon className={`w-3 h-3 ${cfg.color}`} />
+                                    </div>
+                                    <div className="flex justify-between items-center mb-0.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] font-black uppercase tracking-widest ${cfg.color}`}>
+                                          {entry.action}
+                                        </span>
+                                      </div>
+                                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
+                                        {new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                      <UserIcon className="w-2.5 h-2.5 text-slate-600" />
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                        {entry.actorName || entry.actor_name || "Unknown"}
+                                      </span>
+                                    </div>
+                                    {entry.notes && (
+                                      <div className="mt-2 p-3 bg-white/[0.02] backdrop-blur-md rounded-xl text-[10px] text-slate-400 font-medium leading-relaxed border border-white/5">
+                                        {entry.notes}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Unified operational events */}
                       <div className="relative pl-7 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-[1px] before:bg-gradient-to-b before:from-blue-500/30 before:via-white/5 before:to-transparent">
                         {unifiedEvents.map((event: any, idx: number) => {
                           const getEventConfig = () => {
