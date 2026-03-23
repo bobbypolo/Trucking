@@ -108,6 +108,29 @@ interface NotificationJob {
   sync_error?: string | boolean;
 }
 
+interface SafetyQuizCourse {
+  id: string;
+  title: string;
+  type: string;
+  progress: number;
+  certifiedCount: number;
+}
+
+interface SafetyQuizResult {
+  id: string;
+  driverName: string;
+  quizTitle: string;
+  score: number;
+  passed: boolean;
+  completedAt: string;
+}
+
+interface SafetySettings {
+  minSafetyScore: number;
+  autoLockCompliance: boolean;
+  maintenanceIntervalDays: number;
+}
+
 interface Props {
   user: User;
   loads?: LoadData[];
@@ -117,6 +140,7 @@ interface Props {
   openRecordWorkspace?: (type: any, id: string) => void;
   onOpenHub?: (tab: string, startCall?: boolean) => void;
   onSaveIncident?: (inc: any) => Promise<void>;
+  onNavigate?: (tab: string) => void;
 }
 
 export const SafetyView: React.FC<Props> = ({
@@ -127,6 +151,7 @@ export const SafetyView: React.FC<Props> = ({
   onRecordAction,
   openRecordWorkspace,
   onOpenHub,
+  onNavigate,
 }) => {
   const [activeTab, setActiveTab] = useState<
     | "overview"
@@ -159,6 +184,9 @@ export const SafetyView: React.FC<Props> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [safetyFormErrors, setSafetyFormErrors] = useState<Record<string, string>>({});
   const [notificationJobs, setNotificationJobs] = useState<NotificationJob[]>([]);
+  const [quizCourses, setQuizCourses] = useState<SafetyQuizCourse[]>([]);
+  const [quizResults, setQuizResults] = useState<SafetyQuizResult[]>([]);
+  const [safetySettings, setSafetySettings] = useState<SafetySettings | null>(null);
 
   const isSafetyFormValid = (() => {
     if (!showForm) return false;
@@ -269,6 +297,39 @@ export const SafetyView: React.FC<Props> = ({
           }
         } catch {
           // Notification jobs fetch is non-critical — silently degrade
+        }
+
+        // Fetch quiz courses (non-blocking)
+        try {
+          const qResp = await fetch("/api/safety/quizzes");
+          if (qResp.ok) {
+            const courses: SafetyQuizCourse[] = await qResp.json();
+            setQuizCourses(courses);
+          }
+        } catch {
+          // Quiz fetch is non-critical — silently degrade
+        }
+
+        // Fetch quiz results (non-blocking)
+        try {
+          const qrResp = await fetch("/api/safety/quiz-results");
+          if (qrResp.ok) {
+            const results: SafetyQuizResult[] = await qrResp.json();
+            setQuizResults(results);
+          }
+        } catch {
+          // Quiz results fetch is non-critical — silently degrade
+        }
+
+        // Fetch safety settings (non-blocking)
+        try {
+          const sResp = await fetch("/api/safety/settings");
+          if (sResp.ok) {
+            const settings: SafetySettings = await sResp.json();
+            setSafetySettings(settings);
+          }
+        } catch {
+          // Settings fetch is non-critical — silently degrade
         }
       }
     } catch (error) {
@@ -483,25 +544,33 @@ export const SafetyView: React.FC<Props> = ({
                   Status
                 </h3>
                 <div className="space-y-8">
-                  {[
-                    {
-                      label: "Quiz Completion",
-                      value: 85,
-                      color: "bg-blue-500",
-                    },
-                    {
-                      label: "Vehicle Maintenance",
-                      value: 92,
-                      color: "bg-green-500",
-                    },
-                    {
-                      label: "Incident Free Days",
-                      value: 124,
-                      color: "bg-purple-500",
-                      max: 365,
-                      display: "124 Days",
-                    },
-                  ].map((bar, idx) => (
+                  {(() => {
+                    const avgQuizProgress = quizCourses.length > 0
+                      ? Math.round(quizCourses.reduce((sum, q) => sum + q.progress, 0) / quizCourses.length)
+                      : 0;
+                    const activeEquipCount = fleetEquipment.filter(e => e.status === "Active").length;
+                    const totalEquipCount = fleetEquipment.length;
+                    const maintPct = totalEquipCount > 0 ? Math.round((activeEquipCount / totalEquipCount) * 100) : 0;
+                    return [
+                      {
+                        label: "Quiz Completion",
+                        value: avgQuizProgress,
+                        color: "bg-blue-500",
+                      },
+                      {
+                        label: "Vehicle Maintenance",
+                        value: maintPct,
+                        color: "bg-green-500",
+                      },
+                      {
+                        label: "Incident Free Days",
+                        value: incidents.length === 0 ? 0 : 0,
+                        color: "bg-purple-500",
+                        max: 365,
+                        display: incidents.length === 0 ? "No incidents" : "0 Days",
+                      },
+                    ];
+                  })().map((bar, idx) => (
                     <div key={idx} className="space-y-3">
                       <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         <span>{bar.label}</span>
@@ -743,10 +812,16 @@ export const SafetyView: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                      <button className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5">
+                      <button
+                        onClick={() => showFeedback(`Service request initiated for ${asset.unit_number || asset.id}`)}
+                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
+                      >
                         Service
                       </button>
-                      <button className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5">
+                      <button
+                        onClick={() => showFeedback(`Viewing maintenance history for ${asset.unit_number || asset.id}`)}
+                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
+                      >
                         History
                       </button>
                     </div>
@@ -847,10 +922,13 @@ export const SafetyView: React.FC<Props> = ({
                         ))}
                       </div>
                       <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
-                        12 Recent Jobs
+                        {serviceTickets.length} Recent Jobs
                       </span>
                     </div>
-                    <button className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-white transition-colors">
+                    <button
+                      onClick={() => onNavigate ? onNavigate("accounting") : showFeedback("Navigate to Accounting to view financials")}
+                      className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-white transition-colors"
+                    >
                       View Financials
                     </button>
                   </div>
@@ -899,7 +977,7 @@ export const SafetyView: React.FC<Props> = ({
                   ).length,
                   color: "text-yellow-500",
                 },
-                { label: "SLA Breach", value: "1", color: "text-red-500" },
+                { label: "SLA Breach", value: String(serviceTickets.filter((t) => t.status === "Open" && t.eta && new Date(t.eta) < new Date()).length), color: "text-red-500" },
               ].map((stat, idx) => (
                 <div
                   key={idx}
@@ -1033,67 +1111,57 @@ export const SafetyView: React.FC<Props> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                {
-                  title: "Winter Operations 2025",
-                  type: "Mandatory",
-                  progress: 85,
-                  icon: ShieldAlert,
-                  color: "text-orange-500",
-                },
-                {
-                  title: "Hazmat Handling (L1)",
-                  type: "Certification",
-                  progress: 42,
-                  icon: Award,
-                  color: "text-purple-500",
-                },
-                {
-                  title: "Hours of Service Compliance",
-                  type: "Mandatory",
-                  progress: 98,
-                  icon: Clock,
-                  color: "text-blue-500",
-                },
-              ].map((course, i) => (
-                <div
-                  key={i}
-                  className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/5 shadow-sm flex flex-col group hover:border-blue-500/30 transition-all cursor-pointer"
-                >
+              {quizCourses.length > 0 ? (
+                quizCourses.map((course) => (
                   <div
-                    className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 bg-slate-950 border border-white/5`}
+                    key={course.id}
+                    className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/5 shadow-sm flex flex-col group hover:border-blue-500/30 transition-all cursor-pointer"
                   >
-                    <course.icon className={`w-6 h-6 ${course.color}`} />
-                  </div>
-                  <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">
-                    {course.title}
-                  </h4>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8">
-                    {course.type} • REQUIRED FOR ALL FLEET
-                  </p>
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 bg-slate-950 border border-white/5"
+                    >
+                      <BookOpen className="w-6 h-6 text-blue-500" />
+                    </div>
+                    <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">
+                      {course.title}
+                    </h4>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-8">
+                      {course.type} • REQUIRED FOR ALL FLEET
+                    </p>
 
-                  <div className="mt-auto space-y-4">
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                      <span className="text-slate-500">Fleet Completion</span>
-                      <span className="text-white">{course.progress}%</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-blue-600 rounded-full"
-                        style={{ width: `${course.progress}%` }}
-                      />
-                    </div>
-                    <div className="pt-4 flex justify-between items-center">
-                      <div className="text-[8px] font-black text-slate-600 uppercase">
-                        324 Certified Units
+                    <div className="mt-auto space-y-4">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                        <span className="text-slate-500">Fleet Completion</span>
+                        <span className="text-white">{course.progress}%</span>
                       </div>
-                      <button className="text-blue-500 hover:text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                        Manage <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="h-1.5 bg-slate-950 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-600 rounded-full"
+                          style={{ width: `${course.progress}%` }}
+                        />
+                      </div>
+                      <div className="pt-4 flex justify-between items-center">
+                        <div className="text-[8px] font-black text-slate-600 uppercase">
+                          {course.certifiedCount} Certified Units
+                        </div>
+                        <button
+                          onClick={() => showFeedback(`Managing course: ${course.title}`)}
+                          className="text-blue-500 hover:text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                        >
+                          Manage <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+                ))
+              ) : (
+                <div className="col-span-full py-20 text-center opacity-30">
+                  <BookOpen className="w-16 h-16 mx-auto mb-4 text-slate-600" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                    No data yet
+                  </p>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Recent Tests Ticker */}
@@ -1102,48 +1170,37 @@ export const SafetyView: React.FC<Props> = ({
                 Recent Test Submissions
               </h3>
               <div className="space-y-4">
-                {[
-                  {
-                    name: "David Miller",
-                    test: "Winter Ops 2025",
-                    score: "95%",
-                    status: "Passed",
-                  },
-                  {
-                    name: "John Smith",
-                    test: "Hours of Service",
-                    score: "100%",
-                    status: "Passed",
-                  },
-                  {
-                    name: "Robert Wilson",
-                    test: "Safety Protocols",
-                    score: "65%",
-                    status: "Failed",
-                  },
-                ].map((t, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tight"
-                  >
-                    <div className="flex gap-4">
-                      <span className="text-white w-32">{t.name}</span>
-                      <span className="text-slate-500">{t.test}</span>
+                {quizResults.length > 0 ? (
+                  quizResults.slice(0, 10).map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex justify-between items-center text-[10px] font-bold uppercase tracking-tight"
+                    >
+                      <div className="flex gap-4">
+                        <span className="text-white w-32">{t.driverName}</span>
+                        <span className="text-slate-500">{t.quizTitle}</span>
+                      </div>
+                      <div className="flex gap-4">
+                        <span className="text-slate-400">{t.score}%</span>
+                        <span
+                          className={
+                            t.passed
+                              ? "text-green-500"
+                              : "text-red-500"
+                          }
+                        >
+                          {t.passed ? "Passed" : "Failed"}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex gap-4">
-                      <span className="text-slate-400">{t.score}</span>
-                      <span
-                        className={
-                          t.status === "Passed"
-                            ? "text-green-500"
-                            : "text-red-500"
-                        }
-                      >
-                        {t.status}
-                      </span>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 opacity-30">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                      No data yet
+                    </p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -1159,17 +1216,17 @@ export const SafetyView: React.FC<Props> = ({
                 {
                   label: "Minimum Safety Score",
                   desc: "Drivers below this score will be blocked from new dispatches.",
-                  value: "75",
+                  value: safetySettings ? String(safetySettings.minSafetyScore) : "N/A",
                 },
                 {
                   label: "Auto-Lock Compliance",
                   desc: "Block drivers automatically if mandatory quizzes are expired.",
-                  value: "On",
+                  value: safetySettings ? (safetySettings.autoLockCompliance ? "On" : "Off") : "N/A",
                 },
                 {
                   label: "Maintenance Interval",
                   desc: "Default days between PM inspections.",
-                  value: "90 Days",
+                  value: safetySettings ? `${safetySettings.maintenanceIntervalDays} Days` : "N/A",
                 },
               ].map((s, i) => (
                 <div key={i} className="flex justify-between items-center">
@@ -1281,8 +1338,11 @@ export const SafetyView: React.FC<Props> = ({
                       }
                     >
                       <option value="">Select Unit...</option>
-                      <option value="101">Unit 101</option>
-                      <option value="102">Unit 102</option>
+                      {fleetEquipment.map((eq) => (
+                        <option key={eq.id} value={eq.id}>
+                          {eq.unit_number || eq.id}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div className="space-y-2">
