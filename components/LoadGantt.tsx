@@ -39,7 +39,7 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                             {/* Load Label (Sticky-like left column) */}
                             <div className="w-48 px-6 py-4 border-r border-slate-800/50 shrink-0">
                                 <div className="text-[10px] font-black text-white group-hover:text-blue-400 transition-colors">#{load.loadNumber}</div>
-                                <div className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-1 truncate">{load.commodity || 'General Freight'}</div>
+                                <div className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-1 truncate">{load.commodity || load.freightType || 'Unspecified'}</div>
                             </div>
 
                             {/* Timeline Bar Container */}
@@ -100,8 +100,8 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
             <div className="bg-slate-950 px-6 py-2 border-t border-slate-800 flex justify-between items-center text-[8px] font-black text-slate-500 uppercase tracking-widest shrink-0">
                 <div>SCROLL TO VIEW ALL ACTIVE MANIFESTS</div>
                 <div className="flex gap-4">
-                    <span>120 LOADS TRACKED</span>
-                    <span className="text-blue-500">REAL-TIME SYNC ACTIVE</span>
+                    <span>{loads.length} LOADS TRACKED</span>
+                    {loads.length > 0 && <span className="text-blue-500">LIVE</span>}
                 </div>
             </div>
         </div>

@@ -20,8 +20,10 @@ import {
   Plus,
 } from "lucide-react";
 import { LoadList } from "./LoadList";
+import { LoadSetupModal } from "./LoadSetupModal";
 import { LoadData, User, Broker } from "../types";
 import { EmptyState } from "./EmptyState";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface LoadBoardExpandedProps {
   loads: LoadData[];
@@ -46,8 +48,30 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   onOpenHub,
   onCreateLoad,
 }) => {
+  const currentUser = useCurrentUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGridViewOpen, setIsGridViewOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const handleCreateLoad = () => {
+    if (currentUser) {
+      setShowCreateModal(true);
+    } else if (onCreateLoad) {
+      onCreateLoad();
+    }
+  };
+
+  const handleSetupContinue = (
+    brokerId: string,
+    driverId: string,
+    loadNumber?: string,
+    callNotes?: string,
+  ) => {
+    setShowCreateModal(false);
+    if (onCreateLoad) {
+      onCreateLoad();
+    }
+  };
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     "loadNumber",
     "status",
@@ -189,7 +213,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                 description="Create your first load to get started."
                 action={
                   onCreateLoad
-                    ? { label: "Create Load", onClick: onCreateLoad }
+                    ? { label: "Create Load", onClick: handleCreateLoad }
                     : undefined
                 }
               />
@@ -329,15 +353,15 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
           </div>
         </div>
 
-        {/* +New Load Floating Action Button */}
+        {/* +Create Load Floating Action Button */}
         {onCreateLoad && (
           <button
-            onClick={onCreateLoad}
+            onClick={handleCreateLoad}
             className="absolute bottom-20 right-6 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-2xl z-40 hover:scale-110 transition-all flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
             <span className="text-xs font-black uppercase tracking-widest">
-              New
+              Create Load
             </span>
           </button>
         )}
@@ -564,6 +588,15 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
           )}
         </div>
       </div>
+
+      {/* Internal Load Setup Modal */}
+      {showCreateModal && currentUser && (
+        <LoadSetupModal
+          currentUser={currentUser}
+          onContinue={handleSetupContinue}
+          onCancel={() => setShowCreateModal(false)}
+        />
+      )}
     </div>
   );
 };

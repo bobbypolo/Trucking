@@ -44,14 +44,14 @@ describe("LoadGantt component", () => {
       ).toBeInTheDocument();
     });
 
-    it("renders real-time sync indicator", () => {
+    it("renders dynamic load count in footer", () => {
       render(<LoadGantt loads={[]} />);
-      expect(screen.getByText("REAL-TIME SYNC ACTIVE")).toBeInTheDocument();
+      expect(screen.getByText("0 LOADS TRACKED")).toBeInTheDocument();
     });
 
-    it("renders '120 LOADS TRACKED' label", () => {
+    it("does not show LIVE indicator when no loads", () => {
       render(<LoadGantt loads={[]} />);
-      expect(screen.getByText("120 LOADS TRACKED")).toBeInTheDocument();
+      expect(screen.queryByText("LIVE")).not.toBeInTheDocument();
     });
   });
 
@@ -96,9 +96,9 @@ describe("LoadGantt component", () => {
       expect(screen.getByText("Food")).toBeInTheDocument();
     });
 
-    it("shows 'General Freight' for loads without commodity", () => {
+    it("shows 'Unspecified' for loads without commodity or freightType", () => {
       render(<LoadGantt loads={loads} />);
-      expect(screen.getByText("General Freight")).toBeInTheDocument();
+      expect(screen.getByText("Unspecified")).toBeInTheDocument();
     });
 
     it("displays active load count badge", () => {

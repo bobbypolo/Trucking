@@ -147,12 +147,12 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                             <div className="space-y-1.5 border-r border-slate-800 pr-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Origin</div>
                                 <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || 'LOGISTICS HUB'}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || load.pickup?.city || 'Pickup TBD'}</div>
                             </div>
                             <div className="space-y-1.5 pl-4 relative z-10">
                                 <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Destination</div>
                                 <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || 'TERMINAL DOCK'}</div>
+                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || load.dropoff?.city || 'Dropoff TBD'}</div>
                             </div>
                         </div>
 

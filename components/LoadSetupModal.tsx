@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useFocusTrap } from "../hooks/useFocusTrap";
-import { Broker, User, FreightType, Contract } from "../types";
+import { Broker, User, FreightType } from "../types";
 import {
   Building2,
   User as UserIcon,
@@ -11,7 +11,7 @@ import {
   AlertTriangle,
   ShieldCheck,
 } from "lucide-react";
-import { getBrokers, getContracts } from "../services/brokerService";
+import { getBrokers } from "../services/brokerService";
 import { getCompanyUsers, getCompany } from "../services/authService";
 import { generateNextLoadNumber } from "../services/storageService";
 import { Toast } from "./Toast";
@@ -38,7 +38,6 @@ export const LoadSetupModal: React.FC<Props> = ({
 }) => {
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [contracts, setContracts] = useState<Contract[]>([]);
 
   const [selectedBrokerId, setSelectedBrokerId] = useState(
     preSelectedBrokerId || "",
@@ -65,12 +64,6 @@ export const LoadSetupModal: React.FC<Props> = ({
     const coUsers = await getCompanyUsers(currentUser.companyId);
     setUsers(coUsers);
   };
-
-  useEffect(() => {
-    if (selectedBrokerId) {
-      getContracts(selectedBrokerId).then(setContracts);
-    }
-  }, [selectedBrokerId]);
 
   const handleContinue = async (forcePhoneOrder: boolean = false) => {
     if (selectedDriverId && selectedBrokerId) {
