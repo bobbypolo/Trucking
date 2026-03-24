@@ -26,7 +26,6 @@ import {
   Truck,
   Fuel,
   Settings,
-  Download,
   Trash2,
   CheckCircle,
   AlertCircle,
@@ -35,7 +34,6 @@ import {
   FileSpreadsheet,
   Users,
   Wrench,
-  Phone,
   MoreVertical,
   Clock,
   Zap,
@@ -76,7 +74,7 @@ const DataImportWizard = React.lazy(() =>
   import("./DataImportWizard").then((m) => ({ default: m.DataImportWizard })),
 );
 import { executeFuelMatchingRule } from "../services/rulesEngineService";
-import { exportToExcel, exportToPDF } from "../services/exportService";
+import { exportToExcel } from "../services/exportService";
 
 interface Props {
   loads: LoadData[];
@@ -168,10 +166,7 @@ const AccountingPortal: React.FC<Props> = ({
     }
   };
 
-  const handleAction = (action: string) => {
-    showFeedback(`Action Triggered: ${action}`);
-    // In a real scenario, this would open a specific sub-modal or trigger a service call
-  };
+  // handleAction removed — CLN-02/03: no retained dead buttons
 
   const loadData = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
@@ -337,9 +332,9 @@ const AccountingPortal: React.FC<Props> = ({
                 },
                 {
                   label: "IFTA Liability",
-                  val: "$0.00",
+                  val: "\u2014",
                   sub: "Current Quarter",
-                  trend: "Accrued",
+                  trend: "No mileage data",
                   color: "text-blue-500",
                   bg: "bg-blue-500/5",
                 },
@@ -511,20 +506,7 @@ const AccountingPortal: React.FC<Props> = ({
                   Invoicing & Collections Control
                 </p>
               </div>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => handleAction("Generating Statements")}
-                  className="px-6 py-3 bg-white/5 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
-                >
-                  Generate Statements
-                </button>
-                <button
-                  onClick={() => handleAction("Opening Create Invoice Modal")}
-                  className="px-6 py-3 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20"
-                >
-                  Create New Invoice
-                </button>
-              </div>
+              {/* CLN-02/03: Removed dead Generate Statements + Create Invoice buttons */}
             </div>
 
             <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] overflow-hidden backdrop-blur-md">
@@ -545,9 +527,6 @@ const AccountingPortal: React.FC<Props> = ({
                     </th>
                     <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase">
                       Status
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase text-right">
-                      Actions
                     </th>
                   </tr>
                 </thead>
@@ -602,29 +581,14 @@ const AccountingPortal: React.FC<Props> = ({
                             {inv.status}
                           </span>
                         </td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            {inv.status === "Sent" && (
-                              <button
-                                onClick={() =>
-                                  showFeedback(
-                                    `Sent collection reminder for ${inv.invoiceNumber}`,
-                                  )
-                                }
-                                className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
-                              >
-                                <Phone className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
+                        {/* CLN-03: Removed dead Send Reminder button */}
                       </tr>
                     );
                   })}
                   {invoices.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-8 py-20 text-center text-slate-700 font-black uppercase tracking-widest italic opacity-50"
                       >
                         No outstanding invoices found.
@@ -680,13 +644,7 @@ const AccountingPortal: React.FC<Props> = ({
                       Amount Due
                     </th>
                     <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                      Pay Schedule
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                      Approval
-                    </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-widest text-right">
-                      Actions
+                      Status
                     </th>
                   </tr>
                 </thead>
@@ -715,21 +673,7 @@ const AccountingPortal: React.FC<Props> = ({
                       <td className="px-8 py-6 text-right font-black text-white text-lg">
                         ${bill.totalAmount.toLocaleString()}
                       </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-3">
-                          <button
-                            onClick={() =>
-                              showFeedback(
-                                `Scheduled payment for bill ${bill.id.slice(0, 4)} on Friday`,
-                              )
-                            }
-                            className="px-3 py-1 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 rounded-lg text-[8px] font-black uppercase transition-all"
-                          >
-                            Schedule
-                          </button>
-                          <Clock className="w-3.5 h-3.5 text-slate-700" />
-                        </div>
-                      </td>
+                      {/* CLN-03: Removed dead Schedule payment button */}
                       <td className="px-8 py-6">
                         <span
                           className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase border ${bill.status === "Approved" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"}`}
@@ -737,28 +681,13 @@ const AccountingPortal: React.FC<Props> = ({
                           {bill.status}
                         </span>
                       </td>
-                      <td className="px-8 py-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          {bill.status !== "Approved" && (
-                            <button
-                              onClick={() =>
-                                showFeedback(
-                                  `Bill ${bill.id.slice(0, 4)} Approved`,
-                                )
-                              }
-                              className="p-2 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-xl transition-all border border-emerald-500/20"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      {/* CLN-03: Removed dead Approve bill button */}
                     </tr>
                   ))}
                   {bills.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={4}
                         className="px-8 py-20 text-center text-slate-700 font-black uppercase tracking-widest italic opacity-50"
                       >
                         No pending bills found.
@@ -833,14 +762,7 @@ const AccountingPortal: React.FC<Props> = ({
                   Post-Lock Event Log
                 </p>
               </div>
-              <button
-                onClick={() =>
-                  showFeedback("Fleet Audit Log PDF generating...")
-                }
-                className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl border border-white/10 transition-all text-[10px] font-black uppercase tracking-widest"
-              >
-                <Download className="w-4 h-4" /> Export Audit Log (PDF)
-              </button>
+              {/* CLN-03: Removed dead Export Audit Log PDF button */}
             </div>
 
             <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] p-10 backdrop-blur-md">
@@ -877,9 +799,7 @@ const AccountingPortal: React.FC<Props> = ({
                 >
                   <Activity className="w-4 h-4" /> Run Full Audit
                 </button>
-                <div className="flex items-center gap-2 px-6 py-3 bg-white/5 text-slate-600 rounded-2xl border border-white/5 text-[10px] font-black uppercase tracking-widest cursor-not-allowed select-none">
-                  <Plus className="w-4 h-4" /> Create New Rule
-                </div>
+                {/* CLN-02: Create New Rule removed per FEATURE_DISPOSITION */}
               </div>
             </div>
 

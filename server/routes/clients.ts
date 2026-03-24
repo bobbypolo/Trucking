@@ -10,14 +10,37 @@ import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
-import {
-  findSqlCompanyById,
-  mapCompanyRowToApiCompany,
-} from "../lib/sql-auth";
+import { findSqlCompanyById, mapCompanyRowToApiCompany } from "../lib/sql-auth";
 
 const router = Router();
 
-// Clients / Brokers Routes
+// GET /api/clients — list clients for authenticated tenant
+router.get(
+  "/api/clients",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const companyId = req.user!.tenantId;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "GET /api/clients",
+    });
+    try {
+      const includeArchived = req.query.include_archived === "true";
+      const sql = includeArchived
+        ? "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC"
+        : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
+      const [rows]: any = await pool.query(sql, [companyId]);
+      const settings = await getVisibilitySettings(companyId);
+      res.json(redactData(rows, req.user.role, settings));
+    } catch (error) {
+      log.error({ err: error }, "SERVER ERROR [GET /api/clients]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// GET /api/clients/:companyId — legacy route (kept for backward compat)
 router.get(
   "/api/clients/:companyId",
   requireAuth,
@@ -34,9 +57,9 @@ router.get(
     } catch (error) {
       const log = createChildLogger({
         correlationId: req.correlationId,
-        route: "GET /api/clients",
+        route: "GET /api/clients/:companyId",
       });
-      log.error({ err: error }, "SERVER ERROR [GET /api/clients]");
+      log.error({ err: error }, "SERVER ERROR [GET /api/clients/:companyId]");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -123,6 +146,73 @@ router.patch(
         { err: error },
         "SERVER ERROR [PATCH /api/clients/:id/unarchive]",
       );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// PATCH /api/clients/:id — update a client record (e.g., status, name, contact info)
+router.patch(
+  "/api/clients/:id",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const tenantId = req.user!.tenantId;
+    const { id } = req.params;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/clients/:id",
+    });
+
+    try {
+      // Verify the client belongs to this tenant
+      const [existing]: any = await pool.query(
+        "SELECT id FROM customers WHERE id = ? AND company_id = ?",
+        [id, tenantId],
+      );
+
+      if (!existing || existing.length === 0) {
+        res.status(404).json({ error: "Client not found" });
+        return;
+      }
+
+      // Build dynamic SET clause from allowed fields
+      const allowedFields = [
+        "name",
+        "type",
+        "status",
+        "mc_number",
+        "dot_number",
+        "email",
+        "phone",
+        "address",
+        "payment_terms",
+      ];
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      for (const field of allowedFields) {
+        if (req.body[field] !== undefined) {
+          updates.push(`${field} = ?`);
+          values.push(req.body[field]);
+        }
+      }
+
+      if (updates.length === 0) {
+        res.status(400).json({ error: "No valid fields to update" });
+        return;
+      }
+
+      values.push(id, tenantId);
+      await pool.query(
+        `UPDATE customers SET ${updates.join(", ")} WHERE id = ? AND company_id = ?`,
+        values,
+      );
+
+      log.info({ clientId: id }, "Client updated");
+      res.json({ message: "Client updated" });
+    } catch (error) {
+      log.error({ err: error }, "SERVER ERROR [PATCH /api/clients/:id]");
       res.status(500).json({ error: "Database error" });
     }
   },

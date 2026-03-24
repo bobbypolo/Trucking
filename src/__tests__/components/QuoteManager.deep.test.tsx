@@ -226,7 +226,7 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
   });
 
   describe("details view - Comms Sidebar (lines 996-1053)", () => {
-    it("renders the Interaction Log sidebar in details view", async () => {
+    it("renders the Interaction Log sidebar with empty state in details view", async () => {
       setupMocks([makeQuote()]);
       render(<QuoteManager user={mockUser} company={mockCompany} />);
 
@@ -240,12 +240,10 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
         expect(screen.getByText("Interaction Log")).toBeInTheDocument();
       });
 
-      // Should show sample interaction entries
-      expect(screen.getByText("Incoming Call")).toBeInTheDocument();
-      expect(screen.getByText("Email Sent")).toBeInTheDocument();
-      expect(
-        screen.getByText(/Negotiated higher linehaul/),
-      ).toBeInTheDocument();
+      // Should show honest empty state, not fake entries
+      expect(screen.getByText("No Interactions Recorded")).toBeInTheDocument();
+      expect(screen.queryByText("Incoming Call")).not.toBeInTheDocument();
+      expect(screen.queryByText("Email Sent")).not.toBeInTheDocument();
     });
 
     it("shows the Log Contact button and quick note textarea", async () => {

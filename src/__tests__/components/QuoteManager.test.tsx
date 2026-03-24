@@ -538,7 +538,7 @@ describe("QuoteManager component", () => {
     expect(screen.getByText("Equipment Profile")).toBeInTheDocument();
   });
 
-  it("shows Interaction Log sidebar in details view", async () => {
+  it("shows Interaction Log sidebar with empty state in details view", async () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -548,8 +548,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Interaction Log")).toBeInTheDocument();
     });
-    expect(screen.getByText("Incoming Call")).toBeInTheDocument();
-    expect(screen.getByText("Email Sent")).toBeInTheDocument();
+    expect(screen.getByText("No Interactions Recorded")).toBeInTheDocument();
   });
 
   it("shows Active Triage section with no work items", async () => {
@@ -1065,7 +1064,7 @@ describe("QuoteManager component", () => {
     expect(screen.getByText("Log Contact")).toBeInTheDocument();
   });
 
-  it("shows interaction history entries in comms sidebar", async () => {
+  it("shows honest empty state in comms sidebar (no fake interaction entries)", async () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -1073,13 +1072,15 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/Chicago, IL/));
     await waitFor(() => {
-      expect(
-        screen.getByText("Negotiated higher linehaul for special handling."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("No Interactions Recorded")).toBeInTheDocument();
     });
+    // Hardcoded fake entries must be gone
     expect(
-      screen.getByText("Quote Version 1 dispatched to client."),
-    ).toBeInTheDocument();
+      screen.queryByText("Negotiated higher linehaul for special handling."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Quote Version 1 dispatched to client."),
+    ).not.toBeInTheDocument();
   });
 
   // ── WORK ITEMS ──
@@ -1114,8 +1115,7 @@ describe("QuoteManager component", () => {
     ).toBeInTheDocument();
   });
 
-  it("Log Contact button calls window.open with tel: URI", async () => {
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+  it("Log Contact button requires a note before logging", async () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -1125,9 +1125,13 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Log Contact")).toBeInTheDocument();
     });
+    // Clicking without entering a note should show error
     await user.click(screen.getByText("Log Contact"));
-    expect(openSpy).toHaveBeenCalledWith("tel:5551234567");
-    openSpy.mockRestore();
+    await waitFor(() => {
+      expect(
+        screen.getByText("Enter a note before logging."),
+      ).toBeInTheDocument();
+    });
   });
 
   it("shows the MoreHorizontal options button in comms sidebar", async () => {

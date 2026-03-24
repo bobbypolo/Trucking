@@ -1129,33 +1129,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 </h3>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                <div className="space-y-4">
-                  <div className="bg-slate-950 p-4 rounded-2xl border border-white/5">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                        Incoming Call
-                      </span>
-                      <span className="text-[8px] font-bold text-slate-600">
-                        Today, 2:45 PM
-                      </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-300">
-                      Negotiated higher linehaul for special handling.
-                    </p>
-                  </div>
-                  <div className="bg-slate-950 p-4 rounded-2xl border border-white/5">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
-                        Email Sent
-                      </span>
-                      <span className="text-[8px] font-bold text-slate-600">
-                        Jan 22, 10:15 AM
-                      </span>
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-300">
-                      Quote Version 1 dispatched to client.
-                    </p>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-10 text-center">
+                  <Phone className="w-8 h-8 text-slate-700 mb-3" />
+                  <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                    No Interactions Recorded
+                  </p>
+                  <p className="text-[9px] text-slate-700 mt-1">
+                    Log a call or note below to start tracking this opportunity.
+                  </p>
                 </div>
               </div>
               <div className="p-6 bg-slate-950/50 border-t border-white/5 space-y-4">
@@ -1166,9 +1147,36 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 />
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      window.open("tel:5551234567");
-                      // Future: Add integration with IntelligenceHub call session
+                    onClick={async () => {
+                      const noteEl =
+                        document.querySelector<HTMLTextAreaElement>(
+                          'textarea[aria-label="Quick note for call log..."]',
+                        );
+                      const note = noteEl?.value?.trim();
+                      if (!note) {
+                        setToast({
+                          message: "Enter a note before logging.",
+                          type: "error",
+                        });
+                        return;
+                      }
+                      try {
+                        const { api } = await import("../services/api");
+                        await api.post("/call-logs", {
+                          context: `Quote ${selectedQuote?.id?.slice(0, 6) || "unknown"}: ${note}`,
+                          direction: "outbound",
+                        });
+                        if (noteEl) noteEl.value = "";
+                        setToast({
+                          message: "Interaction logged.",
+                          type: "success",
+                        });
+                      } catch {
+                        setToast({
+                          message: "Failed to log interaction.",
+                          type: "error",
+                        });
+                      }
                     }}
                     className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 text-[9px] font-black uppercase rounded-lg transition-all"
                   >
