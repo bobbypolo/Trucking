@@ -117,7 +117,9 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
 
   /* ---- Helper: navigate to wizard step 5 ---- */
 
-  async function navigateToWizardStep5(user: ReturnType<typeof userEvent.setup>) {
+  async function navigateToWizardStep5(
+    user: ReturnType<typeof userEvent.setup>,
+  ) {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
@@ -125,49 +127,51 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
 
     await user.click(screen.getByText("Start Onboarding"));
 
-    // Step 1
+    // Step 1: Select Entity Class
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
-    // Fill in required company name so wizard validation passes on step 5
+    // Step 1 -> 2
+    await user.click(screen.getByText(/Next Step/));
+
+    // Step 2: Entity Info — fill in required company name so wizard validation passes on step 5
+    await waitFor(() => {
+      expect(
+        screen.getByPlaceholderText("FULL REGISTERED NAME"),
+      ).toBeInTheDocument();
+    });
     await user.type(
       screen.getByPlaceholderText("FULL REGISTERED NAME"),
       "Test Company LLC",
     );
 
-    // Step 1 -> 2
-    await user.click(screen.getByText("Next Phase"));
-
     // Step 2 -> 3
-    await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
 
     // Step 3 -> 4
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText(/Next Step/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
 
     // Step 4 -> 5
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText(/Next Step/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
 
-    // Now on step 5
+    // Now on step 5 — Save to Registry button only appears on step 5
     await waitFor(() => {
-      expect(
-        screen.getByText("Final Validation & Network Commit"),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Save to Registry/)).toBeInTheDocument();
     });
   }
 
-  /* ---- Helper: navigate to wizard step 4 (contains quick vendor/equip buttons) ---- */
+  /* ---- Helper: navigate to wizard step 4 (Rates & Terms) ---- */
 
-  async function navigateToWizardStep4(user: ReturnType<typeof userEvent.setup>) {
+  async function navigateToWizardStep4(
+    user: ReturnType<typeof userEvent.setup>,
+  ) {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
@@ -176,205 +180,52 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(screen.getByText("Start Onboarding"));
 
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
     // Step 1 -> 2
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText(/Next Step/)).toBeInTheDocument();
     });
     // Step 2 -> 3
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText(/Next Step/)).toBeInTheDocument();
     });
     // Step 3 -> 4
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText(/Next Step/));
 
-    // Step 4 has the quick vendor/equip buttons
+    // Step 4: Rates & Terms — check for Add Rate Row which is unique to step 4
     await waitFor(() => {
-      expect(screen.getByText("+ Quick Vendor")).toBeInTheDocument();
-      expect(screen.getByText("+ Quick Equip")).toBeInTheDocument();
+      expect(screen.getByText(/Add Rate Row/)).toBeInTheDocument();
     });
   }
 
-  /* ---- QUICK VENDOR MODAL ---- */
+  /* ---- WIZARD STEP 4: RATES & TERMS ---- */
 
-  it("opens Quick Vendor modal when clicking + Quick Vendor on wizard step 4", async () => {
+  it("shows Add Rate Row and New Constraint buttons on wizard step 4", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep4(user);
 
-    await user.click(screen.getByText("+ Quick Vendor"));
-
     await waitFor(() => {
-      expect(screen.getByText("QUICK VENDOR")).toBeInTheDocument();
-      expect(
-        screen.getByText("Lightweight Injection Matrix"),
-      ).toBeInTheDocument();
-      expect(screen.getByText("Legal Name")).toBeInTheDocument();
-      expect(screen.getByText("Offering")).toBeInTheDocument();
-      expect(screen.getByText("Tax ID")).toBeInTheDocument();
-      expect(screen.getByText("Confirm Injection")).toBeInTheDocument();
+      expect(screen.getByText(/Add Rate Row/)).toBeInTheDocument();
+      expect(screen.getByText(/New Constraint/)).toBeInTheDocument();
     });
   });
 
-  it("fills quick vendor form and confirms injection to save vendor", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
+  /* ---- WIZARD STEP 5: REVIEW & SAVE ---- */
 
-    await user.click(screen.getByText("+ Quick Vendor"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Confirm Injection")).toBeInTheDocument();
-    });
-
-    // Fill vendor name
-    const nameInput = screen.getByPlaceholderText("ENTITY NAME");
-    await user.type(nameInput, "New Vendor LLC");
-
-    // Fill tax ID
-    const taxInput = screen.getByPlaceholderText("00-0000000");
-    await user.type(taxInput, "12-3456789");
-
-    // Change offering select
-    const offeringSelect = screen.getByDisplayValue("SERVICE");
-    await user.selectOptions(offeringSelect, "PRODUCT");
-
-    // Confirm
-    await user.click(screen.getByText("Confirm Injection"));
-
-    await waitFor(() => {
-      expect(saveParty).toHaveBeenCalled();
-      const savedParty = vi.mocked(saveParty).mock.calls[0][0] as any;
-      expect(savedParty.name).toBe("New Vendor LLC");
-      expect(savedParty.type).toBe("Vendor");
-      expect(savedParty.status).toBe("Approved");
-      expect(savedParty.isVendor).toBe(true);
-    });
-  });
-
-  it("saves vendor with default name UNNAMED VENDOR when name is empty", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
-
-    await user.click(screen.getByText("+ Quick Vendor"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Confirm Injection")).toBeInTheDocument();
-    });
-
-    // Do NOT fill name field, just confirm
-    await user.click(screen.getByText("Confirm Injection"));
-
-    await waitFor(() => {
-      expect(saveParty).toHaveBeenCalled();
-      const savedParty = vi.mocked(saveParty).mock.calls[0][0] as any;
-      expect(savedParty.name).toBe("UNNAMED VENDOR");
-    });
-  });
-
-  it("closes quick vendor modal when X button is clicked", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
-
-    await user.click(screen.getByText("+ Quick Vendor"));
-
-    await waitFor(() => {
-      expect(screen.getByText("QUICK VENDOR")).toBeInTheDocument();
-    });
-
-    // Find and click the X close button in the modal header
-    const closeButtons = screen.getAllByRole("button");
-    const modalCloseBtn = closeButtons.find(
-      (btn) =>
-        btn.className.includes("rounded-2xl") &&
-        btn.className.includes("text-slate-500") &&
-        btn.closest(".fixed"),
-    );
-    expect(modalCloseBtn).toBeDefined();
-    await user.click(modalCloseBtn!);
-
-    await waitFor(() => {
-      expect(screen.queryByText("QUICK VENDOR")).not.toBeInTheDocument();
-    });
-  });
-
-  /* ---- QUICK EQUIP MODAL ---- */
-
-  it("opens Quick Equip modal when clicking + Quick Equip on wizard step 4", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
-
-    await user.click(screen.getByText("+ Quick Equip"));
-
-    await waitFor(() => {
-      expect(screen.getByText("QUICK EQUIP")).toBeInTheDocument();
-      expect(screen.getByText("Legal Name")).toBeInTheDocument();
-      expect(screen.getByText("Unit #")).toBeInTheDocument();
-      expect(screen.getByText("Plate / VIN")).toBeInTheDocument();
-    });
-  });
-
-  it("fills quick equip form fields (unit number and VIN) and confirms", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
-
-    await user.click(screen.getByText("+ Quick Equip"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Confirm Injection")).toBeInTheDocument();
-    });
-
-    // Fill unit number
-    const unitInput = screen.getByPlaceholderText("TRK-99");
-    await user.type(unitInput, "TRK-42");
-
-    // Fill VIN
-    const vinInput = screen.getByPlaceholderText("VIN...");
-    await user.type(vinInput, "1HGCM82633A123456");
-
-    // Confirm - this creates an equipment asset locally (no saveParty call)
-    await user.click(screen.getByText("Confirm Injection"));
-
-    // Modal should close
-    await waitFor(() => {
-      expect(screen.queryByText("QUICK EQUIP")).not.toBeInTheDocument();
-    });
-  });
-
-  it("creates equipment asset with default UNIT-X when unit number is empty", async () => {
-    const user = userEvent.setup();
-    await navigateToWizardStep4(user);
-
-    await user.click(screen.getByText("+ Quick Equip"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Confirm Injection")).toBeInTheDocument();
-    });
-
-    // Confirm without filling - should use defaults
-    await user.click(screen.getByText("Confirm Injection"));
-
-    // Modal should close after injection
-    await waitFor(() => {
-      expect(screen.queryByText("QUICK EQUIP")).not.toBeInTheDocument();
-    });
-  });
-
-  /* ---- WIZARD STEP 5: FINAL VALIDATION ---- */
-
-  it("displays party type in the step 5 summary card", async () => {
+  it("displays entity class in the step 5 summary card", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    // Default formData type is "Shipper" — multiple elements may contain it
-    const shippers = screen.getAllByText(/Shipper/);
-    expect(shippers.length).toBeGreaterThanOrEqual(1);
-    // The review summary heading is present
-    expect(
-      screen.getByText("Final Validation & Network Commit"),
-    ).toBeInTheDocument();
+    // Default selectedEntityClass is "Customer" — multiple elements may contain it
+    const customers = screen.getAllByText(/Customer/);
+    expect(customers.length).toBeGreaterThanOrEqual(1);
+    // The review summary heading is present (appears as both progress label and h2)
+    const reviewHeadings = screen.getAllByText("Review & Save");
+    expect(reviewHeadings.length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows A/R ENABLED badge when isCustomer is true on step 5", async () => {
@@ -385,18 +236,18 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     expect(screen.getByText("A/R ENABLED")).toBeInTheDocument();
   });
 
-  it("shows status selector with Live / Approved option on step 5", async () => {
+  it("shows status selector on step 5", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    expect(screen.getByDisplayValue("Live / Approved")).toBeInTheDocument();
+    expect(screen.getByLabelText("Entity status")).toBeInTheDocument();
   });
 
   it("allows changing status to Submission / Review on step 5", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    const statusSelect = screen.getByDisplayValue("Live / Approved");
+    const statusSelect = screen.getByLabelText("Entity status");
     await user.selectOptions(statusSelect, "In_Review");
 
     expect(screen.getByDisplayValue("Submission / Review")).toBeInTheDocument();
@@ -411,41 +262,41 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     ).toBeInTheDocument();
   });
 
-  it("shows Commit to Registry button on step 5 instead of Next Phase", async () => {
+  it("shows Save to Registry button on step 5 instead of Next Step", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    expect(screen.getByText("Commit to Registry")).toBeInTheDocument();
-    expect(screen.queryByText("Next Phase")).not.toBeInTheDocument();
+    expect(screen.getByText(/Save to Registry/)).toBeInTheDocument();
+    expect(screen.queryByText(/Next Step/)).not.toBeInTheDocument();
   });
 
-  it("calls saveParty when Commit to Registry is clicked on step 5", async () => {
+  it("calls saveParty when Save to Registry is clicked on step 5", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    await user.click(screen.getByText("Commit to Registry"));
+    await user.click(screen.getByText(/Save to Registry/));
 
     await waitFor(() => {
       expect(saveParty).toHaveBeenCalled();
     });
   });
 
-  it("shows Backtrack Step button on step 5", async () => {
+  it("shows Back button on step 5", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    expect(screen.getByText("Backtrack Step")).toBeInTheDocument();
+    expect(screen.getByText("Back")).toBeInTheDocument();
   });
 
-  it("goes back to step 4 when Backtrack Step is clicked on step 5", async () => {
+  it("goes back to step 4 when Back is clicked on step 5", async () => {
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    await user.click(screen.getByText("Backtrack Step"));
+    await user.click(screen.getByText("Back"));
 
     await waitFor(() => {
-      // Step 4 has the quick vendor/equip buttons
-      expect(screen.getByText("+ Quick Vendor")).toBeInTheDocument();
+      // Step 4 shows Add Rate Row button (unique to step 4)
+      expect(screen.getByText(/Add Rate Row/)).toBeInTheDocument();
     });
   });
 
@@ -463,12 +314,12 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(screen.getByText("ABC Logistics"));
 
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
-      expect(screen.getByText("Base Identity Name")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
+      expect(screen.getByText("Entity Name")).toBeInTheDocument();
     });
   });
 
-  it("shows profile tabs: Identity, Contacts, Services, Pricing, Rules, Compliance Docs", async () => {
+  it("shows profile tabs: Identity, Contacts, Services, Pricing, Rules, Documents", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
 
@@ -479,16 +330,16 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(screen.getByText("ABC Logistics"));
 
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
-      expect(screen.getByText("Auth Contacts")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
+      expect(screen.getByText("Contacts")).toBeInTheDocument();
       expect(screen.getByText("Services")).toBeInTheDocument();
       expect(screen.getByText("Pricing")).toBeInTheDocument();
       expect(screen.getByText("Rules")).toBeInTheDocument();
-      expect(screen.getByText("Compliance Docs")).toBeInTheDocument();
+      expect(screen.getByText("Documents")).toBeInTheDocument();
     });
   });
 
-  it("shows Quick Actions section (Safety Log, Financial Check) in profile view", async () => {
+  it("shows Quick Actions section (Safety Log, Financial) in profile view", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
 
@@ -501,27 +352,9 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await waitFor(() => {
       expect(screen.getByText("Quick Actions")).toBeInTheDocument();
       expect(screen.getByText("Safety Log")).toBeInTheDocument();
-      expect(screen.getByText("View Violation History")).toBeInTheDocument();
-      expect(screen.getByText("Financial Check")).toBeInTheDocument();
-      expect(screen.getByText("Verify Credit Matrix")).toBeInTheDocument();
-    });
-  });
-
-  it("shows Critical Warning section about COI expiries in profile view", async () => {
-    const user = userEvent.setup();
-    render(<NetworkPortal {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("ABC Logistics"));
-
-    await waitFor(() => {
-      expect(screen.getByText("Critical Warning")).toBeInTheDocument();
-      expect(
-        screen.getByText(/COI expiries within 12 days/),
-      ).toBeInTheDocument();
+      expect(screen.getByText("View History")).toBeInTheDocument();
+      expect(screen.getByText("Financial")).toBeInTheDocument();
+      expect(screen.getByText("Verify Credit")).toBeInTheDocument();
     });
   });
 
@@ -536,7 +369,7 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(screen.getByText("ABC Logistics"));
 
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
     });
 
     // Find the back button (rotated chevron)
@@ -551,11 +384,11 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(backBtn!);
 
     await waitFor(() => {
-      expect(screen.getByText("Partner Network Registry")).toBeInTheDocument();
+      expect(screen.getByText("Onboarding")).toBeInTheDocument();
     });
   });
 
-  it("shows New Relation and Export SQL buttons in profile header", async () => {
+  it("shows New Relation and Export buttons in profile header", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
 
@@ -567,7 +400,7 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
 
     await waitFor(() => {
       expect(screen.getByText(/New Relation/)).toBeInTheDocument();
-      expect(screen.getByText("Export SQL")).toBeInTheDocument();
+      expect(screen.getByText("Export")).toBeInTheDocument();
     });
   });
 
@@ -584,28 +417,28 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
     await user.click(screen.getByText("Start Onboarding"));
 
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
     await user.click(screen.getByText("Discard & Return"));
 
     await waitFor(() => {
-      expect(screen.getByText("Partner Network Registry")).toBeInTheDocument();
+      expect(screen.getByText("Onboarding")).toBeInTheDocument();
     });
   });
 
   /* ---- TOAST ON SAVE FAILURE ---- */
 
-  it("shows error toast when saveParty fails during Commit to Registry", async () => {
+  it("shows error toast when saveParty fails during Save to Registry", async () => {
     vi.mocked(saveParty).mockRejectedValueOnce(new Error("Network error"));
     const user = userEvent.setup();
     await navigateToWizardStep5(user);
 
-    await user.click(screen.getByText("Commit to Registry"));
+    await user.click(screen.getByText(/Save to Registry/));
 
     await waitFor(() => {
       expect(screen.getByTestId("toast-mock")).toBeInTheDocument();
-      expect(screen.getByText("Failed to save party")).toBeInTheDocument();
+      expect(screen.getByText("Failed to save entity")).toBeInTheDocument();
     });
   });
 });

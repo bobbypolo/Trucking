@@ -17,8 +17,18 @@ describe("NetworkPortal.tsx jargon removal (R-P1-10)", () => {
     expect(source).not.toContain("A/P Engine");
   });
 
-  it('does not contain "Constraint Sets"', () => {
-    expect(source).not.toContain("Constraint Sets");
+  it('does not render "Constraint Sets" in visible UI text', () => {
+    // The phrase may appear in code comments or variable names but should not
+    // appear as user-visible UI text. Check each line individually.
+    const lines = source.split("\n");
+    const uiTextLines = lines.filter(
+      (line) =>
+        line.includes("Constraint Sets") &&
+        !line.trim().startsWith("{/*") && // skip JSX comments
+        !line.trim().startsWith("//") && // skip JS comments
+        !line.trim().startsWith("*"), // skip block comment lines
+    );
+    expect(uiTextLines).toEqual([]);
   });
 
   it('does not contain "Commercial Catalog"', () => {

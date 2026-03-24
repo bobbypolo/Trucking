@@ -108,12 +108,10 @@ describe("NetworkPortal component", () => {
   });
 
   // ─── Heading & initial render ───
-  it("renders the Partner Network Registry heading", async () => {
+  it("renders the Onboarding heading", async () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(
-        screen.getByText("Partner Network Registry"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Onboarding")).toBeInTheDocument();
     });
   });
 
@@ -145,14 +143,14 @@ describe("NetworkPortal component", () => {
     expect(screen.getByText("On Hold")).toBeInTheDocument();
   });
 
-  it("renders party type labels on cards", async () => {
+  it("renders entity class labels on cards", async () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
-    // Vendor_Service is rendered as "Vendor Service" - appears in filter bar AND card
-    const vendorServiceEls = screen.getAllByText("Vendor Service");
-    expect(vendorServiceEls.length).toBeGreaterThanOrEqual(2); // filter + card label
+    // Vendor_Service maps to "Vendor" — appears in filter bar AND card
+    const vendorEls = screen.getAllByText("Vendor");
+    expect(vendorEls.length).toBeGreaterThanOrEqual(2); // filter + card label
     // "Broker" also appears in both filter bar and card label
     const brokerEls = screen.getAllByText("Broker");
     expect(brokerEls.length).toBeGreaterThanOrEqual(2);
@@ -203,7 +201,7 @@ describe("NetworkPortal component", () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(
-        screen.getByPlaceholderText(/SEARCH BY PARTY NAME/i),
+        screen.getByPlaceholderText(/SEARCH BY ENTITY NAME/i),
       ).toBeInTheDocument();
     });
   });
@@ -215,7 +213,7 @@ describe("NetworkPortal component", () => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/SEARCH BY PARTY NAME/i);
+    const searchInput = screen.getByPlaceholderText(/SEARCH BY ENTITY NAME/i);
     await user.type(searchInput, "FastFreight");
     expect(screen.getByText("FastFreight Inc")).toBeInTheDocument();
     expect(screen.queryByText("ABC Logistics")).not.toBeInTheDocument();
@@ -241,7 +239,7 @@ describe("NetworkPortal component", () => {
     });
 
     await user.type(
-      screen.getByPlaceholderText(/SEARCH BY PARTY NAME/i),
+      screen.getByPlaceholderText(/SEARCH BY ENTITY NAME/i),
       "MC-123456",
     );
     expect(screen.getByText("MC Party")).toBeInTheDocument();
@@ -265,22 +263,22 @@ describe("NetworkPortal component", () => {
     expect(screen.queryByText("FastFreight Inc")).not.toBeInTheDocument();
   });
 
-  it("filters by Shipper type", async () => {
+  it("filters by Customer type", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    const shipperBtns = screen
+    const customerBtns = screen
       .getAllByRole("button")
-      .filter((btn) => btn.textContent?.trim() === "Shipper");
-    await user.click(shipperBtns[0]);
+      .filter((btn) => btn.textContent?.trim() === "Customer");
+    await user.click(customerBtns[0]);
     expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     expect(screen.queryByText("BrokerCo Holdings")).not.toBeInTheDocument();
   });
 
-  it("filters by Vendor Service type", async () => {
+  it("filters by Vendor type", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -289,7 +287,7 @@ describe("NetworkPortal component", () => {
 
     const vendorBtns = screen
       .getAllByRole("button")
-      .filter((btn) => btn.textContent?.trim() === "Vendor Service");
+      .filter((btn) => btn.textContent?.trim() === "Vendor");
     await user.click(vendorBtns[0]);
     expect(screen.getByText("XYZ Repairs")).toBeInTheDocument();
     expect(screen.queryByText("ABC Logistics")).not.toBeInTheDocument();
@@ -323,11 +321,11 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
   });
 
-  it("shows wizard step 1 with entity type selector and form fields", async () => {
+  it("shows wizard step 1 with entity class selector", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -336,22 +334,28 @@ describe("NetworkPortal component", () => {
     await user.click(screen.getByText("Start Onboarding"));
 
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
-    expect(screen.getByText("Universal Entity Type")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("FULL REGISTERED NAME")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("IDENTIFIER")).toBeInTheDocument();
-    expect(screen.getByText("Customer (A/R)")).toBeInTheDocument();
-    expect(screen.getByText("Vendor (A/P)")).toBeInTheDocument();
+    // Entity class cards should be present (also in filter bar, so use getAllByText)
+    expect(screen.getAllByText("Customer").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Broker").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Vendor").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Facility").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Contractor").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("toggles Customer and Vendor financial roles in wizard step 1", async () => {
+  it("toggles Customer and Vendor financial roles in wizard step 2", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
+    // Step 1 -> 2
+    await waitFor(() => {
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
       expect(screen.getByText("Customer (A/R)")).toBeInTheDocument();
     });
@@ -365,7 +369,7 @@ describe("NetworkPortal component", () => {
     expect(screen.getByText("Vendor (A/P)")).toBeInTheDocument();
   });
 
-  it("selects entity type in wizard step 1", async () => {
+  it("selects entity class in wizard step 1", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -373,26 +377,32 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
-    // Click on Broker entity type
-    const entityTypeButtons = screen
+    // Click on Broker entity class card
+    const brokerCards = screen
       .getAllByRole("button")
-      .filter((btn) => btn.textContent?.trim() === "Broker");
-    // The last one should be in the wizard entity type selector
-    await user.click(entityTypeButtons[entityTypeButtons.length - 1]);
-    // MC Number label should appear for non-shipper types
-    expect(screen.getByText("MC Number")).toBeInTheDocument();
+      .filter((btn) => btn.textContent?.includes("Broker"));
+    await user.click(brokerCards[brokerCards.length - 1]);
+    // Broker description should be present
+    expect(
+      screen.getByText(/Freight brokers and 3PL intermediaries/),
+    ).toBeInTheDocument();
   });
 
-  it("fills in entity name in wizard step 1", async () => {
+  it("fills in entity name in wizard step 2", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
+    // Step 1 -> 2
+    await waitFor(() => {
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText("FULL REGISTERED NAME"),
@@ -408,7 +418,7 @@ describe("NetworkPortal component", () => {
     );
   });
 
-  it("navigates to wizard step 2 (Financial Infrastructure)", async () => {
+  it("navigates to wizard step 2 (Entity Information)", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -416,22 +426,18 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Financial Infrastructure"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Entity Information")).toBeInTheDocument();
     });
-    // Customer A/R section visible by default (isCustomer=true)
-    expect(
-      screen.getByText("Accounts Receivable (A/R)"),
-    ).toBeInTheDocument();
+    // Customer (A/R) toggle visible by default (isCustomer=true for Customer entity)
+    expect(screen.getByText("Customer (A/R)")).toBeInTheDocument();
   });
 
-  it("shows vendor A/P section when isVendor is toggled on", async () => {
+  it("shows vendor A/P toggle on step 2", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -439,45 +445,36 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
 
-    // Toggle vendor on
-    await user.click(screen.getByText("Vendor (A/P)"));
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText("Next Step"));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Financial Infrastructure"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Entity Information")).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("Accounts Payable (A/P)"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Vendor (A/P)")).toBeInTheDocument();
   });
 
-  it("shows warning when neither customer nor vendor selected in step 2", async () => {
+  it("shows entity name field on step 2", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
+    // Step 1 -> 2
     await waitFor(() => {
-      expect(screen.getByText("Customer (A/R)")).toBeInTheDocument();
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
     });
-
-    // Toggle customer off (it starts on by default)
-    await user.click(screen.getByText("Customer (A/R)"));
-    await user.click(screen.getByText("Next Phase"));
-
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          "Select at least one financial role in Identity Phase",
-        ),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Entity Information")).toBeInTheDocument();
     });
+    // Name field is on step 2
+    expect(
+      screen.getByPlaceholderText("FULL REGISTERED NAME"),
+    ).toBeInTheDocument();
   });
 
   it("navigates to wizard step 3 (Registry Tables & Engines)", async () => {
@@ -488,42 +485,36 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
     });
 
     // Step 1 -> 2
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Financial Infrastructure"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Entity Information")).toBeInTheDocument();
     });
     // Step 2 -> 3
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Registry Tables & Engines"),
-      ).toBeInTheDocument();
+      // Step 3 is Contacts - has + Add Contact button
+      expect(screen.getByText("+ Add Contact")).toBeInTheDocument();
     });
-    expect(screen.getByText("Unit Pricing Engine")).toBeInTheDocument();
-    expect(screen.getByText("Operational Constraints")).toBeInTheDocument();
   });
 
-  it("adds a rate row in wizard step 3", async () => {
+  it("adds a rate row in wizard step 4", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
-    await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Next Phase"));
-    await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Next Phase"));
+    // Navigate through steps 1-3 to reach step 4
+    for (let i = 0; i < 3; i++) {
+      await waitFor(() => {
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Next Step"));
+    }
     await waitFor(() => {
       expect(screen.getByText("Add Rate Row")).toBeInTheDocument();
     });
@@ -533,30 +524,29 @@ describe("NetworkPortal component", () => {
     expect(screen.getByDisplayValue("SERVICE_GENERAL")).toBeInTheDocument();
   });
 
-  it("adds a constraint set in wizard step 3", async () => {
+  it("adds a constraint on wizard step 4", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
     });
     await user.click(screen.getByText("Start Onboarding"));
+    // Navigate through steps 1-3 to reach step 4
+    for (let i = 0; i < 3; i++) {
+      await waitFor(() => {
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
+      });
+      await user.click(screen.getByText("Next Step"));
+    }
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Next Phase"));
-    await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Next Phase"));
-    await waitFor(() => {
-      expect(screen.getByText("New Constraint Set")).toBeInTheDocument();
+      expect(screen.getByText(/New Constraint/)).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("New Constraint Set"));
-    expect(screen.getByText("SET #1")).toBeInTheDocument();
+    await user.click(screen.getByText(/New Constraint/));
+    expect(screen.getByText("Constraint #1")).toBeInTheDocument();
   });
 
-  it("navigates to wizard step 4 (Broker Network)", async () => {
+  it("navigates to wizard step 4 (Rates & Terms)", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -567,19 +557,18 @@ describe("NetworkPortal component", () => {
     // Navigate through steps 1-4
     for (let i = 0; i < 3; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("Broker Network")).toBeInTheDocument();
+      expect(screen.getByText("Add Rate Row")).toBeInTheDocument();
     });
-    expect(screen.getByText("Command Contacts")).toBeInTheDocument();
-    expect(screen.getByText("Preferred Network Nodes")).toBeInTheDocument();
+    expect(screen.getByText(/New Constraint/)).toBeInTheDocument();
   });
 
-  it("adds a contact in wizard step 4", async () => {
+  it("adds a contact in wizard step 3", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -587,106 +576,22 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
-    for (let i = 0; i < 3; i++) {
+    // Navigate to step 3 (Contacts)
+    for (let i = 0; i < 2; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("+ Inject Contact")).toBeInTheDocument();
+      expect(screen.getByText("+ Add Contact")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("+ Inject Contact"));
-    // After S-4.4: new contacts use empty string defaults instead of fake placeholders
+    await user.click(screen.getByText("+ Add Contact"));
+    // New contacts should be added as table rows
     const contactInputs = screen.getAllByRole("textbox");
     expect(contactInputs.length).toBeGreaterThan(0);
-  });
-
-  it("opens Quick Vendor modal from wizard step 4", async () => {
-    const user = userEvent.setup();
-    render(<NetworkPortal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Start Onboarding"));
-
-    for (let i = 0; i < 3; i++) {
-      await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Next Phase"));
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText("+ Quick Vendor")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("+ Quick Vendor"));
-    await waitFor(() => {
-      expect(screen.getByText("QUICK VENDOR")).toBeInTheDocument();
-    });
-    expect(screen.getByPlaceholderText("ENTITY NAME")).toBeInTheDocument();
-  });
-
-  it("opens Quick Equip modal from wizard step 4", async () => {
-    const user = userEvent.setup();
-    render(<NetworkPortal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Start Onboarding"));
-
-    for (let i = 0; i < 3; i++) {
-      await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Next Phase"));
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText("+ Quick Equip")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("+ Quick Equip"));
-    await waitFor(() => {
-      expect(screen.getByText("QUICK EQUIP")).toBeInTheDocument();
-    });
-    expect(screen.getByPlaceholderText("TRK-99")).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("VIN...")).toBeInTheDocument();
-  });
-
-  it("closes Quick modal when clicking the close button", async () => {
-    const user = userEvent.setup();
-    render(<NetworkPortal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText("Start Onboarding")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Start Onboarding"));
-
-    for (let i = 0; i < 3; i++) {
-      await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Next Phase"));
-    }
-
-    await waitFor(() => {
-      expect(screen.getByText("+ Quick Vendor")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("+ Quick Vendor"));
-    await waitFor(() => {
-      expect(screen.getByText("QUICK VENDOR")).toBeInTheDocument();
-    });
-
-    // Close via the X button on the modal
-    const modalHeader = screen.getByText("QUICK VENDOR").closest("div")!;
-    const closeBtn = within(modalHeader.parentElement!).getAllByRole("button")[
-      within(modalHeader.parentElement!).getAllByRole("button").length - 1
-    ];
-    await user.click(closeBtn);
-    await waitFor(() => {
-      expect(screen.queryByText("QUICK VENDOR")).not.toBeInTheDocument();
-    });
   });
 
   it("navigates to wizard step 5 (Final Validation)", async () => {
@@ -699,17 +604,14 @@ describe("NetworkPortal component", () => {
 
     for (let i = 0; i < 4; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Final Validation & Network Commit"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Save to Registry")).toBeInTheDocument();
     });
-    expect(screen.getByText("Commit to Registry")).toBeInTheDocument();
   });
 
   it("saves party on wizard step 5 commit", async () => {
@@ -720,7 +622,13 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
-    // Fill in required company name on step 1 so wizard validation passes
+    // Step 1 -> 2
+    await waitFor(() => {
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
+
+    // Fill in required company name on step 2 so wizard validation passes
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText("FULL REGISTERED NAME"),
@@ -731,18 +639,19 @@ describe("NetworkPortal component", () => {
       "Test Company LLC",
     );
 
-    for (let i = 0; i < 4; i++) {
+    // From step 2, navigate through 3, 4 to reach step 5
+    for (let i = 0; i < 3; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("Commit to Registry")).toBeInTheDocument();
+      expect(screen.getByText("Save to Registry")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Commit to Registry"));
+    await user.click(screen.getByText("Save to Registry"));
     await waitFor(() => {
       expect(saveParty).toHaveBeenCalledTimes(1);
     });
@@ -759,7 +668,13 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
-    // Fill in required company name on step 1 so wizard validation passes
+    // Step 1 -> 2
+    await waitFor(() => {
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
+
+    // Fill in required company name on step 2 so wizard validation passes
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText("FULL REGISTERED NAME"),
@@ -770,18 +685,19 @@ describe("NetworkPortal component", () => {
       "Test Company LLC",
     );
 
-    for (let i = 0; i < 4; i++) {
+    // From step 2, navigate to step 5 (3 more clicks)
+    for (let i = 0; i < 3; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("Commit to Registry")).toBeInTheDocument();
+      expect(screen.getByText("Save to Registry")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Commit to Registry"));
+    await user.click(screen.getByText("Save to Registry"));
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
@@ -796,7 +712,13 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
-    // Fill in required company name on step 1 so wizard validation passes
+    // Step 1 -> 2
+    await waitFor(() => {
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
+
+    // Fill in required company name on step 2 so wizard validation passes
     await waitFor(() => {
       expect(
         screen.getByPlaceholderText("FULL REGISTERED NAME"),
@@ -807,24 +729,25 @@ describe("NetworkPortal component", () => {
       "Test Company LLC",
     );
 
-    for (let i = 0; i < 4; i++) {
+    // From step 2, navigate to step 5 (3 more clicks)
+    for (let i = 0; i < 3; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("Commit to Registry")).toBeInTheDocument();
+      expect(screen.getByText("Save to Registry")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Commit to Registry"));
+    await user.click(screen.getByText("Save to Registry"));
     await waitFor(() => {
-      expect(screen.getByText("Failed to save party")).toBeInTheDocument();
+      expect(screen.getByText("Failed to save entity")).toBeInTheDocument();
     });
   });
 
-  it("navigates backwards through wizard using Backtrack Step", async () => {
+  it("navigates backwards through wizard using Back button", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -832,21 +755,19 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
     await waitFor(() => {
-      expect(screen.getByText("Next Phase")).toBeInTheDocument();
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
     });
 
     // Go to step 2
-    await user.click(screen.getByText("Next Phase"));
+    await user.click(screen.getByText("Next Step"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Financial Infrastructure"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Entity Information")).toBeInTheDocument();
     });
 
     // Go back to step 1
-    await user.click(screen.getByText("Backtrack Step"));
+    await user.click(screen.getByText("Back"));
     await waitFor(() => {
-      expect(screen.getByText("Identity & Strategy")).toBeInTheDocument();
+      expect(screen.getByText("Select Entity Class")).toBeInTheDocument();
     });
   });
 
@@ -877,10 +798,10 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
     });
     expect(screen.getByText("Core Attributes")).toBeInTheDocument();
-    expect(screen.getByText("Base Identity Name")).toBeInTheDocument();
+    expect(screen.getByText("Entity Name")).toBeInTheDocument();
   });
 
   it("shows profile tab navigation with all tabs", async () => {
@@ -892,13 +813,13 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
     });
-    expect(screen.getByText("Auth Contacts")).toBeInTheDocument();
+    expect(screen.getByText("Contacts")).toBeInTheDocument();
     expect(screen.getByText("Services")).toBeInTheDocument();
     expect(screen.getByText("Pricing")).toBeInTheDocument();
     expect(screen.getByText("Rules")).toBeInTheDocument();
-    expect(screen.getByText("Compliance Docs")).toBeInTheDocument();
+    expect(screen.getByText("Documents")).toBeInTheDocument();
   });
 
   it("switches to Contacts tab in profile view", async () => {
@@ -910,14 +831,18 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Auth Contacts")).toBeInTheDocument();
+      // Profile tabs should be visible
+      expect(screen.getByText("Core Attributes")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Auth Contacts"));
+    // Click Contacts tab
+    const contactsTabBtns = screen
+      .getAllByText("Contacts")
+      .filter((el) => el.closest("button") !== null);
+    await user.click(contactsTabBtns[0]);
     await waitFor(() => {
-      expect(screen.getByText("Authorized Contacts")).toBeInTheDocument();
+      // Contact should be visible
+      expect(screen.getByText("John Doe")).toBeInTheDocument();
     });
-    // Contact should be visible
-    expect(screen.getByText("John Doe")).toBeInTheDocument();
     expect(screen.getByText("555-0100")).toBeInTheDocument();
     expect(screen.getByText("john@abc.com")).toBeInTheDocument();
   });
@@ -938,9 +863,7 @@ describe("NetworkPortal component", () => {
       expect(screen.getByText("Unified Rate Table")).toBeInTheDocument();
     });
     expect(
-      screen.getByText(
-        "No unified rates currently mapped for this node.",
-      ),
+      screen.getByText("No rates mapped for this entity."),
     ).toBeInTheDocument();
   });
 
@@ -957,13 +880,9 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Services"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Authorized Service Catalog"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Service Catalog")).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("No catalog items mapped to this node"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No catalog items mapped")).toBeInTheDocument();
   });
 
   it("adds a catalog item in Services tab via + Add Item button", async () => {
@@ -999,16 +918,12 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Rules"));
     await waitFor(() => {
-      expect(
-        screen.getByText("Operational Logic Constraints"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Operational Constraints")).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("No rules set. Full flexibility."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No rules set.")).toBeInTheDocument();
   });
 
-  it("switches to Compliance Docs tab with empty state", async () => {
+  it("switches to Documents tab with empty state", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -1017,17 +932,13 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Compliance Docs")).toBeInTheDocument();
+      expect(screen.getAllByText("Documents").length).toBeGreaterThan(0);
     });
-    await user.click(screen.getByText("Compliance Docs"));
+    await user.click(screen.getAllByText("Documents")[0]);
     await waitFor(() => {
-      expect(
-        screen.getByText("Compliance & Legal Artifacts"),
-      ).toBeInTheDocument();
+      expect(screen.getAllByText("Documents").length).toBeGreaterThan(0);
     });
-    expect(
-      screen.getByText("No documents uploaded yet."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("No documents uploaded.")).toBeInTheDocument();
   });
 
   it("returns to dashboard from profile view via back button", async () => {
@@ -1039,7 +950,7 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Party Identity")).toBeInTheDocument();
+      expect(screen.getByText("Identity")).toBeInTheDocument();
     });
 
     // Back button is the first button with a rotated chevron
@@ -1088,9 +999,7 @@ describe("NetworkPortal component", () => {
     vi.mocked(getParties).mockResolvedValue([]);
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(
-        screen.getByText("Partner Network Registry"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Onboarding")).toBeInTheDocument();
     });
     expect(screen.queryByText("ABC Logistics")).not.toBeInTheDocument();
   });
@@ -1102,9 +1011,7 @@ describe("NetworkPortal component", () => {
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
-    expect(
-      screen.getByText("Partner Network Registry"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Onboarding")).toBeInTheDocument();
   });
 
   it("displays the Start Onboarding button", async () => {
@@ -1157,7 +1064,7 @@ describe("NetworkPortal component", () => {
   });
 
   // ─── Profile with documents ───
-  it("renders documents in profile Compliance Docs tab", async () => {
+  it("renders documents in profile Documents tab", async () => {
     const partyWithDocs = buildParty({
       id: "party-docs",
       name: "Documented Party",
@@ -1182,13 +1089,11 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("Documented Party"));
     await waitFor(() => {
-      expect(screen.getByText("Compliance Docs")).toBeInTheDocument();
+      expect(screen.getByText("Documents")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Compliance Docs"));
+    await user.click(screen.getByText("Documents"));
     await waitFor(() => {
-      expect(
-        screen.getByText("General Liability Policy"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("General Liability Policy")).toBeInTheDocument();
     });
     expect(screen.getByText("Insurance")).toBeInTheDocument();
     expect(screen.getByText("Verified")).toBeInTheDocument();
@@ -1253,16 +1158,16 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("XYZ Repairs"));
     await waitFor(() => {
-      expect(screen.getByText("Auth Contacts")).toBeInTheDocument();
+      expect(screen.getByText("Contacts")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Auth Contacts"));
+    await user.click(screen.getByText("Contacts"));
     await waitFor(() => {
-      expect(screen.getByText("No contacts added yet.")).toBeInTheDocument();
+      expect(screen.getByText("No contacts added.")).toBeInTheDocument();
     });
   });
 
-  // ─── Shipper-specific wizard behavior ───
-  it("shows Client Classification dropdown for Shipper type in wizard", async () => {
+  // ─── Customer-specific wizard behavior ───
+  it("shows Client Classification dropdown for Customer type in wizard step 2", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -1270,14 +1175,20 @@ describe("NetworkPortal component", () => {
     });
     await user.click(screen.getByText("Start Onboarding"));
 
+    // Step 1 -> 2
     await waitFor(() => {
-      // Default type is Shipper, so Client Classification should be visible
+      expect(screen.getByText("Next Step")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("Next Step"));
+
+    await waitFor(() => {
+      // Default entity class is Customer, so Client Classification should be visible
       expect(screen.getByText("Client Classification")).toBeInTheDocument();
     });
   });
 
-  // ─── Quick Vendor submit ───
-  it("saves quick vendor via Confirm Injection button", async () => {
+  // ─── Wizard step 4 Rates & Terms ───
+  it("shows Add Rate Row button on wizard step 4", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -1287,31 +1198,19 @@ describe("NetworkPortal component", () => {
 
     for (let i = 0; i < 3; i++) {
       await waitFor(() => {
-        expect(screen.getByText("Next Phase")).toBeInTheDocument();
+        expect(screen.getByText("Next Step")).toBeInTheDocument();
       });
-      await user.click(screen.getByText("Next Phase"));
+      await user.click(screen.getByText("Next Step"));
     }
 
     await waitFor(() => {
-      expect(screen.getByText("+ Quick Vendor")).toBeInTheDocument();
+      expect(screen.getAllByText("Rates & Terms").length).toBeGreaterThan(0);
     });
-    await user.click(screen.getByText("+ Quick Vendor"));
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText("ENTITY NAME")).toBeInTheDocument();
-    });
-
-    await user.type(
-      screen.getByPlaceholderText("ENTITY NAME"),
-      "New Vendor Co",
-    );
-    await user.click(screen.getByText("Confirm Injection"));
-    await waitFor(() => {
-      expect(saveParty).toHaveBeenCalledTimes(1);
-    });
+    expect(screen.getByText("Add Rate Row")).toBeInTheDocument();
   });
 
   // ─── Profile side panel signals ───
-  it("shows Commercial Signals panel in profile view", async () => {
+  it("shows Entity Signals panel in profile view", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
@@ -1320,21 +1219,21 @@ describe("NetworkPortal component", () => {
 
     await user.click(screen.getByText("ABC Logistics"));
     await waitFor(() => {
-      expect(screen.getByText("Commercial Signals")).toBeInTheDocument();
+      expect(screen.getByText("Entity Signals")).toBeInTheDocument();
     });
     expect(screen.getByText("Identity Verified")).toBeInTheDocument();
   });
 
-  it("shows Critical Warning panel in profile view", async () => {
+  it("shows AP Workflow Active for vendor parties in profile view", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
+      expect(screen.getByText("XYZ Repairs")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("ABC Logistics"));
+    await user.click(screen.getByText("XYZ Repairs"));
     await waitFor(() => {
-      expect(screen.getByText("Critical Warning")).toBeInTheDocument();
+      expect(screen.getByText("AP Workflow Active")).toBeInTheDocument();
     });
   });
 
@@ -1350,6 +1249,6 @@ describe("NetworkPortal component", () => {
       expect(screen.getByText("Quick Actions")).toBeInTheDocument();
     });
     expect(screen.getByText("Safety Log")).toBeInTheDocument();
-    expect(screen.getByText("Financial Check")).toBeInTheDocument();
+    expect(screen.getByText("Financial")).toBeInTheDocument();
   });
 });

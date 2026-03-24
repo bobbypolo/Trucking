@@ -16,9 +16,24 @@ vi.mock("../../../services/brokerService", () => ({
       isShared: true,
       clientType: "Broker",
       approvedChassis: [
-        { id: "ch-1", provider: "TRAC", type: "40' Gooseneck", prefixes: ["TRAC", "TXZZ"] },
-        { id: "ch-2", provider: "FLEXI", type: "20' Slider", prefixes: ["FLXI"] },
-        { id: "ch-3", provider: "DCLI", type: "45' Extendable", prefixes: ["DCLI"] },
+        {
+          id: "ch-1",
+          provider: "TRAC",
+          type: "40' Gooseneck",
+          prefixes: ["TRAC", "TXZZ"],
+        },
+        {
+          id: "ch-2",
+          provider: "FLEXI",
+          type: "20' Slider",
+          prefixes: ["FLXI"],
+        },
+        {
+          id: "ch-3",
+          provider: "DCLI",
+          type: "45' Extendable",
+          prefixes: ["DCLI"],
+        },
       ],
       safetyScore: 95,
     },
@@ -55,19 +70,19 @@ describe("BrokerManager deep coverage", () => {
         expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
       });
 
-      const editButtons = document.querySelectorAll(
-        "button svg",
-      );
+      const editButtons = document.querySelectorAll("button svg");
       const editBtnParents = Array.from(editButtons)
         .map((svg) => svg.closest("button"))
         .filter((btn) => btn && btn.querySelector("svg"));
 
-      const alphaCard = screen.getByText("Alpha Logistics").closest("[class*='rounded-2xl']");
+      const alphaCard = screen
+        .getByText("Alpha Logistics")
+        .closest("[class*='rounded-2xl']");
       const editBtn = alphaCard?.querySelector("button[class*='bg-slate-800']");
       expect(editBtn).toBeInTheDocument();
       await user.click(editBtn as HTMLElement);
       await waitFor(() => {
-        expect(screen.getByText("Edit Client")).toBeInTheDocument();
+        expect(screen.getByText("Edit Entity")).toBeInTheDocument();
       });
     });
 
@@ -81,7 +96,7 @@ describe("BrokerManager deep coverage", () => {
       });
 
       await user.click(screen.getByText("Add Entity"));
-      expect(screen.getByText("Add New Client")).toBeInTheDocument();
+      expect(screen.getByText("Add New Entity")).toBeInTheDocument();
 
       const nameInput = screen.getByPlaceholderText(
         /ENTER FULL REGISTERED COMPANY NAME/,
@@ -122,7 +137,9 @@ describe("BrokerManager deep coverage", () => {
       await user.click(screen.getByText("Add to Approved List"));
 
       expect(screen.getByText("TESTPROV")).toBeInTheDocument();
-      expect(screen.queryByText(/No chassis rules defined/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/No chassis rules defined/),
+      ).not.toBeInTheDocument();
 
       const deleteButtons = document.querySelectorAll(
         "button[class*='hover:text-red-500']",
@@ -183,17 +200,17 @@ describe("BrokerManager deep coverage", () => {
     });
   });
 
-  describe("client type dropdown in form", () => {
-    it("allows changing client type to Direct Customer", async () => {
+  describe("entity class dropdown in form", () => {
+    it("allows changing entity class to Customer", async () => {
       const user = userEvent.setup();
       render(<BrokerManager />);
 
       await user.click(screen.getByText("Add Entity"));
 
       const typeSelect = screen.getByDisplayValue("Broker / 3PL");
-      await user.selectOptions(typeSelect, "Direct Customer");
+      await user.selectOptions(typeSelect, "Customer");
 
-      expect(typeSelect).toHaveValue("Direct Customer");
+      expect(typeSelect).toHaveValue("Customer");
     });
   });
 
