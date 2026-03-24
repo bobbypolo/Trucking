@@ -200,6 +200,7 @@ const CommandCenterView = React.lazy(() =>
   })),
 );
 import { features } from "./config/features";
+import { isNavItemVisible } from "./config/NAV_CONFIG";
 
 /** Navigation item with optional permission/capability gates. */
 interface NavItem {
@@ -653,28 +654,14 @@ export default function App() {
   ];
 
   // Filter categories and items based on permissions (Legacy + Agile)
+  // NAV_CONFIG role-based visibility replaces the old dual-gate
+  // (permission + capability) filter. See config/NAV_CONFIG.ts.
   const filteredCategories = categories
     .map((cat) => ({
       ...cat,
-      items: cat.items.filter((item) => {
-        if (user?.role === "admin") return true;
-
-        // Check Agile Capability
-        if (
-          item.capability &&
-          !checkCapability(user!, item.capability, undefined, company)
-        )
-          return false;
-
-        // Check Legacy Permission
-        if (
-          item.permission &&
-          !permissions.permissions?.includes(item.permission!)
-        )
-          return false;
-
-        return true;
-      }),
+      items: cat.items.filter((item) =>
+        isNavItemVisible(user?.role ?? "driver", item.id),
+      ),
     }))
     .filter((cat) => cat.items.length > 0);
 
