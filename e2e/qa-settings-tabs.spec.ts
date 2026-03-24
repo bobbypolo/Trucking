@@ -43,15 +43,11 @@ async function loginAndGoToSettings(
   await page.locator('input[type="email"]').first().fill(email);
   await page.locator('input[type="password"]').first().fill(password);
   await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-    timeout: 20_000,
-  });
-
-  // Wait for sidebar to render
+  // Wait for authenticated shell (app stays at / after login)
   await page
-    .locator('nav, [role="navigation"], aside')
+    .locator("nav, [role='navigation'], aside")
     .first()
-    .waitFor({ timeout: 10_000 });
+    .waitFor({ timeout: 20_000 });
 
   // Click on "Company Settings" in the sidebar nav
   const settingsLink = page.locator(
@@ -406,9 +402,11 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
     await page.locator('input[type="email"]').first().fill(email!);
     await page.locator('input[type="password"]').first().fill(password!);
     await page.locator('button[type="submit"]').first().click();
-    await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-      timeout: 20_000,
-    });
+    // Wait for authenticated shell (app stays at / after login)
+    await page
+      .locator("nav, [role='navigation'], aside")
+      .first()
+      .waitFor({ timeout: 20_000 });
 
     // Navigate to Company Settings (if visible to the driver)
     const settingsLink = page.locator(
@@ -465,9 +463,11 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
     await page.locator('input[type="email"]').first().fill(email!);
     await page.locator('input[type="password"]').first().fill(password!);
     await page.locator('button[type="submit"]').first().click();
-    await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-      timeout: 20_000,
-    });
+    // Wait for authenticated shell (app stays at / after login)
+    await page
+      .locator("nav, [role='navigation'], aside")
+      .first()
+      .waitFor({ timeout: 20_000 });
 
     // Check if dispatcher can access Company Settings
     const settingsLink = page.locator(

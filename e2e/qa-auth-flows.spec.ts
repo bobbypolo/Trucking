@@ -580,9 +580,12 @@ test.describe("QA-01 Auth Flows — Successful Login", () => {
     await page.locator('input[type="password"]').first().fill(E2E_PASSWORD!);
     await page.locator('button[type="submit"]').first().click();
 
-    await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-      timeout: 20_000,
-    });
+    // Wait for authenticated shell (app stays at / after login)
+    await page
+      .locator("nav, [role='navigation'], aside")
+      .first()
+      .waitFor({ timeout: 20_000 });
+
     const url = page.url();
     expect(url).not.toMatch(/\/(login|auth|signin)/i);
   });
@@ -595,9 +598,11 @@ test.describe("QA-01 Auth Flows — Successful Login", () => {
     await page.locator('input[type="password"]').first().fill(E2E_PASSWORD!);
     await page.locator('button[type="submit"]').first().click();
 
-    await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-      timeout: 20_000,
-    });
+    // Wait for authenticated shell (app stays at / after login)
+    await page
+      .locator("nav, [role='navigation'], aside")
+      .first()
+      .waitFor({ timeout: 20_000 });
 
     const shellNav = page.locator(
       'nav, [role="navigation"], aside, [data-testid*="sidebar"], header',
@@ -613,9 +618,11 @@ test.describe("QA-01 Auth Flows — Successful Login", () => {
     await page.locator('input[type="password"]').first().fill(E2E_PASSWORD!);
     await page.locator('button[type="submit"]').first().click();
 
-    await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-      timeout: 20_000,
-    });
+    // Wait for authenticated shell (app stays at / after login)
+    await page
+      .locator("nav, [role='navigation'], aside")
+      .first()
+      .waitFor({ timeout: 20_000 });
 
     const tenantEl = page.locator(
       '[data-testid="tenant-name"], [data-testid="company-name"], ' +

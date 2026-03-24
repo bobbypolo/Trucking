@@ -17,13 +17,11 @@ async function loginAndWait(page: import("@playwright/test").Page) {
   await page.locator('input[type="email"]').first().fill(E2E_EMAIL!);
   await page.locator('input[type="password"]').first().fill(E2E_PASSWORD!);
   await page.locator('button[type="submit"]').first().click();
-  await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
-    timeout: 20_000,
-  });
+  // Wait for authenticated shell (app stays at / after login)
   await page
-    .locator('nav, [role="navigation"], aside')
+    .locator("nav, [role='navigation'], aside")
     .first()
-    .waitFor({ timeout: 10_000 });
+    .waitFor({ timeout: 20_000 });
 }
 
 /**
