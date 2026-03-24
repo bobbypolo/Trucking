@@ -19,8 +19,15 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     try {
-      const { status, type, severity, entityType, entityId, ownerId } =
-        req.query;
+      const {
+        status,
+        type,
+        severity,
+        entityType,
+        entityId,
+        ownerId,
+        category,
+      } = req.query;
       let query = "SELECT * FROM exceptions WHERE tenant_id = ?";
       const params: any[] = [req.user.tenantId];
       if (status) {
@@ -46,6 +53,37 @@ router.get(
       if (ownerId) {
         query += " AND owner_user_id = ?";
         params.push(ownerId);
+      }
+      // Category filter — maps unified workspace tabs to exception types
+      if (category) {
+        const categoryMap: Record<string, string[]> = {
+          safety: [
+            "SAFETY_INCIDENT",
+            "SAFETY_ALERT",
+            "COMPLIANCE_ALERT",
+            "INCIDENT_GENERAL",
+          ],
+          maintenance: [
+            "MAINTENANCE_REQUEST",
+            "MAINTENANCE_INCIDENT",
+            "SERVICE_TICKET",
+          ],
+          compliance: ["COMPLIANCE_ALERT", "COMPLIANCE_VIOLATION"],
+          billing: [
+            "UNBILLED_LOAD",
+            "INVOICE_OVERDUE",
+            "DISPUTED_INVOICE",
+            "SHORT_PAY",
+            "BILLING_DISPUTE",
+          ],
+          documents: ["MISSING_POD", "DOCUMENT_ISSUE"],
+        };
+        const types = categoryMap[category as string];
+        if (types && types.length > 0) {
+          const placeholders = types.map(() => "?").join(", ");
+          query += ` AND type IN (${placeholders})`;
+          params.push(...types);
+        }
       }
       query += " ORDER BY severity DESC, sla_due_at ASC";
       const [rows] = await pool.query(query, params);

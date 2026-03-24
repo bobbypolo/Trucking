@@ -150,13 +150,15 @@ describe("SafetyView component", () => {
   it("shows KPI values on overview", async () => {
     render(<SafetyView user={mockUser} />);
     await waitFor(() => {
-      expect(screen.getByText("N/A")).toBeInTheDocument();
+      // Fleet Safety Score shows N/A when FMCSA data unavailable
+      const naElements = screen.getAllByText("N/A");
+      expect(naElements.length).toBeGreaterThan(0);
     });
-    expect(screen.getByText("13")).toBeInTheDocument();
+    // With mock data: no service tickets = 0 pending maintenance,
+    // no equipment = N/A OOS, no at-risk drivers = 0 non-compliant
     expect(screen.getByText("Target: 95+")).toBeInTheDocument();
-    expect(screen.getByText("Drivers Flagged")).toBeInTheDocument();
-    expect(screen.getByText("Red Tagged Units")).toBeInTheDocument();
-    expect(screen.getByText("Submitted Reports")).toBeInTheDocument();
+    // Real data-driven labels for empty states
+    expect(screen.getByText("No data")).toBeInTheDocument();
   });
 
   it("shows Fleet Health Status bars on overview tab", async () => {
@@ -347,7 +349,7 @@ describe("SafetyView component", () => {
     expect(docLabels.length).toBeGreaterThan(0);
   });
 
-  it("shows non-compliance warnings on roster cards", async () => {
+  it("shows compliance status on roster cards", async () => {
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
@@ -357,8 +359,10 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
     });
-    const complianceWarnings = screen.getAllByText("Non-Compliant");
-    expect(complianceWarnings.length).toBeGreaterThan(0);
+    // Mock driver has score 85 (above default threshold 70) and grade "Solid",
+    // so they show "Compliant" instead of "At Risk"
+    const complianceLabels = screen.getAllByText("Compliant");
+    expect(complianceLabels.length).toBeGreaterThan(0);
   });
 
   it("shows Compliance History button on roster cards", async () => {

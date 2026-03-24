@@ -8,6 +8,61 @@ import { createChildLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
 import { NotFoundError } from "../errors/AppError";
 
+/**
+ * Creates a linked exception record for an incident so it appears
+ * in the unified Issues & Alerts workspace (ExceptionConsole).
+ * Best-effort: failures are logged but do not block the incident response.
+ */
+async function createLinkedExceptionForIncident(
+  tenantId: string,
+  incidentId: string,
+  body: {
+    type?: string;
+    severity?: string;
+    description?: string;
+    load_id?: string;
+  },
+  actorName: string,
+) {
+  const exceptionId = uuidv4();
+  const severityMap: Record<string, number> = {
+    Critical: 4,
+    High: 3,
+    Medium: 2,
+    Low: 1,
+  };
+  const numericSeverity = severityMap[body.severity || ""] || 3;
+  const slaHours = numericSeverity >= 4 ? 2 : numericSeverity >= 3 ? 4 : 24;
+  const slaDueAt = new Date(Date.now() + slaHours * 3600 * 1000).toISOString();
+
+  await pool.query(
+    `INSERT INTO exceptions
+       (id, tenant_id, type, status, severity, entity_type, entity_id,
+        sla_due_at, workflow_step, description, links)
+     VALUES (?, ?, ?, 'OPEN', ?, 'LOAD', ?, ?, 'triage', ?, ?)`,
+    [
+      exceptionId,
+      tenantId,
+      body.type === "Safety"
+        ? "SAFETY_INCIDENT"
+        : body.type === "Maintenance"
+          ? "MAINTENANCE_INCIDENT"
+          : "INCIDENT_GENERAL",
+      numericSeverity,
+      body.load_id || "",
+      slaDueAt,
+      body.description || "Incident created",
+      JSON.stringify({ incidentId }),
+    ],
+  );
+  await pool.query(
+    `INSERT INTO exception_events (id, exception_id, action, notes, actor_name)
+     VALUES (?, ?, 'Exception Created', 'Auto-linked from incident', ?)`,
+    [uuidv4(), exceptionId, actorName],
+  );
+  return exceptionId;
+}
+
 const router = Router();
 
 // Emergency Management: Incidents
@@ -83,12 +138,31 @@ router.post(
         },
         companyId,
       );
+      // Cross-link: create a unified exception for Issues & Alerts visibility
+      try {
+        await createLinkedExceptionForIncident(
+          companyId,
+          incident.id,
+          { type, severity, description, load_id },
+          req.user!.uid || "System",
+        );
+      } catch (linkErr) {
+        const linkLog = createChildLogger({
+          correlationId: req.correlationId,
+          route: "POST /api/incidents",
+        });
+        linkLog.warn(
+          { err: linkErr, incidentId: incident.id },
+          "Failed to create linked exception for incident (non-blocking)",
+        );
+      }
+
       const incLog = createChildLogger({
         correlationId: req.correlationId,
         route: "POST /api/incidents",
       });
       incLog.info({ incidentId: incident.id }, "Incident created successfully");
-      res.status(201).json({ message: "Incident created" });
+      res.status(201).json({ message: "Incident created", id: incident.id });
     } catch (error) {
       const errLog = createChildLogger({
         correlationId: req.correlationId,
