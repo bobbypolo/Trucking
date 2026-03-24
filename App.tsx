@@ -572,6 +572,8 @@ export default function App() {
       </div>
     );
 
+  // Approved IA: 9 primary nav items only.
+  // Removed from primary nav: Dashboard, Fleet Map, Safety & Compliance, Activity Log, API Tester
   const categories: NavCategory[] = [
     {
       title: "OPERATIONS",
@@ -582,9 +584,6 @@ export default function App() {
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
-        { id: "analytics", label: "Reports", icon: BarChart3 },
         {
           id: "loads",
           label: "Load Board",
@@ -598,13 +597,6 @@ export default function App() {
           icon: ClipboardList,
           permission: "LOAD_CREATE",
           capability: "QUOTE_CREATE",
-        },
-        {
-          id: "map",
-          label: "Fleet Map",
-          icon: MapIcon,
-          permission: "LOAD_DISPATCH",
-          capability: "LOAD_TRACK",
         },
         {
           id: "calendar",
@@ -637,19 +629,13 @@ export default function App() {
       ],
     },
     {
-      title: "COMPLIANCE",
+      title: "ISSUES",
       items: [
         {
-          id: "safety",
-          label: "Safety & Compliance",
-          icon: ShieldCheck,
+          id: "exceptions",
+          label: "Issues & Alerts",
+          icon: AlertTriangle,
           permission: "SAFETY_EVENT_VIEW",
-        },
-        {
-          id: "audit",
-          label: "Activity Log",
-          icon: FileText,
-          permission: "AUDIT_LOG_VIEW",
         },
       ],
     },
@@ -662,16 +648,6 @@ export default function App() {
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        ...(features.apiTester
-          ? [
-              {
-                id: "api-tester",
-                permission: "ORG_SETTINGS_VIEW" as PermissionCode,
-                label: "API Tester",
-                icon: Zap,
-              },
-            ]
-          : []),
       ],
     },
   ];
@@ -1021,7 +997,7 @@ export default function App() {
                     brokers={brokers}
                     session={session}
                     setSession={setSession}
-                    onClose={() => handleNavigate("dashboard")}
+                    onClose={() => handleNavigate("loads")}
                     onRecordAction={handleRecordAction}
                     initialTab={hubInitialTab}
                     initialShowCallForm={hubInitialShowCallForm}
@@ -1034,24 +1010,7 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "dashboard" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Dashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onViewLoad={(load) => {
-                      setEditingLoad(load);
-                      handleNavigate("loads");
-                    }}
-                    onNavigate={handleNavigate}
-                    users={companyUsers}
-                    onOpenIssues={() => setActiveTab("exceptions")}
-                  />
-                </Suspense>
-              )}
+              {/* NAV-02: Dashboard removed from primary nav — folded into Operations Center */}
               {activeTab === "exceptions" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="list" count={3} />}
@@ -1063,18 +1022,7 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "analytics" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AnalyticsDashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
+              {/* Reports/Analytics available via Operations Center — no standalone nav */}
               {activeTab === "quotes" && user && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1088,14 +1036,26 @@ export default function App() {
                     <h1 className="text-2xl font-bold text-white tracking-tighter uppercase">
                       Load Board
                     </h1>
-                    {permissions.createLoads && (
-                      <button
-                        onClick={() => handleNavigate("quotes")}
-                        className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg"
-                      >
-                        <Plus className="w-5 h-5" /> New Intake
-                      </button>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {/* OPS-01: Create Load opens operational workflow (LoadSetupModal) */}
+                      {permissions.createLoads && (
+                        <button
+                          onClick={() => setShowLoadSetup({})}
+                          className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg"
+                        >
+                          <Plus className="w-5 h-5" /> Create Load
+                        </button>
+                      )}
+                      {/* OPS-02: New Intake remains commercial-only (Quotes) */}
+                      {permissions.createLoads && (
+                        <button
+                          onClick={() => handleNavigate("quotes")}
+                          className="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2"
+                        >
+                          <ClipboardList className="w-4 h-4" /> New Intake
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex-1 min-h-0">
                     <Suspense
@@ -1130,7 +1090,7 @@ export default function App() {
                         brokers={brokers}
                         onCreateLoad={
                           permissions.createLoads
-                            ? () => handleNavigate("quotes")
+                            ? () => setShowLoadSetup({})
                             : undefined
                         }
                       />
@@ -1138,24 +1098,7 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {activeTab === "map" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <GlobalMapViewEnhanced
-                    loads={loads}
-                    users={companyUsers}
-                    incidents={incidents}
-                    onViewLoad={(l) => {
-                      setViewingLoad(l);
-                      openRecordWorkspace("LOAD", l.id);
-                    }}
-                    onSelectIncident={(incId) =>
-                      openRecordWorkspace("INCIDENT", incId)
-                    }
-                  />
-                </Suspense>
-              )}
+              {/* NAV-04: Fleet Map removed from primary nav — map embedded in Operations Center */}
               {activeTab === "calendar" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1198,24 +1141,7 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "safety" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <SafetyView
-                    user={user}
-                    loads={loads}
-                    incidents={incidents}
-                    onSaveIncident={async (inc) => {
-                      await createIncident(inc);
-                      refreshData(user);
-                    }}
-                    onRecordAction={handleRecordAction}
-                    openRecordWorkspace={openRecordWorkspace}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
+              {/* NAV-05: Safety & Compliance removed from primary nav — folded into Issues & Alerts */}
               {activeTab === "finance" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1244,13 +1170,7 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "audit" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="table" count={3} />}
-                >
-                  <AuditLogs user={user} />
-                </Suspense>
-              )}
+              {/* NAV-03: Activity Log removed from primary nav */}
               {activeTab === "company" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1261,13 +1181,7 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {features.apiTester && activeTab === "api-tester" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={1} />}
-                >
-                  <GoogleMapsAPITester />
-                </Suspense>
-              )}
+              {/* NAV-06: API Tester removed from production nav */}
             </div>
           </div>
         </main>

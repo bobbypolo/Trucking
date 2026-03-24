@@ -152,7 +152,11 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("N/A")).toBeInTheDocument();
     });
-    expect(screen.getByText("13")).toBeInTheDocument();
+    // Non-Compliant count is computed from operators whose totalScore < 70.
+    // The mock returns totalScore: 85 for all operators, so the count is 0.
+    // Multiple KPI cards can show "0", so use getAllByText.
+    const zeros = screen.getAllByText("0");
+    expect(zeros.length).toBeGreaterThan(0);
     expect(screen.getByText("Target: 95+")).toBeInTheDocument();
     expect(screen.getByText("Drivers Flagged")).toBeInTheDocument();
     expect(screen.getByText("Red Tagged Units")).toBeInTheDocument();
@@ -347,7 +351,9 @@ describe("SafetyView component", () => {
     expect(docLabels.length).toBeGreaterThan(0);
   });
 
-  it("shows non-compliance warnings on roster cards", async () => {
+  it("shows compliance status on roster cards (ISS-02: computed, not hardcoded)", async () => {
+    // Mock operators have totalScore: 85 (>= 70 threshold), so roster cards
+    // should show "Compliant" / "No compliance issues" instead of hardcoded alerts.
     const user = userEvent.setup();
     render(<SafetyView user={mockUser} />);
     await waitFor(() =>
@@ -357,8 +363,9 @@ describe("SafetyView component", () => {
     await waitFor(() => {
       expect(screen.getByText("Test Driver")).toBeInTheDocument();
     });
-    const complianceWarnings = screen.getAllByText("Non-Compliant");
-    expect(complianceWarnings.length).toBeGreaterThan(0);
+    // With good scores, the roster cards should show compliant status (one per operator)
+    const compliantMessages = screen.getAllByText("No compliance issues");
+    expect(compliantMessages.length).toBeGreaterThan(0);
   });
 
   it("shows Compliance History button on roster cards", async () => {

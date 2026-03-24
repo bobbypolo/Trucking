@@ -448,19 +448,19 @@ export const SafetyView: React.FC<Props> = ({
                 },
                 {
                   label: "Pending Maintenance",
-                  value: "0",
+                  value: String(serviceTickets.filter((t) => t.status !== "Closed").length),
                   target: "Submitted Reports",
                   color: "text-blue-400",
                 },
                 {
                   label: "Non-Compliant",
-                  value: "13",
+                  value: String(operators.filter((op) => op.performance && op.performance.totalScore < 70).length),
                   target: "Drivers Flagged",
                   color: "text-red-400",
                 },
                 {
                   label: "Out of Service",
-                  value: "0",
+                  value: String(fleetEquipment.filter((e) => e.status === "Out of Service").length),
                   target: "Red Tagged Units",
                   color: "text-red-400",
                 },
@@ -716,17 +716,40 @@ export const SafetyView: React.FC<Props> = ({
                     </div>
                   </div>
 
-                  <div className="bg-red-900/10 border border-red-500/20 p-4 rounded-xl space-y-2">
-                    <div className="flex items-center gap-2 text-red-400 font-bold text-[10px] uppercase">
-                      <AlertTriangle className="w-4 h-4" /> Non-Compliant
-                    </div>
-                    <ul className="text-[10px] text-red-300 space-y-1 list-disc pl-4 font-medium">
-                      <li>
-                        Mandatory Quiz Missing: Winter Driving Safety 2024
-                      </li>
-                      <li>Missing Maintenance Report for December</li>
-                    </ul>
-                  </div>
+                  {(() => {
+                    const failedQuizzes = quizResults.filter(
+                      (r) => r.driverName === op.user.name && !r.passed
+                    );
+                    const hasComplianceIssue = op.performance && op.performance.totalScore < 70;
+                    const issues: string[] = [
+                      ...failedQuizzes.map((r) => `Failed Quiz: ${r.quizTitle}`),
+                    ];
+                    if (hasComplianceIssue && issues.length === 0) {
+                      issues.push("Low compliance score — review required");
+                    }
+                    if (issues.length === 0) {
+                      return (
+                        <div className="bg-green-900/10 border border-green-500/20 p-4 rounded-xl space-y-2">
+                          <div className="flex items-center gap-2 text-green-400 font-bold text-[10px] uppercase">
+                            <CheckCircle className="w-4 h-4" /> Compliant
+                          </div>
+                          <p className="text-[10px] text-green-300 font-medium">No compliance issues</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="bg-red-900/10 border border-red-500/20 p-4 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2 text-red-400 font-bold text-[10px] uppercase">
+                          <AlertTriangle className="w-4 h-4" /> Non-Compliant
+                        </div>
+                        <ul className="text-[10px] text-red-300 space-y-1 list-disc pl-4 font-medium">
+                          {issues.map((issue, i) => (
+                            <li key={i}>{issue}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
 
                   <div className="grid grid-cols-2 gap-3 pt-4">
                     <button

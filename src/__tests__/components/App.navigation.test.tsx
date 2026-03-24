@@ -1,4 +1,4 @@
-// Tests R-P1-01
+// Tests R-P1-01 — Updated for approved IA (9-item nav)
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
@@ -8,69 +8,84 @@ import * as path from "path";
 // asserting the actual string values in the categories array.
 const appSource = fs.readFileSync(path.resolve("App.tsx"), "utf-8");
 
-describe("App.tsx navigation categories labels (R-P1-01)", () => {
+// Extract the categories block for targeted assertions
+const categoryBlock = appSource.slice(
+  appSource.indexOf("const categories: NavCategory[]"),
+  appSource.indexOf("const filteredCategories"),
+);
+
+describe("App.tsx approved IA — 9 primary nav items (NAV-01)", () => {
+  // Retained nav labels
   it("uses 'Operations Center' label", () => {
-    expect(appSource).toContain("Operations Center");
-  });
-
-  it("uses 'Dashboard' label", () => {
-    expect(appSource).toContain('"Dashboard"');
-  });
-
-  it("uses 'Issues & Alerts' label", () => {
-    expect(appSource).toContain("Issues & Alerts");
-  });
-
-  it("uses 'Reports' label", () => {
-    expect(appSource).toContain('"Reports"');
+    expect(categoryBlock).toContain("Operations Center");
   });
 
   it("uses 'Load Board' label", () => {
-    expect(appSource).toContain("Load Board");
+    expect(categoryBlock).toContain("Load Board");
   });
 
   it("uses 'Quotes & Booking' label", () => {
-    expect(appSource).toContain("Quotes & Booking");
-  });
-
-  it("uses 'Fleet Map' label", () => {
-    expect(appSource).toContain("Fleet Map");
+    expect(categoryBlock).toContain("Quotes & Booking");
   });
 
   it("uses 'Schedule' label", () => {
-    expect(appSource).toContain('"Schedule"');
+    expect(categoryBlock).toContain('"Schedule"');
   });
 
   it("uses 'Broker Network' label", () => {
-    expect(appSource).toContain("Broker Network");
+    expect(categoryBlock).toContain("Broker Network");
   });
 
   it("uses 'Driver Pay' label", () => {
-    expect(appSource).toContain("Driver Pay");
+    expect(categoryBlock).toContain("Driver Pay");
   });
 
   it("uses 'Accounting' label", () => {
-    expect(appSource).toContain('"Accounting"');
+    expect(categoryBlock).toContain('"Accounting"');
   });
 
-  it("uses 'Safety & Compliance' label", () => {
-    expect(appSource).toContain("Safety & Compliance");
-  });
-
-  it("uses 'Activity Log' label", () => {
-    expect(appSource).toContain("Activity Log");
+  it("uses 'Issues & Alerts' label", () => {
+    expect(categoryBlock).toContain("Issues & Alerts");
   });
 
   it("uses 'Company Settings' label", () => {
-    expect(appSource).toContain("Company Settings");
+    expect(categoryBlock).toContain("Company Settings");
+  });
+});
+
+describe("App.tsx removed nav items (NAV-02 through NAV-06)", () => {
+  // NAV-02: Dashboard removed from primary nav
+  it("does not have Dashboard in categories (NAV-02)", () => {
+    expect(categoryBlock).not.toContain('"Dashboard"');
   });
 
-  it("category title is 'SETTINGS' (not 'ENTERPRISE')", () => {
-    expect(appSource).toContain('"SETTINGS"');
-    expect(appSource).not.toContain('"ENTERPRISE"');
+  // NAV-03: Activity Log removed from primary nav
+  it("does not have Activity Log in categories (NAV-03)", () => {
+    expect(categoryBlock).not.toContain("Activity Log");
   });
 
-  // Verify old jargon labels are gone
+  // NAV-04: Fleet Map removed from primary nav
+  it("does not have Fleet Map in categories (NAV-04)", () => {
+    expect(categoryBlock).not.toContain("Fleet Map");
+  });
+
+  // NAV-05: Safety & Compliance removed from primary nav
+  it("does not have Safety & Compliance in categories (NAV-05)", () => {
+    expect(categoryBlock).not.toContain("Safety & Compliance");
+  });
+
+  // NAV-06: API Tester removed from production nav
+  it("does not have API Tester in categories (NAV-06)", () => {
+    expect(categoryBlock).not.toContain("API Tester");
+  });
+
+  // Reports/Analytics removed from primary nav
+  it("does not have Reports in categories", () => {
+    expect(categoryBlock).not.toContain('"Reports"');
+  });
+});
+
+describe("App.tsx no old jargon labels", () => {
   it("does not contain old jargon 'Unified Command Center'", () => {
     expect(appSource).not.toContain("Unified Command Center");
   });
@@ -96,7 +111,6 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
   });
 
   it("does not contain old jargon 'Live Map'", () => {
-    // 'Live Map' must not appear as a nav label (the label text)
     expect(appSource).not.toContain('"Live Map"');
   });
 
@@ -119,40 +133,34 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
   it("does not contain old jargon 'Organization' as nav label", () => {
     expect(appSource).not.toContain('"Organization"');
   });
+
+  it("category title is 'SETTINGS' (not 'ENTERPRISE')", () => {
+    expect(appSource).toContain('"SETTINGS"');
+    expect(appSource).not.toContain('"ENTERPRISE"');
+  });
 });
 
 // Verify every sidebar tab ID has a matching render case in the main content.
-// This prevents the bug where clicking a nav item falls through to an empty
-// content area because no `activeTab === "<id>"` conditional exists.
 describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
-  // Extract all sidebar nav item IDs from the categories array.
-  const categoryBlock = appSource.slice(
-    appSource.indexOf("const categories: NavCategory[]"),
-    appSource.indexOf("const filteredCategories"),
-  );
   const idMatches = [...categoryBlock.matchAll(/id:\s*"([^"]+)"/g)].map(
     (m) => m[1],
   );
 
-  // Every nav ID should have a corresponding `activeTab === "id"` render check
+  // Approved IA: 9 nav items only
   const tabIds = [
     "operations-hub",
-    "dashboard",
-    "exceptions",
-    "analytics",
     "loads",
     "quotes",
-    "map",
     "calendar",
     "network",
     "finance",
     "accounting",
-    "safety",
-    "audit",
+    "exceptions",
     "company",
   ];
 
-  it("extracts expected tab IDs from categories", () => {
+  it("extracts expected 9 tab IDs from categories", () => {
+    expect(idMatches).toHaveLength(9);
     for (const id of tabIds) {
       expect(idMatches).toContain(id);
     }
@@ -160,18 +168,25 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
 
   for (const id of tabIds) {
     it(`"${id}" tab has a matching render conditional`, () => {
-      const renderPattern = new RegExp(
-        `activeTab\\s*===\\s*"${id}"\\s*&&\\s*`,
-      );
+      const renderPattern = new RegExp(`activeTab\\s*===\\s*"${id}"\\s*&&\\s*`);
       expect(appSource).toMatch(renderPattern);
     });
   }
 
   it('"company" tab does not require company data to render', () => {
-    // CompanyProfile loads its own data, so the render guard must NOT
-    // include `&& company &&` which blocks rendering when company is null.
     expect(appSource).not.toMatch(
       /activeTab\s*===\s*"company"\s*&&\s*company\s*&&/,
     );
+  });
+});
+
+describe("App.tsx operational load creation (OPS-01, OPS-02)", () => {
+  it("Create Load button opens LoadSetupModal, not Quotes (OPS-01)", () => {
+    expect(appSource).toContain("Create Load");
+    expect(appSource).toContain("setShowLoadSetup({})");
+  });
+
+  it("New Intake button still routes to Quotes (OPS-02)", () => {
+    expect(appSource).toContain("New Intake");
   });
 });

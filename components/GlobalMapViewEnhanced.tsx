@@ -215,7 +215,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
       setLivePositions(positions);
       setHasLiveData(positions.length > 0 && positions.some((p) => !p.isMock));
-      setHasMockPositions(showMockIndicators && positions.some((p) => p.isMock));
+      setHasMockPositions(
+        showMockIndicators && positions.some((p) => p.isMock),
+      );
     } catch {
       // Network/parse error — fall back to static data
       setLivePositions([]);
@@ -438,8 +440,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         >
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span className="text-sm font-semibold text-red-200">
-            Google Maps API key not configured — map features are unavailable.
-            Set VITE_GOOGLE_MAPS_API_KEY in your environment.
+            Map features are not configured for this account. Contact your
+            administrator to enable fleet tracking.
           </span>
         </div>
         <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
@@ -449,8 +451,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               Map Unavailable
             </h2>
             <p className="text-sm text-slate-400 mb-4">
-              Google Maps API key is not configured. Fleet tracking data is
-              available via the tracking API endpoint.
+              Fleet map is unavailable. Fleet tracking data is still available
+              via the tracking dashboard.
             </p>
             <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4">
               <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
@@ -570,7 +572,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: (pos.isMock && showMockIndicators) ? "#f59e0b" : "#22c55e",
+                        fillColor:
+                          pos.isMock && showMockIndicators
+                            ? "#f59e0b"
+                            : "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,

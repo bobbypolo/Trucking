@@ -107,9 +107,7 @@ describe("GlobalMapViewEnhanced -- missing API key (fallback)", () => {
     const d1 = createDriver({ id: "d1" });
     const d2 = createDriver({ id: "d2" });
     const load = createLoad({ driverId: "d1", status: "in_transit" });
-    render(
-      <GlobalMapViewEnhanced loads={[load]} users={[d1, d2]} />,
-    );
+    render(<GlobalMapViewEnhanced loads={[load]} users={[d1, d2]} />);
     // d1 is online (has active load), d2 is not
     const text = document.body.textContent || "";
     expect(text).toContain("Online");
@@ -119,7 +117,7 @@ describe("GlobalMapViewEnhanced -- missing API key (fallback)", () => {
   it("shows the configuration hint text", () => {
     render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
     expect(
-      screen.getByText(/Set VITE_GOOGLE_MAPS_API_KEY/),
+      screen.getByText(/not configured for this account/i),
     ).toBeInTheDocument();
   });
 });

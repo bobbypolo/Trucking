@@ -11,37 +11,21 @@ const featuresSource = fs.readFileSync(
   "utf-8",
 );
 
-describe("App.tsx api-tester gating (R-P2-02)", () => {
+describe("App.tsx api-tester removed from production nav (NAV-06)", () => {
   it("imports features from config/features", () => {
     expect(appSource).toMatch(/from\s+["'].*config\/features["']/);
   });
 
-  it("api-tester nav item is wrapped in a features.apiTester guard", () => {
-    expect(appSource).toMatch(/features\.apiTester/);
-  });
-
-  it("GoogleMapsAPITester render is wrapped in a features.apiTester guard", () => {
-    // Both the nav item and the component render must be behind the same flag.
-    // Verify the flag appears multiple times or close to both usages.
-    const matches = appSource.match(/features\.apiTester/g);
-    expect(matches).not.toBeNull();
-    expect(matches!.length).toBeGreaterThanOrEqual(1);
+  it("api-tester nav item is not in the categories array", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain('"api-tester"');
   });
 
   it("features.apiTester is false in production (import.meta.env.DEV)", () => {
     expect(featuresSource).toContain("apiTester: import.meta.env.DEV");
-  });
-
-  it("api-tester id is present in source (conditionally rendered)", () => {
-    expect(appSource).toContain('"api-tester"');
-  });
-
-  it("features.apiTester guard appears before api-tester id in source", () => {
-    const guardIdx = appSource.indexOf("features.apiTester");
-    const testerIdx = appSource.indexOf('"api-tester"');
-    expect(guardIdx).toBeGreaterThanOrEqual(0);
-    expect(testerIdx).toBeGreaterThanOrEqual(0);
-    expect(guardIdx).toBeLessThanOrEqual(testerIdx);
   });
 });
 
