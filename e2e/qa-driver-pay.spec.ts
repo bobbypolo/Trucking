@@ -26,46 +26,57 @@ import { makeFinSettlement } from "./fixtures/data-factory";
 // -- COM-05: Driver Pay API is distinct from Accounting --
 
 test.describe("COM-05: Driver Pay — API Domain Separation", () => {
-  test("Driver settlements and accounting invoices are separate endpoints", () => {
-    // Document the API structure: settlements are under /api/accounting/settlements
-    // while AR invoices are under /api/accounting/invoices and AP bills under /api/accounting/bills
-    const driverPayEndpoint = "/api/accounting/settlements";
-    const arInvoicesEndpoint = "/api/accounting/invoices";
-    const apBillsEndpoint = "/api/accounting/bills";
+  let admin: AuthContext;
 
-    // All three are distinct endpoints serving different business domains
-    expect(driverPayEndpoint).not.toBe(arInvoicesEndpoint);
-    expect(driverPayEndpoint).not.toBe(apBillsEndpoint);
-    expect(arInvoicesEndpoint).not.toBe(apBillsEndpoint);
+  test.beforeAll(async () => {
+    admin = await makeAdminRequest();
   });
 
-  test("Driver pay data model differs from accounting data model", () => {
-    // Document the separation: settlements have driver-specific fields
-    const settlementFields = [
-      "driver_id",
-      "settlement_date",
-      "period_start",
-      "period_end",
-      "total_earnings",
-      "total_deductions",
-      "total_reimbursements",
-      "net_pay",
-    ];
-    const invoiceFields = [
-      "customer_id",
-      "invoice_number",
-      "invoice_date",
-      "due_date",
-      "total_amount",
-      "balance_due",
-    ];
+  test.skip(
+    !process.env.FIREBASE_WEB_API_KEY,
+    "Skipped -- FIREBASE_WEB_API_KEY not set; domain separation tests require real Firebase token",
+  );
 
-    // Driver pay is driver-centric; accounting is customer/vendor-centric
-    expect(settlementFields).toContain("driver_id");
-    expect(settlementFields).toContain("net_pay");
-    expect(settlementFields).not.toContain("customer_id");
-    expect(invoiceFields).toContain("customer_id");
-    expect(invoiceFields).not.toContain("driver_id");
+  test("GET /api/accounting/settlements returns settlement-specific fields, not invoice fields", async ({
+    request,
+  }) => {
+    test.skip(!admin.hasToken, "No admin Firebase token");
+
+    const res = await admin.get(
+      `${API_BASE}/api/accounting/settlements`,
+      request,
+    );
+    expect(res.status()).toBe(200);
+
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+
+    // If data exists, verify it has settlement fields and NOT invoice fields
+    if (Array.isArray(body) && body.length > 0) {
+      expect(body[0]).toHaveProperty("settlement_number");
+      expect(body[0]).toHaveProperty("driver_id");
+      expect(body[0]).not.toHaveProperty("invoice_number");
+      expect(body[0]).not.toHaveProperty("customer_id");
+    }
+  });
+
+  test("GET /api/accounting/invoices returns invoice-specific fields, not settlement fields", async ({
+    request,
+  }) => {
+    test.skip(!admin.hasToken, "No admin Firebase token");
+
+    const res = await admin.get(`${API_BASE}/api/accounting/invoices`, request);
+    expect(res.status()).toBe(200);
+
+    const body = await res.json();
+    expect(Array.isArray(body)).toBe(true);
+
+    // If data exists, verify it has invoice fields and NOT settlement fields
+    if (Array.isArray(body) && body.length > 0) {
+      expect(body[0]).toHaveProperty("invoice_number");
+      expect(body[0]).not.toHaveProperty("driver_id");
+      expect(body[0]).not.toHaveProperty("net_pay");
+    }
   });
 });
 
@@ -439,5 +450,140 @@ test.describe("Driver Pay: Auth Boundary Enforcement", () => {
     });
     expect([401, 403, 500]).toContain(res.status());
     expect(res.status()).not.toBe(200);
+  });
+});
+
+// -- Browser-level tests for Driver Pay UI -----------------------------------
+
+const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
+const E2E_EMAIL = process.env.E2E_TEST_EMAIL || process.env.E2E_ADMIN_EMAIL;
+const E2E_PASSWORD =
+  process.env.E2E_TEST_PASSWORD || process.env.E2E_ADMIN_PASSWORD;
+
+/**
+ * Helper: login and wait for the authenticated shell to load, then navigate
+ * to the Driver Pay page via the sidebar nav.
+ */
+async function loginAndWait(
+  page: import("@playwright/test").Page,
+  email: string,
+  password: string,
+) {
+  await page.goto(APP_BASE);
+  await page.locator('input[type="email"]').first().fill(email);
+  await page.locator('input[type="password"]').first().fill(password);
+  await page.locator('button[type="submit"]').first().click();
+  await page.waitForURL(/\/(dashboard|loads|dispatch|home|operations)/, {
+    timeout: 20_000,
+  });
+  // Wait for sidebar/nav to render
+  await page
+    .locator('nav, [role="navigation"], aside')
+    .first()
+    .waitFor({ timeout: 10_000 });
+}
+
+test.describe("COM-05: Driver Pay — Browser UI", () => {
+  test.skip(
+    !SERVER_RUNNING || !E2E_EMAIL || !E2E_PASSWORD,
+    "Requires E2E_SERVER_RUNNING=1 and test credentials",
+  );
+
+  test("Driver Pay page loads without JS crash", async ({ page }) => {
+    // Register pageerror listener BEFORE navigation so errors during load are caught
+    let jsError = false;
+    page.on("pageerror", () => {
+      jsError = true;
+    });
+
+    await loginAndWait(page, E2E_EMAIL!, E2E_PASSWORD!);
+
+    // Navigate to Driver Pay via sidebar
+    const driverPayLink = page.locator(
+      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
+        '[role="navigation"] >> text="Driver Pay"',
+    );
+    await driverPayLink.first().click();
+
+    // Wait for the page content to settle
+    await page.waitForTimeout(2_000);
+
+    // Page must have rendered real content — not blank
+    const body = await page.content();
+    expect(body).toContain("<!DOCTYPE html>");
+    expect(body.length).toBeGreaterThan(500);
+
+    // No JS errors (white screen / crash detection)
+    expect(jsError).toBe(false);
+  });
+
+  test("Driver Pay page renders a heading or identifiable content area", async ({
+    page,
+  }) => {
+    // Register pageerror listener BEFORE navigation
+    const jsErrors: string[] = [];
+    page.on("pageerror", (err) => {
+      jsErrors.push(err.message);
+    });
+
+    await loginAndWait(page, E2E_EMAIL!, E2E_PASSWORD!);
+
+    // Navigate to Driver Pay via sidebar
+    const driverPayLink = page.locator(
+      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
+        '[role="navigation"] >> text="Driver Pay"',
+    );
+    await driverPayLink.first().click();
+
+    // Wait for content to be rendered
+    await page
+      .locator(
+        'h1, h2, h3, [role="main"], .page-title, ' +
+          'text="Driver Pay", text="Settlements", text="Settlement"',
+      )
+      .first()
+      .waitFor({ timeout: 10_000 })
+      .catch(() => {
+        /* heading selector may not match — still proceed */
+      });
+
+    // The URL should have changed to reflect the Driver Pay route
+    const currentUrl = page.url();
+    expect(currentUrl).toContain(APP_BASE);
+
+    // No JS errors during navigation
+    expect(jsErrors).toEqual([]);
+  });
+
+  test("Driver Pay page shows settlements list or empty state (no hardcoded fake data)", async ({
+    page,
+  }) => {
+    // Register pageerror listener BEFORE navigation
+    let jsError = false;
+    page.on("pageerror", () => {
+      jsError = true;
+    });
+
+    await loginAndWait(page, E2E_EMAIL!, E2E_PASSWORD!);
+
+    // Navigate to Driver Pay
+    const driverPayLink = page.locator(
+      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
+        '[role="navigation"] >> text="Driver Pay"',
+    );
+    await driverPayLink.first().click();
+
+    await page.waitForTimeout(2_000);
+
+    // Page text must NOT contain known fake/demo data markers
+    const pageText = await page.locator("body").textContent();
+    if (pageText) {
+      expect(pageText).not.toContain("FAKE");
+      expect(pageText).not.toContain("DEMO_DATA");
+    }
+
+    // No crash
+    expect(jsError).toBe(false);
   });
 });

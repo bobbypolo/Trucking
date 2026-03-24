@@ -1,7 +1,7 @@
 # Role-Based UAT Packet
 
-Date: 2026-03-23
-Status: QA-02 Acceptance Evidence
+Date: 2026-03-24 (updated from 2026-03-23)
+Status: QA-02 Acceptance Evidence — Rework in progress
 Acceptance ID: QA-02
 
 ---
@@ -460,33 +460,73 @@ During packet construction, the following potential discrepancies between the `N
    - Safety/Ops Control: create account with `safety_manager` role
 4. `FIREBASE_WEB_API_KEY` set in environment for E2E tests
 
-### 6.2 Execution Order
+### 6.2 Automated UAT Execution (2026-03-24)
 
-1. Run automated E2E suite: `npx playwright test e2e/navigation-guards.spec.ts e2e/admin-user-management.spec.ts e2e/tenant-isolation.spec.ts`
-2. Run component permission tests: `npx vitest run src/__tests__/components/IssueSidebar.permissions.test.tsx src/__tests__/components/App.navigation.test.tsx`
-3. For each role (Dispatcher, Driver, Accounting, Safety, Admin):
-   a. Log in with the role's test account
-   b. Verify nav items visible match the NAV-\* expected values
-   c. Click each visible nav item and verify the page renders
-   d. Attempt to access denied pages via URL manipulation
-   e. Verify CRUD controls match the expected permission mode
-   f. Record pass/fail and evidence in the tables above
-4. Complete cross-role and data isolation checks
+The following automated test was executed on 2026-03-24 with server running at localhost:5000:
 
-### 6.3 Sign-Off
+**Command**: `REAL_E2E=1 npx playwright test e2e/qa-role-uat.spec.ts --reporter=list`
 
-| Role               | Tester Name | Date Tested | Overall Result | Notes |
-| ------------------ | ----------- | ----------- | -------------- | ----- |
-| Dispatcher/Ops     |             |             | Pending        |       |
-| Driver             |             |             | Pending        |       |
-| Accounting         |             |             | Pending        |       |
-| Safety/Ops Control |             |             | Pending        |       |
-| Admin              |             |             | Pending        |       |
+**Results**: 11 passed, 19 skipped, 0 failed
 
-**QA-02 Final Verdict**: Pending
+| Test Category                 | Count | Result   | Notes                                             |
+| ----------------------------- | ----- | -------- | ------------------------------------------------- |
+| Permission Preset Code Review | 11    | **PASS** | All 5 role presets verified at source level       |
+| Admin Browser UAT             | 4     | Skipped  | Needs E2E_SERVER_RUNNING + ADMIN credentials      |
+| Dispatcher Browser UAT        | 5     | Skipped  | Needs E2E_SERVER_RUNNING + DISPATCHER credentials |
+| Driver Browser UAT            | 5     | Skipped  | Needs E2E_SERVER_RUNNING + DRIVER credentials     |
+| Cross-Role API Denial         | 5     | Skipped  | Needs FIREBASE_WEB_API_KEY                        |
 
-**Signed off by**: **\*\***\_\_\_**\*\***
-**Date**: **\*\***\_\_\_**\*\***
+**Passing code review tests verified**:
+
+- DISPATCHER preset: LOAD_DISPATCH, LOAD_CREATE, SETTLEMENT_VIEW, ORG_SETTINGS_VIEW present; INVOICE_CREATE absent
+- DRIVER_PORTAL preset: DOCUMENT_UPLOAD, SETTLEMENT_VIEW present; INVOICE_CREATE, ORG_SETTINGS_VIEW absent
+- PAYROLL_SETTLEMENTS preset: INVOICE_CREATE, SETTLEMENT_VIEW, ORG_SETTINGS_VIEW, SETTLEMENT_EDIT, SETTLEMENT_APPROVE present
+- SAFETY_COMPLIANCE preset: SAFETY_EVENT_VIEW, ORG_SETTINGS_VIEW present; SETTLEMENT_VIEW, INVOICE_CREATE absent
+- ORG_OWNER_SUPER_ADMIN preset: all 27 permissions present
+- Role mapping: payroll_manager -> PAYROLL_SETTLEMENTS, safety_manager -> SAFETY_COMPLIANCE
+
+### 6.3 Full Suite Execution (2026-03-24)
+
+**Command**: `REAL_E2E=1 npx playwright test e2e/qa-*.spec.ts e2e/qa-role-uat.spec.ts --reporter=list`
+
+**Results**: 87 passed, 190 skipped, 0 failed (3.1s)
+
+All 87 passing tests verify:
+
+- Auth enforcement: unauthenticated requests rejected across all endpoints
+- Invalid token rejection: malformed, empty, expired tokens all blocked
+- Permission presets: correct permissions assigned to each role at source level
+- Domain separation: Driver Pay and Accounting are separate endpoints
+
+### 6.4 Remaining Manual Execution Steps
+
+1. Execute browser UAT with credentials:
+   ```
+   E2E_SERVER_RUNNING=1 \
+   E2E_ADMIN_EMAIL=... E2E_ADMIN_PASSWORD=... \
+   E2E_DISPATCHER_EMAIL=... E2E_DISPATCHER_PASSWORD=... \
+   E2E_DRIVER_EMAIL=... E2E_DRIVER_PASSWORD=... \
+   FIREBASE_WEB_API_KEY=... \
+   npx playwright test e2e/qa-role-uat.spec.ts
+   ```
+2. Manual verification for Accounting (payroll_manager) and Safety (safety_manager) roles -- no dedicated env var credentials exist
+3. Manual test cases in Section 2 tables remain Pending until human tester executes them
+4. Cross-role and data isolation checks (Section 4)
+
+### 6.5 Sign-Off
+
+| Role               | Automated Tests    | Code Review | Browser UAT              | Manual UAT | Overall |
+| ------------------ | ------------------ | ----------- | ------------------------ | ---------- | ------- |
+| Admin              | 87 passed (shared) | PASS        | Pending credentials      | Pending    | Partial |
+| Dispatcher/Ops     | 87 passed (shared) | PASS        | Pending credentials      | Pending    | Partial |
+| Driver             | 87 passed (shared) | PASS        | Pending credentials      | Pending    | Partial |
+| Accounting         | 87 passed (shared) | PASS        | No credentials available | Pending    | Partial |
+| Safety/Ops Control | 87 passed (shared) | PASS        | No credentials available | Pending    | Partial |
+
+**QA-02 Final Verdict**: CONDITIONAL -- Code-level verification PASSES for all 5 roles. Browser and manual verification pending credentials.
+
+**Signed off by**: Team 04 Orchestrator (automated)
+**Date**: 2026-03-24
 
 ---
 
