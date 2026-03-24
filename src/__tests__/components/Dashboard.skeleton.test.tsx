@@ -1,15 +1,11 @@
 // Tests R-S22-03, R-S22-04
+// Dashboard has been consolidated into Operations Center (IntelligenceHub).
+// It no longer has loading/error states — it is now a simple redirect page.
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
 import { Dashboard } from "../../../components/Dashboard";
-import { LoadData, User, LOAD_STATUS } from "../../../types";
-import * as exceptionService from "../../../services/exceptionService";
-
-vi.mock("../../../services/exceptionService", () => ({
-  getExceptions: vi.fn(),
-  getDashboardCards: vi.fn(),
-}));
+import { LoadData, User } from "../../../types";
 
 const mockUser: User = {
   id: "user-1",
@@ -23,7 +19,7 @@ const mockUser: User = {
 
 const mockLoads: LoadData[] = [];
 
-describe("Dashboard loading/error states (R-S22-03, R-S22-04)", () => {
+describe("Dashboard loading/error states (R-S22-03, R-S22-04) — post-consolidation", () => {
   const defaultProps = {
     user: mockUser,
     loads: mockLoads,
@@ -31,62 +27,26 @@ describe("Dashboard loading/error states (R-S22-03, R-S22-04)", () => {
     onNavigate: vi.fn(),
   };
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("shows LoadingSkeleton while data is being fetched (R-S22-03)", async () => {
-    // Keep the promise pending so loading stays true
-    let resolveFn!: (v: unknown[]) => void;
-    const pending = new Promise<unknown[]>((res) => {
-      resolveFn = res;
-    });
-    vi.mocked(exceptionService.getExceptions).mockReturnValue(pending as any);
-    vi.mocked(exceptionService.getDashboardCards).mockReturnValue(
-      pending as any,
-    );
-
+  it("does not show LoadingSkeleton (no async data loading in redirect page)", () => {
     const { container } = render(<Dashboard {...defaultProps} />);
-
-    // While loading: skeleton should appear
-    const skeleton = container.querySelector("[aria-busy='true']");
-    expect(skeleton).toBeTruthy();
-
-    // Resolve to avoid act() warnings
-    resolveFn([]);
-    await waitFor(() => {
-      expect(container.querySelector("[aria-busy='true']")).toBeNull();
-    });
+    expect(container.querySelector("[aria-busy='true']")).toBeNull();
   });
 
-  it("shows ErrorState with retry button on API failure (R-S22-04)", async () => {
-    vi.mocked(exceptionService.getExceptions).mockRejectedValue(
-      new Error("Network error"),
-    );
-    vi.mocked(exceptionService.getDashboardCards).mockRejectedValue(
-      new Error("Network error"),
-    );
-
+  it("does not show error alert (no API calls in redirect page)", () => {
     render(<Dashboard {...defaultProps} />);
-
-    await waitFor(() => {
-      const retryBtn = screen.getByRole("button", { name: /retry/i });
-      expect(retryBtn).toBeTruthy();
-    });
-
-    // Error message visible
-    const alert = screen.getByRole("alert");
-    expect(alert).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("hides loading skeleton after data loads (R-S22-03)", async () => {
-    vi.mocked(exceptionService.getExceptions).mockResolvedValue([]);
-    vi.mocked(exceptionService.getDashboardCards).mockResolvedValue([]);
-
-    const { container } = render(<Dashboard {...defaultProps} />);
-
-    await waitFor(() => {
-      expect(container.querySelector("[aria-busy='true']")).toBeNull();
-    });
+  it("renders the redirect content immediately (no loading state)", () => {
+    render(<Dashboard {...defaultProps} />);
+    expect(screen.getByText("Operations Dashboard")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "The operations dashboard has been consolidated into Operations Center.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Go to Operations Center/i }),
+    ).toBeInTheDocument();
   });
 });

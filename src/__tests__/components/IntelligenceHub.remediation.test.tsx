@@ -75,6 +75,11 @@ vi.mock("../../../services/detentionService", () => ({
   DetentionService: { getDetentions: vi.fn().mockResolvedValue([]) },
 }));
 
+vi.mock("../../../services/exceptionService", () => ({
+  getExceptions: vi.fn().mockResolvedValue([]),
+  getDashboardCards: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
 }));

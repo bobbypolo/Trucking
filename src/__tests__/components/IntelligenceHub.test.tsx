@@ -99,6 +99,11 @@ vi.mock("../../../services/detentionService", () => ({
   DetentionService: { getDetentions: vi.fn().mockResolvedValue([]) },
 }));
 
+vi.mock("../../../services/exceptionService", () => ({
+  getExceptions: vi.fn().mockResolvedValue([]),
+  getDashboardCards: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
 }));
@@ -369,7 +374,7 @@ describe("IntelligenceHub component", () => {
   // ── Tab navigation ─────────────────────────────────────────────────────
 
   describe("tab navigation", () => {
-    it("renders all five navigation tabs", async () => {
+    it("renders all six navigation tabs", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<IntelligenceHub {...defaultProps} />);
       await flushAsync();
@@ -378,6 +383,7 @@ describe("IntelligenceHub component", () => {
       expect(screen.getByText("SALES/CRM")).toBeInTheDocument();
       expect(screen.getByText("SAFETY")).toBeInTheDocument();
       expect(screen.getByText("NETWORK")).toBeInTheDocument();
+      expect(screen.getByText("REPORTS")).toBeInTheDocument();
     });
 
     it("shows CommandCenter on COMMAND tab by default", async () => {
@@ -1517,8 +1523,9 @@ describe("IntelligenceHub component", () => {
       await flushAsync();
 
       expect(screen.getByTitle("Inbound Call")).toBeInTheDocument();
-      expect(screen.getByTitle("Seed System")).toBeInTheDocument();
       expect(screen.getByTitle("Financial Auth")).toBeInTheDocument();
+      // Seed System was removed as part of mock data cleanup (T5-09)
+      expect(screen.queryByTitle("Seed System")).not.toBeInTheDocument();
     });
   });
 
