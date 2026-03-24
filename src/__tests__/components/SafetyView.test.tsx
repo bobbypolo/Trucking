@@ -157,8 +157,9 @@ describe("SafetyView component", () => {
     // With mock data: no service tickets = 0 pending maintenance,
     // no equipment = N/A OOS, no at-risk drivers = 0 non-compliant
     expect(screen.getByText("Target: 95+")).toBeInTheDocument();
-    // Real data-driven labels for empty states
-    expect(screen.getByText("No data")).toBeInTheDocument();
+    // Real data-driven labels for empty states (multiple KPI cards show "No data")
+    const noDataElements = screen.getAllByText("No data");
+    expect(noDataElements.length).toBeGreaterThan(0);
   });
 
   it("shows Fleet Health Status bars on overview tab", async () => {

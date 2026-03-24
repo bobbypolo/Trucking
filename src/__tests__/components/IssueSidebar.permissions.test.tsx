@@ -1,11 +1,16 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IssueSidebar } from "../../../components/IssueSidebar";
 import { LoadData, User, LOAD_STATUS, Issue } from "../../../types";
 
 vi.mock("../../../services/storageService", () => ({
   saveLoad: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../../services/exceptionService", () => ({
+  getExceptions: vi.fn().mockResolvedValue([]),
+  updateException: vi.fn().mockResolvedValue(true),
 }));
 
 const adminUser: User = {
@@ -95,9 +100,7 @@ describe("IssueSidebar permission explanation UX (H-504)", () => {
       );
       // Payroll manager can see payroll issues but cannot resolve them
       const issueText = screen.getByText("Pay discrepancy found");
-      const card = issueText.closest(
-        "div[class*='rounded-xl']",
-      ) as HTMLElement;
+      const card = issueText.closest("div[class*='rounded-xl']") as HTMLElement;
       const buttons = within(card).getAllByRole("button");
       // Second button is the resolve button (first is view)
       const resolveBtn = buttons[1];
@@ -117,9 +120,7 @@ describe("IssueSidebar permission explanation UX (H-504)", () => {
         />,
       );
       const issueText = screen.getByText("Pay discrepancy found");
-      const card = issueText.closest(
-        "div[class*='rounded-xl']",
-      ) as HTMLElement;
+      const card = issueText.closest("div[class*='rounded-xl']") as HTMLElement;
       const buttons = within(card).getAllByRole("button");
       const resolveBtn = buttons[1];
       expect(resolveBtn).not.toBeDisabled();
@@ -173,9 +174,7 @@ describe("IssueSidebar permission explanation UX (H-504)", () => {
         />,
       );
       expect(
-        screen.getByText(
-          /Some actions require administrator privileges/i,
-        ),
+        screen.getByText(/Some actions require administrator privileges/i),
       ).toBeInTheDocument();
     });
 
@@ -188,13 +187,11 @@ describe("IssueSidebar permission explanation UX (H-504)", () => {
         />,
       );
       expect(
-        screen.queryByText(
-          /Some actions require administrator privileges/i,
-        ),
+        screen.queryByText(/Some actions require administrator privileges/i),
       ).not.toBeInTheDocument();
     });
 
-    it("shows role-specific empty state for unmapped roles", () => {
+    it("shows role-specific empty state for unmapped roles", async () => {
       render(
         <IssueSidebar
           {...baseProps}
@@ -202,9 +199,11 @@ describe("IssueSidebar permission explanation UX (H-504)", () => {
           currentUser={driverUser}
         />,
       );
-      expect(
-        screen.getByText("No actions available for your role"),
-      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByText("No actions available for your role"),
+        ).toBeInTheDocument();
+      });
       expect(
         screen.getByText("Contact an administrator for access"),
       ).toBeInTheDocument();
