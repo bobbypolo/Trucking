@@ -20,6 +20,78 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
     );
   });
 
+  // Compute timeline progress from actual load dates
+  const getTimelineProgress = (load: LoadData) => {
+    const now = Date.now();
+    const pickup = load.pickupDate ? new Date(load.pickupDate).getTime() : 0;
+    const dropoff = load.dropoffDate ? new Date(load.dropoffDate).getTime() : 0;
+
+    if (!pickup || !dropoff || pickup >= dropoff) {
+      // No valid date range -- fall back to status-based defaults
+      return {
+        pickupPct: 33,
+        transitPct: 34,
+        deliveryPct: 33,
+        phase: load.status,
+      };
+    }
+
+    const totalDuration = dropoff - pickup;
+    const pickupEnd = pickup + totalDuration * 0.1;
+    const deliveryStart = dropoff - totalDuration * 0.1;
+
+    if (load.status === LOAD_STATUS.Delivered) {
+      return {
+        pickupPct: 10,
+        transitPct: 80,
+        deliveryPct: 10,
+        phase: "delivered" as const,
+      };
+    }
+
+    if (now < pickup) {
+      // Before pickup window
+      return {
+        pickupPct: 10,
+        transitPct: 80,
+        deliveryPct: 10,
+        phase: "pending" as const,
+      };
+    }
+
+    if (now >= pickup && now < pickupEnd) {
+      // In pickup phase
+      const pct = Math.round(((now - pickup) / (pickupEnd - pickup)) * 10);
+      return {
+        pickupPct: Math.max(pct, 5),
+        transitPct: 80,
+        deliveryPct: 10,
+        phase: "pickup" as const,
+      };
+    }
+
+    if (now >= pickupEnd && now < deliveryStart) {
+      // In transit
+      const transitElapsed = now - pickupEnd;
+      const transitTotal = deliveryStart - pickupEnd;
+      const transitPct = Math.round((transitElapsed / transitTotal) * 80);
+      return {
+        pickupPct: 10,
+        transitPct: Math.max(transitPct, 5),
+        deliveryPct: 10,
+        phase: "transit" as const,
+      };
+    }
+
+    // Near delivery
+    return {
+      pickupPct: 10,
+      transitPct: 80,
+      deliveryPct: 10,
+      phase: "delivering" as const,
+    };
+  };
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-2xl flex flex-col overflow-hidden shadow-2xl h-[400px]">
       {/* Header */}
@@ -75,54 +147,65 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                 {/* Track Line */}
                 <div className="absolute left-8 right-8 h-0.5 bg-slate-800 rounded-full" />
 
-                {/* Progress Bar */}
-                <div className="relative flex-1 flex items-center h-full">
-                  {/* Map each leg or stage */}
-                  {/* For simulation, we'll create segmented bars based on status */}
-                  <div className="w-full flex items-center gap-0">
-                    <div
-                      className={`h-1.5 rounded-l-full relative transition-all duration-700 ${load.status === LOAD_STATUS.Active || load.status === LOAD_STATUS.Delivered ? "bg-blue-600 w-1/3" : "bg-slate-800 w-1/12"}`}
-                    >
-                      <div className="absolute -top-6 left-0 text-[7px] font-black text-slate-500 whitespace-nowrap">
-                        PICKUP
-                      </div>
-                      {(load.status === LOAD_STATUS.Active ||
-                        load.status === LOAD_STATUS.Delivered) && (
-                        <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg z-10">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-white" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div
-                      className={`h-1.5 relative transition-all duration-1000 ${load.status === LOAD_STATUS.Active ? "bg-gradient-to-r from-blue-600 to-blue-400 w-1/2 animate-pulse" : load.status === LOAD_STATUS.Delivered ? "bg-blue-400 w-1/2" : "bg-slate-800 w-1/12"}`}
-                    >
-                      <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[7px] font-black text-slate-500 whitespace-nowrap">
-                        TRANSIT
-                      </div>
-                      {load.status === LOAD_STATUS.Active && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 transform translate-x-1/2">
-                          <div className="bg-blue-500 p-1.5 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                            <Truck className="w-3 h-3 text-white" />
+                {/* Progress Bar — widths computed from load dates */}
+                {(() => {
+                  const progress = getTimelineProgress(load);
+                  const isActiveOrDelivered =
+                    load.status === LOAD_STATUS.Active ||
+                    load.status === LOAD_STATUS.Delivered;
+                  return (
+                    <div className="relative flex-1 flex items-center h-full">
+                      <div className="w-full flex items-center gap-0">
+                        {/* Pickup segment */}
+                        <div
+                          style={{ width: `${progress.pickupPct}%` }}
+                          className={`h-1.5 rounded-l-full relative transition-all duration-700 ${isActiveOrDelivered ? "bg-blue-600" : "bg-slate-800"}`}
+                        >
+                          <div className="absolute -top-6 left-0 text-[7px] font-black text-slate-500 whitespace-nowrap">
+                            PICKUP
                           </div>
+                          {isActiveOrDelivered && (
+                            <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg z-10">
+                              <CheckCircle2 className="w-2.5 h-2.5 text-white" />
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    <div
-                      className={`h-1.5 rounded-r-full relative transition-all duration-700 ${load.status === LOAD_STATUS.Delivered ? "bg-green-600 flex-1" : "bg-slate-800 flex-1"}`}
-                    >
-                      <div className="absolute -top-6 right-0 text-[7px] font-black text-slate-500 whitespace-nowrap text-right">
-                        DELIVERY
-                      </div>
-                      {load.status === LOAD_STATUS.Delivered && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg z-10">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
+                        {/* Transit segment */}
+                        <div
+                          style={{ width: `${progress.transitPct}%` }}
+                          className={`h-1.5 relative transition-all duration-1000 ${load.status === LOAD_STATUS.Active ? "bg-gradient-to-r from-blue-600 to-blue-400 animate-pulse" : load.status === LOAD_STATUS.Delivered ? "bg-blue-400" : "bg-slate-800"}`}
+                        >
+                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[7px] font-black text-slate-500 whitespace-nowrap">
+                            TRANSIT
+                          </div>
+                          {load.status === LOAD_STATUS.Active && (
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 transform translate-x-1/2">
+                              <div className="bg-blue-500 p-1.5 rounded-lg shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                                <Truck className="w-3 h-3 text-white" />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+
+                        {/* Delivery segment */}
+                        <div
+                          style={{ width: `${progress.deliveryPct}%` }}
+                          className={`h-1.5 rounded-r-full relative transition-all duration-700 ${load.status === LOAD_STATUS.Delivered ? "bg-green-600" : "bg-slate-800"}`}
+                        >
+                          <div className="absolute -top-6 right-0 text-[7px] font-black text-slate-500 whitespace-nowrap text-right">
+                            DELIVERY
+                          </div>
+                          {load.status === LOAD_STATUS.Delivered && (
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 bg-green-600 rounded-full flex items-center justify-center border-2 border-slate-900 shadow-lg z-10">
+                              <CheckCircle2 className="w-3 h-3 text-white" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Milestone Times */}
                 <div className="absolute bottom-1 left-8 flex items-center gap-1 text-[7px] font-black text-slate-600">

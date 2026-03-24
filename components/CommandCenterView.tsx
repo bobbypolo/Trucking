@@ -597,7 +597,7 @@ export const CommandCenterView: React.FC<Props> = ({
                               label: "New Incident",
                               icon: ShieldAlert,
                               color: "text-red-400",
-                              action: () => onNavigate?.("safety"),
+                              action: () => onNavigate?.("exceptions"),
                             },
                             {
                               label: "Attach Existing",
@@ -1080,7 +1080,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                     $
                                     {active360Data?.load?.totalRevenue?.toLocaleString() ||
                                       active360Data?.load?.carrierRate?.toLocaleString() ||
-                                      "2,400"}
+                                      "--"}
                                   </div>
                                 </div>
                                 <div
@@ -1092,8 +1092,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   <div
                                     className={`${isHighObstruction ? "text-[12px]" : "text-[11px]"} font-black text-white uppercase truncate`}
                                   >
-                                    {active360Data?.load?.commodity ||
-                                      "General Freight"}
+                                    {active360Data?.load?.commodity || "--"}
                                   </div>
                                 </div>
                                 <div
@@ -1106,7 +1105,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                     className={`${isHighObstruction ? "text-[12px]" : "text-[11px]"} font-black text-white uppercase`}
                                   >
                                     {active360Data?.load?.weight?.toLocaleString() ||
-                                      "44,000"}{" "}
+                                      "--"}{" "}
                                     lbs
                                   </div>
                                 </div>

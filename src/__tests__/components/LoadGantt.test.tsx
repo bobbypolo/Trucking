@@ -175,6 +175,101 @@ describe("LoadGantt component", () => {
     });
   });
 
+  describe("data-driven progress bars", () => {
+    it("uses inline width styles instead of fixed CSS classes for progress segments", () => {
+      const loads = [
+        createLoad({
+          id: "dd1",
+          loadNumber: "DD-1",
+          status: LOAD_STATUS.In_Transit,
+          pickupDate: "2025-12-01",
+          dropoffDate: "2025-12-05",
+        }),
+      ];
+      render(<LoadGantt loads={loads} />);
+      // Progress bar segments should use inline style widths, not fixed Tailwind classes
+      const barSegments = document.querySelectorAll<HTMLElement>(".h-1\\.5");
+      expect(barSegments.length).toBe(3); // pickup, transit, delivery
+      barSegments.forEach((segment) => {
+        expect(segment.style.width).toMatch(/^\d+%$/);
+      });
+    });
+
+    it("does not use fixed width fraction classes on progress bars", () => {
+      const loads = [
+        createLoad({
+          id: "dd2",
+          loadNumber: "DD-2",
+          status: LOAD_STATUS.Active,
+          pickupDate: "2025-12-01",
+          dropoffDate: "2025-12-05",
+        }),
+      ];
+      render(<LoadGantt loads={loads} />);
+      const barSegments = document.querySelectorAll<HTMLElement>(".h-1\\.5");
+      barSegments.forEach((segment) => {
+        expect(segment.className).not.toMatch(/w-1\/3|w-1\/2|w-1\/12/);
+      });
+    });
+
+    it("falls back to equal-third widths when dropoffDate is missing", () => {
+      const loads = [
+        createLoad({
+          id: "dd3",
+          loadNumber: "DD-3",
+          status: LOAD_STATUS.Planned,
+          pickupDate: "2025-12-01",
+          // No dropoffDate — triggers fallback
+        }),
+      ];
+      render(<LoadGantt loads={loads} />);
+      const barSegments = document.querySelectorAll<HTMLElement>(".h-1\\.5");
+      expect(barSegments.length).toBe(3);
+      // Fallback: 33%, 34%, 33%
+      expect(barSegments[0].style.width).toBe("33%");
+      expect(barSegments[1].style.width).toBe("34%");
+      expect(barSegments[2].style.width).toBe("33%");
+    });
+
+    it("computes 10/80/10 split for delivered loads with valid dates", () => {
+      const loads = [
+        createLoad({
+          id: "dd4",
+          loadNumber: "DD-4",
+          status: LOAD_STATUS.Delivered,
+          pickupDate: "2025-12-01",
+          dropoffDate: "2025-12-05",
+        }),
+      ];
+      render(<LoadGantt loads={loads} />);
+      const barSegments = document.querySelectorAll<HTMLElement>(".h-1\\.5");
+      expect(barSegments.length).toBe(3);
+      expect(barSegments[0].style.width).toBe("10%");
+      expect(barSegments[1].style.width).toBe("80%");
+      expect(barSegments[2].style.width).toBe("10%");
+    });
+
+    it("preserves status-based coloring on progress segments", () => {
+      const loads = [
+        createLoad({
+          id: "dd5",
+          loadNumber: "DD-5",
+          status: LOAD_STATUS.Delivered,
+          pickupDate: "2025-12-01",
+          dropoffDate: "2025-12-05",
+        }),
+      ];
+      render(<LoadGantt loads={loads} />);
+      const barSegments = document.querySelectorAll<HTMLElement>(".h-1\\.5");
+      // Pickup segment should be blue for delivered
+      expect(barSegments[0].className).toContain("bg-blue-600");
+      // Transit segment should be blue-400 for delivered
+      expect(barSegments[1].className).toContain("bg-blue-400");
+      // Delivery segment should be green for delivered
+      expect(barSegments[2].className).toContain("bg-green-600");
+    });
+  });
+
   describe("sorting", () => {
     it("sorts loads by status priority (in_transit first, planned second)", () => {
       const loads = [

@@ -593,11 +593,51 @@ export const SafetyView: React.FC<Props> = ({
                       },
                       {
                         label: "Incident Free Days",
-                        value: incidents.length === 0 ? 0 : 0,
+                        value: (() => {
+                          if (incidents.length === 0) return 100;
+                          const lastIncident = incidents.reduce(
+                            (latest: Date, inc: any) => {
+                              const d = new Date(
+                                inc.reportedAt ||
+                                  inc.date ||
+                                  inc.createdAt ||
+                                  0,
+                              );
+                              return d > latest ? d : latest;
+                            },
+                            new Date(0),
+                          );
+                          const daysSince = Math.floor(
+                            (Date.now() - lastIncident.getTime()) /
+                              (1000 * 60 * 60 * 24),
+                          );
+                          return Math.min(
+                            Math.round((daysSince / 365) * 100),
+                            100,
+                          );
+                        })(),
                         color: "bg-purple-500",
-                        max: 365,
-                        display:
-                          incidents.length === 0 ? "No incidents" : "0 Days",
+                        max: 100,
+                        display: (() => {
+                          if (incidents.length === 0) return "No incidents";
+                          const lastIncident = incidents.reduce(
+                            (latest: Date, inc: any) => {
+                              const d = new Date(
+                                inc.reportedAt ||
+                                  inc.date ||
+                                  inc.createdAt ||
+                                  0,
+                              );
+                              return d > latest ? d : latest;
+                            },
+                            new Date(0),
+                          );
+                          const daysSince = Math.floor(
+                            (Date.now() - lastIncident.getTime()) /
+                              (1000 * 60 * 60 * 24),
+                          );
+                          return `${daysSince} Days`;
+                        })(),
                       },
                     ];
                   })().map((bar, idx) => (

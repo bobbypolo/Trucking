@@ -26,11 +26,101 @@ import {
   getIdToken,
 } from "firebase/auth";
 
-import seedFixtures from "../fixtures/test-users.json";
+// Seed fixtures are loaded lazily to avoid a hard module-resolution failure
+// when fixtures/test-users.json does not exist (production / CI / fresh clone).
+// The file is gitignored and only present in dev environments.
+
+interface SeedUser {
+  email: string;
+  name: string;
+  password: string;
+  role?: string;
+  companyName?: string;
+  accountType?: string;
+  state?: string;
+}
+
+interface SeedFixtures {
+  admin: SeedUser & { companyName: string; accountType: string };
+  dispatcher: SeedUser;
+  opsManager: SeedUser;
+  arSpecialist: SeedUser;
+  apClerk: SeedUser;
+  payroll: SeedUser;
+  safety: SeedUser;
+  maintenance: SeedUser;
+  smallBiz: SeedUser;
+  fusedOps: SeedUser;
+  fusedFinance: SeedUser;
+  fleetOwner: SeedUser;
+  operator1: SeedUser;
+  operator2: SeedUser;
+  customer: SeedUser;
+  architect: SeedUser;
+  drivers: SeedUser[];
+}
+
+const EMPTY_SEED_USER: SeedUser = {
+  email: "",
+  name: "",
+  password: "",
+  role: "",
+};
+const EMPTY_FIXTURES: SeedFixtures = {
+  admin: { ...EMPTY_SEED_USER, companyName: "", accountType: "owner_operator" },
+  dispatcher: { ...EMPTY_SEED_USER },
+  opsManager: { ...EMPTY_SEED_USER },
+  arSpecialist: { ...EMPTY_SEED_USER },
+  apClerk: { ...EMPTY_SEED_USER },
+  payroll: { ...EMPTY_SEED_USER },
+  safety: { ...EMPTY_SEED_USER },
+  maintenance: { ...EMPTY_SEED_USER },
+  smallBiz: { ...EMPTY_SEED_USER },
+  fusedOps: { ...EMPTY_SEED_USER },
+  fusedFinance: { ...EMPTY_SEED_USER },
+  fleetOwner: { ...EMPTY_SEED_USER },
+  operator1: { ...EMPTY_SEED_USER },
+  operator2: { ...EMPTY_SEED_USER },
+  customer: { ...EMPTY_SEED_USER },
+  architect: { ...EMPTY_SEED_USER },
+  drivers: [],
+};
+
+let _seedFixturesCache: SeedFixtures | null = null;
+
+/**
+ * Lazily loads seed fixtures via dynamic import.
+ * Returns EMPTY_FIXTURES when the file is absent (production / CI).
+ */
+async function loadSeedFixtures(): Promise<SeedFixtures> {
+  if (_seedFixturesCache) return _seedFixturesCache;
+  try {
+    // Build the path via a variable so Vite's static import analysis does not
+    // try to resolve the module at transform time (the file is gitignored and
+    // may not exist). At runtime the dynamic import either succeeds or lands
+    // in the catch block.
+    const fixturePath = "../fixtures/test-users.json";
+    const mod = await import(/* @vite-ignore */ fixturePath);
+    _seedFixturesCache = (mod.default || mod) as SeedFixtures;
+  } catch {
+    console.info(
+      "[authService] No seed fixtures found — seed database will be a no-op",
+    );
+    _seedFixturesCache = EMPTY_FIXTURES;
+  }
+  return _seedFixturesCache;
+}
 
 const SEED_COMPANY_ID = "iscope-authority-001";
-/** Dev-only default password sourced from fixtures/test-users.json. Never hardcoded. */
-const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
+
+/**
+ * Dev-only default password. Loaded lazily from fixtures; falls back to
+ * empty string when fixtures are absent (callers always pass an explicit
+ * password in production paths).
+ */
+function getDevDefaultPassword(): string {
+  return _seedFixturesCache?.admin?.password || "";
+}
 
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;
@@ -613,7 +703,7 @@ export const registerCompany = async (
     role: "admin",
     payModel: "salary",
     payRate: 100000,
-    password: password || DEV_DEFAULT_PASSWORD,
+    password: password || getDevDefaultPassword(),
     onboardingStatus: "Completed",
     safetyScore: 100,
     restricted: false,
@@ -627,7 +717,7 @@ export const registerCompany = async (
       const credential = await createUserWithEmailAndPassword(
         auth,
         adminEmail,
-        password || DEV_DEFAULT_PASSWORD,
+        password || getDevDefaultPassword(),
       );
       newUser.firebaseUid = credential.user.uid;
     } catch (error) {
@@ -850,7 +940,7 @@ export const addDriver = async (
     payModel: payModel || (role === "admin" ? "salary" : "percent"),
     payRate: payRate || (role === "admin" ? 100000 : 25),
     managedByUserId,
-    password: password || DEV_DEFAULT_PASSWORD,
+    password: password || getDevDefaultPassword(),
     onboardingStatus: "Completed",
     safetyScore: 100,
     restricted: false,
@@ -864,7 +954,7 @@ export const addDriver = async (
       const credential = await createUserWithEmailAndPassword(
         auth,
         email,
-        password || DEV_DEFAULT_PASSWORD,
+        password || getDevDefaultPassword(),
       );
       newUser.firebaseUid = credential.user.uid;
     } catch (error: any) {
@@ -888,13 +978,21 @@ export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
   return getStoredUsers().filter((u) => u.companyId === companyId);
 };
 
-// Seed credentials are loaded from fixtures/test-users.json at runtime.
+// Seed credentials are loaded lazily from fixtures/test-users.json at runtime.
 // All hardcoded emails and passwords have been extracted to that file.
 // fixtures/test-users.json is listed in .gitignore and must never be committed.
 
 export const seedDatabase = async () => {
+  const fixtures = await loadSeedFixtures();
+
+  // If fixtures are empty (file not present), seeding is a no-op
+  if (!fixtures.admin.email) {
+    console.info("[authService] No seed fixtures — skipping seedDatabase()");
+    return;
+  }
+
   const users = getStoredUsers();
-  const adminFixture = seedFixtures.admin;
+  const adminFixture = fixtures.admin;
   const targetEmail = adminFixture.email;
 
   if (!users.find((u) => u.email === targetEmail)) {
@@ -943,7 +1041,7 @@ export const seedDatabase = async () => {
     payroll,
     safety,
     maintenance,
-  } = seedFixtures;
+  } = fixtures;
   await ensureUser(
     dispatcher.email,
     dispatcher.name,
@@ -988,7 +1086,7 @@ export const seedDatabase = async () => {
   );
 
   // Small Team Roles
-  const { smallBiz, fusedOps, fusedFinance } = seedFixtures;
+  const { smallBiz, fusedOps, fusedFinance } = fixtures;
   await ensureUser(
     smallBiz.email,
     smallBiz.name,
@@ -1008,7 +1106,7 @@ export const seedDatabase = async () => {
     fusedFinance.password,
   );
 
-  const { fleetOwner: fleetOwnerFixture, operator1, operator2 } = seedFixtures;
+  const { fleetOwner: fleetOwnerFixture, operator1, operator2 } = fixtures;
   await ensureUser(
     fleetOwnerFixture.email,
     fleetOwnerFixture.name,
@@ -1034,7 +1132,7 @@ export const seedDatabase = async () => {
   );
 
   // Drivers — profiles sourced from fixtures/test-users.json
-  for (const d of seedFixtures.drivers) {
+  for (const d of fixtures.drivers) {
     if (!currentUsers.find((u) => u.email === d.email)) {
       await addDriver(
         companyId,
@@ -1057,7 +1155,7 @@ export const seedDatabase = async () => {
     }
   }
 
-  const { customer, architect } = seedFixtures;
+  const { customer, architect } = fixtures;
   await ensureUser(
     customer.email,
     customer.name,

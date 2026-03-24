@@ -462,7 +462,7 @@ describe("CommandCenterView", () => {
     expect(onNavigate).toHaveBeenCalledWith("loads");
   });
 
-  it("calls onNavigate with 'safety' when New Incident is clicked", async () => {
+  it("calls onNavigate with 'exceptions' when New Incident is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onNavigate = vi.fn();
     render(<CommandCenterView {...defaultProps} onNavigate={onNavigate} />);
@@ -470,7 +470,7 @@ describe("CommandCenterView", () => {
     await user.click(screen.getByText("New Record & Attach"));
     await user.click(screen.getByText("New Incident"));
 
-    expect(onNavigate).toHaveBeenCalledWith("safety");
+    expect(onNavigate).toHaveBeenCalledWith("exceptions");
   });
 
   it("shows success message when Attach Existing is clicked", async () => {

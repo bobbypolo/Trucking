@@ -266,7 +266,6 @@ export default function App() {
     | "intelligence"
     | "reports"
     | "crm"
-    | "safety"
     | "command"
     | "directory"
   >("command");
