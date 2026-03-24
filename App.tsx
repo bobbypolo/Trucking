@@ -162,6 +162,9 @@ const NetworkPortal = React.lazy(() =>
     default: m.NetworkPortal,
   })),
 );
+const TelematicsSetup = React.lazy(
+  () => import("./components/TelematicsSetup"),
+);
 import { getRecord360Data } from "./services/storageService";
 import { features } from "./config/features";
 
@@ -1159,6 +1162,13 @@ export default function App() {
                     user={user}
                     onUserRegistryChange={() => refreshData(user)}
                   />
+                </Suspense>
+              )}
+              {activeTab === "telematics-setup" && (
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <TelematicsSetup />
                 </Suspense>
               )}
             </div>
