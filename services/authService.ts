@@ -212,6 +212,8 @@ export const PERMISSION_PRESETS: Partial<Record<UserRole, PermissionCode[]>> = {
     "DOCUMENT_UPLOAD",
     "DOCUMENT_VIEW",
     "LOAD_RATE_VIEW",
+    "ORG_SETTINGS_VIEW",
+    "SETTLEMENT_VIEW",
   ],
   SAFETY_COMPLIANCE: [
     "EXPORT_DATA",
@@ -221,6 +223,7 @@ export const PERMISSION_PRESETS: Partial<Record<UserRole, PermissionCode[]>> = {
     "DOCUMENT_DELETE",
     "SAFETY_EVENT_VIEW",
     "SAFETY_EVENT_EDIT",
+    "ORG_SETTINGS_VIEW",
   ],
   MAINTENANCE_MANAGER: [
     "EXPORT_DATA",
@@ -250,6 +253,9 @@ export const PERMISSION_PRESETS: Partial<Record<UserRole, PermissionCode[]>> = {
     "SETTLEMENT_VIEW",
     "SETTLEMENT_EDIT",
     "SETTLEMENT_APPROVE",
+    "ORG_SETTINGS_VIEW",
+    "INVOICE_CREATE",
+    "LOAD_RATE_VIEW",
   ],
 
   // SMALL TEAM PACK (Fused Roles)
@@ -360,6 +366,7 @@ export const CAPABILITY_PRESETS: Record<
       { capability: "QUOTE_CONVERT", level: "Allow" },
       { capability: "LOAD_ASSIGN", level: "Allow" },
     ],
+    driver: [{ capability: "LOAD_TRACK", level: "Allow" }],
   },
   "Split Roles": {
     SALES_CUSTOMER_SERVICE: [
@@ -383,6 +390,7 @@ export const CAPABILITY_PRESETS: Record<
       { capability: "QUOTE_SEND", level: "Allow" },
       { capability: "QUOTE_CONVERT", level: "Allow" },
     ],
+    DRIVER_PORTAL: [{ capability: "LOAD_TRACK", level: "Allow" }],
   },
   Enterprise: {
     SALES_CUSTOMER_SERVICE: [
@@ -400,6 +408,7 @@ export const CAPABILITY_PRESETS: Record<
       { capability: "LOAD_UPDATE_STATUS", level: "Allow" },
       { capability: "LOAD_TRACK", level: "Allow" },
     ],
+    DRIVER_PORTAL: [{ capability: "LOAD_TRACK", level: "Allow" }],
   },
 };
 

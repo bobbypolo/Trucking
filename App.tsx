@@ -617,7 +617,14 @@ export default function App() {
     },
     {
       title: "NETWORK",
-      items: [{ id: "network", label: "Broker Network", icon: Globe }],
+      items: [
+        {
+          id: "network",
+          label: "Broker Network",
+          icon: Globe,
+          permission: "LOAD_RATE_VIEW",
+        },
+      ],
     },
     {
       title: "FINANCIALS",
