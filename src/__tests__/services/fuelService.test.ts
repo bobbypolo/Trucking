@@ -1,12 +1,23 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock dependencies
-vi.mock("../../../services/config", () => ({
-  API_URL: "http://test-api:5000/api",
+// Mock the api module
+const mockPost = vi.fn();
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn(),
+    post: (...args: any[]) => mockPost(...args),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
+// Mock dependencies
 vi.mock("../../../services/rulesEngineService", () => ({
-  executeFuelMatchingRule: vi.fn().mockResolvedValue({ matched: 0, orphaned: 1 }),
+  executeFuelMatchingRule: vi
+    .fn()
+    .mockResolvedValue({ matched: 0, orphaned: 1 }),
 }));
 
 vi.mock("../../../services/financialService", () => ({
@@ -23,11 +34,7 @@ import { getVaultDocs } from "../../../services/financialService";
 
 describe("FuelCardService", () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, "fetch").mockReset();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockPost.mockReset();
   });
 
   // --- processIncomingTransaction ---
@@ -122,30 +129,18 @@ describe("FuelCardService", () => {
   // --- importBatch ---
   describe("importBatch", () => {
     it("sends a POST to the batch endpoint and returns entry count", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-      } as Response);
+      mockPost.mockResolvedValue({ success: true });
       const entries = [{ id: "1" }, { id: "2" }, { id: "3" }];
       const count = await FuelCardService.importBatch(entries);
       expect(count).toBe(3);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/accounting/fuel/batch",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(entries),
-        }),
-      );
+      expect(mockPost).toHaveBeenCalledWith("/accounting/fuel/batch", entries);
     });
 
     it("throws on non-OK response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 400,
-      } as Response);
-      await expect(FuelCardService.importBatch([{ id: "1" }])).rejects.toThrow(
-        "Failed to import fuel batch",
-      );
+      mockPost.mockRejectedValue(new Error("API Request failed: 400"));
+      await expect(
+        FuelCardService.importBatch([{ id: "1" }]),
+      ).rejects.toThrow();
     });
   });
 

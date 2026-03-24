@@ -10,10 +10,8 @@ import {
   Video,
   XCircle,
 } from "lucide-react";
-import { getIdTokenAsync } from "../services/authService";
 import { validateImageBase64 } from "../services/validationGuards";
-// AI calls proxied through server — no client-side Gemini SDK
-const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
+import { api } from "../services/api";
 
 async function aiPost(
   endpoint: string,
@@ -22,22 +20,11 @@ async function aiPost(
 ): Promise<unknown> {
   // R-P3-04: Guard against missing imageBase64 to prevent 400 errors
   if (!validateImageBase64(imageBase64)) {
-    throw new Error("Cannot process: no image data provided. Please capture or upload an image first.");
+    throw new Error(
+      "Cannot process: no image data provided. Please capture or upload an image first.",
+    );
   }
-  const token = (await getIdTokenAsync()) ?? "";
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ imageBase64, mimeType }),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `AI request failed: ${res.status}`);
-  }
-  return res.json();
+  return api.post(endpoint, { imageBase64, mimeType });
 }
 
 /** Check if browser supports getUserMedia */

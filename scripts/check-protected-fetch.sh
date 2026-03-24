@@ -40,6 +40,7 @@ VIOLATIONS=""
 EXCLUDED_FILES=(
   "services/api.ts"
   "services/authService.ts"
+  "services/apiHealth.ts"          # pre-auth health check, must work without JWT
   "components/Auth.tsx"
   "services/weatherService.ts"
   "services/directionsService.ts"

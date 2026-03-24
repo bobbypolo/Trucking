@@ -8,7 +8,7 @@ import React, {
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
-import { API_URL } from "../services/config";
+import { api } from "../services/api";
 import {
   DollarSign,
   Receipt,
@@ -126,8 +126,9 @@ const AccountingPortal: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [feedback, showFeedback, clearFeedback] =
-    useAutoFeedback<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<
+    string | null
+  >(null);
   const [showBillForm, setShowBillForm] = useState(false);
   const [importType, setImportType] = useState<
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
@@ -146,7 +147,9 @@ const AccountingPortal: React.FC<Props> = ({
     showFeedback("Engine running: Scanning Vault for unlinked receipts...");
 
     try {
-      const rule = automationRules.find((r) => r.action === "match_receipt") || {
+      const rule = automationRules.find(
+        (r) => r.action === "match_receipt",
+      ) || {
         id: "default",
         name: "Fuel Receipt Auto-Match",
         enabled: true,
@@ -154,7 +157,11 @@ const AccountingPortal: React.FC<Props> = ({
         action: "match_receipt",
         configuration: { matchTolerance: 0.05, lookbackDays: 7 },
       };
-      const results = await executeFuelMatchingRule([], [], rule as AutomationRule);
+      const results = await executeFuelMatchingRule(
+        [],
+        [],
+        rule as AutomationRule,
+      );
       showFeedback(
         `Sync Complete: Auto-Matched ${results?.matched ?? 0} receipts. ${results?.orphaned ?? 0} require manual verification.`,
         4000,
@@ -322,7 +329,12 @@ const AccountingPortal: React.FC<Props> = ({
                   label: "Pending Docs",
                   val: `${(Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length}`,
                   sub: "Missing POD/BOL",
-                  trend: (Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length > 0 ? "!" : "OK",
+                  trend:
+                    (Array.isArray(invoices) ? invoices : []).filter(
+                      (i: any) => !i.pod_attached,
+                    ).length > 0
+                      ? "!"
+                      : "OK",
                   color: "text-orange-500",
                   bg: "bg-orange-500/5",
                 },
@@ -608,7 +620,9 @@ const AccountingPortal: React.FC<Props> = ({
                               </button>
                             )}
                             <button
-                              onClick={() => showFeedback("Line item actions coming soon")}
+                              onClick={() =>
+                                showFeedback("Line item actions coming soon")
+                              }
                               className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
                               aria-label="More options"
                             >
@@ -750,7 +764,9 @@ const AccountingPortal: React.FC<Props> = ({
                             </button>
                           )}
                           <button
-                            onClick={() => showFeedback("Line item actions coming soon")}
+                            onClick={() =>
+                              showFeedback("Line item actions coming soon")
+                            }
                             className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
                             aria-label="More options"
                           >
@@ -1023,7 +1039,8 @@ const AccountingPortal: React.FC<Props> = ({
                     No audit events recorded yet
                   </div>
                   <p className="text-[9px] text-slate-700 mt-2">
-                    Audit entries will appear here as financial operations are performed.
+                    Audit entries will appear here as financial operations are
+                    performed.
                   </p>
                 </div>
               </div>
@@ -1172,7 +1189,6 @@ const AccountingPortal: React.FC<Props> = ({
             </div>
           </div>
         )}
-
       </div>
 
       {showBillForm && (
@@ -1201,16 +1217,13 @@ const AccountingPortal: React.FC<Props> = ({
             onClose={() => setImportType(null)}
             onImport={async (data) => {
               try {
-                const res = await fetch(`${API_URL}/accounting/batch-import`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ type: importType, data }),
+                await api.post("/accounting/batch-import", {
+                  type: importType,
+                  data,
                 });
-                if (res.ok) {
-                  showFeedback(`Imported ${data.length} records successfully`);
-                  setImportType(null);
-                  loadData();
-                }
+                showFeedback(`Imported ${data.length} records successfully`);
+                setImportType(null);
+                loadData();
               } catch (e) {
                 showFeedback("Import failed");
               }

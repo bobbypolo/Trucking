@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
-import { API_URL } from "../services/config";
+import { api } from "../services/api";
 import {
   Gauge,
   AlertCircle,
@@ -83,7 +83,6 @@ import {
   saveNotificationJob,
   createIncident as coreCreateIncident,
   saveTask,
-  getAuthHeaders,
 } from "../services/storageService";
 import { getVendors, saveVendor } from "../services/safetyService";
 import { SafetyView } from "./SafetyView";
@@ -664,18 +663,18 @@ const IntelligenceHub: React.FC<{
       }
 
       // 2. Save to Immutable Audit Trail (Backend)
-      await fetch(`${API_URL}/incidents/${primaryLink.entityId}/actions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
+      try {
+        await api.post(`/incidents/${primaryLink.entityId}/actions`, {
           actor_name: user.name,
           action: "Recorded Call",
           notes: callNotes,
-        }),
-      });
+        });
+      } catch (e) {
+        console.error(
+          "Failed to save audit trail:",
+          e instanceof Error ? e.message : e,
+        );
+      }
     }
 
     setCurrentCallSession(updatedSession);
@@ -1399,15 +1398,11 @@ const IntelligenceHub: React.FC<{
     // Record Emergency Charge (Financial Audit)
     if (activeRecord.type === "INCIDENT") {
       try {
-        await fetch(`${API_URL}/incidents/${activeRecord.id}/charges`, {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            category: "Tow",
-            amount: 0,
-            provider_vendor: selectedVendorForRoadside.name,
-            status: "Approved",
-          }),
+        await api.post(`/incidents/${activeRecord.id}/charges`, {
+          category: "Tow",
+          amount: 0,
+          provider_vendor: selectedVendorForRoadside.name,
+          status: "Approved",
         });
       } catch (e) {
         console.warn(
@@ -4308,7 +4303,12 @@ const IntelligenceHub: React.FC<{
                     </button>
                   ))}
                   <button
-                    onClick={() => setToast({ message: "Add Temporary Vendor form coming soon", type: "info" })}
+                    onClick={() =>
+                      setToast({
+                        message: "Add Temporary Vendor form coming soon",
+                        type: "info",
+                      })
+                    }
                     className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:border-blue-500/50 hover:text-blue-500 transition-all flex items-center justify-center gap-3"
                   >
                     <Plus className="w-4 h-4" /> Add Temporary Vendor

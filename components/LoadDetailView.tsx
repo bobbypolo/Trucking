@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { LoadData, LoadStatus, User, Broker, LoadLeg } from "../types";
 import {
   Truck,
@@ -37,6 +43,7 @@ import {
 } from "lucide-react";
 import { getVaultDocs, createARInvoice } from "../services/financialService";
 import { saveLoad, generateBolPDF } from "../services/storageService";
+import { api } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
@@ -76,11 +83,15 @@ export const LoadDetailView: React.FC<Props> = ({
     type: "success" | "error" | "info";
   } | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
-  const [addingStopType, setAddingStopType] = useState<"pickup" | "dropoff" | null>(null);
+  const [addingStopType, setAddingStopType] = useState<
+    "pickup" | "dropoff" | null
+  >(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [showDocuments, setShowDocuments] = useState(false);
   const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
-  const [localIsFlagged, setLocalIsFlagged] = useState(load.isActionRequired ?? false);
+  const [localIsFlagged, setLocalIsFlagged] = useState(
+    load.isActionRequired ?? false,
+  );
   const stopMatrixRef = useRef<HTMLDivElement>(null);
   const hasMapsKey = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -180,41 +191,39 @@ export const LoadDetailView: React.FC<Props> = ({
     }
   };
 
-  const handleUtilityClick = useCallback(async (util: string) => {
-    setShowUtilities(false);
-    switch (util) {
-      case "Print BOL":
-        generateBolPDF(load);
-        setToast({ message: "BOL PDF generated", type: "success" });
-        break;
-      case "Carrier Rates":
-        setToast({ message: "Rate card coming soon", type: "info" });
-        break;
-      case "Load Stops":
-        stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      case "Documents":
-        try {
-          const resp = await fetch(`/api/documents?loadId=${load.id}`, {
-            headers: { "Content-Type": "application/json" },
-          });
-          if (resp.ok) {
-            const docs = await resp.json();
+  const handleUtilityClick = useCallback(
+    async (util: string) => {
+      setShowUtilities(false);
+      switch (util) {
+        case "Print BOL":
+          generateBolPDF(load);
+          setToast({ message: "BOL PDF generated", type: "success" });
+          break;
+        case "Carrier Rates":
+          setToast({ message: "Rate card coming soon", type: "info" });
+          break;
+        case "Load Stops":
+          stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
+          break;
+        case "Documents":
+          try {
+            const docs = (await api.get(`/documents?loadId=${load.id}`)) ?? [];
             setDocuments(docs);
+            setShowDocuments(true);
+          } catch {
+            setToast({ message: "Failed to load documents", type: "error" });
           }
-          setShowDocuments(true);
-        } catch {
-          setToast({ message: "Failed to load documents", type: "error" });
-        }
-        break;
-      case "Show Route":
-        setToast({ message: "Requires Google Maps API key", type: "info" });
-        break;
-      case "Audit Logs":
-        onNavigate?.("audit", load.id);
-        break;
-    }
-  }, [load, onNavigate]);
+          break;
+        case "Show Route":
+          setToast({ message: "Requires Google Maps API key", type: "info" });
+          break;
+        case "Audit Logs":
+          onNavigate?.("audit", load.id);
+          break;
+      }
+    },
+    [load, onNavigate],
+  );
 
   const handleTagForAction = useCallback(async () => {
     if (!currentUser) return;
@@ -310,13 +319,20 @@ export const LoadDetailView: React.FC<Props> = ({
                     "Show Route",
                     "Audit Logs",
                   ].map((util) => {
-                    const isRouteDisabled = util === "Show Route" && !hasMapsKey;
+                    const isRouteDisabled =
+                      util === "Show Route" && !hasMapsKey;
                     return (
                       <button
                         key={util}
-                        onClick={() => !isRouteDisabled && handleUtilityClick(util)}
+                        onClick={() =>
+                          !isRouteDisabled && handleUtilityClick(util)
+                        }
                         disabled={isRouteDisabled}
-                        title={isRouteDisabled ? "Configure VITE_GOOGLE_MAPS_API_KEY to enable" : util}
+                        title={
+                          isRouteDisabled
+                            ? "Configure VITE_GOOGLE_MAPS_API_KEY to enable"
+                            : util
+                        }
                         className={`w-full text-left px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors ${isRouteDisabled ? "opacity-40 cursor-not-allowed text-slate-500" : "hover:bg-blue-600 text-slate-300 hover:text-white"}`}
                       >
                         {util}
@@ -330,7 +346,8 @@ export const LoadDetailView: React.FC<Props> = ({
               onClick={handleTagForAction}
               className={`flex items-center gap-2 px-5 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all ${localIsFlagged ? "bg-amber-900/20 border-amber-500/30 text-amber-500" : "bg-slate-800 border-slate-700 text-slate-400"}`}
             >
-              <AlertTriangle className="w-4 h-4" /> {localIsFlagged ? "Tagged" : "Tag for Action"}
+              <AlertTriangle className="w-4 h-4" />{" "}
+              {localIsFlagged ? "Tagged" : "Tag for Action"}
             </button>
             <button
               onClick={handleToggleLock}
@@ -566,7 +583,8 @@ export const LoadDetailView: React.FC<Props> = ({
               <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="text-[10px] font-black text-white uppercase tracking-widest">
-                    New {addingStopType === "pickup" ? "Pickup" : "Drop-off"} Stop
+                    New {addingStopType === "pickup" ? "Pickup" : "Drop-off"}{" "}
+                    Stop
                   </h4>
                   <button
                     onClick={() => setAddingStopType(null)}
@@ -625,7 +643,10 @@ export const LoadDetailView: React.FC<Props> = ({
                   </button>
                   <button
                     onClick={() => {
-                      setToast({ message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`, type: "success" });
+                      setToast({
+                        message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`,
+                        type: "success",
+                      });
                       setAddingStopType(null);
                     }}
                     className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
@@ -844,7 +865,9 @@ export const LoadDetailView: React.FC<Props> = ({
                         <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
                           {doc.type}
                         </span>
-                        <span className="text-[9px] text-slate-400">{doc.status}</span>
+                        <span className="text-[9px] text-slate-400">
+                          {doc.status}
+                        </span>
                       </div>
                     </div>
                   ))}

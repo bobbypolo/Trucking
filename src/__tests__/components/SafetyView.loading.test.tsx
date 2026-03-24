@@ -2,7 +2,12 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Boundary mocks: config (API_URL) and fetch for api.ts calls
+vi.mock("../../../services/config", () => ({
+  API_URL: "/api",
+}));
 
 vi.mock("../../../services/safetyService", () => ({
   checkDriverCompliance: vi.fn().mockResolvedValue({ compliant: true }),
@@ -72,8 +77,20 @@ const mockUser: User = {
 };
 
 describe("SafetyView — Loading and Error States (R-P2-02, R-P2-04)", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock globalThis.fetch for api.ts calls (FMCSA, notifications, quizzes, settings)
+    // Return null so ?? [] fallbacks work and settings stays null (shows N/A)
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(null),
+    } as Response);
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
   });
 
   // R-P2-02: SafetyView shows LoadingSkeleton during initial fetch
@@ -100,9 +117,8 @@ describe("SafetyView — Loading and Error States (R-P2-02, R-P2-04)", () => {
   });
 
   it("R-P2-02: LoadingSkeleton disappears after data loads", async () => {
-    const { getCompany, getCompanyUsers } = await import(
-      "../../../services/authService"
-    );
+    const { getCompany, getCompanyUsers } =
+      await import("../../../services/authService");
 
     (getCompany as ReturnType<typeof vi.fn>).mockResolvedValue({
       id: "company-1",
@@ -136,15 +152,12 @@ describe("SafetyView — Loading and Error States (R-P2-02, R-P2-04)", () => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByRole("button", { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("R-P2-04: ErrorState retry button re-fetches data", async () => {
-    const { getCompany, getCompanyUsers } = await import(
-      "../../../services/authService"
-    );
+    const { getCompany, getCompanyUsers } =
+      await import("../../../services/authService");
 
     (getCompany as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new Error("Network error"),

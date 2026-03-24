@@ -15,6 +15,34 @@ import {
   batchUpdateSettlementsSchema,
 } from "../schemas/accounting";
 import { createChildLogger } from "../lib/logger";
+import type { Request, Response, NextFunction } from "express";
+
+/**
+ * Role-based access control middleware for accounting write endpoints.
+ * Returns 403 if the authenticated user's role is not in the allowed list.
+ */
+function requireRole(...allowedRoles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRole = (req as any).user?.role;
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return res.status(403).json({ error: "Insufficient role permissions" });
+    }
+    next();
+  };
+}
+
+/** Roles allowed to perform accounting write operations (POST/PATCH/DELETE). */
+const ACCOUNTING_WRITE_ROLES = [
+  "admin",
+  "dispatcher",
+  "payroll_manager",
+  "OWNER_ADMIN",
+  "ORG_OWNER_SUPER_ADMIN",
+  "FINANCE",
+  "ACCOUNTING_AR",
+  "ACCOUNTING_AP",
+  "PAYROLL_SETTLEMENTS",
+];
 
 const router = Router();
 
@@ -112,6 +140,7 @@ router.post(
   "/api/accounting/journal",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(createJournalEntrySchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -182,6 +211,7 @@ router.post(
   "/api/accounting/invoices",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(createInvoiceSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -308,6 +338,7 @@ router.post(
   "/api/accounting/bills",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(createBillSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -525,6 +556,7 @@ router.post(
   "/api/accounting/settlements",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(createSettlementSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -650,6 +682,7 @@ router.patch(
   "/api/accounting/settlements/batch",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(batchUpdateSettlementsSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -717,6 +750,7 @@ router.post(
   "/api/accounting/docs",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(createDocumentVaultSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
@@ -757,6 +791,7 @@ router.patch(
   "/api/accounting/docs/:id",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const { status, is_locked } = req.body;
     const tenantId = req.user.tenantId;
@@ -808,6 +843,7 @@ router.post(
   "/api/accounting/ifta-analyze",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const { pings, mode } = req.body; // mode: 'GPS' | 'ROUTES'
 
@@ -845,6 +881,7 @@ router.post(
   "/api/accounting/ifta-audit-lock",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const audit = req.body;
@@ -1041,6 +1078,7 @@ router.post(
   "/api/accounting/mileage",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const { truckId, loadId, date, stateCode, miles, source } = req.body;
@@ -1074,6 +1112,7 @@ router.post(
   "/api/accounting/ifta-post",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const { quarter, year, netTaxDue } = req.body;
@@ -1121,6 +1160,7 @@ router.post(
   "/api/accounting/adjustments",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;
     const adj = req.body;
@@ -1155,6 +1195,7 @@ router.post(
   "/api/accounting/batch-import",
   requireAuth,
   requireTenant,
+  requireRole(...ACCOUNTING_WRITE_ROLES),
   validateBody(batchImportSchema),
   async (req: any, res) => {
     const tenantId = req.user.tenantId;

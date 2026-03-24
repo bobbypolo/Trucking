@@ -10,10 +10,7 @@ import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
-import {
-  findSqlCompanyById,
-  mapCompanyRowToApiCompany,
-} from "../lib/sql-auth";
+import { findSqlCompanyById, mapCompanyRowToApiCompany } from "../lib/sql-auth";
 
 const router = Router();
 
@@ -200,6 +197,14 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
+    // Security: prevent cross-tenant reads — requireTenant checks :companyId param
+    // but this route uses :id, so we must verify manually
+    if (req.params.id !== req.user.tenantId) {
+      return res
+        .status(403)
+        .json({ error: "Access denied: cross-tenant read not allowed" });
+    }
+
     try {
       // Try Firestore first (primary source for company settings)
       const doc = await db.collection("companies").doc(req.params.id).get();

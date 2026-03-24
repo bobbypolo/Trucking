@@ -135,12 +135,12 @@ Source: `server/routes/*.ts`, `server/middleware/*.ts`
 
 ### /api/companies (server/routes/clients.ts -- same file)
 
-| Method | Path                 | Auth        | Tenant Source                                                                                                                       | Roles             | Tier Gate | Callers              |
-| ------ | -------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- | -------------------- |
-| GET    | `/api/companies/:id` | requireAuth | requireTenant; `:id` param -- NOTE: requireTenant checks `:companyId` param, not `:id`, so tenant check may not fire for this route | Any authenticated | None      | Auth/Login, Settings |
-| POST   | `/api/companies`     | requireAuth | requireTenant                                                                                                                       | Any authenticated | None      | Signup, Settings     |
+| Method | Path                 | Auth        | Tenant Source                                                                                        | Roles             | Tier Gate | Callers              |
+| ------ | -------------------- | ----------- | ---------------------------------------------------------------------------------------------------- | ----------------- | --------- | -------------------- |
+| GET    | `/api/companies/:id` | requireAuth | requireTenant + inline tenant check: `req.params.id === req.user.tenantId` (returns 403 on mismatch) | Any authenticated | None      | Auth/Login, Settings |
+| POST   | `/api/companies`     | requireAuth | requireTenant                                                                                        | Any authenticated | None      | Signup, Settings     |
 
-**FINDING:** `GET /api/companies/:id` uses param name `:id` not `:companyId`, so `requireTenant` may not enforce the URL param check (it checks `req.params.companyId`). The handler does not independently verify `req.params.id === req.user.tenantId`. This is a potential cross-tenant read risk.
+**FIXED in rework:** `GET /api/companies/:id` now has an inline tenant authorization check at the top of the handler that verifies `req.params.id === req.user.tenantId` before any database query. Returns 403 if the requested company ID does not match the authenticated user's tenant. This closes the cross-tenant read vulnerability caused by the `:id`/`:companyId` param name mismatch with `requireTenant`.
 
 ---
 
@@ -205,30 +205,30 @@ Source: `server/routes/*.ts`, `server/middleware/*.ts`
 
 ### /api/accounting (server/routes/accounting.ts)
 
-| Method | Path                                    | Auth        | Tenant Source                                    | Roles             | Tier Gate | Callers                              |
-| ------ | --------------------------------------- | ----------- | ------------------------------------------------ | ----------------- | --------- | ------------------------------------ |
-| GET    | `/api/accounting/accounts`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Chart of Accounts) |
-| GET    | `/api/accounting/load-pl/:loadId`       | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Load P&L)          |
-| POST   | `/api/accounting/journal`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Journal Entry)     |
-| POST   | `/api/accounting/invoices`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (AR Invoices)       |
-| GET    | `/api/accounting/invoices`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (AR Invoices)       |
-| POST   | `/api/accounting/bills`                 | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (AP Bills)          |
-| GET    | `/api/accounting/bills`                 | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (AP Bills)          |
-| GET    | `/api/accounting/settlements`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | DriverPaySettlements                 |
-| POST   | `/api/accounting/settlements`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | DriverPaySettlements                 |
-| PATCH  | `/api/accounting/settlements/batch`     | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | DriverPaySettlements                 |
-| GET    | `/api/accounting/docs`                  | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Document Vault)    |
-| POST   | `/api/accounting/docs`                  | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Document Vault)    |
-| PATCH  | `/api/accounting/docs/:id`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Document Vault)    |
-| GET    | `/api/accounting/ifta-evidence/:loadId` | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| POST   | `/api/accounting/ifta-analyze`          | requireAuth | requireTenant                                    | Any authenticated | None      | IFTA module                          |
-| POST   | `/api/accounting/ifta-audit-lock`       | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| GET    | `/api/accounting/ifta-summary`          | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| GET    | `/api/accounting/mileage`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| POST   | `/api/accounting/mileage`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| POST   | `/api/accounting/ifta-post`             | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | IFTA module                          |
-| POST   | `/api/accounting/adjustments`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal                     |
-| POST   | `/api/accounting/batch-import`          | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated | None      | AccountingPortal (Import)            |
+| Method | Path                                    | Auth        | Tenant Source                                    | Roles                  | Tier Gate | Callers                              |
+| ------ | --------------------------------------- | ----------- | ------------------------------------------------ | ---------------------- | --------- | ------------------------------------ |
+| GET    | `/api/accounting/accounts`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | AccountingPortal (Chart of Accounts) |
+| GET    | `/api/accounting/load-pl/:loadId`       | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | AccountingPortal (Load P&L)          |
+| POST   | `/api/accounting/journal`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (Journal Entry)     |
+| POST   | `/api/accounting/invoices`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (AR Invoices)       |
+| GET    | `/api/accounting/invoices`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | AccountingPortal (AR Invoices)       |
+| POST   | `/api/accounting/bills`                 | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (AP Bills)          |
+| GET    | `/api/accounting/bills`                 | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | AccountingPortal (AP Bills)          |
+| GET    | `/api/accounting/settlements`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | DriverPaySettlements                 |
+| POST   | `/api/accounting/settlements`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | DriverPaySettlements                 |
+| PATCH  | `/api/accounting/settlements/batch`     | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | DriverPaySettlements                 |
+| GET    | `/api/accounting/docs`                  | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | AccountingPortal (Document Vault)    |
+| POST   | `/api/accounting/docs`                  | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (Document Vault)    |
+| PATCH  | `/api/accounting/docs/:id`              | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (Document Vault)    |
+| GET    | `/api/accounting/ifta-evidence/:loadId` | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | IFTA module                          |
+| POST   | `/api/accounting/ifta-analyze`          | requireAuth | requireTenant                                    | ACCOUNTING_WRITE_ROLES | None      | IFTA module                          |
+| POST   | `/api/accounting/ifta-audit-lock`       | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | IFTA module                          |
+| GET    | `/api/accounting/ifta-summary`          | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | IFTA module                          |
+| GET    | `/api/accounting/mileage`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | Any authenticated      | None      | IFTA module                          |
+| POST   | `/api/accounting/mileage`               | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | IFTA module                          |
+| POST   | `/api/accounting/ifta-post`             | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | IFTA module                          |
+| POST   | `/api/accounting/adjustments`           | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal                     |
+| POST   | `/api/accounting/batch-import`          | requireAuth | requireTenant; tenantId from `req.user.tenantId` | ACCOUNTING_WRITE_ROLES | None      | AccountingPortal (Import)            |
 
 **Notes:**
 
@@ -239,35 +239,36 @@ Source: `server/routes/*.ts`, `server/middleware/*.ts`
 - PATCH /settlements/batch validates with `batchUpdateSettlementsSchema`
 - POST /docs validates with `createDocumentVaultSchema`
 - POST /batch-import validates with `batchImportSchema`
-- **FINDING:** No role restrictions on any accounting endpoint. Drivers can create invoices, post journal entries, and batch-import financial data. Consider restricting write operations to admin/dispatcher/accountant roles.
+- **FIXED in rework:** All 13 write endpoints (POST/PATCH) now gated with `requireRole(...ACCOUNTING_WRITE_ROLES)` middleware. ACCOUNTING_WRITE_ROLES = `admin`, `dispatcher`, `payroll_manager`, `OWNER_ADMIN`, `ORG_OWNER_SUPER_ADMIN`, `FINANCE`, `ACCOUNTING_AR`, `ACCOUNTING_AP`, `PAYROLL_SETTLEMENTS`. GET endpoints remain open to any authenticated user within the tenant.
 
 ---
 
 ### /api/safety (server/routes/safety.ts)
 
-| Method | Path                           | Auth        | Tenant Source                                     | Roles             | Tier Gate | Callers                       |
-| ------ | ------------------------------ | ----------- | ------------------------------------------------- | ----------------- | --------- | ----------------------------- |
-| GET    | `/api/safety/quizzes`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Quizzes tab)      |
-| GET    | `/api/safety/quizzes/:id`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| POST   | `/api/safety/quizzes`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| GET    | `/api/safety/quiz-results`     | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Quiz Results tab) |
-| POST   | `/api/safety/quiz-results`     | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| GET    | `/api/safety/maintenance`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Maintenance tab)  |
-| GET    | `/api/safety/maintenance/:id`  | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| POST   | `/api/safety/maintenance`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| GET    | `/api/safety/vendors`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Vendors tab)      |
-| GET    | `/api/safety/vendors/:id`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| POST   | `/api/safety/vendors`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| GET    | `/api/safety/activity`         | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Activity tab)     |
-| POST   | `/api/safety/activity`         | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView                    |
-| GET    | `/api/safety/expiring-certs`   | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated | None      | SafetyView (Compliance tab)   |
-| GET    | `/api/safety/fmcsa/:dotNumber` | requireAuth | requireTenant                                     | Any authenticated | None      | SafetyView (FMCSA tab)        |
+| Method | Path                           | Auth        | Tenant Source                                     | Roles               | Tier Gate | Callers                       |
+| ------ | ------------------------------ | ----------- | ------------------------------------------------- | ------------------- | --------- | ----------------------------- |
+| GET    | `/api/safety/quizzes`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Quizzes tab)      |
+| GET    | `/api/safety/quizzes/:id`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView                    |
+| POST   | `/api/safety/quizzes`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | SAFETY_MANAGE_ROLES | None      | SafetyView                    |
+| GET    | `/api/safety/quiz-results`     | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Quiz Results tab) |
+| POST   | `/api/safety/quiz-results`     | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView                    |
+| GET    | `/api/safety/maintenance`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Maintenance tab)  |
+| GET    | `/api/safety/maintenance/:id`  | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView                    |
+| POST   | `/api/safety/maintenance`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | SAFETY_MANAGE_ROLES | None      | SafetyView                    |
+| GET    | `/api/safety/vendors`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Vendors tab)      |
+| GET    | `/api/safety/vendors/:id`      | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView                    |
+| POST   | `/api/safety/vendors`          | requireAuth | requireTenant; companyId from `req.user.tenantId` | SAFETY_MANAGE_ROLES | None      | SafetyView                    |
+| GET    | `/api/safety/activity`         | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Activity tab)     |
+| POST   | `/api/safety/activity`         | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView                    |
+| GET    | `/api/safety/expiring-certs`   | requireAuth | requireTenant; companyId from `req.user.tenantId` | Any authenticated   | None      | SafetyView (Compliance tab)   |
+| GET    | `/api/safety/fmcsa/:dotNumber` | requireAuth | requireTenant                                     | Any authenticated   | None      | SafetyView (FMCSA tab)        |
 
 **Notes:**
 
-- No role restrictions on any safety endpoint
 - FMCSA endpoint queries external service, does not use tenantId for data scoping
-- **FINDING:** POST /safety/quizzes and POST /safety/quiz-results lack role gates -- any user including drivers can create quizzes and submit results. Consider restricting quiz creation to admin/safety_manager.
+- **FIXED in rework:** POST /safety/quizzes, POST /safety/maintenance, POST /safety/vendors now gated with `requireRole(...SAFETY_MANAGE_ROLES)`. SAFETY_MANAGE_ROLES = `admin`, `safety_manager`, `dispatcher`, `OWNER_ADMIN`, `ORG_OWNER_SUPER_ADMIN`, `SAFETY_MAINT`, `SAFETY_COMPLIANCE`, `MAINTENANCE_MANAGER`, `OPS_MANAGER`.
+- POST /safety/quiz-results intentionally left ungated: drivers must be able to submit their own quiz results.
+- POST /safety/activity intentionally left ungated: any user can log activity entries (audit trail).
 
 ---
 
@@ -367,20 +368,23 @@ Source: `server/routes/*.ts`, `server/middleware/*.ts`
 
 ### 1. Cross-Tenant Risks
 
-| Route                    | Issue                                                                                                                                                                             | Severity |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| `GET /api/companies/:id` | URL param is `:id` not `:companyId`, so `requireTenant` middleware does not enforce param check. Handler does not verify `req.params.id === req.user.tenantId`.                   | **HIGH** |
-| `POST /api/parties`      | Uses `body.companyId \|\| body.company_id` for the parties table insert instead of `req.user.tenantId`. Tenant middleware catches body mismatch but the handler logic is fragile. | MEDIUM   |
+| Route                    | Issue                                                                                                                                                                             | Severity | Status                                                                                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/companies/:id` | URL param is `:id` not `:companyId`, so `requireTenant` middleware does not enforce param check.                                                                                  | **HIGH** | **FIXED in rework** -- inline tenant check added: `req.params.id === req.user.tenantId` returns 403 on mismatch                                     |
+| `POST /api/parties`      | Uses `body.companyId \|\| body.company_id` for the parties table insert instead of `req.user.tenantId`. Tenant middleware catches body mismatch but the handler logic is fragile. | MEDIUM   | UNRESOLVED RISK -- requireTenant body check mitigates exploitation but handler logic remains fragile; not fixed in this rework to avoid scope creep |
 
 ### 2. Missing Role Gates
 
-| Route Group                            | Issue                                                                                                                         | Recommendation                                                                    |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `/api/accounting/*` (all 22 endpoints) | No role restrictions. Drivers can create invoices, post journal entries, modify settlements, and batch-import financial data. | Restrict write endpoints to admin/dispatcher/accountant                           |
-| `/api/safety/quizzes` (POST)           | Any user can create quizzes                                                                                                   | Restrict to admin/safety_manager                                                  |
-| `/api/safety/quiz-results` (POST)      | Any user can submit quiz results                                                                                              | Allow drivers to submit own results; restrict viewing all to admin/safety_manager |
-| `/api/exceptions` (POST/PATCH)         | Any user can create and update exceptions                                                                                     | Consider restricting PATCH to admin/dispatcher                                    |
-| `/api/incidents` (POST)                | Any user can create incidents                                                                                                 | May be intentional (drivers report incidents)                                     |
+| Route Group                              | Issue                                                                                                                    | Recommendation                                                                    | Status                                                                                                 |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `/api/accounting/*` (13 write endpoints) | No role restrictions on write ops. Drivers could create invoices, post journal entries, and batch-import financial data. | Restrict write endpoints to accounting roles                                      | **FIXED in rework** -- all 13 POST/PATCH endpoints gated with `requireRole(...ACCOUNTING_WRITE_ROLES)` |
+| `/api/safety/quizzes` (POST)             | Any user can create quizzes                                                                                              | Restrict to admin/safety_manager                                                  | **FIXED in rework** -- gated with `requireRole(...SAFETY_MANAGE_ROLES)`                                |
+| `/api/safety/maintenance` (POST)         | Any user can create maintenance records                                                                                  | Restrict to safety management roles                                               | **FIXED in rework** -- gated with `requireRole(...SAFETY_MANAGE_ROLES)`                                |
+| `/api/safety/vendors` (POST)             | Any user can create safety vendors                                                                                       | Restrict to safety management roles                                               | **FIXED in rework** -- gated with `requireRole(...SAFETY_MANAGE_ROLES)`                                |
+| `/api/safety/quiz-results` (POST)        | Any user can submit quiz results                                                                                         | Allow drivers to submit own results; restrict viewing all to admin/safety_manager | Intentionally ungated -- drivers submit their own results                                              |
+| `/api/safety/activity` (POST)            | Any user can log activity                                                                                                | Audit trail -- any user                                                           | Intentionally ungated -- audit log entries                                                             |
+| `/api/exceptions` (POST/PATCH)           | Any user can create and update exceptions                                                                                | Consider restricting PATCH to admin/dispatcher                                    | UNRESOLVED RISK -- not in scope for this rework                                                        |
+| `/api/incidents` (POST)                  | Any user can create incidents                                                                                            | May be intentional (drivers report incidents)                                     | Intentionally ungated -- drivers report incidents                                                      |
 
 ### 3. Tier Gate Coverage
 
@@ -420,17 +424,17 @@ Source: `server/routes/*.ts`, `server/middleware/*.ts`
 | /api/clients (+ companies, parties, search) | 9         | 9      | 9      | 2          | 0          |
 | /api/providers                              | 4         | 4      | 4      | 0          | 0          |
 | /api/contacts                               | 4         | 4      | 4      | 0          | 0          |
-| /api/accounting                             | 22        | 22     | 22     | 0          | 0          |
-| /api/safety                                 | 15        | 15     | 15     | 0          | 0          |
+| /api/accounting                             | 22        | 22     | 22     | **13**     | 0          |
+| /api/safety                                 | 15        | 15     | 15     | **3**      | 0          |
 | /api/incidents                              | 4         | 4      | 4      | 0          | 0          |
 | /api/exceptions                             | 5         | 5      | 5      | 0          | 0          |
 | /api/tracking                               | 4         | 3      | 3      | 0          | 3          |
 | /api/users + auth                           | 6         | 4      | 4      | 2          | 0          |
 | /api/documents                              | 3         | 3      | 3      | 0          | 0          |
-| **TOTAL**                                   | **92**    | **89** | **89** | **4**      | **3**      |
+| **TOTAL**                                   | **92**    | **89** | **89** | **20**     | **3**      |
 
 - 89/92 endpoints require Firebase auth (97%)
 - 89/92 endpoints enforce tenant isolation (97%)
-- Only 4/92 endpoints have role-based access control (4%)
+- 20/92 endpoints have role-based access control (22%) -- up from 4 (4%) before rework
 - Only 3/92 endpoints have subscription tier gates (3%)
 - 3 unauthenticated endpoints (login, reset-password, webhook)

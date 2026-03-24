@@ -75,11 +75,12 @@ interface Props {
 function withCompanyDefaults(c: Company): Company {
   return {
     ...c,
-    loadNumberingConfig: c.loadNumberingConfig ?? {
+    loadNumberingConfig: {
       prefix: "LD",
       nextSequence: 1000,
+      ...(c.loadNumberingConfig ?? {}),
     },
-    scoringConfig: c.scoringConfig ?? {
+    scoringConfig: {
       minimumDispatchScore: 75,
       weights: {
         safety: 30,
@@ -90,13 +91,15 @@ function withCompanyDefaults(c: Company): Company {
         inspections: 5,
         training: 5,
       },
+      ...(c.scoringConfig ?? {}),
     },
-    governance: c.governance ?? {
+    governance: {
       autoLockCompliance: false,
       requireQuizPass: false,
       requireMaintenancePass: false,
       maxLoadsPerDriverPerWeek: 5,
       preferredCurrency: "USD",
+      ...(c.governance ?? {}),
     },
     driverPermissions: c.driverPermissions ?? {},
     dispatcherPermissions: c.dispatcherPermissions ?? {},

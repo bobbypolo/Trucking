@@ -463,8 +463,20 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     try {
       const user = await createAccount();
       onLogin(user);
-    } catch (e) {
-      setError("Signup failed. Please try again.");
+    } catch (err: unknown) {
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as { code: string }).code
+          : "";
+      if (code === "auth/email-already-in-use") {
+        setError(
+          "An account with this email already exists. Please sign in instead.",
+        );
+      } else if (code === "auth/weak-password") {
+        setError("Password is too weak. Please use at least 6 characters.");
+      } else {
+        setError("Signup failed. Please try again.");
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -483,8 +495,20 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     try {
       // Step 1: Create the account so we have Firebase auth + a valid token.
       user = await createAccount();
-    } catch {
-      setError("Signup failed. Please try again.");
+    } catch (err: unknown) {
+      const code =
+        err instanceof Error && "code" in err
+          ? (err as { code: string }).code
+          : "";
+      if (code === "auth/email-already-in-use") {
+        setError(
+          "An account with this email already exists. Please sign in instead.",
+        );
+      } else if (code === "auth/weak-password") {
+        setError("Password is too weak. Please use at least 6 characters.");
+      } else {
+        setError("Signup failed. Please try again.");
+      }
       setIsProcessing(false);
       return;
     }

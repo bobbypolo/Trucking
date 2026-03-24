@@ -1,5 +1,19 @@
 // Tests R-P1-18, R-P1-19, R-P1-20
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Mock the api module
+const mockGet = vi.fn();
+const mockPost = vi.fn();
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: (...args: any[]) => mockGet(...args),
+    post: (...args: any[]) => mockPost(...args),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
+}));
 
 // Mock authService
 vi.mock("../../../services/authService", () => ({
@@ -59,78 +73,82 @@ const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockUpdateCompany = updateCompany as ReturnType<typeof vi.fn>;
 const mockGetLoads = getLoads as ReturnType<typeof vi.fn>;
 
-// Helper to mock fetch for a single response
-function mockFetch(data: unknown, ok = true) {
-  vi.spyOn(globalThis, "fetch").mockResolvedValue({
-    ok,
-    json: () => Promise.resolve(data),
-  } as any);
+// Helper to set api.get to return data (simulates success)
+function mockApiGet(data: unknown) {
+  mockGet.mockResolvedValue(data);
 }
 
-// Helper to mock fetch to fail (network error)
-function mockFetchFail() {
-  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("network error"));
+// Helper to set api.get to throw (simulates network/API error)
+function mockApiGetFail() {
+  mockGet.mockRejectedValue(new Error("network error"));
+}
+
+// Helper to set api.post to return data (simulates success)
+function mockApiPost(data: unknown) {
+  mockPost.mockResolvedValue(data);
+}
+
+// Helper to set api.post to throw (simulates network/API error)
+function mockApiPostFail() {
+  mockPost.mockRejectedValue(new Error("network error"));
 }
 
 describe("safetyService — enhanced coverage (API-based)", () => {
   beforeEach(() => {
     mockGetCurrentUser.mockReturnValue({ companyId: "test-co" });
-    vi.spyOn(globalThis, "fetch").mockReset();
+    mockGet.mockReset();
+    mockPost.mockReset();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  // ─── Storage getters ─────────────────────────────────────────────────
+  // --- Storage getters ---
   describe("storage getters", () => {
     it("getStoredQuizzes returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getStoredQuizzes()).toEqual([]);
     });
 
     it("getStoredResults returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getStoredResults()).toEqual([]);
     });
 
     it("getStoredSafetyActivity returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getStoredSafetyActivity()).toEqual([]);
     });
 
     it("getMaintenanceRecords returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getMaintenanceRecords()).toEqual([]);
     });
 
     it("getServiceTickets returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getServiceTickets()).toEqual([]);
     });
 
     it("getVendors returns empty array on network failure", async () => {
-      mockFetchFail();
+      mockApiGetFail();
       expect(await getVendors()).toEqual([]);
     });
 
     it("getStoredQuizzes returns data from API", async () => {
-      mockFetch([{ id: "q1", title: "Test" }]);
+      mockApiGet([{ id: "q1", title: "Test" }]);
       const result = await getStoredQuizzes();
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe("q1");
     });
 
-    it("getStoredResults returns empty array when API returns non-ok", async () => {
-      mockFetch([], false);
+    it("getStoredResults returns empty array when API throws", async () => {
+      mockApiGetFail();
       expect(await getStoredResults()).toEqual([]);
     });
   });
 
-  // ─── saveMaintenanceRecord ───────────────────────────────────────────
+  // --- saveMaintenanceRecord ---
   describe("saveMaintenanceRecord", () => {
     it("POSTs record to /api/safety/maintenance", async () => {
-      mockFetch({ id: "mr-1" });
+      mockApiPost({ id: "mr-1" });
 
       const record = {
         id: "mr-1",
@@ -144,86 +162,81 @@ describe("safetyService — enhanced coverage (API-based)", () => {
 
       await saveMaintenanceRecord(record);
 
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls).toHaveLength(1);
-      expect(calls[0][0]).toContain("/safety/maintenance");
-      expect(calls[0][1].method).toBe("POST");
-      expect(JSON.parse(calls[0][1].body).id).toBe("mr-1");
+      expect(mockPost).toHaveBeenCalledWith("/safety/maintenance", record);
     });
 
     it("does not throw on network failure", async () => {
-      mockFetchFail();
+      mockApiPostFail();
       await expect(
         saveMaintenanceRecord({ id: "mr-1" } as any),
       ).resolves.not.toThrow();
     });
   });
 
-  // ─── saveServiceTicket ───────────────────────────────────────────────
+  // --- saveServiceTicket ---
   describe("saveServiceTicket", () => {
     it("POSTs ticket to /api/safety/service-tickets", async () => {
-      mockFetch({ id: "st-1" });
+      mockApiPost({ id: "st-1" });
 
       await saveServiceTicket({ id: "st-1", title: "Fix brakes" } as any);
 
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][0]).toContain("/safety/service-tickets");
-      expect(calls[0][1].method).toBe("POST");
+      expect(mockPost).toHaveBeenCalledWith(
+        "/safety/service-tickets",
+        expect.objectContaining({ id: "st-1" }),
+      );
     });
 
     it("does not throw on network failure", async () => {
-      mockFetchFail();
+      mockApiPostFail();
       await expect(
         saveServiceTicket({ id: "st-1" } as any),
       ).resolves.not.toThrow();
     });
   });
 
-  // ─── saveVendor ──────────────────────────────────────────────────────
+  // --- saveVendor ---
   describe("saveVendor", () => {
     it("POSTs vendor to /api/safety/vendors", async () => {
-      mockFetch({ id: "v-1" });
+      mockApiPost({ id: "v-1" });
 
       await saveVendor({ id: "v-1", name: "AutoParts Inc" } as any);
 
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][0]).toContain("/safety/vendors");
-      expect(calls[0][1].method).toBe("POST");
+      expect(mockPost).toHaveBeenCalledWith(
+        "/safety/vendors",
+        expect.objectContaining({ id: "v-1" }),
+      );
     });
 
     it("does not throw on network failure", async () => {
-      mockFetchFail();
+      mockApiPostFail();
       await expect(saveVendor({ id: "v-1" } as any)).resolves.not.toThrow();
     });
   });
 
-  // ─── logSafetyActivity ───────────────────────────────────────────────
+  // --- logSafetyActivity ---
   describe("logSafetyActivity", () => {
     it("POSTs to /api/safety/activity", async () => {
-      mockFetch({ id: "act-1" });
+      mockApiPost({ id: "act-1" });
 
       await logSafetyActivity("Test event", "Status", "admin");
 
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][0]).toContain("/safety/activity");
-      expect(calls[0][1].method).toBe("POST");
-
-      const body = JSON.parse(calls[0][1].body);
-      expect(body.action).toBe("Test event");
-      expect(body.entity_type).toBe("Status");
-      expect(body.actor).toBe("admin");
+      expect(mockPost).toHaveBeenCalledWith("/safety/activity", {
+        action: "Test event",
+        entity_type: "Status",
+        actor: "admin",
+      });
     });
 
     it("does not throw on network failure", async () => {
-      mockFetchFail();
+      mockApiPostFail();
       await expect(logSafetyActivity("Event", "Alert")).resolves.not.toThrow();
     });
   });
 
-  // ─── saveQuizResult ──────────────────────────────────────────────────
+  // --- saveQuizResult ---
   describe("saveQuizResult", () => {
     it("POSTs to /api/safety/quiz-results", async () => {
-      mockFetch({ id: "qr-1" });
+      mockApiPost({ id: "qr-1" });
 
       await saveQuizResult({
         quizId: "q1",
@@ -233,13 +246,14 @@ describe("safetyService — enhanced coverage (API-based)", () => {
         completedAt: "2026-03-15",
       } as any);
 
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][0]).toContain("/safety/quiz-results");
-      expect(calls[0][1].method).toBe("POST");
+      expect(mockPost).toHaveBeenCalledWith(
+        "/safety/quiz-results",
+        expect.objectContaining({ quizId: "q1", driverId: "d1" }),
+      );
     });
   });
 
-  // ─── checkDriverCompliance ───────────────────────────────────────────
+  // --- checkDriverCompliance ---
   describe("checkDriverCompliance", () => {
     it("returns compliant for driver with no requirements", () => {
       const user = { id: "d1", safetyScore: 100, restricted: false } as any;
@@ -401,18 +415,12 @@ describe("safetyService — enhanced coverage (API-based)", () => {
     });
   });
 
-  // ─── getDriverQuizzes ────────────────────────────────────────────────
+  // --- getDriverQuizzes ---
   describe("getDriverQuizzes", () => {
     it("returns empty array when no quizzes exist", async () => {
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      // getDriverQuizzes calls getStoredQuizzes and getStoredResults in parallel
+      // Both use api.get — first call returns quizzes, second returns results
+      mockGet.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const result = await getDriverQuizzes("d1");
       expect(result).toEqual([]);
@@ -429,15 +437,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
           questions: [],
         },
       ];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(quizzes),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce(quizzes).mockResolvedValueOnce([]);
 
       const result = await getDriverQuizzes("d1");
       expect(result).toHaveLength(1);
@@ -464,15 +464,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
           completedAt: "2026-03-10",
         },
       ];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(quizzes),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(results),
-        } as any);
+      mockGet.mockResolvedValueOnce(quizzes).mockResolvedValueOnce(results);
 
       const result = await getDriverQuizzes("d1");
       expect(result[0].status).toBe("Passed");
@@ -499,15 +491,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
           completedAt: "2026-03-10",
         },
       ];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(quizzes),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(results),
-        } as any);
+      mockGet.mockResolvedValueOnce(quizzes).mockResolvedValueOnce(results);
 
       const result = await getDriverQuizzes("d1");
       expect(result[0].status).toBe("Failed");
@@ -524,15 +508,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
           questions: [],
         },
       ];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(quizzes),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce(quizzes).mockResolvedValueOnce([]);
 
       const result = await getDriverQuizzes("any-driver");
       expect(result).toHaveLength(1);
@@ -549,22 +525,14 @@ describe("safetyService — enhanced coverage (API-based)", () => {
           questions: [],
         },
       ];
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve(quizzes),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce(quizzes).mockResolvedValueOnce([]);
 
       const result = await getDriverQuizzes("d1");
       expect(result).toHaveLength(0);
     });
   });
 
-  // ─── calculateDriverPerformance ──────────────────────────────────────
+  // --- calculateDriverPerformance ---
   describe("calculateDriverPerformance", () => {
     it("returns Elite grade for driver with 100% scores", async () => {
       const user = {
@@ -582,15 +550,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
       mockGetLoads.mockResolvedValue([]);
 
       // getStoredQuizzes and getStoredResults both return empty
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.driverId).toBe("d1");
@@ -621,15 +581,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
         },
       ]);
 
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.grade).toBe("At Risk");
@@ -645,7 +597,12 @@ describe("safetyService — enhanced coverage (API-based)", () => {
       } as any;
       mockGetCompany.mockResolvedValue(null); // Uses defaults
       mockGetLoads.mockResolvedValue([
-        { driverId: "d1", status: "delivered", bolNumber: "BOL-1", issues: [] },
+        {
+          driverId: "d1",
+          status: "delivered",
+          bolNumber: "BOL-1",
+          issues: [],
+        },
         {
           driverId: "d1",
           status: "delivered",
@@ -655,15 +612,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
         },
       ]);
 
-      vi.spyOn(globalThis, "fetch")
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any)
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve([]),
-        } as any);
+      mockGet.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.metrics.loadCount).toBe(2);
@@ -672,55 +621,41 @@ describe("safetyService — enhanced coverage (API-based)", () => {
     });
   });
 
-  // ─── getEquipment ────────────────────────────────────────────────────
+  // --- getEquipment ---
   describe("getEquipment", () => {
-    it("fetches equipment from API using getAuthHeaders", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        json: () => Promise.resolve([{ id: "eq-1", type: "Truck" }]),
-      } as any);
+    it("fetches equipment from API via api.get", async () => {
+      mockGet.mockResolvedValue([{ id: "eq-1", type: "Truck" }]);
 
       const equipment = await getEquipment("c1");
       expect(equipment).toHaveLength(1);
-
-      // Verify it uses getAuthHeaders (not localStorage.getItem('token'))
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][1].headers).toMatchObject({
-        Authorization: "Bearer test-token",
-      });
+      expect(mockGet).toHaveBeenCalledWith("/equipment/c1");
     });
 
     it("returns empty array on API failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const equipment = await getEquipment("c1");
       expect(equipment).toEqual([]);
     });
   });
 
-  // ─── getComplianceRecords ────────────────────────────────────────────
+  // --- getComplianceRecords ---
   describe("getComplianceRecords", () => {
-    it("fetches compliance records from API using getAuthHeaders", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        json: () => Promise.resolve([{ id: "cr-1" }]),
-      } as any);
+    it("fetches compliance records from API via api.get", async () => {
+      mockGet.mockResolvedValue([{ id: "cr-1" }]);
 
       const records = await getComplianceRecords("u1");
       expect(records).toHaveLength(1);
-
-      // Verify it uses getAuthHeaders (not localStorage.getItem('token'))
-      const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-      expect(calls[0][1].headers).toMatchObject({
-        Authorization: "Bearer test-token",
-      });
+      expect(mockGet).toHaveBeenCalledWith("/compliance/u1");
     });
 
     it("returns empty array on API failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const records = await getComplianceRecords("u1");
       expect(records).toEqual([]);
     });
   });
 
-  // ─── registerAsset ───────────────────────────────────────────────────
+  // --- registerAsset ---
   describe("registerAsset", () => {
     beforeEach(() => {
       mockGetCompany.mockReset();
@@ -733,11 +668,8 @@ describe("safetyService — enhanced coverage (API-based)", () => {
         name: "Test Co",
         equipmentRegistry: [],
       });
-      // Mock logSafetyActivity fetch
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({}),
-      } as any);
+      // logSafetyActivity uses api.post
+      mockPost.mockResolvedValue({});
 
       const asset = { id: "eq-1", type: "Truck" } as any;
       const user = { name: "Admin" } as any;
@@ -763,7 +695,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
     });
   });
 
-  // ─── updateEquipmentStatus ───────────────────────────────────────────
+  // --- updateEquipmentStatus ---
   describe("updateEquipmentStatus", () => {
     beforeEach(() => {
       mockUpdateCompany.mockClear();
@@ -836,7 +768,7 @@ describe("safetyService — enhanced coverage (API-based)", () => {
     });
   });
 
-  // ─── seedSafetyData ──────────────────────────────────────────────────
+  // --- seedSafetyData ---
   describe("seedSafetyData", () => {
     it("is a no-op (deprecated)", () => {
       expect(() => seedSafetyData()).not.toThrow();

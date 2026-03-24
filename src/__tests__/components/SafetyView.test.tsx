@@ -1,9 +1,14 @@
 import React from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { SafetyView } from "../../../components/SafetyView";
 import type { User } from "../../../types";
+
+// Boundary mocks: config (API_URL) for api.ts calls
+vi.mock("../../../services/config", () => ({
+  API_URL: "/api",
+}));
 
 // Stub services at network boundary
 vi.mock("../../../services/safetyService", () => ({
@@ -94,8 +99,20 @@ const mockUser: User = {
 };
 
 describe("SafetyView component", () => {
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock globalThis.fetch for api.ts calls (FMCSA, notifications, quizzes, settings)
+    // Return null so ?? [] fallbacks work and settings stays null (shows N/A)
+    fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(null),
+    } as Response);
+  });
+
+  afterEach(() => {
+    fetchSpy.mockRestore();
   });
 
   // ── HEADER & CHROME ──

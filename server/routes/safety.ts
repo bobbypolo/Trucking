@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -7,6 +7,33 @@ import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 import { getSafetyScore } from "../services/fmcsa.service";
 import { checkExpiring } from "../services/cert-expiry-checker";
+
+/**
+ * Role-based access control middleware for safety write endpoints.
+ * Returns 403 if the authenticated user's role is not in the allowed list.
+ */
+function requireRole(...allowedRoles: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRole = (req as any).user?.role;
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      return res.status(403).json({ error: "Insufficient role permissions" });
+    }
+    next();
+  };
+}
+
+/** Roles allowed to manage safety data (create quizzes, maintenance, vendors). */
+const SAFETY_MANAGE_ROLES = [
+  "admin",
+  "safety_manager",
+  "dispatcher",
+  "OWNER_ADMIN",
+  "ORG_OWNER_SUPER_ADMIN",
+  "SAFETY_MAINT",
+  "SAFETY_COMPLIANCE",
+  "MAINTENANCE_MANAGER",
+  "OPS_MANAGER",
+];
 
 const router = Router();
 
@@ -65,11 +92,12 @@ router.get(
   },
 );
 
-// POST /api/safety/quizzes — create a quiz
+// POST /api/safety/quizzes — create a quiz (restricted to safety management roles)
 router.post(
   "/api/safety/quizzes",
   requireAuth,
   requireTenant,
+  requireRole(...SAFETY_MANAGE_ROLES),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { title, description, status } = req.body;
@@ -160,7 +188,10 @@ router.post(
         correlationId: req.correlationId,
         route: "POST /api/safety/quiz-results",
       });
-      log.info({ resultId: id, quizId: quiz_id }, "Safety quiz result recorded");
+      log.info(
+        { resultId: id, quizId: quiz_id },
+        "Safety quiz result recorded",
+      );
       res.status(201).json({ message: "Quiz result recorded", id });
     } catch (error) {
       const log = createChildLogger({
@@ -228,11 +259,12 @@ router.get(
   },
 );
 
-// POST /api/safety/maintenance — create maintenance record
+// POST /api/safety/maintenance — create maintenance record (restricted to safety management roles)
 router.post(
   "/api/safety/maintenance",
   requireAuth,
   requireTenant,
+  requireRole(...SAFETY_MANAGE_ROLES),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const {
@@ -349,11 +381,12 @@ router.get(
   },
 );
 
-// POST /api/safety/vendors — create vendor
+// POST /api/safety/vendors — create vendor (restricted to safety management roles)
 router.post(
   "/api/safety/vendors",
   requireAuth,
   requireTenant,
+  requireRole(...SAFETY_MANAGE_ROLES),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const {
@@ -483,7 +516,9 @@ router.get(
   requireTenant,
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
-    const daysAhead = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+    const daysAhead = req.query.days
+      ? parseInt(req.query.days as string, 10)
+      : 30;
     try {
       const certs = await checkExpiring(companyId, daysAhead);
       res.json(certs);
@@ -497,7 +532,6 @@ router.get(
     }
   },
 );
-
 
 // ---- FMCSA Safety Scores ----
 
@@ -516,7 +550,10 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/safety/fmcsa/:dotNumber",
       });
-      log.error({ err: error, dotNumber }, "Failed to fetch FMCSA safety score");
+      log.error(
+        { err: error, dotNumber },
+        "Failed to fetch FMCSA safety score",
+      );
       res.status(500).json({ error: "Failed to fetch FMCSA safety score" });
     }
   },

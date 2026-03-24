@@ -1,4 +1,4 @@
-import { API_URL as API_BASE } from "./config";
+import { api } from "./api";
 import { FuelEntry, VaultDoc, AutomationRule } from "../types";
 import { executeFuelMatchingRule } from "./rulesEngineService";
 import { getVaultDocs } from "./financialService";
@@ -58,12 +58,7 @@ export const FuelCardService = {
    * Bulk import from a file (CSV/XLSX)
    */
   importBatch: async (entries: any[]): Promise<number> => {
-    const res = await fetch(`${API_BASE}/accounting/fuel/batch`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entries),
-    });
-    if (!res.ok) throw new Error("Failed to import fuel batch");
+    await api.post("/accounting/fuel/batch", entries);
     return entries.length;
   },
 

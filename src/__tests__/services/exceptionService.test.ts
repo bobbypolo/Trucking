@@ -1,8 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock config
-vi.mock("../../../services/config", () => ({
-  API_URL: "http://test-api:5000/api",
+// Mock the api module
+const mockGet = vi.fn();
+const mockPost = vi.fn();
+const mockPatch = vi.fn();
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: (...args: any[]) => mockGet(...args),
+    post: (...args: any[]) => mockPost(...args),
+    patch: (...args: any[]) => mockPatch(...args),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
 import {
@@ -16,53 +26,42 @@ import {
 
 describe("exceptionService", () => {
   beforeEach(() => {
-    vi.spyOn(globalThis, "fetch").mockReset();
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
+    mockGet.mockReset();
+    mockPost.mockReset();
+    mockPatch.mockReset();
   });
 
   // --- getExceptions ---
   describe("getExceptions", () => {
     it("fetches exceptions with query parameters from filters", async () => {
       const exceptions = [{ id: "exc-1", type: "LATE_DELIVERY" }];
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(exceptions),
-      } as Response);
+      mockGet.mockResolvedValue(exceptions);
 
       const result = await getExceptions({ status: "open", severity: "3" });
       expect(result).toEqual(exceptions);
-      const url = (globalThis.fetch as any).mock.calls[0][0] as string;
+      const url = mockGet.mock.calls[0][0] as string;
       expect(url).toContain("status=open");
       expect(url).toContain("severity=3");
     });
 
     it("fetches with empty filters", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve([]),
-      } as Response);
+      mockGet.mockResolvedValue([]);
 
       const result = await getExceptions();
       expect(result).toEqual([]);
-      const url = (globalThis.fetch as any).mock.calls[0][0] as string;
+      const url = mockGet.mock.calls[0][0] as string;
       expect(url).toContain("/exceptions?");
     });
 
     it("returns empty array on non-OK response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response);
+      mockGet.mockRejectedValue(new Error("API Request failed: 500"));
 
       const result = await getExceptions();
       expect(result).toEqual([]);
     });
 
     it("returns empty array on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const result = await getExceptions();
       expect(result).toEqual([]);
     });
@@ -71,37 +70,31 @@ describe("exceptionService", () => {
   // --- createException ---
   describe("createException", () => {
     it("sends POST and returns the created exception id", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ id: "exc-new" }),
-      } as Response);
+      mockPost.mockResolvedValue({ id: "exc-new" });
 
       const result = await createException({
         type: "LATE_DELIVERY" as any,
         severity: 3 as any,
       });
       expect(result).toBe("exc-new");
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/exceptions",
+      expect(mockPost).toHaveBeenCalledWith(
+        "/exceptions",
         expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          type: "LATE_DELIVERY",
+          severity: 3,
         }),
       );
     });
 
     it("returns null on non-OK response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 400,
-      } as Response);
+      mockPost.mockRejectedValue(new Error("API Request failed: 400"));
 
       const result = await createException({ type: "TEST" as any });
       expect(result).toBeNull();
     });
 
     it("returns null on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockPost.mockRejectedValue(new Error("offline"));
       const result = await createException({ type: "TEST" as any });
       expect(result).toBeNull();
     });
@@ -110,34 +103,24 @@ describe("exceptionService", () => {
   // --- updateException ---
   describe("updateException", () => {
     it("sends PATCH with updates and returns true on success", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-      } as Response);
+      mockPatch.mockResolvedValue({});
 
       const result = await updateException("exc-1", { status: "resolved" });
       expect(result).toBe(true);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/exceptions/exc-1",
-        expect.objectContaining({
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "resolved" }),
-        }),
-      );
+      expect(mockPatch).toHaveBeenCalledWith("/exceptions/exc-1", {
+        status: "resolved",
+      });
     });
 
     it("returns false on non-OK response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 404,
-      } as Response);
+      mockPatch.mockRejectedValue(new Error("API Request failed: 404"));
 
       const result = await updateException("exc-1", { status: "resolved" });
       expect(result).toBe(false);
     });
 
     it("returns false on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockPatch.mockRejectedValue(new Error("offline"));
       const result = await updateException("exc-1", { status: "resolved" });
       expect(result).toBe(false);
     });
@@ -150,30 +133,22 @@ describe("exceptionService", () => {
         { id: "evt-1", type: "STATUS_CHANGE" },
         { id: "evt-2", type: "COMMENT" },
       ];
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(events),
-      } as Response);
+      mockGet.mockResolvedValue(events);
 
       const result = await getExceptionEvents("exc-1");
       expect(result).toEqual(events);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/exceptions/exc-1/events",
-      );
+      expect(mockGet).toHaveBeenCalledWith("/exceptions/exc-1/events");
     });
 
     it("returns empty array on non-OK response", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response);
+      mockGet.mockRejectedValue(new Error("API Request failed: 500"));
 
       const result = await getExceptionEvents("exc-1");
       expect(result).toEqual([]);
     });
 
     it("returns empty array on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const result = await getExceptionEvents("exc-1");
       expect(result).toEqual([]);
     });
@@ -186,30 +161,22 @@ describe("exceptionService", () => {
         { typeCode: "LATE", displayName: "Late Delivery" },
         { typeCode: "DMG", displayName: "Damaged Cargo" },
       ];
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(types),
-      } as Response);
+      mockGet.mockResolvedValue(types);
 
       const result = await getExceptionTypes();
       expect(result).toEqual(types);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/exception-types",
-      );
+      expect(mockGet).toHaveBeenCalledWith("/exception-types");
     });
 
     it("returns empty array on failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response);
+      mockGet.mockRejectedValue(new Error("API Request failed: 500"));
 
       const result = await getExceptionTypes();
       expect(result).toEqual([]);
     });
 
     it("returns empty array on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const result = await getExceptionTypes();
       expect(result).toEqual([]);
     });
@@ -218,33 +185,23 @@ describe("exceptionService", () => {
   // --- getDashboardCards ---
   describe("getDashboardCards", () => {
     it("fetches dashboard cards", async () => {
-      const cards = [
-        { id: "card-1", title: "Active Exceptions", count: 5 },
-      ];
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve(cards),
-      } as Response);
+      const cards = [{ id: "card-1", title: "Active Exceptions", count: 5 }];
+      mockGet.mockResolvedValue(cards);
 
       const result = await getDashboardCards();
       expect(result).toEqual(cards);
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "http://test-api:5000/api/dashboard/cards",
-      );
+      expect(mockGet).toHaveBeenCalledWith("/dashboard/cards");
     });
 
     it("returns empty array on failure", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: false,
-        status: 500,
-      } as Response);
+      mockGet.mockRejectedValue(new Error("API Request failed: 500"));
 
       const result = await getDashboardCards();
       expect(result).toEqual([]);
     });
 
     it("returns empty array on fetch error", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      mockGet.mockRejectedValue(new Error("offline"));
       const result = await getDashboardCards();
       expect(result).toEqual([]);
     });

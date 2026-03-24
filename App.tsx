@@ -398,9 +398,9 @@ export default function App() {
     [user?.companyId],
   );
 
-  const handleLogin = (loggedInUser: User) => {
+  const handleLogin = async (loggedInUser: User) => {
     setUser(loggedInUser);
-    // refreshData is triggered by the onUserChange listener in useEffect
+
     if (features.seedSystem) {
       seedDatabase();
     }
@@ -413,6 +413,16 @@ export default function App() {
     } else {
       setActiveTab("dashboard");
     }
+
+    // Directly trigger data refresh instead of relying solely on the
+    // onUserChange listener which may not fire if onAuthStateChanged
+    // already resolved before this callback runs.
+    try {
+      await refreshData(loggedInUser);
+    } catch (err) {
+      console.error("Failed to refresh data after login:", err);
+    }
+    setIsAuthReady(true);
   };
 
   const handleLogout = async () => {

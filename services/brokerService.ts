@@ -1,28 +1,20 @@
-import { API_URL } from "./config";
+import { api } from "./api";
 import { Broker, Contract } from "../types";
-import { getAuthHeaders } from "./authService";
 
 export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
   try {
-    const url = companyId
-      ? `${API_URL}/clients/${companyId}`
-      : `${API_URL}/clients`;
-    const response = await fetch(url, {
-      headers: await getAuthHeaders(),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data
-        .map((b: any) => ({
-          ...b,
-          approvedChassis:
-            typeof b.chassis_requirements === "string"
-              ? JSON.parse(b.chassis_requirements)
-              : b.chassis_requirements || [],
-          clientType: b.type,
-        }))
-        .sort((a: Broker, b: Broker) => a.name.localeCompare(b.name));
-    }
+    const url = companyId ? `/clients/${companyId}` : `/clients`;
+    const data = await api.get(url);
+    return (data as any[])
+      .map((b: any) => ({
+        ...b,
+        approvedChassis:
+          typeof b.chassis_requirements === "string"
+            ? JSON.parse(b.chassis_requirements)
+            : b.chassis_requirements || [],
+        clientType: b.type,
+      }))
+      .sort((a: Broker, b: Broker) => a.name.localeCompare(b.name));
   } catch (e) {
     console.warn("[brokerService] API fetch brokers failed:", e);
   }
@@ -31,16 +23,11 @@ export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
 
 export const saveBroker = async (broker: Broker) => {
   try {
-    const response = await fetch(`${API_URL}/clients`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...broker,
-        type: broker.clientType, // Map to SQL 'type'
-        chassis_requirements: broker.approvedChassis,
-      }),
+    await api.post("/clients", {
+      ...broker,
+      type: broker.clientType, // Map to SQL 'type'
+      chassis_requirements: broker.approvedChassis,
     });
-    if (!response.ok) throw new Error("Failed to save to backend");
   } catch (e) {
     console.warn("[brokerService] API save broker failed:", e);
   }
@@ -56,19 +43,14 @@ export const getBrokerById = async (
 // Contracts
 export const getContracts = async (customerId: string): Promise<Contract[]> => {
   try {
-    const response = await fetch(`${API_URL}/contracts/${customerId}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data.map((c: any) => ({
-        ...c,
-        equipmentPreferences:
-          typeof c.equipment_preferences === "string"
-            ? JSON.parse(c.equipment_preferences)
-            : c.equipment_preferences || {},
-      }));
-    }
+    const data = await api.get(`/contracts/${customerId}`);
+    return (data as any[]).map((c: any) => ({
+      ...c,
+      equipmentPreferences:
+        typeof c.equipment_preferences === "string"
+          ? JSON.parse(c.equipment_preferences)
+          : c.equipment_preferences || {},
+    }));
   } catch (e) {
     console.warn("[brokerService] API fetch contracts failed:", e);
   }
@@ -77,12 +59,7 @@ export const getContracts = async (customerId: string): Promise<Contract[]> => {
 
 export const saveContract = async (contract: Contract) => {
   try {
-    const response = await fetch(`${API_URL}/contracts`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(contract),
-    });
-    if (!response.ok) throw new Error("Failed to save contract");
+    await api.post("/contracts", contract);
   } catch (e) {
     console.warn("[brokerService] API save contract failed:", e);
   }

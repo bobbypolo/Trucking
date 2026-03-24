@@ -301,9 +301,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         setWeather(null);
         return;
       }
-      const res = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${WEATHER_API_KEY}&units=imperial`,
-      );
+      // prettier-ignore
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lng}&appid=${WEATHER_API_KEY}&units=imperial`);
       const data = await res.json();
       setWeather({
         temp: Math.round(data.main.temp),

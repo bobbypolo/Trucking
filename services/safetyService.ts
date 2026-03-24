@@ -1,4 +1,4 @@
-import { API_URL } from "./config";
+import { api } from "./api";
 import {
   SafetyQuiz,
   QuizResult,
@@ -13,16 +13,13 @@ import {
   Provider,
 } from "../types";
 import { getLoads } from "./storageService";
-import { getCompany, updateCompany, getAuthHeaders } from "./authService";
+import { getCompany, updateCompany } from "./authService";
 
-// ── Quizzes ────────────────────────────────────────────────────────────────
+// -- Quizzes ----------------------------------------------------------------
 
 export const getStoredQuizzes = async (): Promise<SafetyQuiz[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/quizzes`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return ((await api.get("/safety/quizzes")) as SafetyQuiz[]) ?? [];
   } catch {
     return [];
   }
@@ -30,25 +27,17 @@ export const getStoredQuizzes = async (): Promise<SafetyQuiz[]> => {
 
 export const saveQuiz = async (quiz: SafetyQuiz): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/quizzes`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(quiz),
-    });
+    await api.post("/safety/quizzes", quiz);
   } catch {
     // silently ignore
   }
 };
 
-// ── Quiz Results ──────────────────────────────────────────────────────────
+// -- Quiz Results ------------------------------------------------------------
 
 export const getStoredResults = async (): Promise<QuizResult[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/quiz-results`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return ((await api.get("/safety/quiz-results")) as QuizResult[]) ?? [];
   } catch {
     return [];
   }
@@ -56,27 +45,19 @@ export const getStoredResults = async (): Promise<QuizResult[]> => {
 
 export const saveQuizResult = async (result: QuizResult): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/quiz-results`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(result),
-    });
+    await api.post("/safety/quiz-results", result);
   } catch {
     // silently ignore
   }
 };
 
-// ── Safety Activity ───────────────────────────────────────────────────────
+// -- Safety Activity ---------------------------------------------------------
 
 export const getStoredSafetyActivity = async (): Promise<
   ActivityLogEntry[]
 > => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/activity`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return ((await api.get("/safety/activity")) as ActivityLogEntry[]) ?? [];
   } catch {
     return [];
   }
@@ -88,25 +69,23 @@ export const logSafetyActivity = async (
   user?: string,
 ): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/activity`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ action: message, entity_type: type, actor: user }),
+    await api.post("/safety/activity", {
+      action: message,
+      entity_type: type,
+      actor: user,
     });
   } catch {
     // silently ignore
   }
 };
 
-// ── Maintenance ───────────────────────────────────────────────────────────
+// -- Maintenance -------------------------------------------------------------
 
 export const getMaintenanceRecords = async (): Promise<MaintenanceRecord[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/maintenance`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return (
+      ((await api.get("/safety/maintenance")) as MaintenanceRecord[]) ?? []
+    );
   } catch {
     return [];
   }
@@ -116,25 +95,19 @@ export const saveMaintenanceRecord = async (
   record: MaintenanceRecord,
 ): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/maintenance`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(record),
-    });
+    await api.post("/safety/maintenance", record);
   } catch {
     // silently ignore
   }
 };
 
-// ── Service Tickets ───────────────────────────────────────────────────────
+// -- Service Tickets ---------------------------------------------------------
 
 export const getServiceTickets = async (): Promise<ServiceTicket[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/service-tickets`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return (
+      ((await api.get("/safety/service-tickets")) as ServiceTicket[]) ?? []
+    );
   } catch {
     return [];
   }
@@ -144,25 +117,17 @@ export const saveServiceTicket = async (
   ticket: ServiceTicket,
 ): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/service-tickets`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(ticket),
-    });
+    await api.post("/safety/service-tickets", ticket);
   } catch {
     // silently ignore
   }
 };
 
-// ── Vendors ───────────────────────────────────────────────────────────────
+// -- Vendors -----------------------------------------------------------------
 
 export const getVendors = async (): Promise<Provider[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/vendors`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
+    return ((await api.get("/safety/vendors")) as Provider[]) ?? [];
   } catch {
     return [];
   }
@@ -170,26 +135,21 @@ export const getVendors = async (): Promise<Provider[]> => {
 
 export const saveVendor = async (vendor: Provider): Promise<void> => {
   try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/vendors`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(vendor),
-    });
+    await api.post("/safety/vendors", vendor);
   } catch {
     // silently ignore
   }
 };
 
-// ── Equipment ─────────────────────────────────────────────────────────────
+// -- Equipment ---------------------------------------------------------------
 
 export const getEquipment = async (
   companyId: string,
 ): Promise<FleetEquipment[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/equipment/${companyId}`, { headers });
-    return await res.json();
+    return (
+      ((await api.get(`/equipment/${companyId}`)) as FleetEquipment[]) ?? []
+    );
   } catch {
     return [];
   }
@@ -197,15 +157,13 @@ export const getEquipment = async (
 
 export const getComplianceRecords = async (userId: string): Promise<any[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/compliance/${userId}`, { headers });
-    return await res.json();
+    return ((await api.get(`/compliance/${userId}`)) as any[]) ?? [];
   } catch {
     return [];
   }
 };
 
-// ── Driver Logic ──────────────────────────────────────────────────────────
+// -- Driver Logic ------------------------------------------------------------
 
 export const checkDriverCompliance = (
   user: User,
@@ -397,9 +355,9 @@ export const updateEquipmentStatus = (
 };
 
 /**
- * @deprecated No-op. Seed data removed — safety module starts empty until
+ * @deprecated No-op. Seed data removed --- safety module starts empty until
  * real vendors, quizzes, and tickets are created by users.
  */
 export const seedSafetyData = (_force = false) => {
-  // Intentionally empty — no seed data should be injected.
+  // Intentionally empty --- no seed data should be injected.
 };

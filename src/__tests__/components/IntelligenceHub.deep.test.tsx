@@ -1,7 +1,15 @@
 import React from "react";
 import { render, screen, waitFor, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  afterEach,
+  type Mock,
+} from "vitest";
 
 // ── Service mocks (network boundary) ──────────────────────────────────────
 vi.mock("../../../services/storageService", () => ({
@@ -94,6 +102,19 @@ vi.mock("../../../services/detentionService", () => ({
 
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
+}));
+
+const mockApiPost = vi.fn().mockResolvedValue({});
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockResolvedValue({}),
+    post: (...args: any[]) => mockApiPost(...args),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
 }));
 
 vi.mock("uuid", () => ({
@@ -133,9 +154,7 @@ vi.mock("../../../components/CommandCenterView", () => ({
 }));
 
 vi.mock("../../../components/SafetyView", () => ({
-  SafetyView: (props: any) => (
-    <div data-testid="safety-view">SafetyView</div>
-  ),
+  SafetyView: (props: any) => <div data-testid="safety-view">SafetyView</div>,
 }));
 
 vi.mock("../../../components/NetworkPortal", () => ({
@@ -381,10 +400,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("closes roadside form via the X icon button in the header", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -419,10 +435,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("types into the roadside tactical damage report textarea", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -449,10 +462,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("renders vendor type and status information", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -471,10 +481,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("shows Add Temporary Vendor button", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -482,19 +489,14 @@ describe("IntelligenceHub deep coverage", () => {
       await user.click(roadsideBtn);
 
       await waitFor(() => {
-        expect(
-          screen.getByText("Add Temporary Vendor"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Add Temporary Vendor")).toBeInTheDocument();
       });
     });
 
     it("toggles vendor selection — deselect then reselect", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -536,10 +538,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -579,10 +578,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -622,10 +618,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -652,10 +645,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("opens load detail view via CommandCenterView callback and closes it", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -686,10 +676,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("triggers onEdit callback in LoadDetailView and closes the modal", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -732,12 +719,7 @@ describe("IntelligenceHub deep coverage", () => {
         },
       });
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={incidentSession}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={incidentSession} />);
       await flushAsync();
 
       const roadsideBtn = screen.getByTitle("Roadside");
@@ -787,9 +769,9 @@ describe("IntelligenceHub deep coverage", () => {
 
       // Should also post emergency charge for incident (line 1399-1416)
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/incidents/inc-1/charges"),
-          expect.objectContaining({ method: "POST" }),
+        expect(mockApiPost).toHaveBeenCalledWith(
+          "/incidents/inc-1/charges",
+          expect.objectContaining({ category: "Tow", status: "Approved" }),
         );
       });
     });
@@ -801,10 +783,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -844,12 +823,7 @@ describe("IntelligenceHub deep coverage", () => {
         driver: { name: "John", phone: "555-1111" },
       });
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={incidentSession}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={incidentSession} />);
       await flushAsync();
 
       const notifyBtn = screen.getByTitle("Notify Partners");
@@ -935,7 +909,9 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       // Assign handoff
-      const driverCard = screen.getByText("Mike Thompson").closest("div.p-6") as HTMLElement;
+      const driverCard = screen
+        .getByText("Mike Thompson")
+        .closest("div.p-6") as HTMLElement;
       const assignBtn = within(driverCard).getByText("Assign Handoff");
       await user.click(assignBtn);
 
@@ -980,9 +956,7 @@ describe("IntelligenceHub deep coverage", () => {
       await flushAsync();
 
       // Component should render with active call session
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
 
     it("syncs to null when activeCallSession prop is removed", async () => {
@@ -1015,9 +989,7 @@ describe("IntelligenceHub deep coverage", () => {
       );
       await flushAsync();
 
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
   });
 
@@ -1036,10 +1008,7 @@ describe("IntelligenceHub deep coverage", () => {
       };
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          activeCallSession={callSession}
-        />,
+        <IntelligenceHub {...defaultProps} activeCallSession={callSession} />,
       );
       await flushAsync();
 
@@ -1128,10 +1097,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1167,10 +1133,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1219,10 +1182,7 @@ describe("IntelligenceHub deep coverage", () => {
       ]);
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1273,10 +1233,7 @@ describe("IntelligenceHub deep coverage", () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          setActiveCallSession={vi.fn()}
-        />,
+        <IntelligenceHub {...defaultProps} setActiveCallSession={vi.fn()} />,
       );
       await flushAsync();
 
@@ -1329,9 +1286,7 @@ describe("IntelligenceHub deep coverage", () => {
       await flushAsync();
 
       // Component renders OK with completed session
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
   });
 
@@ -1401,12 +1356,7 @@ describe("IntelligenceHub deep coverage", () => {
         load: { id: "load-1", truckNumber: "TRUCK-77" },
       });
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={incidentSession}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={incidentSession} />);
       await flushAsync();
 
       const roadsideBtn = screen.getByTitle("Roadside");
@@ -1440,10 +1390,7 @@ describe("IntelligenceHub deep coverage", () => {
     it("auto-clears success message after timeout", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={mockSessionWithContext}
-        />,
+        <IntelligenceHub {...defaultProps} session={mockSessionWithContext} />,
       );
       await flushAsync();
 
@@ -1461,9 +1408,7 @@ describe("IntelligenceHub deep coverage", () => {
       });
 
       // Component should still render fine after auto-clear
-      expect(
-        screen.getByText("Unified Command Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Unified Command Center")).toBeInTheDocument();
     });
   });
 
@@ -1489,12 +1434,7 @@ describe("IntelligenceHub deep coverage", () => {
         splitView: { enabled: false },
       };
 
-      render(
-        <IntelligenceHub
-          {...defaultProps}
-          session={sessionWithSubTab}
-        />,
-      );
+      render(<IntelligenceHub {...defaultProps} session={sessionWithSubTab} />);
       await flushAsync();
 
       // The component should pass the activeSubTab to CommandCenterView
@@ -1526,7 +1466,9 @@ describe("IntelligenceHub deep coverage", () => {
         expect(screen.getByText("Mike Thompson")).toBeInTheDocument();
       });
 
-      const driverCard = screen.getByText("Mike Thompson").closest("div.p-6") as HTMLElement;
+      const driverCard = screen
+        .getByText("Mike Thompson")
+        .closest("div.p-6") as HTMLElement;
       const assignBtn = within(driverCard).getByText("Assign Handoff");
       await user.click(assignBtn);
 

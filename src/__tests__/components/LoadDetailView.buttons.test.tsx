@@ -33,11 +33,21 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
   }),
   onUserChange: vi.fn(() => () => {}),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
 }));
 
-// Mock fetch for documents API
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock api client for documents API
+const mockApiGet = vi.fn().mockResolvedValue([]);
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: (...args: any[]) => mockApiGet(...args),
+    post: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
+}));
 
 const mockUsers: User[] = [
   {
@@ -117,10 +127,7 @@ describe("LoadDetailView S-5.1 button wiring", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
-    });
+    mockApiGet.mockResolvedValue([]);
   });
 
   // R-P5-05: 8 REAL buttons
@@ -148,18 +155,14 @@ describe("LoadDetailView S-5.1 button wiring", () => {
     });
 
     it("Documents fetches from /api/documents and shows panel", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            {
-              id: "doc-1",
-              filename: "BOL.pdf",
-              type: "BOL",
-              status: "Uploaded",
-            },
-          ]),
-      });
+      mockApiGet.mockResolvedValue([
+        {
+          id: "doc-1",
+          filename: "BOL.pdf",
+          type: "BOL",
+          status: "Uploaded",
+        },
+      ]);
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
 
@@ -167,10 +170,7 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       await user.click(screen.getByText("Documents"));
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining("/api/documents?loadId=load-1"),
-          expect.any(Object),
-        );
+        expect(mockApiGet).toHaveBeenCalledWith("/documents?loadId=load-1");
       });
     });
 
