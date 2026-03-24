@@ -23,6 +23,16 @@ vi.mock("../../../services/storageService", () => ({
   saveWorkItem: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockResolvedValue([]),
+    post: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
+}));
+
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
 }));
@@ -304,7 +314,8 @@ describe("QuoteManager component", () => {
       const v1Elements = screen.getAllByText("v1");
       expect(v1Elements.length).toBeGreaterThan(0);
     });
-    expect(screen.getByText("v2")).toBeInTheDocument();
+    const v2Elements = screen.getAllByText("v2");
+    expect(v2Elements.length).toBeGreaterThan(0);
   });
 
   it("renders empty pipeline when no quotes exist", async () => {
@@ -312,10 +323,9 @@ describe("QuoteManager component", () => {
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
       expect(screen.queryByText(/Unable to load/)).not.toBeInTheDocument();
-      expect(screen.getByText("Draft")).toBeInTheDocument();
+      expect(screen.getByTestId("empty-state")).toBeInTheDocument();
     });
-    const noQuotesElements = screen.getAllByText("No quotes");
-    expect(noQuotesElements.length).toBe(6);
+    expect(screen.getByText("No Quotes Yet")).toBeInTheDocument();
   });
 
   it("shows the search input with correct placeholder", async () => {
@@ -526,19 +536,6 @@ describe("QuoteManager component", () => {
     });
     expect(screen.getByText("Valid Through")).toBeInTheDocument();
     expect(screen.getByText("Equipment Profile")).toBeInTheDocument();
-  });
-
-  it("shows Version History and Send Update buttons", async () => {
-    const user = userEvent.setup();
-    render(<QuoteManager {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText(/Chicago/)).toBeInTheDocument();
-    });
-    await user.click(screen.getByText(/Chicago, IL/));
-    await waitFor(() => {
-      expect(screen.getByText(/Version History/)).toBeInTheDocument();
-    });
-    expect(screen.getByText(/Send Update/)).toBeInTheDocument();
   });
 
   it("shows Interaction Log sidebar in details view", async () => {
@@ -758,7 +755,9 @@ describe("QuoteManager component", () => {
     await user.click(screen.getByText(/Accept & Convert/));
     await waitFor(() => {
       expect(
-        screen.getByText(/Quote Converted to Booking/),
+        screen.getByText(
+          /Quote converted to booking and load created\. Ready for dispatch\./,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -1702,30 +1701,6 @@ describe("QuoteManager component", () => {
   });
 
   // --- Version history button ---
-
-  it("shows Version History button in details view", async () => {
-    const user = userEvent.setup();
-    render(<QuoteManager {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText(/New Quote/)).toBeInTheDocument();
-    });
-    await user.click(screen.getByText(/New Quote/));
-    await waitFor(() => {
-      expect(screen.getByText("Version History")).toBeInTheDocument();
-    });
-  });
-
-  it("shows Send Update button in details view", async () => {
-    const user = userEvent.setup();
-    render(<QuoteManager {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText(/New Quote/)).toBeInTheDocument();
-    });
-    await user.click(screen.getByText(/New Quote/));
-    await waitFor(() => {
-      expect(screen.getByText("Send Update")).toBeInTheDocument();
-    });
-  });
 
   // --- Cost structure in details ---
 

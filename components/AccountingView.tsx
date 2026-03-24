@@ -302,7 +302,9 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
                   </span>
                 </div>
                 <span className="text-[10px] font-black text-emerald-500">
-                  +12%
+                  {stats.totalRevenue > 0
+                    ? `${stats.marginPercent.toFixed(1)}%`
+                    : "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-2xl">
@@ -315,7 +317,9 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
                   </span>
                 </div>
                 <span className="text-[10px] font-black text-emerald-500">
-                  98.4%
+                  {loads.length > 0
+                    ? `${((loads.filter((l) => l.status === "delivered" || l.status === "completed").length / loads.length) * 100).toFixed(1)}%`
+                    : "—"}
                 </span>
               </div>
             </div>

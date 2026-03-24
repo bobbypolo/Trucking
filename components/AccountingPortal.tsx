@@ -126,8 +126,9 @@ const AccountingPortal: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [feedback, showFeedback, clearFeedback] =
-    useAutoFeedback<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<
+    string | null
+  >(null);
   const [showBillForm, setShowBillForm] = useState(false);
   const [importType, setImportType] = useState<
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
@@ -146,7 +147,9 @@ const AccountingPortal: React.FC<Props> = ({
     showFeedback("Engine running: Scanning Vault for unlinked receipts...");
 
     try {
-      const rule = automationRules.find((r) => r.action === "match_receipt") || {
+      const rule = automationRules.find(
+        (r) => r.action === "match_receipt",
+      ) || {
         id: "default",
         name: "Fuel Receipt Auto-Match",
         enabled: true,
@@ -154,7 +157,11 @@ const AccountingPortal: React.FC<Props> = ({
         action: "match_receipt",
         configuration: { matchTolerance: 0.05, lookbackDays: 7 },
       };
-      const results = await executeFuelMatchingRule([], [], rule as AutomationRule);
+      const results = await executeFuelMatchingRule(
+        [],
+        [],
+        rule as AutomationRule,
+      );
       showFeedback(
         `Sync Complete: Auto-Matched ${results?.matched ?? 0} receipts. ${results?.orphaned ?? 0} require manual verification.`,
         4000,
@@ -322,7 +329,12 @@ const AccountingPortal: React.FC<Props> = ({
                   label: "Pending Docs",
                   val: `${(Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length}`,
                   sub: "Missing POD/BOL",
-                  trend: (Array.isArray(invoices) ? invoices : []).filter((i: any) => !i.pod_attached).length > 0 ? "!" : "OK",
+                  trend:
+                    (Array.isArray(invoices) ? invoices : []).filter(
+                      (i: any) => !i.pod_attached,
+                    ).length > 0
+                      ? "!"
+                      : "OK",
                   color: "text-orange-500",
                   bg: "bg-orange-500/5",
                 },
@@ -607,13 +619,6 @@ const AccountingPortal: React.FC<Props> = ({
                                 <Phone className="w-4 h-4" />
                               </button>
                             )}
-                            <button
-                              onClick={() => showFeedback("Line item actions coming soon")}
-                              className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
-                              aria-label="More options"
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </button>
                           </div>
                         </td>
                       </tr>
@@ -749,13 +754,6 @@ const AccountingPortal: React.FC<Props> = ({
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          <button
-                            onClick={() => showFeedback("Line item actions coming soon")}
-                            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-all border border-white/5"
-                            aria-label="More options"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -783,17 +781,21 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "SETTLEMENTS" && (
-          <div className="h-full -m-10">
-            <Suspense fallback={<LoadingSkeleton variant="table" count={3} />}>
-              <Settlements
-                loads={loads}
-                users={users}
-                onUserUpdate={onUserUpdate}
-                onNavigate={(tab) => {
-                  // Navigation handled by parent tab state
-                }}
-              />
-            </Suspense>
+          <div className="flex flex-col items-center justify-center py-20 text-center space-y-5">
+            <Users className="w-12 h-12 text-slate-600" />
+            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">
+              Settlements &amp; Driver Pay
+            </h3>
+            <p className="text-xs text-slate-600 max-w-sm">
+              Settlement management has moved to the Driver Pay portal for a
+              streamlined driver-facing experience.
+            </p>
+            <button
+              onClick={() => onNavigate?.("finance")}
+              className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-900/30"
+            >
+              Go to Driver Pay
+            </button>
           </div>
         )}
 
@@ -1023,7 +1025,8 @@ const AccountingPortal: React.FC<Props> = ({
                     No audit events recorded yet
                   </div>
                   <p className="text-[9px] text-slate-700 mt-2">
-                    Audit entries will appear here as financial operations are performed.
+                    Audit entries will appear here as financial operations are
+                    performed.
                   </p>
                 </div>
               </div>
@@ -1049,14 +1052,9 @@ const AccountingPortal: React.FC<Props> = ({
                 >
                   <Activity className="w-4 h-4" /> Run Full Audit
                 </button>
-                <button
-                  onClick={() =>
-                    showFeedback("Automation rule builder coming soon")
-                  }
-                  className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest"
-                >
+                <div className="flex items-center gap-2 px-6 py-3 bg-white/5 text-slate-600 rounded-2xl border border-white/5 text-[10px] font-black uppercase tracking-widest cursor-not-allowed select-none">
                   <Plus className="w-4 h-4" /> Create New Rule
-                </button>
+                </div>
               </div>
             </div>
 
@@ -1172,7 +1170,6 @@ const AccountingPortal: React.FC<Props> = ({
             </div>
           </div>
         )}
-
       </div>
 
       {showBillForm && (

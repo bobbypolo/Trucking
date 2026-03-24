@@ -165,6 +165,9 @@ import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
+const DriverPayPortal = React.lazy(
+  () => import("./components/DriverPayPortal"),
+);
 const IntelligenceHub = React.lazy(
   () => import("./components/IntelligenceHub"),
 );
@@ -1220,12 +1223,10 @@ export default function App() {
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <AccountingPortal
+                  <DriverPayPortal
                     loads={loads}
                     users={companyUsers}
                     currentUser={user!}
-                    onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
                     onNavigate={handleNavigate}
                   />
                 </Suspense>

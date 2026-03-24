@@ -79,7 +79,9 @@ vi.mock("../../../services/financialService", () => ({
 }));
 
 vi.mock("../../../services/rulesEngineService", () => ({
-  executeFuelMatchingRule: vi.fn().mockResolvedValue({ matched: 5, orphaned: 1 }),
+  executeFuelMatchingRule: vi
+    .fn()
+    .mockResolvedValue({ matched: 5, orphaned: 1 }),
 }));
 
 vi.mock("../../../services/exportService", () => ({
@@ -228,9 +230,7 @@ describe("AccountingPortal Remediation (C-2)", () => {
       // Switch to Maintenance tab to check glAccountId usage
       await user.click(screen.getByText("Maintenance"));
       await waitFor(() => {
-        expect(
-          screen.getByText("Maintenance Financials"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Maintenance Financials")).toBeInTheDocument();
       });
       // The glAccountId should be looked up from GL accounts, not hardcoded "5000"
       // We verify by checking the source - this is validated by grep in the Python test
@@ -244,14 +244,10 @@ describe("AccountingPortal Remediation (C-2)", () => {
       });
       await user.click(screen.getByText("Audit Log"));
       await waitFor(() => {
-        expect(
-          screen.getByText("Operational Audit Trail"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Operational Audit Trail")).toBeInTheDocument();
       });
       // Hardcoded entries should be gone
-      expect(
-        screen.queryByText("Load #1024 Locked"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Load #1024 Locked")).not.toBeInTheDocument();
       expect(
         screen.queryByText(/Invoice #INV-902 Sent to HUB Group/),
       ).not.toBeInTheDocument();
@@ -265,9 +261,7 @@ describe("AccountingPortal Remediation (C-2)", () => {
       });
       await user.click(screen.getByText("Audit Log"));
       await waitFor(() => {
-        expect(
-          screen.getByText("Operational Audit Trail"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Operational Audit Trail")).toBeInTheDocument();
       });
       expect(screen.queryByText("1 hour ago")).not.toBeInTheDocument();
     });
@@ -313,46 +307,6 @@ describe("AccountingPortal Remediation (C-2)", () => {
       await user.click(screen.getByText("View All Loads"));
       expect(mockNavigate).toHaveBeenCalledWith("loads");
     });
-
-    it("R-P4-05: Create New Rule button shows toast", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Create New Rule")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Create New Rule"));
-      await waitFor(() => {
-        expect(
-          screen.getByText(/automation rule builder coming soon/i),
-        ).toBeInTheDocument();
-      });
-    });
-
-    it("R-P4-05: More options buttons show toast", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Overview")).toBeInTheDocument();
-      });
-      // Switch to AR tab which has More options buttons
-      await user.click(screen.getByText("AR / Invoices"));
-      await waitFor(() => {
-        expect(screen.getByText("Accounts Receivable")).toBeInTheDocument();
-      });
-      // Click the More options button (MoreVertical icon)
-      const moreButtons = screen.getAllByLabelText("More options");
-      expect(moreButtons.length).toBeGreaterThan(0);
-      await user.click(moreButtons[0]);
-      await waitFor(() => {
-        expect(
-          screen.getByText(/line item actions coming soon/i),
-        ).toBeInTheDocument();
-      });
-    });
   });
 
   // ── R-P4-06: setTimeout mock matching removed ──
@@ -372,9 +326,7 @@ describe("AccountingPortal Remediation (C-2)", () => {
       await user.click(screen.getByText("Run Full Audit"));
       // Should show result from the mocked executeFuelMatchingRule
       await waitFor(() => {
-        expect(
-          screen.getByText(/Auto-Matched 5 receipts/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Auto-Matched 5 receipts/)).toBeInTheDocument();
       });
     });
   });

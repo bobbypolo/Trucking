@@ -12,7 +12,10 @@ vi.mock("recharts", async () => {
   return {
     ...Original,
     ResponsiveContainer: ({ children }: any) => (
-      <div data-testid="responsive-container" style={{ width: 500, height: 300 }}>
+      <div
+        data-testid="responsive-container"
+        style={{ width: 500, height: 300 }}
+      >
         {children}
       </div>
     ),
@@ -174,7 +177,9 @@ describe("AccountingView component", () => {
   it("renders the chart section", () => {
     render(<AccountingView {...defaultProps} />);
     expect(screen.getByText("Performance Intelligence")).toBeInTheDocument();
-    expect(screen.getByText(/7-Day Revenue & Profit Logic/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/7-Day Revenue & Profit Logic/),
+    ).toBeInTheDocument();
   });
 
   it("renders Cash Flow Projection section", () => {
@@ -219,8 +224,10 @@ describe("AccountingView component", () => {
     render(<AccountingView {...defaultProps} />);
     expect(screen.getByText("Scaling Growth")).toBeInTheDocument();
     expect(screen.getByText("Efficiency")).toBeInTheDocument();
-    expect(screen.getByText("+12%")).toBeInTheDocument();
-    expect(screen.getByText("98.4%")).toBeInTheDocument();
+    // Scaling Growth shows margin percent: (4200/10500)*100 = 40.0%
+    expect(screen.getAllByText("40.0%").length).toBeGreaterThanOrEqual(1);
+    // Efficiency shows completion rate: (delivered+completed)/total = 2/4 = 50.0%
+    expect(screen.getByText("50.0%")).toBeInTheDocument();
   });
 
   it("renders chart container element", () => {

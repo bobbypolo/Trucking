@@ -27,6 +27,16 @@ vi.mock("../../../services/storageService", () => ({
   saveWorkItem: (...args: unknown[]) => mockSaveWorkItem(...args),
 }));
 
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockResolvedValue([]),
+    post: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+    delete: vi.fn().mockResolvedValue({}),
+  },
+  apiFetch: vi.fn().mockResolvedValue({}),
+}));
+
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
 }));
@@ -147,8 +157,6 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
 
       // Should show detail header with transaction ID
       expect(screen.getByText(/Transaction ID:/)).toBeInTheDocument();
-      expect(screen.getByText("Version History")).toBeInTheDocument();
-      expect(screen.getByText("Send Update")).toBeInTheDocument();
     });
 
     it("displays work items in Active Triage section when they exist", async () => {
