@@ -182,11 +182,17 @@ export const SafetyView: React.FC<Props> = ({
   >(null);
   const [formData, setFormData] = useState<any>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [safetyFormErrors, setSafetyFormErrors] = useState<Record<string, string>>({});
-  const [notificationJobs, setNotificationJobs] = useState<NotificationJob[]>([]);
+  const [safetyFormErrors, setSafetyFormErrors] = useState<
+    Record<string, string>
+  >({});
+  const [notificationJobs, setNotificationJobs] = useState<NotificationJob[]>(
+    [],
+  );
   const [quizCourses, setQuizCourses] = useState<SafetyQuizCourse[]>([]);
   const [quizResults, setQuizResults] = useState<SafetyQuizResult[]>([]);
-  const [safetySettings, setSafetySettings] = useState<SafetySettings | null>(null);
+  const [safetySettings, setSafetySettings] = useState<SafetySettings | null>(
+    null,
+  );
 
   const isSafetyFormValid = (() => {
     if (!showForm) return false;
@@ -432,35 +438,47 @@ export const SafetyView: React.FC<Props> = ({
               {[
                 {
                   label: "Fleet Safety Score",
-                  value: fmcsaData?.available && fmcsaData.data?.safetyRating
-                    ? fmcsaData.data.safetyRating
-                    : "N/A",
+                  value:
+                    fmcsaData?.available && fmcsaData.data?.safetyRating
+                      ? fmcsaData.data.safetyRating
+                      : "N/A",
                   target: fmcsaData?.available
                     ? "FMCSA Verified"
-                    : (fmcsaData?.isMock && import.meta.env.DEV)
+                    : fmcsaData?.isMock && import.meta.env.DEV
                       ? "Mock Data (Dev)"
                       : "Target: 95+",
-                  color: fmcsaData?.available && fmcsaData.data?.safetyRating === "Satisfactory"
-                    ? "text-green-400"
-                    : fmcsaData?.available
-                      ? "text-yellow-400"
-                      : "text-red-400",
+                  color:
+                    fmcsaData?.available &&
+                    fmcsaData.data?.safetyRating === "Satisfactory"
+                      ? "text-green-400"
+                      : fmcsaData?.available
+                        ? "text-yellow-400"
+                        : "text-red-400",
                 },
                 {
                   label: "Pending Maintenance",
-                  value: String(serviceTickets.filter((t) => t.status !== "Closed").length),
+                  value: String(
+                    serviceTickets.filter((t) => t.status !== "Closed").length,
+                  ),
                   target: "Submitted Reports",
                   color: "text-blue-400",
                 },
                 {
                   label: "Non-Compliant",
-                  value: String(operators.filter((op) => op.performance && op.performance.totalScore < 70).length),
+                  value: String(
+                    operators.filter(
+                      (op) => op.performance && op.performance.totalScore < 70,
+                    ).length,
+                  ),
                   target: "Drivers Flagged",
                   color: "text-red-400",
                 },
                 {
                   label: "Out of Service",
-                  value: String(fleetEquipment.filter((e) => e.status === "Out of Service").length),
+                  value: String(
+                    fleetEquipment.filter((e) => e.status === "Out of Service")
+                      .length,
+                  ),
                   target: "Red Tagged Units",
                   color: "text-red-400",
                 },
@@ -545,12 +563,23 @@ export const SafetyView: React.FC<Props> = ({
                 </h3>
                 <div className="space-y-8">
                   {(() => {
-                    const avgQuizProgress = quizCourses.length > 0
-                      ? Math.round(quizCourses.reduce((sum, q) => sum + q.progress, 0) / quizCourses.length)
-                      : 0;
-                    const activeEquipCount = fleetEquipment.filter(e => e.status === "Active").length;
+                    const avgQuizProgress =
+                      quizCourses.length > 0
+                        ? Math.round(
+                            quizCourses.reduce(
+                              (sum, q) => sum + q.progress,
+                              0,
+                            ) / quizCourses.length,
+                          )
+                        : 0;
+                    const activeEquipCount = fleetEquipment.filter(
+                      (e) => e.status === "Active",
+                    ).length;
                     const totalEquipCount = fleetEquipment.length;
-                    const maintPct = totalEquipCount > 0 ? Math.round((activeEquipCount / totalEquipCount) * 100) : 0;
+                    const maintPct =
+                      totalEquipCount > 0
+                        ? Math.round((activeEquipCount / totalEquipCount) * 100)
+                        : 0;
                     return [
                       {
                         label: "Quiz Completion",
@@ -567,7 +596,8 @@ export const SafetyView: React.FC<Props> = ({
                         value: incidents.length === 0 ? 0 : 0,
                         color: "bg-purple-500",
                         max: 365,
-                        display: incidents.length === 0 ? "No incidents" : "0 Days",
+                        display:
+                          incidents.length === 0 ? "No incidents" : "0 Days",
                       },
                     ];
                   })().map((bar, idx) => (
@@ -718,11 +748,14 @@ export const SafetyView: React.FC<Props> = ({
 
                   {(() => {
                     const failedQuizzes = quizResults.filter(
-                      (r) => r.driverName === op.user.name && !r.passed
+                      (r) => r.driverName === op.user.name && !r.passed,
                     );
-                    const hasComplianceIssue = op.performance && op.performance.totalScore < 70;
+                    const hasComplianceIssue =
+                      op.performance && op.performance.totalScore < 70;
                     const issues: string[] = [
-                      ...failedQuizzes.map((r) => `Failed Quiz: ${r.quizTitle}`),
+                      ...failedQuizzes.map(
+                        (r) => `Failed Quiz: ${r.quizTitle}`,
+                      ),
                     ];
                     if (hasComplianceIssue && issues.length === 0) {
                       issues.push("Low compliance score — review required");
@@ -733,7 +766,9 @@ export const SafetyView: React.FC<Props> = ({
                           <div className="flex items-center gap-2 text-green-400 font-bold text-[10px] uppercase">
                             <CheckCircle className="w-4 h-4" /> Compliant
                           </div>
-                          <p className="text-[10px] text-green-300 font-medium">No compliance issues</p>
+                          <p className="text-[10px] text-green-300 font-medium">
+                            No compliance issues
+                          </p>
                         </div>
                       );
                     }
@@ -836,13 +871,21 @@ export const SafetyView: React.FC<Props> = ({
                     </div>
                     <div className="flex gap-2 pt-2">
                       <button
-                        onClick={() => showFeedback(`Service request initiated for ${asset.unit_number || asset.id}`)}
+                        onClick={() =>
+                          showFeedback(
+                            `Service request initiated for ${asset.unit_number || asset.id}`,
+                          )
+                        }
                         className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
                       >
                         Service
                       </button>
                       <button
-                        onClick={() => showFeedback(`Viewing maintenance history for ${asset.unit_number || asset.id}`)}
+                        onClick={() =>
+                          showFeedback(
+                            `Viewing maintenance history for ${asset.unit_number || asset.id}`,
+                          )
+                        }
                         className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
                       >
                         History
@@ -949,7 +992,13 @@ export const SafetyView: React.FC<Props> = ({
                       </span>
                     </div>
                     <button
-                      onClick={() => onNavigate ? onNavigate("accounting") : showFeedback("Navigate to Accounting to view financials")}
+                      onClick={() =>
+                        onNavigate
+                          ? onNavigate("accounting")
+                          : showFeedback(
+                              "Navigate to Accounting to view financials",
+                            )
+                      }
                       className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-white transition-colors"
                     >
                       View Financials
@@ -1000,7 +1049,18 @@ export const SafetyView: React.FC<Props> = ({
                   ).length,
                   color: "text-yellow-500",
                 },
-                { label: "SLA Breach", value: String(serviceTickets.filter((t) => t.status === "Open" && t.eta && new Date(t.eta) < new Date()).length), color: "text-red-500" },
+                {
+                  label: "SLA Breach",
+                  value: String(
+                    serviceTickets.filter(
+                      (t) =>
+                        t.status === "Open" &&
+                        t.eta &&
+                        new Date(t.eta) < new Date(),
+                    ).length,
+                  ),
+                  color: "text-red-500",
+                },
               ].map((stat, idx) => (
                 <div
                   key={idx}
@@ -1140,9 +1200,7 @@ export const SafetyView: React.FC<Props> = ({
                     key={course.id}
                     className="bg-slate-900/50 p-8 rounded-[2rem] border border-white/5 shadow-sm flex flex-col group hover:border-blue-500/30 transition-all cursor-pointer"
                   >
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 bg-slate-950 border border-white/5"
-                    >
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-6 bg-slate-950 border border-white/5">
                       <BookOpen className="w-6 h-6 text-blue-500" />
                     </div>
                     <h4 className="text-xl font-black text-white uppercase tracking-tighter mb-2">
@@ -1168,7 +1226,9 @@ export const SafetyView: React.FC<Props> = ({
                           {course.certifiedCount} Certified Units
                         </div>
                         <button
-                          onClick={() => showFeedback(`Managing course: ${course.title}`)}
+                          onClick={() =>
+                            showFeedback(`Managing course: ${course.title}`)
+                          }
                           className="text-blue-500 hover:text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
                         >
                           Manage <ArrowRight className="w-3.5 h-3.5" />
@@ -1207,9 +1267,7 @@ export const SafetyView: React.FC<Props> = ({
                         <span className="text-slate-400">{t.score}%</span>
                         <span
                           className={
-                            t.passed
-                              ? "text-green-500"
-                              : "text-red-500"
+                            t.passed ? "text-green-500" : "text-red-500"
                           }
                         >
                           {t.passed ? "Passed" : "Failed"}
@@ -1239,17 +1297,25 @@ export const SafetyView: React.FC<Props> = ({
                 {
                   label: "Minimum Safety Score",
                   desc: "Drivers below this score will be blocked from new dispatches.",
-                  value: safetySettings ? String(safetySettings.minSafetyScore) : "N/A",
+                  value: safetySettings
+                    ? String(safetySettings.minSafetyScore)
+                    : "N/A",
                 },
                 {
                   label: "Auto-Lock Compliance",
                   desc: "Block drivers automatically if mandatory quizzes are expired.",
-                  value: safetySettings ? (safetySettings.autoLockCompliance ? "On" : "Off") : "N/A",
+                  value: safetySettings
+                    ? safetySettings.autoLockCompliance
+                      ? "On"
+                      : "Off"
+                    : "N/A",
                 },
                 {
                   label: "Maintenance Interval",
                   desc: "Default days between PM inspections.",
-                  value: safetySettings ? `${safetySettings.maintenanceIntervalDays} Days` : "N/A",
+                  value: safetySettings
+                    ? `${safetySettings.maintenanceIntervalDays} Days`
+                    : "N/A",
                 },
               ].map((s, i) => (
                 <div key={i} className="flex justify-between items-center">
@@ -1262,7 +1328,7 @@ export const SafetyView: React.FC<Props> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => showFeedback(`Edit "${s.label}" coming soon`)}
+                    onClick={() => showFeedback(`${s.label}: ${s.value}`)}
                     className="px-4 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 rounded-lg text-xs font-bold border border-slate-700 transition-colors"
                   >
                     {s.value}
@@ -1301,10 +1367,14 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "asset" && (
                 <>
                   <div className="space-y-2">
-                    <label htmlFor="svAssetIDUnitNumber" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label
+                      htmlFor="svAssetIDUnitNumber"
+                      className="text-[10px] font-bold text-slate-500 uppercase"
+                    >
                       Asset ID / Unit Number *
                     </label>
-                    <input id="svAssetIDUnitNumber"
+                    <input
+                      id="svAssetIDUnitNumber"
                       type="text"
                       placeholder="e.g. TR-101"
                       className={`w-full bg-slate-950 border ${safetyFormErrors.id ? "border-red-500" : "border-slate-800"} rounded-lg px-4 py-3 text-white focus:border-blue-500 transition-colors outline-none`}
@@ -1312,14 +1382,22 @@ export const SafetyView: React.FC<Props> = ({
                         setFormData({ ...formData, id: e.target.value })
                       }
                     />
-                    {safetyFormErrors.id && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.id}</p>}
+                    {safetyFormErrors.id && (
+                      <p className="text-red-400 text-xs mt-1">
+                        {safetyFormErrors.id}
+                      </p>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label htmlFor="svType" className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label
+                        htmlFor="svType"
+                        className="text-[10px] font-bold text-slate-500 uppercase"
+                      >
                         Type
                       </label>
-                      <select id="svType"
+                      <select
+                        id="svType"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, type: e.target.value })
@@ -1332,10 +1410,14 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="svOwnership" className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label
+                        htmlFor="svOwnership"
+                        className="text-[10px] font-bold text-slate-500 uppercase"
+                      >
                         Ownership
                       </label>
-                      <select id="svOwnership"
+                      <select
+                        id="svOwnership"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                         onChange={(e) =>
                           setFormData({
@@ -1354,10 +1436,14 @@ export const SafetyView: React.FC<Props> = ({
               {showForm === "maintenance" && (
                 <>
                   <div className="space-y-2">
-                    <label htmlFor="svSelectAsset" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label
+                      htmlFor="svSelectAsset"
+                      className="text-[10px] font-bold text-slate-500 uppercase"
+                    >
                       Select Asset
                     </label>
-                    <select id="svSelectAsset"
+                    <select
+                      id="svSelectAsset"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       onChange={(e) =>
                         setFormData({ ...formData, unitId: e.target.value })
@@ -1372,10 +1458,14 @@ export const SafetyView: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="svServiceDescription" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label
+                      htmlFor="svServiceDescription"
+                      className="text-[10px] font-bold text-slate-500 uppercase"
+                    >
                       Service Description *
                     </label>
-                    <textarea id="svServiceDescription"
+                    <textarea
+                      id="svServiceDescription"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white h-24 outline-none"
                       placeholder="e.g. Annual Inspection and Oil Change"
                       onChange={(e) =>
@@ -1385,17 +1475,25 @@ export const SafetyView: React.FC<Props> = ({
                         })
                       }
                     />
-                    {safetyFormErrors.description && <p className="text-red-400 text-xs mt-1">{safetyFormErrors.description}</p>}
+                    {safetyFormErrors.description && (
+                      <p className="text-red-400 text-xs mt-1">
+                        {safetyFormErrors.description}
+                      </p>
+                    )}
                   </div>
                 </>
               )}
               {showForm === "quiz" && (
                 <>
                   <div className="space-y-2">
-                    <label htmlFor="svCourseTitle" className="text-[10px] font-bold text-slate-500 uppercase">
+                    <label
+                      htmlFor="svCourseTitle"
+                      className="text-[10px] font-bold text-slate-500 uppercase"
+                    >
                       Course Title
                     </label>
-                    <input id="svCourseTitle"
+                    <input
+                      id="svCourseTitle"
                       type="text"
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white outline-none"
                       placeholder="e.g. Hazardous Materials Handling"
@@ -1428,10 +1526,14 @@ export const SafetyView: React.FC<Props> = ({
                 <>
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <label htmlFor="svSelectRelevantManifest" className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label
+                        htmlFor="svSelectRelevantManifest"
+                        className="text-[10px] font-bold text-slate-500 uppercase"
+                      >
                         Select Relevant Manifest
                       </label>
-                      <select id="svSelectRelevantManifest"
+                      <select
+                        id="svSelectRelevantManifest"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, loadId: e.target.value })
@@ -1449,10 +1551,14 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="svIncidentSeverity" className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label
+                        htmlFor="svIncidentSeverity"
+                        className="text-[10px] font-bold text-slate-500 uppercase"
+                      >
                         Incident Severity
                       </label>
-                      <select id="svIncidentSeverity"
+                      <select
+                        id="svIncidentSeverity"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-sm text-white outline-none"
                         onChange={(e) =>
                           setFormData({ ...formData, category: e.target.value })
@@ -1464,10 +1570,14 @@ export const SafetyView: React.FC<Props> = ({
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="svDescriptionOfEvent" className="text-[10px] font-bold text-slate-500 uppercase">
+                      <label
+                        htmlFor="svDescriptionOfEvent"
+                        className="text-[10px] font-bold text-slate-500 uppercase"
+                      >
                         Description of Event *
                       </label>
-                      <textarea id="svDescriptionOfEvent"
+                      <textarea
+                        id="svDescriptionOfEvent"
                         className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-4 text-sm text-white h-32 outline-none resize-none placeholder:text-slate-700"
                         placeholder="DESCRIBE THE INCIDENT IN DETAIL FOR AUDIT CONTROL..."
                         onChange={(e) =>
@@ -1488,17 +1598,21 @@ export const SafetyView: React.FC<Props> = ({
                 onClick={async () => {
                   const errs: Record<string, string> = {};
                   if (showForm === "asset") {
-                    if (!formData.id?.trim()) errs.id = "Unit number is required";
+                    if (!formData.id?.trim())
+                      errs.id = "Unit number is required";
                   }
                   if (showForm === "maintenance") {
-                    if (!formData.description?.trim()) errs.description = "Description is required";
+                    if (!formData.description?.trim())
+                      errs.description = "Description is required";
                   }
                   if (showForm === "incident") {
-                    if (!formData.description?.trim()) errs.description = "Description is required";
+                    if (!formData.description?.trim())
+                      errs.description = "Description is required";
                   }
                   // R-P3-03: Validate quiz title before submission
                   if (showForm === "quiz") {
-                    if (!formData.title?.trim()) errs.title = "Course title is required";
+                    if (!formData.title?.trim())
+                      errs.title = "Course title is required";
                   }
                   if (Object.keys(errs).length > 0) {
                     setSafetyFormErrors(errs);

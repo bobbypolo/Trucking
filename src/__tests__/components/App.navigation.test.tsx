@@ -180,7 +180,7 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
   });
 });
 
-describe("App.tsx operational load creation (OPS-01, OPS-02)", () => {
+describe("App.tsx operational load creation (OPS-01, OPS-02, OPS-03)", () => {
   it("Create Load button opens LoadSetupModal, not Quotes (OPS-01)", () => {
     expect(appSource).toContain("Create Load");
     expect(appSource).toContain("setShowLoadSetup({})");
@@ -188,5 +188,34 @@ describe("App.tsx operational load creation (OPS-01, OPS-02)", () => {
 
   it("New Intake button still routes to Quotes (OPS-02)", () => {
     expect(appSource).toContain("New Intake");
+  });
+
+  it("onCreateLoad prop uses setShowLoadSetup, not quotes navigation (OPS-03)", () => {
+    // The onCreateLoad prop must wire to LoadSetupModal
+    expect(appSource).toMatch(
+      /onCreateLoad=\s*\{[\s\S]*?setShowLoadSetup\(\{\}\)/,
+    );
+    // It must NOT wire to quotes
+    expect(appSource).not.toMatch(
+      /onCreateLoad=\s*\{[\s\S]*?handleNavigate\("quotes"\)/,
+    );
+  });
+});
+
+describe("App.tsx NAV-07: no duplicate portals", () => {
+  it("Driver Pay defaults to SETTLEMENTS tab", () => {
+    expect(appSource).toMatch(
+      /activeTab === "finance"[\s\S]*?initialTab=\{[^}]*\|\|\s*"SETTLEMENTS"/,
+    );
+  });
+
+  it("Accounting defaults to DASHBOARD tab", () => {
+    expect(appSource).toMatch(
+      /activeTab === "accounting"[\s\S]*?initialTab=\{[^}]*\|\|\s*"DASHBOARD"/,
+    );
+  });
+
+  it("default tab after login is operations-hub, not dashboard", () => {
+    expect(appSource).not.toMatch(/setActiveTab\("dashboard"\)/);
   });
 });

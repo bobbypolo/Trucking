@@ -411,7 +411,7 @@ export default function App() {
     } else if (loggedInUser.primaryWorkspace === "Dispatch") {
       setActiveTab("loads");
     } else {
-      setActiveTab("dashboard");
+      setActiveTab("operations-hub");
     }
   };
 
@@ -420,7 +420,7 @@ export default function App() {
     setIsAuthReady(false);
     setUser(null);
     setLoads([]);
-    setActiveTab("dashboard");
+    setActiveTab("operations-hub");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -1126,22 +1126,8 @@ export default function App() {
                   <NetworkPortal companyId={user.companyId} />
                 </Suspense>
               )}
-              {activeTab === "brokers" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="list" count={5} />}
-                >
-                  <BrokerManager
-                    brokers={brokers}
-                    onUpdate={() => refreshData(user)}
-                    onSave={async (b) => {
-                      await saveBroker(b);
-                      refreshData(user);
-                    }}
-                    onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
-                  />
-                </Suspense>
-              )}
-              {/* NAV-05: Safety & Compliance removed from primary nav — folded into Issues & Alerts */}
+              {/* Brokers is accessed via Broker Network (NetworkPortal) — no standalone nav item */}
+              {/* NAV-07: Driver Pay defaults to SETTLEMENTS tab to differentiate from Accounting */}
               {activeTab === "finance" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1151,7 +1137,10 @@ export default function App() {
                     users={companyUsers}
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
+                    initialTab={
+                      (activeSubTab as AccountingPortalTab | undefined) ||
+                      "SETTLEMENTS"
+                    }
                     onNavigate={handleNavigate}
                   />
                 </Suspense>
@@ -1165,7 +1154,10 @@ export default function App() {
                     users={companyUsers}
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
+                    initialTab={
+                      (activeSubTab as AccountingPortalTab | undefined) ||
+                      "DASHBOARD"
+                    }
                     onNavigate={handleNavigate}
                   />
                 </Suspense>
