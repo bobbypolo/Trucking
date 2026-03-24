@@ -12,10 +12,6 @@ import {
   Lead,
   Booking,
   WorkItem,
-  Capability,
-  DutyMode,
-  PrimaryWorkspace,
-  CapabilityPermission,
   FreightType,
 } from "../types";
 import {
@@ -31,24 +27,12 @@ import {
 import {
   Plus,
   Search,
-  Filter,
-  MoreHorizontal,
   Clock,
   ArrowRight,
   CheckCircle2,
-  AlertCircle,
-  FileText,
-  Send,
-  DollarSign,
-  User as UserIcon,
-  Building2,
   MapPin,
-  ChevronRight,
-  X,
   Sparkles,
   Phone,
-  Mail,
-  ClipboardList,
   Target,
   Zap,
 } from "lucide-react";
@@ -210,39 +194,49 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
   const handleConvert = async (quote: Quote) => {
     if (quote.status !== "Accepted") return;
+    setIsSubmitting(true);
+    try {
+      const booking: Booking = {
+        id: uuidv4(),
+        quoteId: quote.id,
+        companyId: user.companyId,
+        status: "Accepted",
+        requiresAppt: true,
+        createdAt: new Date().toISOString(),
+      };
 
-    const booking: Booking = {
-      id: uuidv4(),
-      quoteId: quote.id,
-      companyId: user.companyId,
-      status: "Accepted",
-      requiresAppt: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    await saveBooking(booking);
-    await api.post("/loads", {
-      origin: quote.pickup?.city
-        ? `${quote.pickup?.city ?? ""}, ${quote.pickup?.state || ""}`
-        : "",
-      destination: quote.dropoff?.city
-        ? `${quote.dropoff?.city ?? ""}, ${quote.dropoff?.state || ""}`
-        : "",
-      equipmentType: quote.equipmentType || "Dry Van",
-      carrierRate: quote.totalRate || 0,
-      status: "pending",
-      source: "quote_conversion",
-      sourceId: quote.id,
-      pickupDate: new Date().toISOString().split("T")[0],
-    });
-    await loadData();
-    setSelectedQuote(null);
-    setActiveView("pipeline");
-    setToast({
-      message:
-        "Quote converted to booking and load created. Ready for dispatch.",
-      type: "success",
-    });
+      await saveBooking(booking);
+      await api.post("/loads", {
+        origin: quote.pickup?.city
+          ? `${quote.pickup?.city ?? ""}, ${quote.pickup?.state || ""}`
+          : "",
+        destination: quote.dropoff?.city
+          ? `${quote.dropoff?.city ?? ""}, ${quote.dropoff?.state || ""}`
+          : "",
+        equipmentType: quote.equipmentType || "Dry Van",
+        carrierRate: quote.totalRate || 0,
+        status: "pending",
+        source: "quote_conversion",
+        sourceId: quote.id,
+        pickupDate: new Date().toISOString().split("T")[0],
+      });
+      await loadData();
+      setSelectedQuote(null);
+      setActiveView("pipeline");
+      setToast({
+        message:
+          "Quote converted to booking and load created. Ready for dispatch.",
+        type: "success",
+      });
+    } catch (err) {
+      console.error("[QuoteManager] Conversion failed:", err);
+      setToast({
+        message: "Failed to convert quote. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEnterIntake = () => {

@@ -230,7 +230,7 @@ describe("AccountingPortal Remediation (C-2)", () => {
       // Switch to Maintenance tab to check glAccountId usage
       await user.click(screen.getByText("Maintenance"));
       await waitFor(() => {
-        expect(screen.getByText("Maintenance Financials")).toBeInTheDocument();
+        expect(screen.getByText("Fleet Maintenance")).toBeInTheDocument();
       });
       // The glAccountId should be looked up from GL accounts, not hardcoded "5000"
       // We verify by checking the source - this is validated by grep in the Python test
