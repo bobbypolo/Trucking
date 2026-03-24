@@ -18,6 +18,7 @@ import {
   checkCapability,
   CAPABILITY_PRESETS,
 } from "../services/authService";
+import { api } from "../services/api";
 import { logTime, getTimeLogs } from "../services/storageService";
 import {
   Building2,
@@ -64,6 +65,45 @@ interface Props {
   company?: Company;
   users?: User[];
   onUserRegistryChange?: () => void;
+}
+
+/**
+ * Canonical safe defaults for CompanyConfig nested objects.
+ * Prevents crash on partial company data from the API.
+ * Downstream teams must reuse this rather than inventing local fallbacks.
+ */
+function withCompanyDefaults(c: Company): Company {
+  return {
+    ...c,
+    loadNumberingConfig: c.loadNumberingConfig ?? {
+      prefix: "LD",
+      nextSequence: 1000,
+    },
+    scoringConfig: c.scoringConfig ?? {
+      minimumDispatchScore: 75,
+      weights: {
+        safety: 30,
+        onTime: 25,
+        paperwork: 15,
+        violations: 10,
+        accidents: 10,
+        inspections: 5,
+        training: 5,
+      },
+    },
+    governance: c.governance ?? {
+      autoLockCompliance: false,
+      requireQuizPass: false,
+      requireMaintenancePass: false,
+      maxLoadsPerDriverPerWeek: 5,
+      preferredCurrency: "USD",
+    },
+    driverPermissions: c.driverPermissions ?? {},
+    dispatcherPermissions: c.dispatcherPermissions ?? {},
+    supportedFreightTypes: c.supportedFreightTypes ?? ["Dry Van"],
+    defaultFreightType: c.defaultFreightType ?? "Dry Van",
+    operatingMode: c.operatingMode ?? "Small Team",
+  };
 }
 
 export const CompanyProfile: React.FC<Props> = ({
@@ -120,7 +160,7 @@ export const CompanyProfile: React.FC<Props> = ({
           getCompany(user.companyId),
           getCompanyUsers(user.companyId),
         ]);
-        if (c) setCompany(c);
+        if (c) setCompany(withCompanyDefaults(c));
         setUsers(u);
       }
       if (isDriver) setActiveTab("driver_cockpit");
@@ -133,23 +173,12 @@ export const CompanyProfile: React.FC<Props> = ({
     if (!isAdmin) return;
     const checkQb = async () => {
       try {
-        const res = await fetch("/api/quickbooks/status", {
-          headers: { "Content-Type": "application/json" },
+        const data = await api.get("/quickbooks/status");
+        setQbStatus({
+          available: true,
+          connected: data?.connected || false,
+          companyName: data?.companyName,
         });
-        if (res.status === 503) {
-          setQbStatus({ available: false, connected: false });
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          setQbStatus({
-            available: true,
-            connected: data.connected || false,
-            companyName: data.companyName,
-          });
-        } else {
-          setQbStatus({ available: false, connected: false });
-        }
       } catch {
         setQbStatus({ available: false, connected: false });
       }
@@ -244,19 +273,12 @@ export const CompanyProfile: React.FC<Props> = ({
     if (!company?.stripeCustomerId) return;
     setBillingLoading(true);
     try {
-      const res = await fetch("/api/stripe/create-billing-portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stripeCustomerId: company.stripeCustomerId,
-          returnUrl: window.location.href,
-        }),
+      const data = await api.post("/stripe/create-billing-portal", {
+        stripeCustomerId: company.stripeCustomerId,
+        returnUrl: window.location.href,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
+      if (data?.url) {
+        window.location.assign(data.url);
       } else {
         showMsg("Unable to open billing portal. Please try again.", 4000);
       }
@@ -269,14 +291,9 @@ export const CompanyProfile: React.FC<Props> = ({
 
   const handleConnectQuickBooks = async () => {
     try {
-      const res = await fetch("/api/quickbooks/auth-url", {
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
+      const data = await api.get("/quickbooks/auth-url");
+      if (data?.url) {
+        window.location.assign(data.url);
       } else {
         showMsg("Unable to connect QuickBooks. Please try again.", 4000);
       }
@@ -395,8 +412,14 @@ export const CompanyProfile: React.FC<Props> = ({
             <button
               onClick={isAdmin ? handleSaveCompany : undefined}
               disabled={!isAdmin || isSubmitting}
-              title={!isAdmin ? "Only administrators can save changes" : undefined}
-              aria-label={!isAdmin ? "Save Changes - Only administrators can save changes" : undefined}
+              title={
+                !isAdmin ? "Only administrators can save changes" : undefined
+              }
+              aria-label={
+                !isAdmin
+                  ? "Save Changes - Only administrators can save changes"
+                  : undefined
+              }
               className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] flex items-center gap-3 shadow-2xl active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save className="w-4 h-4" />{" "}
@@ -444,10 +467,15 @@ export const CompanyProfile: React.FC<Props> = ({
 
       <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar pb-24 bg-slate-900/50">
         {!isAdmin && !isDriver && (
-          <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3" role="status" aria-live="polite">
+          <div
+            className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center gap-3"
+            role="status"
+            aria-live="polite"
+          >
             <Info className="w-4 h-4 text-blue-400 shrink-0" />
             <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">
-              Viewing as read-only — Only administrators can modify company settings
+              Viewing as read-only — Only administrators can modify company
+              settings
             </p>
           </div>
         )}
@@ -592,10 +620,14 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="cpLegalName" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label
+                    htmlFor="cpLegalName"
+                    className="text-[9px] text-slate-500 uppercase font-black px-1"
+                  >
                     Legal Name
                   </label>
-                  <input id="cpLegalName"
+                  <input
+                    id="cpLegalName"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-black uppercase tracking-tight"
                     value={company.name}
                     readOnly
@@ -609,29 +641,36 @@ export const CompanyProfile: React.FC<Props> = ({
               </h3>
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="cpMainTerminalAddress" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label
+                    htmlFor="cpMainTerminalAddress"
+                    className="text-[9px] text-slate-500 uppercase font-black px-1"
+                  >
                     Main Terminal Address
                   </label>
-                  <input id="cpMainTerminalAddress"
+                  <input
+                    id="cpMainTerminalAddress"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-bold"
                     value={company.address || ""}
                     readOnly
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <input aria-label="CITY"
+                  <input
+                    aria-label="CITY"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold"
                     value={company.city || ""}
                     placeholder="CITY"
                     readOnly
                   />
-                  <input aria-label="ST"
+                  <input
+                    aria-label="ST"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.state || ""}
                     placeholder="ST"
                     readOnly
                   />
-                  <input aria-label="ZIP"
+                  <input
+                    aria-label="ZIP"
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-bold text-center"
                     value={company.zip || ""}
                     placeholder="ZIP"
@@ -782,10 +821,14 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="cpCompanyStructure" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label
+                    htmlFor="cpCompanyStructure"
+                    className="text-[9px] text-slate-500 uppercase font-black px-1"
+                  >
                     Company Structure
                   </label>
-                  <select id="cpCompanyStructure"
+                  <select
+                    id="cpCompanyStructure"
                     className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase outline-none focus:border-blue-500 transition-all"
                     value={company.accountType}
                     onChange={(e) =>
@@ -857,10 +900,14 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="cpPrefix" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label
+                      htmlFor="cpPrefix"
+                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                    >
                       Prefix
                     </label>
-                    <input id="cpPrefix"
+                    <input
+                      id="cpPrefix"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black uppercase"
                       value={company.loadNumberingConfig.prefix}
                       onChange={(e) =>
@@ -875,10 +922,14 @@ export const CompanyProfile: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="cpAutoSequence" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label
+                      htmlFor="cpAutoSequence"
+                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                    >
                       Auto-Sequence
                     </label>
-                    <input id="cpAutoSequence"
+                    <input
+                      id="cpAutoSequence"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.loadNumberingConfig.nextSequence}
@@ -987,10 +1038,14 @@ export const CompanyProfile: React.FC<Props> = ({
                   </button>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="cpMinSafetyScoreForDispatch" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                  <label
+                    htmlFor="cpMinSafetyScoreForDispatch"
+                    className="text-[9px] text-slate-500 uppercase font-black px-1"
+                  >
                     Min. Safety Score for Dispatch
                   </label>
-                  <input id="cpMinSafetyScoreForDispatch"
+                  <input
+                    id="cpMinSafetyScoreForDispatch"
                     type="range"
                     min="0"
                     max="100"
@@ -1025,10 +1080,14 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label htmlFor="cpPreferredCurrency" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label
+                      htmlFor="cpPreferredCurrency"
+                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                    >
                       Preferred Currency
                     </label>
-                    <select id="cpPreferredCurrency"
+                    <select
+                      id="cpPreferredCurrency"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black outline-none"
                       value={company.governance?.preferredCurrency || "USD"}
                       onChange={(e) =>
@@ -1046,10 +1105,14 @@ export const CompanyProfile: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label htmlFor="cpMaxLoadsWeek" className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label
+                      htmlFor="cpMaxLoadsWeek"
+                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                    >
                       Max Loads/Week
                     </label>
-                    <input id="cpMaxLoadsWeek"
+                    <input
+                      id="cpMaxLoadsWeek"
                       type="number"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-xs text-white font-black"
                       value={company.governance?.maxLoadsPerDriverPerWeek || 5}
@@ -1198,10 +1261,14 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div className="p-10 space-y-8">
               <div className="space-y-4">
-                <label htmlFor="cpTripDutyCompletionNotes" className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">
+                <label
+                  htmlFor="cpTripDutyCompletionNotes"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1"
+                >
                   Trip / Duty Completion Notes
                 </label>
-                <textarea id="cpTripDutyCompletionNotes"
+                <textarea
+                  id="cpTripDutyCompletionNotes"
                   className="w-full bg-slate-950 border border-slate-800 rounded-3xl p-6 text-white font-bold text-sm h-40 focus:border-red-500 outline-none shadow-inner placeholder:text-slate-800"
                   placeholder="Describe shifts, delays, or chassis observations..."
                   value={clockNotes}

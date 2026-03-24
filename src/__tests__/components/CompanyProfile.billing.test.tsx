@@ -11,10 +11,12 @@ vi.mock("../../../services/authService", () => ({
   updateUser: vi.fn(),
   getCurrentUser: vi.fn(),
   checkCapability: vi.fn().mockReturnValue(true),
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
   CAPABILITY_PRESETS: {
     "Small Team": {},
     "Mid Fleet": {},
-    "Enterprise": {},
+    Enterprise: {},
   },
 }));
 

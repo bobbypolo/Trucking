@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { API_URL } from "../services/config";
+import { api } from "../services/api";
 import {
   History,
   Search,
@@ -61,21 +61,14 @@ export const AuditLogs: React.FC<AuditLogsProps> = () => {
           params.set("type", filterType);
         }
 
-        const res = await fetch(`${API_URL}/audit?${params.toString()}`, {
-          credentials: "include",
-        });
+        const data = (await api.get(`/audit?${params.toString()}`)) as
+          | {
+              entries: AuditEntry[];
+              total: number;
+            }
+          | undefined;
 
-        if (!res.ok) {
-          const body = (await res.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(body.error ?? `HTTP ${res.status}`);
-        }
-
-        const data = (await res.json()) as {
-          entries: AuditEntry[];
-          total: number;
-        };
+        if (!data) return; // Aborted request
 
         if (append) {
           setEntries((prev) => [...prev, ...(data.entries ?? [])]);

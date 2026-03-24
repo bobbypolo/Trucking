@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { api } from "../services/api";
 import {
   GoogleMap,
   LoadScript,
@@ -202,22 +203,19 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
   const fetchLivePositions = useCallback(async () => {
     try {
-      const res = await fetch("/api/tracking/live");
-      if (!res.ok) {
-        // API error — fall back to static data
-        setLivePositions([]);
-        setHasLiveData(false);
-        setHasMockPositions(false);
-        return;
-      }
-      const data = await res.json();
-      const positions: LiveGpsPosition[] = data.positions ?? [];
+      const data = await api.get("/tracking/live");
+      const positions: LiveGpsPosition[] = data?.positions ?? [];
 
       setLivePositions(positions);
-      setHasLiveData(positions.length > 0 && positions.some((p) => !p.isMock));
-      setHasMockPositions(showMockIndicators && positions.some((p) => p.isMock));
+      setHasLiveData(
+        positions.length > 0 &&
+          positions.some((p: LiveGpsPosition) => !p.isMock),
+      );
+      setHasMockPositions(
+        showMockIndicators && positions.some((p: LiveGpsPosition) => p.isMock),
+      );
     } catch {
-      // Network/parse error — fall back to static data
+      // API or network error — fall back to static data
       setLivePositions([]);
       setHasLiveData(false);
       setHasMockPositions(false);
@@ -570,7 +568,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: (pos.isMock && showMockIndicators) ? "#f59e0b" : "#22c55e",
+                        fillColor:
+                          pos.isMock && showMockIndicators
+                            ? "#f59e0b"
+                            : "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,

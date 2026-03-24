@@ -1,8 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock config
+// Mock boundaries only: config (API_URL) and auth (token provider)
 vi.mock("../../../services/config", () => ({
   API_URL: "http://test-api:5000/api",
+}));
+
+vi.mock("../../../services/authService", () => ({
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
 }));
 
 import {
@@ -36,6 +41,12 @@ describe("networkService", () => {
       expect(result).toEqual(parties);
       expect(globalThis.fetch).toHaveBeenCalledWith(
         "http://test-api:5000/api/parties/company-123",
+        expect.objectContaining({
+          method: "GET",
+          headers: expect.objectContaining({
+            Authorization: "Bearer mock-jwt-token",
+          }),
+        }),
       );
     });
 
@@ -43,6 +54,7 @@ describe("networkService", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: false,
         status: 404,
+        json: () => Promise.resolve({ error: "Not found" }),
       } as Response);
 
       const result = await getParties("company-123");
@@ -64,6 +76,7 @@ describe("networkService", () => {
     it("sends a POST request with the party data", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
+        json: () => Promise.resolve({ id: "p1" }),
       } as Response);
 
       const party = { name: "New Broker", type: "Broker" as const };
@@ -73,7 +86,10 @@ describe("networkService", () => {
         "http://test-api:5000/api/parties",
         expect.objectContaining({
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: expect.objectContaining({
+            "Content-Type": "application/json",
+            Authorization: "Bearer mock-jwt-token",
+          }),
           body: JSON.stringify(party),
         }),
       );
@@ -83,11 +99,10 @@ describe("networkService", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: false,
         status: 400,
+        json: () => Promise.resolve({ error: "Bad request" }),
       } as Response);
 
-      await expect(saveParty({ name: "Test" })).rejects.toThrow(
-        "Failed to save party",
-      );
+      await expect(saveParty({ name: "Test" })).rejects.toThrow("Bad request");
     });
 
     it("throws on fetch error", async () => {
@@ -104,9 +119,9 @@ describe("networkService", () => {
   // --- updatePartyStatus ---
   describe("updatePartyStatus", () => {
     it("throws 'not implemented' error", async () => {
-      await expect(
-        updatePartyStatus("p1", "active"),
-      ).rejects.toThrow("updatePartyStatus not implemented");
+      await expect(updatePartyStatus("p1", "active")).rejects.toThrow(
+        "updatePartyStatus not implemented",
+      );
     });
   });
 });

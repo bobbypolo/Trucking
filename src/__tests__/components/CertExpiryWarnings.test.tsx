@@ -1,6 +1,17 @@
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Mock boundaries: config (API_URL) and auth (token provider)
+vi.mock("../../../services/config", () => ({
+  API_URL: "/api",
+}));
+
+vi.mock("../../../services/authService", () => ({
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
+}));
+
 import { CertExpiryWarnings } from "../../../components/ui/CertExpiryWarnings";
 
 const mockCerts = [
@@ -96,9 +107,7 @@ describe("CertExpiryWarnings", () => {
       expect(screen.getByTestId("cert-expiry-empty")).toBeDefined();
     });
 
-    expect(
-      screen.getByText(/no certificates expiring/i),
-    ).toBeDefined();
+    expect(screen.getByText(/no certificates expiring/i)).toBeDefined();
   });
 
   it("shows error state on fetch failure", async () => {
@@ -142,6 +151,11 @@ describe("CertExpiryWarnings", () => {
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledWith(
         "/api/safety/expiring-certs?days=60",
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: "Bearer mock-jwt-token",
+          }),
+        }),
       );
     });
   });

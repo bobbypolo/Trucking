@@ -23,6 +23,8 @@ vi.mock("../../../services/authService", () => ({
   updateUser: (...args: unknown[]) => mockUpdateUser(...args),
   getCurrentUser: (...args: unknown[]) => mockGetCurrentUser(...args),
   checkCapability: (...args: unknown[]) => mockCheckCapability(...args),
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
   CAPABILITY_PRESETS: {
     "Small Team": {
       admin: [{ capability: "QUOTE_CREATE", level: "Allow" }],

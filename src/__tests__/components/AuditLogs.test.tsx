@@ -2,6 +2,17 @@ import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
+// Mock boundaries: config (API_URL) and auth (token provider)
+vi.mock("../../../services/config", () => ({
+  API_URL: "/api",
+}));
+
+vi.mock("../../../services/authService", () => ({
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-jwt-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("refreshed-jwt-token"),
+}));
+
 import { AuditLogs } from "../../../components/AuditLogs";
 
 // Mock fetch at the network boundary
@@ -337,7 +348,7 @@ describe("AuditLogs component", () => {
     expect(screen.queryByText(/LOAD MORE/)).not.toBeInTheDocument();
   });
 
-  it("passes credentials: include to fetch", async () => {
+  it("sends Authorization header via api client", async () => {
     mockFetch.mockReturnValue(successResponse([]));
     render(<AuditLogs />);
 
@@ -346,6 +357,7 @@ describe("AuditLogs component", () => {
     });
 
     const fetchOptions = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(fetchOptions.credentials).toBe("include");
+    const headers = fetchOptions.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer mock-jwt-token");
   });
 });

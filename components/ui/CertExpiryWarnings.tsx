@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { api } from "../../services/api";
 import { AlertTriangle, ShieldAlert, RefreshCw, Loader2 } from "lucide-react";
 
 export interface ExpiringCert {
@@ -31,14 +32,8 @@ export const CertExpiryWarnings: React.FC<CertExpiryWarningsProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const resp = await fetch(
-        `/api/safety/expiring-certs?days=${daysAhead}`,
-      );
-      if (!resp.ok) {
-        throw new Error(`HTTP ${resp.status}`);
-      }
-      const data: ExpiringCert[] = await resp.json();
-      setCerts(data);
+      const data = await api.get(`/safety/expiring-certs?days=${daysAhead}`);
+      setCerts((data as ExpiringCert[]) ?? []);
     } catch (err: unknown) {
       const msg =
         err instanceof Error ? err.message : "Failed to fetch cert expiry data";
@@ -191,9 +186,7 @@ export const CertExpiryWarnings: React.FC<CertExpiryWarningsProps> = ({
               </div>
               <div className={`text-right ${urgency.colorClass}`}>
                 <div className="text-lg font-bold leading-none">
-                  {cert.daysRemaining <= 0
-                    ? "0"
-                    : cert.daysRemaining}
+                  {cert.daysRemaining <= 0 ? "0" : cert.daysRemaining}
                 </div>
                 <div className="text-[8px] font-bold uppercase">
                   {cert.daysRemaining <= 0 ? "Expired" : "Days Left"}
