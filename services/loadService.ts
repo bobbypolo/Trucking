@@ -8,10 +8,27 @@
  * Replaces legacy browser-storage-based operations in storageService.ts.
  */
 import { api } from "./api";
+import { v4 as uuidv4 } from "uuid";
 import { LoadData, User, LoadStatus } from "../types";
 
 /** Map a backend load row to frontend LoadData shape. */
 function mapRowToLoadData(row: any): LoadData {
+  // Derive dropoffDate from the Dropoff leg when not explicitly on the row.
+  // CalendarView uses pickupDate + dropoffDate to render multi-day spans.
+  const pickupLeg = (row.legs || []).find((leg: any) => leg.type === "Pickup");
+  const dropoffLeg = (row.legs || []).find(
+    (leg: any) => leg.type === "Dropoff",
+  );
+
+  const pickupDate =
+    row.pickup_date ||
+    row.pickupDate ||
+    pickupLeg?.date ||
+    new Date().toISOString().split("T")[0];
+
+  const dropoffDate =
+    row.dropoff_date || row.dropoffDate || dropoffLeg?.date || undefined;
+
   return {
     id: row.id,
     companyId: row.company_id || row.companyId || "",
@@ -22,10 +39,8 @@ function mapRowToLoadData(row: any): LoadData {
     status: row.status || "draft",
     carrierRate: Number(row.carrier_rate ?? row.carrierRate) || 0,
     driverPay: Number(row.driver_pay ?? row.driverPay) || 0,
-    pickupDate:
-      row.pickup_date ||
-      row.pickupDate ||
-      new Date().toISOString().split("T")[0],
+    pickupDate,
+    dropoffDate,
     freightType: row.freight_type || row.freightType,
     commodity: row.commodity,
     weight: row.weight,
@@ -59,24 +74,25 @@ function mapRowToLoadData(row: any): LoadData {
       completed: leg.completed ?? false,
       completedAt: leg.completedAt || leg.completed_at,
     })),
-    pickup: row.legs?.find((leg: any) => leg.type === "Pickup")
+    pickup: pickupLeg
       ? {
-          city: row.legs.find((leg: any) => leg.type === "Pickup").city || "",
-          state: row.legs.find((leg: any) => leg.type === "Pickup").state || "",
+          city: pickupLeg.city || pickupLeg.location?.city || "",
+          state: pickupLeg.state || pickupLeg.location?.state || "",
           facilityName:
-            row.legs.find((leg: any) => leg.type === "Pickup").facility_name ||
-            row.legs.find((leg: any) => leg.type === "Pickup").facilityName ||
+            pickupLeg.facility_name ||
+            pickupLeg.facilityName ||
+            pickupLeg.location?.facilityName ||
             "",
         }
       : row.pickup || { city: "", state: "", facilityName: "" },
-    dropoff: row.legs?.find((leg: any) => leg.type === "Dropoff")
+    dropoff: dropoffLeg
       ? {
-          city: row.legs.find((leg: any) => leg.type === "Dropoff").city || "",
-          state:
-            row.legs.find((leg: any) => leg.type === "Dropoff").state || "",
+          city: dropoffLeg.city || dropoffLeg.location?.city || "",
+          state: dropoffLeg.state || dropoffLeg.location?.state || "",
           facilityName:
-            row.legs.find((leg: any) => leg.type === "Dropoff").facility_name ||
-            row.legs.find((leg: any) => leg.type === "Dropoff").facilityName ||
+            dropoffLeg.facility_name ||
+            dropoffLeg.facilityName ||
+            dropoffLeg.location?.facilityName ||
             "",
         }
       : row.dropoff || { city: "", state: "", facilityName: "" },
@@ -190,4 +206,125 @@ export async function searchLoadsApi(query: string): Promise<LoadData[]> {
       l.pickup.city?.toLowerCase().includes(q) ||
       l.dropoff.city?.toLowerCase().includes(q),
   );
+}
+
+/**
+ * Driver-first intake: create a load from driver-submitted data.
+ * POST /api/loads with status="draft" and source="driver_intake".
+ *
+ * The created load will have pickup/dropoff dates and immediately appear
+ * in schedule views (CalendarView) and the Load Board via the shared
+ * backend truth — no synthetic local state needed.
+ */
+export async function createDriverIntake(intakeData: {
+  pickup: {
+    city?: string;
+    state?: string;
+    address?: string;
+    facilityName?: string;
+  };
+  dropoff: {
+    city?: string;
+    state?: string;
+    address?: string;
+    facilityName?: string;
+  };
+  pickupDate?: string;
+  dropoffDate?: string;
+  commodity?: string;
+  weight?: number;
+  referenceNumbers?: string[];
+  specialInstructions?: string;
+  driverId: string;
+  companyId: string;
+  scannedDocUrls?: string[];
+  source: "driver_intake";
+}): Promise<LoadData> {
+  const id = uuidv4();
+  const loadNumber = `DI-${Date.now().toString(36).toUpperCase()}`;
+
+  const legs: Record<string, unknown>[] = [];
+
+  if (intakeData.pickup) {
+    legs.push({
+      id: uuidv4(),
+      type: "Pickup",
+      facility_name: intakeData.pickup.facilityName || "",
+      city: intakeData.pickup.city || "",
+      state: intakeData.pickup.state || "",
+      date: intakeData.pickupDate || "",
+      appointment_time: "",
+      completed: false,
+      sequence_order: 0,
+    });
+  }
+
+  if (intakeData.dropoff) {
+    legs.push({
+      id: uuidv4(),
+      type: "Dropoff",
+      facility_name: intakeData.dropoff.facilityName || "",
+      city: intakeData.dropoff.city || "",
+      state: intakeData.dropoff.state || "",
+      date: intakeData.dropoffDate || "",
+      appointment_time: "",
+      completed: false,
+      sequence_order: 1,
+    });
+  }
+
+  const payload = {
+    id,
+    load_number: loadNumber,
+    status: "draft",
+    driver_id: intakeData.driverId,
+    pickup_date: intakeData.pickupDate || "",
+    commodity: intakeData.commodity,
+    weight: intakeData.weight,
+    notification_emails: [],
+    gpsHistory: [],
+    podUrls: intakeData.scannedDocUrls || [],
+    legs,
+    // source stored as dispatcher_notes prefix until a dedicated column exists
+    // broker (customer_id) intentionally omitted — driver intakes may not know the broker
+  };
+
+  const result = await api.post("/loads", payload);
+
+  // Return the created load mapped to LoadData shape for immediate UI use
+  return mapRowToLoadData({
+    id,
+    load_number: loadNumber,
+    status: "draft",
+    driver_id: intakeData.driverId,
+    company_id: intakeData.companyId,
+    pickup_date: intakeData.pickupDate || "",
+    commodity: intakeData.commodity,
+    weight: intakeData.weight,
+    legs: legs.map((leg) => ({
+      ...leg,
+      facilityName: leg.facility_name,
+    })),
+    ...(result && typeof result === "object" ? result : {}),
+  });
+}
+
+/**
+ * Fetch loads for schedule rendering (CalendarView).
+ *
+ * Returns loads that have valid pickup/dropoff dates, filtered by an
+ * optional date range. Uses the same backend endpoint with a query
+ * parameter so results come from shared backend truth — not local state.
+ *
+ * GET /api/loads?for=schedule[&start=YYYY-MM-DD&end=YYYY-MM-DD]
+ */
+export async function fetchScheduleLoads(
+  dateRange?: { start: string; end: string },
+): Promise<LoadData[]> {
+  let url = "/loads?for=schedule";
+  if (dateRange) {
+    url += `&start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;
+  }
+  const rows = await api.get(url);
+  return (rows as any[]).map(mapRowToLoadData);
 }

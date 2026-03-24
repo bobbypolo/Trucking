@@ -20,13 +20,36 @@ import { geocodeStopAddress } from "../services/geocoding.service";
 const router = Router();
 
 // Loads — companyId derived from auth context (req.user.tenantId), NOT URL param
+// Supports ?for=schedule to return only loads with valid dates (for CalendarView)
+// Supports ?start=YYYY-MM-DD&end=YYYY-MM-DD for date-range filtering
 router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
   const companyId = req.user.tenantId;
+  const isScheduleQuery = req.query.for === "schedule";
+  const startDate = req.query.start as string | undefined;
+  const endDate = req.query.end as string | undefined;
+
   try {
-    const [rows]: any = await pool.query(
-      "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL",
-      [companyId],
-    );
+    // Base query: all non-deleted loads for this tenant
+    let sql =
+      "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
+    const params: any[] = [companyId];
+
+    // For schedule queries, only return loads that have a pickup_date
+    if (isScheduleQuery) {
+      sql += " AND pickup_date IS NOT NULL";
+    }
+
+    // Date-range filter: loads whose pickup_date falls within the range
+    if (startDate) {
+      sql += " AND pickup_date >= ?";
+      params.push(startDate);
+    }
+    if (endDate) {
+      sql += " AND pickup_date <= ?";
+      params.push(endDate);
+    }
+
+    const [rows]: any = await pool.query(sql, params);
     const settings = await getVisibilitySettings(companyId);
 
     const enrichedLoads = await Promise.all(
@@ -36,9 +59,18 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
           [load.id],
         );
 
+        // Derive dropoff_date from the last Dropoff leg for schedule rendering
+        const dropoffLeg = legs
+          .slice()
+          .reverse()
+          .find((leg: any) => leg.type === "Dropoff");
+        const dropoff_date = dropoffLeg?.date || null;
+
         let loadData = {
           ...load,
           legs,
+          // Schedule-critical: expose dropoff_date derived from legs
+          dropoff_date,
           notificationEmails: load.notification_emails
             ? typeof load.notification_emails === "string"
               ? JSON.parse(load.notification_emails)
@@ -61,7 +93,21 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
       }),
     );
 
-    res.json(redactData(enrichedLoads, req.user.role, settings));
+    // For schedule queries with a date range, also include loads whose
+    // dropoff_date extends into the range (multi-day loads)
+    let result = enrichedLoads;
+    if (isScheduleQuery && startDate && endDate) {
+      result = enrichedLoads.filter((load: any) => {
+        const pickup = load.pickup_date;
+        const dropoff = load.dropoff_date;
+        if (!pickup) return false;
+        // Load is visible if its span [pickup, dropoff||pickup] overlaps [start, end]
+        const effectiveDropoff = dropoff || pickup;
+        return effectiveDropoff >= startDate && pickup <= endDate;
+      });
+    }
+
+    res.json(redactData(result, req.user.role, settings));
   } catch (error) {
     const log = createChildLogger({
       correlationId: req.correlationId,

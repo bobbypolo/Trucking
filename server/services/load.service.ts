@@ -90,13 +90,17 @@ export const loadService = {
       // This will be expanded when equipment_id is added to the loads table
       const equipmentId = load.chassis_number || load.container_number || null;
       if (equipmentId) {
-        // Look up equipment by identifier to verify tenant
+        // Look up equipment by identifier — search across ALL tenants to detect
+        // cross-tenant references (not scoped to companyId)
         const [equipRows] = await pool.query<RowDataPacket[]>(
-          "SELECT company_id FROM equipment WHERE (unit_number = ? OR id = ?) AND company_id = ?",
-          [equipmentId, equipmentId, companyId],
+          "SELECT company_id FROM equipment WHERE unit_number = ? OR id = ?",
+          [equipmentId, equipmentId],
         );
+        // If equipment exists in the DB, use its actual company_id for tenant check.
+        // If not found (unregistered equipment), leave null so the guard skips
+        // the tenant check rather than silently assuming same-tenant.
         equipmentCompanyId =
-          equipRows.length > 0 ? equipRows[0].company_id : companyId;
+          equipRows.length > 0 ? equipRows[0].company_id : null;
       }
 
       validateDispatchGuards({
