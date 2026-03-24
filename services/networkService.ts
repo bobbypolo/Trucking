@@ -1,29 +1,26 @@
-import { API_URL } from "./config";
+import { api } from "./api";
 import { NetworkParty } from "../types";
 
 export const getParties = async (
   companyId: string,
 ): Promise<NetworkParty[]> => {
   try {
-    const res = await fetch(`${API_URL}/parties/${companyId}`);
-    if (res.ok) return await res.json();
-  } catch (e) {}
-  return [];
-};
-
-export const saveParty = async (party: Partial<NetworkParty>) => {
-  try {
-    const res = await fetch(`${API_URL}/parties`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(party),
-    });
-    if (!res.ok) throw new Error("Failed to save party");
+    const data = await api.get(`/parties`);
+    return data ?? [];
   } catch (e) {
-    throw e;
+    console.error("[networkService] getParties failed:", e);
+    return [];
   }
 };
 
-export const updatePartyStatus = async (partyId: string, status: string) => {
-  throw new Error("updatePartyStatus not implemented");
+export const saveParty = async (party: Partial<NetworkParty>) => {
+  const result = await api.post(`/parties`, party);
+  return result;
+};
+
+export const updatePartyStatus = async (
+  partyId: string,
+  status: string,
+): Promise<void> => {
+  await api.patch(`/parties/${partyId}/status`, { status });
 };

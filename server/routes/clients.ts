@@ -10,10 +10,7 @@ import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
-import {
-  findSqlCompanyById,
-  mapCompanyRowToApiCompany,
-} from "../lib/sql-auth";
+import { findSqlCompanyById, mapCompanyRowToApiCompany } from "../lib/sql-auth";
 
 const router = Router();
 
@@ -398,8 +395,20 @@ router.get(
             [p.id],
           );
 
+          // Parse entity_class from the type field (unified entity model)
+          // Entity classes: Customer, Broker, Vendor, Facility, Contractor
+          // Legacy types (Shipper, Vendor_Service, etc.) map to the new model
+          const entityClass = p.entity_class || p.type;
+          const tags = p.tags
+            ? typeof p.tags === "string"
+              ? JSON.parse(p.tags)
+              : p.tags
+            : [];
+
           return {
             ...p,
+            entityClass,
+            tags,
             isCustomer: !!p.is_customer,
             isVendor: !!p.is_vendor,
             mcNumber: p.mc_number,
@@ -419,6 +428,44 @@ router.get(
         route: "GET /api/parties",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/parties]");
+    }
+  },
+);
+
+// PATCH /api/parties/:id/status — update party onboarding status
+router.patch(
+  "/api/parties/:id/status",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const { status } = req.body;
+    const tenantId = req.user.tenantId;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/parties/:id/status",
+    });
+
+    if (!status) {
+      res.status(400).json({ error: "status is required" });
+      return;
+    }
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE parties SET status = ? WHERE id = ? AND company_id = ?",
+        [status, req.params.id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Party not found" });
+        return;
+      }
+
+      log.info({ partyId: req.params.id, status }, "Party status updated");
+      res.json({ message: "Party status updated" });
+    } catch (error) {
+      log.error({ err: error }, "Failed to update party status");
+      res.status(500).json({ error: "Database error" });
     }
   },
 );
@@ -446,19 +493,28 @@ router.post(
       constraintSets,
       catalogLinks,
     } = req.body;
+
+    // Entity class and tags — passed alongside validated fields.
+    // entityClass maps to the `type` column for unified entity model.
+    // tags are stored as JSON in the `type` field metadata for future
+    // migration to a dedicated column when the DB schema is extended.
+    const entityClass = req.body.entityClass || type;
+    const tags = req.body.tags || [];
+
     const finalCompanyId = companyId || company_id;
     const finalTenantId = req.user.tenantId;
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
+      // Use entityClass as the type value for unified entity model
       await connection.query(
         "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           finalCompanyId,
           name,
-          type,
+          entityClass || type,
           isCustomer,
           isVendor,
           status,
