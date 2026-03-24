@@ -255,16 +255,22 @@ test.describe("QA-01 Nav Visibility — Removed Items Not Shown", () => {
       "SETTINGS",
     ];
     const allKnown = [...knownLabels, ...knownCategoryHeaders];
-    // This is a documentation assertion — we log any unexpected items
+    // Collect any unexpected items — these must not be present
+    const unexpectedLabels: string[] = [];
     for (const label of visibleLabels) {
       const isKnown = allKnown.some(
         (k) => label.includes(k) || k.includes(label),
       );
       if (!isKnown) {
-        // Log but do not fail — new features may add items
-        console.log(`[QA-01] Unexpected nav label found: "${label}"`);
+        unexpectedLabels.push(label);
       }
     }
+
+    // Fail if any nav items fall outside the defined categories
+    expect(
+      unexpectedLabels,
+      `Unexpected nav items found outside defined categories: ${unexpectedLabels.join(", ")}`,
+    ).toEqual([]);
   });
 });
 
@@ -400,17 +406,21 @@ test.describe("QA-01 Nav Visibility — Driver Role", () => {
       }
     }
 
-    // Driver should NOT see admin-gated items (unless they have those permissions)
-    // Company Settings requires ORG_SETTINGS_VIEW which drivers typically lack
-    const adminOnlyItems = ["Company Settings", "Activity Log"];
+    // Driver should NOT see admin-gated items per the role matrix.
+    // Operations Center, Accounting, Company Settings, and Activity Log
+    // require admin/dispatcher-level permissions that drivers must not have.
+    const adminOnlyItems = [
+      "Operations Center",
+      "Accounting",
+      "Company Settings",
+      "Activity Log",
+    ];
     for (const label of adminOnlyItems) {
       const hasItem = visibleLabels.some((v) => v.includes(label));
-      if (hasItem) {
-        // Document but do not fail — the company may have granted these permissions
-        console.log(
-          `[QA-01] Driver sees "${label}" — may have elevated permissions`,
-        );
-      }
+      expect(
+        hasItem,
+        `Driver should NOT see admin-only item "${label}" in nav`,
+      ).toBe(false);
     }
   });
 
@@ -423,7 +433,7 @@ test.describe("QA-01 Nav Visibility — Driver Role", () => {
 
     await loginAndWait(page, email!, password!);
 
-    // Accounting requires INVOICE_CREATE permission — drivers typically lack this
+    // Accounting requires INVOICE_CREATE permission — drivers must not have this
     const accountingNav = page.locator(
       'nav >> text="Accounting", aside >> text="Accounting"',
     );
@@ -431,15 +441,12 @@ test.describe("QA-01 Nav Visibility — Driver Role", () => {
       .first()
       .isVisible()
       .catch(() => false);
-    // If visible, the driver has elevated permissions — log for documentation
-    if (isVisible) {
-      console.log(
-        "[QA-01] Driver sees Accounting — has INVOICE_CREATE permission",
-      );
-    }
-    // Primary assertion: page did not crash during nav rendering
-    const body = await page.content();
-    expect(body).toContain("<!DOCTYPE html>");
+
+    // Assert that Accounting is NOT visible to a driver
+    expect(
+      isVisible,
+      'Driver should NOT see "Accounting" nav item without INVOICE_CREATE permission',
+    ).toBe(false);
   });
 });
 

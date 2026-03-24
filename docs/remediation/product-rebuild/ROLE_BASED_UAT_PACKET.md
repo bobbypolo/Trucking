@@ -289,29 +289,29 @@ Implementation note: The nav filtering in `App.tsx` lines 680-703 uses `user.rol
 | Safety/Ops Control | None          | No          | No           | Needs implementation review                                      | Code review                     | Pending   |
 | Admin              | Full          | Yes         | Yes          | Admin bypass                                                     | Code review                     | Pending   |
 
-Implementation note: Broker Network nav item at `App.tsx` line 620 does not have a `permission` or `capability` gate. All non-admin roles with no filter applied will see it. This may diverge from the matrix expectation that Driver and Safety/Ops Control should have `None`. Requires verification.
+Implementation note: ~~Broker Network nav item at `App.tsx` line 620 does not have a `permission` or `capability` gate.~~ **RESOLVED (DISC-01)**: `permission: "LOAD_RATE_VIEW"` has been added to the Broker Network nav item in `App.tsx`. Driver and Safety/Ops Control roles no longer see this item, consistent with the matrix.
 
 ### 3.6 Driver Pay
 
-| Role               | Expected Mode | Nav Visible | Data Scope             | Route Guard                                                | Verification Method  | Pass/Fail |
-| ------------------ | ------------- | ----------- | ---------------------- | ---------------------------------------------------------- | -------------------- | --------- |
-| Dispatcher/Ops     | Read          | Yes         | All records, read-only | `SETTLEMENT_VIEW` not in `DISPATCHER` preset; needs review | Code review          | Pending   |
-| Driver             | Assigned      | Yes         | Own pay records only   | `DRIVER_PORTAL` lacks `SETTLEMENT_VIEW`; needs review      | Code review + Manual | Pending   |
-| Accounting         | Read          | Yes         | All records, read-only | `SETTLEMENT_VIEW` in `PAYROLL_SETTLEMENTS`                 | Code review          | Pending   |
-| Safety/Ops Control | None          | No          | N/A                    | `SAFETY_COMPLIANCE` lacks `SETTLEMENT_VIEW`                | Code review          | Pending   |
-| Admin              | Full          | Yes         | All records, full CRUD | Admin bypass                                               | Code review          | Pending   |
+| Role               | Expected Mode | Nav Visible | Data Scope             | Route Guard                                                     | Verification Method  | Pass/Fail |
+| ------------------ | ------------- | ----------- | ---------------------- | --------------------------------------------------------------- | -------------------- | --------- |
+| Dispatcher/Ops     | Read          | Yes         | All records, read-only | `SETTLEMENT_VIEW` now in `DISPATCHER` preset (DISC-05 resolved) | Code review          | Pending   |
+| Driver             | Assigned      | Yes         | Own pay records only   | `SETTLEMENT_VIEW` now in `DRIVER_PORTAL` preset                 | Code review + Manual | Pending   |
+| Accounting         | Read          | Yes         | All records, read-only | `SETTLEMENT_VIEW` in `PAYROLL_SETTLEMENTS`                      | Code review          | Pending   |
+| Safety/Ops Control | None          | No          | N/A                    | `SAFETY_COMPLIANCE` lacks `SETTLEMENT_VIEW`                     | Code review          | Pending   |
+| Admin              | Full          | Yes         | All records, full CRUD | Admin bypass                                                    | Code review          | Pending   |
 
 ### 3.7 Accounting
 
-| Role               | Expected Mode | Nav Visible | CRUD Allowed | Route Guard                                                               | Verification Method | Pass/Fail |
-| ------------------ | ------------- | ----------- | ------------ | ------------------------------------------------------------------------- | ------------------- | --------- |
-| Dispatcher/Ops     | None          | No          | No           | `DISPATCHER` lacks `INVOICE_CREATE`                                       | Code review         | Pending   |
-| Driver             | None          | No          | No           | `DRIVER_PORTAL` lacks `INVOICE_CREATE`                                    | Code review         | Pending   |
-| Accounting         | Full          | Yes         | Yes          | `PAYROLL_SETTLEMENTS` lacks `INVOICE_CREATE`; needs review against matrix | Code review         | Pending   |
-| Safety/Ops Control | None          | No          | No           | `SAFETY_COMPLIANCE` lacks `INVOICE_CREATE`                                | Code review         | Pending   |
-| Admin              | Full          | Yes         | Yes          | Admin bypass                                                              | Code review         | Pending   |
+| Role               | Expected Mode | Nav Visible | CRUD Allowed | Route Guard                                                             | Verification Method | Pass/Fail |
+| ------------------ | ------------- | ----------- | ------------ | ----------------------------------------------------------------------- | ------------------- | --------- |
+| Dispatcher/Ops     | None          | No          | No           | `DISPATCHER` lacks `INVOICE_CREATE`                                     | Code review         | Pending   |
+| Driver             | None          | No          | No           | `DRIVER_PORTAL` lacks `INVOICE_CREATE`                                  | Code review         | Pending   |
+| Accounting         | Full          | Yes         | Yes          | `INVOICE_CREATE` now in `PAYROLL_SETTLEMENTS` preset (DISC-04 resolved) | Code review         | Pending   |
+| Safety/Ops Control | None          | No          | No           | `SAFETY_COMPLIANCE` lacks `INVOICE_CREATE`                              | Code review         | Pending   |
+| Admin              | Full          | Yes         | Yes          | Admin bypass                                                            | Code review         | Pending   |
 
-Implementation note: The Accounting nav item is guarded by `INVOICE_CREATE` permission (`App.tsx` line 635). The `PAYROLL_SETTLEMENTS` preset does not include `INVOICE_CREATE`. This means the `payroll_manager` role may not see the Accounting page by default. If the "Accounting" role maps to `ACCOUNTING_AR` or `FINANCE` preset instead, this would work. The mapping between matrix role "Accounting" and system role needs confirmation.
+Implementation note: ~~The `PAYROLL_SETTLEMENTS` preset does not include `INVOICE_CREATE`.~~ **RESOLVED (DISC-04)**: `INVOICE_CREATE` has been added to the `PAYROLL_SETTLEMENTS` preset. The `payroll_manager` role now sees the Accounting page as expected by the matrix.
 
 ### 3.8 Issues & Alerts
 
@@ -427,22 +427,22 @@ The following areas require new tests or manual verification to complete the UAT
 | GAP-02 | Read-only mode enforcement      | No test verifies that CRUD buttons are hidden/disabled in Read mode                             | Write component tests for Load Board, Quotes, Schedule with read-only role                     |
 | GAP-03 | Assigned mode data scoping      | No test verifies driver sees only own loads/schedule/pay                                        | Write E2E or component test with driver role and verify data filtering                         |
 | GAP-04 | Submit mode on Issues           | Partial coverage via `IssueSidebar.permissions.test.tsx` but no E2E for driver issue submission | Extend `e2e/driver-workflow.spec.ts` or write new spec                                         |
-| GAP-05 | Broker Network role filtering   | Nav item has no `permission` gate; Driver and Safety should not see it                          | Verify implementation or flag as remediation item                                              |
-| GAP-06 | Company Settings role filtering | `ORG_SETTINGS_VIEW` not in Dispatcher/Accounting/Safety presets                                 | Verify implementation or flag as remediation item                                              |
-| GAP-07 | Accounting role mapping         | Matrix role "Accounting" may not map cleanly to `payroll_manager` for `INVOICE_CREATE`          | Confirm correct system role for Accounting or update preset                                    |
+| GAP-05 | Broker Network role filtering   | ~~Nav item has no `permission` gate~~ **RESOLVED (DISC-01)**: `LOAD_RATE_VIEW` gate added       | Fixed                                                                                          |
+| GAP-06 | Company Settings role filtering | ~~`ORG_SETTINGS_VIEW` not in presets~~ **RESOLVED (DISC-03)**: added to 3 presets               | Fixed                                                                                          |
+| GAP-07 | Accounting role mapping         | ~~`INVOICE_CREATE` not in `PAYROLL_SETTLEMENTS`~~ **RESOLVED (DISC-04)**: added to preset       | Fixed                                                                                          |
 
 ### 5.4 Implementation Discrepancy Log
 
 During packet construction, the following potential discrepancies between the `NAV_VISIBILITY_AND_ROLE_MATRIX` and the current implementation were identified. Each must be resolved before QA-02 can pass.
 
-| Discrepancy ID | Matrix Expectation                                                    | Implementation State                                                                                                                            | Severity | Resolution                                                                                                     |
-| -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
-| DISC-01        | Broker Network: Driver = None, Safety = None                          | Nav item has no `permission` or `capability` gate (`App.tsx` line 620); all non-admin roles see it                                              | High     | Add permission gate or role-based filter                                                                       |
-| DISC-02        | Issues & Alerts: Driver = Submit, Accounting = Read                   | Nav item has no `permission` gate (`App.tsx` line 586); all roles see it; component-level enforcement partial                                   | Medium   | Verify component-level mode enforcement is complete                                                            |
-| DISC-03        | Company Settings: Dispatcher = Read, Accounting = Read, Safety = Read | `ORG_SETTINGS_VIEW` not in `DISPATCHER`, `PAYROLL_SETTLEMENTS`, or `SAFETY_COMPLIANCE` presets                                                  | High     | Add `ORG_SETTINGS_VIEW` to those presets or adjust filter logic                                                |
-| DISC-04        | Accounting page: Accounting role = Full                               | `payroll_manager` maps to `PAYROLL_SETTLEMENTS` which lacks `INVOICE_CREATE` (the Accounting nav guard)                                         | High     | Map "Accounting" role to `ACCOUNTING_AR` or `FINANCE` preset, or add `INVOICE_CREATE` to `PAYROLL_SETTLEMENTS` |
-| DISC-05        | Driver Pay: Dispatcher = Read                                         | `DISPATCHER` preset lacks `SETTLEMENT_VIEW` (the Driver Pay nav guard)                                                                          | Medium   | Add `SETTLEMENT_VIEW` to `DISPATCHER` preset or adjust nav guard                                               |
-| DISC-06        | Load Board / Schedule: Driver = Assigned                              | `DRIVER_PORTAL` lacks `LOAD_DISPATCH`; visibility depends on `LOAD_TRACK` capability which may not be granted to drivers in all operating modes | Medium   | Verify driver capability configuration and data-scoping logic                                                  |
+| Discrepancy ID | Matrix Expectation                                                    | Implementation State                                                                                              | Severity | Resolution                                          |
+| -------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------- |
+| DISC-01        | Broker Network: Driver = None, Safety = None                          | **RESOLVED** -- `permission: "LOAD_RATE_VIEW"` added to Broker Network nav item in `App.tsx`                      | High     | Fixed: permission gate added                        |
+| DISC-02        | Issues & Alerts: Driver = Submit, Accounting = Read                   | Nav item has no `permission` gate (`App.tsx` line 586); all roles see it; component-level enforcement partial     | Medium   | Verify component-level mode enforcement is complete |
+| DISC-03        | Company Settings: Dispatcher = Read, Accounting = Read, Safety = Read | **RESOLVED** -- `ORG_SETTINGS_VIEW` added to `DISPATCHER`, `PAYROLL_SETTLEMENTS`, and `SAFETY_COMPLIANCE` presets | High     | Fixed: permission added to all three presets        |
+| DISC-04        | Accounting page: Accounting role = Full                               | **RESOLVED** -- `INVOICE_CREATE` added to `PAYROLL_SETTLEMENTS` preset                                            | High     | Fixed: permission added to preset                   |
+| DISC-05        | Driver Pay: Dispatcher = Read                                         | **RESOLVED** -- `SETTLEMENT_VIEW` added to `DISPATCHER` preset                                                    | Medium   | Fixed: permission added to preset                   |
+| DISC-06        | Load Board / Schedule: Driver = Assigned                              | **RESOLVED** -- `LOAD_TRACK` capability added for drivers in all operating modes                                  | Medium   | Fixed: capability granted in all modes              |
 
 ---
 
@@ -485,8 +485,8 @@ During packet construction, the following potential discrepancies between the `N
 
 **QA-02 Final Verdict**: Pending
 
-**Signed off by**: ******\_\_\_******
-**Date**: ******\_\_\_******
+**Signed off by**: **\*\***\_\_\_**\*\***
+**Date**: **\*\***\_\_\_**\*\***
 
 ---
 

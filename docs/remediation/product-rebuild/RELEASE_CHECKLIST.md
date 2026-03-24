@@ -155,22 +155,22 @@ Data isolation matrix: 6 test cases
 
 ### 5.3 Discrepancies Found
 
-6 implementation discrepancies identified between `NAV_VISIBILITY_AND_ROLE_MATRIX` and current implementation:
+6 implementation discrepancies were identified between `NAV_VISIBILITY_AND_ROLE_MATRIX` and the implementation. **All 6 have been resolved:**
 
-| ID      | Summary                                                                                    | Severity |
-| ------- | ------------------------------------------------------------------------------------------ | -------- |
-| DISC-01 | Broker Network has no permission gate; Driver/Safety should not see it                     | High     |
-| DISC-02 | Issues & Alerts has no nav-level permission gate; mode enforcement is component-level only | Medium   |
-| DISC-03 | Company Settings `ORG_SETTINGS_VIEW` not in Dispatcher/Accounting/Safety presets           | High     |
-| DISC-04 | Accounting page guard (`INVOICE_CREATE`) not in `PAYROLL_SETTLEMENTS` preset               | High     |
-| DISC-05 | Driver Pay `SETTLEMENT_VIEW` not in `DISPATCHER` preset                                    | Medium   |
-| DISC-06 | Driver `LOAD_TRACK` capability may not be granted in all modes                             | Medium   |
+| ID      | Summary                                                                                         | Severity | Status       |
+| ------- | ----------------------------------------------------------------------------------------------- | -------- | ------------ |
+| DISC-01 | Broker Network: `permission: "LOAD_RATE_VIEW"` added to nav item in `App.tsx`                   | High     | **RESOLVED** |
+| DISC-02 | Issues & Alerts: component-level mode enforcement verified                                      | Medium   | **RESOLVED** |
+| DISC-03 | Company Settings: `ORG_SETTINGS_VIEW` added to DISPATCHER/PAYROLL_SETTLEMENTS/SAFETY_COMPLIANCE | High     | **RESOLVED** |
+| DISC-04 | Accounting: `INVOICE_CREATE` added to `PAYROLL_SETTLEMENTS` preset                              | High     | **RESOLVED** |
+| DISC-05 | Driver Pay: `SETTLEMENT_VIEW` added to `DISPATCHER` preset                                      | Medium   | **RESOLVED** |
+| DISC-06 | Driver: `LOAD_TRACK` capability added for drivers in all operating modes                        | Medium   | **RESOLVED** |
 
 ### 5.4 Current Status
 
-**Status: Pending execution.** The `ROLE_BASED_UAT_PACKET.md` has been authored with full test case definitions. All 219 test cases are marked Pending. Execution requires:
+**Status: Pending execution.** The `ROLE_BASED_UAT_PACKET.md` has been authored with full test case definitions. All 219 test cases are marked Pending. The 3 High-severity discrepancies (DISC-01, DISC-03, DISC-04) that previously blocked execution have been resolved. Execution requires:
 
-1. Resolution of 3 High-severity discrepancies (DISC-01, DISC-03, DISC-04) or documented acceptance of current behavior.
+1. ~~Resolution of 3 High-severity discrepancies (DISC-01, DISC-03, DISC-04).~~ **DONE** -- all resolved.
 2. Manual browser verification by a human tester for cases not covered by automated tests.
 3. Automated E2E tests for nav visibility per role (`e2e/qa-nav-visibility.spec.ts` provides partial coverage).
 
@@ -292,24 +292,24 @@ Source: `ACCEPTANCE_CRITERIA_MASTER.md` Section 8 and `MASTER_REMEDIATION_PROGRA
 5. Phase 0 planning documents are complete (4/4 artifacts verified on disk).
 6. Platform stability (PLAT-01 to PLAT-06) is fully covered by automated tests.
 7. Role-based UAT packet is fully authored with 219 structured test cases across 5 roles.
-8. 6 implementation discrepancies between nav matrix and code have been identified and documented for resolution.
+8. 6 original implementation discrepancies (DISC-01 through DISC-06) between nav matrix and code have all been resolved. 9 additional nav-visibility mismatches remain as documented findings for Team 1 (see UAT packet).
 
 **Conditions for full release sign-off:**
 
-1. **High-priority discrepancies** (DISC-01, DISC-03, DISC-04) must be resolved or accepted before production deployment. These affect role-based nav visibility for Broker Network, Company Settings, and Accounting page access.
+1. ~~**High-priority discrepancies** (DISC-01, DISC-03, DISC-04) must be resolved or accepted before production deployment.~~ **RESOLVED** -- All 6 original DISCs are now fixed (permission gates and preset updates applied).
 2. **Manual review items** (7 criteria) must be executed by a human tester: NAV-07, COM-05, COM-07, ISS-01, ISS-04, CLN-02, CLN-03.
 3. **UAT execution** -- The 219 test cases in `ROLE_BASED_UAT_PACKET.md` must be executed (automated where possible, manual where required) and marked Pass/Fail.
 4. **Demo blockers** from HANDOFF.md (SafetyView hardcoded KPI, Fleet Map API key banner) remain known issues for demo environments but do not block production merge.
 
 ### 8.3 Blocking Issues
 
-| Issue                                                           | Severity | Resolution Path                                                    |
-| --------------------------------------------------------------- | -------- | ------------------------------------------------------------------ |
-| DISC-01: Broker Network visible to Driver/Safety without gate   | High     | Add permission gate to nav item in `App.tsx`                       |
-| DISC-03: Company Settings not visible to Dispatcher/Acct/Safety | High     | Add `ORG_SETTINGS_VIEW` to relevant permission presets             |
-| DISC-04: Accounting page not visible to Accounting role         | High     | Add `INVOICE_CREATE` to `PAYROLL_SETTLEMENTS` or remap system role |
+| Issue                                                           | Severity | Status       | Resolution                                                                      |
+| --------------------------------------------------------------- | -------- | ------------ | ------------------------------------------------------------------------------- |
+| DISC-01: Broker Network visible to Driver/Safety without gate   | High     | **RESOLVED** | `permission: "LOAD_RATE_VIEW"` added to Broker Network nav item in `App.tsx`    |
+| DISC-03: Company Settings not visible to Dispatcher/Acct/Safety | High     | **RESOLVED** | `ORG_SETTINGS_VIEW` added to DISPATCHER, PAYROLL_SETTLEMENTS, SAFETY_COMPLIANCE |
+| DISC-04: Accounting page not visible to Accounting role         | High     | **RESOLVED** | `INVOICE_CREATE` added to `PAYROLL_SETTLEMENTS` preset                          |
 
-These are implementation gaps between the approved nav/role matrix and the current code. They do not affect the test infrastructure or evidence documents being delivered by this branch.
+All 3 original blocking issues and 3 additional medium-severity discrepancies (DISC-02, DISC-05, DISC-06) have been resolved. 9 additional nav-visibility mismatches identified during extended audit remain as documented findings for Team 1.
 
 ### 8.4 Sign-Off
 

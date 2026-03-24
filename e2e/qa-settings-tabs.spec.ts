@@ -1,11 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  API_BASE,
-  makeAdminRequest,
-  makeDispatcherRequest,
-  makeDriverRequest,
-  type AuthContext,
-} from "./fixtures/auth.fixture";
+import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
 
 /**
  * QA-01 Settings Tabs Spec
@@ -88,6 +82,12 @@ test.describe("QA-01 Settings Tabs — Page Load", () => {
   );
 
   test("Company Settings page loads without crash", async ({ page }) => {
+    // Register pageerror listener BEFORE navigation so errors during load are caught
+    let jsError = false;
+    page.on("pageerror", () => {
+      jsError = true;
+    });
+
     await loginAndGoToSettings(page, E2E_EMAIL!, E2E_PASSWORD!);
 
     // Page should not be blank — some content must be visible
@@ -96,10 +96,6 @@ test.describe("QA-01 Settings Tabs — Page Load", () => {
     expect(body.length).toBeGreaterThan(500);
 
     // No JS errors (white screen detection)
-    let jsError = false;
-    page.on("pageerror", () => {
-      jsError = true;
-    });
     await page.waitForTimeout(2_000);
     expect(jsError).toBe(false);
   });
@@ -176,6 +172,12 @@ test.describe("QA-01 Settings Tabs — Individual Tab Rendering", () => {
     const body = await page.content();
     expect(body.length).toBeGreaterThan(500);
     expect(body).toContain("<!DOCTYPE html>");
+    // Verify Operations tab content actually rendered
+    const bodyText = await page.locator("body").innerText();
+    expect(
+      bodyText.toLowerCase(),
+      'Operations tab should render content containing "operations"',
+    ).toContain("operations");
   });
 
   test("Personnel tab renders without crash", async ({ page }) => {
@@ -189,6 +191,16 @@ test.describe("QA-01 Settings Tabs — Individual Tab Rendering", () => {
     const body = await page.content();
     expect(body.length).toBeGreaterThan(500);
     expect(body).toContain("<!DOCTYPE html>");
+    // Verify Personnel tab content actually rendered (may show "Personnel" or "Team")
+    const bodyText = await page.locator("body").innerText();
+    const hasPersonnel =
+      bodyText.toLowerCase().includes("personnel") ||
+      bodyText.toLowerCase().includes("team") ||
+      bodyText.toLowerCase().includes("user");
+    expect(
+      hasPersonnel,
+      'Personnel tab should render content containing "personnel", "team", or "user"',
+    ).toBe(true);
   });
 
   test("Security tab renders without crash", async ({ page }) => {
@@ -201,6 +213,16 @@ test.describe("QA-01 Settings Tabs — Individual Tab Rendering", () => {
     const body = await page.content();
     expect(body.length).toBeGreaterThan(500);
     expect(body).toContain("<!DOCTYPE html>");
+    // Verify Security tab content actually rendered
+    const bodyText = await page.locator("body").innerText();
+    const hasSecurity =
+      bodyText.toLowerCase().includes("security") ||
+      bodyText.toLowerCase().includes("permission") ||
+      bodyText.toLowerCase().includes("role");
+    expect(
+      hasSecurity,
+      'Security tab should render content containing "security", "permission", or "role"',
+    ).toBe(true);
   });
 
   test("Governance tab renders without crash", async ({ page }) => {
@@ -213,6 +235,16 @@ test.describe("QA-01 Settings Tabs — Individual Tab Rendering", () => {
     const body = await page.content();
     expect(body.length).toBeGreaterThan(500);
     expect(body).toContain("<!DOCTYPE html>");
+    // Verify Governance tab content actually rendered
+    const bodyText = await page.locator("body").innerText();
+    const hasGovernance =
+      bodyText.toLowerCase().includes("governance") ||
+      bodyText.toLowerCase().includes("policy") ||
+      bodyText.toLowerCase().includes("compliance");
+    expect(
+      hasGovernance,
+      'Governance tab should render content containing "governance", "policy", or "compliance"',
+    ).toBe(true);
   });
 
   test("all admin tabs can be cycled through without crash", async ({
@@ -406,16 +438,19 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
       .isVisible({ timeout: 5_000 })
       .catch(() => false);
 
-    if (hasDCTab) {
-      // Driver cockpit should be visible and clickable
-      await driverTab.first().click();
-      await page.waitForTimeout(1_000);
-      const body = await page.content();
-      expect(body.length).toBeGreaterThan(500);
+    if (!hasDCTab) {
+      test.skip(
+        true,
+        "Driver Cockpit tab not visible — driver may lack the required role or tab config differs",
+      );
+      return;
     }
 
-    // Verify the page did not crash
+    // Driver cockpit should be visible and clickable
+    await driverTab.first().click();
+    await page.waitForTimeout(1_000);
     const body = await page.content();
+    expect(body.length).toBeGreaterThan(500);
     expect(body).toContain("<!DOCTYPE html>");
   });
 
@@ -469,8 +504,14 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
       if (isVisible) visibleTabCount++;
     }
 
+    const ADMIN_TAB_COUNT = 5; // admin sees all 5: Identity, Operations, Personnel, Security, Governance
     // Should have at least 1 tab visible (Identity is the default)
     expect(visibleTabCount).toBeGreaterThan(0);
+    // Non-admin should see fewer tabs than a full admin
+    expect(
+      visibleTabCount,
+      `Dispatcher should see fewer than ${ADMIN_TAB_COUNT} admin tabs (saw ${visibleTabCount})`,
+    ).toBeLessThan(ADMIN_TAB_COUNT);
     // Page should not crash
     const body = await page.content();
     expect(body).toContain("<!DOCTYPE html>");

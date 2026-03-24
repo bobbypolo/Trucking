@@ -209,26 +209,39 @@ test.describe("QA-01 Auth Flows — Signup Multi-Step Wizard", () => {
     );
     await signupBtn.first().click();
 
-    // Wait for step 1 to appear
-    await page.waitForTimeout(1_000);
+    // Wait for at least one input field to appear on the signup step
+    await page
+      .locator("input")
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 });
+
+    // Capture URL before submit attempt
+    const urlBeforeSubmit = page.url();
 
     // Try to advance without filling required fields
     const nextBtn = page.locator('button[type="submit"]').first();
     if (await nextBtn.isVisible().catch(() => false)) {
       await nextBtn.click();
-      // Should not advance — either HTML5 validation or custom error
-      const step1StillVisible = await page
+
+      // Allow a brief moment for any navigation or validation to trigger
+      await page.waitForLoadState("domcontentloaded");
+
+      // The page should still show the signup form — validation must block advancement.
+      // Check that signup-related content is still present (form inputs, signup text, or same URL).
+      const signupFormStillPresent = await page
         .locator(
-          'h2:has-text("Step 1"), h2:has-text("Identity"), input[placeholder="Legal Name"]',
+          'h2:has-text("Step 1"), h2:has-text("Identity"), ' +
+            'input[placeholder="Legal Name"], input[placeholder*="name" i]',
         )
         .first()
         .isVisible()
         .catch(() => false);
-      // If step 1 is still showing, validation prevented advancement
-      // If it advanced, there may be no required fields on step 1
-      // Either outcome is acceptable — we just verify no crash occurred
-      const body = await page.content();
-      expect(body).toContain("<!DOCTYPE html>");
+      const urlAfterSubmit = page.url();
+      const stayedOnSamePage = urlAfterSubmit === urlBeforeSubmit;
+
+      // At least one of these must be true: signup form elements still visible,
+      // or the URL did not change (i.e., validation prevented navigation).
+      expect(signupFormStillPresent || stayedOnSamePage).toBe(true);
     }
   });
 
@@ -242,8 +255,11 @@ test.describe("QA-01 Auth Flows — Signup Multi-Step Wizard", () => {
     );
     await signupBtn.first().click();
 
-    // Wait for signup step to load
-    await page.waitForTimeout(1_000);
+    // Wait for signup step to load by checking for an input field
+    await page
+      .locator("input")
+      .first()
+      .waitFor({ state: "visible", timeout: 10_000 });
 
     // Find and click the back button (arrow or text)
     const backBtn = page.locator(
