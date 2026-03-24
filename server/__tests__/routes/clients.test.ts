@@ -569,3 +569,126 @@ describe("POST /api/clients — company_id enforcement (STORY-006)", () => {
     expect(res.status).toBe(400);
   });
 });
+
+// ── GET /api/clients (tenant-scoped, no companyId param) ─────────────────────
+
+describe("GET /api/clients — tenant-scoped list (COM-03)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when no auth header is sent", async () => {
+    const res = await request(app).get("/api/clients");
+    expect(res.status).toBe(401);
+  });
+
+  it("returns client list scoped to tenant from auth context", async () => {
+    const mockClients = [
+      { id: "c1", name: "Shipper A", company_id: COMPANY_ID },
+      { id: "c2", name: "Broker B", company_id: COMPANY_ID },
+    ];
+    mockQuery.mockResolvedValueOnce([mockClients]);
+
+    const res = await request(app)
+      .get("/api/clients")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveLength(2);
+    expect(res.body[0].name).toBe("Shipper A");
+    // Verify query uses tenantId from auth, not URL param
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("WHERE company_id = ?"),
+      [COMPANY_ID],
+    );
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("DB down"));
+
+    const res = await request(app)
+      .get("/api/clients")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(500);
+  });
+});
+
+// ── PATCH /api/clients/:id — general update (COM-03/COM-04) ─────────────────
+
+describe("PATCH /api/clients/:id — update client (COM-03)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when no auth header is sent", async () => {
+    const res = await request(app).patch("/api/clients/c1");
+    expect(res.status).toBe(401);
+  });
+
+  it("updates client status and returns 200", async () => {
+    // First query: verify client exists
+    mockQuery.mockResolvedValueOnce([[{ id: "c1" }]]);
+    // Second query: update
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const res = await request(app)
+      .patch("/api/clients/c1")
+      .set("Authorization", AUTH_HEADER)
+      .send({ status: "inactive" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.message).toBe("Client updated");
+    // Verify tenant isolation in update query
+    expect(mockQuery).toHaveBeenCalledWith(
+      expect.stringContaining("UPDATE customers SET status = ?"),
+      ["inactive", "c1", COMPANY_ID],
+    );
+  });
+
+  it("returns 404 when client does not belong to tenant", async () => {
+    mockQuery.mockResolvedValueOnce([[]]);
+
+    const res = await request(app)
+      .patch("/api/clients/c999")
+      .set("Authorization", AUTH_HEADER)
+      .send({ status: "active" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("returns 400 when no valid fields are provided", async () => {
+    mockQuery.mockResolvedValueOnce([[{ id: "c1" }]]);
+
+    const res = await request(app)
+      .patch("/api/clients/c1")
+      .set("Authorization", AUTH_HEADER)
+      .send({ nonexistent_field: "value" });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe("No valid fields to update");
+  });
+
+  it("returns 500 on database error", async () => {
+    mockQuery.mockRejectedValueOnce(new Error("Connection lost"));
+
+    const res = await request(app)
+      .patch("/api/clients/c1")
+      .set("Authorization", AUTH_HEADER)
+      .send({ status: "active" });
+
+    expect(res.status).toBe(500);
+  });
+});
