@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import { LoadData, LoadStatus, User, Broker, LoadLeg } from "../types";
 import {
   Truck,
@@ -76,11 +82,15 @@ export const LoadDetailView: React.FC<Props> = ({
     type: "success" | "error" | "info";
   } | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
-  const [addingStopType, setAddingStopType] = useState<"pickup" | "dropoff" | null>(null);
+  const [addingStopType, setAddingStopType] = useState<
+    "pickup" | "dropoff" | null
+  >(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [showDocuments, setShowDocuments] = useState(false);
   const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
-  const [localIsFlagged, setLocalIsFlagged] = useState(load.isActionRequired ?? false);
+  const [localIsFlagged, setLocalIsFlagged] = useState(
+    load.isActionRequired ?? false,
+  );
   const [isLocking, setIsLocking] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [showRateCard, setShowRateCard] = useState(false);
@@ -98,7 +108,7 @@ export const LoadDetailView: React.FC<Props> = ({
       const docs = await getVaultDocs({ loadId: load.id });
       setVaultDocs(docs);
     } catch (e) {
-      console.error("Failed to load vault docs", e);
+      // Vault docs unavailable — non-blocking, UI shows empty state
     }
   };
 
@@ -184,47 +194,60 @@ export const LoadDetailView: React.FC<Props> = ({
     }
   };
 
-  const handleUtilityClick = useCallback(async (util: string) => {
-    setShowUtilities(false);
-    switch (util) {
-      case "Print BOL":
-        generateBolPDF(load);
-        setToast({ message: "BOL PDF generated", type: "success" });
-        break;
-      case "Carrier Rates":
-        setShowRateCard((prev) => !prev);
-        settlementRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      case "Load Stops":
-        stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
-        break;
-      case "Documents":
-        try {
-          const resp = await fetch(`/api/documents?loadId=${load.id}`, {
-            headers: { "Content-Type": "application/json" },
-          });
-          if (resp.ok) {
-            const docs = await resp.json();
-            setDocuments(docs);
+  const handleUtilityClick = useCallback(
+    async (util: string) => {
+      setShowUtilities(false);
+      switch (util) {
+        case "Print BOL":
+          generateBolPDF(load);
+          setToast({ message: "BOL PDF generated", type: "success" });
+          break;
+        case "Carrier Rates":
+          setShowRateCard((prev) => !prev);
+          settlementRef.current?.scrollIntoView({ behavior: "smooth" });
+          break;
+        case "Load Stops":
+          stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
+          break;
+        case "Documents":
+          try {
+            const resp = await fetch(`/api/documents?loadId=${load.id}`, {
+              headers: { "Content-Type": "application/json" },
+            });
+            if (resp.ok) {
+              const docs = await resp.json();
+              setDocuments(docs);
+            }
+            setShowDocuments(true);
+          } catch {
+            setToast({ message: "Failed to load documents", type: "error" });
           }
-          setShowDocuments(true);
-        } catch {
-          setToast({ message: "Failed to load documents", type: "error" });
-        }
-        break;
-      case "Show Route":
-        if (hasGoogleMapsKey) {
-          const origin = load.pickup ? `${load.pickup.city}, ${load.pickup.state}` : "";
-          const dest = load.dropoff ? `${load.dropoff.city}, ${load.dropoff.state}` : "";
-          if (origin && dest) {
-            window.open(`https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}`, "_blank");
-          } else {
-            setToast({ message: "Missing origin or destination for route", type: "error" });
+          break;
+        case "Show Route":
+          if (hasGoogleMapsKey) {
+            const origin = load.pickup
+              ? `${load.pickup.city}, ${load.pickup.state}`
+              : "";
+            const dest = load.dropoff
+              ? `${load.dropoff.city}, ${load.dropoff.state}`
+              : "";
+            if (origin && dest) {
+              window.open(
+                `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}`,
+                "_blank",
+              );
+            } else {
+              setToast({
+                message: "Missing origin or destination for route",
+                type: "error",
+              });
+            }
           }
-        }
-        break;
-    }
-  }, [load, hasGoogleMapsKey]);
+          break;
+      }
+    },
+    [load, hasGoogleMapsKey],
+  );
 
   const handleTagForAction = useCallback(async () => {
     if (!currentUser || isFlagging) return;
@@ -341,7 +364,12 @@ export const LoadDetailView: React.FC<Props> = ({
               disabled={isFlagging}
               className={`flex items-center gap-2 px-5 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all disabled:opacity-50 ${localIsFlagged ? "bg-amber-900/20 border-amber-500/30 text-amber-500" : "bg-slate-800 border-slate-700 text-slate-400"}`}
             >
-              <AlertTriangle className="w-4 h-4" /> {isFlagging ? "Updating..." : localIsFlagged ? "Tagged" : "Tag for Action"}
+              <AlertTriangle className="w-4 h-4" />{" "}
+              {isFlagging
+                ? "Updating..."
+                : localIsFlagged
+                  ? "Tagged"
+                  : "Tag for Action"}
             </button>
             <button
               onClick={handleToggleLock}
@@ -446,7 +474,10 @@ export const LoadDetailView: React.FC<Props> = ({
             </div>
 
             {/* Column 3: Settlement Deepening */}
-            <div ref={settlementRef} className="space-y-6 bg-slate-900/20 p-8 rounded-3xl border border-slate-800/50">
+            <div
+              ref={settlementRef}
+              className="space-y-6 bg-slate-900/20 p-8 rounded-3xl border border-slate-800/50"
+            >
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
                 <DollarSign className="w-4 h-4 text-green-500" /> Settlement
                 Deepening
@@ -502,29 +533,58 @@ export const LoadDetailView: React.FC<Props> = ({
               {/* Rate Card (toggled from Carrier Rates utility) */}
               {showRateCard && (
                 <div className="bg-[#0a0f18] border border-blue-500/20 rounded-2xl p-4 space-y-3 shadow-inner">
-                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Rate Card Summary</div>
+                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                    Rate Card Summary
+                  </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-slate-500 font-bold">Carrier Rate:</span>{" "}
-                      <span className="text-white font-mono">${(load.carrierRate || 0).toLocaleString()}</span>
+                      <span className="text-slate-500 font-bold">
+                        Carrier Rate:
+                      </span>{" "}
+                      <span className="text-white font-mono">
+                        ${(load.carrierRate || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-bold">Driver Pay:</span>{" "}
-                      <span className="text-white font-mono">${(load.driverPay || 0).toLocaleString()}</span>
+                      <span className="text-slate-500 font-bold">
+                        Driver Pay:
+                      </span>{" "}
+                      <span className="text-white font-mono">
+                        ${(load.driverPay || 0).toLocaleString()}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-bold">Net Margin:</span>{" "}
-                      <span className={`font-mono font-bold ${profit >= 0 ? "text-green-400" : "text-red-400"}`}>${profit.toLocaleString()}</span>
+                      <span className="text-slate-500 font-bold">
+                        Net Margin:
+                      </span>{" "}
+                      <span
+                        className={`font-mono font-bold ${profit >= 0 ? "text-green-400" : "text-red-400"}`}
+                      >
+                        ${profit.toLocaleString()}
+                      </span>
                     </div>
                     <div>
-                      <span className="text-slate-500 font-bold">Margin %:</span>{" "}
-                      <span className={`font-mono font-bold ${marginPercentage >= 15 ? "text-blue-400" : "text-slate-400"}`}>{marginPercentage.toFixed(1)}%</span>
+                      <span className="text-slate-500 font-bold">
+                        Margin %:
+                      </span>{" "}
+                      <span
+                        className={`font-mono font-bold ${marginPercentage >= 15 ? "text-blue-400" : "text-slate-400"}`}
+                      >
+                        {marginPercentage.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
                   {load.miles && (
                     <div className="text-xs">
-                      <span className="text-slate-500 font-bold">Rate/Mile:</span>{" "}
-                      <span className="text-white font-mono">${load.carrierRate && load.miles ? (load.carrierRate / load.miles).toFixed(2) : "N/A"}</span>
+                      <span className="text-slate-500 font-bold">
+                        Rate/Mile:
+                      </span>{" "}
+                      <span className="text-white font-mono">
+                        $
+                        {load.carrierRate && load.miles
+                          ? (load.carrierRate / load.miles).toFixed(2)
+                          : "N/A"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -581,15 +641,23 @@ export const LoadDetailView: React.FC<Props> = ({
           </div>
 
           {/* Special Instructions & Reference Numbers */}
-          {(load.specialInstructions || load.bolNumber || load.bookingNumber || load.containerNumber) && (
+          {(load.specialInstructions ||
+            load.bolNumber ||
+            load.bookingNumber ||
+            load.containerNumber) && (
             <div className="bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50 space-y-4">
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
-                <ClipboardList className="w-4 h-4 text-amber-500" /> Additional Details
+                <ClipboardList className="w-4 h-4 text-amber-500" /> Additional
+                Details
               </h3>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {(load.bolNumber || load.bookingNumber || load.containerNumber) && (
+                {(load.bolNumber ||
+                  load.bookingNumber ||
+                  load.containerNumber) && (
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Reference Numbers</label>
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                      Reference Numbers
+                    </label>
                     <div className="flex flex-wrap gap-2">
                       {load.bolNumber && (
                         <span className="px-3 py-1 bg-[#0a0f18] border border-slate-800 rounded-lg text-[10px] text-white font-mono">
@@ -611,7 +679,9 @@ export const LoadDetailView: React.FC<Props> = ({
                 )}
                 {load.specialInstructions && (
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Special Instructions</label>
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                      Special Instructions
+                    </label>
                     <div className="w-full bg-[#0a0f18] border border-amber-500/20 rounded-xl p-3 text-xs text-amber-200 italic shadow-inner">
                       {load.specialInstructions}
                     </div>
@@ -649,7 +719,8 @@ export const LoadDetailView: React.FC<Props> = ({
               <div className="bg-slate-900/50 border border-slate-700 rounded-2xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="text-[10px] font-black text-white uppercase tracking-widest">
-                    New {addingStopType === "pickup" ? "Pickup" : "Drop-off"} Stop
+                    New {addingStopType === "pickup" ? "Pickup" : "Drop-off"}{" "}
+                    Stop
                   </h4>
                   <button
                     onClick={() => setAddingStopType(null)}
@@ -708,7 +779,10 @@ export const LoadDetailView: React.FC<Props> = ({
                   </button>
                   <button
                     onClick={() => {
-                      setToast({ message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`, type: "success" });
+                      setToast({
+                        message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`,
+                        type: "success",
+                      });
                       setAddingStopType(null);
                     }}
                     className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
@@ -873,8 +947,13 @@ export const LoadDetailView: React.FC<Props> = ({
               {vaultDocs.length === 0 && (
                 <div className="col-span-full bg-slate-900/20 border border-dashed border-slate-800 rounded-2xl p-8 text-center">
                   <FileText className="w-8 h-8 text-slate-800 mx-auto mb-3" />
-                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No documents uploaded</div>
-                  <p className="text-[9px] text-slate-700 mt-1">BOL, POD, Rate Confirmations, and other documents will appear here once uploaded.</p>
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
+                    No documents uploaded
+                  </div>
+                  <p className="text-[9px] text-slate-700 mt-1">
+                    BOL, POD, Rate Confirmations, and other documents will
+                    appear here once uploaded.
+                  </p>
                 </div>
               )}
               {vaultDocs.map((doc) => (
@@ -953,7 +1032,9 @@ export const LoadDetailView: React.FC<Props> = ({
                         <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
                           {doc.type}
                         </span>
-                        <span className="text-[9px] text-slate-400">{doc.status}</span>
+                        <span className="text-[9px] text-slate-400">
+                          {doc.status}
+                        </span>
                       </div>
                     </div>
                   ))}

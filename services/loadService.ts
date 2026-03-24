@@ -53,7 +53,13 @@ function mapRowToLoadData(row: any): LoadData {
       row.notificationEmails ||
       (row.notification_emails
         ? typeof row.notification_emails === "string"
-          ? JSON.parse(row.notification_emails)
+          ? (() => {
+              try {
+                return JSON.parse(row.notification_emails);
+              } catch {
+                return [];
+              }
+            })()
           : row.notification_emails
         : []),
     contractId: row.contract_id || row.contractId,
@@ -318,9 +324,10 @@ export async function createDriverIntake(intakeData: {
  *
  * GET /api/loads?for=schedule[&start=YYYY-MM-DD&end=YYYY-MM-DD]
  */
-export async function fetchScheduleLoads(
-  dateRange?: { start: string; end: string },
-): Promise<LoadData[]> {
+export async function fetchScheduleLoads(dateRange?: {
+  start: string;
+  end: string;
+}): Promise<LoadData[]> {
   let url = "/loads?for=schedule";
   if (dateRange) {
     url += `&start=${encodeURIComponent(dateRange.start)}&end=${encodeURIComponent(dateRange.end)}`;

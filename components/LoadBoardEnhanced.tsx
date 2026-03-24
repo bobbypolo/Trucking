@@ -62,12 +62,13 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   };
 
   const handleSetupContinue = (
-    brokerId: string,
-    driverId: string,
-    loadNumber?: string,
-    callNotes?: string,
+    _brokerId: string,
+    _driverId: string,
+    _loadNumber?: string,
+    _callNotes?: string,
   ) => {
     setShowCreateModal(false);
+    // Params will be used when EditLoadForm integration is wired by parent (App.tsx)
     if (onCreateLoad) {
       onCreateLoad();
     }
