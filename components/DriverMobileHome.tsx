@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   User,
   LoadData,
@@ -32,9 +32,10 @@ import {
   Map as MapIcon,
   Navigation,
   Phone,
+  ScanLine,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
-import { Scanner } from "./Scanner";
+import { Scanner, IntakeAccumulatedData } from "./Scanner";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
@@ -124,6 +125,39 @@ export const DriverMobileHome: React.FC<Props> = ({
   >("idle");
   const [breakdownNotes, setBreakdownNotes] = useState("");
   const [breakdownNeedsTow, setBreakdownNeedsTow] = useState(false);
+
+  // Driver intake flow state
+  const [intakeStep, setIntakeStep] = useState<
+    "idle" | "scanning" | "review"
+  >("idle");
+  const [intakeFormData, setIntakeFormData] = useState<{
+    pickupCity: string;
+    pickupState: string;
+    pickupFacility: string;
+    dropoffCity: string;
+    dropoffState: string;
+    dropoffFacility: string;
+    pickupDate: string;
+    commodity: string;
+    weight: string;
+    referenceNumber: string;
+    specialInstructions: string;
+    scannedDocTypes: string[];
+  }>({
+    pickupCity: "",
+    pickupState: "",
+    pickupFacility: "",
+    dropoffCity: "",
+    dropoffState: "",
+    dropoffFacility: "",
+    pickupDate: "",
+    commodity: "",
+    weight: "",
+    referenceNumber: "",
+    specialInstructions: "",
+    scannedDocTypes: [],
+  });
+  const [intakeSubmitting, setIntakeSubmitting] = useState(false);
 
   // Wrap setters to persist to localStorage (R-P4-10)
   const setActiveTab = (tab: ActiveTab) => {
@@ -307,6 +341,129 @@ export const DriverMobileHome: React.FC<Props> = ({
       setIsCreatingChange(false);
     }
   };
+
+  // --- Driver Intake Handlers ---
+
+  /** Open the scanner in intake mode */
+  const startIntake = useCallback(() => {
+    setIntakeStep("scanning");
+  }, []);
+
+  /** Handle data extracted from Scanner in intake mode */
+  const handleIntakeDataExtracted = useCallback(
+    (data: IntakeAccumulatedData) => {
+      setIntakeFormData({
+        pickupCity: data.pickupCity || "",
+        pickupState: data.pickupState || "",
+        pickupFacility: data.pickupFacility || "",
+        dropoffCity: data.dropoffCity || "",
+        dropoffState: data.dropoffState || "",
+        dropoffFacility: data.dropoffFacility || "",
+        pickupDate: data.pickupDate || "",
+        commodity: data.commodity || "",
+        weight: data.weight || "",
+        referenceNumber: (data.referenceNumbers || []).join(", "),
+        specialInstructions: data.specialInstructions || "",
+        scannedDocTypes: data.scannedDocTypes || [],
+      });
+      setIntakeStep("review");
+    },
+    [],
+  );
+
+  /** Submit the intake review form to create a new pending load */
+  const submitIntake = useCallback(async () => {
+    // Validate required fields
+    if (!intakeFormData.pickupCity && !intakeFormData.pickupFacility) {
+      setToast({ message: "Pickup location is required", type: "error" });
+      return;
+    }
+    if (!intakeFormData.dropoffCity && !intakeFormData.dropoffFacility) {
+      setToast({ message: "Dropoff location is required", type: "error" });
+      return;
+    }
+    if (!intakeFormData.pickupDate) {
+      setToast({ message: "Pickup date is required", type: "error" });
+      return;
+    }
+    if (!intakeFormData.commodity) {
+      setToast({ message: "Commodity description is required", type: "error" });
+      return;
+    }
+
+    setIntakeSubmitting(true);
+    try {
+      const newLoad: LoadData = {
+        id: uuidv4(),
+        companyId: user.companyId || "",
+        driverId: user.id,
+        loadNumber: `INT-${Date.now().toString(36).toUpperCase()}`,
+        status: LOAD_STATUS.Draft as LoadStatus,
+        carrierRate: 0,
+        driverPay: 0,
+        pickupDate: intakeFormData.pickupDate,
+        pickup: {
+          city: intakeFormData.pickupCity,
+          state: intakeFormData.pickupState,
+          facilityName: intakeFormData.pickupFacility || undefined,
+        },
+        dropoff: {
+          city: intakeFormData.dropoffCity,
+          state: intakeFormData.dropoffState,
+          facilityName: intakeFormData.dropoffFacility || undefined,
+        },
+        commodity: intakeFormData.commodity || undefined,
+        weight: intakeFormData.weight ? parseFloat(intakeFormData.weight) || undefined : undefined,
+        bolNumber: intakeFormData.referenceNumber || undefined,
+        specialInstructions: intakeFormData.specialInstructions || undefined,
+        dispatchNotes: `Driver intake via document scan. Docs: ${intakeFormData.scannedDocTypes.join(", ")}`,
+      };
+
+      await onSaveLoad(newLoad);
+      setIntakeStep("idle");
+      setIntakeFormData({
+        pickupCity: "",
+        pickupState: "",
+        pickupFacility: "",
+        dropoffCity: "",
+        dropoffState: "",
+        dropoffFacility: "",
+        pickupDate: "",
+        commodity: "",
+        weight: "",
+        referenceNumber: "",
+        specialInstructions: "",
+        scannedDocTypes: [],
+      });
+      setToast({
+        message: "Intake submitted — will appear on your schedule once approved",
+        type: "success",
+      });
+    } catch {
+      setToast({ message: "Failed to submit intake", type: "error" });
+    } finally {
+      setIntakeSubmitting(false);
+    }
+  }, [intakeFormData, user.id, user.companyId, onSaveLoad]);
+
+  /** Cancel the intake flow */
+  const cancelIntake = useCallback(() => {
+    setIntakeStep("idle");
+    setIntakeFormData({
+      pickupCity: "",
+      pickupState: "",
+      pickupFacility: "",
+      dropoffCity: "",
+      dropoffState: "",
+      dropoffFacility: "",
+      pickupDate: "",
+      commodity: "",
+      weight: "",
+      referenceNumber: "",
+      specialInstructions: "",
+      scannedDocTypes: [],
+    });
+  }, []);
 
   // Sub-components
   const LoadCard: React.FC<{ load: LoadData }> = ({ load }) => (
@@ -803,6 +960,16 @@ export const DriverMobileHome: React.FC<Props> = ({
               </div>
             </div>
 
+            {/* New Load Intake CTA */}
+            <button
+              data-testid="new-intake-today"
+              onClick={startIntake}
+              className="w-full py-4 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-emerald-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+            >
+              <ScanLine className="w-5 h-5" />
+              New Load Intake — Scan Documents
+            </button>
+
             {/* Message Dispatch button (R-P4-07) */}
             {activeLoads.length > 0 && (
               <button
@@ -832,9 +999,19 @@ export const DriverMobileHome: React.FC<Props> = ({
 
         {activeTab === "loads" && (
           <div className="space-y-6 animate-in fade-in duration-300">
-            <h2 className="text-xl font-black text-white uppercase tracking-tighter">
-              Load History
-            </h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-black text-white uppercase tracking-tighter">
+                Load History
+              </h2>
+              <button
+                data-testid="new-intake-loads"
+                onClick={startIntake}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+              >
+                <ScanLine className="w-4 h-4" />
+                New Intake
+              </button>
+            </div>
             {loads.length === 0 ? (
               <EmptyState
                 icon={<Clock className="w-12 h-12" />}
@@ -1104,6 +1281,257 @@ export const DriverMobileHome: React.FC<Props> = ({
           });
         }}
       />
+
+      {/* Intake Scanner Overlay */}
+      {intakeStep === "scanning" && (
+        <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center p-6 border-b border-white/5">
+              <h2 className="text-base font-black text-white uppercase tracking-tight">
+                New Load Intake
+              </h2>
+              <button
+                onClick={cancelIntake}
+                className="text-slate-500 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <Scanner
+              onDataExtracted={handleIntakeDataExtracted}
+              onCancel={cancelIntake}
+              onDismiss={cancelIntake}
+              mode="intake"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Intake Review Form Overlay */}
+      {intakeStep === "review" && (
+        <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div
+            data-testid="intake-review-form"
+            className="w-full max-w-md bg-[#0a0f1e] rounded-[2rem] border border-white/10 shadow-2xl max-h-[90vh] overflow-y-auto"
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-[#0a0f1e] p-6 border-b border-white/5 flex justify-between items-center z-10 rounded-t-[2rem]">
+              <h2 className="text-lg font-black text-white uppercase tracking-tight">
+                Review Intake
+              </h2>
+              <button
+                onClick={cancelIntake}
+                className="text-slate-500 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Pickup */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-blue-500" /> Pickup Location *
+                </label>
+                <input
+                  data-testid="intake-pickup-city"
+                  type="text"
+                  value={intakeFormData.pickupCity}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      pickupCity: e.target.value,
+                    }))
+                  }
+                  placeholder="City"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+                <input
+                  data-testid="intake-pickup-state"
+                  type="text"
+                  value={intakeFormData.pickupState}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      pickupState: e.target.value,
+                    }))
+                  }
+                  placeholder="State"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Dropoff */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="w-3 h-3 text-emerald-500" /> Dropoff Location *
+                </label>
+                <input
+                  data-testid="intake-dropoff-city"
+                  type="text"
+                  value={intakeFormData.dropoffCity}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      dropoffCity: e.target.value,
+                    }))
+                  }
+                  placeholder="City"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+                <input
+                  data-testid="intake-dropoff-state"
+                  type="text"
+                  value={intakeFormData.dropoffState}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      dropoffState: e.target.value,
+                    }))
+                  }
+                  placeholder="State"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Date */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Calendar className="w-3 h-3 text-blue-500" /> Pickup Date *
+                </label>
+                <input
+                  data-testid="intake-pickup-date"
+                  type="date"
+                  value={intakeFormData.pickupDate}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      pickupDate: e.target.value,
+                    }))
+                  }
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Commodity */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <Truck className="w-3 h-3 text-blue-500" /> Commodity *
+                </label>
+                <input
+                  data-testid="intake-commodity"
+                  type="text"
+                  value={intakeFormData.commodity}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      commodity: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. Dry Goods, Refrigerated Produce"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Reference Number (optional) */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                  <FileText className="w-3 h-3 text-slate-500" /> Reference / BOL #
+                </label>
+                <input
+                  data-testid="intake-reference"
+                  type="text"
+                  value={intakeFormData.referenceNumber}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      referenceNumber: e.target.value,
+                    }))
+                  }
+                  placeholder="Optional"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Weight (optional) */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Weight (lbs)
+                </label>
+                <input
+                  data-testid="intake-weight"
+                  type="text"
+                  value={intakeFormData.weight}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      weight: e.target.value,
+                    }))
+                  }
+                  placeholder="Optional"
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              {/* Special Instructions (optional) */}
+              <div className="space-y-2">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  Special Instructions
+                </label>
+                <textarea
+                  data-testid="intake-instructions"
+                  value={intakeFormData.specialInstructions}
+                  onChange={(e) =>
+                    setIntakeFormData((prev) => ({
+                      ...prev,
+                      specialInstructions: e.target.value,
+                    }))
+                  }
+                  placeholder="Optional"
+                  rows={2}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none resize-none"
+                />
+              </div>
+
+              {/* Scanned Documents Badge */}
+              {intakeFormData.scannedDocTypes.length > 0 && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-900/20 border border-emerald-700/30 rounded-xl">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">
+                    Documents: {intakeFormData.scannedDocTypes.join(", ")}
+                  </span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  data-testid="intake-cancel"
+                  onClick={cancelIntake}
+                  className="flex-1 py-4 bg-slate-900 hover:bg-slate-800 text-slate-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-white/5 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  data-testid="intake-submit"
+                  onClick={submitIntake}
+                  disabled={intakeSubmitting}
+                  className="flex-[2] py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center gap-2"
+                >
+                  {intakeSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Intake"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Global Sticky Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[#0a0f1e]/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-4">

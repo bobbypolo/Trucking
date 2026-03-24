@@ -49,13 +49,30 @@ function hasCameraSupport(): boolean {
   );
 }
 
+/** Accumulated intake data from multi-document scanning */
+export interface IntakeAccumulatedData {
+  pickupCity?: string;
+  pickupState?: string;
+  pickupFacility?: string;
+  dropoffCity?: string;
+  dropoffState?: string;
+  dropoffFacility?: string;
+  pickupDate?: string;
+  commodity?: string;
+  weight?: string;
+  referenceNumbers?: string[];
+  specialInstructions?: string;
+  bolNumber?: string;
+  scannedDocTypes: string[];
+}
+
 interface Props {
   onDataExtracted: (data: any, secondaryData?: any) => void;
   onCancel: () => void;
   /** onDismiss closes the scanner overlay without cancelling the parent load
    *  creation flow. If not provided, falls back to onCancel for backward compatibility. */
   onDismiss?: () => void;
-  mode?: "load" | "broker" | "equipment" | "training";
+  mode?: "load" | "broker" | "equipment" | "training" | "intake";
 }
 
 export const Scanner: React.FC<Props> = ({
@@ -69,6 +86,68 @@ export const Scanner: React.FC<Props> = ({
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraFallbackMsg, setCameraFallbackMsg] = useState<string | null>(
     null,
+  );
+
+  // Intake mode: accumulate data across multiple document scans
+  const [intakeData, setIntakeData] = useState<IntakeAccumulatedData>({
+    scannedDocTypes: [],
+  });
+  const [intakeScanCount, setIntakeScanCount] = useState(0);
+
+  /** Merge newly extracted load data into the accumulated intake data */
+  const mergeIntakeData = useCallback(
+    (extracted: any) => {
+      setIntakeData((prev) => {
+        const pickup = extracted?.pickup ?? extracted?.origin ?? {};
+        const dropoff =
+          extracted?.dropoff ?? extracted?.destination ?? {};
+        const docType =
+          extracted?.documentType ?? extracted?.docType ?? "Document";
+        return {
+          pickupCity: pickup?.city || prev.pickupCity,
+          pickupState: pickup?.state || prev.pickupState,
+          pickupFacility: pickup?.facilityName || prev.pickupFacility,
+          dropoffCity: dropoff?.city || prev.dropoffCity,
+          dropoffState: dropoff?.state || prev.dropoffState,
+          dropoffFacility:
+            dropoff?.facilityName || prev.dropoffFacility,
+          pickupDate:
+            extracted?.pickupDate || extracted?.date || prev.pickupDate,
+          commodity:
+            extracted?.commodity ||
+            extracted?.freightDescription ||
+            prev.commodity,
+          weight:
+            extracted?.weight?.toString() ||
+            extracted?.totalWeight?.toString() ||
+            prev.weight,
+          referenceNumbers: [
+            ...new Set([
+              ...(prev.referenceNumbers || []),
+              ...(extracted?.referenceNumber
+                ? [extracted.referenceNumber]
+                : []),
+              ...(extracted?.referenceNumbers || []),
+              ...(extracted?.bolNumber ? [extracted.bolNumber] : []),
+            ]),
+          ],
+          specialInstructions:
+            extracted?.specialInstructions ||
+            extracted?.notes ||
+            prev.specialInstructions,
+          bolNumber:
+            extracted?.bolNumber ||
+            extracted?.loadNumber ||
+            prev.bolNumber,
+          scannedDocTypes: [
+            ...prev.scannedDocTypes,
+            docType,
+          ],
+        };
+      });
+      setIntakeScanCount((c) => c + 1);
+    },
+    [],
   );
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -166,6 +245,14 @@ export const Scanner: React.FC<Props> = ({
           mimeType,
         )) as { training: unknown };
         onDataExtracted(result.training);
+      } else if (mode === "intake") {
+        // Intake mode: accumulate data from each scan
+        const result = (await aiPost(
+          "/ai/extract-load",
+          base64String,
+          mimeType,
+        )) as { loadInfo: { load: unknown; broker: unknown } };
+        mergeIntakeData(result.loadInfo?.load ?? result.loadInfo);
       } else {
         const result = (await aiPost(
           "/ai/extract-load",
@@ -181,7 +268,7 @@ export const Scanner: React.FC<Props> = ({
     } finally {
       setIsProcessing(false);
     }
-  }, [mode, onDataExtracted, stopCamera]);
+  }, [mode, onDataExtracted, mergeIntakeData, stopCamera]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -227,6 +314,14 @@ export const Scanner: React.FC<Props> = ({
             file.type,
           )) as { training: unknown };
           onDataExtracted(result.training);
+        } else if (mode === "intake") {
+          // Intake mode: accumulate data from each scan
+          const result = (await aiPost(
+            "/ai/extract-load",
+            base64String,
+            file.type,
+          )) as { loadInfo: { load: unknown; broker: unknown } };
+          mergeIntakeData(result.loadInfo?.load ?? result.loadInfo);
         } else {
           const result = (await aiPost(
             "/ai/extract-load",
@@ -250,6 +345,7 @@ export const Scanner: React.FC<Props> = ({
     if (mode === "broker") return "Scan Broker Profile";
     if (mode === "equipment") return "Scan Equipment ID";
     if (mode === "training") return "Harvest Training Content";
+    if (mode === "intake") return "Scan Load Documents";
     return "Scan Load Document";
   };
 
@@ -259,6 +355,8 @@ export const Scanner: React.FC<Props> = ({
     if (mode === "equipment") return "Take a photo of the Unit ID decal.";
     if (mode === "training")
       return "Upload safety manuals or technical bulletins to auto-generate quizzes.";
+    if (mode === "intake")
+      return "Scan BOL, Rate Con, or Scale Ticket to create a new load intake. You can scan multiple documents.";
     return "Upload or take a photo of a Rate Confirmation or BOL.";
   };
 
@@ -390,6 +488,31 @@ export const Scanner: React.FC<Props> = ({
               {error}
             </div>
           )}
+
+          {/* Intake mode: show scan count and Done button */}
+          {mode === "intake" && intakeScanCount > 0 && (
+            <div className="w-full mb-4 space-y-3">
+              <div className="flex items-center gap-2 p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-lg">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-xs font-bold text-emerald-300 uppercase tracking-wide">
+                  {intakeScanCount} document{intakeScanCount > 1 ? "s" : ""} scanned
+                  {intakeData.scannedDocTypes.length > 0 && (
+                    <span className="text-emerald-500 ml-1">
+                      ({intakeData.scannedDocTypes.join(", ")})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                data-testid="intake-done-scanning"
+                onClick={() => onDataExtracted(intakeData)}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black uppercase tracking-widest transition-all active:scale-95"
+              >
+                Done Scanning — Review Intake
+              </button>
+            </div>
+          )}
+
           <div className="w-full border-t border-slate-700 pt-6 flex justify-center">
             <button
               onClick={onDismiss ?? onCancel}
