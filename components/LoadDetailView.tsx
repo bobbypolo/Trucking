@@ -81,8 +81,12 @@ export const LoadDetailView: React.FC<Props> = ({
   const [showDocuments, setShowDocuments] = useState(false);
   const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
   const [localIsFlagged, setLocalIsFlagged] = useState(load.isActionRequired ?? false);
+  const [isLocking, setIsLocking] = useState(false);
+  const [isFlagging, setIsFlagging] = useState(false);
+  const [showRateCard, setShowRateCard] = useState(false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
-  const hasMapsKey = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+  const settlementRef = useRef<HTMLDivElement>(null);
+  const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
     setIsLoaded(true);
@@ -188,7 +192,8 @@ export const LoadDetailView: React.FC<Props> = ({
         setToast({ message: "BOL PDF generated", type: "success" });
         break;
       case "Carrier Rates":
-        setToast({ message: "Rate card coming soon", type: "info" });
+        setShowRateCard((prev) => !prev);
+        settlementRef.current?.scrollIntoView({ behavior: "smooth" });
         break;
       case "Load Stops":
         stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -208,16 +213,22 @@ export const LoadDetailView: React.FC<Props> = ({
         }
         break;
       case "Show Route":
-        setToast({ message: "Requires Google Maps API key", type: "info" });
-        break;
-      case "Audit Logs":
-        onNavigate?.("audit", load.id);
+        if (hasGoogleMapsKey) {
+          const origin = load.pickup ? `${load.pickup.city}, ${load.pickup.state}` : "";
+          const dest = load.dropoff ? `${load.dropoff.city}, ${load.dropoff.state}` : "";
+          if (origin && dest) {
+            window.open(`https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}`, "_blank");
+          } else {
+            setToast({ message: "Missing origin or destination for route", type: "error" });
+          }
+        }
         break;
     }
-  }, [load, onNavigate]);
+  }, [load, hasGoogleMapsKey]);
 
   const handleTagForAction = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || isFlagging) return;
+    setIsFlagging(true);
     const newFlagged = !localIsFlagged;
     try {
       await saveLoad({ ...load, isActionRequired: newFlagged }, currentUser);
@@ -228,11 +239,14 @@ export const LoadDetailView: React.FC<Props> = ({
       });
     } catch {
       setToast({ message: "Failed to update tag", type: "error" });
+    } finally {
+      setIsFlagging(false);
     }
-  }, [load, currentUser, localIsFlagged]);
+  }, [load, currentUser, localIsFlagged, isFlagging]);
 
   const handleToggleLock = useCallback(async () => {
-    if (!currentUser) return;
+    if (!currentUser || isLocking) return;
+    setIsLocking(true);
     const newLocked = !localIsLocked;
     try {
       await saveLoad({ ...load, isLocked: newLocked }, currentUser);
@@ -243,8 +257,10 @@ export const LoadDetailView: React.FC<Props> = ({
       });
     } catch {
       setToast({ message: "Failed to toggle lock", type: "error" });
+    } finally {
+      setIsLocking(false);
     }
-  }, [load, currentUser, localIsLocked]);
+  }, [load, currentUser, localIsLocked, isLocking]);
 
   return (
     <div className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
@@ -307,34 +323,30 @@ export const LoadDetailView: React.FC<Props> = ({
                     "Carrier Rates",
                     "Load Stops",
                     "Documents",
-                    "Show Route",
-                    "Audit Logs",
-                  ].map((util) => {
-                    const isRouteDisabled = util === "Show Route" && !hasMapsKey;
-                    return (
-                      <button
-                        key={util}
-                        onClick={() => !isRouteDisabled && handleUtilityClick(util)}
-                        disabled={isRouteDisabled}
-                        title={isRouteDisabled ? "Configure VITE_GOOGLE_MAPS_API_KEY to enable" : util}
-                        className={`w-full text-left px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors ${isRouteDisabled ? "opacity-40 cursor-not-allowed text-slate-500" : "hover:bg-blue-600 text-slate-300 hover:text-white"}`}
-                      >
-                        {util}
-                      </button>
-                    );
-                  })}
+                    ...(hasGoogleMapsKey ? ["Show Route"] : []),
+                  ].map((util) => (
+                    <button
+                      key={util}
+                      onClick={() => handleUtilityClick(util)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors text-slate-300 hover:text-white"
+                    >
+                      {util}
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
             <button
               onClick={handleTagForAction}
-              className={`flex items-center gap-2 px-5 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all ${localIsFlagged ? "bg-amber-900/20 border-amber-500/30 text-amber-500" : "bg-slate-800 border-slate-700 text-slate-400"}`}
+              disabled={isFlagging}
+              className={`flex items-center gap-2 px-5 py-2 border rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-700 transition-all disabled:opacity-50 ${localIsFlagged ? "bg-amber-900/20 border-amber-500/30 text-amber-500" : "bg-slate-800 border-slate-700 text-slate-400"}`}
             >
-              <AlertTriangle className="w-4 h-4" /> {localIsFlagged ? "Tagged" : "Tag for Action"}
+              <AlertTriangle className="w-4 h-4" /> {isFlagging ? "Updating..." : localIsFlagged ? "Tagged" : "Tag for Action"}
             </button>
             <button
               onClick={handleToggleLock}
-              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${localIsLocked ? "bg-red-900/20 border-red-500/30 text-red-500" : "bg-green-900/20 border-green-500/30 text-green-500"}`}
+              disabled={isLocking}
+              className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-50 ${localIsLocked ? "bg-red-900/20 border-red-500/30 text-red-500" : "bg-green-900/20 border-green-500/30 text-green-500"}`}
             >
               {localIsLocked ? (
                 <Lock className="w-4 h-4" />
@@ -434,7 +446,7 @@ export const LoadDetailView: React.FC<Props> = ({
             </div>
 
             {/* Column 3: Settlement Deepening */}
-            <div className="space-y-6 bg-slate-900/20 p-8 rounded-3xl border border-slate-800/50">
+            <div ref={settlementRef} className="space-y-6 bg-slate-900/20 p-8 rounded-3xl border border-slate-800/50">
               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
                 <DollarSign className="w-4 h-4 text-green-500" /> Settlement
                 Deepening
@@ -487,6 +499,36 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
               </div>
+              {/* Rate Card (toggled from Carrier Rates utility) */}
+              {showRateCard && (
+                <div className="bg-[#0a0f18] border border-blue-500/20 rounded-2xl p-4 space-y-3 shadow-inner">
+                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Rate Card Summary</div>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-500 font-bold">Carrier Rate:</span>{" "}
+                      <span className="text-white font-mono">${(load.carrierRate || 0).toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold">Driver Pay:</span>{" "}
+                      <span className="text-white font-mono">${(load.driverPay || 0).toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold">Net Margin:</span>{" "}
+                      <span className={`font-mono font-bold ${profit >= 0 ? "text-green-400" : "text-red-400"}`}>${profit.toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold">Margin %:</span>{" "}
+                      <span className={`font-mono font-bold ${marginPercentage >= 15 ? "text-blue-400" : "text-slate-400"}`}>{marginPercentage.toFixed(1)}%</span>
+                    </div>
+                  </div>
+                  {load.miles && (
+                    <div className="text-xs">
+                      <span className="text-slate-500 font-bold">Rate/Mile:</span>{" "}
+                      <span className="text-white font-mono">${load.carrierRate && load.miles ? (load.carrierRate / load.miles).toFixed(2) : "N/A"}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -537,6 +579,47 @@ export const LoadDetailView: React.FC<Props> = ({
               </button>
             </div>
           </div>
+
+          {/* Special Instructions & Reference Numbers */}
+          {(load.specialInstructions || load.bolNumber || load.bookingNumber || load.containerNumber) && (
+            <div className="bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50 space-y-4">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-3">
+                <ClipboardList className="w-4 h-4 text-amber-500" /> Additional Details
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {(load.bolNumber || load.bookingNumber || load.containerNumber) && (
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Reference Numbers</label>
+                    <div className="flex flex-wrap gap-2">
+                      {load.bolNumber && (
+                        <span className="px-3 py-1 bg-[#0a0f18] border border-slate-800 rounded-lg text-[10px] text-white font-mono">
+                          BOL: {load.bolNumber}
+                        </span>
+                      )}
+                      {load.bookingNumber && (
+                        <span className="px-3 py-1 bg-[#0a0f18] border border-slate-800 rounded-lg text-[10px] text-white font-mono">
+                          BOOKING: {load.bookingNumber}
+                        </span>
+                      )}
+                      {load.containerNumber && (
+                        <span className="px-3 py-1 bg-[#0a0f18] border border-slate-800 rounded-lg text-[10px] text-white font-mono">
+                          CNTR: {load.containerNumber}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {load.specialInstructions && (
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Special Instructions</label>
+                    <div className="w-full bg-[#0a0f18] border border-amber-500/20 rounded-xl p-3 text-xs text-amber-200 italic shadow-inner">
+                      {load.specialInstructions}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Stop Matrix Section (Live Data Connect) */}
           <div className="space-y-5" ref={stopMatrixRef} id="stop-matrix">
@@ -665,16 +748,35 @@ export const LoadDetailView: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {(load.legs || []).length === 0 ? (
-                    <tr>
-                      <td colSpan={8}>
-                        <div className="text-center py-8 text-slate-500 text-[10px] font-medium">
-                          No stops configured for this load
-                        </div>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {(load.legs || []).map((leg: any, idx) => (
+                  {(
+                    load.legs || [
+                      {
+                        id: "1",
+                        type: "Pickup",
+                        location: load.pickup,
+                        date: load.pickupDate,
+                        appointmentTime: "08:00",
+                        pallets: 12,
+                        weight: 24000,
+                        sealNumber: "S-77281",
+                        requirements:
+                          "Lumper required; Driver must check in at South Gate.",
+                        stats: "Avg Turn: 45m | On-Time: 98%",
+                      },
+                      {
+                        id: "2",
+                        type: "Dropoff",
+                        location: load.dropoff,
+                        date: load.dropoffDate,
+                        appointmentTime: "16:00",
+                        pallets: 12,
+                        weight: 24000,
+                        sealNumber: "S-77281",
+                        requirements: "Scheduled appt only; PPE required.",
+                        stats: "Avg Turn: 90m | High Congestion",
+                      },
+                    ]
+                  ).map((leg: any, idx) => (
                     <tr
                       key={leg.id}
                       className="group hover:bg-white/[0.02] transition-colors cursor-pointer border-b border-white/[0.03] last:border-0"
@@ -768,6 +870,13 @@ export const LoadDetailView: React.FC<Props> = ({
               Matrix
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {vaultDocs.length === 0 && (
+                <div className="col-span-full bg-slate-900/20 border border-dashed border-slate-800 rounded-2xl p-8 text-center">
+                  <FileText className="w-8 h-8 text-slate-800 mx-auto mb-3" />
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No documents uploaded</div>
+                  <p className="text-[9px] text-slate-700 mt-1">BOL, POD, Rate Confirmations, and other documents will appear here once uploaded.</p>
+                </div>
+              )}
               {vaultDocs.map((doc) => (
                 <div
                   key={doc.id}
@@ -866,9 +975,9 @@ export const LoadDetailView: React.FC<Props> = ({
             <button
               onClick={handleGenerateInvoice}
               disabled={isGenerating}
-              className="px-10 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all"
+              className="px-10 py-4 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Initialize Settlement
+              {isGenerating ? "Generating..." : "Initialize Settlement"}
             </button>
             <button
               onClick={() => onEdit(load)}

@@ -313,8 +313,8 @@ describe("EditLoadForm component", () => {
       expect(screen.getByText("Carrier Rates")).toBeInTheDocument();
       expect(screen.getByText("Load Stops")).toBeInTheDocument();
       expect(screen.getByText("Documents")).toBeInTheDocument();
-      expect(screen.getByText("Show Route")).toBeInTheDocument();
-      expect(screen.getByText("Audit Logs")).toBeInTheDocument();
+      // "Show Route" only visible when VITE_GOOGLE_MAPS_API_KEY is set
+      // "Audit Logs" removed (dead navigation target)
     });
   });
 

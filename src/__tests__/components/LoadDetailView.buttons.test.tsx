@@ -152,12 +152,7 @@ describe("LoadDetailView S-5.1 button wiring", () => {
         ok: true,
         json: () =>
           Promise.resolve([
-            {
-              id: "doc-1",
-              filename: "BOL.pdf",
-              type: "BOL",
-              status: "Uploaded",
-            },
+            { id: "doc-1", filename: "BOL.pdf", type: "BOL", status: "Uploaded" },
           ]),
       });
       const user = userEvent.setup();
@@ -174,14 +169,7 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       });
     });
 
-    it("Audit Logs calls onNavigate with audit tab and loadId", async () => {
-      const user = userEvent.setup();
-      render(<LoadDetailView {...defaultProps} />);
-
-      await user.click(screen.getByText("Utilities"));
-      await user.click(screen.getByText("Audit Logs"));
-      expect(mockOnNavigate).toHaveBeenCalledWith("audit", "load-1");
-    });
+    // Audit Logs removed — dead navigation target (no "audit" route exists)
 
     it("Tag for Action calls saveLoad with isActionRequired:true", async () => {
       const user = userEvent.setup();
@@ -241,9 +229,9 @@ describe("LoadDetailView S-5.1 button wiring", () => {
     });
   });
 
-  // R-P5-06: 2 TOAST buttons
-  describe("R-P5-06: TOAST buttons", () => {
-    it("Carrier Rates shows toast notification", async () => {
+  // R-P5-06: Carrier Rates toggles rate card; Show Route hidden without API key
+  describe("R-P5-06: Functional utility buttons", () => {
+    it("Carrier Rates toggles rate card section", async () => {
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
 
@@ -251,40 +239,35 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       await user.click(screen.getByText("Carrier Rates"));
 
       await waitFor(() => {
-        expect(screen.getByText(/rate card coming soon/i)).toBeInTheDocument();
+        expect(screen.getByText(/rate card summary/i)).toBeInTheDocument();
       });
     });
 
-    it("Show Route is disabled without VITE_GOOGLE_MAPS_API_KEY", async () => {
+    it("Show Route is hidden when no Google Maps API key", async () => {
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
 
       await user.click(screen.getByText("Utilities"));
 
-      const showRouteBtn = screen.getByText("Show Route").closest("button");
-      expect(showRouteBtn).toBeTruthy();
-      expect(showRouteBtn!.disabled).toBe(true);
-      expect(showRouteBtn!.title).toBe(
-        "Configure VITE_GOOGLE_MAPS_API_KEY to enable",
-      );
+      expect(screen.queryByText("Show Route")).not.toBeInTheDocument();
     });
   });
 
   // R-P5-07: Zero silent no-ops
   describe("R-P5-07: No silent no-ops", () => {
-    it("all 6 utility buttons have onClick handlers", async () => {
+    it("all utility buttons have onClick handlers", async () => {
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
 
       await user.click(screen.getByText("Utilities"));
 
+      // "Show Route" hidden without VITE_GOOGLE_MAPS_API_KEY
+      // "Audit Logs" removed (dead navigation target)
       const utilButtons = [
         "Print BOL",
         "Carrier Rates",
         "Load Stops",
         "Documents",
-        "Show Route",
-        "Audit Logs",
       ];
 
       for (const label of utilButtons) {

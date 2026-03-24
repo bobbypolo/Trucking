@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   LoadData,
   LOAD_STATUS,
@@ -38,8 +38,10 @@ import {
 } from "lucide-react";
 import { getBrokers } from "../services/brokerService";
 import { getCompany, getCompanyUsers } from "../services/authService";
+import { generateBolPDF } from "../services/storageService";
 import { v4 as uuidv4 } from "uuid";
 import { Headset, AlertCircle, MessageSquare } from "lucide-react";
+import { Toast } from "./Toast";
 
 interface Props {
   initialData: Partial<LoadData>;
@@ -81,6 +83,13 @@ export const EditLoadForm: React.FC<Props> = ({
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [users, setUsers] = useState<User[]>(propUsers);
   const [showUtilities, setShowUtilities] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showRateCard, setShowRateCard] = useState(false);
+  const stopMatrixRef = useRef<HTMLDivElement>(null);
+  const settlementRef = useRef<HTMLDivElement>(null);
+  const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
     const load = async () => {
@@ -128,8 +137,107 @@ export const EditLoadForm: React.FC<Props> = ({
     });
   };
 
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+    const legs = formData.legs || [];
+    const pickups = legs.filter((l) => l.type === "Pickup");
+    const dropoffs = legs.filter((l) => l.type === "Dropoff");
+    const hasPickupLocation = pickups.some(
+      (l) => l.location?.city || l.location?.address,
+    );
+    const hasDropoffLocation = dropoffs.some(
+      (l) => l.location?.city || l.location?.address,
+    );
+    if (!hasPickupLocation && !formData.pickup?.city && !formData.pickup?.facilityName) {
+      errors.push("Pickup location must have at least a city or facility name");
+    }
+    if (!hasDropoffLocation && !formData.dropoff?.city && !formData.dropoff?.facilityName) {
+      errors.push("Dropoff location must have at least a city or facility name");
+    }
+    if (!formData.status) {
+      errors.push("Load status is required");
+    }
+    return errors;
+  };
+
+  const handleSave = async () => {
+    if (isSubmitting || formData.isLocked) return;
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setToast({ message: errors[0], type: "error" });
+      return;
+    }
+    setValidationErrors([]);
+    setIsSubmitting(true);
+    try {
+      await onSave(formData as LoadData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUtilityClick = useCallback(async (util: string) => {
+    setShowUtilities(false);
+    switch (util) {
+      case "Print BOL":
+        if (formData.id) {
+          generateBolPDF(formData as LoadData);
+          setToast({ message: "BOL PDF generated", type: "success" });
+        } else {
+          setToast({ message: "Save load first to generate BOL", type: "info" });
+        }
+        break;
+      case "Carrier Rates":
+        setShowRateCard((prev) => !prev);
+        settlementRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      case "Load Stops":
+        stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
+        break;
+      case "Documents":
+        if (formData.id) {
+          try {
+            const resp = await fetch(`/api/documents?loadId=${formData.id}`, {
+              headers: { "Content-Type": "application/json" },
+            });
+            if (resp.ok) {
+              setToast({ message: "Documents loaded", type: "success" });
+            }
+          } catch {
+            setToast({ message: "Failed to load documents", type: "error" });
+          }
+        } else {
+          setToast({ message: "Save load first to view documents", type: "info" });
+        }
+        break;
+      case "Show Route":
+        if (hasGoogleMapsKey) {
+          const pickupLeg = (formData.legs || []).find((l) => l.type === "Pickup");
+          const dropoffLeg = (formData.legs || []).find((l) => l.type === "Dropoff");
+          const pickupLoc = pickupLeg?.location || formData.pickup;
+          const dropoffLoc = dropoffLeg?.location || formData.dropoff;
+          const origin = pickupLoc ? `${pickupLoc.city}, ${pickupLoc.state}` : "";
+          const dest = dropoffLoc ? `${dropoffLoc.city}, ${dropoffLoc.state}` : "";
+          if (origin && dest) {
+            window.open(`https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}`, "_blank");
+          } else {
+            setToast({ message: "Missing origin or destination for route", type: "error" });
+          }
+        }
+        break;
+    }
+  }, [formData, hasGoogleMapsKey]);
+
   return (
     <div className="flex flex-col h-full bg-[#0a0f18] text-white rounded-2xl shadow-3xl overflow-hidden border border-slate-800">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* Top Breadcrumb/Status Row */}
       <div className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
@@ -159,11 +267,11 @@ export const EditLoadForm: React.FC<Props> = ({
                   "Carrier Rates",
                   "Load Stops",
                   "Documents",
-                  "Show Route",
-                  "Audit Logs",
+                  ...(hasGoogleMapsKey ? ["Show Route"] : []),
                 ].map((util) => (
                   <button
                     key={util}
+                    onClick={() => handleUtilityClick(util)}
                     className="w-full text-left px-4 py-2 hover:bg-blue-600 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors"
                   >
                     {util}
@@ -409,7 +517,7 @@ export const EditLoadForm: React.FC<Props> = ({
           </div>
 
           {/* Column 3: Financial Synthesis */}
-          <div className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
+          <div ref={settlementRef} className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-green-500" /> Settlement
               Deepening
@@ -478,6 +586,30 @@ export const EditLoadForm: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+            {/* Rate Card (toggled from Carrier Rates utility) */}
+            {showRateCard && (
+              <div className="bg-[#0a0f18] border border-blue-500/20 rounded-xl p-3 space-y-2">
+                <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Rate Card Summary</div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div>
+                    <span className="text-slate-500 font-bold">Carrier Rate:</span>{" "}
+                    <span className="text-white font-mono">${(formData.carrierRate || 0).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">Driver Pay:</span>{" "}
+                    <span className="text-white font-mono">${(formData.driverPay || 0).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">Net Margin:</span>{" "}
+                    <span className={`font-mono font-bold ${margins.margin >= 0 ? "text-green-400" : "text-red-400"}`}>${margins.margin.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">Margin %:</span>{" "}
+                    <span className={`font-mono font-bold ${margins.percentage >= 15 ? "text-blue-400" : "text-slate-400"}`}>{margins.percentage.toFixed(1)}%</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -567,7 +699,7 @@ export const EditLoadForm: React.FC<Props> = ({
         </div>
 
         {/* Load Stops Execution Table */}
-        <div className="space-y-4">
+        <div ref={stopMatrixRef} className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Navigation className="w-4 h-4 text-blue-500" /> Stop Matrix
@@ -797,6 +929,17 @@ export const EditLoadForm: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="px-6 py-2 bg-red-500/10 border-t border-red-500/20">
+          {validationErrors.map((err, i) => (
+            <div key={i} className="text-[10px] text-red-400 font-bold flex items-center gap-2">
+              <AlertTriangle className="w-3 h-3" /> {err}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Footer Actions */}
       <div className="p-6 bg-slate-900 border-t border-slate-800 flex justify-end gap-4 shrink-0 shadow-inner">
         <button
@@ -806,12 +949,12 @@ export const EditLoadForm: React.FC<Props> = ({
           Discard
         </button>
         <button
-          disabled={formData.isLocked}
+          disabled={formData.isLocked || isSubmitting}
           title={formData.isLocked ? "This load is locked for invoicing. Unlock to make changes." : undefined}
-          onClick={() => onSave(formData as LoadData)}
-          className="px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+          onClick={handleSave}
+          className="px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
         >
-          {formData.id ? "Save Changes" : "Initialize Dispatch"}
+          {isSubmitting ? "Saving..." : formData.id ? "Save Changes" : "Initialize Dispatch"}
         </button>
       </div>
     </div>

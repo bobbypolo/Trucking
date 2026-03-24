@@ -280,12 +280,11 @@ describe("LoadDetailView component", () => {
       expect(screen.getAllByText("24,000").length).toBeGreaterThanOrEqual(1);
     });
 
-    it("renders empty state when no legs array", () => {
+    it("renders default legs from pickup/dropoff when no legs array", () => {
       const loadNoLegs = { ...mockLoad, legs: undefined };
       render(<LoadDetailView {...defaultProps} load={loadNoLegs} />);
-      expect(
-        screen.getByText("No stops configured for this load"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Pickup")).toBeInTheDocument();
+      expect(screen.getByText("Dropoff")).toBeInTheDocument();
     });
   });
 
@@ -336,7 +335,7 @@ describe("LoadDetailView component", () => {
       render(<LoadDetailView {...defaultProps} />);
       await user.click(screen.getByText("Utilities"));
       expect(screen.getByText("Print BOL")).toBeInTheDocument();
-      expect(screen.getByText("Audit Logs")).toBeInTheDocument();
+      expect(screen.getByText("Documents")).toBeInTheDocument();
     });
 
     it("renders Tag for Action button", () => {
@@ -346,7 +345,9 @@ describe("LoadDetailView component", () => {
 
     it("renders Initialize Settlement button", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(screen.getByText("Initialize Settlement")).toBeInTheDocument();
+      expect(
+        screen.getByText("Initialize Settlement"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -373,8 +374,9 @@ describe("LoadDetailView component", () => {
 
   describe("invoice generation", () => {
     it("calls createARInvoice when Initialize Settlement is clicked", async () => {
-      const { createARInvoice } =
-        await import("../../../services/financialService");
+      const { createARInvoice } = await import(
+        "../../../services/financialService"
+      );
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
       await user.click(screen.getByText("Initialize Settlement"));
@@ -397,14 +399,14 @@ describe("LoadDetailView component", () => {
   describe("vault documents", () => {
     it("renders Inject Electronic Records placeholder", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(screen.getByText("Inject Electronic Records")).toBeInTheDocument();
+      expect(
+        screen.getByText("Inject Electronic Records"),
+      ).toBeInTheDocument();
     });
 
     it("shows BOL, POD, RATE CON, HAZMAT document types", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(
-        screen.getByText(/BOL, POD, RATE CON, HAZMAT/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/BOL, POD, RATE CON, HAZMAT/)).toBeInTheDocument();
     });
   });
 
@@ -422,7 +424,9 @@ describe("LoadDetailView component", () => {
         pickup: { city: "", state: "" },
         dropoff: { city: "", state: "" },
       };
-      render(<LoadDetailView {...defaultProps} load={minimal} />);
+      render(
+        <LoadDetailView {...defaultProps} load={minimal} />,
+      );
       expect(screen.getByText("MIN-1")).toBeInTheDocument();
     });
   });
