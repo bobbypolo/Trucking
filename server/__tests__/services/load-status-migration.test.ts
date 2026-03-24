@@ -101,17 +101,23 @@ describe("Migration 002: Load Status Normalization", () => {
     });
   });
 
-  describe("Rollback migration file", () => {
-    it("file exists", () => {
+  describe("Rollback migration file (retired)", () => {
+    const RETIRED_DIR = path.join(MIGRATIONS_DIR, "_retired");
+
+    function readRetired(filename: string): string {
+      return fs.readFileSync(path.join(RETIRED_DIR, filename), "utf-8");
+    }
+
+    it("file exists in retired directory", () => {
       const filePath = path.join(
-        MIGRATIONS_DIR,
+        RETIRED_DIR,
         "002_load_status_normalization_rollback.sql",
       );
       expect(fs.existsSync(filePath)).toBe(true);
     });
 
     it("contains widen step (adds legacy values back)", () => {
-      const sql = readMigration("002_load_status_normalization_rollback.sql");
+      const sql = readRetired("002_load_status_normalization_rollback.sql");
       // Rollback Step 1 widens ENUM to include both legacy and canonical
       expect(sql).toContain("ALTER TABLE loads");
       expect(sql).toContain("Planned");
@@ -119,14 +125,14 @@ describe("Migration 002: Load Status Normalization", () => {
     });
 
     it("contains denormalize step (UPDATE rows back to PascalCase)", () => {
-      const sql = readMigration("002_load_status_normalization_rollback.sql");
+      const sql = readRetired("002_load_status_normalization_rollback.sql");
       // Rollback Step 2 maps canonical -> primary legacy value
       expect(sql).toContain("UPDATE loads SET status = 'Planned'");
       expect(sql).toContain("UPDATE loads SET status = 'Cancelled'");
     });
 
     it("contains shrink step (removes canonical values)", () => {
-      const sql = readMigration("002_load_status_normalization_rollback.sql");
+      const sql = readRetired("002_load_status_normalization_rollback.sql");
       // Rollback Step 3 finalizes the ENUM back to original 12 values
       const alterCount = (sql.match(/ALTER TABLE loads/g) ?? []).length;
       expect(alterCount).toBeGreaterThanOrEqual(2);
