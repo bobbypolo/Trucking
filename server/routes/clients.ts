@@ -508,8 +508,10 @@ router.post(
       await connection.beginTransaction();
 
       // Use entityClass as the type value for unified entity model
+      // Tags stored as JSON string in the tags column
+      const tagsJson = tags && tags.length > 0 ? JSON.stringify(tags) : null;
       await connection.query(
-        "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           finalCompanyId,
@@ -521,6 +523,7 @@ router.post(
           mcNumber,
           dotNumber,
           rating,
+          tagsJson,
         ],
       );
 

@@ -21,6 +21,7 @@ router.get(
     try {
       const {
         status,
+        status_not_in,
         type,
         severity,
         entityType,
@@ -33,6 +34,17 @@ router.get(
       if (status) {
         query += " AND status = ?";
         params.push(status);
+      }
+      if (status_not_in) {
+        const excluded = (status_not_in as string)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (excluded.length > 0) {
+          const placeholders = excluded.map(() => "?").join(", ");
+          query += ` AND status NOT IN (${placeholders})`;
+          params.push(...excluded);
+        }
       }
       if (type) {
         query += " AND type = ?";
