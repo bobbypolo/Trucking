@@ -686,7 +686,7 @@ test.describe("Issues & Alerts — Browser Workflow", () => {
     await loginAndWait(page);
     // Navigate to exception management / issues console in the nav
     const navItem = page.locator(
-      'nav >> text="Issues", aside >> text="Issues", [role="navigation"] >> text="Issues", nav >> text="Exceptions", aside >> text="Exceptions", [role="navigation"] >> text="Exceptions", nav >> text="Alerts", aside >> text="Alerts", [role="navigation"] >> text="Alerts"',
+      'aside nav button:has(span:text-is("Issues & Alerts"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);
@@ -700,7 +700,7 @@ test.describe("Issues & Alerts — Browser Workflow", () => {
   }) => {
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Issues", aside >> text="Issues", [role="navigation"] >> text="Issues", nav >> text="Exceptions", aside >> text="Exceptions", [role="navigation"] >> text="Exceptions", nav >> text="Alerts", aside >> text="Alerts", [role="navigation"] >> text="Alerts"',
+      'aside nav button:has(span:text-is("Issues & Alerts"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);

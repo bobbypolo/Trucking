@@ -493,7 +493,7 @@ test.describe("Quotes & Booking — Browser Workflow", () => {
     await loginAndWait(page);
     // Navigate to Quotes & Booking in the nav
     const navItem = page.locator(
-      'nav >> text="Quotes", aside >> text="Quotes", [role="navigation"] >> text="Quotes", nav >> text="Booking", aside >> text="Booking", [role="navigation"] >> text="Booking"',
+      'aside nav button:has(span:text-is("Quotes & Booking"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);
@@ -507,7 +507,7 @@ test.describe("Quotes & Booking — Browser Workflow", () => {
   }) => {
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Quotes", aside >> text="Quotes", [role="navigation"] >> text="Quotes", nav >> text="Booking", aside >> text="Booking", [role="navigation"] >> text="Booking"',
+      'aside nav button:has(span:text-is("Quotes & Booking"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);

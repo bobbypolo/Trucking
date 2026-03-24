@@ -475,7 +475,7 @@ test.describe("Load Creation — Browser Workflow", () => {
     await loginAndWait(page);
     // Click "Load Board" in the nav
     const navItem = page.locator(
-      'nav >> text="Load Board", aside >> text="Load Board", [role="navigation"] >> text="Load Board"',
+      'aside nav button:has(span:text-is("Load Board"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);
@@ -488,7 +488,7 @@ test.describe("Load Creation — Browser Workflow", () => {
   test("Load Board shows load-related content", async ({ page }) => {
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Load Board", aside >> text="Load Board", [role="navigation"] >> text="Load Board"',
+      'aside nav button:has(span:text-is("Load Board"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);

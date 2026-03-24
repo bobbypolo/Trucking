@@ -444,8 +444,7 @@ test.describe("OPS-04: Schedule — Browser UI", () => {
 
     // Navigate to Schedule via sidebar
     const scheduleLink = page.locator(
-      'nav >> text="Schedule", aside >> text="Schedule", ' +
-        '[role="navigation"] >> text="Schedule"',
+      'aside nav button:has(span:text-is("Schedule"))',
     );
     await scheduleLink.first().click();
 
@@ -474,8 +473,7 @@ test.describe("OPS-04: Schedule — Browser UI", () => {
 
     // Navigate to Schedule via sidebar
     const scheduleLink = page.locator(
-      'nav >> text="Schedule", aside >> text="Schedule", ' +
-        '[role="navigation"] >> text="Schedule"',
+      'aside nav button:has(span:text-is("Schedule"))',
     );
     await scheduleLink.first().click();
 
@@ -512,8 +510,7 @@ test.describe("OPS-04: Schedule — Browser UI", () => {
 
     // Navigate to Schedule
     const scheduleLink = page.locator(
-      'nav >> text="Schedule", aside >> text="Schedule", ' +
-        '[role="navigation"] >> text="Schedule"',
+      'aside nav button:has(span:text-is("Schedule"))',
     );
     await scheduleLink.first().click();
 

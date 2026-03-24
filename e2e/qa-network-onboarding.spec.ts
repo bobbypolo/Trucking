@@ -385,7 +385,7 @@ test.describe("Broker Network — Browser Workflow", () => {
     await loginAndWait(page);
     // Navigate to Broker Network in the nav
     const navItem = page.locator(
-      'nav >> text="Broker Network", aside >> text="Broker Network", [role="navigation"] >> text="Broker Network", nav >> text="Network", aside >> text="Network", [role="navigation"] >> text="Network"',
+      'aside nav button:has(span:text-is("Broker Network"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);
@@ -397,7 +397,7 @@ test.describe("Broker Network — Browser Workflow", () => {
   test("Broker Network page shows network portal content", async ({ page }) => {
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Broker Network", aside >> text="Broker Network", [role="navigation"] >> text="Broker Network", nav >> text="Network", aside >> text="Network", [role="navigation"] >> text="Network"',
+      'aside nav button:has(span:text-is("Broker Network"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);

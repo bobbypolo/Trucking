@@ -498,8 +498,7 @@ test.describe("COM-05: Driver Pay — Browser UI", () => {
 
     // Navigate to Driver Pay via sidebar
     const driverPayLink = page.locator(
-      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
-        '[role="navigation"] >> text="Driver Pay"',
+      'aside nav button:has(span:text-is("Driver Pay"))',
     );
     await driverPayLink.first().click();
 
@@ -528,8 +527,7 @@ test.describe("COM-05: Driver Pay — Browser UI", () => {
 
     // Navigate to Driver Pay via sidebar
     const driverPayLink = page.locator(
-      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
-        '[role="navigation"] >> text="Driver Pay"',
+      'aside nav button:has(span:text-is("Driver Pay"))',
     );
     await driverPayLink.first().click();
 
@@ -566,8 +564,7 @@ test.describe("COM-05: Driver Pay — Browser UI", () => {
 
     // Navigate to Driver Pay
     const driverPayLink = page.locator(
-      'nav >> text="Driver Pay", aside >> text="Driver Pay", ' +
-        '[role="navigation"] >> text="Driver Pay"',
+      'aside nav button:has(span:text-is("Driver Pay"))',
     );
     await driverPayLink.first().click();
 

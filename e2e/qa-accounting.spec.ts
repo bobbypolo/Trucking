@@ -582,7 +582,7 @@ test.describe("Accounting — Browser Workflow", () => {
     page.on("pageerror", (err) => errors.push(err.message));
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Accounting", aside >> text="Accounting", [role="navigation"] >> text="Accounting"',
+      'aside nav button:has(span:text-is("Accounting"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);
@@ -594,7 +594,7 @@ test.describe("Accounting — Browser Workflow", () => {
   test("Accounting page shows financial content", async ({ page }) => {
     await loginAndWait(page);
     const navItem = page.locator(
-      'nav >> text="Accounting", aside >> text="Accounting", [role="navigation"] >> text="Accounting"',
+      'aside nav button:has(span:text-is("Accounting"))',
     );
     await navItem.first().click();
     await page.waitForTimeout(2000);

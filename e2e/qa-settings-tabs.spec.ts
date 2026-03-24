@@ -51,8 +51,7 @@ async function loginAndGoToSettings(
 
   // Click on "Company Settings" in the sidebar nav
   const settingsLink = page.locator(
-    'nav >> text="Company Settings", aside >> text="Company Settings", ' +
-      '[role="navigation"] >> text="Company Settings"',
+    'aside nav button:has(span:text-is("Company Settings"))',
   );
   await settingsLink.first().click();
 
@@ -410,7 +409,7 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
 
     // Navigate to Company Settings (if visible to the driver)
     const settingsLink = page.locator(
-      'nav >> text="Company Settings", aside >> text="Company Settings"',
+      'aside nav button:has(span:text-is("Company Settings"))',
     );
     const settingsVisible = await settingsLink
       .first()
@@ -471,7 +470,7 @@ test.describe("QA-01 Settings Tabs — Admin vs Non-Admin Visibility", () => {
 
     // Check if dispatcher can access Company Settings
     const settingsLink = page.locator(
-      'nav >> text="Company Settings", aside >> text="Company Settings"',
+      'aside nav button:has(span:text-is("Company Settings"))',
     );
     const settingsVisible = await settingsLink
       .first()

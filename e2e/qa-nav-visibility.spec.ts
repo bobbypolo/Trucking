@@ -85,8 +85,7 @@ test.describe("QA-01 Nav Visibility — Approved Primary Nav Items", () => {
 
     for (const label of approvedNavItems) {
       const navItem = page.locator(
-        `nav >> text="${label}", aside >> text="${label}", ` +
-          `[role="navigation"] >> text="${label}"`,
+        `aside nav button:has(span:text-is("${label}"))`,
       );
       await expect(
         navItem.first(),
@@ -175,7 +174,7 @@ test.describe("QA-01 Nav Visibility — Removed Items Not Shown", () => {
     // API Tester is gated by features.apiTester = import.meta.env.DEV
     // In dev mode this WILL be visible — test documents the production expectation
     const apiTester = page.locator(
-      'nav >> text="API Tester", aside >> text="API Tester"',
+      'aside nav button:has(span:text-is("API Tester"))',
     );
     const isDevMode = await page
       .evaluate(() => {
@@ -432,7 +431,7 @@ test.describe("QA-01 Nav Visibility — Driver Role", () => {
 
     // Accounting requires INVOICE_CREATE permission — drivers must not have this
     const accountingNav = page.locator(
-      'nav >> text="Accounting", aside >> text="Accounting"',
+      'aside nav button:has(span:text-is("Accounting"))',
     );
     const isVisible = await accountingNav
       .first()
