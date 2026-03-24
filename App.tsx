@@ -55,12 +55,6 @@ import {
 const Auth = React.lazy(() =>
   import("./components/Auth").then((m) => ({ default: m.Auth })),
 );
-const Dashboard = React.lazy(() =>
-  import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
-);
-const LoadList = React.lazy(() =>
-  import("./components/LoadList").then((m) => ({ default: m.LoadList })),
-);
 const LoadBoardEnhanced = React.lazy(() =>
   import("./components/LoadBoardEnhanced").then((m) => ({
     default: m.LoadBoardEnhanced,
@@ -89,11 +83,6 @@ const BrokerManager = React.lazy(() =>
 const SafetyView = React.lazy(() =>
   import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
 );
-const Intelligence = React.lazy(() =>
-  import("./components/Intelligence").then((m) => ({
-    default: m.Intelligence,
-  })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -110,35 +99,20 @@ const QuoteManager = React.lazy(() =>
   })),
 );
 import {
-  LayoutDashboard,
   Calendar,
-  Users,
-  ShieldCheck,
-  BarChart3,
   Wallet,
-  Settings,
   LogOut,
   Plus,
   Menu,
   X,
   Truck,
   AlertTriangle,
-  Home,
   Building2,
-  ClipboardList,
-  FileText,
-  Map as MapIcon,
-  MessageSquare,
-  ShieldAlert,
   Zap,
-  Phone,
   Search,
   Globe,
-  DollarSign,
   ChevronLeft,
 } from "lucide-react";
-import { seedSafetyData } from "./services/safetyService";
-import { v4 as uuidv4 } from "uuid";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
 );
@@ -189,16 +163,6 @@ const NetworkPortal = React.lazy(() =>
   })),
 );
 import { getRecord360Data } from "./services/storageService";
-const GoogleMapsAPITester = React.lazy(() =>
-  import("./components/GoogleMapsAPITester").then((m) => ({
-    default: m.GoogleMapsAPITester,
-  })),
-);
-const CommandCenterView = React.lazy(() =>
-  import("./components/CommandCenterView").then((m) => ({
-    default: m.CommandCenterView,
-  })),
-);
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -411,7 +375,7 @@ export default function App() {
     } else if (loggedInUser.primaryWorkspace === "Dispatch") {
       setActiveTab("loads");
     } else {
-      setActiveTab("dashboard");
+      setActiveTab("operations-hub");
     }
   };
 
@@ -420,7 +384,7 @@ export default function App() {
     setIsAuthReady(false);
     setUser(null);
     setLoads([]);
-    setActiveTab("dashboard");
+    setActiveTab("operations-hub");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -582,27 +546,10 @@ export default function App() {
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
-        { id: "analytics", label: "Reports", icon: BarChart3 },
         {
           id: "loads",
           label: "Load Board",
           icon: Truck,
-          permission: "LOAD_DISPATCH",
-          capability: "LOAD_TRACK",
-        },
-        {
-          id: "quotes",
-          label: "Quotes & Booking",
-          icon: ClipboardList,
-          permission: "LOAD_CREATE",
-          capability: "QUOTE_CREATE",
-        },
-        {
-          id: "map",
-          label: "Fleet Map",
-          icon: MapIcon,
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
@@ -613,65 +560,36 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
+        { id: "network", label: "Onboarding", icon: Globe },
       ],
-    },
-    {
-      title: "NETWORK",
-      items: [{ id: "network", label: "Broker Network", icon: Globe }],
     },
     {
       title: "FINANCIALS",
       items: [
+        {
+          id: "accounting",
+          label: "Financials",
+          icon: Building2,
+          permission: "INVOICE_CREATE",
+        },
         {
           id: "finance",
           label: "Driver Pay",
           icon: Wallet,
           permission: "SETTLEMENT_VIEW",
         },
-        {
-          id: "accounting",
-          label: "Accounting",
-          icon: Building2,
-          permission: "INVOICE_CREATE",
-        },
       ],
     },
     {
-      title: "COMPLIANCE",
+      title: "ADMIN",
       items: [
-        {
-          id: "safety",
-          label: "Safety & Compliance",
-          icon: ShieldCheck,
-          permission: "SAFETY_EVENT_VIEW",
-        },
-        {
-          id: "audit",
-          label: "Activity Log",
-          icon: FileText,
-          permission: "AUDIT_LOG_VIEW",
-        },
-      ],
-    },
-    {
-      title: "SETTINGS",
-      items: [
+        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
         {
           id: "company",
           label: "Company Settings",
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        ...(features.apiTester
-          ? [
-              {
-                id: "api-tester",
-                permission: "ORG_SETTINGS_VIEW" as PermissionCode,
-                label: "API Tester",
-                icon: Zap,
-              },
-            ]
-          : []),
       ],
     },
   ];
@@ -1021,7 +939,7 @@ export default function App() {
                     brokers={brokers}
                     session={session}
                     setSession={setSession}
-                    onClose={() => handleNavigate("dashboard")}
+                    onClose={() => handleNavigate("loads")}
                     onRecordAction={handleRecordAction}
                     initialTab={hubInitialTab}
                     initialShowCallForm={hubInitialShowCallForm}
@@ -1031,24 +949,6 @@ export default function App() {
                     openRecordWorkspace={openRecordWorkspace}
                     onCloseContext={handleCloseContext}
                     onLinkSessionToRecord={handleLinkSessionToRecord}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "dashboard" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Dashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onViewLoad={(load) => {
-                      setEditingLoad(load);
-                      handleNavigate("loads");
-                    }}
-                    onNavigate={handleNavigate}
-                    users={companyUsers}
-                    onOpenIssues={() => setActiveTab("exceptions")}
                   />
                 </Suspense>
               )}
@@ -1259,13 +1159,6 @@ export default function App() {
                     user={user}
                     onUserRegistryChange={() => refreshData(user)}
                   />
-                </Suspense>
-              )}
-              {features.apiTester && activeTab === "api-tester" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={1} />}
-                >
-                  <GoogleMapsAPITester />
                 </Suspense>
               )}
             </div>

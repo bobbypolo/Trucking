@@ -1,4 +1,4 @@
-// Tests R-P1-01
+// Tests R-P1-01 — Updated for end-state product nav (CORE-05)
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
@@ -8,69 +8,107 @@ import * as path from "path";
 // asserting the actual string values in the categories array.
 const appSource = fs.readFileSync(path.resolve("App.tsx"), "utf-8");
 
-describe("App.tsx navigation categories labels (R-P1-01)", () => {
+describe("App.tsx end-state navigation labels (CORE-05)", () => {
+  // --- Active nav items (8 total) ---
   it("uses 'Operations Center' label", () => {
     expect(appSource).toContain("Operations Center");
-  });
-
-  it("uses 'Dashboard' label", () => {
-    expect(appSource).toContain('"Dashboard"');
-  });
-
-  it("uses 'Issues & Alerts' label", () => {
-    expect(appSource).toContain("Issues & Alerts");
-  });
-
-  it("uses 'Reports' label", () => {
-    expect(appSource).toContain('"Reports"');
   });
 
   it("uses 'Load Board' label", () => {
     expect(appSource).toContain("Load Board");
   });
 
-  it("uses 'Quotes & Booking' label", () => {
-    expect(appSource).toContain("Quotes & Booking");
-  });
-
-  it("uses 'Fleet Map' label", () => {
-    expect(appSource).toContain("Fleet Map");
-  });
-
   it("uses 'Schedule' label", () => {
     expect(appSource).toContain('"Schedule"');
   });
 
-  it("uses 'Broker Network' label", () => {
-    expect(appSource).toContain("Broker Network");
+  it("uses 'Onboarding' label (renamed from Broker Network)", () => {
+    expect(appSource).toContain('"Onboarding"');
+  });
+
+  it("uses 'Financials' label (renamed from Accounting)", () => {
+    expect(appSource).toContain('"Financials"');
   });
 
   it("uses 'Driver Pay' label", () => {
     expect(appSource).toContain("Driver Pay");
   });
 
-  it("uses 'Accounting' label", () => {
-    expect(appSource).toContain('"Accounting"');
-  });
-
-  it("uses 'Safety & Compliance' label", () => {
-    expect(appSource).toContain("Safety & Compliance");
-  });
-
-  it("uses 'Activity Log' label", () => {
-    expect(appSource).toContain("Activity Log");
+  it("uses 'Issues & Alerts' label", () => {
+    expect(appSource).toContain("Issues & Alerts");
   });
 
   it("uses 'Company Settings' label", () => {
     expect(appSource).toContain("Company Settings");
   });
 
-  it("category title is 'SETTINGS' (not 'ENTERPRISE')", () => {
-    expect(appSource).toContain('"SETTINGS"');
-    expect(appSource).not.toContain('"ENTERPRISE"');
+  // --- Retired nav items (removed from categories, route handlers may remain) ---
+  it("does not contain 'Dashboard' as a nav label", () => {
+    // Extract just the categories block to verify Dashboard is not a nav item
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain('"Dashboard"');
   });
 
-  // Verify old jargon labels are gone
+  it("does not contain 'Reports' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain('"Reports"');
+  });
+
+  it("does not contain 'Quotes & Booking' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain("Quotes & Booking");
+  });
+
+  it("does not contain 'Fleet Map' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain("Fleet Map");
+  });
+
+  it("does not contain 'Safety & Compliance' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain("Safety & Compliance");
+  });
+
+  it("does not contain 'Activity Log' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain("Activity Log");
+  });
+
+  it("does not contain 'Broker Network' as a nav label", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain("Broker Network");
+  });
+
+  it("does not contain 'Accounting' as a nav label (renamed to Financials)", () => {
+    const categoryBlock = appSource.slice(
+      appSource.indexOf("const categories: NavCategory[]"),
+      appSource.indexOf("const filteredCategories"),
+    );
+    expect(categoryBlock).not.toContain('"Accounting"');
+  });
+
+  // --- Old jargon still must not appear ---
   it("does not contain old jargon 'Unified Command Center'", () => {
     expect(appSource).not.toContain("Unified Command Center");
   });
@@ -96,7 +134,6 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
   });
 
   it("does not contain old jargon 'Live Map'", () => {
-    // 'Live Map' must not appear as a nav label (the label text)
     expect(appSource).not.toContain('"Live Map"');
   });
 
@@ -134,35 +171,48 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     (m) => m[1],
   );
 
-  // Every nav ID should have a corresponding `activeTab === "id"` render check
-  const tabIds = [
+  // End-state nav: exactly 8 items
+  const navTabIds = [
     "operations-hub",
-    "dashboard",
-    "exceptions",
-    "analytics",
     "loads",
-    "quotes",
-    "map",
     "calendar",
     "network",
-    "finance",
     "accounting",
-    "safety",
-    "audit",
+    "finance",
+    "exceptions",
     "company",
   ];
 
+  it("nav has exactly 8 items", () => {
+    expect(idMatches.length).toBe(8);
+  });
+
   it("extracts expected tab IDs from categories", () => {
-    for (const id of tabIds) {
+    for (const id of navTabIds) {
       expect(idMatches).toContain(id);
     }
   });
 
-  for (const id of tabIds) {
+  for (const id of navTabIds) {
     it(`"${id}" tab has a matching render conditional`, () => {
-      const renderPattern = new RegExp(
-        `activeTab\\s*===\\s*"${id}"\\s*&&\\s*`,
-      );
+      const renderPattern = new RegExp(`activeTab\\s*===\\s*"${id}"\\s*&&\\s*`);
+      expect(appSource).toMatch(renderPattern);
+    });
+  }
+
+  // Fallback routes: still have render conditionals but no nav items
+  const fallbackRoutes = [
+    "analytics",
+    "quotes",
+    "map",
+    "safety",
+    "audit",
+    "brokers",
+  ];
+
+  for (const id of fallbackRoutes) {
+    it(`"${id}" fallback route has a render conditional (programmatic access)`, () => {
+      const renderPattern = new RegExp(`activeTab\\s*===\\s*"${id}"\\s*&&\\s*`);
       expect(appSource).toMatch(renderPattern);
     });
   }
@@ -173,5 +223,20 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     expect(appSource).not.toMatch(
       /activeTab\s*===\s*"company"\s*&&\s*company\s*&&/,
     );
+  });
+
+  // CORE-06: Driver Pay and Financials both still route to AccountingPortal
+  // (Team 4 responsibility to separate)
+  it("documents that finance and accounting both render AccountingPortal (Team 4 TODO)", () => {
+    const financeBlock = appSource.slice(
+      appSource.indexOf('activeTab === "finance"'),
+      appSource.indexOf('activeTab === "finance"') + 200,
+    );
+    const accountingBlock = appSource.slice(
+      appSource.indexOf('activeTab === "accounting"'),
+      appSource.indexOf('activeTab === "accounting"') + 200,
+    );
+    expect(financeBlock).toContain("AccountingPortal");
+    expect(accountingBlock).toContain("AccountingPortal");
   });
 });
