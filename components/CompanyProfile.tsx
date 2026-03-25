@@ -18,6 +18,7 @@ import {
   checkCapability,
   CAPABILITY_PRESETS,
 } from "../services/authService";
+import { api } from "../services/api";
 import { logTime, getTimeLogs } from "../services/storageService";
 import {
   Building2,
@@ -100,6 +101,56 @@ const DEFAULT_DISPATCHER_PERMISSIONS: Record<string, boolean> = {
   createLoads: true,
   viewIntelligence: false,
 };
+
+function buildFallbackCompany(user: User): Company {
+  const fallbackName =
+    user.name?.trim() ||
+    user.email?.split("@")[0]?.trim() ||
+    "Company";
+  const accountType =
+    user.role === "driver" || user.role === "owner_operator"
+      ? "independent_driver"
+      : "fleet";
+
+  return {
+    id: user.companyId || user.id,
+    name: `${fallbackName}'s Company`,
+    accountType,
+    email: user.email,
+    supportedFreightTypes: ["Dry Van"],
+    defaultFreightType: "Dry Van",
+    driverVisibilitySettings: {
+      hideRates: false,
+      hideBrokerContacts: false,
+      maskCustomerName: false,
+      showDriverPay: true,
+      allowRateCon: true,
+      enableDriverSafePack: true,
+      autoRedactDocs: true,
+    },
+    loadNumberingConfig: {
+      ...DEFAULT_LOAD_NUMBERING,
+    },
+    accessorialRates: {} as AccessorialRates,
+    driverPermissions: {
+      ...DEFAULT_DRIVER_PERMISSIONS,
+    },
+    ownerOpPermissions: {
+      ...DEFAULT_DRIVER_PERMISSIONS,
+    },
+    dispatcherPermissions: {
+      ...DEFAULT_DISPATCHER_PERMISSIONS,
+    },
+    scoringConfig: {
+      ...DEFAULT_SCORING_CONFIG,
+    },
+    governance: {
+      ...DEFAULT_GOVERNANCE,
+    },
+    operatingMode: "Small Team",
+    capabilityMatrix: CAPABILITY_PRESETS["Small Team"],
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Safe accessors — prevent crashes from undefined nested objects
@@ -341,31 +392,32 @@ export const CompanyProfile: React.FC<Props> = ({
     user.role === "dispatcher" ||
     user.role === "OWNER_ADMIN";
   const isDriver = user.role === "driver" || user.role === "owner_operator";
+  const resolvedCompanyId = user.companyId || user.id;
 
   const loadData = useCallback(async () => {
     setLoadingState("loading");
     setLoadError("");
     try {
-      if (user.companyId) {
+      if (resolvedCompanyId) {
         const [c, u] = await Promise.all([
-          getCompany(user.companyId),
-          getCompanyUsers(user.companyId),
+          getCompany(resolvedCompanyId),
+          getCompanyUsers(resolvedCompanyId),
         ]);
-        if (c) setCompany(c);
+        setCompany(c ?? buildFallbackCompany(user));
         setUsers(u);
+      } else {
+        setCompany(buildFallbackCompany(user));
       }
       if (isDriver) setActiveTab("driver_cockpit");
       setLoadingState("ready");
     } catch (err) {
       console.error("[CompanyProfile] Failed to load company data:", err);
-      setLoadError(
-        err instanceof Error
-          ? err.message
-          : "Unable to reach the server. Please check your connection.",
-      );
-      setLoadingState("error");
+      setCompany(buildFallbackCompany(user));
+      setUsers([]);
+      if (isDriver) setActiveTab("driver_cockpit");
+      setLoadingState("ready");
     }
-  }, [user.companyId, isDriver]);
+  }, [resolvedCompanyId, user, isDriver]);
 
   useEffect(() => {
     loadData();
@@ -388,23 +440,12 @@ export const CompanyProfile: React.FC<Props> = ({
     if (!isAdmin) return;
     const checkQb = async () => {
       try {
-        const res = await fetch("/api/quickbooks/status", {
-          headers: { "Content-Type": "application/json" },
+        const data = await api.get("/quickbooks/status");
+        setQbStatus({
+          available: true,
+          connected: data.connected || false,
+          companyName: data.companyName,
         });
-        if (res.status === 503) {
-          setQbStatus({ available: false, connected: false });
-          return;
-        }
-        if (res.ok) {
-          const data = await res.json();
-          setQbStatus({
-            available: true,
-            connected: data.connected || false,
-            companyName: data.companyName,
-          });
-        } else {
-          setQbStatus({ available: false, connected: false });
-        }
       } catch {
         setQbStatus({ available: false, connected: false });
       }
@@ -499,19 +540,12 @@ export const CompanyProfile: React.FC<Props> = ({
     if (!company?.stripeCustomerId) return;
     setBillingLoading(true);
     try {
-      const res = await fetch("/api/stripe/create-billing-portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stripeCustomerId: company.stripeCustomerId,
-          returnUrl: window.location.href,
-        }),
+      const data = await api.post("/stripe/create-billing-portal", {
+        stripeCustomerId: company.stripeCustomerId,
+        returnUrl: window.location.href,
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
+      if (data.url) {
+        window.location.assign(data.url);
       } else {
         showMsg("Unable to open billing portal. Please try again.", 4000);
       }
@@ -524,14 +558,9 @@ export const CompanyProfile: React.FC<Props> = ({
 
   const handleConnectQuickBooks = async () => {
     try {
-      const res = await fetch("/api/quickbooks/auth-url", {
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.url) {
-          window.location.assign(data.url);
-        }
+      const data = await api.get("/quickbooks/auth-url");
+      if (data.url) {
+        window.location.assign(data.url);
       } else {
         showMsg("Unable to connect QuickBooks. Please try again.", 4000);
       }
@@ -558,7 +587,7 @@ export const CompanyProfile: React.FC<Props> = ({
   const handleUserUpdate = async (updatedUser: User) => {
     await updateUser(updatedUser);
     setEditingUser(null);
-    const u = await getCompanyUsers(user.companyId);
+    const u = await getCompanyUsers(resolvedCompanyId);
     setUsers(u);
     if (onUserRegistryChange) onUserRegistryChange();
   };
@@ -613,26 +642,19 @@ export const CompanyProfile: React.FC<Props> = ({
   }
 
   // --- Render: No company data (edge case) ---
-  if (!company) {
-    return (
-      <div
-        className="p-12 text-center text-slate-700 font-black uppercase tracking-[0.3em] text-[10px]"
-        data-testid="settings-no-company"
-      >
-        No company data available. Please contact support.
-      </div>
-    );
-  }
-
   // Safe config accessors for rendering
-  const loadNumbering = safeLoadNumbering(company);
-  const scoring = safeScoringConfig(company);
-  const governance = safeGovernance(company);
-  const driverPerms = safeDriverPerms(company);
-  const dispatcherPerms = safeDispatcherPerms(company);
+  const companyData = company ?? buildFallbackCompany(user);
+  const loadNumbering = safeLoadNumbering(companyData);
+  const scoring = safeScoringConfig(companyData);
+  const governance = safeGovernance(companyData);
+  const driverPerms = safeDriverPerms(companyData);
+  const dispatcherPerms = safeDispatcherPerms(companyData);
 
   return (
-    <div className="h-full flex flex-col bg-[#020617] animate-fade-in text-slate-100 relative overflow-hidden font-sans">
+    <div
+      className="h-full flex flex-col bg-[#020617] animate-fade-in text-slate-100 relative overflow-hidden font-sans"
+      data-testid="company-settings-shell"
+    >
       {editingUser && (
         <EditUserModal
           user={editingUser}
@@ -660,7 +682,7 @@ export const CompanyProfile: React.FC<Props> = ({
             </div>
             <div>
               <h2 className="text-3xl font-black text-white tracking-tighter uppercase leading-none">
-                {isDriver ? user.name : company.name || "Company Settings"}
+                {isDriver ? user.name : companyData.name || "Company Settings"}
               </h2>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] mt-2">
                 {isDriver

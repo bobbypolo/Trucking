@@ -35,8 +35,6 @@ import {
   AlertTriangle,
   Activity,
 } from "lucide-react";
-import { SafetyView } from "./SafetyView";
-
 const computeSLALabel = (dueAt?: string): string => {
   if (!dueAt) return "No SLA";
   const diff = new Date(dueAt).getTime() - Date.now();
@@ -606,9 +604,9 @@ export const ExceptionConsole: React.FC<Props> = ({
       </div>
 
       {/* ── Main Content ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar">
-        {/* When Safety tab is active, show embedded SafetyView */}
-        {activeCategory === "safety" ? (
+      <div className="flex-1 overflow-y-auto no-scrollbar" data-testid="issues-console">
+        {/* Safety remains a filter inside the unified Issues & Alerts workflow. */}
+        {false && activeCategory === "safety" ? (
           <div className="flex flex-col h-full">
             {/* Safety issues list (compact) */}
             {filteredExceptions.length > 0 && (
@@ -659,19 +657,6 @@ export const ExceptionConsole: React.FC<Props> = ({
                 </div>
               </div>
             )}
-            {/* Embedded SafetyView */}
-            <div className="flex-1 overflow-y-auto">
-              <SafetyView
-                user={currentUser}
-                loads={loads}
-                incidents={incidents}
-                onIncidentAction={onIncidentAction}
-                onRecordAction={onRecordAction}
-                openRecordWorkspace={openRecordWorkspace}
-                onOpenHub={onOpenHub}
-                onNavigate={onNavigate}
-              />
-            </div>
           </div>
         ) : (
           <div className="p-6 space-y-4">

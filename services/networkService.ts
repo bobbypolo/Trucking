@@ -9,7 +9,7 @@ export const getParties = async (
     return data ?? [];
   } catch (e) {
     console.error("[networkService] getParties failed:", e);
-    return [];
+    throw e instanceof Error ? e : new Error("Failed to load parties");
   }
 };
 

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
-import { API_URL } from "../services/config";
 import {
   Gauge,
   AlertCircle,
@@ -95,10 +94,10 @@ import {
   saveNotificationJob,
   createIncident as coreCreateIncident,
   saveTask,
-  getAuthHeaders,
+  saveIncidentAction,
+  saveIncidentCharge,
 } from "../services/storageService";
 import { getVendors, saveVendor } from "../services/safetyService";
-import { SafetyView } from "./SafetyView";
 import { NetworkPortal } from "./NetworkPortal";
 import { QuoteManager } from "./QuoteManager";
 import { LoadDetailView } from "./LoadDetailView";
@@ -842,17 +841,10 @@ const IntelligenceHub: React.FC<{
       }
 
       // 2. Save to Immutable Audit Trail (Backend)
-      await fetch(`${API_URL}/incidents/${primaryLink.entityId}/actions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          actor_name: user.name,
-          action: "Recorded Call",
-          notes: callNotes,
-        }),
+      await saveIncidentAction(primaryLink.entityId, {
+        actorName: user.name,
+        action: "Recorded Call",
+        notes: callNotes,
       });
     }
 
@@ -1572,15 +1564,11 @@ const IntelligenceHub: React.FC<{
     // Record Emergency Charge (Financial Audit)
     if (activeRecord.type === "INCIDENT") {
       try {
-        await fetch(`${API_URL}/incidents/${activeRecord.id}/charges`, {
-          method: "POST",
-          headers: await getAuthHeaders(),
-          body: JSON.stringify({
-            category: "Tow",
-            amount: 0,
-            provider_vendor: selectedVendorForRoadside.name,
-            status: "Approved",
-          }),
+        await saveIncidentCharge(activeRecord.id, {
+          category: "Tow",
+          amount: 0,
+          providerVendor: selectedVendorForRoadside.name,
+          status: "Approved",
         });
       } catch (e) {
         console.warn(
@@ -2455,7 +2443,6 @@ const IntelligenceHub: React.FC<{
                 { label: "FEED", tab: "messaging" },
                 { label: "COMMAND", tab: "command" },
                 { label: "SALES/CRM", tab: "crm" },
-                { label: "SAFETY", tab: "safety" },
                 { label: "NETWORK", tab: "directory" },
                 { label: "REPORTS", tab: "reports" },
               ].map((chip) => (
@@ -2620,7 +2607,10 @@ const IntelligenceHub: React.FC<{
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* === OPS DASHBOARD VIEW (migrated from Dashboard.tsx, T5-08/T5-09) === */}
               {selectedTab === "ops" && (
-                <div className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-8 bg-[#0a0f18]">
+                <div
+                  className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-8 bg-[#0a0f18]"
+                  data-testid="operations-dashboard"
+                >
                   {opsLoading && <LoadingSkeleton variant="card" count={4} />}
 
                   {!opsLoading && opsError && (
@@ -2646,7 +2636,10 @@ const IntelligenceHub: React.FC<{
 
                       {/* TOP ROW: LOAD SUMMARY */}
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all shadow-2xl">
+                        <div
+                          className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all shadow-2xl"
+                          data-testid="ops-kpi-active-loads"
+                        >
                           <div className="flex justify-between items-start mb-4">
                             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                               Active Loads
@@ -2720,6 +2713,7 @@ const IntelligenceHub: React.FC<{
                         <div
                           onClick={() => onNavigate?.("exceptions", "all")}
                           className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group cursor-pointer hover:border-blue-500/30 transition-all shadow-2xl"
+                          data-testid="ops-kpi-open-exceptions"
                         >
                           <div className="flex justify-between items-start mb-4">
                             <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
@@ -3301,25 +3295,6 @@ const IntelligenceHub: React.FC<{
               {selectedTab === "crm" && (
                 <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617]">
                   <QuoteManager user={user} company={company || null} />
-                </div>
-              )}
-
-              {selectedTab === "safety" && (
-                <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617]">
-                  <SafetyView
-                    user={user}
-                    loads={loads}
-                    incidents={triageQueues.incidents}
-                    onRecordAction={onRecordAction}
-                    openRecordWorkspace={handleOpenWorkspace}
-                    onSaveIncident={async (inc) => {
-                      await coreCreateIncident(inc);
-                      await fetchQueues();
-                      showSuccessMessage(
-                        "CRISIS PROTOCOL INITIATED: Incident Logged & Triage Updated",
-                      );
-                    }}
-                  />
                 </div>
               )}
 
@@ -5096,17 +5071,10 @@ const IntelligenceHub: React.FC<{
                       )}
                     </button>
                   ))}
-                  <button
-                    onClick={() =>
-                      setToast({
-                        message: "Add Temporary Vendor form coming soon",
-                        type: "info",
-                      })
-                    }
-                    className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest hover:border-blue-500/50 hover:text-blue-500 transition-all flex items-center justify-center gap-3"
-                  >
-                    <Plus className="w-4 h-4" /> Add Temporary Vendor
-                  </button>
+                  <div className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-3">
+                    <Plus className="w-4 h-4" /> Temporary vendors must be
+                    onboarded as entities first
+                  </div>
                 </div>
               </div>
               <div className="space-y-3">

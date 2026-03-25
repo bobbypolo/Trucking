@@ -1,5 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const frontendPort = Number(process.env.VITE_PORT || 3105);
+const backendPort = Number(process.env.VITE_BACKEND_PORT || process.env.PORT || 5105);
+
 /**
  * Playwright E2E Test Configuration
  * Phase 6: E2E Testing Foundation & Validation
@@ -31,7 +34,11 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in tests e.g. await page.goto('/') */
-    baseURL: "http://localhost:5173",
+    baseURL:
+      process.env.PLAYWRIGHT_BASE_URL ||
+      process.env.E2E_APP_URL ||
+      process.env.E2E_BASE_URL ||
+      `http://localhost:${frontendPort}`,
 
     /* Collect trace when retrying failed tests */
     trace: "on-first-retry",
@@ -55,18 +62,26 @@ export default defineConfig({
     ? [
         {
           command: "npm run server",
-          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
+          url: `http://localhost:${backendPort}/api/health`,
           timeout: 60_000,
           reuseExistingServer: true,
-          env: { RATE_LIMIT_MAX: "10000" },
+          env: {
+            RATE_LIMIT_MAX: "10000",
+            PORT: String(backendPort),
+            VITE_BACKEND_PORT: String(backendPort),
+          },
           stdout: "pipe",
           stderr: "pipe",
         },
         {
           command: "npm run dev",
-          url: "http://localhost:5173",
+          url: `http://localhost:${frontendPort}`,
           timeout: 60_000,
           reuseExistingServer: true,
+          env: {
+            VITE_PORT: String(frontendPort),
+            VITE_BACKEND_PORT: String(backendPort),
+          },
           stdout: "pipe",
           stderr: "pipe",
         },
@@ -74,10 +89,14 @@ export default defineConfig({
     : [
         {
           command: "npm run server",
-          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
+          url: `http://localhost:${backendPort}/api/health`,
           timeout: 60_000,
           reuseExistingServer: !process.env.CI,
-          env: { RATE_LIMIT_MAX: "10000" },
+          env: {
+            RATE_LIMIT_MAX: "10000",
+            PORT: String(backendPort),
+            VITE_BACKEND_PORT: String(backendPort),
+          },
           stdout: "pipe",
           stderr: "pipe",
         },

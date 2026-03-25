@@ -439,7 +439,10 @@ export const NetworkPortal: React.FC<Props> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter overflow-hidden">
+    <div
+      className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter overflow-hidden"
+      data-testid="onboarding-portal"
+    >
       {toast && (
         <Toast
           message={toast.message}

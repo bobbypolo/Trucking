@@ -30,7 +30,7 @@ import {
   getBrokerSummary,
   linkSessionToRecord,
 } from "./services/storageService";
-import { getBrokers, saveBroker } from "./services/brokerService";
+import { getBrokers } from "./services/brokerService";
 import {
   User,
   LoadData,
@@ -55,9 +55,6 @@ import {
 const Auth = React.lazy(() =>
   import("./components/Auth").then((m) => ({ default: m.Auth })),
 );
-const Dashboard = React.lazy(() =>
-  import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
-);
 const LoadList = React.lazy(() =>
   import("./components/LoadList").then((m) => ({ default: m.LoadList })),
 );
@@ -80,14 +77,6 @@ const CompanyProfile = React.lazy(() =>
   import("./components/CompanyProfile").then((m) => ({
     default: m.CompanyProfile,
   })),
-);
-const BrokerManager = React.lazy(() =>
-  import("./components/BrokerManager").then((m) => ({
-    default: m.BrokerManager,
-  })),
-);
-const SafetyView = React.lazy(() =>
-  import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
 );
 const Intelligence = React.lazy(() =>
   import("./components/Intelligence").then((m) => ({
@@ -137,7 +126,6 @@ import {
   DollarSign,
   ChevronLeft,
 } from "lucide-react";
-import { seedSafetyData } from "./services/safetyService";
 import { v4 as uuidv4 } from "uuid";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
@@ -265,10 +253,10 @@ export default function App() {
     | "intelligence"
     | "reports"
     | "crm"
-    | "safety"
+    | "ops"
     | "command"
     | "directory"
-  >("command");
+  >("ops");
   const [hubInitialShowCallForm, setHubInitialShowCallForm] = useState(false);
   const [activeCallSession, setActiveCallSession] =
     useState<CallSession | null>(null);
@@ -400,6 +388,7 @@ export default function App() {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
+    setHubInitialTab("ops");
     // refreshData is triggered by the onUserChange listener in useEffect
     if (features.seedSystem) {
       seedDatabase();
@@ -411,7 +400,8 @@ export default function App() {
     } else if (loggedInUser.primaryWorkspace === "Dispatch") {
       setActiveTab("loads");
     } else {
-      setActiveTab("dashboard");
+      setActiveTab("operations-hub");
+      setHubInitialTab("ops");
     }
   };
 
@@ -420,7 +410,8 @@ export default function App() {
     setIsAuthReady(false);
     setUser(null);
     setLoads([]);
-    setActiveTab("dashboard");
+    setActiveTab("operations-hub");
+    setHubInitialTab("ops");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -433,8 +424,22 @@ export default function App() {
   };
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    setActiveTab(tab);
-    setActiveSubTab(subTab || undefined);
+    const normalizedTab =
+      tab === "dashboard"
+        ? "operations-hub"
+        : tab === "brokers"
+          ? "network"
+          : tab === "safety"
+            ? "exceptions"
+            : tab;
+    const normalizedSubTab =
+      tab === "safety" ? subTab || "all" : subTab || undefined;
+
+    setActiveTab(normalizedTab);
+    if (normalizedTab === "operations-hub" && !normalizedSubTab) {
+      setHubInitialTab("ops");
+    }
+    setActiveSubTab(normalizedSubTab);
     setShowIntelligenceHub(false);
     setIsMobileMenuOpen(false);
     setEditingLoad(null);
@@ -637,18 +642,6 @@ export default function App() {
       ],
     },
     {
-      title: "COMPLIANCE",
-      items: [
-        // Safety & Compliance consolidated into Issues & Alerts (T5-05)
-        {
-          id: "audit",
-          label: "Activity Log",
-          icon: FileText,
-          permission: "AUDIT_LOG_VIEW",
-        },
-      ],
-    },
-    {
       title: "SETTINGS",
       items: [
         {
@@ -657,16 +650,6 @@ export default function App() {
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        ...(features.apiTester
-          ? [
-              {
-                id: "api-tester",
-                permission: "ORG_SETTINGS_VIEW" as PermissionCode,
-                label: "API Tester",
-                icon: Zap,
-              },
-            ]
-          : []),
       ],
     },
   ];
@@ -1016,7 +999,7 @@ export default function App() {
                     brokers={brokers}
                     session={session}
                     setSession={setSession}
-                    onClose={() => handleNavigate("dashboard")}
+                    onClose={() => handleNavigate("operations-hub")}
                     onRecordAction={handleRecordAction}
                     initialTab={hubInitialTab}
                     initialShowCallForm={hubInitialShowCallForm}
@@ -1030,13 +1013,6 @@ export default function App() {
                 </Suspense>
               )}
               {/* Dashboard consolidated into Operations Center (T5-08) */}
-              {activeTab === "dashboard" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Dashboard onNavigate={handleNavigate} />
-                </Suspense>
-              )}
               {activeTab === "exceptions" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="list" count={3} />}
@@ -1166,33 +1142,6 @@ export default function App() {
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
                   <NetworkPortal companyId={user.companyId} />
-                </Suspense>
-              )}
-              {activeTab === "brokers" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="list" count={5} />}
-                >
-                  <BrokerManager
-                    brokers={brokers}
-                    onUpdate={() => refreshData(user)}
-                    onSave={async (b) => {
-                      await saveBroker(b);
-                      refreshData(user);
-                    }}
-                    onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
-                  />
-                </Suspense>
-              )}
-              {/* Safety & Compliance consolidated into Issues & Alerts (T5-05) */}
-              {activeTab === "safety" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <ExceptionConsole
-                    currentUser={user}
-                    initialView="safety"
-                    onViewDetail={openRecordWorkspace}
-                  />
                 </Suspense>
               )}
               {activeTab === "finance" && (
