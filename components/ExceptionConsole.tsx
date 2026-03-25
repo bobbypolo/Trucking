@@ -152,10 +152,16 @@ export const ExceptionConsole: React.FC<Props> = ({
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({
+  const [createForm, setCreateForm] = useState<{
+    type: string;
+    severity: number;
+    entityType: string;
+    entityId: string;
+    description: string;
+  }>({
     type: ISSUE_TYPES[0].value,
-    severity: 2 as number,
-    entityType: ISSUE_TYPES[0].entityType as string,
+    severity: 2,
+    entityType: ISSUE_TYPES[0].entityType,
     entityId: "",
     description: "",
   });
@@ -392,8 +398,8 @@ export const ExceptionConsole: React.FC<Props> = ({
                     );
                     setCreateForm({
                       ...createForm,
-                      type: e.target.value,
-                      entityType: selected?.entityType || "LOAD",
+                      type: e.target.value as string,
+                      entityType: (selected?.entityType || "LOAD") as string,
                     });
                   }}
                 >

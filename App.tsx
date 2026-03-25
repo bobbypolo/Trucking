@@ -582,7 +582,7 @@ export default function App() {
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        // Dashboard consolidated into Operations Center (T5-08)
         { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
         { id: "analytics", label: "Reports", icon: BarChart3 },
         {
@@ -617,7 +617,7 @@ export default function App() {
     },
     {
       title: "NETWORK",
-      items: [{ id: "network", label: "Broker Network", icon: Globe }],
+      items: [{ id: "network", label: "Onboarding", icon: Globe }],
     },
     {
       title: "FINANCIALS",
@@ -639,12 +639,7 @@ export default function App() {
     {
       title: "COMPLIANCE",
       items: [
-        {
-          id: "safety",
-          label: "Safety & Compliance",
-          icon: ShieldCheck,
-          permission: "SAFETY_EVENT_VIEW",
-        },
+        // Safety & Compliance consolidated into Issues & Alerts (T5-05)
         {
           id: "audit",
           label: "Activity Log",
@@ -1034,22 +1029,12 @@ export default function App() {
                   />
                 </Suspense>
               )}
+              {/* Dashboard consolidated into Operations Center (T5-08) */}
               {activeTab === "dashboard" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <Dashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onViewLoad={(load) => {
-                      setEditingLoad(load);
-                      handleNavigate("loads");
-                    }}
-                    onNavigate={handleNavigate}
-                    users={companyUsers}
-                    onOpenIssues={() => setActiveTab("exceptions")}
-                  />
+                  <Dashboard onNavigate={handleNavigate} />
                 </Suspense>
               )}
               {activeTab === "exceptions" && (
@@ -1198,21 +1183,15 @@ export default function App() {
                   />
                 </Suspense>
               )}
+              {/* Safety & Compliance consolidated into Issues & Alerts (T5-05) */}
               {activeTab === "safety" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <SafetyView
-                    user={user}
-                    loads={loads}
-                    incidents={incidents}
-                    onSaveIncident={async (inc) => {
-                      await createIncident(inc);
-                      refreshData(user);
-                    }}
-                    onRecordAction={handleRecordAction}
-                    openRecordWorkspace={openRecordWorkspace}
-                    onNavigate={handleNavigate}
+                  <ExceptionConsole
+                    currentUser={user}
+                    initialView="safety"
+                    onViewDetail={openRecordWorkspace}
                   />
                 </Suspense>
               )}

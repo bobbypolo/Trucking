@@ -288,7 +288,9 @@ export const BrokerManager: React.FC<Props> = ({
                   id: uuidv4(),
                   name: "",
                   mcNumber: "",
-                  clientType: entityClassFilter || "Broker",
+                  clientType: (entityClassFilter || "Broker") as
+                    | "Broker"
+                    | "Direct Customer",
                   isShared: true,
                   approvedChassis: [],
                 });

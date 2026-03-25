@@ -4,11 +4,11 @@ import { LoadData, User, Broker } from "../types";
 // Dashboard responsibilities moved to Operations Center (IntelligenceHub)
 
 interface Props {
-  user: User;
-  loads: LoadData[];
+  user?: User;
+  loads?: LoadData[];
   brokers?: Broker[];
-  onViewLoad: (load: LoadData) => void;
-  onNavigate: (tab: string, subTab?: string) => void;
+  onViewLoad?: (load: LoadData) => void;
+  onNavigate?: (tab: string, subTab?: string) => void;
   users?: User[];
   onOpenIssues?: () => void;
 }

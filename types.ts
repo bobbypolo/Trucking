@@ -1470,13 +1470,15 @@ export interface WorkflowStep {
 }
 export type PartyType =
   | "Shipper"
+  | "Customer"
   | "Broker"
   | "Carrier"
   | "Vendor"
   | "Vendor_Service"
   | "Vendor_Equipment"
   | "Facility"
-  | "Vendor_Product";
+  | "Vendor_Product"
+  | "Contractor";
 export type OnboardingStatus =
   | "Draft"
   | "Invited"

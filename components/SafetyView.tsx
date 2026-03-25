@@ -448,7 +448,8 @@ export const SafetyView: React.FC<Props> = ({
                 ).length;
                 const oosCount = fleetEquipment.filter(
                   (e) =>
-                    e.status === "Out of Service" || e.status === "Inactive",
+                    e.status === "Out of Service" ||
+                    (e.status as string) === "Inactive",
                 ).length;
 
                 return [

@@ -13,8 +13,11 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
     expect(appSource).toContain("Operations Center");
   });
 
-  it("uses 'Dashboard' label", () => {
-    expect(appSource).toContain('"Dashboard"');
+  it("Dashboard consolidated into Operations Center (T5-08)", () => {
+    // Dashboard removed from nav — consolidated into Operations Center
+    expect(appSource).toContain(
+      "Dashboard consolidated into Operations Center",
+    );
   });
 
   it("uses 'Issues & Alerts' label", () => {
@@ -41,8 +44,8 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
     expect(appSource).toContain('"Schedule"');
   });
 
-  it("uses 'Broker Network' label", () => {
-    expect(appSource).toContain("Broker Network");
+  it("uses 'Onboarding' label (renamed from Broker Network, T5-01)", () => {
+    expect(appSource).toContain('"Onboarding"');
   });
 
   it("uses 'Driver Pay' label", () => {
@@ -53,8 +56,11 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
     expect(appSource).toContain('"Accounting"');
   });
 
-  it("uses 'Safety & Compliance' label", () => {
-    expect(appSource).toContain("Safety & Compliance");
+  it("Safety consolidated into Issues & Alerts (T5-05)", () => {
+    // Safety & Compliance removed from nav — consolidated into Issues & Alerts
+    expect(appSource).toContain(
+      "Safety & Compliance consolidated into Issues & Alerts",
+    );
   });
 
   it("uses 'Activity Log' label", () => {
@@ -134,10 +140,10 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     (m) => m[1],
   );
 
-  // Every nav ID should have a corresponding `activeTab === "id"` render check
-  const tabIds = [
+  // Nav IDs that appear in the sidebar categories array
+  const navTabIds = [
     "operations-hub",
-    "dashboard",
+    // "dashboard" — removed from nav, consolidated into Operations Center (T5-08)
     "exceptions",
     "analytics",
     "loads",
@@ -147,22 +153,27 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "network",
     "finance",
     "accounting",
-    "safety",
+    // "safety" — removed from nav, consolidated into Issues & Alerts (T5-05)
     "audit",
     "company",
   ];
 
+  // All tab IDs that have render blocks (includes legacy routing)
+  const renderTabIds = [
+    ...navTabIds,
+    "dashboard", // legacy redirect
+    "safety", // legacy redirect to Issues & Alerts
+  ];
+
   it("extracts expected tab IDs from categories", () => {
-    for (const id of tabIds) {
+    for (const id of navTabIds) {
       expect(idMatches).toContain(id);
     }
   });
 
-  for (const id of tabIds) {
+  for (const id of renderTabIds) {
     it(`"${id}" tab has a matching render conditional`, () => {
-      const renderPattern = new RegExp(
-        `activeTab\\s*===\\s*"${id}"\\s*&&\\s*`,
-      );
+      const renderPattern = new RegExp(`activeTab\\s*===\\s*"${id}"\\s*&&\\s*`);
       expect(appSource).toMatch(renderPattern);
     });
   }
