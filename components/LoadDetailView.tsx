@@ -85,6 +85,12 @@ export const LoadDetailView: React.FC<Props> = ({
   const [addingStopType, setAddingStopType] = useState<
     "pickup" | "dropoff" | null
   >(null);
+  const [newStopForm, setNewStopForm] = useState({
+    facilityName: "",
+    address: "",
+    city: "",
+    appointmentDate: "",
+  });
   const [documents, setDocuments] = useState<any[]>([]);
   const [showDocuments, setShowDocuments] = useState(false);
   const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
@@ -737,6 +743,13 @@ export const LoadDetailView: React.FC<Props> = ({
                     <input
                       type="text"
                       placeholder="Enter facility name"
+                      value={newStopForm.facilityName}
+                      onChange={(e) =>
+                        setNewStopForm((p) => ({
+                          ...p,
+                          facilityName: e.target.value,
+                        }))
+                      }
                       className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
                     />
                   </div>
@@ -747,6 +760,13 @@ export const LoadDetailView: React.FC<Props> = ({
                     <input
                       type="text"
                       placeholder="Enter address"
+                      value={newStopForm.address}
+                      onChange={(e) =>
+                        setNewStopForm((p) => ({
+                          ...p,
+                          address: e.target.value,
+                        }))
+                      }
                       className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
                     />
                   </div>
@@ -757,6 +777,10 @@ export const LoadDetailView: React.FC<Props> = ({
                     <input
                       type="text"
                       placeholder="City"
+                      value={newStopForm.city}
+                      onChange={(e) =>
+                        setNewStopForm((p) => ({ ...p, city: e.target.value }))
+                      }
                       className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
                     />
                   </div>
@@ -766,24 +790,73 @@ export const LoadDetailView: React.FC<Props> = ({
                     </label>
                     <input
                       type="datetime-local"
+                      value={newStopForm.appointmentDate}
+                      onChange={(e) =>
+                        setNewStopForm((p) => ({
+                          ...p,
+                          appointmentDate: e.target.value,
+                        }))
+                      }
                       className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl px-3 py-2 text-sm text-white"
                     />
                   </div>
                 </div>
                 <div className="flex gap-3 justify-end">
                   <button
-                    onClick={() => setAddingStopType(null)}
+                    onClick={() => {
+                      setAddingStopType(null);
+                      setNewStopForm({
+                        facilityName: "",
+                        address: "",
+                        city: "",
+                        appointmentDate: "",
+                      });
+                    }}
                     className="px-5 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      setToast({
-                        message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`,
-                        type: "success",
-                      });
+                    onClick={async () => {
+                      if (!newStopForm.city && !newStopForm.facilityName) {
+                        setToast({
+                          message: "City or facility name required",
+                          type: "error",
+                        });
+                        return;
+                      }
+                      const newLeg = {
+                        type: addingStopType as string,
+                        location: {
+                          facilityName: newStopForm.facilityName,
+                          address: newStopForm.address,
+                          city: newStopForm.city,
+                        },
+                        date: newStopForm.appointmentDate || undefined,
+                      };
+                      const updatedLegs = [...(load.legs || []), newLeg];
+                      try {
+                        await saveLoad(
+                          { ...load, legs: updatedLegs } as any,
+                          currentUser,
+                        );
+                        setToast({
+                          message: `${addingStopType === "pickup" ? "Pickup" : "Drop-off"} stop added`,
+                          type: "success",
+                        });
+                      } catch {
+                        setToast({
+                          message: "Failed to add stop",
+                          type: "error",
+                        });
+                      }
                       setAddingStopType(null);
+                      setNewStopForm({
+                        facilityName: "",
+                        address: "",
+                        city: "",
+                        appointmentDate: "",
+                      });
                     }}
                     className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
                   >

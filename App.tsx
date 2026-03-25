@@ -1090,10 +1090,10 @@ export default function App() {
                     </h1>
                     {permissions.createLoads && (
                       <button
-                        onClick={() => handleNavigate("quotes")}
+                        onClick={() => setShowLoadSetup({})}
                         className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg"
                       >
-                        <Plus className="w-5 h-5" /> New Intake
+                        <Plus className="w-5 h-5" /> Create Load
                       </button>
                     )}
                   </div>
@@ -1130,7 +1130,7 @@ export default function App() {
                         brokers={brokers}
                         onCreateLoad={
                           permissions.createLoads
-                            ? () => handleNavigate("quotes")
+                            ? () => setShowLoadSetup({})
                             : undefined
                         }
                       />

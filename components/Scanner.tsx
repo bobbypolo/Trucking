@@ -22,7 +22,9 @@ async function aiPost(
 ): Promise<unknown> {
   // R-P3-04: Guard against missing imageBase64 to prevent 400 errors
   if (!validateImageBase64(imageBase64)) {
-    throw new Error("Cannot process: no image data provided. Please capture or upload an image first.");
+    throw new Error(
+      "Cannot process: no image data provided. Please capture or upload an image first.",
+    );
   }
   const token = (await getIdTokenAsync()) ?? "";
   const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -64,6 +66,12 @@ export interface IntakeAccumulatedData {
   specialInstructions?: string;
   bolNumber?: string;
   scannedDocTypes: string[];
+  /** Base64-encoded document images captured during intake scanning */
+  scannedDocImages: Array<{
+    base64: string;
+    mimeType: string;
+    docType: string;
+  }>;
 }
 
 interface Props {
@@ -91,16 +99,16 @@ export const Scanner: React.FC<Props> = ({
   // Intake mode: accumulate data across multiple document scans
   const [intakeData, setIntakeData] = useState<IntakeAccumulatedData>({
     scannedDocTypes: [],
+    scannedDocImages: [],
   });
   const [intakeScanCount, setIntakeScanCount] = useState(0);
 
   /** Merge newly extracted load data into the accumulated intake data */
   const mergeIntakeData = useCallback(
-    (extracted: any) => {
+    (extracted: any, imageBase64?: string, imageMimeType?: string) => {
       setIntakeData((prev) => {
         const pickup = extracted?.pickup ?? extracted?.origin ?? {};
-        const dropoff =
-          extracted?.dropoff ?? extracted?.destination ?? {};
+        const dropoff = extracted?.dropoff ?? extracted?.destination ?? {};
         const docType =
           extracted?.documentType ?? extracted?.docType ?? "Document";
         return {
@@ -109,8 +117,7 @@ export const Scanner: React.FC<Props> = ({
           pickupFacility: pickup?.facilityName || prev.pickupFacility,
           dropoffCity: dropoff?.city || prev.dropoffCity,
           dropoffState: dropoff?.state || prev.dropoffState,
-          dropoffFacility:
-            dropoff?.facilityName || prev.dropoffFacility,
+          dropoffFacility: dropoff?.facilityName || prev.dropoffFacility,
           pickupDate:
             extracted?.pickupDate || extracted?.date || prev.pickupDate,
           commodity:
@@ -136,12 +143,19 @@ export const Scanner: React.FC<Props> = ({
             extracted?.notes ||
             prev.specialInstructions,
           bolNumber:
-            extracted?.bolNumber ||
-            extracted?.loadNumber ||
-            prev.bolNumber,
-          scannedDocTypes: [
-            ...prev.scannedDocTypes,
-            docType,
+            extracted?.bolNumber || extracted?.loadNumber || prev.bolNumber,
+          scannedDocTypes: [...prev.scannedDocTypes, docType],
+          scannedDocImages: [
+            ...(prev.scannedDocImages || []),
+            ...(imageBase64
+              ? [
+                  {
+                    base64: imageBase64,
+                    mimeType: imageMimeType || "image/jpeg",
+                    docType,
+                  },
+                ]
+              : []),
           ],
         };
       });
@@ -246,13 +260,17 @@ export const Scanner: React.FC<Props> = ({
         )) as { training: unknown };
         onDataExtracted(result.training);
       } else if (mode === "intake") {
-        // Intake mode: accumulate data from each scan
+        // Intake mode: accumulate data + document image from each scan
         const result = (await aiPost(
           "/ai/extract-load",
           base64String,
           mimeType,
         )) as { loadInfo: { load: unknown; broker: unknown } };
-        mergeIntakeData(result.loadInfo?.load ?? result.loadInfo);
+        mergeIntakeData(
+          result.loadInfo?.load ?? result.loadInfo,
+          base64String,
+          mimeType,
+        );
       } else {
         const result = (await aiPost(
           "/ai/extract-load",
@@ -315,13 +333,17 @@ export const Scanner: React.FC<Props> = ({
           )) as { training: unknown };
           onDataExtracted(result.training);
         } else if (mode === "intake") {
-          // Intake mode: accumulate data from each scan
+          // Intake mode: accumulate data + document image from each scan
           const result = (await aiPost(
             "/ai/extract-load",
             base64String,
             file.type,
           )) as { loadInfo: { load: unknown; broker: unknown } };
-          mergeIntakeData(result.loadInfo?.load ?? result.loadInfo);
+          mergeIntakeData(
+            result.loadInfo?.load ?? result.loadInfo,
+            base64String,
+            file.type,
+          );
         } else {
           const result = (await aiPost(
             "/ai/extract-load",
@@ -495,7 +517,8 @@ export const Scanner: React.FC<Props> = ({
               <div className="flex items-center gap-2 p-3 bg-emerald-900/30 border border-emerald-700/50 rounded-lg">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                 <span className="text-xs font-bold text-emerald-300 uppercase tracking-wide">
-                  {intakeScanCount} document{intakeScanCount > 1 ? "s" : ""} scanned
+                  {intakeScanCount} document{intakeScanCount > 1 ? "s" : ""}{" "}
+                  scanned
                   {intakeData.scannedDocTypes.length > 0 && (
                     <span className="text-emerald-500 ml-1">
                       ({intakeData.scannedDocTypes.join(", ")})

@@ -127,9 +127,9 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [breakdownNeedsTow, setBreakdownNeedsTow] = useState(false);
 
   // Driver intake flow state
-  const [intakeStep, setIntakeStep] = useState<
-    "idle" | "scanning" | "review"
-  >("idle");
+  const [intakeStep, setIntakeStep] = useState<"idle" | "scanning" | "review">(
+    "idle",
+  );
   const [intakeFormData, setIntakeFormData] = useState<{
     pickupCity: string;
     pickupState: string;
@@ -143,6 +143,11 @@ export const DriverMobileHome: React.FC<Props> = ({
     referenceNumber: string;
     specialInstructions: string;
     scannedDocTypes: string[];
+    scannedDocImages: Array<{
+      base64: string;
+      mimeType: string;
+      docType: string;
+    }>;
   }>({
     pickupCity: "",
     pickupState: "",
@@ -156,6 +161,7 @@ export const DriverMobileHome: React.FC<Props> = ({
     referenceNumber: "",
     specialInstructions: "",
     scannedDocTypes: [],
+    scannedDocImages: [],
   });
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
 
@@ -365,6 +371,7 @@ export const DriverMobileHome: React.FC<Props> = ({
         referenceNumber: (data.referenceNumbers || []).join(", "),
         specialInstructions: data.specialInstructions || "",
         scannedDocTypes: data.scannedDocTypes || [],
+        scannedDocImages: data.scannedDocImages || [],
       });
       setIntakeStep("review");
     },
@@ -413,13 +420,34 @@ export const DriverMobileHome: React.FC<Props> = ({
           facilityName: intakeFormData.dropoffFacility || undefined,
         },
         commodity: intakeFormData.commodity || undefined,
-        weight: intakeFormData.weight ? parseFloat(intakeFormData.weight) || undefined : undefined,
+        weight: intakeFormData.weight
+          ? parseFloat(intakeFormData.weight) || undefined
+          : undefined,
         bolNumber: intakeFormData.referenceNumber || undefined,
         specialInstructions: intakeFormData.specialInstructions || undefined,
         dispatchNotes: `Driver intake via document scan. Docs: ${intakeFormData.scannedDocTypes.join(", ")}`,
       };
 
       await onSaveLoad(newLoad);
+
+      // Upload scanned document artifacts to the server
+      if (intakeFormData.scannedDocImages?.length) {
+        for (const doc of intakeFormData.scannedDocImages) {
+          try {
+            await api.post("/documents", {
+              load_id: newLoad.id,
+              company_id: user.companyId,
+              document_type: doc.docType || "BOL",
+              file_data: doc.base64,
+              mime_type: doc.mimeType,
+              uploaded_by: user.id,
+            });
+          } catch {
+            // Non-blocking: load is saved, document upload failures are recoverable
+          }
+        }
+      }
+
       setIntakeStep("idle");
       setIntakeFormData({
         pickupCity: "",
@@ -434,9 +462,11 @@ export const DriverMobileHome: React.FC<Props> = ({
         referenceNumber: "",
         specialInstructions: "",
         scannedDocTypes: [],
+        scannedDocImages: [],
       });
       setToast({
-        message: "Intake submitted — will appear on your schedule once approved",
+        message:
+          "Intake submitted — will appear on your schedule once approved",
         type: "success",
       });
     } catch {
@@ -462,6 +492,7 @@ export const DriverMobileHome: React.FC<Props> = ({
       referenceNumber: "",
       specialInstructions: "",
       scannedDocTypes: [],
+      scannedDocImages: [],
     });
   }, []);
 
@@ -1364,7 +1395,8 @@ export const DriverMobileHome: React.FC<Props> = ({
               {/* Dropoff */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <MapPin className="w-3 h-3 text-emerald-500" /> Dropoff Location *
+                  <MapPin className="w-3 h-3 text-emerald-500" /> Dropoff
+                  Location *
                 </label>
                 <input
                   data-testid="intake-dropoff-city"
@@ -1436,7 +1468,8 @@ export const DriverMobileHome: React.FC<Props> = ({
               {/* Reference Number (optional) */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                  <FileText className="w-3 h-3 text-slate-500" /> Reference / BOL #
+                  <FileText className="w-3 h-3 text-slate-500" /> Reference /
+                  BOL #
                 </label>
                 <input
                   data-testid="intake-reference"

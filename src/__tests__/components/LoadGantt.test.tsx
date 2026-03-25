@@ -33,15 +33,13 @@ describe("LoadGantt component", () => {
     it("renders legend items", () => {
       render(<LoadGantt loads={[]} />);
       expect(screen.getByText("Planned")).toBeInTheDocument();
-      expect(screen.getByText("Execution")).toBeInTheDocument();
-      expect(screen.getByText("Completed")).toBeInTheDocument();
+      expect(screen.getByText("In Transit")).toBeInTheDocument();
+      expect(screen.getByText("Delivered")).toBeInTheDocument();
     });
 
-    it("renders footer text", () => {
+    it("renders footer text for empty state", () => {
       render(<LoadGantt loads={[]} />);
-      expect(
-        screen.getByText(/SCROLL TO VIEW ALL ACTIVE MANIFESTS/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/NO LOADS SCHEDULED/)).toBeInTheDocument();
     });
 
     it("renders dynamic load count in footer", () => {
@@ -140,7 +138,11 @@ describe("LoadGantt component", () => {
   describe("status-based visualization", () => {
     it("renders truck icon for in_transit loads", () => {
       const loads = [
-        createLoad({ id: "t1", loadNumber: "T-1", status: LOAD_STATUS.In_Transit }),
+        createLoad({
+          id: "t1",
+          loadNumber: "T-1",
+          status: LOAD_STATUS.In_Transit,
+        }),
       ];
       render(<LoadGantt loads={loads} />);
       // The truck icon SVG should be present (via the Truck component from lucide)
@@ -150,7 +152,11 @@ describe("LoadGantt component", () => {
 
     it("renders checkmark for delivered loads", () => {
       const loads = [
-        createLoad({ id: "d1", loadNumber: "D-1", status: LOAD_STATUS.Delivered }),
+        createLoad({
+          id: "d1",
+          loadNumber: "D-1",
+          status: LOAD_STATUS.Delivered,
+        }),
       ];
       render(<LoadGantt loads={loads} />);
       // CheckCircle2 should render for delivered loads
@@ -162,9 +168,21 @@ describe("LoadGantt component", () => {
   describe("sorting", () => {
     it("sorts loads by status priority (in_transit first, planned second)", () => {
       const loads = [
-        createLoad({ id: "s1", loadNumber: "LN-PLANNED", status: LOAD_STATUS.Planned }),
-        createLoad({ id: "s2", loadNumber: "LN-TRANSIT", status: LOAD_STATUS.In_Transit }),
-        createLoad({ id: "s3", loadNumber: "LN-DRAFT", status: LOAD_STATUS.Draft }),
+        createLoad({
+          id: "s1",
+          loadNumber: "LN-PLANNED",
+          status: LOAD_STATUS.Planned,
+        }),
+        createLoad({
+          id: "s2",
+          loadNumber: "LN-TRANSIT",
+          status: LOAD_STATUS.In_Transit,
+        }),
+        createLoad({
+          id: "s3",
+          loadNumber: "LN-DRAFT",
+          status: LOAD_STATUS.Draft,
+        }),
       ];
       render(<LoadGantt loads={loads} />);
       const labels = screen.getAllByText(/#LN-/);
