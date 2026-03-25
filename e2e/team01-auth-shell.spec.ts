@@ -2,6 +2,8 @@ import { test, expect, type Page } from "@playwright/test";
 import {
   API_BASE,
   makeAdminRequest,
+  makeDispatcherRequest,
+  makeDriverRequest,
   isValidFirebaseToken,
   signInFirebase,
 } from "./fixtures/auth.fixture";
@@ -101,6 +103,142 @@ test.describe("T1-03 / CORE-02: Valid login — admin token acquisition (API)", 
     expect(res.status()).not.toBe(401);
     expect(res.status()).not.toBe(403);
     expect([200, 404]).toContain(res.status());
+  });
+});
+
+test.describe("T1-03 — Multi-role login verification (API)", () => {
+  // ── Dispatcher role ──────────────────────────────────────────────────────
+
+  test("dispatcher credentials acquire a valid Firebase JWT", async () => {
+    const ctx = await makeDispatcherRequest();
+    if (!ctx.hasToken) {
+      test.skip(
+        true,
+        "Dispatcher credentials not available — FIREBASE_WEB_API_KEY or E2E_DISPATCHER creds missing",
+      );
+      return;
+    }
+    expect(ctx.idToken).toBeTruthy();
+    expect(isValidFirebaseToken(ctx.idToken)).toBe(true);
+    expect(ctx.idToken.split(".")).toHaveLength(3);
+    expect(ctx.idToken.length).toBeGreaterThan(100);
+  });
+
+  test("dispatcher token grants access to /api/loads (requires LOAD_DISPATCH permission)", async ({
+    request,
+  }) => {
+    const ctx = await makeDispatcherRequest();
+    if (!ctx.hasToken) {
+      test.skip(true, "Dispatcher credentials not available");
+      return;
+    }
+    const res = await ctx.get(`${API_BASE}/api/loads`, request);
+    // Dispatchers must have LOAD_DISPATCH permission — never 401/403
+    expect(res.status()).not.toBe(401);
+    expect(res.status()).not.toBe(403);
+    expect([200, 404]).toContain(res.status());
+  });
+
+  test("dispatcher token grants access to /api/users/me profile endpoint", async ({
+    request,
+  }) => {
+    const ctx = await makeDispatcherRequest();
+    if (!ctx.hasToken) {
+      test.skip(true, "Dispatcher credentials not available");
+      return;
+    }
+    const res = await ctx.get(`${API_BASE}/api/users/me`, request);
+    expect(res.status()).not.toBe(401);
+    expect(res.status()).not.toBe(403);
+    expect([200, 404]).toContain(res.status());
+  });
+
+  // ── Driver role ──────────────────────────────────────────────────────────
+
+  test("driver credentials acquire a valid Firebase JWT", async () => {
+    const ctx = await makeDriverRequest();
+    if (!ctx.hasToken) {
+      test.skip(
+        true,
+        "Driver credentials not available — FIREBASE_WEB_API_KEY or E2E_DRIVER creds missing",
+      );
+      return;
+    }
+    expect(ctx.idToken).toBeTruthy();
+    expect(isValidFirebaseToken(ctx.idToken)).toBe(true);
+    expect(ctx.idToken.split(".")).toHaveLength(3);
+    expect(ctx.idToken.length).toBeGreaterThan(100);
+  });
+
+  test("driver token grants access to /api/users/me profile endpoint", async ({
+    request,
+  }) => {
+    const ctx = await makeDriverRequest();
+    if (!ctx.hasToken) {
+      test.skip(true, "Driver credentials not available");
+      return;
+    }
+    const res = await ctx.get(`${API_BASE}/api/users/me`, request);
+    // Drivers must be able to read their own profile
+    expect(res.status()).not.toBe(401);
+    expect(res.status()).not.toBe(403);
+    expect([200, 404]).toContain(res.status());
+  });
+
+  test("driver token is rejected by admin-only endpoints (role boundary)", async ({
+    request,
+  }) => {
+    const ctx = await makeDriverRequest();
+    if (!ctx.hasToken) {
+      test.skip(true, "Driver credentials not available");
+      return;
+    }
+    // Drivers should NOT have access to admin-level accounting settlements
+    const res = await ctx.get(
+      `${API_BASE}/api/accounting/settlements`,
+      request,
+    );
+    // Expect 403 Forbidden — authenticated but insufficient role
+    expect(res.status()).not.toBe(200);
+    expect([401, 403]).toContain(res.status());
+  });
+
+  // ── Cross-role session stability ─────────────────────────────────────────
+
+  test("all three roles acquire independent tokens in parallel", async () => {
+    const [admin, dispatcher, driver] = await Promise.all([
+      makeAdminRequest(),
+      makeDispatcherRequest(),
+      makeDriverRequest(),
+    ]);
+
+    // At least one role must have a token for meaningful validation
+    const availableRoles = [admin, dispatcher, driver].filter(
+      (ctx) => ctx.hasToken,
+    );
+    if (availableRoles.length === 0) {
+      test.skip(true, "No role credentials available");
+      return;
+    }
+
+    // Each available token should be valid and unique
+    for (const ctx of availableRoles) {
+      expect(
+        isValidFirebaseToken(ctx.idToken),
+        `${ctx.role} token should be a valid Firebase JWT`,
+      ).toBe(true);
+    }
+
+    // Tokens must be different across roles (no credential mixing)
+    if (admin.hasToken && dispatcher.hasToken) {
+      expect(admin.idToken).not.toBe(dispatcher.idToken);
+    }
+    if (admin.hasToken && driver.hasToken) {
+      expect(admin.idToken).not.toBe(driver.idToken);
+    }
+    if (dispatcher.hasToken && driver.hasToken) {
+      expect(dispatcher.idToken).not.toBe(driver.idToken);
+    }
   });
 });
 
