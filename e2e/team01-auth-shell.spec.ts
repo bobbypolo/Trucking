@@ -42,17 +42,35 @@ import {
  *          enforcement, session persistence, and logout invalidation at the
  *          API/Firebase REST layer. No browser or running dev server needed.
  * Tier 2 — Browser UI tests: Require E2E_SERVER_RUNNING=1 with both Vite
- *          (port 5173) and Express (port 5000) running. Validate login form
+ *          (port 3101) and Express (port 5101) running. Validate login form
  *          rendering, successful login shell, session restore on reload,
  *          logout navigation, and protected-route redirect.
  * ============================================================================
  */
 
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+const APP_BASE = process.env.E2E_APP_URL || "http://localhost:3101";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 const E2E_EMAIL = process.env.E2E_TEST_EMAIL || process.env.E2E_ADMIN_EMAIL;
 const E2E_PASSWORD =
   process.env.E2E_TEST_PASSWORD || process.env.E2E_ADMIN_PASSWORD;
+
+const BROWSER_ROLE_CASES = [
+  {
+    role: "admin" as const,
+    email: process.env.E2E_ADMIN_EMAIL,
+    password: process.env.E2E_ADMIN_PASSWORD,
+  },
+  {
+    role: "dispatcher" as const,
+    email: process.env.E2E_DISPATCHER_EMAIL,
+    password: process.env.E2E_DISPATCHER_PASSWORD,
+  },
+  {
+    role: "driver" as const,
+    email: process.env.E2E_DRIVER_EMAIL,
+    password: process.env.E2E_DRIVER_PASSWORD,
+  },
+] as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TIER 1 — API-level auth acceptance (always runs, no browser)
@@ -464,25 +482,29 @@ test.describe("T1-03 / CORE-02: Valid login flow — browser UI", () => {
     await expect(page.locator('h2:has-text("Sign In")').first()).toBeVisible();
   });
 
-  test("valid admin credentials authenticate and render the app shell with navigation", async ({
-    page,
-  }) => {
-    await browserLogin(page, E2E_EMAIL!, E2E_PASSWORD!);
+  for (const { role, email, password } of BROWSER_ROLE_CASES) {
+    test(`valid ${role} credentials authenticate and render the app shell with navigation`, async ({
+      page,
+    }) => {
+      test.skip(!email || !password, `Requires ${role} E2E creds`);
 
-    // After successful login, the Auth component unmounts and the main shell renders.
-    // The shell has a sidebar with nav links and a header. Wait for nav to appear.
-    const shellNav = page.locator(
-      'nav, [role="navigation"], aside, [data-testid*="sidebar"], header',
-    );
-    await expect(shellNav.first()).toBeVisible({ timeout: 20_000 });
+      await browserLogin(page, email!, password!);
 
-    // At least one navigation link should be present in the sidebar
-    const navLinks = page.locator('nav a, aside a, [role="navigation"] a');
-    await expect(navLinks.first()).toBeVisible({ timeout: 10_000 });
+      // After successful login, the Auth component unmounts and the main shell renders.
+      // The shell has a sidebar with nav links and a header. Wait for nav to appear.
+      const shellNav = page.locator(
+        'nav, [role="navigation"], aside, [data-testid*="sidebar"], header',
+      );
+      await expect(shellNav.first()).toBeVisible({ timeout: 20_000 });
 
-    // The login form (h2 "Sign In") should no longer be visible
-    await expect(page.locator('h2:has-text("Sign In")')).not.toBeVisible();
-  });
+      // At least one navigation link should be present in the sidebar
+      const navLinks = page.locator('nav a, aside a, [role="navigation"] a');
+      await expect(navLinks.first()).toBeVisible({ timeout: 10_000 });
+
+      // The login form (h2 "Sign In") should no longer be visible
+      await expect(page.locator('h2:has-text("Sign In")')).not.toBeVisible();
+    });
+  }
 });
 
 test.describe("CORE-03: Invalid login flow — browser UI (no crash, no hang, no null-app)", () => {

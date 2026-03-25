@@ -26,6 +26,7 @@ execution order is deterministic and correct:
 | 6   | `004_idempotency_keys.sql`                | Idempotency key tracking                                                  |
 | 7+  | `005_*` through `037_*`                   | See individual file headers                                               |
 | 38  | `038_accounting_tenant_to_company_id.sql` | Reconcile tenant_id to company_id on all accounting/IFTA/exception tables |
+| 39  | `039_companies_subscription_tier.sql`      | Restore companies.subscription_tier and seed supported dev tenants      |
 
 The duplicate prefixes (two `002_*` and two `003_*`) are harmless because:
 
@@ -74,10 +75,13 @@ column name. All other tables in the system use `company_id` (referencing
 - `rate_rows`, `constraint_sets` (from 032_parties_subsystem)
 
 After migration 038, all multi-tenant tables consistently use `company_id`.
+Migration 039 restores the subscription tier gate expected by requireTier and
+seeds the supported dev tenants used by Team 1 and Team 3 validation.
 
 ## Adding New Migrations
 
-1. Use the next available 3-digit prefix (currently `039`)
+1. Use the next available 3-digit prefix (currently `040`)
 2. Include both `-- UP` and `-- DOWN` sections
 3. Use `company_id` (not `tenant_id`) for multi-tenant columns
-4. Test with `npx ts-node server/scripts/migrate.ts status` before applying
+4. Keep `companies.subscription_tier` present for tier-gated features
+5. Test with `npx ts-node server/scripts/migrate.ts status` before applying

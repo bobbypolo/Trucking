@@ -296,4 +296,23 @@ describe("requireTier — edge cases", () => {
     expect(res.status).toHaveBeenCalledWith(403);
     expect(nextFn).not.toHaveBeenCalled();
   });
+
+  it("returns 503 when subscription tier lookup fails at the DB layer", async () => {
+    mockExecute.mockRejectedValueOnce(new Error("Unknown column 'subscription_tier'"));
+
+    const middleware = requireTier("Fleet Core");
+    const req = mockReq(makeUser());
+    const res = mockRes();
+
+    await middleware(req, res, nextFn);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error_code: "TIER_DB_ERROR_001",
+        retryable: true,
+      }),
+    );
+    expect(nextFn).not.toHaveBeenCalled();
+  });
 });

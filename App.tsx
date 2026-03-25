@@ -30,7 +30,7 @@ import {
   getBrokerSummary,
   linkSessionToRecord,
 } from "./services/storageService";
-import { getBrokers, saveBroker } from "./services/brokerService";
+import { getBrokers } from "./services/brokerService";
 import {
   User,
   LoadData,
@@ -75,14 +75,6 @@ const CompanyProfile = React.lazy(() =>
     default: m.CompanyProfile,
   })),
 );
-const BrokerManager = React.lazy(() =>
-  import("./components/BrokerManager").then((m) => ({
-    default: m.BrokerManager,
-  })),
-);
-const SafetyView = React.lazy(() =>
-  import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -100,7 +92,6 @@ const QuoteManager = React.lazy(() =>
 );
 import {
   Calendar,
-  Wallet,
   LogOut,
   Plus,
   Menu,
@@ -126,14 +117,6 @@ const CustomerPortalView = React.lazy(() =>
     default: m.CustomerPortalView,
   })),
 );
-const GlobalMapViewEnhanced = React.lazy(() =>
-  import("./components/GlobalMapViewEnhanced").then((m) => ({
-    default: m.GlobalMapViewEnhanced,
-  })),
-);
-const AuditLogs = React.lazy(() =>
-  import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
-);
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
 const AccountingPortal = React.lazy(
@@ -145,11 +128,6 @@ const IntelligenceHub = React.lazy(
 const ExceptionConsole = React.lazy(() =>
   import("./components/ExceptionConsole").then((m) => ({
     default: m.ExceptionConsole,
-  })),
-);
-const AnalyticsDashboard = React.lazy(() =>
-  import("./components/AnalyticsDashboard").then((m) => ({
-    default: m.AnalyticsDashboard,
   })),
 );
 const CommsOverlay = React.lazy(() =>
@@ -194,6 +172,16 @@ type AccountingPortalTab =
   | "VAULT"
   | "MAINTENANCE"
   | "AUTOMATION";
+
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  analytics: "operations-hub",
+  audit: "operations-hub",
+  brokers: "network",
+  dashboard: "operations-hub",
+  finance: "accounting",
+  map: "operations-hub",
+  safety: "exceptions",
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -400,7 +388,8 @@ export default function App() {
   };
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    setActiveTab(tab);
+    const nextTab = LEGACY_TAB_ALIASES[tab] ?? tab;
+    setActiveTab(nextTab);
     setActiveSubTab(subTab || undefined);
     setShowIntelligenceHub(false);
     setIsMobileMenuOpen(false);
@@ -574,12 +563,6 @@ export default function App() {
           label: "Financials",
           icon: Building2,
           permission: "INVOICE_CREATE",
-        },
-        {
-          id: "finance",
-          label: "Driver Pay",
-          icon: Wallet,
-          permission: "SETTLEMENT_VIEW",
         },
       ],
     },
@@ -966,18 +949,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "analytics" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AnalyticsDashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
               {activeTab === "quotes" && user && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1041,24 +1012,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {activeTab === "map" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <GlobalMapViewEnhanced
-                    loads={loads}
-                    users={companyUsers}
-                    incidents={incidents}
-                    onViewLoad={(l) => {
-                      setViewingLoad(l);
-                      openRecordWorkspace("LOAD", l.id);
-                    }}
-                    onSelectIncident={(incId) =>
-                      openRecordWorkspace("INCIDENT", incId)
-                    }
-                  />
-                </Suspense>
-              )}
               {activeTab === "calendar" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1086,53 +1039,6 @@ export default function App() {
                   <NetworkPortal companyId={user.companyId} />
                 </Suspense>
               )}
-              {activeTab === "brokers" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="list" count={5} />}
-                >
-                  <BrokerManager
-                    brokers={brokers}
-                    onUpdate={() => refreshData(user)}
-                    onSave={async (b) => {
-                      await saveBroker(b);
-                      refreshData(user);
-                    }}
-                    onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "safety" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <SafetyView
-                    user={user}
-                    loads={loads}
-                    incidents={incidents}
-                    onSaveIncident={async (inc) => {
-                      await createIncident(inc);
-                      refreshData(user);
-                    }}
-                    onRecordAction={handleRecordAction}
-                    openRecordWorkspace={openRecordWorkspace}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "finance" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AccountingPortal
-                    loads={loads}
-                    users={companyUsers}
-                    currentUser={user!}
-                    onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
               {activeTab === "accounting" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1145,13 +1051,6 @@ export default function App() {
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
                     onNavigate={handleNavigate}
                   />
-                </Suspense>
-              )}
-              {activeTab === "audit" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="table" count={3} />}
-                >
-                  <AuditLogs user={user} />
                 </Suspense>
               )}
               {activeTab === "company" && (

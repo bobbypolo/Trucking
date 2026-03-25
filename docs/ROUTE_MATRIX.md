@@ -1,4 +1,4 @@
-# Route Matrix — LoadPilot API
+# Route Matrix - LoadPilot API
 
 > Generated: 2026-03-24 | Source: `server/routes/*.ts` (34 route modules)
 
@@ -68,8 +68,8 @@ Mount: `/api/ai` prefix (`app.use("/api/ai", aiRouter)`)
 | POST   | /api/ai/extract-load      | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | Scanner    |
 | POST   | /api/ai/extract-broker    | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | Scanner    |
 | POST   | /api/ai/extract-equipment | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | Scanner    |
-| POST   | /api/ai/generate-training | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | SafetyView |
-| POST   | /api/ai/analyze-safety    | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | SafetyView |
+| POST   | /api/ai/generate-training | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | Issues & Alerts |
+| POST   | /api/ai/analyze-safety    | Y    | Y      | -    | Automation Pro, Fleet Core, Fleet Command | Issues & Alerts |
 
 ## Module: bookings.ts
 
@@ -108,14 +108,14 @@ Mount: direct
 
 | Method | Path                       | Auth | Tenant | Role              | Tier | UI Surface     |
 | ------ | -------------------------- | ---- | ------ | ----------------- | ---- | -------------- |
-| GET    | /api/clients/:companyId    | Y    | Y      | -                 | -    | BrokerNetwork  |
-| PATCH  | /api/clients/:id/archive   | Y    | Y      | admin, dispatcher | -    | BrokerNetwork  |
-| PATCH  | /api/clients/:id/unarchive | Y    | Y      | admin, dispatcher | -    | BrokerNetwork  |
-| POST   | /api/clients               | Y    | Y      | -                 | -    | BrokerNetwork  |
+| GET    | /api/clients/:companyId    | Y    | Y      | -                 | -    | Onboarding     |
+| PATCH  | /api/clients/:id/archive   | Y    | Y      | admin, dispatcher | -    | Onboarding     |
+| PATCH  | /api/clients/:id/unarchive | Y    | Y      | admin, dispatcher | -    | Onboarding     |
+| POST   | /api/clients               | Y    | Y      | -                 | -    | Onboarding     |
 | GET    | /api/companies/:id         | Y    | Y      | -                 | -    | CompanyProfile |
 | POST   | /api/companies             | Y    | Y      | -                 | -    | CompanyProfile |
-| GET    | /api/parties               | Y    | Y      | -                 | -    | BrokerNetwork  |
-| POST   | /api/parties               | Y    | Y      | -                 | -    | BrokerNetwork  |
+| GET    | /api/parties               | Y    | Y      | -                 | -    | Onboarding     |
+| POST   | /api/parties               | Y    | Y      | -                 | -    | Onboarding     |
 | GET    | /api/global-search         | Y    | Y      | -                 | -    | GlobalSearch   |
 
 ## Module: compliance.ts
@@ -124,7 +124,7 @@ Mount: direct
 
 | Method | Path                    | Auth | Tenant | Role                                    | Tier | UI Surface |
 | ------ | ----------------------- | ---- | ------ | --------------------------------------- | ---- | ---------- |
-| GET    | /api/compliance/:userId | Y    | Y      | self, admin, dispatcher, safety_manager | -    | SafetyView |
+| GET    | /api/compliance/:userId | Y    | Y      | self, admin, dispatcher, safety_manager | -    | Issues & Alerts |
 
 ## Module: contacts.ts
 
@@ -132,10 +132,10 @@ Mount: direct
 
 | Method | Path                      | Auth | Tenant | Role | Tier | UI Surface    |
 | ------ | ------------------------- | ---- | ------ | ---- | ---- | ------------- |
-| GET    | /api/contacts             | Y    | Y      | -    | -    | BrokerNetwork |
-| POST   | /api/contacts             | Y    | Y      | -    | -    | BrokerNetwork |
-| PATCH  | /api/contacts/:id         | Y    | Y      | -    | -    | BrokerNetwork |
-| PATCH  | /api/contacts/:id/archive | Y    | Y      | -    | -    | BrokerNetwork |
+| GET    | /api/contacts             | Y    | Y      | -    | -    | Onboarding |
+| POST   | /api/contacts             | Y    | Y      | -    | -    | Onboarding |
+| PATCH  | /api/contacts/:id         | Y    | Y      | -    | -    | Onboarding |
+| PATCH  | /api/contacts/:id/archive | Y    | Y      | -    | -    | Onboarding |
 
 ## Module: contracts.ts
 
@@ -143,8 +143,8 @@ Mount: direct
 
 | Method | Path                       | Auth | Tenant | Role | Tier | UI Surface    |
 | ------ | -------------------------- | ---- | ------ | ---- | ---- | ------------- |
-| GET    | /api/contracts/:customerId | Y    | Y      | -    | -    | BrokerNetwork |
-| POST   | /api/contracts             | Y    | Y      | -    | -    | BrokerNetwork |
+| GET    | /api/contracts/:customerId | Y    | Y      | -    | -    | Onboarding |
+| POST   | /api/contracts             | Y    | Y      | -    | -    | Onboarding |
 
 ## Module: crisis-actions.ts
 
@@ -152,9 +152,9 @@ Mount: direct
 
 | Method | Path                    | Auth | Tenant | Role                              | Tier | UI Surface      |
 | ------ | ----------------------- | ---- | ------ | --------------------------------- | ---- | --------------- |
-| GET    | /api/crisis-actions     | Y    | Y      | -                                 | -    | IntelligenceHub |
-| POST   | /api/crisis-actions     | Y    | Y      | -                                 | -    | IntelligenceHub |
-| PATCH  | /api/crisis-actions/:id | Y    | Y      | admin, dispatcher, safety_manager | -    | IntelligenceHub |
+| GET    | /api/crisis-actions     | Y    | Y      | -                                 | -    | Issues & Alerts |
+| POST   | /api/crisis-actions     | Y    | Y      | -                                 | -    | Issues & Alerts |
+| PATCH  | /api/crisis-actions/:id | Y    | Y      | admin, dispatcher, safety_manager | -    | Issues & Alerts |
 
 ## Module: dispatch.ts
 
@@ -168,8 +168,8 @@ Mount: direct
 | GET    | /api/dispatch-events/:companyId   | Y    | Y      | -                       | -    | OperationsCenter |
 | GET    | /api/dispatch/events              | Y    | Y      | -                       | -    | OperationsCenter |
 | POST   | /api/dispatch-events              | Y    | Y      | -                       | -    | OperationsCenter |
-| GET    | /api/audit                        | Y    | Y      | -                       | -    | AuditLogs        |
-| GET    | /api/dashboard/cards              | Y    | Y      | -                       | -    | Dashboard        |
+| GET    | /api/audit                        | Y    | Y      | -                       | -    | OperationsCenter |
+| GET    | /api/dashboard/cards              | Y    | Y      | -                       | -    | OperationsCenter |
 | POST   | /api/dispatch/best-matches        | Y    | Y      | -                       | -    | OperationsCenter |
 
 ## Module: documents.ts
@@ -188,10 +188,10 @@ Mount: direct
 
 | Method | Path                      | Auth | Tenant | Role                              | Tier | UI Surface |
 | ------ | ------------------------- | ---- | ------ | --------------------------------- | ---- | ---------- |
-| GET    | /api/equipment            | Y    | Y      | -                                 | -    | SafetyView |
-| GET    | /api/equipment/:companyId | Y    | Y      | -                                 | -    | SafetyView |
-| POST   | /api/equipment            | Y    | Y      | -                                 | -    | SafetyView |
-| PATCH  | /api/equipment/:id        | Y    | Y      | admin, dispatcher, safety_manager | -    | SafetyView |
+| GET    | /api/equipment            | Y    | Y      | -                                 | -    | Issues & Alerts |
+| GET    | /api/equipment/:companyId | Y    | Y      | -                                 | -    | Issues & Alerts |
+| POST   | /api/equipment            | Y    | Y      | -                                 | -    | Issues & Alerts |
+| PATCH  | /api/equipment/:id        | Y    | Y      | admin, dispatcher, safety_manager | -    | Issues & Alerts |
 
 ## Module: exceptions.ts
 
@@ -266,7 +266,7 @@ Mount: direct
 | ------ | ------------------------------ | ---- | ------ | ---- | ---- | -------------- |
 | GET    | /api/loads                     | Y    | Y      | -    | -    | LoadManagement |
 | POST   | /api/loads                     | Y    | Y      | -    | -    | LoadManagement |
-| GET    | /api/loads/counts              | Y    | Y      | -    | -    | Dashboard      |
+| GET    | /api/loads/counts              | Y    | Y      | -    | -    | OperationsCenter |
 | PATCH  | /api/loads/:id/status          | Y    | Y      | -    | -    | LoadManagement |
 | DELETE | /api/loads/:id                 | Y    | Y      | -    | -    | LoadManagement |
 | POST   | /api/loads/:id/change-requests | Y    | Y      | -    | -    | LoadDetailView |
@@ -296,8 +296,8 @@ Mount: direct
 
 | Method | Path                       | Auth | Tenant | Role | Tier | UI Surface       |
 | ------ | -------------------------- | ---- | ------ | ---- | ---- | ---------------- |
-| GET    | /api/notification-jobs     | Y    | Y      | -    | -    | SafetyView       |
-| GET    | /api/notification-jobs/:id | Y    | Y      | -    | -    | SafetyView       |
+| GET    | /api/notification-jobs     | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/notification-jobs/:id | Y    | Y      | -    | -    | Issues & Alerts |
 | POST   | /api/notification-jobs     | Y    | Y      | -    | -    | OperationsCenter |
 | PATCH  | /api/notification-jobs/:id | Y    | Y      | -    | -    | OperationsCenter |
 
@@ -307,10 +307,10 @@ Mount: direct
 
 | Method | Path                       | Auth | Tenant | Role | Tier | UI Surface    |
 | ------ | -------------------------- | ---- | ------ | ---- | ---- | ------------- |
-| GET    | /api/providers             | Y    | Y      | -    | -    | BrokerNetwork |
-| POST   | /api/providers             | Y    | Y      | -    | -    | BrokerNetwork |
-| PATCH  | /api/providers/:id         | Y    | Y      | -    | -    | BrokerNetwork |
-| PATCH  | /api/providers/:id/archive | Y    | Y      | -    | -    | BrokerNetwork |
+| GET    | /api/providers             | Y    | Y      | -    | -    | Onboarding |
+| POST   | /api/providers             | Y    | Y      | -    | -    | Onboarding |
+| PATCH  | /api/providers/:id         | Y    | Y      | -    | -    | Onboarding |
+| PATCH  | /api/providers/:id/archive | Y    | Y      | -    | -    | Onboarding |
 
 ## Module: quickbooks.ts
 
@@ -342,21 +342,21 @@ Mount: direct
 
 | Method | Path                         | Auth | Tenant | Role | Tier | UI Surface |
 | ------ | ---------------------------- | ---- | ------ | ---- | ---- | ---------- |
-| GET    | /api/safety/quizzes          | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/quizzes/:id      | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/safety/quizzes          | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/quiz-results     | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/safety/quiz-results     | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/maintenance      | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/maintenance/:id  | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/safety/maintenance      | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/vendors          | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/vendors/:id      | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/safety/vendors          | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/activity         | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/safety/activity         | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/expiring-certs   | Y    | Y      | -    | -    | SafetyView |
-| GET    | /api/safety/fmcsa/:dotNumber | Y    | Y      | -    | -    | SafetyView |
+| GET    | /api/safety/quizzes          | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/quizzes/:id      | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/safety/quizzes          | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/quiz-results     | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/safety/quiz-results     | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/maintenance      | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/maintenance/:id  | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/safety/maintenance      | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/vendors          | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/vendors/:id      | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/safety/vendors          | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/activity         | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/safety/activity         | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/expiring-certs   | Y    | Y      | -    | -    | Issues & Alerts |
+| GET    | /api/safety/fmcsa/:dotNumber | Y    | Y      | -    | -    | Issues & Alerts |
 
 ## Module: service-tickets.ts
 
@@ -364,9 +364,9 @@ Mount: direct
 
 | Method | Path                     | Auth | Tenant | Role | Tier | UI Surface |
 | ------ | ------------------------ | ---- | ------ | ---- | ---- | ---------- |
-| GET    | /api/service-tickets     | Y    | Y      | -    | -    | SafetyView |
-| POST   | /api/service-tickets     | Y    | Y      | -    | -    | SafetyView |
-| PATCH  | /api/service-tickets/:id | Y    | Y      | -    | -    | SafetyView |
+| GET    | /api/service-tickets     | Y    | Y      | -    | -    | Issues & Alerts |
+| POST   | /api/service-tickets     | Y    | Y      | -    | -    | Issues & Alerts |
+| PATCH  | /api/service-tickets/:id | Y    | Y      | -    | -    | Issues & Alerts |
 
 ## Module: stripe.ts
 
@@ -489,7 +489,7 @@ The following files bypass the centralized API client (`services/api.ts`) and us
 
 **Priority 2 (Consistency):** The 31 service-layer raw `fetch()` calls (excluding external APIs) should be migrated to the api client. The `brokerService`, `exceptionService`, `safetyService`, and `networkService` files are the primary targets.
 
-**Out of scope:** External API calls (Google Maps, Azure Maps) that do not hit our server are correctly using raw `fetch()` — no migration needed (7 files, ~11 calls).
+**Out of scope:** External API calls (Google Maps, Azure Maps) that do not hit our server are correctly using raw `fetch()` - no migration needed (7 files, ~11 calls).
 
 **Estimated effort:** ~4 hours (mechanical migration, no logic changes).
 
@@ -503,3 +503,5 @@ The following files bypass the centralized API client (`services/api.ts`) and us
 4. **Webhook routes:** Two webhook routes (`/api/stripe/webhook` and `/api/tracking/webhook`) use non-Firebase auth (Stripe signature, GPS API key respectively). These are intentionally outside the Firebase auth flow.
 5. **Metrics:** The `/api/metrics` route uses a custom `requireAdmin` check (not `requireTenant`). It verifies the user has admin/ORG_OWNER_SUPER_ADMIN/OWNER_ADMIN role.
 6. **Route count note:** The 134 total includes all individual HTTP method+path combinations across all 34 route modules.
+
+

@@ -131,7 +131,7 @@ Example:
 038_accounting_tenant_to_company_id.sql       APPLIED  2026-03-24T...
 ```
 
-Note: Duplicate 002/003 prefixes are intentional and sort alphabetically. See `server/migrations/README.md`.
+Note: Duplicate 002/003 prefixes are documented in `server/migrations/README.md`. Do not rename applied files because the migration runner tracks checksums by full filename.
 
 ## Step 5: Start the Backend
 
@@ -140,12 +140,12 @@ cd server
 npm run dev
 ```
 
-The server starts on `http://localhost:5000`.
+The server starts on `http://localhost:5101`.
 
 ### Health Check
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:5101/api/health
 ```
 
 Expected: `200 OK` with JSON health response.
@@ -159,17 +159,17 @@ cd F:\Trucking\worktrees\<team-name>
 npm run dev
 ```
 
-The frontend starts on `http://localhost:3000`.
+The frontend starts on `http://localhost:3101`.
 
 ### Verify Vite Proxy
 
-The Vite dev server proxies `/api/*` to `http://localhost:5000`. This means:
+The Vite dev server proxies `/api/*` to `http://localhost:5101`. This means:
 
-- Frontend fetches `/api/health` → Vite forwards to `http://localhost:5000/api/health`
+- Frontend fetches `/api/health` → Vite forwards to `http://localhost:5101/api/health`
 - No CORS issues in development
 - Bearer tokens pass through transparently
 
-Open `http://localhost:3000` in browser. You should see the login screen.
+Open `http://localhost:3101` in browser. You should see the login screen.
 
 ## Step 7: Run Tests (Proof of Clean Boot)
 
@@ -181,6 +181,9 @@ npx tsc --noEmit
 
 # Frontend tests (expect: ~3,500+ passed, 0 failed)
 npx vitest run
+
+# Team 1 browser auth shell proof (requires E2E_SERVER_RUNNING=1 and 3101/5101 running)
+E2E_SERVER_RUNNING=1 E2E_APP_URL=http://localhost:3101 npx playwright test e2e/team01-auth-shell.spec.ts
 
 # Server TypeScript check (expect: 0 errors)
 cd server && npx tsc --noEmit
@@ -199,7 +202,7 @@ Check these indicators:
 1. **No console errors** in browser DevTools
 2. **No SQL errors** in server terminal
 3. **Login works** with a valid Firebase Auth user
-4. **Health endpoint responds**: `http://localhost:5000/api/health`
+4. **Health endpoint responds**: `http://localhost:5101/api/health`
 5. **Migration status is clean**: `npx ts-node scripts/migrate.ts status` shows all applied
 6. **Tests pass**: Step 7 completed with 0 failures
 
@@ -207,25 +210,25 @@ Check these indicators:
 
 | Port | Service                      | Process                    |
 | ---- | ---------------------------- | -------------------------- |
-| 3000 | Vite dev server (frontend)   | `npm run dev`              |
-| 5000 | Express API server (backend) | `cd server && npm run dev` |
+| 3101 | Vite dev server (frontend)   | `npm run dev`              |
+| 5101 | Express API server (backend) | `cd server && npm run dev` |
 | 3306 | MySQL                        | System service             |
 
 ### Port Conflict Resolution
 
 If a port is already in use:
 
-**Frontend (3000)**:
+**Frontend (3101)**:
 
-- Check: `netstat -ano | findstr :3000`
+- Check: `netstat -ano | findstr :3101`
 - Kill: `taskkill /PID <pid> /F`
 - Or change port in `vite.config.ts` → `server.port`
 
-**Backend (5000)**:
+**Backend (5101)**:
 
-- Check: `netstat -ano | findstr :5000`
+- Check: `netstat -ano | findstr :5101`
 - Kill: `taskkill /PID <pid> /F`
-- Or set `PORT=5001` in `.env`
+- Or set `PORT=5101` in `.env`
 
 **Multiple worktrees**: Each worktree needs its own port pair. Adjust `.env` and `vite.config.ts` per worktree if running multiple simultaneously.
 
