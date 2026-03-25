@@ -35,6 +35,7 @@ interface LoadBoardExpandedProps {
   canViewRates: boolean;
   onOpenHub?: (tab: "messaging", startCall?: boolean) => void;
   onCreateLoad?: () => void;
+  testId?: string;
 }
 
 export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
@@ -47,6 +48,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   canViewRates,
   onOpenHub,
   onCreateLoad,
+  testId,
 }) => {
   const currentUser = useCurrentUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -202,7 +204,10 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#020617] relative overflow-hidden">
+    <div
+      className="h-full flex flex-col bg-[#020617] relative overflow-hidden"
+      data-testid={testId || "team2-load-board-shell"}
+    >
       <div className="flex-1 flex overflow-hidden">
         {/* Main Card View (Original Component) */}
         <div className="flex-1 overflow-hidden flex flex-col">
@@ -358,6 +363,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
         {onCreateLoad && (
           <button
             onClick={handleCreateLoad}
+            data-testid="team2-load-board-create-load-fab"
             className="absolute bottom-20 right-6 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-2xl z-40 hover:scale-110 transition-all flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />

@@ -56,30 +56,39 @@ export default defineConfig({
         {
           command: "npm run server",
           url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
-          timeout: 60_000,
-          reuseExistingServer: true,
-          env: { RATE_LIMIT_MAX: "10000" },
-          stdout: "pipe",
-          stderr: "pipe",
+        timeout: 60_000,
+        reuseExistingServer: true,
+        env: {
+          ...process.env,
+          RATE_LIMIT_MAX: "10000",
         },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
         {
           command: "npm run dev",
-          url: "http://localhost:5173",
+          url: `http://localhost:${process.env.VITE_PORT ?? 5173}`,
           timeout: 60_000,
           reuseExistingServer: true,
-          stdout: "pipe",
-          stderr: "pipe",
+          env: {
+            ...process.env,
         },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
       ]
     : [
-        {
-          command: "npm run server",
-          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
-          timeout: 60_000,
-          reuseExistingServer: !process.env.CI,
-          env: { RATE_LIMIT_MAX: "10000" },
-          stdout: "pipe",
-          stderr: "pipe",
+      {
+        command: "npm run server",
+        url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
+        timeout: 60_000,
+        reuseExistingServer: !process.env.CI,
+        env: {
+          ...process.env,
+          RATE_LIMIT_MAX: "10000",
         },
+        stdout: "pipe",
+        stderr: "pipe",
+      },
       ],
 });

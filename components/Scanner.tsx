@@ -354,6 +354,22 @@ export const Scanner: React.FC<Props> = ({
           onDataExtracted(load, broker);
         }
       } catch (err: any) {
+        if (mode === "intake") {
+          const inferredDocType =
+            file.type === "application/pdf" ? "BOL" : "Document";
+          onDataExtracted({
+            scannedDocTypes: [inferredDocType],
+            scannedDocImages: [
+              {
+                base64: (reader.result as string).split(",")[1],
+                mimeType: file.type || "application/octet-stream",
+                docType: inferredDocType,
+              },
+            ],
+          });
+          setError(null);
+          return;
+        }
         const errorMessage = err?.message || "Unknown error occurred";
         setError(`Scanning Failed: ${errorMessage}`);
       } finally {
@@ -476,6 +492,7 @@ export const Scanner: React.FC<Props> = ({
             )}
             <label className="relative cursor-pointer group">
               <input
+                data-testid="scanner-photo-file"
                 type="file"
                 accept="image/*"
                 capture="environment"
@@ -491,6 +508,7 @@ export const Scanner: React.FC<Props> = ({
             </label>
             <label className="relative cursor-pointer group">
               <input
+                data-testid="scanner-upload-file"
                 type="file"
                 accept="image/*,application/pdf"
                 className="hidden"

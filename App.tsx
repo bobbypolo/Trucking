@@ -910,6 +910,7 @@ export default function App() {
                     return (
                       <button
                         key={item.id}
+                        data-testid={`nav-${item.id}`}
                         onClick={() => {
                           if (item.id === "messaging" || item.id === "call") {
                             setHubInitialTab(
@@ -1090,6 +1091,7 @@ export default function App() {
                     </h1>
                     {permissions.createLoads && (
                       <button
+                        data-testid="team2-load-board-create-load"
                         onClick={() => setShowLoadSetup({})}
                         className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg"
                       >
@@ -1133,6 +1135,7 @@ export default function App() {
                             ? () => setShowLoadSetup({})
                             : undefined
                         }
+                        testId="team2-load-board-shell"
                       />
                     </Suspense>
                   </div>
@@ -1173,6 +1176,7 @@ export default function App() {
                       const l = loads.find((x) => x.id === id);
                       if (l) handleSaveLoad({ ...l, pickupDate: date });
                     }}
+                    testId="team2-schedule-shell"
                   />
                 </Suspense>
               )}

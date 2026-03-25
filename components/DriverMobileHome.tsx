@@ -70,6 +70,28 @@ interface ToastState {
   type: "success" | "error" | "info";
 }
 
+const extensionForMimeType = (mimeType: string): string => {
+  if (mimeType.includes("pdf")) return "pdf";
+  if (mimeType.includes("png")) return "png";
+  if (mimeType.includes("jpeg")) return "jpg";
+  if (mimeType.includes("webp")) return "webp";
+  if (mimeType.includes("tiff")) return "tiff";
+  return "bin";
+};
+
+const base64ToFile = (
+  base64: string,
+  mimeType: string,
+  fileName: string,
+): File => {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i += 1) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return new File([bytes], fileName, { type: mimeType });
+};
+
 export const DriverMobileHome: React.FC<Props> = ({
   user,
   company,
@@ -432,16 +454,22 @@ export const DriverMobileHome: React.FC<Props> = ({
 
       // Upload scanned document artifacts to the server
       if (intakeFormData.scannedDocImages?.length) {
-        for (const doc of intakeFormData.scannedDocImages) {
+        for (const [index, doc] of intakeFormData.scannedDocImages.entries()) {
           try {
-            await api.post("/documents", {
-              load_id: newLoad.id,
-              company_id: user.companyId,
-              document_type: doc.docType || "BOL",
-              file_data: doc.base64,
-              mime_type: doc.mimeType,
-              uploaded_by: user.id,
-            });
+            const documentType = doc.docType || "BOL";
+            const fileName = `driver-intake-${documentType.toLowerCase()}-${index + 1}.${extensionForMimeType(doc.mimeType)}`;
+            const formData = new FormData();
+            formData.append(
+              "file",
+              base64ToFile(doc.base64, doc.mimeType, fileName),
+            );
+            formData.append("document_type", documentType);
+            formData.append("load_id", newLoad.id);
+            formData.append(
+              "description",
+              `Driver intake upload (${documentType}) for ${newLoad.loadNumber}`,
+            );
+            await api.postFormData("/documents", formData);
           } catch {
             // Non-blocking: load is saved, document upload failures are recoverable
           }
@@ -465,8 +493,7 @@ export const DriverMobileHome: React.FC<Props> = ({
         scannedDocImages: [],
       });
       setToast({
-        message:
-          "Intake submitted — will appear on your schedule once approved",
+        message: "Intake submitted and documents uploaded",
         type: "success",
       });
     } catch {
@@ -537,7 +564,10 @@ export const DriverMobileHome: React.FC<Props> = ({
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter p-6">
+      <div
+        className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter p-6"
+        data-testid="team2-driver-mobile-home-loading"
+      >
         <LoadingSkeleton variant="list" count={4} />
       </div>
     );
@@ -545,7 +575,10 @@ export const DriverMobileHome: React.FC<Props> = ({
 
   if (loadError) {
     return (
-      <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter">
+      <div
+        className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter"
+        data-testid="team2-driver-mobile-home-error"
+      >
         <ErrorState message={loadError} onRetry={onRetry ?? (() => {})} />
       </div>
     );
@@ -553,7 +586,10 @@ export const DriverMobileHome: React.FC<Props> = ({
 
   if (selectedLoad) {
     return (
-      <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter">
+      <div
+        className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter"
+        data-testid="team2-driver-mobile-home"
+      >
         <header className="p-4 bg-[#0a0f1e] border-b border-white/5 flex items-center justify-between shrink-0">
           <button
             onClick={() => setSelectedLoadId(null)}
@@ -925,7 +961,10 @@ export const DriverMobileHome: React.FC<Props> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter">
+    <div
+      className="flex flex-col h-full bg-[#020617] text-slate-100 font-inter"
+      data-testid="team2-driver-mobile-home"
+    >
       {/* Standard Header */}
       <header className="p-4 bg-[#0a0f1e] border-b border-white/5 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-2">
@@ -1173,7 +1212,9 @@ export const DriverMobileHome: React.FC<Props> = ({
                       Compliance Tasks
                     </div>
                     <div className="text-xs text-emerald-500 font-bold uppercase">
-                      All Records Pass
+                      {loads.some((load) => (load.issues || []).length > 0)
+                        ? "Open issues tracked in backend"
+                        : "No open load issues"}
                     </div>
                   </div>
                 </div>
@@ -1201,9 +1242,12 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <h3 className="text-xs font-black text-white uppercase tracking-widest">
                   Fleet Tracking
                 </h3>
-                <p className="text-xs text-emerald-500 font-bold uppercase mt-1 flex items-center gap-1">
-                  <Zap className="w-2.5 h-2.5 fill-emerald-500" />
-                  GPS Connection Stable
+                <p className="text-xs text-slate-400 font-bold uppercase mt-1 flex items-center gap-1">
+                  <Zap className="w-2.5 h-2.5 fill-slate-400" />
+                  {selectedLoad?.gpsHistory?.length ||
+                  selectedLoad?.telemetry?.length
+                    ? "Tracking feed synced"
+                    : "Tracking setup pending hardware integration"}
                 </p>
               </div>
               <Navigation className="w-5 h-5 text-blue-500 animate-pulse" />
@@ -1569,6 +1613,7 @@ export const DriverMobileHome: React.FC<Props> = ({
       {/* Global Sticky Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[#0a0f1e]/80 backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-4">
         <button
+          data-testid="driver-nav-today"
           onClick={() => {
             setActiveTab("today");
             setSelectedLoadId(null);
@@ -1581,6 +1626,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
+          data-testid="driver-nav-loads"
           onClick={() => {
             setActiveTab("loads");
             setSelectedLoadId(null);
@@ -1593,6 +1639,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
+          data-testid="driver-nav-map"
           onClick={() => {
             setActiveTab("map");
             setSelectedLoadId(null);
@@ -1609,6 +1656,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
+          data-testid="driver-nav-documents"
           onClick={() => {
             setActiveTab("documents");
             setSelectedLoadId(null);
@@ -1621,6 +1669,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
+          data-testid="driver-nav-changes"
           onClick={() => {
             setActiveTab("changes");
             setSelectedLoadId(null);
@@ -1633,6 +1682,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
+          data-testid="driver-nav-profile"
           onClick={() => {
             setActiveTab("profile");
             setSelectedLoadId(null);

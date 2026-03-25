@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 import { getVaultDocs, createARInvoice } from "../services/financialService";
 import { saveLoad, generateBolPDF } from "../services/storageService";
+import { api } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
@@ -217,13 +218,8 @@ export const LoadDetailView: React.FC<Props> = ({
           break;
         case "Documents":
           try {
-            const resp = await fetch(`/api/documents?loadId=${load.id}`, {
-              headers: { "Content-Type": "application/json" },
-            });
-            if (resp.ok) {
-              const docs = await resp.json();
-              setDocuments(docs);
-            }
+            const data = await api.get(`/documents?load_id=${load.id}`);
+            setDocuments(Array.isArray(data?.documents) ? data.documents : []);
             setShowDocuments(true);
           } catch {
             setToast({ message: "Failed to load documents", type: "error" });
@@ -292,7 +288,10 @@ export const LoadDetailView: React.FC<Props> = ({
   }, [load, currentUser, localIsLocked, isLocking]);
 
   return (
-    <div className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500">
+    <div
+      className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500"
+      data-testid="team2-load-detail-view"
+    >
       {toast && (
         <Toast
           message={toast.message}
@@ -412,10 +411,10 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                    Special
+                    Load Type
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner">
-                    STANDARD
+                    {load.specialInstructions ? "Special Handling" : "Standard"}
                   </div>
                 </div>
               </div>
@@ -461,10 +460,10 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
                 <div className="space-y-2">
                   <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
-                    Salesman
+                    Sales Contact
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-slate-500 uppercase shadow-inner">
-                    ENTER SALES REP
+                    {load.customerContact?.name || broker?.name || "-- UNASSIGNED --"}
                   </div>
                 </div>
               </div>
@@ -474,7 +473,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-slate-400 italic shadow-inner h-16 overflow-y-auto no-scrollbar">
                   {load.dispatchNotes ||
-                    "No internal strategic notes identified."}
+                    "No dispatch notes recorded."}
                 </div>
               </div>
             </div>
@@ -1057,17 +1056,21 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
               ))}
-              <div className="bg-slate-900/10 border-2 border-dashed border-slate-800/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center group cursor-pointer hover:border-blue-500/30 transition-all hover:bg-blue-600/5">
+              <button
+                type="button"
+                onClick={() => setShowDocuments(true)}
+                className="bg-slate-900/10 border-2 border-dashed border-slate-800/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-500/30 transition-all hover:bg-blue-600/5"
+              >
                 <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
                   <Plus className="w-6 h-6 text-slate-700 group-hover:text-blue-400" />
                 </div>
                 <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] group-hover:text-blue-500">
-                  Inject Electronic Records
+                  Open Documents
                 </div>
                 <p className="text-[8px] text-slate-800 uppercase mt-2 font-bold tracking-widest">
                   BOL, POD, RATE CON, HAZMAT
                 </p>
-              </div>
+              </button>
             </div>
           </div>
         </div>
