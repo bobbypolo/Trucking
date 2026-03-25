@@ -118,7 +118,20 @@ Verify migration state:
 npx ts-node scripts/migrate.ts status
 ```
 
-Expected output: all migrations show `applied` status with no mismatches.
+Expected output: all migrations (001 through 038+) show `applied` status with no checksum mismatches.
+Example:
+
+```
+001_baseline.sql                              APPLIED  2026-03-24T...
+002_add_version_columns.sql                   APPLIED  2026-03-24T...
+002_load_status_normalization.sql             APPLIED  2026-03-24T...
+003_enhance_dispatch_events.sql               APPLIED  2026-03-24T...
+003_operational_entities.sql                  APPLIED  2026-03-24T...
+...
+038_accounting_tenant_to_company_id.sql       APPLIED  2026-03-24T...
+```
+
+Note: Duplicate 002/003 prefixes are intentional and sort alphabetically. See `server/migrations/README.md`.
 
 ## Step 5: Start the Backend
 
@@ -158,7 +171,28 @@ The Vite dev server proxies `/api/*` to `http://localhost:5000`. This means:
 
 Open `http://localhost:3000` in browser. You should see the login screen.
 
-## Step 7: Verify Clean Boot
+## Step 7: Run Tests (Proof of Clean Boot)
+
+Tests must pass before any feature work begins. Run from the worktree root:
+
+```bash
+# Frontend TypeScript check (expect: 0 errors)
+npx tsc --noEmit
+
+# Frontend tests (expect: ~3,500+ passed, 0 failed)
+npx vitest run
+
+# Server TypeScript check (expect: 0 errors)
+cd server && npx tsc --noEmit
+
+# Server tests (expect: ~2,200+ passed, 0 failed)
+npx vitest run
+```
+
+If any test fails, stop and investigate before proceeding. Pre-existing flaky tests
+(e.g., Settlements PDF on Windows) may time out in full-suite runs but pass in isolation.
+
+## Step 8: Verify Clean Boot
 
 Check these indicators:
 
@@ -167,6 +201,7 @@ Check these indicators:
 3. **Login works** with a valid Firebase Auth user
 4. **Health endpoint responds**: `http://localhost:5000/api/health`
 5. **Migration status is clean**: `npx ts-node scripts/migrate.ts status` shows all applied
+6. **Tests pass**: Step 7 completed with 0 failures
 
 ## Port Ownership
 
