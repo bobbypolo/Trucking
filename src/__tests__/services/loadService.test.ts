@@ -24,6 +24,7 @@ const mockApi = api as {
   post: ReturnType<typeof vi.fn>;
   patch: ReturnType<typeof vi.fn>;
   delete: ReturnType<typeof vi.fn>;
+  postFormData: ReturnType<typeof vi.fn>;
 };
 
 describe("loadService", () => {
@@ -316,26 +317,29 @@ describe("loadService", () => {
 
       await createLoad(load);
 
-      expect(mockApi.post).toHaveBeenCalledWith("/loads", expect.objectContaining({
-        id: "new-load",
-        customer_id: "cust-1",
-        driver_id: "drv-1",
-        dispatcher_id: "disp-1",
-        load_number: "LD-NEW",
-        status: "draft",
-        carrier_rate: 3000,
-        driver_pay: 1500,
-        pickup_date: "2026-03-20",
-        freight_type: "Dry Van",
-        commodity: "Furniture",
-        weight: 35000,
-        container_number: "C-001",
-        chassis_number: "CH-001",
-        bol_number: "BOL-NEW",
-        notification_emails: ["notify@test.com"],
-        contract_id: "contract-1",
-        customerUserId: "cuser-1",
-      }));
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/loads",
+        expect.objectContaining({
+          id: "new-load",
+          customer_id: "cust-1",
+          driver_id: "drv-1",
+          dispatcher_id: "disp-1",
+          load_number: "LD-NEW",
+          status: "draft",
+          carrier_rate: 3000,
+          driver_pay: 1500,
+          pickup_date: "2026-03-20",
+          freight_type: "Dry Van",
+          commodity: "Furniture",
+          weight: 35000,
+          container_number: "C-001",
+          chassis_number: "CH-001",
+          bol_number: "BOL-NEW",
+          notification_emails: ["notify@test.com"],
+          contract_id: "contract-1",
+          customerUserId: "cuser-1",
+        }),
+      );
 
       // Verify legs mapping
       const payload = mockApi.post.mock.calls[0][1];

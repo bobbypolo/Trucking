@@ -1,46 +1,70 @@
-import { LoadData, OperationalEvent, KCIRequest } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+import { api } from './api';
+
+/** A single detention record returned by the server. */
+export interface DetentionRecord {
+  facilityName: string | null;
+  entryTime: string;
+  exitTime: string;
+  dwellHours: number;
+  billableHours: number;
+  charge: number;
+  freeHours: number;
+  hourlyRate: number;
+}
+
+/** Full detention calculation response from the server. */
+export interface DetentionCalculation {
+  loadId: string;
+  records: DetentionRecord[];
+  totalCharge: number;
+  rules: {
+    freeHours: number;
+    hourlyRate: number;
+    maxBillableHours: number;
+  };
+}
+
+/** Geofence event payload sent to the server. */
+export interface GeofenceEventPayload {
+  loadId: string;
+  driverId?: string;
+  facilityName?: string;
+  facilityLat: number;
+  facilityLng: number;
+  geofenceRadiusMeters?: number;
+  eventType: 'ENTRY' | 'EXIT';
+  eventTimestamp?: string;
+}
 
 /**
- * DetentionService handles the automated detection and billing of driver detention at facilities.
+ * DetentionService handles geofence event recording and detention calculation
+ * via server-side APIs. All detention math is performed server-side using
+ * real ENTRY/EXIT event pairs and company-specific detention rules.
  */
 export const DetentionService = {
-    /**
-     * Monitors facility dwell time and trigger auto-billing if free time is exceeded.
-     */
-    processGeofenceEvent: async (load: LoadData, event: 'ENTRY' | 'EXIT', timestamp: string): Promise<any> => {
+  /**
+   * Records a geofence ENTRY or EXIT event on the server.
+   */
+  processGeofenceEvent: async (
+    event: GeofenceEventPayload,
+  ): Promise<{ id: string; message: string }> => {
+    return api.post('/api/geofence-events', event);
+  },
 
-        // Mocked check for existing entry event
-        if (event === 'EXIT') {
-            const entryTime = new Date(Date.now() - 3.5 * 3600000); // Mocking 3.5 hours dwell time
-            const exitTime = new Date(timestamp);
-            const dwellHours = (exitTime.getTime() - entryTime.getTime()) / 3600000;
-            const freeTime = 2.0;
+  /**
+   * Calculates detention for a load by pairing server-stored ENTRY/EXIT events.
+   * Returns detention records with charges based on company detention rules.
+   */
+  calculateDetention: async (
+    loadId: string,
+  ): Promise<DetentionCalculation> => {
+    return api.post('/api/detention/calculate', { loadId });
+  },
 
-            if (dwellHours > freeTime) {
-                const billableHours = Math.ceil(dwellHours - freeTime);
-                const rate = 50.00;
-                const totalAmount = billableHours * rate;
-
-                const detentionRequest: any = {
-                    id: `DET-${uuidv4().slice(0, 6).toUpperCase()}`,
-                    loadId: load.id,
-                    type: 'DETENTION',
-                    requestedAmount: totalAmount,
-                    status: 'PENDING_APPROVAL',
-                    notes: `Automated detection: ${dwellHours.toFixed(1)}h dwell time. ${freeTime}h free time exceeded.`,
-                    createdAt: new Date().toISOString(),
-                    createdBy: 'Detention-Bot'
-                };
-
-                return {
-                    isBillable: true,
-                    request: detentionRequest,
-                    dwellTime: dwellHours
-                };
-            }
-        }
-
-        return { isBillable: false };
-    }
+  /**
+   * Fetches all geofence events for a given load.
+   */
+  getGeofenceEvents: async (loadId: string): Promise<any[]> => {
+    return api.get(`/api/geofence-events?loadId=${encodeURIComponent(loadId)}`);
+  },
 };

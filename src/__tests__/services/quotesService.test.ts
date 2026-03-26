@@ -8,17 +8,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// Mock authService so the module can be imported without Firebase
-vi.mock("../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
+// Use vi.hoisted so mock fns are available when vi.mock factory runs (hoisted)
+const { mockApiGet, mockApiPost, mockApiPatch } = vi.hoisted(() => ({
+  mockApiGet: vi.fn(),
+  mockApiPost: vi.fn(),
+  mockApiPatch: vi.fn(),
 }));
 
-// Mock config to provide a stable API_URL
-vi.mock("../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: mockApiGet,
+    post: mockApiPost,
+    patch: mockApiPatch,
+  },
 }));
 
 import { getQuotes, saveQuote } from "../../../services/storage/quotes";
@@ -71,36 +73,36 @@ describe("R-S12-02: STORAGE_KEY_QUOTES removed from codebase", () => {
 
 // ---- R-S12-03 & R-S12-04: API calls used for GET/POST/PATCH ----
 describe("R-S12-03, R-S12-04: quotes service uses /api/quotes endpoints", () => {
-  it("services/storage/quotes.ts calls fetch with /api/quotes for listing", () => {
+  it("services/storage/quotes.ts uses api client for /quotes endpoints", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/quotes.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/\/api\/quotes/);
+    expect(src).toMatch(/\/quotes/);
   });
 
-  it("services/storage/quotes.ts uses getAuthHeaders for auth", () => {
+  it("services/storage/quotes.ts imports api from api module", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/quotes.ts"),
       "utf-8",
     );
-    expect(src).toContain("getAuthHeaders");
+    expect(src).toMatch(/from "\.\.\/api"/);
   });
 
-  it("services/storage/quotes.ts imports API_URL from config", () => {
+  it("services/storage/quotes.ts uses api.get, api.post, or api.patch", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/quotes.ts"),
       "utf-8",
     );
-    expect(src).toContain("API_URL");
+    expect(src).toMatch(/api\.get|api\.post|api\.patch/);
   });
 
-  it("services/storage/quotes.ts has a saveQuote function that uses POST or PATCH", () => {
+  it("services/storage/quotes.ts has a saveQuote function that uses patch or post", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/quotes.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/POST|PATCH/);
+    expect(src).toMatch(/api\.patch|api\.post/);
   });
 });
 
@@ -123,20 +125,15 @@ describe("R-S12-05: No localStorage usage for quotes", () => {
   });
 });
 
-// ---- Functional unit tests using fetch mock ----
+// ---- Functional unit tests using api mock ----
 describe("R-S12-03, R-S12-04: getQuotes / saveQuote functional tests", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
+    mockApiGet.mockReset();
+    mockApiPost.mockReset();
+    mockApiPatch.mockReset();
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("getQuotes calls GET /api/quotes and returns parsed JSON", async () => {
+  it("getQuotes calls api.get(/quotes) and returns parsed JSON", async () => {
     const fakeQuotes = [
       {
         id: "q1",
@@ -146,20 +143,15 @@ describe("R-S12-03, R-S12-04: getQuotes / saveQuote functional tests", () => {
         totalRate: 1200,
       },
     ];
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => fakeQuotes,
-    });
+    mockApiGet.mockResolvedValueOnce(fakeQuotes);
 
     const result = await getQuotes();
 
-    expect(mockFetch).toHaveBeenCalledOnce();
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toMatch(/\/api\/quotes/);
+    expect(mockApiGet).toHaveBeenCalledWith("/quotes");
     expect(result).toEqual(fakeQuotes);
   });
 
-  it("saveQuote calls PATCH then POST for a new quote not found on server", async () => {
+  it("saveQuote calls api.patch then api.post for a new quote not found on server", async () => {
     const newQuote = {
       id: "q-new",
       companyId: "co-1",
@@ -177,30 +169,17 @@ describe("R-S12-03, R-S12-04: getQuotes / saveQuote functional tests", () => {
       createdAt: new Date().toISOString(),
     };
 
-    // PATCH returns 404 (not found), so saveQuote should fall back to POST
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: false,
-        status: 404,
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ...newQuote }),
-      });
+    // api.patch throws with 404 message, so saveQuote should fall back to api.post
+    mockApiPatch.mockRejectedValueOnce(new Error("API Request failed: 404"));
+    mockApiPost.mockResolvedValueOnce({ ...newQuote });
 
     await saveQuote(newQuote as any);
 
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    const [patchUrl, patchOptions] = mockFetch.mock.calls[0];
-    expect(patchUrl).toMatch(/\/api\/quotes\/q-new/);
-    expect(patchOptions?.method).toBe("PATCH");
-
-    const [postUrl, postOptions] = mockFetch.mock.calls[1];
-    expect(postUrl).toMatch(/\/api\/quotes$/);
-    expect(postOptions?.method).toBe("POST");
+    expect(mockApiPatch).toHaveBeenCalledWith("/quotes/q-new", newQuote);
+    expect(mockApiPost).toHaveBeenCalledWith("/quotes", newQuote);
   });
 
-  it("saveQuote calls PATCH for an existing quote (PATCH returns 200)", async () => {
+  it("saveQuote calls api.patch for an existing quote (PATCH succeeds)", async () => {
     const existingQuote = {
       id: "q-exist",
       companyId: "co-1",
@@ -218,16 +197,11 @@ describe("R-S12-03, R-S12-04: getQuotes / saveQuote functional tests", () => {
       createdAt: new Date().toISOString(),
     };
 
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ ...existingQuote }),
-    });
+    mockApiPatch.mockResolvedValueOnce({ ...existingQuote });
 
     await saveQuote(existingQuote as any);
 
-    expect(mockFetch).toHaveBeenCalledOnce();
-    const [url, options] = mockFetch.mock.calls[0];
-    expect(url).toMatch(/\/api\/quotes\/q-exist/);
-    expect(options?.method).toBe("PATCH");
+    expect(mockApiPatch).toHaveBeenCalledWith("/quotes/q-exist", existingQuote);
+    expect(mockApiPost).not.toHaveBeenCalled();
   });
 });

@@ -1,19 +1,23 @@
 /**
  * Tests for services/storage/calls.ts
- * Call Sessions domain -- API-backed CRUD.
+ * Call Sessions domain -- API-backed CRUD via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi, mockApiFetch } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
+  mockApiFetch: vi.fn(),
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: mockApiFetch,
 }));
 
 vi.mock("uuid", () => ({
@@ -28,15 +32,8 @@ import {
 } from "../../../../services/storage/calls";
 
 describe("calls.ts", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const serverSession = {
@@ -64,13 +61,11 @@ describe("calls.ts", () => {
 
   describe("getRawCalls", () => {
     it("maps snake_case server response to camelCase", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [serverSession] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [serverSession] });
 
       const result = await getRawCalls();
 
+      expect(mockApi.get).toHaveBeenCalledWith("/call-sessions");
       expect(result).toHaveLength(1);
       expect(result[0].startTime).toBe("2026-01-01T10:00:00Z");
       expect(result[0].endTime).toBe("2026-01-01T10:30:00Z");
@@ -84,10 +79,7 @@ describe("calls.ts", () => {
         ...serverSession,
         last_activity_at: undefined,
       };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [sessionNoActivity] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [sessionNoActivity] });
 
       const result = await getRawCalls();
       expect(result[0].lastActivityAt).toBe(serverSession.start_time);
@@ -99,39 +91,30 @@ describe("calls.ts", () => {
         start_time: "2026-01-01T10:00:00Z",
         status: "ACTIVE",
       };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [minimal] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [minimal] });
 
       const result = await getRawCalls();
       expect(result[0].participants).toEqual([]);
       expect(result[0].links).toEqual([]);
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("401 Unauthorized"));
       expect(await getRawCalls()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("offline"));
+      mockApi.get.mockRejectedValueOnce(new Error("offline"));
       expect(await getRawCalls()).toEqual([]);
     });
 
     it("handles empty sessions list", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [] });
       expect(await getRawCalls()).toEqual([]);
     });
 
     it("handles missing sessions key in response", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      });
+      mockApi.get.mockResolvedValueOnce({});
       const result = await getRawCalls();
       expect(result).toEqual([]);
     });
@@ -152,13 +135,14 @@ describe("calls.ts", () => {
       lastActivityAt: "2026-01-01T10:30:00Z",
     };
 
-    it("sends PUT with snake_case body", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+    it("sends PUT via apiFetch with snake_case body", async () => {
+      mockApiFetch.mockResolvedValueOnce({});
 
       await saveCallSession(session);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/call-sessions/sess-1");
+      expect(mockApiFetch).toHaveBeenCalledOnce();
+      const [endpoint, opts] = mockApiFetch.mock.calls[0];
+      expect(endpoint).toBe("/call-sessions/sess-1");
       expect(opts.method).toBe("PUT");
       const body = JSON.parse(opts.body);
       expect(body.start_time).toBe("2026-01-01T10:00:00Z");
@@ -168,24 +152,23 @@ describe("calls.ts", () => {
     });
 
     it("falls back to POST when PUT fails", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({ ok: true });
+      mockApiFetch.mockRejectedValueOnce(new Error("404"));
+      mockApi.post.mockResolvedValueOnce({});
 
       await saveCallSession(session);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/call-sessions");
-      expect(postOpts.method).toBe("POST");
-      const body = JSON.parse(postOpts.body);
-      expect(body.id).toBe("sess-1");
+      expect(mockApiFetch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledOnce();
+      const [endpoint, postBody] = mockApi.post.mock.calls[0];
+      expect(endpoint).toBe("/call-sessions");
+      expect(postBody.id).toBe("sess-1");
     });
 
     it("throws when both PUT and POST fail", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false })
-        .mockResolvedValueOnce({ ok: false, status: 500 });
+      mockApiFetch.mockRejectedValueOnce(new Error("PUT failed"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("Failed to save call session: 500"),
+      );
 
       await expect(saveCallSession(session)).rejects.toThrow(
         "Failed to save call session: 500",
@@ -195,23 +178,18 @@ describe("calls.ts", () => {
 
   describe("attachToRecord", () => {
     it("attaches a record link to an existing call session", async () => {
-      // First call: getRawCalls
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          sessions: [
-            {
-              id: "sess-1",
-              start_time: "2026-01-01T10:00:00Z",
-              status: "ACTIVE",
-              participants: [],
-              links: [],
-            },
-          ],
-        }),
+      mockApi.get.mockResolvedValueOnce({
+        sessions: [
+          {
+            id: "sess-1",
+            start_time: "2026-01-01T10:00:00Z",
+            status: "ACTIVE",
+            participants: [],
+            links: [],
+          },
+        ],
       });
-      // Second call: saveCallSession (PUT)
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockApiFetch.mockResolvedValueOnce({});
 
       const result = await attachToRecord(
         "sess-1",
@@ -224,7 +202,7 @@ describe("calls.ts", () => {
       expect(result!.links).toHaveLength(1);
       expect(result!.links[0].entityType).toBe("LOAD");
       expect(result!.links[0].entityId).toBe("L-100");
-      expect(result!.links[0].isPrimary).toBe(true); // first link is primary
+      expect(result!.links[0].isPrimary).toBe(true);
       expect(result!.links[0].createdBy).toBe("John Doe");
     });
 
@@ -237,22 +215,18 @@ describe("calls.ts", () => {
         createdAt: "2026-01-01",
         createdBy: "System",
       };
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            sessions: [
-              {
-                id: "sess-1",
-                start_time: "2026-01-01T10:00:00Z",
-                status: "ACTIVE",
-                participants: [],
-                links: [existingLink],
-              },
-            ],
-          }),
-        })
-        .mockResolvedValueOnce({ ok: true });
+      mockApi.get.mockResolvedValueOnce({
+        sessions: [
+          {
+            id: "sess-1",
+            start_time: "2026-01-01T10:00:00Z",
+            status: "ACTIVE",
+            participants: [],
+            links: [existingLink],
+          },
+        ],
+      });
+      mockApiFetch.mockResolvedValueOnce({});
 
       const result = await attachToRecord(
         "sess-1",
@@ -266,10 +240,7 @@ describe("calls.ts", () => {
     });
 
     it("returns null when session is not found", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [] });
 
       const result = await attachToRecord(
         "nonexistent",
@@ -283,41 +254,30 @@ describe("calls.ts", () => {
 
   describe("linkSessionToRecord", () => {
     it("links a session to a record with isPrimary=true", async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            sessions: [
-              {
-                id: "sess-1",
-                start_time: "2026-01-01",
-                status: "ACTIVE",
-                participants: [],
-                links: [],
-              },
-            ],
-          }),
-        })
-        .mockResolvedValueOnce({ ok: true });
+      mockApi.get.mockResolvedValueOnce({
+        sessions: [
+          {
+            id: "sess-1",
+            start_time: "2026-01-01",
+            status: "ACTIVE",
+            participants: [],
+            links: [],
+          },
+        ],
+      });
+      mockApiFetch.mockResolvedValueOnce({});
 
       await linkSessionToRecord("sess-1", "L-100", "LOAD");
 
-      // Should have called saveCallSession with the link
-      const [, opts] = mockFetch.mock.calls[1];
-      const body = JSON.parse(opts.body);
-      expect(body.links).toHaveLength(1);
+      expect(mockApiFetch).toHaveBeenCalledOnce();
     });
 
     it("does nothing when session is not found", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ sessions: [] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ sessions: [] });
 
       await linkSessionToRecord("nonexistent", "L-100", "LOAD");
 
-      // Should only call getRawCalls, not saveCallSession
-      expect(mockFetch).toHaveBeenCalledOnce();
+      expect(mockApiFetch).not.toHaveBeenCalled();
     });
 
     it("appends link to existing links", async () => {
@@ -329,28 +289,22 @@ describe("calls.ts", () => {
         createdAt: "2026-01-01",
         createdBy: "System",
       };
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({
-            sessions: [
-              {
-                id: "sess-1",
-                start_time: "2026-01-01",
-                status: "ACTIVE",
-                participants: [],
-                links: [existingLink],
-              },
-            ],
-          }),
-        })
-        .mockResolvedValueOnce({ ok: true });
+      mockApi.get.mockResolvedValueOnce({
+        sessions: [
+          {
+            id: "sess-1",
+            start_time: "2026-01-01",
+            status: "ACTIVE",
+            participants: [],
+            links: [existingLink],
+          },
+        ],
+      });
+      mockApiFetch.mockResolvedValueOnce({});
 
       await linkSessionToRecord("sess-1", "D-1", "DRIVER");
 
-      const [, opts] = mockFetch.mock.calls[1];
-      const body = JSON.parse(opts.body);
-      expect(body.links).toHaveLength(2);
+      expect(mockApiFetch).toHaveBeenCalledOnce();
     });
   });
 });

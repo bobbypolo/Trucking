@@ -1,19 +1,22 @@
 /**
  * Tests for services/storage/tasks.ts
- * Tasks & Work Items domain -- API-backed CRUD.
+ * Tasks & Work Items domain -- API-backed CRUD via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import {
@@ -25,19 +28,12 @@ import {
 } from "../../../../services/storage/tasks";
 
 describe("tasks.ts — Tasks", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   describe("getRawTasks", () => {
-    it("calls GET /api/tasks and maps snake_case to camelCase", async () => {
+    it("calls api.get /tasks and maps snake_case to camelCase", async () => {
       const serverTasks = [
         {
           id: "task-1",
@@ -53,13 +49,11 @@ describe("tasks.ts — Tasks", () => {
           created_by: "admin",
         },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverTasks,
-      });
+      mockApi.get.mockResolvedValueOnce(serverTasks);
 
       const result = await getRawTasks();
 
+      expect(mockApi.get).toHaveBeenCalledWith("/tasks");
       expect(result).toHaveLength(1);
       expect(result[0].assignedTo).toBe("user-1");
       expect(result[0].dueDate).toBe("2026-03-20");
@@ -83,10 +77,7 @@ describe("tasks.ts — Tasks", () => {
           createdBy: "dispatcher",
         },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverTasks,
-      });
+      mockApi.get.mockResolvedValueOnce(serverTasks);
 
       const result = await getRawTasks();
 
@@ -95,20 +86,17 @@ describe("tasks.ts — Tasks", () => {
     });
 
     it("handles data.tasks wrapper format", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          tasks: [
-            {
-              id: "task-3",
-              title: "Wrapped",
-              description: "D",
-              status: "OPEN",
-              priority: "LOW",
-              links: [],
-            },
-          ],
-        }),
+      mockApi.get.mockResolvedValueOnce({
+        tasks: [
+          {
+            id: "task-3",
+            title: "Wrapped",
+            description: "D",
+            status: "OPEN",
+            priority: "LOW",
+            links: [],
+          },
+        ],
       });
 
       const result = await getRawTasks();
@@ -116,13 +104,13 @@ describe("tasks.ts — Tasks", () => {
       expect(result[0].id).toBe("task-3");
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("500"));
       expect(await getRawTasks()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("offline"));
+      mockApi.get.mockRejectedValueOnce(new Error("offline"));
       expect(await getRawTasks()).toEqual([]);
     });
   });
@@ -142,45 +130,44 @@ describe("tasks.ts — Tasks", () => {
     };
 
     it("tries PATCH first with snake_case body", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockApi.patch.mockResolvedValueOnce({});
 
       const result = await saveTask(task);
 
-      expect(mockFetch).toHaveBeenCalledOnce();
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/tasks/task-1");
-      expect(opts.method).toBe("PATCH");
-      const body = JSON.parse(opts.body);
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      const [endpoint, body] = mockApi.patch.mock.calls[0];
+      expect(endpoint).toBe("/tasks/task-1");
       expect(body.assigned_to).toBe("user-1");
       expect(body.due_date).toBe("2026-03-20");
       expect(result).toEqual(task);
     });
 
     it("falls back to POST when PATCH fails", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({ ok: true });
+      mockApi.patch.mockRejectedValueOnce(new Error("404"));
+      mockApi.post.mockResolvedValueOnce({});
 
       await saveTask(task);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/tasks");
-      expect(postOpts.method).toBe("POST");
-      const body = JSON.parse(postOpts.body);
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledOnce();
+      const [endpoint, body] = mockApi.post.mock.calls[0];
+      expect(endpoint).toBe("/tasks");
       expect(body.id).toBe("task-1");
     });
 
     it("throws when both PATCH and POST fail", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({ ok: false, status: 500 });
+      mockApi.patch.mockRejectedValueOnce(new Error("404"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("Failed to save task: 500"),
+      );
 
-      await expect(saveTask(task)).rejects.toThrow("Failed to save task: 500");
+      await expect(saveTask(task)).rejects.toThrow(
+        "Failed to save task: 500",
+      );
     });
 
     it("returns original task object on success", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockApi.patch.mockResolvedValueOnce({});
 
       const result = await saveTask(task);
       expect(result).toBe(task);
@@ -189,15 +176,8 @@ describe("tasks.ts — Tasks", () => {
 });
 
 describe("tasks.ts — Work Items", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const serverItems = [
@@ -228,14 +208,12 @@ describe("tasks.ts — Work Items", () => {
   ];
 
   describe("getRawWorkItems", () => {
-    it("calls GET /api/work-items and maps snake_case to camelCase", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverItems,
-      });
+    it("calls api.get /work-items and maps snake_case to camelCase", async () => {
+      mockApi.get.mockResolvedValueOnce(serverItems);
 
       const result = await getRawWorkItems();
 
+      expect(mockApi.get).toHaveBeenCalledWith("/work-items");
       expect(result).toHaveLength(2);
       expect(result[0].companyId).toBe("co-1");
       expect(result[0].entityType).toBe("LOAD");
@@ -244,52 +222,40 @@ describe("tasks.ts — Work Items", () => {
     });
 
     it("handles data.workItems wrapper format", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ workItems: [serverItems[0]] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ workItems: [serverItems[0]] });
 
       const result = await getRawWorkItems();
       expect(result).toHaveLength(1);
     });
 
     it("handles data.items wrapper format", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ items: [serverItems[0]] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ items: [serverItems[0]] });
 
       const result = await getRawWorkItems();
       expect(result).toHaveLength(1);
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("fail"));
       expect(await getRawWorkItems()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("offline"));
+      mockApi.get.mockRejectedValueOnce(new Error("offline"));
       expect(await getRawWorkItems()).toEqual([]);
     });
   });
 
   describe("getWorkItems (filtered)", () => {
     it("returns all items when no companyId filter", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverItems,
-      });
+      mockApi.get.mockResolvedValueOnce(serverItems);
 
       const result = await getWorkItems();
       expect(result).toHaveLength(2);
     });
 
     it("filters by companyId", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverItems,
-      });
+      mockApi.get.mockResolvedValueOnce(serverItems);
 
       const result = await getWorkItems("co-1");
       expect(result).toHaveLength(1);
@@ -312,36 +278,34 @@ describe("tasks.ts — Work Items", () => {
     };
 
     it("tries PATCH first with snake_case body", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+      mockApi.patch.mockResolvedValueOnce({});
 
       const result = await saveWorkItem(item);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/work-items/wi-1");
-      expect(opts.method).toBe("PATCH");
-      const body = JSON.parse(opts.body);
+      const [endpoint, body] = mockApi.patch.mock.calls[0];
+      expect(endpoint).toBe("/work-items/wi-1");
       expect(body.entity_type).toBe("LOAD");
       expect(body.entity_id).toBe("L-1001");
       expect(result).toEqual(item);
     });
 
     it("falls back to POST when PATCH fails", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false })
-        .mockResolvedValueOnce({ ok: true });
+      mockApi.patch.mockRejectedValueOnce(new Error("fail"));
+      mockApi.post.mockResolvedValueOnce({});
 
       await saveWorkItem(item);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/work-items");
-      expect(postOpts.method).toBe("POST");
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledOnce();
+      const [endpoint] = mockApi.post.mock.calls[0];
+      expect(endpoint).toBe("/work-items");
     });
 
     it("throws when both PATCH and POST fail", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false })
-        .mockResolvedValueOnce({ ok: false, status: 500 });
+      mockApi.patch.mockRejectedValueOnce(new Error("fail"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("Failed to save work item: 500"),
+      );
 
       await expect(saveWorkItem(item)).rejects.toThrow(
         "Failed to save work item: 500",

@@ -3,18 +3,21 @@
  * API-only implementation — no localStorage.
  * Tests R-P1-24, R-P1-25, R-P1-26
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn().mockReturnValue({ companyId: "test-co" }),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import {
@@ -23,8 +26,6 @@ import {
 } from "../../../../services/storage/notifications";
 
 describe("notifications.ts (API-only)", () => {
-  const mockFetch = vi.fn();
-
   const job = {
     id: "nj-1",
     loadId: "L-100",
@@ -39,16 +40,11 @@ describe("notifications.ts (API-only)", () => {
   };
 
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
+    vi.clearAllMocks();
   });
 
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  // R-P1-24: no localStorage in notifications.ts (structural — covered by grep in AC)
-  // R-P1-25: STORAGE_KEY_NOTIFICATION_JOBS not exported (verified by import above)
+  // R-P1-24: no localStorage in notifications.ts
+  // R-P1-25: STORAGE_KEY_NOTIFICATION_JOBS not exported
   it("does not export STORAGE_KEY_NOTIFICATION_JOBS", async () => {
     const mod = await import("../../../../services/storage/notifications");
     expect((mod as any).STORAGE_KEY_NOTIFICATION_JOBS).toBeUndefined();
@@ -56,29 +52,23 @@ describe("notifications.ts (API-only)", () => {
 
   describe("getRawNotificationJobs", () => {
     it("fetches jobs from API", async () => {
-      const serverJobs = [
-        { ...job, id: "nj-server-1" },
-      ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverJobs,
-      });
+      const serverJobs = [{ ...job, id: "nj-server-1" }];
+      mockApi.get.mockResolvedValueOnce(serverJobs);
 
       const result = await getRawNotificationJobs();
-      expect(mockFetch).toHaveBeenCalledOnce();
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/notification-jobs");
+
+      expect(mockApi.get).toHaveBeenCalledWith("/notification-jobs");
       expect(result).toEqual(serverJobs);
     });
 
-    it("returns empty array when API returns non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
+    it("returns empty array when API throws", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("401"));
       const result = await getRawNotificationJobs();
       expect(result).toEqual([]);
     });
 
     it("returns empty array when fetch throws", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockApi.get.mockRejectedValueOnce(new Error("Network error"));
       const result = await getRawNotificationJobs();
       expect(result).toEqual([]);
     });
@@ -88,43 +78,24 @@ describe("notifications.ts (API-only)", () => {
   describe("saveNotificationJob", () => {
     it("POSTs job to API and returns server response", async () => {
       const serverResponse = { ...job, id: "nj-1", status: "SENT" };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverResponse,
-      });
+      mockApi.post.mockResolvedValueOnce(serverResponse);
 
       const result = await saveNotificationJob(job);
 
-      expect(mockFetch).toHaveBeenCalledOnce();
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/notification-jobs");
-      expect(opts.method).toBe("POST");
-      expect(JSON.parse(opts.body)).toEqual(job);
+      expect(mockApi.post).toHaveBeenCalledWith("/notification-jobs", job);
       expect(result).toEqual(serverResponse);
     });
 
-    it("propagates error when API returns non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    it("propagates error when API throws", async () => {
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
+      );
       await expect(saveNotificationJob(job)).rejects.toThrow();
     });
 
     it("propagates error when fetch throws (no silent catch)", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("API down"));
+      mockApi.post.mockRejectedValueOnce(new Error("API down"));
       await expect(saveNotificationJob(job)).rejects.toThrow("API down");
-    });
-
-    it("sends auth headers with request", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => job,
-      });
-
-      await saveNotificationJob(job);
-
-      const [, opts] = mockFetch.mock.calls[0];
-      expect(opts.headers).toMatchObject({
-        Authorization: "Bearer test-token",
-      });
     });
   });
 });

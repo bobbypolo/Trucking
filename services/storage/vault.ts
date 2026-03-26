@@ -8,8 +8,7 @@
  */
 // Tests R-P1-21, R-P1-22, R-P1-23
 import { VaultDoc, VaultDocType } from "../../types";
-import { API_URL } from "../config";
-import { getIdTokenAsync } from "../authService";
+import { api } from "../api";
 
 /**
  * Allowed MIME types for vault uploads.
@@ -67,29 +66,11 @@ export const validateFileSize = (file: File): ValidationResult => {
  */
 export const getRawVaultDocs = async (): Promise<VaultDoc[]> => {
   try {
-    const token = await getIdTokenAsync();
-    const res = await fetch(`${API_URL}/vault-docs`, {
-      method: "GET",
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data.documents) ? data.documents : [];
+    const data = await api.get("/vault-docs");
+    return Array.isArray(data?.documents) ? data.documents : [];
   } catch {
     return [];
   }
-};
-
-/**
- * Persist a VaultDoc record.
- * The /api/vault-docs route does not expose a PATCH endpoint yet.
- * This is a client-side stub that returns the doc unchanged; callers
- * should prefer uploadVaultDoc for full persistence.
- */
-export const saveVaultDoc = async (doc: VaultDoc): Promise<VaultDoc> => {
-  return doc;
 };
 
 /**
@@ -102,8 +83,6 @@ export const uploadVaultDoc = async (
   tenantId: string,
   metadata: Record<string, string | number | undefined> = {},
 ): Promise<VaultDoc> => {
-  const token = await getIdTokenAsync();
-
   const form = new FormData();
   form.append("file", file);
   form.append("document_type", docType);
@@ -111,23 +90,7 @@ export const uploadVaultDoc = async (
   if (metadata.description)
     form.append("description", String(metadata.description));
 
-  const res = await fetch(`${API_URL}/vault-docs`, {
-    method: "POST",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      // NOTE: Do NOT set Content-Type — browser must set boundary for multipart
-    },
-    body: form,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string }).error || `Upload failed: ${res.status}`,
-    );
-  }
-
-  const result = await res.json();
+  const result = await api.postFormData("/vault-docs", form);
 
   // Build a client-side VaultDoc shape from the server response.
   // The server returns { documentId, storagePath, status, sanitizedFilename }.
@@ -160,23 +123,7 @@ export const uploadVaultDoc = async (
 export const getDocumentDownloadUrl = async (
   documentId: string,
 ): Promise<string> => {
-  const token = await getIdTokenAsync();
-  const res = await fetch(`${API_URL}/documents/${documentId}/download`, {
-    method: "GET",
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(
-      (err as { error?: string }).error ||
-        `Download failed: ${res.status}`,
-    );
-  }
-
-  const data = await res.json();
+  const data = await api.get(`/documents/${documentId}/download`);
   return data.url;
 };
 

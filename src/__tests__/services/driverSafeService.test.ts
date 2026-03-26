@@ -1,10 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 
 import {
   generateDriverSafeLoadDTO,
   generateDriverLoadSheet,
 } from "../../../services/driverSafeService";
 import type { LoadData, Company } from "../../../types";
+
+vi.mock("jspdf", () => ({
+  jsPDF: class MockJsPDF {
+    setFontSize = vi.fn();
+    text = vi.fn();
+    save = vi.fn();
+    autoTable = vi.fn();
+    lastAutoTable = { finalY: 100 };
+  },
+}));
+
+vi.mock("jspdf-autotable", () => ({}));
 
 describe("driverSafeService", () => {
   const makeLoad = (): LoadData =>
@@ -138,19 +150,37 @@ describe("driverSafeService", () => {
     });
   });
 
-  // --- generateDriverLoadSheet ---
+  // --- generateDriverLoadSheet (real PDF via jsPDF) ---
   describe("generateDriverLoadSheet", () => {
-    it("returns a PDF path containing the load number", () => {
+    it("generates a PDF without throwing (jsPDF mocked)", async () => {
       const load = makeLoad();
-      const result = generateDriverLoadSheet(load);
-      expect(result).toBe("load-sheets/LD-LD-5678-safe.pdf");
+      const result = await generateDriverLoadSheet(load);
+      expect(result).toBeUndefined();
     });
 
-    it("includes 'load-sheets/' prefix and '-safe.pdf' suffix", () => {
-      const load = { ...makeLoad(), loadNumber: "9999" } as any;
+    it("returns void (no longer returns a path string)", async () => {
+      const load = makeLoad();
+      const result = await generateDriverLoadSheet(load);
+      expect(result).toBeUndefined();
+    });
+
+    it("accepts optional company parameter for redaction", async () => {
+      const load = makeLoad();
+      const company = makeCompany({ hideRates: true });
+      const result = await generateDriverLoadSheet(load, company);
+      expect(result).toBeUndefined();
+    });
+
+    it("handles load without loadNumber gracefully", async () => {
+      const load = { ...makeLoad(), loadNumber: undefined } as any;
+      const result = await generateDriverLoadSheet(load);
+      expect(result).toBeUndefined();
+    });
+
+    it("is an async function that returns a Promise", () => {
+      const load = makeLoad();
       const result = generateDriverLoadSheet(load);
-      expect(result).toMatch(/^load-sheets\//);
-      expect(result).toMatch(/-safe\.pdf$/);
+      expect(result).toBeInstanceOf(Promise);
     });
   });
 });

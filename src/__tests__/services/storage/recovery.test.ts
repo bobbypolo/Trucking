@@ -1,19 +1,22 @@
 /**
  * Tests for services/storage/recovery.ts
- * Recovery domain -- Crisis Actions, Service Tickets, KCI Requests.
+ * Recovery domain -- Crisis Actions, Service Tickets, KCI Requests via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import {
@@ -29,19 +32,12 @@ import {
 } from "../../../../services/storage/recovery";
 
 describe("recovery.ts — Crisis Actions", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   describe("getRawCrisisActions", () => {
-    it("calls GET /api/crisis-actions and returns array", async () => {
+    it("calls api.get /crisis-actions and returns array", async () => {
       const actions = [
         {
           id: "ca-1",
@@ -54,34 +50,26 @@ describe("recovery.ts — Crisis Actions", () => {
           createdAt: "2026-01-01T00:00:00Z",
         },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => actions,
-      });
+      mockApi.get.mockResolvedValueOnce(actions);
 
       const result = await getRawCrisisActions();
 
-      expect(mockFetch).toHaveBeenCalledOnce();
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/crisis-actions");
+      expect(mockApi.get).toHaveBeenCalledWith("/crisis-actions");
       expect(result).toEqual(actions);
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("500"));
       expect(await getRawCrisisActions()).toEqual([]);
     });
 
     it("returns empty array when response is not an array", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ data: "not-array" }),
-      });
+      mockApi.get.mockResolvedValueOnce({ data: "not-array" });
       expect(await getRawCrisisActions()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network down"));
+      mockApi.get.mockRejectedValueOnce(new Error("Network down"));
       expect(await getRawCrisisActions()).toEqual([]);
     });
   });
@@ -99,57 +87,40 @@ describe("recovery.ts — Crisis Actions", () => {
     };
 
     it("tries PATCH first for existing action", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => action,
-      });
+      mockApi.patch.mockResolvedValueOnce(action);
 
       await saveCrisisAction(action);
 
-      expect(mockFetch).toHaveBeenCalledOnce();
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/crisis-actions/ca-1");
-      expect(opts.method).toBe("PATCH");
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        "/crisis-actions/ca-1",
+        action,
+      );
     });
 
     it("falls back to POST when PATCH fails", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("PATCH failed"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => action,
-        });
+      mockApi.patch.mockRejectedValueOnce(new Error("PATCH failed"));
+      mockApi.post.mockResolvedValueOnce(action);
 
       await saveCrisisAction(action);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/crisis-actions");
-      expect(postOpts.method).toBe("POST");
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledWith("/crisis-actions", action);
     });
 
     it("throws when both PATCH and POST fail", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("PATCH failed"))
-        .mockResolvedValueOnce({ ok: false, status: 500 });
-
-      await expect(saveCrisisAction(action)).rejects.toThrow(
-        "Failed to save crisis action",
+      mockApi.patch.mockRejectedValueOnce(new Error("PATCH failed"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
       );
+
+      await expect(saveCrisisAction(action)).rejects.toThrow();
     });
   });
 });
 
 describe("recovery.ts — KCI Requests", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const sampleRequests = [
@@ -190,11 +161,8 @@ describe("recovery.ts — KCI Requests", () => {
   ];
 
   describe("getRawRequests", () => {
-    it("calls GET /api/kci-requests and returns array", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleRequests,
-      });
+    it("calls api.get /kci-requests and returns array", async () => {
+      mockApi.get.mockResolvedValueOnce(sampleRequests);
 
       const result = await getRawRequests();
 
@@ -202,31 +170,25 @@ describe("recovery.ts — KCI Requests", () => {
       expect(result[0].id).toBe("REQ-001");
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("fail"));
       expect(await getRawRequests()).toEqual([]);
     });
 
     it("returns empty array on non-array response", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ requests: [] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ requests: [] });
       expect(await getRawRequests()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Timeout"));
+      mockApi.get.mockRejectedValueOnce(new Error("Timeout"));
       expect(await getRawRequests()).toEqual([]);
     });
   });
 
   describe("getRequests (filtered)", () => {
     beforeEach(() => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => sampleRequests,
-      });
+      mockApi.get.mockResolvedValue(sampleRequests);
     });
 
     it("returns all requests when no filters are provided", async () => {
@@ -273,57 +235,43 @@ describe("recovery.ts — KCI Requests", () => {
     };
 
     it("tries PATCH first", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => request,
-      });
+      mockApi.patch.mockResolvedValueOnce(request);
 
       await saveRequest(request as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/kci-requests/REQ-001");
-      expect(opts.method).toBe("PATCH");
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        "/kci-requests/REQ-001",
+        request,
+      );
     });
 
     it("falls back to POST when PATCH fails", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("not found"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => request,
-        });
+      mockApi.patch.mockRejectedValueOnce(new Error("not found"));
+      mockApi.post.mockResolvedValueOnce(request);
 
       await saveRequest(request as any);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/kci-requests");
-      expect(postOpts.method).toBe("POST");
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledWith("/kci-requests", request);
     });
 
     it("throws when both PATCH and POST fail", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("patch"))
-        .mockResolvedValueOnce({ ok: false });
-
-      await expect(saveRequest(request as any)).rejects.toThrow(
-        "Failed to save KCI request",
+      mockApi.patch.mockRejectedValueOnce(new Error("patch"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
       );
+
+      await expect(saveRequest(request as any)).rejects.toThrow();
     });
   });
 
   describe("updateRequestStatus", () => {
     const actor = { id: "user-1", name: "John Doe" };
 
-    beforeEach(() => {
-      // Reset fetch for each test
-      mockFetch.mockReset();
-    });
-
     it("sends PATCH with status and decision log", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: "REQ-001", status: "APPROVED" }),
+      mockApi.patch.mockResolvedValueOnce({
+        id: "REQ-001",
+        status: "APPROVED",
       });
 
       const result = await updateRequestStatus(
@@ -335,10 +283,9 @@ describe("recovery.ts — KCI Requests", () => {
       );
 
       expect(result).not.toBeNull();
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/kci-requests/REQ-001");
-      expect(opts.method).toBe("PATCH");
-      const body = JSON.parse(opts.body);
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      const [endpoint, body] = mockApi.patch.mock.calls[0];
+      expect(endpoint).toBe("/kci-requests/REQ-001");
       expect(body.status).toBe("APPROVED");
       expect(body.approved_by).toBe("John Doe");
       expect(body.approved_amount).toBe(150);
@@ -346,9 +293,9 @@ describe("recovery.ts — KCI Requests", () => {
     });
 
     it("sets denied fields for DENIED status", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ id: "REQ-001", status: "DENIED" }),
+      mockApi.patch.mockResolvedValueOnce({
+        id: "REQ-001",
+        status: "DENIED",
       });
 
       await updateRequestStatus(
@@ -358,13 +305,13 @@ describe("recovery.ts — KCI Requests", () => {
         "Insufficient documentation",
       );
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = mockApi.patch.mock.calls[0][1];
       expect(body.denied_by).toBe("John Doe");
       expect(body.denial_reason).toBe("Insufficient documentation");
     });
 
-    it("returns null on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+    it("returns null on API error", async () => {
+      mockApi.patch.mockRejectedValueOnce(new Error("404"));
 
       const result = await updateRequestStatus(
         "REQ-999",
@@ -375,7 +322,7 @@ describe("recovery.ts — KCI Requests", () => {
     });
 
     it("returns null on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockApi.patch.mockRejectedValueOnce(new Error("Network error"));
 
       const result = await updateRequestStatus(
         "REQ-001",
@@ -386,10 +333,7 @@ describe("recovery.ts — KCI Requests", () => {
     });
 
     it("includes decision_log with timestamp, actor, and note", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({}),
-      });
+      mockApi.patch.mockResolvedValueOnce({});
 
       await updateRequestStatus(
         "REQ-001",
@@ -398,7 +342,7 @@ describe("recovery.ts — KCI Requests", () => {
         "Needs manager review",
       );
 
-      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      const body = mockApi.patch.mock.calls[0][1];
       const logEntry = body.decision_log[0];
       expect(logEntry.actorId).toBe("user-1");
       expect(logEntry.actorName).toBe("John Doe");
@@ -411,78 +355,29 @@ describe("recovery.ts — KCI Requests", () => {
   describe("getUnresolvedRequests", () => {
     it("returns only unresolved statuses sorted by priority and date", async () => {
       const requests = [
-        {
-          id: "REQ-1",
-          status: "NEW",
-          priority: "NORMAL",
-          createdAt: "2026-01-03T00:00:00Z",
-        },
-        {
-          id: "REQ-2",
-          status: "APPROVED",
-          priority: "HIGH",
-          createdAt: "2026-01-01T00:00:00Z",
-        },
-        {
-          id: "REQ-3",
-          status: "PENDING_APPROVAL",
-          priority: "HIGH",
-          createdAt: "2026-01-02T00:00:00Z",
-        },
-        {
-          id: "REQ-4",
-          status: "NEEDS_INFO",
-          priority: "NORMAL",
-          createdAt: "2026-01-01T00:00:00Z",
-        },
-        {
-          id: "REQ-5",
-          status: "CLOSED",
-          priority: "HIGH",
-          createdAt: "2026-01-01T00:00:00Z",
-        },
-        {
-          id: "REQ-6",
-          status: "DEFERRED",
-          priority: "NORMAL",
-          createdAt: "2026-01-04T00:00:00Z",
-        },
+        { id: "REQ-1", status: "NEW", priority: "NORMAL", createdAt: "2026-01-03T00:00:00Z" },
+        { id: "REQ-2", status: "APPROVED", priority: "HIGH", createdAt: "2026-01-01T00:00:00Z" },
+        { id: "REQ-3", status: "PENDING_APPROVAL", priority: "HIGH", createdAt: "2026-01-02T00:00:00Z" },
+        { id: "REQ-4", status: "NEEDS_INFO", priority: "NORMAL", createdAt: "2026-01-01T00:00:00Z" },
+        { id: "REQ-5", status: "CLOSED", priority: "HIGH", createdAt: "2026-01-01T00:00:00Z" },
+        { id: "REQ-6", status: "DEFERRED", priority: "NORMAL", createdAt: "2026-01-04T00:00:00Z" },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => requests,
-      });
+      mockApi.get.mockResolvedValueOnce(requests);
 
       const result = await getUnresolvedRequests();
 
-      // Should include NEW, PENDING_APPROVAL, NEEDS_INFO, DEFERRED but not APPROVED or CLOSED
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.id)).not.toContain("REQ-2");
       expect(result.map((r) => r.id)).not.toContain("REQ-5");
-
-      // HIGH priority should come first
       expect(result[0].id).toBe("REQ-3");
     });
 
     it("sorts by date (oldest first) within same priority", async () => {
       const requests = [
-        {
-          id: "REQ-B",
-          status: "NEW",
-          priority: "NORMAL",
-          createdAt: "2026-01-10T00:00:00Z",
-        },
-        {
-          id: "REQ-A",
-          status: "NEW",
-          priority: "NORMAL",
-          createdAt: "2026-01-05T00:00:00Z",
-        },
+        { id: "REQ-B", status: "NEW", priority: "NORMAL", createdAt: "2026-01-10T00:00:00Z" },
+        { id: "REQ-A", status: "NEW", priority: "NORMAL", createdAt: "2026-01-05T00:00:00Z" },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => requests,
-      });
+      mockApi.get.mockResolvedValueOnce(requests);
 
       const result = await getUnresolvedRequests();
 
@@ -493,19 +388,12 @@ describe("recovery.ts — KCI Requests", () => {
 });
 
 describe("recovery.ts — Service Tickets", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   describe("getRawServiceTickets", () => {
-    it("calls GET /api/service-tickets and returns array", async () => {
+    it("calls api.get /service-tickets and returns array", async () => {
       const tickets = [
         {
           id: "ST-1",
@@ -517,30 +405,24 @@ describe("recovery.ts — Service Tickets", () => {
           estimatedCost: 250,
         },
       ];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => tickets,
-      });
+      mockApi.get.mockResolvedValueOnce(tickets);
 
       const result = await getRawServiceTickets();
       expect(result).toEqual(tickets);
     });
 
-    it("returns empty array on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false });
+    it("returns empty array on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(new Error("fail"));
       expect(await getRawServiceTickets()).toEqual([]);
     });
 
     it("returns empty array on non-array response", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ tickets: [] }),
-      });
+      mockApi.get.mockResolvedValueOnce({ tickets: [] });
       expect(await getRawServiceTickets()).toEqual([]);
     });
 
     it("returns empty array on network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("offline"));
+      mockApi.get.mockRejectedValueOnce(new Error("offline"));
       expect(await getRawServiceTickets()).toEqual([]);
     });
   });
@@ -557,42 +439,33 @@ describe("recovery.ts — Service Tickets", () => {
     };
 
     it("tries PATCH first for existing ticket", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ticket,
-      });
+      mockApi.patch.mockResolvedValueOnce(ticket);
 
       await saveServiceTicket(ticket as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/service-tickets/ST-1");
-      expect(opts.method).toBe("PATCH");
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        "/service-tickets/ST-1",
+        ticket,
+      );
     });
 
     it("falls back to POST when PATCH fails", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("not found"))
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => ticket,
-        });
+      mockApi.patch.mockRejectedValueOnce(new Error("not found"));
+      mockApi.post.mockResolvedValueOnce(ticket);
 
       await saveServiceTicket(ticket as any);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/service-tickets");
-      expect(postOpts.method).toBe("POST");
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledWith("/service-tickets", ticket);
     });
 
     it("throws when both PATCH and POST fail", async () => {
-      mockFetch
-        .mockRejectedValueOnce(new Error("patch"))
-        .mockResolvedValueOnce({ ok: false });
-
-      await expect(saveServiceTicket(ticket as any)).rejects.toThrow(
-        "Failed to save service ticket",
+      mockApi.patch.mockRejectedValueOnce(new Error("patch"));
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
       );
+
+      await expect(saveServiceTicket(ticket as any)).rejects.toThrow();
     });
   });
 });

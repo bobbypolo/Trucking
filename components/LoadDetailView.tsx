@@ -82,6 +82,7 @@ export const LoadDetailView: React.FC<Props> = ({
   const [localIsLocked, setLocalIsLocked] = useState(load.isLocked ?? false);
   const [localIsFlagged, setLocalIsFlagged] = useState(load.isActionRequired ?? false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
+  const hasMapsKey = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
     setIsLoaded(true);
@@ -308,15 +309,20 @@ export const LoadDetailView: React.FC<Props> = ({
                     "Documents",
                     "Show Route",
                     "Audit Logs",
-                  ].map((util) => (
-                    <button
-                      key={util}
-                      onClick={() => handleUtilityClick(util)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-blue-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors text-slate-300 hover:text-white"
-                    >
-                      {util}
-                    </button>
-                  ))}
+                  ].map((util) => {
+                    const isRouteDisabled = util === "Show Route" && !hasMapsKey;
+                    return (
+                      <button
+                        key={util}
+                        onClick={() => !isRouteDisabled && handleUtilityClick(util)}
+                        disabled={isRouteDisabled}
+                        title={isRouteDisabled ? "Configure VITE_GOOGLE_MAPS_API_KEY to enable" : util}
+                        className={`w-full text-left px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors ${isRouteDisabled ? "opacity-40 cursor-not-allowed text-slate-500" : "hover:bg-blue-600 text-slate-300 hover:text-white"}`}
+                      >
+                        {util}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -659,35 +665,16 @@ export const LoadDetailView: React.FC<Props> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/50">
-                  {(
-                    load.legs || [
-                      {
-                        id: "1",
-                        type: "Pickup",
-                        location: load.pickup,
-                        date: load.pickupDate,
-                        appointmentTime: "08:00",
-                        pallets: 12,
-                        weight: 24000,
-                        sealNumber: "S-77281",
-                        requirements:
-                          "Lumper required; Driver must check in at South Gate.",
-                        stats: "Avg Turn: 45m | On-Time: 98%",
-                      },
-                      {
-                        id: "2",
-                        type: "Dropoff",
-                        location: load.dropoff,
-                        date: load.dropoffDate,
-                        appointmentTime: "16:00",
-                        pallets: 12,
-                        weight: 24000,
-                        sealNumber: "S-77281",
-                        requirements: "Scheduled appt only; PPE required.",
-                        stats: "Avg Turn: 90m | High Congestion",
-                      },
-                    ]
-                  ).map((leg: any, idx) => (
+                  {(load.legs || []).length === 0 ? (
+                    <tr>
+                      <td colSpan={8}>
+                        <div className="text-center py-8 text-slate-500 text-[10px] font-medium">
+                          No stops configured for this load
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                  {(load.legs || []).map((leg: any, idx) => (
                     <tr
                       key={leg.id}
                       className="group hover:bg-white/[0.02] transition-colors cursor-pointer border-b border-white/[0.03] last:border-0"

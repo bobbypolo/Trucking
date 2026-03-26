@@ -11,10 +11,15 @@ import * as path from "path";
 // Mock authService before any module that imports from it
 vi.mock("../../../services/authService", () => ({
   getAuthHeaders: vi.fn().mockResolvedValue({ Authorization: "Bearer mock-token" }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("mock-token"),
   getCompany: vi.fn(),
   updateCompany: vi.fn(),
   getStoredUsers: vi.fn().mockReturnValue([]),
   getCurrentUser: vi.fn(),
+}));
+vi.mock("../../../services/config", () => ({
+  API_URL: "http://localhost:5000/api",
 }));
 
 // ---- R-S14-01: No localStorage.*bookings references in services/ ----
@@ -66,36 +71,36 @@ describe("R-S14-02: STORAGE_KEY_BOOKINGS removed from codebase", () => {
 
 // ---- R-S14-03: Booking CRUD uses API endpoints ----
 describe("R-S14-03: bookings service uses /api/bookings endpoints", () => {
-  it("services/storage/bookings.ts calls fetch with /api/bookings for listing", () => {
+  it("services/storage/bookings.ts calls api.get with /bookings for listing", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/bookings.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/\/api\/bookings/);
+    expect(src).toMatch(/\/bookings/);
   });
 
-  it("services/storage/bookings.ts uses getAuthHeaders for auth", () => {
+  it("services/storage/bookings.ts uses api client for auth", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/bookings.ts"),
       "utf-8",
     );
-    expect(src).toContain("getAuthHeaders");
+    expect(src).toContain('from "../api"');
   });
 
-  it("services/storage/bookings.ts imports API_URL from config", () => {
+  it("services/storage/bookings.ts imports api from api module", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/bookings.ts"),
       "utf-8",
     );
-    expect(src).toContain("API_URL");
+    expect(src).toContain("import { api }");
   });
 
-  it("services/storage/bookings.ts has a saveBooking function that uses POST or PATCH", () => {
+  it("services/storage/bookings.ts has a saveBooking function that uses post or patch", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/bookings.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/POST|PATCH/);
+    expect(src).toMatch(/api\.post|api\.patch/);
   });
 });
 

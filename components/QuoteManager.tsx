@@ -250,12 +250,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
     setActiveView("intake");
   };
 
-  const handlePhoneInteraction = (phoneNumber: string, context: string) => {
-    // 1. Open System Dialer
+  const handlePhoneInteraction = async (phoneNumber: string, context: string) => {
+    // Log the call attempt (non-blocking — don't prevent dialer if logging fails)
+    try {
+      const { api } = await import("../services/api");
+      await api.post("/call-logs", { phoneNumber, context, direction: "outbound" });
+    } catch (err) {
+      console.warn("Failed to log call:", err);
+    }
+    // Open system dialer
     window.location.href = `tel:${phoneNumber}`;
-
-    // 2. Log Interaction (Mock)
-    // In reality, this would save a CallLog entity
   };
 
   const handleQuickCreate = (status: QuoteStatus) => {

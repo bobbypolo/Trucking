@@ -4,8 +4,7 @@
  * Server-authoritative; no local storage.
  */
 import { NotificationJob } from "../../types";
-import { API_URL } from "../config";
-import { getAuthHeaders } from "../authService";
+import { api } from "../api";
 
 /**
  * Fetch all notification jobs for the authenticated tenant from the server.
@@ -13,10 +12,7 @@ import { getAuthHeaders } from "../authService";
  */
 export const getRawNotificationJobs = async (): Promise<NotificationJob[]> => {
   try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/notification-jobs`, { headers });
-    if (!res.ok) return [];
-    return (await res.json()) as NotificationJob[];
+    return (await api.get("/notification-jobs")) as NotificationJob[];
   } catch {
     return [];
   }
@@ -30,16 +26,5 @@ export const getRawNotificationJobs = async (): Promise<NotificationJob[]> => {
 export const saveNotificationJob = async (
   job: NotificationJob,
 ): Promise<NotificationJob> => {
-  const headers = await getAuthHeaders();
-  const res = await fetch(`${API_URL}/notification-jobs`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(job),
-  });
-  if (!res.ok) {
-    throw new Error(
-      `[notifications] saveNotificationJob failed: HTTP ${res.status}`,
-    );
-  }
-  return (await res.json()) as NotificationJob;
+  return (await api.post("/notification-jobs", job)) as NotificationJob;
 };

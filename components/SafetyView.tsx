@@ -435,10 +435,10 @@ export const SafetyView: React.FC<Props> = ({
                   value: fmcsaData?.available && fmcsaData.data?.safetyRating
                     ? fmcsaData.data.safetyRating
                     : "N/A",
-                  target: fmcsaData?.isMock
-                    ? "Mock Data"
-                    : fmcsaData?.available
-                      ? "FMCSA Verified"
+                  target: fmcsaData?.available
+                    ? "FMCSA Verified"
+                    : (fmcsaData?.isMock && import.meta.env.DEV)
+                      ? "Mock Data (Dev)"
                       : "Target: 95+",
                   color: fmcsaData?.available && fmcsaData.data?.safetyRating === "Satisfactory"
                     ? "text-green-400"

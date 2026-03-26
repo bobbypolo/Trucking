@@ -152,7 +152,12 @@ describe("LoadDetailView S-5.1 button wiring", () => {
         ok: true,
         json: () =>
           Promise.resolve([
-            { id: "doc-1", filename: "BOL.pdf", type: "BOL", status: "Uploaded" },
+            {
+              id: "doc-1",
+              filename: "BOL.pdf",
+              type: "BOL",
+              status: "Uploaded",
+            },
           ]),
       });
       const user = userEvent.setup();
@@ -250,18 +255,18 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       });
     });
 
-    it("Show Route shows toast notification", async () => {
+    it("Show Route is disabled without VITE_GOOGLE_MAPS_API_KEY", async () => {
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
 
       await user.click(screen.getByText("Utilities"));
-      await user.click(screen.getByText("Show Route"));
 
-      await waitFor(() => {
-        expect(
-          screen.getByText(/requires google maps api key/i),
-        ).toBeInTheDocument();
-      });
+      const showRouteBtn = screen.getByText("Show Route").closest("button");
+      expect(showRouteBtn).toBeTruthy();
+      expect(showRouteBtn!.disabled).toBe(true);
+      expect(showRouteBtn!.title).toBe(
+        "Configure VITE_GOOGLE_MAPS_API_KEY to enable",
+      );
     });
   });
 
