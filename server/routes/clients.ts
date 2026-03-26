@@ -47,7 +47,10 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/clients",
       });
-      if (isMissingTableError(error, "customers") || isMissingTableError(error, "archived_at")) {
+      if (
+        isMissingTableError(error, "customers") ||
+        isMissingTableError(error, "archived_at")
+      ) {
         try {
           const [rows]: any = await pool.query(
             "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
@@ -371,29 +374,26 @@ router.post(
       );
 
       try {
-        await db
-          .collection("companies")
-          .doc(id)
-          .set(
-            {
-              id,
-              name,
-              account_type,
-              email,
-              address,
-              city,
-              state,
-              zip,
-              tax_id,
-              phone,
-              mc_number,
-              dot_number,
-              load_numbering_config: normalizedLoadNumberingConfig,
-              accessorial_rates: normalizedAccessorialRates,
-              updatedAt: new Date().toISOString(),
-            },
-            { merge: true },
-          );
+        await db.collection("companies").doc(id).set(
+          {
+            id,
+            name,
+            account_type,
+            email,
+            address,
+            city,
+            state,
+            zip,
+            tax_id,
+            phone,
+            mc_number,
+            dot_number,
+            load_numbering_config: normalizedLoadNumberingConfig,
+            accessorial_rates: normalizedAccessorialRates,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true },
+        );
       } catch (firestoreError) {
         log.warn(
           { err: firestoreError },
@@ -564,7 +564,9 @@ router.get(
               entityClass: p.entity_class || p.type || "Customer",
               tags,
               isCustomer:
-                p.is_customer === 1 || p.isCustomer === 1 || p.type === "Customer",
+                p.is_customer === 1 ||
+                p.isCustomer === 1 ||
+                p.type === "Customer",
               isVendor:
                 p.is_vendor === 1 || p.isVendor === 1 || p.type === "Vendor",
               mcNumber: p.mc_number,
@@ -822,24 +824,29 @@ router.post(
 
       if (isMissingTableError(error, "parties")) {
         try {
-          const tagsJson =
-            tags && tags.length > 0 ? JSON.stringify(tags) : null;
-          const fallbackCustomerType =
-            entityClass === "Customer" ? "Direct Customer" : "Broker";
+          if (tags && tags.length > 0) {
+            log.warn(
+              { tags },
+              "Tags not persisted in fallback mode — customers table has no tags column",
+            );
+          }
+          const chassisJson = req.body.chassis_requirements
+            ? JSON.stringify(req.body.chassis_requirements)
+            : null;
           await pool.query(
             "REPLACE INTO customers (id, company_id, name, type, mc_number, dot_number, email, phone, address, payment_terms, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
               id || uuidv4(),
               finalTenantId,
               name,
-              fallbackCustomerType,
+              entityClass || type,
               mcNumber || null,
               dotNumber || null,
               req.body.email || null,
               req.body.phone || null,
               req.body.address || null,
               req.body.payment_terms || null,
-              tagsJson,
+              chassisJson,
             ],
           );
           return res.status(201).json({

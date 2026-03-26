@@ -104,9 +104,7 @@ const DEFAULT_DISPATCHER_PERMISSIONS: Record<string, boolean> = {
 
 function buildFallbackCompany(user: User): Company {
   const fallbackName =
-    user.name?.trim() ||
-    user.email?.split("@")[0]?.trim() ||
-    "Company";
+    user.name?.trim() || user.email?.split("@")[0]?.trim() || "Company";
   const accountType =
     user.role === "driver" || user.role === "owner_operator"
       ? "independent_driver"
@@ -415,7 +413,10 @@ export const CompanyProfile: React.FC<Props> = ({
       setCompany(buildFallbackCompany(user));
       setUsers([]);
       if (isDriver) setActiveTab("driver_cockpit");
-      setLoadingState("ready");
+      setLoadError(
+        err instanceof Error ? err.message : "Failed to load company data",
+      );
+      setLoadingState("error");
     }
   }, [resolvedCompanyId, user, isDriver]);
 
