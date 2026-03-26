@@ -15,6 +15,7 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
   }),
   getCompany: vi.fn().mockResolvedValue({ id: "company-1", name: "Test Co" }),
+  getCompanyUsers: vi.fn().mockResolvedValue([]),
   onUserChange: vi.fn(() => () => {}),
 }));
 
@@ -22,6 +23,12 @@ vi.mock("../../../services/authService", () => ({
 vi.mock("../../../services/storageService", () => ({
   generateInvoicePDF: vi.fn(),
   saveLoad: vi.fn().mockResolvedValue(undefined),
+  generateNextLoadNumber: vi.fn().mockReturnValue("LP-100"),
+}));
+
+// Mock brokerService for LoadSetupModal
+vi.mock("../../../services/brokerService", () => ({
+  getBrokers: vi.fn().mockResolvedValue([]),
 }));
 
 const mockUsers: User[] = [
@@ -83,15 +90,15 @@ describe("LoadBoardEnhanced +New button z-index (R-P6-04)", () => {
     vi.clearAllMocks();
   });
 
-  it("renders +New button when loads exist and onCreateLoad is provided", () => {
+  it("renders Create Load button when loads exist and onCreateLoad is provided", () => {
     render(<LoadBoardEnhanced {...defaultProps} />);
-    const newButton = screen.getByRole("button", { name: /new/i });
+    const newButton = screen.getByRole("button", { name: /create load/i });
     expect(newButton).toBeInTheDocument();
   });
 
-  it("+New button has z-index higher than sidebar toggle (z-20) and bottom panel (z-30)", () => {
+  it("Create Load button has z-index higher than sidebar toggle (z-20) and bottom panel (z-30)", () => {
     render(<LoadBoardEnhanced {...defaultProps} />);
-    const newButton = screen.getByRole("button", { name: /new/i });
+    const newButton = screen.getByRole("button", { name: /create load/i });
     // The button or its container should have z-40 or higher class
     const buttonOrParent = newButton.closest("[class*='z-']") || newButton;
     const classes = buttonOrParent.className;
@@ -99,18 +106,19 @@ describe("LoadBoardEnhanced +New button z-index (R-P6-04)", () => {
     expect(classes).toMatch(/z-40/);
   });
 
-  it("+New button calls onCreateLoad when clicked", async () => {
+  it("Create Load button opens internal setup modal when clicked", async () => {
     const user = userEvent.setup();
     render(<LoadBoardEnhanced {...defaultProps} />);
-    const newButton = screen.getByRole("button", { name: /new/i });
+    const newButton = screen.getByRole("button", { name: /create load/i });
     await user.click(newButton);
-    expect(onCreateLoad).toHaveBeenCalledTimes(1);
+    // Modal should appear instead of directly calling onCreateLoad
+    expect(screen.getByText("Setup New Load")).toBeInTheDocument();
   });
 
-  it("+New button is NOT rendered when onCreateLoad is not provided", () => {
+  it("Create Load button is NOT rendered when onCreateLoad is not provided", () => {
     const { onCreateLoad: _, ...propsWithout } = defaultProps;
     render(<LoadBoardEnhanced {...propsWithout} />);
-    const newButton = screen.queryByRole("button", { name: /new/i });
+    const newButton = screen.queryByRole("button", { name: /create load/i });
     expect(newButton).not.toBeInTheDocument();
   });
 

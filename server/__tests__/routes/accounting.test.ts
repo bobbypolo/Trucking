@@ -147,10 +147,15 @@ describe("R-P3-05: POST /api/accounting/sync-qb stub removed", () => {
   it("accounting.ts source does not contain 501 stub", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const accountingPath = path.resolve(__dirname, "../../routes/accounting.ts");
+    const accountingPath = path.resolve(
+      __dirname,
+      "../../routes/accounting.ts",
+    );
     const content = fs.readFileSync(accountingPath, "utf8");
     expect(content).not.toContain("501");
-    expect(content).not.toContain("QuickBooks integration is not yet available");
+    expect(content).not.toContain(
+      "QuickBooks integration is not yet available",
+    );
     expect(content).not.toContain("sync-qb");
   });
 });
@@ -171,7 +176,7 @@ describe("R-P5-03: PATCH /api/accounting/settlements/batch", () => {
     expect(res.body.updated).toBe(3);
   });
 
-  it("scopes update to tenant_id from auth context", async () => {
+  it("scopes update to company_id from auth context", async () => {
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     const app = buildApp();
     await request(app)

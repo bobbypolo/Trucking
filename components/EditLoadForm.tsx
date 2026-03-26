@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useRef,
+  useCallback,
+} from "react";
 import {
   LoadData,
   LOAD_STATUS,
@@ -38,8 +44,11 @@ import {
 } from "lucide-react";
 import { getBrokers } from "../services/brokerService";
 import { getCompany, getCompanyUsers } from "../services/authService";
+import { generateBolPDF } from "../services/storageService";
+import { api } from "../services/api";
 import { v4 as uuidv4 } from "uuid";
 import { Headset, AlertCircle, MessageSquare } from "lucide-react";
+import { Toast } from "./Toast";
 
 interface Props {
   initialData: Partial<LoadData>;
@@ -81,6 +90,16 @@ export const EditLoadForm: React.FC<Props> = ({
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [users, setUsers] = useState<User[]>(propUsers);
   const [showUtilities, setShowUtilities] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [showRateCard, setShowRateCard] = useState(false);
+  const stopMatrixRef = useRef<HTMLDivElement>(null);
+  const settlementRef = useRef<HTMLDivElement>(null);
+  const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
     const load = async () => {
@@ -128,8 +147,136 @@ export const EditLoadForm: React.FC<Props> = ({
     });
   };
 
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+    const legs = formData.legs || [];
+    const pickups = legs.filter((l) => l.type === "Pickup");
+    const dropoffs = legs.filter((l) => l.type === "Dropoff");
+    const hasPickupLocation = pickups.some(
+      (l) => l.location?.city || l.location?.address,
+    );
+    const hasDropoffLocation = dropoffs.some(
+      (l) => l.location?.city || l.location?.address,
+    );
+    if (
+      !hasPickupLocation &&
+      !formData.pickup?.city &&
+      !formData.pickup?.facilityName
+    ) {
+      errors.push("Pickup location must have at least a city or facility name");
+    }
+    if (
+      !hasDropoffLocation &&
+      !formData.dropoff?.city &&
+      !formData.dropoff?.facilityName
+    ) {
+      errors.push(
+        "Dropoff location must have at least a city or facility name",
+      );
+    }
+    if (!formData.status) {
+      errors.push("Load status is required");
+    }
+    return errors;
+  };
+
+  const handleSave = async () => {
+    if (isSubmitting || formData.isLocked) return;
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setToast({ message: errors[0], type: "error" });
+      return;
+    }
+    setValidationErrors([]);
+    setIsSubmitting(true);
+    try {
+      await onSave(formData as LoadData);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUtilityClick = useCallback(
+    async (util: string) => {
+      setShowUtilities(false);
+      switch (util) {
+        case "Print BOL":
+          if (formData.id) {
+            generateBolPDF(formData as LoadData);
+            setToast({ message: "BOL PDF generated", type: "success" });
+          } else {
+            setToast({
+              message: "Save load first to generate BOL",
+              type: "info",
+            });
+          }
+          break;
+        case "Carrier Rates":
+          setShowRateCard((prev) => !prev);
+          settlementRef.current?.scrollIntoView({ behavior: "smooth" });
+          break;
+        case "Load Stops":
+          stopMatrixRef.current?.scrollIntoView({ behavior: "smooth" });
+          break;
+        case "Documents":
+          if (formData.id) {
+            try {
+              await api.get(`/api/documents?loadId=${formData.id}`);
+              setToast({ message: "Documents loaded", type: "success" });
+            } catch {
+              setToast({ message: "Failed to load documents", type: "error" });
+            }
+          } else {
+            setToast({
+              message: "Save load first to view documents",
+              type: "info",
+            });
+          }
+          break;
+        case "Show Route":
+          if (hasGoogleMapsKey) {
+            const pickupLeg = (formData.legs || []).find(
+              (l) => l.type === "Pickup",
+            );
+            const dropoffLeg = (formData.legs || []).find(
+              (l) => l.type === "Dropoff",
+            );
+            const pickupLoc = pickupLeg?.location || formData.pickup;
+            const dropoffLoc = dropoffLeg?.location || formData.dropoff;
+            const origin = pickupLoc
+              ? `${pickupLoc.city}, ${pickupLoc.state}`
+              : "";
+            const dest = dropoffLoc
+              ? `${dropoffLoc.city}, ${dropoffLoc.state}`
+              : "";
+            if (origin && dest) {
+              window.open(
+                `https://www.google.com/maps/dir/${encodeURIComponent(origin)}/${encodeURIComponent(dest)}`,
+                "_blank",
+              );
+            } else {
+              setToast({
+                message: "Missing origin or destination for route",
+                type: "error",
+              });
+            }
+          }
+          break;
+      }
+    },
+    [formData, hasGoogleMapsKey],
+  );
+
   return (
     <div className="flex flex-col h-full bg-[#0a0f18] text-white rounded-2xl shadow-3xl overflow-hidden border border-slate-800">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onDismiss={() => setToast(null)}
+        />
+      )}
       {/* Top Breadcrumb/Status Row */}
       <div className="bg-slate-900 border-b border-slate-800 px-6 py-3 flex justify-between items-center shrink-0">
         <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
@@ -159,11 +306,11 @@ export const EditLoadForm: React.FC<Props> = ({
                   "Carrier Rates",
                   "Load Stops",
                   "Documents",
-                  "Show Route",
-                  "Audit Logs",
+                  ...(hasGoogleMapsKey ? ["Show Route"] : []),
                 ].map((util) => (
                   <button
                     key={util}
+                    onClick={() => handleUtilityClick(util)}
                     className="w-full text-left px-4 py-2 hover:bg-blue-600 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors"
                   >
                     {util}
@@ -244,27 +391,43 @@ export const EditLoadForm: React.FC<Props> = ({
             </h2>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="elfProNo" className="text-[9px] font-bold text-slate-500 uppercase">
+                <label
+                  htmlFor="elfProNo"
+                  className="text-[9px] font-bold text-slate-500 uppercase"
+                >
                   Pro No
                 </label>
-                <input id="elfProNo"
+                <input
+                  id="elfProNo"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase font-mono"
                   value={formData.loadNumber}
                   onChange={(e) =>
                     setFormData({ ...formData, loadNumber: e.target.value })
                   }
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="elfSpecial" className="text-[9px] font-bold text-slate-500 uppercase">
+                <label
+                  htmlFor="elfSpecial"
+                  className="text-[9px] font-bold text-slate-500 uppercase"
+                >
                   Special
                 </label>
-                <select id="elfSpecial"
+                <select
+                  id="elfSpecial"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white"
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 >
                   <option>STANDARD</option>
                   <option>HAZMAT</option>
@@ -273,31 +436,43 @@ export const EditLoadForm: React.FC<Props> = ({
               </div>
             </div>
             <div className="space-y-1">
-              <label htmlFor="elfCommodity" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfCommodity"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Commodity <span className="text-red-500">*</span>
               </label>
-              <input id="elfCommodity"
+              <input
+                id="elfCommodity"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                 value={formData.commodity}
                 onChange={(e) =>
                   setFormData({ ...formData, commodity: e.target.value })
                 }
                 disabled={formData.isLocked}
-                title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="elfLoadStatus" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfLoadStatus"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Load Status
               </label>
-              <select id="elfLoadStatus"
+              <select
+                id="elfLoadStatus"
                 className={`w-full bg-[#0a0f18] border rounded-lg p-2.5 text-xs font-bold uppercase transition-all ${formData.status === LOAD_STATUS.Active ? "border-blue-500 text-blue-400" : "border-slate-800 text-white"}`}
                 value={formData.status}
                 onChange={(e) =>
                   setFormData({ ...formData, status: e.target.value as any })
                 }
                 disabled={formData.isLocked}
-                title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
               >
                 {Object.entries(LOAD_STATUS).map(([key, val]) => (
                   <option key={key} value={val}>
@@ -307,10 +482,14 @@ export const EditLoadForm: React.FC<Props> = ({
               </select>
             </div>
             <div className="space-y-1">
-              <label htmlFor="elfEquipment" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfEquipment"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Equipment
               </label>
-              <select id="elfEquipment"
+              <select
+                id="elfEquipment"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                 value={formData.freightType}
                 onChange={(e) =>
@@ -320,7 +499,9 @@ export const EditLoadForm: React.FC<Props> = ({
                   })
                 }
                 disabled={formData.isLocked}
-                title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
               >
                 <option value="Dry Van">DRY VAN 53'</option>
                 <option value="Reefer">REEFER 53'</option>
@@ -336,17 +517,23 @@ export const EditLoadForm: React.FC<Props> = ({
               <MapPin className="w-4 h-4 text-purple-500" /> Relationships
             </h2>
             <div className="space-y-1">
-              <label htmlFor="elfCustomerBroker" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfCustomerBroker"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Customer / Broker <span className="text-red-500">*</span>
               </label>
-              <select id="elfCustomerBroker"
+              <select
+                id="elfCustomerBroker"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                 value={formData.brokerId}
                 onChange={(e) =>
                   setFormData({ ...formData, brokerId: e.target.value })
                 }
                 disabled={formData.isLocked}
-                title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
               >
                 <option value="">-- SELECT CUSTOMER --</option>
                 {brokers.map((b) => (
@@ -358,17 +545,25 @@ export const EditLoadForm: React.FC<Props> = ({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label htmlFor="elfDispatcher" className="text-[9px] font-bold text-slate-500 uppercase">
+                <label
+                  htmlFor="elfDispatcher"
+                  className="text-[9px] font-bold text-slate-500 uppercase"
+                >
                   Dispatcher
                 </label>
-                <select id="elfDispatcher"
+                <select
+                  id="elfDispatcher"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                   value={formData.dispatcherId}
                   onChange={(e) =>
                     setFormData({ ...formData, dispatcherId: e.target.value })
                   }
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 >
                   <option value="">-- UNASSIGNED --</option>
                   {users
@@ -381,46 +576,67 @@ export const EditLoadForm: React.FC<Props> = ({
                 </select>
               </div>
               <div className="space-y-1">
-                <label htmlFor="elfSalesman" className="text-[9px] font-bold text-slate-500 uppercase">
+                <label
+                  htmlFor="elfSalesman"
+                  className="text-[9px] font-bold text-slate-500 uppercase"
+                >
                   Salesman
                 </label>
-                <input id="elfSalesman"
+                <input
+                  id="elfSalesman"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                   placeholder="Enter Sales Rep"
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <label htmlFor="elfDispatchNotesInternal" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfDispatchNotesInternal"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Dispatch Notes (Internal)
               </label>
-              <textarea id="elfDispatchNotesInternal"
+              <textarea
+                id="elfDispatchNotesInternal"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white h-12"
                 value={formData.dispatchNotes}
                 onChange={(e) =>
                   setFormData({ ...formData, dispatchNotes: e.target.value })
                 }
                 disabled={formData.isLocked}
-                title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
               />
             </div>
           </div>
 
           {/* Column 3: Financial Synthesis */}
-          <div className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50">
+          <div
+            ref={settlementRef}
+            className="space-y-4 bg-slate-900/30 p-6 rounded-2xl border border-slate-800/50"
+          >
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <DollarSign className="w-4 h-4 text-green-500" /> Settlement
               Deepening
             </h2>
             <div className="space-y-1">
-              <label htmlFor="elfGrossPayRevenue" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfGrossPayRevenue"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Gross Pay (Revenue)
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-600" />
-                <input id="elfGrossPayRevenue"
+                <input
+                  id="elfGrossPayRevenue"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-white font-mono font-bold"
                   type="number"
                   value={formData.carrierRate}
@@ -431,17 +647,25 @@ export const EditLoadForm: React.FC<Props> = ({
                     })
                   }
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <label htmlFor="elfCarrierPayExp" className="text-[9px] font-bold text-slate-500 uppercase">
+              <label
+                htmlFor="elfCarrierPayExp"
+                className="text-[9px] font-bold text-slate-500 uppercase"
+              >
                 Carrier Pay (Exp)
               </label>
               <div className="relative">
                 <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-600" />
-                <input id="elfCarrierPayExp"
+                <input
+                  id="elfCarrierPayExp"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-white font-mono font-bold"
                   type="number"
                   value={formData.driverPay}
@@ -452,7 +676,11 @@ export const EditLoadForm: React.FC<Props> = ({
                     })
                   }
                   disabled={formData.isLocked}
-                  title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                  title={
+                    formData.isLocked
+                      ? "Load is locked for invoicing"
+                      : undefined
+                  }
                 />
               </div>
             </div>
@@ -478,16 +706,64 @@ export const EditLoadForm: React.FC<Props> = ({
                 </div>
               </div>
             </div>
+            {/* Rate Card (toggled from Carrier Rates utility) */}
+            {showRateCard && (
+              <div className="bg-[#0a0f18] border border-blue-500/20 rounded-xl p-3 space-y-2">
+                <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                  Rate Card Summary
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div>
+                    <span className="text-slate-500 font-bold">
+                      Carrier Rate:
+                    </span>{" "}
+                    <span className="text-white font-mono">
+                      ${(formData.carrierRate || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">
+                      Driver Pay:
+                    </span>{" "}
+                    <span className="text-white font-mono">
+                      ${(formData.driverPay || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">
+                      Net Margin:
+                    </span>{" "}
+                    <span
+                      className={`font-mono font-bold ${margins.margin >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      ${margins.margin.toLocaleString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 font-bold">Margin %:</span>{" "}
+                    <span
+                      className={`font-mono font-bold ${margins.percentage >= 15 ? "text-blue-400" : "text-slate-400"}`}
+                    >
+                      {margins.percentage.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Driver Info Sub-Header Bar (Matches Driver Row in Dr. Dispatch) */}
         <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
           <div className="space-y-1 shrink-0">
-            <label htmlFor="elfTruck" className="text-[8px] font-black text-slate-600 uppercase">
+            <label
+              htmlFor="elfTruck"
+              className="text-[8px] font-black text-slate-600 uppercase"
+            >
               Truck #
             </label>
-            <input id="elfTruck"
+            <input
+              id="elfTruck"
               className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
               value={formData.truckNumber}
               onChange={(e) =>
@@ -495,14 +771,20 @@ export const EditLoadForm: React.FC<Props> = ({
               }
               placeholder="UNIT-"
               disabled={formData.isLocked}
-              title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+              title={
+                formData.isLocked ? "Load is locked for invoicing" : undefined
+              }
             />
           </div>
           <div className="space-y-1 shrink-0">
-            <label htmlFor="elfTrailer" className="text-[8px] font-black text-slate-600 uppercase">
+            <label
+              htmlFor="elfTrailer"
+              className="text-[8px] font-black text-slate-600 uppercase"
+            >
               Trailer #
             </label>
-            <input id="elfTrailer"
+            <input
+              id="elfTrailer"
               className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
               value={formData.trailerNumber}
               onChange={(e) =>
@@ -510,35 +792,49 @@ export const EditLoadForm: React.FC<Props> = ({
               }
               placeholder="TRL-"
               disabled={formData.isLocked}
-              title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+              title={
+                formData.isLocked ? "Load is locked for invoicing" : undefined
+              }
             />
           </div>
           <div className="space-y-1 shrink-0">
-            <label htmlFor="elfChassis" className="text-[8px] font-black text-slate-600 uppercase">
+            <label
+              htmlFor="elfChassis"
+              className="text-[8px] font-black text-slate-600 uppercase"
+            >
               Chassis
             </label>
-            <input id="elfChassis"
+            <input
+              id="elfChassis"
               className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
               value={formData.chassisNumber}
               onChange={(e) =>
                 setFormData({ ...formData, chassisNumber: e.target.value })
               }
               disabled={formData.isLocked}
-              title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+              title={
+                formData.isLocked ? "Load is locked for invoicing" : undefined
+              }
             />
           </div>
           <div className="space-y-1 flex-1 min-w-[150px]">
-            <label htmlFor="elfAssignedDriver" className="text-[8px] font-black text-slate-600 uppercase">
+            <label
+              htmlFor="elfAssignedDriver"
+              className="text-[8px] font-black text-slate-600 uppercase"
+            >
               Assigned Driver
             </label>
-            <select id="elfAssignedDriver"
+            <select
+              id="elfAssignedDriver"
               className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
               value={formData.driverId}
               onChange={(e) =>
                 setFormData({ ...formData, driverId: e.target.value })
               }
               disabled={formData.isLocked}
-              title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+              title={
+                formData.isLocked ? "Load is locked for invoicing" : undefined
+              }
             >
               <option value="">Assign Member...</option>
               {users
@@ -567,7 +863,7 @@ export const EditLoadForm: React.FC<Props> = ({
         </div>
 
         {/* Load Stops Execution Table */}
-        <div className="space-y-4">
+        <div ref={stopMatrixRef} className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Navigation className="w-4 h-4 text-blue-500" /> Stop Matrix
@@ -631,7 +927,8 @@ export const EditLoadForm: React.FC<Props> = ({
                       </span>
                     </td>
                     <td className="px-4 py-3 space-y-1">
-                      <input aria-label="Facility Name"
+                      <input
+                        aria-label="Facility Name"
                         className="w-full bg-transparent border-none p-0 text-[10px] text-white font-bold focus:ring-0 placeholder:text-slate-700"
                         placeholder="Facility Name"
                         value={leg.location.facilityName}
@@ -644,9 +941,14 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
-                      <input aria-label="123 Street Ave"
+                      <input
+                        aria-label="123 Street Ave"
                         className="w-full bg-transparent border-none p-0 text-[9px] text-slate-500 focus:ring-0 placeholder:text-slate-800"
                         placeholder="123 Street Ave"
                         value={leg.location.address}
@@ -659,11 +961,16 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3 flex items-center gap-1">
-                      <input aria-label="City"
+                      <input
+                        aria-label="City"
                         className="w-20 bg-transparent border-none p-0 text-[10px] text-white focus:ring-0"
                         placeholder="City"
                         value={leg.location.city}
@@ -673,9 +980,14 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
-                      <input aria-label="ST"
+                      <input
+                        aria-label="ST"
                         className="w-8 bg-transparent border-none p-0 text-[10px] text-slate-500 focus:ring-0 text-center"
                         placeholder="ST"
                         value={leg.location.state}
@@ -688,11 +1000,16 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3">
-                      <input aria-label="SEAL-"
+                      <input
+                        aria-label="SEAL-"
                         className="w-16 bg-transparent border-none p-0 text-[10px] text-blue-400 font-mono focus:ring-0"
                         placeholder="SEAL-"
                         value={leg.sealNumber}
@@ -700,11 +1017,16 @@ export const EditLoadForm: React.FC<Props> = ({
                           handleUpdateLeg(idx, { sealNumber: e.target.value })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <input aria-label="Pallet count"
+                      <input
+                        aria-label="Pallet count"
                         className="w-10 bg-transparent border-none p-0 text-[10px] text-white focus:ring-0 text-center"
                         type="number"
                         value={leg.pallets}
@@ -714,11 +1036,16 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <input aria-label="Weight"
+                      <input
+                        aria-label="Weight"
                         className="w-16 bg-transparent border-none p-0 text-[10px] text-white focus:ring-0 text-center"
                         type="number"
                         value={leg.weight}
@@ -728,11 +1055,16 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3 space-y-1">
-                      <input aria-label="Leg date"
+                      <input
+                        aria-label="Leg date"
                         className="w-24 bg-transparent border-none p-0 text-[10px] text-white focus:ring-0"
                         type="date"
                         value={leg.date}
@@ -740,9 +1072,14 @@ export const EditLoadForm: React.FC<Props> = ({
                           handleUpdateLeg(idx, { date: e.target.value })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
-                      <input aria-label="Appointment time"
+                      <input
+                        aria-label="Appointment time"
                         className="w-24 bg-transparent border-none p-0 text-[9px] text-slate-500 focus:ring-0"
                         type="time"
                         value={leg.appointmentTime}
@@ -752,7 +1089,11 @@ export const EditLoadForm: React.FC<Props> = ({
                           })
                         }
                         disabled={formData.isLocked}
-                        title={formData.isLocked ? "Load is locked for invoicing" : undefined}
+                        title={
+                          formData.isLocked
+                            ? "Load is locked for invoicing"
+                            : undefined
+                        }
                       />
                     </td>
                     <td className="px-4 py-3">
@@ -797,6 +1138,20 @@ export const EditLoadForm: React.FC<Props> = ({
         </div>
       </div>
 
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="px-6 py-2 bg-red-500/10 border-t border-red-500/20">
+          {validationErrors.map((err, i) => (
+            <div
+              key={i}
+              className="text-[10px] text-red-400 font-bold flex items-center gap-2"
+            >
+              <AlertTriangle className="w-3 h-3" /> {err}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Footer Actions */}
       <div className="p-6 bg-slate-900 border-t border-slate-800 flex justify-end gap-4 shrink-0 shadow-inner">
         <button
@@ -806,12 +1161,20 @@ export const EditLoadForm: React.FC<Props> = ({
           Discard
         </button>
         <button
-          disabled={formData.isLocked}
-          title={formData.isLocked ? "This load is locked for invoicing. Unlock to make changes." : undefined}
-          onClick={() => onSave(formData as LoadData)}
-          className="px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale"
+          disabled={formData.isLocked || isSubmitting}
+          title={
+            formData.isLocked
+              ? "This load is locked for invoicing. Unlock to make changes."
+              : undefined
+          }
+          onClick={handleSave}
+          className="px-12 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-blue-900/20 active:scale-95 transition-all disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
         >
-          {formData.id ? "Save Changes" : "Initialize Dispatch"}
+          {isSubmitting
+            ? "Saving..."
+            : formData.id
+              ? "Save Changes"
+              : "Initialize Dispatch"}
         </button>
       </div>
     </div>

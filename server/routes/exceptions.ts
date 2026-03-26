@@ -21,7 +21,7 @@ router.get(
     try {
       const { status, type, severity, entityType, entityId, ownerId } =
         req.query;
-      let query = "SELECT * FROM exceptions WHERE tenant_id = ?";
+      let query = "SELECT * FROM exceptions WHERE company_id = ?";
       const params: any[] = [req.user.tenantId];
       if (status) {
         query += " AND status = ?";
@@ -66,7 +66,7 @@ router.post(
     const id = uuidv4();
     try {
       await pool.query(
-        "INSERT INTO exceptions (id, tenant_id, type, status, severity, entity_type, entity_id, owner_user_id, team, sla_due_at, workflow_step, financial_impact_est, description, links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO exceptions (id, company_id, type, status, severity, entity_type, entity_id, owner_user_id, team, sla_due_at, workflow_step, financial_impact_est, description, links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           req.user.tenantId,
@@ -113,7 +113,7 @@ router.patch(
       req.body;
     try {
       const [old]: any = await pool.query(
-        "SELECT * FROM exceptions WHERE id = ? AND tenant_id = ?",
+        "SELECT * FROM exceptions WHERE id = ? AND company_id = ?",
         [id, req.user!.tenantId],
       );
       if (old.length === 0) return res.status(404).json({ error: "Not found" });
@@ -140,7 +140,7 @@ router.patch(
         query += ", resolved_at = CURRENT_TIMESTAMP";
       }
 
-      query += " WHERE id = ? AND tenant_id = ?";
+      query += " WHERE id = ? AND company_id = ?";
       params.push(id, req.user!.tenantId);
 
       await pool.query(query, params);
@@ -198,7 +198,7 @@ router.get(
   async (req: any, res) => {
     try {
       const [rows] = await pool.query(
-        "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.tenant_id = ? ORDER BY ee.timestamp DESC",
+        "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.company_id = ? ORDER BY ee.timestamp DESC",
         [req.params.id, req.user!.tenantId],
       );
       res.json(rows);

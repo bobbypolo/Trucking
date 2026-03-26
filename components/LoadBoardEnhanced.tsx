@@ -20,8 +20,10 @@ import {
   Plus,
 } from "lucide-react";
 import { LoadList } from "./LoadList";
+import { LoadSetupModal } from "./LoadSetupModal";
 import { LoadData, User, Broker } from "../types";
 import { EmptyState } from "./EmptyState";
+import { useCurrentUser } from "../hooks/useCurrentUser";
 
 interface LoadBoardExpandedProps {
   loads: LoadData[];
@@ -33,6 +35,7 @@ interface LoadBoardExpandedProps {
   canViewRates: boolean;
   onOpenHub?: (tab: "messaging", startCall?: boolean) => void;
   onCreateLoad?: () => void;
+  testId?: string;
 }
 
 export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
@@ -45,9 +48,33 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   canViewRates,
   onOpenHub,
   onCreateLoad,
+  testId,
 }) => {
+  const currentUser = useCurrentUser();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGridViewOpen, setIsGridViewOpen] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
+  const handleCreateLoad = () => {
+    if (currentUser) {
+      setShowCreateModal(true);
+    } else if (onCreateLoad) {
+      onCreateLoad();
+    }
+  };
+
+  const handleSetupContinue = (
+    _brokerId: string,
+    _driverId: string,
+    _loadNumber?: string,
+    _callNotes?: string,
+  ) => {
+    setShowCreateModal(false);
+    // Params will be used when EditLoadForm integration is wired by parent (App.tsx)
+    if (onCreateLoad) {
+      onCreateLoad();
+    }
+  };
   const [visibleColumns, setVisibleColumns] = useState<string[]>([
     "loadNumber",
     "status",
@@ -177,7 +204,10 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#020617] relative overflow-hidden">
+    <div
+      className="h-full flex flex-col bg-[#020617] relative overflow-hidden"
+      data-testid={testId || "team2-load-board-shell"}
+    >
       <div className="flex-1 flex overflow-hidden">
         {/* Main Card View (Original Component) */}
         <div className="flex-1 overflow-hidden flex flex-col">
@@ -189,7 +219,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                 description="Create your first load to get started."
                 action={
                   onCreateLoad
-                    ? { label: "Create Load", onClick: onCreateLoad }
+                    ? { label: "Create Load", onClick: handleCreateLoad }
                     : undefined
                 }
               />
@@ -329,15 +359,16 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
           </div>
         </div>
 
-        {/* +New Load Floating Action Button */}
+        {/* +Create Load Floating Action Button */}
         {onCreateLoad && (
           <button
-            onClick={onCreateLoad}
+            onClick={handleCreateLoad}
+            data-testid="team2-load-board-create-load-fab"
             className="absolute bottom-20 right-6 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl shadow-2xl z-40 hover:scale-110 transition-all flex items-center gap-2"
           >
             <Plus className="w-5 h-5" />
             <span className="text-xs font-black uppercase tracking-widest">
-              New
+              Create Load
             </span>
           </button>
         )}
@@ -564,6 +595,15 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
           )}
         </div>
       </div>
+
+      {/* Internal Load Setup Modal */}
+      {showCreateModal && currentUser && (
+        <LoadSetupModal
+          currentUser={currentUser}
+          onContinue={handleSetupContinue}
+          onCancel={() => setShowCreateModal(false)}
+        />
+      )}
     </div>
   );
 };

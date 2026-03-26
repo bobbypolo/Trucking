@@ -35,6 +35,12 @@ vi.mock("../../../services/directionsService", () => ({
   getDirections: vi.fn().mockResolvedValue({ points: "" }),
 }));
 
+vi.mock("../../../services/authService", () => ({
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
+  default: {},
+}));
+
 // ---------------------------------------------------------------------------
 // Factories
 // ---------------------------------------------------------------------------

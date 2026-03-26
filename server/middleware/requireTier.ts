@@ -18,6 +18,7 @@
 import { Request, Response, NextFunction } from "express";
 import pool from "../db";
 import { AuthenticatedRequest } from "./requireAuth";
+import { createChildLogger } from "../lib/logger";
 
 export type SubscriptionTier =
   | "Records Vault"
@@ -115,10 +116,19 @@ export function requireTier(
         req as TierCachedRequest,
         companyId,
       );
-    } catch {
-      res.status(500).json({
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: (req as any).correlationId,
+        route: "requireTier",
+      });
+      log.error(
+        { err: error, companyId, allowedTiers },
+        "Failed to verify subscription tier",
+      );
+      res.status(503).json({
         error: "Failed to verify subscription tier.",
         error_code: "TIER_DB_ERROR_001",
+        retryable: true,
       });
       return;
     }

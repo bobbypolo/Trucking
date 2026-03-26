@@ -91,9 +91,9 @@ describe("LoadList component", () => {
 
   it("displays pickup city for each load", () => {
     render(<LoadList {...defaultProps} />);
-    expect(screen.getByText(/Chicago/)).toBeInTheDocument();
-    expect(screen.getByText(/Atlanta/)).toBeInTheDocument();
-    expect(screen.getByText(/Houston/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Chicago/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Atlanta/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Houston/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("filters loads by search term", async () => {

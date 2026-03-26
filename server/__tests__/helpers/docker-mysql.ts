@@ -11,48 +11,25 @@ import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = path.resolve(__dirname, "../../../migrations");
+const MIGRATIONS_DIR = path.resolve(__dirname, "../../migrations");
 
 // Load env from project root
 const projectRoot = path.resolve(__dirname, "../../../");
 dotenv.config({ path: path.join(projectRoot, ".env") });
 
-const MIGRATION_ORDER = [
-  "001_baseline.sql",
-  "002_add_version_columns.sql",
-  "002_load_status_normalization.sql",
-  "003_enhance_dispatch_events.sql",
-  "003_operational_entities.sql",
-  "004_idempotency_keys.sql",
-  "005_documents_table.sql",
-  "006_add_load_legs_lat_lng.sql",
-  "007_ocr_results.sql",
-  "008_settlements.sql",
-  "009_settlement_adjustments.sql",
-  "010_add_firebase_uid_to_users.sql",
-  "011_accounting_financial_ledger.sql",
-  "012_accounting_v3_extensions.sql",
-  "013_ifta_intelligence.sql",
-  "014_companies_visibility_settings.sql",
-  "015_add_users_phone.sql",
-  "016_exception_management.sql",
-  "017_quotes_leads_bookings.sql",
-  "018_messages_threads.sql",
-  "019_tasks_workitems.sql",
-  "020_ops_recovery.sql",
-  "021_contacts_providers.sql",
-  "022_client_archive.sql",
-  "023_add_loads_deleted_at.sql",
-  "024_safety_domain.sql",
-  "025_vault_docs.sql",
-  "026_notification_jobs.sql",
-  "027_add_subscription_tier.sql",
-  "028_stripe_subscriptions.sql",
-  "029_quickbooks_tokens.sql",
-  "030_gps_positions.sql",
-  "031_stripe_webhook_events.sql",
-  "032_parties_subsystem.sql",
-];
+/**
+ * Dynamically enumerate migration files from disk.
+ * Matches the production scanMigrationFiles() pattern in server/lib/migrator.ts:
+ * picks up all NNN_*.sql files sorted by filename.
+ * This eliminates brittle hand-maintained lists that silently skip new migrations.
+ */
+const MIGRATION_PATTERN = /^\d{3}_.*\.sql$/;
+function getMigrationOrder(): string[] {
+  return fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => MIGRATION_PATTERN.test(f))
+    .sort();
+}
 
 export function isContainerRunning(): boolean {
   try {
@@ -129,7 +106,7 @@ export async function runMigrations(
   pool: mysql.Pool,
 ): Promise<{ applied: number }> {
   let applied = 0;
-  for (const filename of MIGRATION_ORDER) {
+  for (const filename of getMigrationOrder()) {
     const filepath = path.join(MIGRATIONS_DIR, filename);
     if (!fs.existsSync(filepath)) continue;
     const content = fs.readFileSync(filepath, "utf-8");

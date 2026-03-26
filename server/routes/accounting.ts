@@ -29,7 +29,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
-        "SELECT * FROM gl_accounts WHERE tenant_id = ? AND is_active = TRUE ORDER BY account_number ASC",
+        "SELECT * FROM gl_accounts WHERE company_id = ? AND is_active = TRUE ORDER BY account_number ASC",
         [tenantId],
       );
       res.json(rows);
@@ -66,7 +66,7 @@ router.get(
             FROM journal_lines jl
             JOIN gl_accounts a ON jl.gl_account_id = a.id
             JOIN journal_entries je ON jl.journal_entry_id = je.id
-            WHERE jl.allocation_type = 'Load' AND jl.allocation_id = ? AND je.tenant_id = ?
+            WHERE jl.allocation_type = 'Load' AND jl.allocation_id = ? AND je.company_id = ?
             GROUP BY jl.gl_account_id, a.name, a.type
         `,
         [loadId, tenantId],
@@ -131,7 +131,7 @@ router.post(
 
       // 1. Post Header — always use auth-derived tenantId
       await connection.query(
-        "INSERT INTO journal_entries (id, tenant_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
+        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
         [
           id,
           tenantId,
@@ -192,7 +192,7 @@ router.post(
 
       // 1. Create Invoice Header — always use auth-derived tenantId
       await connection.query(
-        "INSERT INTO ar_invoices (id, tenant_id, customer_id, load_id, invoice_number, invoice_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO ar_invoices (id, company_id, customer_id, load_id, invoice_number, invoice_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           invoice.id,
           tenantId,
@@ -229,7 +229,7 @@ router.post(
       // 3. AUTO-POST TO GL — always use auth-derived tenantId
       const entryId = uuidv4();
       await connection.query(
-        "INSERT INTO journal_entries (id, tenant_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
+        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
         [
           entryId,
           tenantId,
@@ -318,7 +318,7 @@ router.post(
 
       // 1. Create Bill Header — always use auth-derived tenantId
       await connection.query(
-        "INSERT INTO ap_bills (id, tenant_id, vendor_id, bill_number, bill_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO ap_bills (id, company_id, vendor_id, bill_number, bill_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           bill.id,
           tenantId,
@@ -353,7 +353,7 @@ router.post(
       // 3. AUTO-POST TO GL — always use auth-derived tenantId
       const entryId = uuidv4();
       await connection.query(
-        "INSERT INTO journal_entries (id, tenant_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
+        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
         [
           entryId,
           tenantId,
@@ -423,7 +423,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const [rows]: any = await pool.query(
-        "SELECT * FROM ar_invoices WHERE tenant_id = ? ORDER BY invoice_date DESC",
+        "SELECT * FROM ar_invoices WHERE company_id = ? ORDER BY invoice_date DESC",
         [tenantId],
       );
       const enriched = await Promise.all(
@@ -456,7 +456,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const [rows]: any = await pool.query(
-        "SELECT * FROM ap_bills WHERE tenant_id = ? ORDER BY bill_date DESC",
+        "SELECT * FROM ap_bills WHERE company_id = ? ORDER BY bill_date DESC",
         [tenantId],
       );
       const enriched = await Promise.all(
@@ -489,7 +489,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const { driverId } = req.query;
-      let query = "SELECT * FROM driver_settlements WHERE tenant_id = ?";
+      let query = "SELECT * FROM driver_settlements WHERE company_id = ?";
       const params: any[] = [tenantId];
       if (driverId) {
         query += " AND driver_id = ?";
@@ -535,7 +535,7 @@ router.post(
 
       // 1. Create Settlement Header — always use auth-derived tenantId
       await connection.query(
-        "INSERT INTO driver_settlements (id, tenant_id, driver_id, settlement_date, period_start, period_end, total_earnings, total_deductions, total_reimbursements, net_pay, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO driver_settlements (id, company_id, driver_id, settlement_date, period_start, period_end, total_earnings, total_deductions, total_reimbursements, net_pay, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           set.id,
           tenantId,
@@ -572,7 +572,7 @@ router.post(
       // 3. AUTO-POST TO GL — always use auth-derived tenantId
       const entryId = uuidv4();
       await connection.query(
-        "INSERT INTO journal_entries (id, tenant_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
+        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
         [
           entryId,
           tenantId,
@@ -657,7 +657,7 @@ router.patch(
     try {
       const placeholders = ids.map(() => "?").join(",");
       const [result]: any = await pool.query(
-        `UPDATE driver_settlements SET status = ? WHERE tenant_id = ? AND id IN (${placeholders})`,
+        `UPDATE driver_settlements SET status = ? WHERE company_id = ? AND id IN (${placeholders})`,
         [status, tenantId, ...ids],
       );
       const updated = result.affectedRows || 0;
@@ -685,7 +685,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const { loadId, driverId, truckId } = req.query;
-      let query = "SELECT * FROM document_vault WHERE tenant_id = ?";
+      let query = "SELECT * FROM document_vault WHERE company_id = ?";
       const params: any[] = [tenantId];
       if (loadId) {
         query += " AND load_id = ?";
@@ -723,7 +723,7 @@ router.post(
     const doc = req.body;
     try {
       await pool.query(
-        "INSERT INTO document_vault (id, tenant_id, type, url, filename, load_id, driver_id, truck_id, vendor_id, customer_id, amount, date, state_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO document_vault (id, company_id, type, url, filename, load_id, driver_id, truck_id, vendor_id, customer_id, amount, date, state_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           doc.id || uuidv4(),
           tenantId,
@@ -762,7 +762,7 @@ router.patch(
     const tenantId = req.user.tenantId;
     try {
       await pool.query(
-        "UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ? AND tenant_id = ?",
+        "UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ? AND company_id = ?",
         [status, is_locked, req.params.id, tenantId],
       );
       res.json({ message: "Document status updated" });
@@ -789,7 +789,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
-        "SELECT * FROM ifta_trip_evidence WHERE tenant_id = ? AND load_id = ? ORDER BY timestamp ASC",
+        "SELECT * FROM ifta_trip_evidence WHERE company_id = ? AND load_id = ? ORDER BY timestamp ASC",
         [tenantId, req.params.loadId],
       );
       res.json(rows);
@@ -850,7 +850,7 @@ router.post(
     const audit = req.body;
     try {
       await pool.query(
-        "INSERT INTO ifta_trips_audit (id, tenant_id, truck_id, load_id, trip_date, start_odometer, end_odometer, total_miles, method, confidence_level, jurisdiction_miles, status, attested_by, attested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
+        "INSERT INTO ifta_trips_audit (id, company_id, truck_id, load_id, trip_date, start_odometer, end_odometer, total_miles, method, confidence_level, jurisdiction_miles, status, attested_by, attested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
         [
           uuidv4(),
           tenantId,
@@ -871,7 +871,7 @@ router.post(
       // Sync to legacy mileage_jurisdiction for backward compatibility
       for (const state in audit.jurisdictionMiles) {
         await pool.query(
-          "INSERT INTO mileage_jurisdiction (id, tenant_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO mileage_jurisdiction (id, company_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
           [
             uuidv4(),
             tenantId,
@@ -937,11 +937,11 @@ router.get(
       }
 
       const [mileageRows]: any = await pool.query(
-        "SELECT state_code, SUM(miles) as total_miles FROM mileage_jurisdiction WHERE tenant_id = ? GROUP BY state_code",
+        "SELECT state_code, SUM(miles) as total_miles FROM mileage_jurisdiction WHERE company_id = ? GROUP BY state_code",
         [tenantId],
       );
       const [fuelRows]: any = await pool.query(
-        "SELECT state_code, SUM(gallons) as total_gallons, SUM(total_cost) as total_cost FROM fuel_ledger WHERE tenant_id = ? GROUP BY state_code",
+        "SELECT state_code, SUM(gallons) as total_gallons, SUM(total_cost) as total_cost FROM fuel_ledger WHERE company_id = ? GROUP BY state_code",
         [tenantId],
       );
 
@@ -1022,7 +1022,7 @@ router.get(
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
-        "SELECT * FROM mileage_jurisdiction WHERE tenant_id = ? ORDER BY entry_date DESC LIMIT 50",
+        "SELECT * FROM mileage_jurisdiction WHERE company_id = ? ORDER BY entry_date DESC LIMIT 50",
         [tenantId],
       );
       res.json(rows);
@@ -1046,7 +1046,7 @@ router.post(
     const { truckId, loadId, date, stateCode, miles, source } = req.body;
     try {
       await pool.query(
-        "INSERT INTO mileage_jurisdiction (id, tenant_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO mileage_jurisdiction (id, company_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
           uuidv4(),
           tenantId,
@@ -1082,7 +1082,7 @@ router.post(
       await connection.beginTransaction();
       const entryId = uuidv4();
       await connection.query(
-        "INSERT INTO journal_entries (id, tenant_id, entry_date, reference_number, description, source_document_type) VALUES (?, ?, NOW(), ?, ?, ?)",
+        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type) VALUES (?, ?, NOW(), ?, ?, ?)",
         [
           entryId,
           tenantId,
@@ -1126,7 +1126,7 @@ router.post(
     const adj = req.body;
     try {
       await pool.query(
-        "INSERT INTO adjustment_entries (id, tenant_id, parent_entity_type, parent_entity_id, reason_code, description, amount_adjustment, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO adjustment_entries (id, company_id, parent_entity_type, parent_entity_id, reason_code, description, amount_adjustment, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         [
           uuidv4(),
           tenantId,
@@ -1166,7 +1166,7 @@ router.post(
         const id = item.id || uuidv4();
         if (type === "Fuel") {
           await connection.query(
-            "INSERT INTO fuel_ledger (id, tenant_id, state_code, gallons, total_cost, entry_date, truck_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO fuel_ledger (id, company_id, state_code, gallons, total_cost, entry_date, truck_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
               id,
               tenantId,
@@ -1179,7 +1179,7 @@ router.post(
           );
         } else if (type === "Bills") {
           await connection.query(
-            "INSERT INTO ap_bills (id, tenant_id, bill_number, total_amount, bill_date, status) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO ap_bills (id, company_id, bill_number, total_amount, bill_date, status) VALUES (?, ?, ?, ?, ?, ?)",
             [
               id,
               tenantId,
@@ -1191,7 +1191,7 @@ router.post(
           );
         } else if (type === "Invoices") {
           await connection.query(
-            "INSERT INTO ar_invoices (id, tenant_id, invoice_number, total_amount, invoice_date, status, customer_id, load_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO ar_invoices (id, company_id, invoice_number, total_amount, invoice_date, status, customer_id, load_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [
               id,
               tenantId,
@@ -1205,7 +1205,7 @@ router.post(
           );
         } else if (type === "Settlements") {
           await connection.query(
-            "INSERT INTO driver_settlements (id, tenant_id, driver_id, settlement_date, net_pay, status) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO driver_settlements (id, company_id, driver_id, settlement_date, net_pay, status) VALUES (?, ?, ?, ?, ?, ?)",
             [
               id,
               tenantId,

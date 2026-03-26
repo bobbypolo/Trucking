@@ -89,7 +89,9 @@ vi.mock("../../../components/ui/InputDialog", () => ({
     open ? (
       <div data-testid={`input-dialog-${title.replace(/\s+/g, "-")}`}>
         <span>{title}</span>
-        <button onClick={() => onSubmit("Engine overheating")}>SubmitInput</button>
+        <button onClick={() => onSubmit("Engine overheating")}>
+          SubmitInput
+        </button>
         <button onClick={onCancel}>CancelInput</button>
       </div>
     ) : null,
@@ -191,7 +193,7 @@ describe("DriverMobileHome coverage — lines 749-962", () => {
     const profileBtn = screen.getByText("Me");
     await user.click(profileBtn);
     expect(screen.getByText("Compliance Tasks")).toBeInTheDocument();
-    expect(screen.getByText("All Records Pass")).toBeInTheDocument();
+    expect(screen.getByText("No open load issues")).toBeInTheDocument();
   });
 
   it("renders the map tab with Fleet Tracking header", async () => {
@@ -200,7 +202,9 @@ describe("DriverMobileHome coverage — lines 749-962", () => {
     const mapBtn = screen.getByText("Live Map");
     await user.click(mapBtn);
     expect(screen.getByText("Fleet Tracking")).toBeInTheDocument();
-    expect(screen.getByText("GPS Connection Stable")).toBeInTheDocument();
+    expect(
+      screen.getByText("Tracking setup pending hardware integration"),
+    ).toBeInTheDocument();
   });
 
   it("renders breakdown flow when report issue -> report breakdown is triggered", async () => {

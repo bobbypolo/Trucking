@@ -74,3 +74,8 @@ PROJECT_BRIEF.md
 
 # Test seed fixtures â€” contains dev credentials, never commit
 fixtures/test-users.json
+
+# Team 1 local validation logs
+team1-frontend.*
+server/team1-backend.*
+
