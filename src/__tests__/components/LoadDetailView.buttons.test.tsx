@@ -35,9 +35,11 @@ vi.mock("../../../services/authService", () => ({
   onUserChange: vi.fn(() => () => {}),
 }));
 
-// Mock fetch for documents API
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock api client used by LoadDetailView for documents endpoint
+const mockApiGet = vi.fn();
+vi.mock("../../../services/api", () => ({
+  api: { get: (...args: any[]) => mockApiGet(...args) },
+}));
 
 const mockUsers: User[] = [
   {
@@ -117,10 +119,7 @@ describe("LoadDetailView S-5.1 button wiring", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve([]),
-    });
+    mockApiGet.mockResolvedValue({ documents: [] });
   });
 
   // R-P5-05: 8 REAL buttons
@@ -147,13 +146,16 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       expect(scrollSpy).toHaveBeenCalled();
     });
 
-    it("Documents fetches from /api/documents and shows panel", async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            { id: "doc-1", filename: "BOL.pdf", type: "BOL", status: "Uploaded" },
-          ]),
+    it("Documents fetches from /documents via api client and shows panel", async () => {
+      mockApiGet.mockResolvedValue({
+        documents: [
+          {
+            id: "doc-1",
+            filename: "BOL.pdf",
+            type: "BOL",
+            status: "Uploaded",
+          },
+        ],
       });
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
@@ -162,9 +164,8 @@ describe("LoadDetailView S-5.1 button wiring", () => {
       await user.click(screen.getByText("Documents"));
 
       await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledWith(
-          expect.stringContaining("/api/documents?loadId=load-1"),
-          expect.any(Object),
+        expect(mockApiGet).toHaveBeenCalledWith(
+          expect.stringContaining("/documents?load_id=load-1"),
         );
       });
     });

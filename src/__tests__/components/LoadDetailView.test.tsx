@@ -193,7 +193,8 @@ describe("LoadDetailView component", () => {
 
     it("displays broker name", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(screen.getByText("Alpha Logistics")).toBeInTheDocument();
+      const matches = screen.getAllByText("Alpha Logistics");
+      expect(matches.length).toBeGreaterThanOrEqual(1);
     });
 
     it("displays driver name", () => {
@@ -345,9 +346,7 @@ describe("LoadDetailView component", () => {
 
     it("renders Initialize Settlement button", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(
-        screen.getByText("Initialize Settlement"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Initialize Settlement")).toBeInTheDocument();
     });
   });
 
@@ -374,9 +373,8 @@ describe("LoadDetailView component", () => {
 
   describe("invoice generation", () => {
     it("calls createARInvoice when Initialize Settlement is clicked", async () => {
-      const { createARInvoice } = await import(
-        "../../../services/financialService"
-      );
+      const { createARInvoice } =
+        await import("../../../services/financialService");
       const user = userEvent.setup();
       render(<LoadDetailView {...defaultProps} />);
       await user.click(screen.getByText("Initialize Settlement"));
@@ -397,16 +395,16 @@ describe("LoadDetailView component", () => {
   });
 
   describe("vault documents", () => {
-    it("renders Inject Electronic Records placeholder", () => {
+    it("renders Open Documents button in artifact matrix", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(
-        screen.getByText("Inject Electronic Records"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Open Documents")).toBeInTheDocument();
     });
 
     it("shows BOL, POD, RATE CON, HAZMAT document types", () => {
       render(<LoadDetailView {...defaultProps} />);
-      expect(screen.getByText(/BOL, POD, RATE CON, HAZMAT/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/BOL, POD, RATE CON, HAZMAT/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -424,9 +422,7 @@ describe("LoadDetailView component", () => {
         pickup: { city: "", state: "" },
         dropoff: { city: "", state: "" },
       };
-      render(
-        <LoadDetailView {...defaultProps} load={minimal} />,
-      );
+      render(<LoadDetailView {...defaultProps} load={minimal} />);
       expect(screen.getByText("MIN-1")).toBeInTheDocument();
     });
   });

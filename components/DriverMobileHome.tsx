@@ -67,7 +67,7 @@ type ActiveTab =
 
 interface ToastState {
   message: string;
-  type: "success" | "error" | "info";
+  type: "success" | "error" | "info" | "warning";
 }
 
 const extensionForMimeType = (mimeType: string): string => {
