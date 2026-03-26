@@ -1,3 +1,5 @@
+-- UP
+
 CREATE TABLE IF NOT EXISTS call_logs (
   id VARCHAR(36) PRIMARY KEY,
   company_id VARCHAR(36) NOT NULL,

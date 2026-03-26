@@ -33,8 +33,8 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
     expect(appSource).toContain("Quotes & Booking");
   });
 
-  it("uses 'Fleet Map' label", () => {
-    expect(appSource).toContain("Fleet Map");
+  it("uses 'Telematics Setup' label", () => {
+    expect(appSource).toContain("Telematics Setup");
   });
 
   it("uses 'Schedule' label", () => {
@@ -142,7 +142,6 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "analytics",
     "loads",
     "quotes",
-    "map",
     "calendar",
     "network",
     "finance",
@@ -150,6 +149,7 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "safety",
     "audit",
     "company",
+    "telematics",
   ];
 
   it("extracts expected tab IDs from categories", () => {
@@ -160,9 +160,7 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
 
   for (const id of tabIds) {
     it(`"${id}" tab has a matching render conditional`, () => {
-      const renderPattern = new RegExp(
-        `activeTab\\s*===\\s*"${id}"\\s*&&\\s*`,
-      );
+      const renderPattern = new RegExp(`activeTab\\s*===\\s*"${id}"\\s*&&\\s*`);
       expect(appSource).toMatch(renderPattern);
     });
   }

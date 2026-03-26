@@ -20,12 +20,85 @@ import {
 } from "lucide-react";
 import { LoadData, LOAD_STATUS, LoadStatus, User, Incident } from "../types";
 
+type TrackingState =
+  | "configured-live"
+  | "configured-idle"
+  | "not-configured"
+  | "provider-error";
+
+type RouteStopKind = "pickup" | "dropoff";
+
+type RouteLocation = {
+  facilityName?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+};
+
+function getLoadStopLocation(
+  load: LoadData,
+  kind: RouteStopKind,
+): RouteLocation | null {
+  const legType = kind === "pickup" ? "pickup" : "dropoff";
+  const leg = load.legs?.find(
+    (candidate: any) =>
+      String(candidate?.type ?? "").toLowerCase() === legType &&
+      candidate?.location,
+  ) as any | undefined;
+
+  if (leg?.location) {
+    return leg.location as RouteLocation;
+  }
+
+  return kind === "pickup"
+    ? ((load.pickup as RouteLocation | undefined) ?? null)
+    : ((load.dropoff as RouteLocation | undefined) ?? null);
+}
+
+function formatStopLocation(
+  location: RouteLocation | null,
+  kind: RouteStopKind,
+): string {
+  if (!location) {
+    return `${kind === "pickup" ? "Pickup" : "Dropoff"} location unavailable`;
+  }
+
+  const pieces = [
+    location.facilityName?.trim(),
+    location.address?.trim(),
+    [location.city?.trim(), location.state?.trim()]
+      .filter(Boolean)
+      .join(", ")
+      .trim(),
+  ].filter((part): part is string => Boolean(part));
+
+  if (pieces.length === 0) {
+    return `${kind === "pickup" ? "Pickup" : "Dropoff"} location unavailable`;
+  }
+
+  return `${kind === "pickup" ? "Pickup" : "Dropoff"}: ${pieces.join(" · ")}`;
+}
+
+function formatRouteSummary(load: LoadData): string {
+  const pickup = formatStopLocation(
+    getLoadStopLocation(load, "pickup"),
+    "pickup",
+  ).replace(/^Pickup:\s*/, "");
+  const dropoff = formatStopLocation(
+    getLoadStopLocation(load, "dropoff"),
+    "dropoff",
+  ).replace(/^Dropoff:\s*/, "");
+
+  return `${pickup} → ${dropoff}`;
+}
+
 interface Props {
   loads: LoadData[];
   users: User[];
   incidents?: Incident[];
   onViewLoad?: (load: LoadData) => void;
   onSelectIncident?: (id: string) => void;
+  trackingState?: TrackingState;
 }
 
 export const GlobalMapView: React.FC<Props> = ({
@@ -34,6 +107,7 @@ export const GlobalMapView: React.FC<Props> = ({
   incidents = [],
   onViewLoad,
   onSelectIncident,
+  trackingState,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
@@ -92,6 +166,10 @@ export const GlobalMapView: React.FC<Props> = ({
       v.driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.activeLoad?.loadNumber.includes(searchTerm),
   );
+
+  const activeIncidentCount = incidents.filter(
+    (incident) => incident.status !== "Closed",
+  ).length;
 
   return (
     <div className="h-full flex flex-col bg-[#020617] text-slate-100 font-inter overflow-hidden relative">
@@ -206,11 +284,10 @@ export const GlobalMapView: React.FC<Props> = ({
                 <div className="bg-slate-950/50 border border-white/5 rounded-xl p-2.5 space-y-2">
                   <div className="flex justify-between items-center text-[8px] font-black uppercase text-blue-500">
                     <span>Load #{vehicle.activeLoad.loadNumber}</span>
-                    <span>ETA: 14:20</span>
+                    <span>Scheduled {vehicle.activeLoad.pickupDate}</span>
                   </div>
                   <div className="text-[9px] font-bold text-slate-300">
-                    {vehicle.activeLoad.pickup?.city ?? ""} →{" "}
-                    {vehicle.activeLoad.dropoff?.city ?? ""}
+                    {formatRouteSummary(vehicle.activeLoad)}
                   </div>
                 </div>
               )}
@@ -252,6 +329,49 @@ export const GlobalMapView: React.FC<Props> = ({
             </span>
             <Filter className="w-3.5 h-3.5 text-slate-500" />
           </div>
+
+          {/* Tracking state indicator in fleet status bar */}
+          {trackingState && (
+            <div
+              className="flex items-center gap-2 py-1"
+              data-testid="tracking-state-indicator"
+              data-tracking-state={trackingState}
+            >
+              {trackingState === "configured-live" && (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-[9px] font-bold text-green-400 uppercase tracking-widest">
+                    Live Tracking
+                  </span>
+                </>
+              )}
+              {trackingState === "configured-idle" && (
+                <>
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">
+                    Tracking Idle
+                  </span>
+                </>
+              )}
+              {trackingState === "not-configured" && (
+                <>
+                  <AlertCircle className="w-3 h-3 text-slate-500" />
+                  <span className="text-[9px] font-semibold text-slate-400 normal-case">
+                    GPS not configured — contact admin to set up tracking
+                  </span>
+                </>
+              )}
+              {trackingState === "provider-error" && (
+                <>
+                  <AlertCircle className="w-3 h-3 text-red-500" />
+                  <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">
+                    Tracking Unavailable
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5">
               <div className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
@@ -283,21 +403,34 @@ export const GlobalMapView: React.FC<Props> = ({
 
       {/* Bottom Panel: Alerts Tray */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex gap-4">
-        <div className="bg-yellow-500 border border-yellow-400/50 text-black px-6 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_30px_rgba(234,179,8,0.3)] animate-pulse cursor-pointer">
+        <div
+          className={`border px-6 py-3 rounded-2xl flex items-center gap-3 shadow-[0_0_30px_rgba(234,179,8,0.3)] cursor-pointer ${activeIncidentCount > 0 ? "bg-yellow-500 border-yellow-400/50 text-black animate-pulse" : "bg-emerald-500 border-emerald-400/50 text-black"}`}
+        >
           <AlertCircle className="w-4 h-4" />
           <span className="text-[10px] font-black uppercase tracking-widest">
-            3 Units Off-Route Warning
+            {activeIncidentCount > 0
+              ? `${activeIncidentCount} Active Incident${activeIncidentCount === 1 ? "" : "s"}`
+              : "Fleet Tracking Stable"}
           </span>
         </div>
 
         <div className="bg-[#0a0f1e]/80 backdrop-blur-xl border border-white/10 rounded-2xl p-2.5 flex items-center gap-2 shadow-2xl">
-          <button aria-label="Toggle map layers" className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg transition-transform active:scale-90">
+          <button
+            aria-label="Toggle map layers"
+            className="p-2.5 bg-blue-600 text-white rounded-xl shadow-lg transition-transform active:scale-90"
+          >
             <Layers className="w-4 h-4" />
           </button>
-          <button aria-label="Maximize map" className="p-2.5 text-slate-500 hover:text-white transition-colors">
+          <button
+            aria-label="Maximize map"
+            className="p-2.5 text-slate-500 hover:text-white transition-colors"
+          >
             <Maximize2 className="w-4 h-4" />
           </button>
-          <button aria-label="Change map style" className="p-2.5 text-slate-500 hover:text-white transition-colors">
+          <button
+            aria-label="Change map style"
+            className="p-2.5 text-slate-500 hover:text-white transition-colors"
+          >
             <MapIcon className="w-4 h-4" />
           </button>
         </div>

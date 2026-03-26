@@ -17,11 +17,14 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
   const { signal, headers: customHeaders, ...restOptions } = options;
 
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(customHeaders || {}),
-  };
+  const headers: Record<string, string> = {};
+  if (!(restOptions.body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  Object.assign(headers, customHeaders || {});
 
   let response: Response;
   try {
@@ -44,11 +47,14 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
       // First 401: force-refresh token and retry once before giving up.
       const freshToken = await forceRefreshToken();
 
-      const retryHeaders = {
-        "Content-Type": "application/json",
-        ...(freshToken ? { Authorization: `Bearer ${freshToken}` } : {}),
-        ...(customHeaders || {}),
-      };
+      const retryHeaders: Record<string, string> = {};
+      if (!(restOptions.body instanceof FormData)) {
+        retryHeaders["Content-Type"] = "application/json";
+      }
+      if (freshToken) {
+        retryHeaders["Authorization"] = `Bearer ${freshToken}`;
+      }
+      Object.assign(retryHeaders, customHeaders || {});
 
       let retryResponse: Response;
       try {
@@ -120,4 +126,9 @@ export const api = {
     }),
   delete: (endpoint: string, opts?: ApiFetchOptions) =>
     apiFetch(endpoint, { method: "DELETE", ...opts }),
+  postFormData: async (
+    endpoint: string,
+    formData: FormData,
+    opts?: ApiFetchOptions,
+  ) => apiFetch(endpoint, { method: "POST", body: formData, ...opts }),
 };

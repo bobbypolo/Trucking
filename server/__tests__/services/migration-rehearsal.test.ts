@@ -86,14 +86,14 @@ describe("R-PV-04: Migration Execution Order", () => {
     expect(first).toBe("001_baseline.sql");
   });
 
-  it("Tests R-PV-04 — parties_subsystem (032) is the highest numbered migration", () => {
+  it("Tests R-PV-04 — tracking_provider_configs (039) is the highest numbered migration", () => {
     const numberedFiles = listMigrationFiles()
       .filter((f) => /^\d{3}_/.test(f))
       .filter((f) => !f.includes("rollback"));
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(32);
+    expect(maxPrefix).toBe(39);
   });
 });
 

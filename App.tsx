@@ -94,9 +94,6 @@ const Intelligence = React.lazy(() =>
     default: m.Intelligence,
   })),
 );
-const Settlements = React.lazy(() =>
-  import("./components/Settlements").then((m) => ({ default: m.Settlements })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -200,6 +197,11 @@ const GoogleMapsAPITester = React.lazy(() =>
 const CommandCenterView = React.lazy(() =>
   import("./components/CommandCenterView").then((m) => ({
     default: m.CommandCenterView,
+  })),
+);
+const TelematicsSetup = React.lazy(() =>
+  import("./components/TelematicsSetup").then((m) => ({
+    default: m.TelematicsSetup,
   })),
 );
 import { features } from "./config/features";
@@ -403,7 +405,7 @@ export default function App() {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
-    refreshData(loggedInUser);
+    // refreshData is triggered by the onUserChange listener in useEffect
     if (features.seedSystem) {
       seedDatabase();
     }
@@ -602,13 +604,7 @@ export default function App() {
           permission: "LOAD_CREATE",
           capability: "QUOTE_CREATE",
         },
-        {
-          id: "map",
-          label: "Fleet Map",
-          icon: MapIcon,
-          permission: "LOAD_DISPATCH",
-          capability: "LOAD_TRACK",
-        },
+        // Embedded map remains in Operations Center and Telematics Setup
         {
           id: "calendar",
           label: "Schedule",
@@ -663,6 +659,12 @@ export default function App() {
           id: "company",
           label: "Company Settings",
           icon: Building2,
+          permission: "ORG_SETTINGS_VIEW",
+        },
+        {
+          id: "telematics",
+          label: "Telematics Setup",
+          icon: Globe,
           permission: "ORG_SETTINGS_VIEW",
         },
         ...(features.apiTester
@@ -911,25 +913,26 @@ export default function App() {
                         (item.id === "operations-hub" ||
                           item.id === "messaging"));
                     return (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          if (item.id === "messaging" || item.id === "call") {
-                            setHubInitialTab(
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            if (item.id === "messaging" || item.id === "call") {
+                              setHubInitialTab(
                               item.id === "messaging" ? "messaging" : "crm",
                             );
                             if (item.id === "call")
                               setHubInitialShowCallForm(true);
                             setShowIntelligenceHub(true);
                           } else {
-                            handleNavigate(item.id);
-                          }
-                          setIsMobileMenuOpen(false);
-                          setIsAdding(false);
-                        }}
-                        title={sidebarCollapsed ? item.label : undefined}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isActive ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"} ${sidebarCollapsed ? "justify-center px-0" : ""}`}
-                      >
+                              handleNavigate(item.id);
+                            }
+                            setIsMobileMenuOpen(false);
+                            setIsAdding(false);
+                          }}
+                          data-testid={`nav-${item.id}`}
+                          title={sidebarCollapsed ? item.label : undefined}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isActive ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"} ${sidebarCollapsed ? "justify-center px-0" : ""}`}
+                        >
                         <Icon
                           className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-500" : "text-slate-700"}`}
                         />
@@ -1141,24 +1144,7 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {activeTab === "map" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <GlobalMapViewEnhanced
-                    loads={loads}
-                    users={companyUsers}
-                    incidents={incidents}
-                    onViewLoad={(l) => {
-                      setViewingLoad(l);
-                      openRecordWorkspace("LOAD", l.id);
-                    }}
-                    onSelectIncident={(incId) =>
-                      openRecordWorkspace("INCIDENT", incId)
-                    }
-                  />
-                </Suspense>
-              )}
+              {/* Embedded map remains in Operations Center */}
               {activeTab === "calendar" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1262,6 +1248,13 @@ export default function App() {
                     user={user}
                     onUserRegistryChange={() => refreshData(user)}
                   />
+                </Suspense>
+              )}
+              {activeTab === "telematics" && (
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <TelematicsSetup />
                 </Suspense>
               )}
               {features.apiTester && activeTab === "api-tester" && (

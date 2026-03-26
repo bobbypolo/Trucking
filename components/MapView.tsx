@@ -7,8 +7,15 @@ interface StopPosition {
   longitude: number | null;
 }
 
+type TrackingState =
+  | "configured-live"
+  | "configured-idle"
+  | "not-configured"
+  | "provider-error";
+
 interface Props {
   loads: LoadData[];
+  trackingState?: TrackingState;
 }
 
 /**
@@ -42,7 +49,9 @@ function getLoadPosition(load: LoadData): { x: number; y: number } | null {
   return { x, y };
 }
 
-export const MapView: React.FC<Props> = ({ loads }) => {
+export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
+  // When trackingState is not-configured, live telemetry feed is unavailable
+  const showLiveTelemetry = trackingState !== "not-configured";
   // Use DB-stored stop coordinates for load positions
   const loadPositions = useMemo(() => {
     return loads
@@ -201,41 +210,58 @@ export const MapView: React.FC<Props> = ({ loads }) => {
         ))}
       </div>
 
-      {/* Live Data Feed Overlay (Small) */}
-      <div className="absolute bottom-4 right-4 w-64 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-[8px] font-black text-blue-400 uppercase tracking-tighter flex items-center gap-1">
-            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />{" "}
-            Live Telemetry
-          </span>
-          <Info className="w-3 h-3 text-slate-600" />
-        </div>
-        <div className="space-y-4">
-          {loads
-            .filter((l) => l.status === LOAD_STATUS.Active)
-            .slice(0, 3)
-            .map((l) => (
-              <div
-                key={l.id}
-                className="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex items-center justify-between"
-              >
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-slate-500 uppercase">
-                    Load #{l.loadNumber}
-                  </span>
-                  <span className="text-xs font-bold text-white">
-                    {l.commodity || "General Freight"}
-                  </span>
+      {/* Live Data Feed Overlay (Small) — hidden when tracking not configured */}
+      {showLiveTelemetry ? (
+        <div className="absolute bottom-4 right-4 w-64 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[8px] font-black text-blue-400 uppercase tracking-tighter flex items-center gap-1">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />{" "}
+              Live Telemetry
+            </span>
+            <Info className="w-3 h-3 text-slate-600" />
+          </div>
+          <div className="space-y-4">
+            {loads
+              .filter((l) => l.status === LOAD_STATUS.Active)
+              .slice(0, 3)
+              .map((l) => (
+                <div
+                  key={l.id}
+                  className="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex items-center justify-between"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-black text-slate-500 uppercase">
+                      Load #{l.loadNumber}
+                    </span>
+                    <span className="text-xs font-bold text-white">
+                      {l.commodity || "General Freight"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-bold text-slate-400">
+                      Status: {l.status}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[8px] font-bold text-slate-400">
-                    Status: {l.status}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div
+          className="absolute bottom-4 right-4 w-64 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+          data-testid="route-info-overlay"
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
+              <Info className="w-3 h-3 text-slate-600" />
+              Route Information
+            </span>
+          </div>
+          <p className="text-[9px] text-slate-500">
+            Route information based on scheduled stops.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

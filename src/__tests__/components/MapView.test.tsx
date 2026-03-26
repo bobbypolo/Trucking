@@ -189,4 +189,45 @@ describe("MapView", () => {
     const pulseElements = container.querySelectorAll(".animate-ping");
     expect(pulseElements.length).toBe(0);
   });
+
+  it("hides live telemetry overlay when trackingState is not-configured", () => {
+    // Tests R-T3-05: MapView hides fake Live Telemetry when tracking not configured
+    const loads = [
+      makeLoadWithLegs(
+        { id: "1", loadNumber: "LD-700", status: LOAD_STATUS.Active as any },
+        [{ latitude: 32.0, longitude: -96.0 }],
+      ),
+    ];
+    render(<MapView loads={loads} trackingState="not-configured" />);
+    // Live Telemetry label must not appear
+    expect(screen.queryByText("Live Telemetry")).not.toBeInTheDocument();
+    // Should show route information fallback instead
+    expect(screen.getByTestId("route-info-overlay")).toBeInTheDocument();
+    expect(
+      screen.getByText(/route information based on scheduled stops/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows live telemetry overlay when trackingState is configured-live", () => {
+    const loads = [
+      makeLoadWithLegs(
+        { id: "1", loadNumber: "LD-800", status: LOAD_STATUS.Active as any },
+        [{ latitude: 32.0, longitude: -96.0 }],
+      ),
+    ];
+    render(<MapView loads={loads} trackingState="configured-live" />);
+    expect(screen.getByText("Live Telemetry")).toBeInTheDocument();
+  });
+
+  it("shows live telemetry when no trackingState prop (default behaviour)", () => {
+    // Tests backward compatibility: no trackingState prop = show telemetry (default was true)
+    const loads = [
+      makeLoadWithLegs(
+        { id: "1", loadNumber: "LD-900", status: LOAD_STATUS.Active as any },
+        [{ latitude: 32.0, longitude: -96.0 }],
+      ),
+    ];
+    render(<MapView loads={loads} />);
+    expect(screen.getByText("Live Telemetry")).toBeInTheDocument();
+  });
 });
