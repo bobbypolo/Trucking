@@ -86,14 +86,16 @@ describe("R-PV-04: Migration Execution Order", () => {
     expect(first).toBe("001_baseline.sql");
   });
 
-  it("Tests R-PV-04 — fix_parties_fk (037) is the highest numbered migration", () => {
+  it("Tests R-PV-04 — highest numbered migration covers 039_companies_subscription_tier", () => {
     const numberedFiles = listMigrationFiles()
       .filter((f) => /^\d{3}_/.test(f))
       .filter((f) => !f.includes("rollback"));
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(38);
+    // Must be at least 39 (039_companies_subscription_tier.sql).
+    // This assertion grows automatically as new migrations are added.
+    expect(maxPrefix).toBeGreaterThanOrEqual(39);
   });
 });
 
