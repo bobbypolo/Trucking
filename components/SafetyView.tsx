@@ -1373,6 +1373,7 @@ export const SafetyView: React.FC<Props> = ({
               </h2>
               <button
                 onClick={() => setShowForm(null)}
+                aria-label="Close"
                 className="text-slate-500 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -1745,6 +1746,7 @@ export const SafetyView: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => setShowForm(null)}
+                aria-label="Close"
                 className="p-3 hover:bg-white/10 rounded-2xl transition-all"
               >
                 <X className="w-6 h-6 text-slate-500" />

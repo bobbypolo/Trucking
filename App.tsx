@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import ConnectionBanner from "./components/ui/ConnectionBanner";
 import { Toast } from "./components/Toast";
@@ -194,7 +195,15 @@ export default function App() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [incidents, setIncidents] = useState<Incident[]>([]);
 
-  const [activeTab, setActiveTab] = useState("operations-hub");
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Derive activeTab from the URL path (e.g. /loads -> "loads", / -> "operations-hub")
+  const activeTab: string = (() => {
+    const seg = location.pathname.replace(/^\//, "") || "operations-hub";
+    return LEGACY_TAB_ALIASES[seg] ?? seg;
+  })();
+
   const [activeSubTab, setActiveSubTab] = useState<
     AccountingPortalTab | string | undefined
   >();
@@ -362,11 +371,11 @@ export default function App() {
 
     // Support Agile Workspace Entry
     if (loggedInUser.primaryWorkspace === "Quotes") {
-      setActiveTab("quotes");
+      navigate("/quotes");
     } else if (loggedInUser.primaryWorkspace === "Dispatch") {
-      setActiveTab("loads");
+      navigate("/loads");
     } else {
-      setActiveTab("operations-hub");
+      navigate("/operations-hub");
     }
   };
 
@@ -375,7 +384,7 @@ export default function App() {
     setIsAuthReady(false);
     setUser(null);
     setLoads([]);
-    setActiveTab("operations-hub");
+    navigate("/");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -389,7 +398,7 @@ export default function App() {
 
   const handleNavigate = (tab: string, subTab?: string) => {
     const nextTab = LEGACY_TAB_ALIASES[tab] ?? tab;
-    setActiveTab(nextTab);
+    navigate("/" + nextTab);
     setActiveSubTab(subTab || undefined);
     setShowIntelligenceHub(false);
     setIsMobileMenuOpen(false);

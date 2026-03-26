@@ -380,6 +380,7 @@ export const IssueSidebar: React.FC<Props> = ({
                       <div className="flex gap-2">
                         <button
                           onClick={() => onViewLoad(load)}
+                          aria-label="View load"
                           className="p-1.5 bg-slate-900/50 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all border border-white/5"
                         >
                           <ArrowRight className="w-3.5 h-3.5" />
@@ -391,6 +392,7 @@ export const IssueSidebar: React.FC<Props> = ({
                               : undefined
                           }
                           disabled={!canResolve}
+                          aria-label="Resolve issue"
                           title={
                             !canResolve
                               ? "Only admins, safety managers, and dispatchers can resolve issues"

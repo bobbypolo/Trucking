@@ -106,6 +106,8 @@ describe("R-PV-04: SQL File Validity", () => {
     const files = listMigrationFiles();
     for (const file of files) {
       const sql = readMigrationFile(file);
+      // Skip superseded no-op placeholder files — they intentionally contain no SQL
+      if (sql.includes("SUPERSEDED")) continue;
       expect(sql.trim().length, `${file} should not be empty`).toBeGreaterThan(
         0,
       );
@@ -118,9 +120,12 @@ describe("R-PV-04: SQL File Validity", () => {
   it("Tests R-PV-04 — numbered forward migrations (not rollback) have an -- UP section", () => {
     // 002_load_status_normalization_rollback.sql is a standalone DOWN-only script,
     // not a standard UP/DOWN migration — it is intentionally UP-section-free.
-    const forwardMigrations = listMigrationFiles().filter(
-      (f) => /^\d{3}_/.test(f) && !f.includes("rollback"),
-    );
+    // Superseded no-op placeholders are also excluded — they redirect to renumbered files.
+    const forwardMigrations = listMigrationFiles().filter((f) => {
+      if (!/^\d{3}_/.test(f) || f.includes("rollback")) return false;
+      const sql = readMigrationFile(f);
+      return !sql.includes("SUPERSEDED");
+    });
     for (const file of forwardMigrations) {
       const sql = readMigrationFile(file);
       const hasUp = sql.includes("-- UP");

@@ -219,21 +219,24 @@ describe("AccountingPortal Remediation (C-2)", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("R-P4-04: glAccountId not hardcoded as 5000", async () => {
+    it("R-P4-04: Maintenance tab shows unavailable state, no hardcoded service tickets", async () => {
       const user = userEvent.setup();
       render(<AccountingPortal {...defaultProps} />);
       await waitFor(() => {
         expect(screen.getByText("Overview")).toBeInTheDocument();
       });
-      // Switch to Maintenance tab to check glAccountId usage
+      // Switch to Maintenance tab
       await user.click(screen.getByText("Maintenance"));
       await waitFor(() => {
         expect(
-          screen.getByText("Maintenance Financials"),
+          screen.getByText("Maintenance Tracking"),
         ).toBeInTheDocument();
       });
-      // The glAccountId should be looked up from GL accounts, not hardcoded "5000"
-      // We verify by checking the source - this is validated by grep in the Python test
+      // No fake service tickets or hardcoded metrics should appear
+      expect(screen.queryByText("Speedco Maintenance")).not.toBeInTheDocument();
+      expect(screen.queryByText("TK-9025")).not.toBeInTheDocument();
+      expect(screen.queryByText("$12,450")).not.toBeInTheDocument();
+      expect(screen.queryByText("$0.42")).not.toBeInTheDocument();
     });
 
     it("R-P4-04: Audit log entries are not hardcoded", async () => {

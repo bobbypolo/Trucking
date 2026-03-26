@@ -609,33 +609,27 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         className="flex-1 relative overflow-hidden w-full h-full"
         data-testid="map-fallback"
       >
-        {/* Error banner — user-friendly message, no raw env var names */}
+        {/* Configuration notice — user-friendly message, no raw env var names */}
         <div
-          className="absolute top-0 left-0 right-0 z-10 bg-red-900/90 border-b border-red-700 px-4 py-2 flex items-center gap-2"
+          className="absolute top-0 left-0 right-0 z-10 bg-slate-800/90 border-b border-slate-700 px-4 py-2 flex items-center gap-2"
           data-testid="maps-api-key-error-banner"
           role="alert"
         >
-          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-          <span className="text-sm font-semibold text-red-200">
-            Map display requires configuration. Contact your administrator to
-            enable fleet map.
+          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+          <span className="text-sm font-semibold text-slate-300">
+            Fleet tracking map requires configuration — map services are not
+            enabled.
           </span>
-          {/* Technical detail only shown in development mode */}
-          {(import.meta as any).env.DEV && (
-            <span className="text-xs text-red-400/70 ml-2">
-              (dev: set VITE_GOOGLE_MAPS_API_KEY)
-            </span>
-          )}
         </div>
         <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
           <div className="text-center p-8 bg-slate-900/80 border border-slate-700 rounded-2xl max-w-md">
-            <MapIcon className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+            <MapPin className="w-12 h-12 text-slate-500 mx-auto mb-4" />
             <h2 className="text-lg font-bold text-white mb-2">
-              Map Unavailable
+              Map Configuration Required
             </h2>
             <p className="text-sm text-slate-400 mb-4">
-              Fleet map display requires administrator configuration. Load
-              positions and tracking data remain available.
+              Fleet tracking map requires Google Maps API configuration. Contact
+              your administrator to set up map services.
             </p>
             {/* Tracking state banner inside fallback card */}
             <div className="mb-4">{renderTrackingStateBanner()}</div>

@@ -374,6 +374,33 @@ describe("GET /api/safety/vendors — R-P1-05", () => {
     expect(res.body).toHaveLength(2);
   });
 
+  it("returns empty array when tenant has no vendors", async () => {
+    // Tests R-P1-05 — empty state must return [] not 500
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    const res = await request(app)
+      .get("/api/safety/vendors")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(0);
+  });
+
+  it("SQL query scopes vendors to authenticated tenant company_id", async () => {
+    // Tests R-P1-05 — tenant isolation: only this tenant's vendors returned
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/safety/vendors")
+      .set("Authorization", AUTH_HEADER);
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/company_id\s*=\s*\?/i);
+    expect((params as string[])[0]).toBe(TENANT_A);
+  });
+
   it("returns 500 on database error", async () => {
     mockQuery.mockRejectedValueOnce(new Error("DB error"));
 

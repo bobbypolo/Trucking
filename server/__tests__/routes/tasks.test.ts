@@ -379,6 +379,20 @@ describe("GET /api/work-items — success", () => {
     expect(queryCall[1]).toContain(50);
   });
 
+  it("SQL query scopes work items to authenticated tenant company_id", async () => {
+    // Tests that tenant isolation is enforced — company_id must be in query params
+    mockQuery.mockResolvedValueOnce([[], []]);
+
+    await request(app)
+      .get("/api/work-items")
+      .set("Authorization", "Bearer valid-token");
+
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0] as [string, unknown[]];
+    expect(sql).toMatch(/company_id\s*=\s*\?/i);
+    expect((params as unknown[])[0]).toBe("company-aaa");
+  });
+
   it("returns 500 on database error", async () => {
     mockQuery.mockRejectedValueOnce(new Error("DB connection error"));
     const res = await request(app)
