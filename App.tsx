@@ -104,6 +104,7 @@ import {
   Search,
   Globe,
   ChevronLeft,
+  Radio,
 } from "lucide-react";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
@@ -562,6 +563,12 @@ export default function App() {
           capability: "LOAD_TRACK",
         },
         { id: "network", label: "Onboarding", icon: Globe },
+        {
+          id: "telematics-setup",
+          label: "Telematics",
+          icon: Radio,
+          permission: "ORG_SETTINGS_VIEW",
+        },
       ],
     },
     {

@@ -287,7 +287,8 @@ export const OperationalMessaging: React.FC<Props> = ({
           </div>
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
-            <input aria-label="Find load/record stream..."
+            <input
+              aria-label="Find load/record stream..."
               type="text"
               placeholder="Find load/record stream..."
               className="w-full bg-slate-950/50 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-[11px] outline-none focus:border-blue-500/50 transition-all"
@@ -297,6 +298,21 @@ export const OperationalMessaging: React.FC<Props> = ({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar">
+          {filteredThreads.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
+              <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-white/5 mb-4">
+                <MessageSquare className="w-8 h-8 text-slate-700" />
+              </div>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
+                No message streams yet
+              </p>
+              <p className="text-[9px] text-slate-600 leading-relaxed max-w-[200px]">
+                {searchQuery
+                  ? "No streams match your search. Try a different term."
+                  : "Start a conversation from a load or entity to create an operational stream."}
+              </p>
+            </div>
+          )}
           {filteredThreads.map((thread) => (
             <button
               key={thread.id}
@@ -441,7 +457,8 @@ export const OperationalMessaging: React.FC<Props> = ({
                     </div>
                   </div>
                   <div className="relative">
-                    <textarea aria-label="Capture live tactical notes here..."
+                    <textarea
+                      aria-label="Capture live tactical notes here..."
                       className="w-full bg-slate-950/80 border border-white/10 rounded-2xl p-4 text-xs text-white h-20 resize-none outline-none focus:border-blue-500/50 transition-all"
                       placeholder="Capture live tactical notes here..."
                       value={noteText}
@@ -548,7 +565,8 @@ export const OperationalMessaging: React.FC<Props> = ({
                   <button className="p-3 text-slate-600 hover:text-slate-400 transition-colors">
                     <Paperclip className="w-5 h-5" />
                   </button>
-                  <textarea aria-label="Message text"
+                  <textarea
+                    aria-label="Message text"
                     className="flex-1 bg-transparent border-none outline-none py-3 px-2 text-xs font-medium text-white placeholder:text-slate-700 resize-none min-h-[44px]"
                     placeholder={`Message participants for Load #${selectedLoad.loadNumber}...`}
                     rows={1}
@@ -561,7 +579,9 @@ export const OperationalMessaging: React.FC<Props> = ({
                       }
                     }}
                   />
-                  {messageError && <p className="text-red-400 text-xs px-2">{messageError}</p>}
+                  {messageError && (
+                    <p className="text-red-400 text-xs px-2">{messageError}</p>
+                  )}
                   <button
                     onClick={handleSendMessage}
                     disabled={!messageText.trim() || isSubmitting}
@@ -593,7 +613,8 @@ export const OperationalMessaging: React.FC<Props> = ({
                 <div className="space-y-4">
                   <div className="relative">
                     <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input aria-label="SEARCH LOAD OR DRIVER TO LINK..."
+                    <input
+                      aria-label="SEARCH LOAD OR DRIVER TO LINK..."
                       type="text"
                       placeholder="SEARCH LOAD OR DRIVER TO LINK..."
                       className="w-full bg-slate-950 border border-white/10 rounded-2xl pl-12 pr-4 py-4 text-[10px] font-black uppercase text-white outline-none focus:border-blue-500/50"
@@ -754,7 +775,8 @@ export const OperationalMessaging: React.FC<Props> = ({
                 ))}
                 {isAddingTask ? (
                   <div className="space-y-2 p-3 bg-slate-900 rounded-xl border border-blue-500/30 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <input aria-label="Enter task objective..."
+                    <input
+                      aria-label="Enter task objective..."
                       autoFocus
                       className="w-full bg-transparent border-none outline-none text-[10px] text-white placeholder:text-slate-600 font-bold uppercase"
                       placeholder="Enter task objective..."
@@ -835,7 +857,8 @@ export const OperationalMessaging: React.FC<Props> = ({
                   <SearchIcon
                     className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${isSearchingParticipants ? "text-blue-500 animate-pulse" : "text-slate-600"}`}
                   />
-                  <input aria-label="Add participant (360 search)..."
+                  <input
+                    aria-label="Add participant (360 search)..."
                     type="text"
                     placeholder="Add participant (360 search)..."
                     className="w-full bg-slate-950 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[9px] outline-none focus:border-blue-500/50 transition-all text-white"
