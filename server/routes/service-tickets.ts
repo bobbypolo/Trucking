@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request } from "express";
+import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
@@ -9,6 +10,7 @@ import {
 } from "../schemas/service-ticket";
 import { serviceTicketRepository } from "../repositories/service-ticket.repository";
 import { createChildLogger } from "../lib/logger";
+import pool from "../db";
 
 const router = Router();
 
@@ -54,6 +56,41 @@ router.post(
         companyId,
         userId,
       );
+
+      // Cross-link: create a unified exception for Issues & Alerts visibility
+      try {
+        const exceptionId = uuidv4();
+        const slaDueAt = new Date(Date.now() + 24 * 3600 * 1000).toISOString();
+        await pool.query(
+          `INSERT INTO exceptions
+             (id, tenant_id, type, status, severity, entity_type, entity_id,
+              sla_due_at, workflow_step, description, links)
+           VALUES (?, ?, 'SERVICE_TICKET', 'OPEN', 2, 'TRUCK', ?, ?, 'triage', ?, ?)`,
+          [
+            exceptionId,
+            companyId,
+            req.body.unitId || req.body.unit_id || "",
+            slaDueAt,
+            req.body.description || "Service ticket created",
+            JSON.stringify({ serviceTicketId: ticket.id }),
+          ],
+        );
+        await pool.query(
+          `INSERT INTO exception_events (id, exception_id, action, notes, actor_name)
+           VALUES (?, ?, 'Exception Created', 'Auto-linked from service ticket', ?)`,
+          [uuidv4(), exceptionId, userId],
+        );
+      } catch (linkErr) {
+        const linkLog = createChildLogger({
+          correlationId: req.correlationId,
+          route: "POST /api/service-tickets",
+        });
+        linkLog.warn(
+          { err: linkErr, ticketId: ticket.id },
+          "Failed to create linked exception for service ticket (non-blocking)",
+        );
+      }
+
       res.status(201).json(ticket);
     } catch (error) {
       const log = createChildLogger({

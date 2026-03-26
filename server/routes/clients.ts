@@ -11,11 +11,22 @@ import { redactData, getVisibilitySettings } from "../helpers";
 import { createChildLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
 import {
+  ensureMySqlCompany,
   findSqlCompanyById,
   mapCompanyRowToApiCompany,
 } from "../lib/sql-auth";
 
 const router = Router();
+
+const isMissingTableError = (error: unknown, tableName?: string) => {
+  const err = error as { code?: string; message?: string };
+  if (!err) return false;
+  const codeMatches =
+    err.code === "ER_NO_SUCH_TABLE" || err.code === "ER_BAD_FIELD_ERROR";
+  if (!codeMatches) return false;
+  if (!tableName) return true;
+  return (err.message || "").includes(tableName);
+};
 
 // Clients / Brokers Routes
 router.get(
@@ -36,6 +47,24 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/clients",
       });
+      if (
+        isMissingTableError(error, "customers") ||
+        isMissingTableError(error, "archived_at")
+      ) {
+        try {
+          const [rows]: any = await pool.query(
+            "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
+            [req.params.companyId],
+          );
+          const settings = await getVisibilitySettings(req.params.companyId);
+          return res.json(redactData(rows, req.user.role, settings));
+        } catch (fallbackError) {
+          log.error(
+            { err: fallbackError },
+            "Fallback GET /api/clients without archived_at failed",
+          );
+        }
+      }
       log.error({ err: error }, "SERVER ERROR [GET /api/clients]");
       res.status(500).json({ error: "Database error" });
     }
@@ -200,11 +229,22 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "GET /api/companies",
+    });
     try {
       // Try Firestore first (primary source for company settings)
-      const doc = await db.collection("companies").doc(req.params.id).get();
-      if (doc.exists) {
-        return res.json(doc.data());
+      try {
+        const doc = await db.collection("companies").doc(req.params.id).get();
+        if (doc.exists) {
+          return res.json(doc.data());
+        }
+      } catch (firestoreError) {
+        log.warn(
+          { err: firestoreError },
+          "Firestore company lookup failed — falling back to MySQL",
+        );
       }
 
       // Fallback to MySQL — company may have been created during signup
@@ -214,12 +254,28 @@ router.get(
         return res.json(mapCompanyRowToApiCompany(sqlCompany));
       }
 
+      // Self-heal missing company rows so settings can still render and save.
+      const displayName = (req.user?.name || req.user?.email || "Company")
+        .split("@")[0]
+        .trim();
+      const safeDisplayName = displayName
+        ? displayName.charAt(0).toUpperCase() + displayName.slice(1)
+        : "Company";
+      await ensureMySqlCompany({
+        id: req.params.id,
+        name: `${safeDisplayName}'s Company`,
+        accountType: "owner_operator",
+        email: req.user?.email || null,
+        subscriptionStatus: "active",
+      });
+
+      const provisionedCompany = await findSqlCompanyById(req.params.id);
+      if (provisionedCompany) {
+        return res.json(mapCompanyRowToApiCompany(provisionedCompany));
+      }
+
       return res.status(404).json({ error: "Company not found" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/companies",
-      });
       log.error({ err: error }, "SERVER ERROR [GET /api/companies]");
       res.status(500).json({
         error: "Database error",
@@ -234,6 +290,10 @@ router.post(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/companies",
+    });
     const {
       id,
       name,
@@ -251,10 +311,70 @@ router.post(
       accessorial_rates,
     } = req.body;
     try {
-      await db
-        .collection("companies")
-        .doc(id)
-        .set(
+      const normalizedLoadNumberingConfig =
+        typeof load_numbering_config === "string"
+          ? JSON.parse(load_numbering_config)
+          : load_numbering_config;
+      const normalizedAccessorialRates =
+        typeof accessorial_rates === "string"
+          ? JSON.parse(accessorial_rates)
+          : accessorial_rates;
+
+      await pool.query(
+        `INSERT INTO companies (
+          id,
+          name,
+          account_type,
+          email,
+          address,
+          city,
+          state,
+          zip,
+          tax_id,
+          phone,
+          mc_number,
+          dot_number,
+          load_numbering_config,
+          accessorial_rates
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE
+          name = VALUES(name),
+          account_type = VALUES(account_type),
+          email = VALUES(email),
+          address = VALUES(address),
+          city = VALUES(city),
+          state = VALUES(state),
+          zip = VALUES(zip),
+          tax_id = VALUES(tax_id),
+          phone = VALUES(phone),
+          mc_number = VALUES(mc_number),
+          dot_number = VALUES(dot_number),
+          load_numbering_config = VALUES(load_numbering_config),
+          accessorial_rates = VALUES(accessorial_rates)`,
+        [
+          id,
+          name,
+          account_type,
+          email ?? null,
+          address ?? null,
+          city ?? null,
+          state ?? null,
+          zip ?? null,
+          tax_id ?? null,
+          phone ?? null,
+          mc_number ?? null,
+          dot_number ?? null,
+          normalizedLoadNumberingConfig
+            ? JSON.stringify(normalizedLoadNumberingConfig)
+            : null,
+          normalizedAccessorialRates
+            ? JSON.stringify(normalizedAccessorialRates)
+            : null,
+        ],
+      );
+
+      try {
+        await db.collection("companies").doc(id).set(
           {
             id,
             name,
@@ -268,24 +388,20 @@ router.post(
             phone,
             mc_number,
             dot_number,
-            load_numbering_config:
-              typeof load_numbering_config === "string"
-                ? JSON.parse(load_numbering_config)
-                : load_numbering_config,
-            accessorial_rates:
-              typeof accessorial_rates === "string"
-                ? JSON.parse(accessorial_rates)
-                : accessorial_rates,
+            load_numbering_config: normalizedLoadNumberingConfig,
+            accessorial_rates: normalizedAccessorialRates,
             updatedAt: new Date().toISOString(),
           },
           { merge: true },
         );
+      } catch (firestoreError) {
+        log.warn(
+          { err: firestoreError },
+          "Firestore company mirror failed; MySQL settings remain authoritative",
+        );
+      }
       res.status(201).json({ message: "Company created" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/companies",
-      });
       log.error({ err: error }, "SERVER ERROR [POST /api/companies]");
       res.status(500).json({ error: "Database error" });
     }
@@ -398,8 +514,20 @@ router.get(
             [p.id],
           );
 
+          // Parse entity_class from the type field (unified entity model)
+          // Entity classes: Customer, Broker, Vendor, Facility, Contractor
+          // Legacy types (Shipper, Vendor_Service, etc.) map to the new model
+          const entityClass = p.entity_class || p.type;
+          const tags = p.tags
+            ? typeof p.tags === "string"
+              ? JSON.parse(p.tags)
+              : p.tags
+            : [];
+
           return {
             ...p,
+            entityClass,
+            tags,
             isCustomer: !!p.is_customer,
             isVendor: !!p.is_vendor,
             mcNumber: p.mc_number,
@@ -418,7 +546,86 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/parties",
       });
+      if (isMissingTableError(error, "parties")) {
+        try {
+          const [customers]: any = await pool.query(
+            "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
+            [req.user!.tenantId],
+          );
+          const fallbackParties = customers.map((p: any) => {
+            const tags = p.tags
+              ? typeof p.tags === "string"
+                ? JSON.parse(p.tags)
+                : p.tags
+              : [];
+
+            return {
+              ...p,
+              entityClass: p.entity_class || p.type || "Customer",
+              tags,
+              isCustomer:
+                p.is_customer === 1 ||
+                p.isCustomer === 1 ||
+                p.type === "Customer",
+              isVendor:
+                p.is_vendor === 1 || p.isVendor === 1 || p.type === "Vendor",
+              mcNumber: p.mc_number,
+              dotNumber: p.dot_number,
+              contacts: [],
+              documents: [],
+              rates: [],
+              constraintSets: [],
+              catalogLinks: [],
+            };
+          });
+          return res.json(fallbackParties);
+        } catch (fallbackError) {
+          log.error(
+            { err: fallbackError },
+            "Fallback GET /api/parties via customers failed",
+          );
+        }
+      }
       log.error({ err: error }, "SERVER ERROR [GET /api/parties]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// PATCH /api/parties/:id/status — update party onboarding status
+router.patch(
+  "/api/parties/:id/status",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const { status } = req.body;
+    const tenantId = req.user.tenantId;
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/parties/:id/status",
+    });
+
+    if (!status) {
+      res.status(400).json({ error: "status is required" });
+      return;
+    }
+
+    try {
+      const [result]: any = await pool.query(
+        "UPDATE parties SET status = ? WHERE id = ? AND company_id = ?",
+        [status, req.params.id, tenantId],
+      );
+
+      if (result.affectedRows === 0) {
+        res.status(404).json({ error: "Party not found" });
+        return;
+      }
+
+      log.info({ partyId: req.params.id, status }, "Party status updated");
+      res.json({ message: "Party status updated" });
+    } catch (error) {
+      log.error({ err: error }, "Failed to update party status");
+      res.status(500).json({ error: "Database error" });
     }
   },
 );
@@ -431,8 +638,6 @@ router.post(
   async (req: any, res) => {
     const {
       id,
-      company_id,
-      companyId,
       name,
       type,
       status,
@@ -446,31 +651,44 @@ router.post(
       constraintSets,
       catalogLinks,
     } = req.body;
-    const finalCompanyId = companyId || company_id;
+
+    // Entity class and tags — passed alongside validated fields.
+    // entityClass maps to the `type` column for unified entity model.
+    // tags are stored as JSON in the `type` field metadata for future
+    // migration to a dedicated column when the DB schema is extended.
+    const entityClass = req.body.entityClass || type;
+    const tags = req.body.tags || [];
+    const partyId = id || uuidv4();
+
+    const finalCompanyId = req.user.tenantId;
     const finalTenantId = req.user.tenantId;
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
 
+      // Use entityClass as the type value for unified entity model
+      // Tags stored as JSON string in the tags column
+      const tagsJson = tags && tags.length > 0 ? JSON.stringify(tags) : null;
       await connection.query(
-        "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
-          id,
+          partyId,
           finalCompanyId,
           name,
-          type,
+          entityClass || type,
           isCustomer,
           isVendor,
           status,
           mcNumber,
           dotNumber,
           rating,
+          tagsJson,
         ],
       );
 
       // Contacts
       await connection.query("DELETE FROM party_contacts WHERE party_id = ?", [
-        id,
+        partyId,
       ]);
       if (contacts) {
         for (const c of contacts) {
@@ -478,7 +696,7 @@ router.post(
             "INSERT INTO party_contacts (id, party_id, name, role, email, phone, is_primary) VALUES (?, ?, ?, ?, ?, ?, ?)",
             [
               c.id || uuidv4(),
-              id,
+              partyId,
               c.name,
               c.role,
               c.email,
@@ -490,7 +708,9 @@ router.post(
       }
 
       // Unified Rates
-      await connection.query("DELETE FROM rate_rows WHERE party_id = ?", [id]);
+      await connection.query("DELETE FROM rate_rows WHERE party_id = ?", [
+        partyId,
+      ]);
       if (rates) {
         for (const r of rates) {
           const rid = r.id || uuidv4();
@@ -499,7 +719,7 @@ router.post(
             [
               rid,
               finalTenantId,
-              id,
+              partyId,
               r.catalogItemId,
               r.variantId,
               r.direction,
@@ -539,7 +759,7 @@ router.post(
 
       // Operational Constraints
       await connection.query("DELETE FROM constraint_sets WHERE party_id = ?", [
-        id,
+        partyId,
       ]);
       if (constraintSets) {
         for (const cs of constraintSets) {
@@ -549,7 +769,7 @@ router.post(
             [
               csid,
               finalTenantId,
-              id,
+              partyId,
               cs.appliesTo,
               cs.priority,
               cs.status,
@@ -580,25 +800,66 @@ router.post(
       // Catalog Links
       await connection.query(
         "DELETE FROM party_catalog_links WHERE party_id = ?",
-        [id],
+        [partyId],
       );
       if (catalogLinks) {
         for (const itemId of catalogLinks) {
           await connection.query(
             "INSERT INTO party_catalog_links (id, party_id, catalog_item_id) VALUES (?, ?, ?)",
-            [uuidv4(), id, itemId],
+            [uuidv4(), partyId, itemId],
           );
         }
       }
 
       await connection.commit();
-      res.status(201).json({ message: "Party synced with Unified Engine" });
+      res
+        .status(201)
+        .json({ message: "Party synced with Unified Engine", id: partyId });
     } catch (error) {
-      await connection.rollback();
       const log = createChildLogger({
         correlationId: req.correlationId,
         route: "POST /api/parties",
       });
+      await connection.rollback();
+
+      if (isMissingTableError(error, "parties")) {
+        try {
+          if (tags && tags.length > 0) {
+            log.warn(
+              { tags },
+              "Tags not persisted in fallback mode — customers table has no tags column",
+            );
+          }
+          const chassisJson = req.body.chassis_requirements
+            ? JSON.stringify(req.body.chassis_requirements)
+            : null;
+          await pool.query(
+            "REPLACE INTO customers (id, company_id, name, type, mc_number, dot_number, email, phone, address, payment_terms, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+              id || uuidv4(),
+              finalTenantId,
+              name,
+              entityClass || type,
+              mcNumber || null,
+              dotNumber || null,
+              req.body.email || null,
+              req.body.phone || null,
+              req.body.address || null,
+              req.body.payment_terms || null,
+              chassisJson,
+            ],
+          );
+          return res.status(201).json({
+            message: "Party synced with Unified Engine",
+            fallback: "customers",
+          });
+        } catch (fallbackError) {
+          log.error(
+            { err: fallbackError },
+            "Fallback POST /api/parties via customers failed",
+          );
+        }
+      }
       log.error({ err: error }, "SERVER ERROR [POST /api/parties]");
       res.status(500).json({
         error: "Database error",

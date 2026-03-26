@@ -14,7 +14,7 @@ vi.mock("../../../services/authService", () => ({
   CAPABILITY_PRESETS: {
     "Small Team": {},
     "Mid Fleet": {},
-    "Enterprise": {},
+    Enterprise: {},
   },
 }));
 
@@ -31,6 +31,16 @@ vi.mock("../../../components/EditUserModal", () => ({
   EditUserModal: () => null,
 }));
 
+// Mock the api module — CompanyProfile uses api.get/api.post, not globalThis.fetch
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn().mockResolvedValue({}),
+    post: vi.fn().mockResolvedValue({}),
+    patch: vi.fn().mockResolvedValue({}),
+  },
+}));
+
+import { api } from "../../../services/api";
 import { getCompany } from "../../../services/authService";
 import { CompanyProfile } from "../../../components/CompanyProfile";
 
@@ -75,51 +85,35 @@ function makeCompany(overrides: Record<string, unknown> = {}) {
   };
 }
 
-// Helper to mock fetch for billing and quickbooks endpoints
-function setupFetchMock(
-  responses: Record<string, { status: number; body: unknown }>,
-) {
-  const originalFetch = globalThis.fetch;
-  globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-    const url = typeof input === "string" ? input : input.toString();
-    for (const [pattern, resp] of Object.entries(responses)) {
-      if (url.includes(pattern)) {
-        return {
-          ok: resp.status >= 200 && resp.status < 300,
-          status: resp.status,
-          json: async () => resp.body,
-        } as Response;
-      }
+// Helper to set up api mock responses by endpoint pattern
+function setupApiMock(responses: Record<string, unknown>) {
+  vi.mocked(api.get).mockImplementation(async (endpoint: string) => {
+    for (const [pattern, body] of Object.entries(responses)) {
+      if (endpoint.includes(pattern)) return body;
     }
-    return { ok: true, status: 200, json: async () => ({}) } as Response;
+    return {};
   });
-  return originalFetch;
+  vi.mocked(api.post).mockImplementation(async (endpoint: string) => {
+    for (const [pattern, body] of Object.entries(responses)) {
+      if (endpoint.includes(pattern)) return body;
+    }
+    return {};
+  });
 }
 
 describe("CompanyProfile Billing & Subscription (S-402)", () => {
-  let originalFetch: typeof globalThis.fetch;
-
   beforeEach(() => {
     vi.clearAllMocks();
     // Default: billing portal OK, quickbooks status connected
-    originalFetch = setupFetchMock({
-      "/api/stripe/create-billing-portal": {
-        status: 200,
-        body: { url: "https://billing.stripe.com/session/test" },
+    setupApiMock({
+      "/stripe/create-billing-portal": {
+        url: "https://billing.stripe.com/session/test",
       },
-      "/api/quickbooks/status": {
-        status: 200,
-        body: { connected: true, companyName: "Test QB Co" },
-      },
-      "/api/quickbooks/auth-url": {
-        status: 200,
-        body: { url: "https://appcenter.intuit.com/connect/oauth2" },
+      "/quickbooks/status": { connected: true, companyName: "Test QB Co" },
+      "/quickbooks/auth-url": {
+        url: "https://appcenter.intuit.com/connect/oauth2",
       },
     });
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
   });
 
   // R-P4-06: Billing section shows current tier name and status badge
@@ -180,9 +174,9 @@ describe("CompanyProfile Billing & Subscription (S-402)", () => {
       fireEvent.click(manageBtn);
 
       await waitFor(() => {
-        expect(globalThis.fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/api/stripe/create-billing-portal"),
-          expect.objectContaining({ method: "POST" }),
+        expect(api.post).toHaveBeenCalledWith(
+          "/stripe/create-billing-portal",
+          expect.objectContaining({ stripeCustomerId: "cus_test123" }),
         );
       });
     });
@@ -216,25 +210,14 @@ describe("CompanyProfile Billing & Subscription (S-402)", () => {
     it("calls quickbooks auth-url API on click when not connected", async () => {
       mockGetCompany.mockResolvedValue(makeCompany());
       // Override: QB not connected
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === "string" ? input : input.toString();
-        if (url.includes("/api/quickbooks/status")) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({ connected: false }),
-          } as Response;
-        }
-        if (url.includes("/api/quickbooks/auth-url")) {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              url: "https://appcenter.intuit.com/connect/oauth2",
-            }),
-          } as Response;
-        }
-        return { ok: true, status: 200, json: async () => ({}) } as Response;
+      setupApiMock({
+        "/quickbooks/status": { connected: false },
+        "/quickbooks/auth-url": {
+          url: "https://appcenter.intuit.com/connect/oauth2",
+        },
+        "/stripe/create-billing-portal": {
+          url: "https://billing.stripe.com/session/test",
+        },
       });
 
       render(<CompanyProfile user={adminUser} />);
@@ -247,10 +230,7 @@ describe("CompanyProfile Billing & Subscription (S-402)", () => {
       fireEvent.click(connectBtn);
 
       await waitFor(() => {
-        expect(globalThis.fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/api/quickbooks/auth-url"),
-          expect.anything(),
-        );
+        expect(api.get).toHaveBeenCalledWith("/quickbooks/auth-url");
       });
     });
 
@@ -273,26 +253,8 @@ describe("CompanyProfile Billing & Subscription (S-402)", () => {
       mockGetCompany.mockResolvedValue(
         makeCompany({ stripeCustomerId: undefined }),
       );
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === "string" ? input : input.toString();
-        if (url.includes("/api/stripe/create-billing-portal")) {
-          return {
-            ok: false,
-            status: 503,
-            json: async () => ({ error: "Stripe not configured" }),
-          } as Response;
-        }
-        if (url.includes("/api/quickbooks/status")) {
-          return {
-            ok: false,
-            status: 503,
-            json: async () => ({
-              error: "QuickBooks integration is not configured",
-            }),
-          } as Response;
-        }
-        return { ok: true, status: 200, json: async () => ({}) } as Response;
-      });
+      // QB status also errors — both sections hidden
+      vi.mocked(api.get).mockRejectedValue(new Error("Service unavailable"));
 
       render(<CompanyProfile user={adminUser} />);
 
@@ -300,25 +262,14 @@ describe("CompanyProfile Billing & Subscription (S-402)", () => {
         expect(screen.getByText("Test Trucking Co")).toBeTruthy();
       });
 
-      // Billing section should not be rendered
+      // Billing section should not be rendered (no stripeCustomerId)
       expect(screen.queryByTestId("billing-section")).toBeNull();
     });
 
     it("hides quickbooks section when quickbooks returns 503", async () => {
       mockGetCompany.mockResolvedValue(makeCompany());
-      globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
-        const url = typeof input === "string" ? input : input.toString();
-        if (url.includes("/api/quickbooks/status")) {
-          return {
-            ok: false,
-            status: 503,
-            json: async () => ({
-              error: "QuickBooks integration is not configured",
-            }),
-          } as Response;
-        }
-        return { ok: true, status: 200, json: async () => ({}) } as Response;
-      });
+      // QB status call throws — should hide QB section
+      vi.mocked(api.get).mockRejectedValue(new Error("Service unavailable"));
 
       render(<CompanyProfile user={adminUser} />);
 

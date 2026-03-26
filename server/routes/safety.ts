@@ -160,7 +160,10 @@ router.post(
         correlationId: req.correlationId,
         route: "POST /api/safety/quiz-results",
       });
-      log.info({ resultId: id, quizId: quiz_id }, "Safety quiz result recorded");
+      log.info(
+        { resultId: id, quizId: quiz_id },
+        "Safety quiz result recorded",
+      );
       res.status(201).json({ message: "Quiz result recorded", id });
     } catch (error) {
       const log = createChildLogger({
@@ -277,6 +280,41 @@ router.post(
           notes ?? null,
         ],
       );
+
+      // Cross-link: create a unified exception for Issues & Alerts visibility
+      try {
+        const exceptionId = uuidv4();
+        const slaDueAt = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+        await pool.query(
+          `INSERT INTO exceptions
+             (id, tenant_id, type, status, severity, entity_type, entity_id,
+              sla_due_at, workflow_step, description, links)
+           VALUES (?, ?, 'MAINTENANCE_REQUEST', 'OPEN', 2, 'TRUCK', ?, ?, 'triage', ?, ?)`,
+          [
+            exceptionId,
+            companyId,
+            vehicle_id,
+            slaDueAt,
+            description || `Maintenance: ${type}`,
+            JSON.stringify({ maintenanceRecordId: id }),
+          ],
+        );
+        await pool.query(
+          `INSERT INTO exception_events (id, exception_id, action, notes, actor_name)
+           VALUES (?, ?, 'Exception Created', 'Auto-linked from maintenance record', ?)`,
+          [uuidv4(), exceptionId, req.user!.uid || "System"],
+        );
+      } catch (linkErr) {
+        const linkLog = createChildLogger({
+          correlationId: req.correlationId,
+          route: "POST /api/safety/maintenance",
+        });
+        linkLog.warn(
+          { err: linkErr, maintenanceId: id },
+          "Failed to create linked exception for maintenance (non-blocking)",
+        );
+      }
+
       const log = createChildLogger({
         correlationId: req.correlationId,
         route: "POST /api/safety/maintenance",
@@ -483,7 +521,9 @@ router.get(
   requireTenant,
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
-    const daysAhead = req.query.days ? parseInt(req.query.days as string, 10) : 30;
+    const daysAhead = req.query.days
+      ? parseInt(req.query.days as string, 10)
+      : 30;
     try {
       const certs = await checkExpiring(companyId, daysAhead);
       res.json(certs);
@@ -497,7 +537,6 @@ router.get(
     }
   },
 );
-
 
 // ---- FMCSA Safety Scores ----
 
@@ -516,7 +555,10 @@ router.get(
         correlationId: req.correlationId,
         route: "GET /api/safety/fmcsa/:dotNumber",
       });
-      log.error({ err: error, dotNumber }, "Failed to fetch FMCSA safety score");
+      log.error(
+        { err: error, dotNumber },
+        "Failed to fetch FMCSA safety score",
+      );
       res.status(500).json({ error: "Failed to fetch FMCSA safety score" });
     }
   },

@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IssueSidebar } from "../../../components/IssueSidebar";
@@ -7,6 +7,11 @@ import { LoadData, User, LOAD_STATUS, Issue } from "../../../types";
 
 vi.mock("../../../services/storageService", () => ({
   saveLoad: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../../../services/exceptionService", () => ({
+  getExceptions: vi.fn().mockResolvedValue([]),
+  updateException: vi.fn().mockResolvedValue(true),
 }));
 
 import { saveLoad } from "../../../services/storageService";
@@ -120,9 +125,11 @@ describe("IssueSidebar component", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the Action Center header when open", () => {
+  it("renders the Issues & Alerts header when open", async () => {
     render(<IssueSidebar {...defaultProps} />);
-    expect(screen.getByText("Action Center")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Issues & Alerts/)).toBeInTheDocument();
+    });
   });
 
   it("returns null when isOpen is false", () => {
@@ -132,30 +139,41 @@ describe("IssueSidebar component", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("displays active (non-resolved) issues for admin", () => {
+  it("displays active (non-resolved) issues for admin", async () => {
     render(<IssueSidebar {...defaultProps} />);
-    expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
     expect(screen.getByText("Trailer tire blowout")).toBeInTheDocument();
     expect(
       screen.getByText("Missing handoff documentation"),
     ).toBeInTheDocument();
   });
 
-  it("does not display resolved issues", () => {
+  it("does not display resolved issues", async () => {
     render(<IssueSidebar {...defaultProps} />);
-    expect(screen.queryByText("Driver pay discrepancy")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByText("Driver pay discrepancy"),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the issue count badge with correct number", () => {
+  it("shows the issue count badge with correct number", async () => {
     render(<IssueSidebar {...defaultProps} />);
-    // Admin sees all 3 active issues
-    expect(screen.getByText("3")).toBeInTheDocument();
+    // Admin sees 3 active load issues + 0 unified exceptions = 3
+    await waitFor(() => {
+      expect(screen.getByText("3")).toBeInTheDocument();
+    });
   });
 
-  it("filters issues for safety_manager role (Safety, Maintenance, Incident)", () => {
+  it("filters issues for safety_manager role (Safety, Maintenance, Incident)", async () => {
     const safetyUser = { ...mockUser, role: "safety_manager" as const };
     render(<IssueSidebar {...defaultProps} currentUser={safetyUser} />);
-    expect(screen.getByText("Trailer tire blowout")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Trailer tire blowout")).toBeInTheDocument();
+    });
     expect(
       screen.queryByText("Driver delayed at pickup"),
     ).not.toBeInTheDocument();
@@ -164,39 +182,48 @@ describe("IssueSidebar component", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("filters issues for dispatcher role (Dispatch, Handoff)", () => {
+  it("filters issues for dispatcher role (Dispatch, Handoff)", async () => {
     const dispatcherUser = { ...mockUser, role: "dispatcher" as const };
     render(<IssueSidebar {...defaultProps} currentUser={dispatcherUser} />);
-    expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
     expect(
       screen.getByText("Missing handoff documentation"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Trailer tire blowout")).not.toBeInTheDocument();
   });
 
-  it("filters issues for payroll_manager role (only Payroll category)", () => {
+  it("filters issues for payroll_manager role (only Payroll category)", async () => {
     const payrollUser = { ...mockUser, role: "payroll_manager" as const };
     render(<IssueSidebar {...defaultProps} currentUser={payrollUser} />);
     // All payroll issues are resolved, so nothing shows
-    expect(
-      screen.queryByText("Driver delayed at pickup"),
-    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByText("Driver delayed at pickup"),
+      ).not.toBeInTheDocument();
+    });
     expect(screen.queryByText("Trailer tire blowout")).not.toBeInTheDocument();
   });
 
-  it("shows no-access message for driver role", () => {
+  it("shows no-access message for driver role", async () => {
     const driverUser = { ...mockUser, role: "driver" as const };
     render(<IssueSidebar {...defaultProps} currentUser={driverUser} />);
     // Driver role is not in the role-mapped list, so shows the non-mapped message
-    expect(screen.getByText("No actions available for your role")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText("No actions available for your role"),
+      ).toBeInTheDocument();
+    });
   });
 
   it("calls onClose when the close button is clicked", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
-    // The close button is the one with the X icon in the header
-    const header = screen.getByText("Action Center").closest("div")!;
-    const closeButton = within(header).getByRole("button");
+    await waitFor(() => {
+      expect(screen.getByText(/Issues & Alerts/)).toBeInTheDocument();
+    });
+    const closeButton = screen.getByRole("button", { name: "Close sidebar" });
     await user.click(closeButton);
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
@@ -204,7 +231,9 @@ describe("IssueSidebar component", () => {
   it("calls onViewLoad when the view-load arrow button is clicked", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
-    // Find the first issue description, then navigate to its card
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
     const issueText = screen.getByText("Driver delayed at pickup");
     const card = issueText.closest("div[class*='rounded-xl']") as HTMLElement;
     const viewBtn = within(card).getAllByRole("button")[0];
@@ -215,27 +244,28 @@ describe("IssueSidebar component", () => {
   it("resolves an issue when admin clicks the resolve button", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
-    // Find the first issue card and its resolve (check) button
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
     const card = screen
       .getByText("Driver delayed at pickup")
       .closest("div[class*='rounded-xl']") as HTMLElement;
     const buttons = within(card).getAllByRole("button");
-    // The resolve button is the second one (after the view button)
     const resolveBtn = buttons[1];
     await user.click(resolveBtn);
     expect(saveLoad).toHaveBeenCalled();
     expect(defaultProps.onRefresh).toHaveBeenCalled();
   });
 
-  it("switches between Issues and Calls tabs", async () => {
+  it("switches between All Issues and Calls tabs", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
-    expect(screen.getByText("Dept Issues")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("All Issues")).toBeInTheDocument();
+    });
     expect(screen.getByText("Call Matrix")).toBeInTheDocument();
 
     await user.click(screen.getByText("Call Matrix"));
-    // After switching to Calls tab, the issues should not be visible
-    // and we should see the empty comms state
     expect(screen.getByText("No Comm Records")).toBeInTheDocument();
   });
 
@@ -263,7 +293,7 @@ describe("IssueSidebar component", () => {
     expect(screen.getByText("Dispatcher Jane")).toBeInTheDocument();
   });
 
-  it("shows the No Priority Issues empty state when loads have no issues", () => {
+  it("shows the No Active Issues empty state when loads have no issues", async () => {
     const loadsNoIssues: LoadData[] = [
       {
         id: "load-x",
@@ -279,6 +309,8 @@ describe("IssueSidebar component", () => {
       },
     ];
     render(<IssueSidebar {...defaultProps} loads={loadsNoIssues} />);
-    expect(screen.getByText("No Priority Issues")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText("No Active Issues")).toBeInTheDocument();
+    });
   });
 });

@@ -99,6 +99,11 @@ vi.mock("../../../services/detentionService", () => ({
   DetentionService: { getDetentions: vi.fn().mockResolvedValue([]) },
 }));
 
+vi.mock("../../../services/exceptionService", () => ({
+  getExceptions: vi.fn().mockResolvedValue([]),
+  getDashboardCards: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock("../../../services/authService", () => ({
   checkCapability: vi.fn().mockReturnValue(true),
 }));
@@ -369,15 +374,16 @@ describe("IntelligenceHub component", () => {
   // ── Tab navigation ─────────────────────────────────────────────────────
 
   describe("tab navigation", () => {
-    it("renders all five navigation tabs", async () => {
+    it("renders all six navigation tabs", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<IntelligenceHub {...defaultProps} />);
       await flushAsync();
+      expect(screen.getByText("OPS")).toBeInTheDocument();
       expect(screen.getByText("FEED")).toBeInTheDocument();
       expect(screen.getByText("COMMAND")).toBeInTheDocument();
       expect(screen.getByText("SALES/CRM")).toBeInTheDocument();
-      expect(screen.getByText("SAFETY")).toBeInTheDocument();
       expect(screen.getByText("NETWORK")).toBeInTheDocument();
+      expect(screen.getByText("REPORTS")).toBeInTheDocument();
     });
 
     it("shows CommandCenter on COMMAND tab by default", async () => {
@@ -403,12 +409,12 @@ describe("IntelligenceHub component", () => {
       expect(screen.getByTestId("quote-manager")).toBeInTheDocument();
     });
 
-    it("switches to SAFETY tab and shows SafetyView", async () => {
+    it("switches to OPS tab and shows operations dashboard", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       render(<IntelligenceHub {...defaultProps} />);
       await flushAsync();
-      await user.click(screen.getByText("SAFETY"));
-      expect(screen.getByTestId("safety-view")).toBeInTheDocument();
+      await user.click(screen.getByText("OPS"));
+      expect(screen.getByTestId("operations-dashboard")).toBeInTheDocument();
     });
 
     it("switches to NETWORK tab and shows NetworkPortal", async () => {
@@ -421,9 +427,9 @@ describe("IntelligenceHub component", () => {
 
     it("respects initialTab prop", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      render(<IntelligenceHub {...defaultProps} initialTab="safety" />);
+      render(<IntelligenceHub {...defaultProps} initialTab="ops" />);
       await flushAsync();
-      expect(screen.getByTestId("safety-view")).toBeInTheDocument();
+      expect(screen.getByTestId("operations-dashboard")).toBeInTheDocument();
     });
   });
 
@@ -1517,8 +1523,9 @@ describe("IntelligenceHub component", () => {
       await flushAsync();
 
       expect(screen.getByTitle("Inbound Call")).toBeInTheDocument();
-      expect(screen.getByTitle("Seed System")).toBeInTheDocument();
       expect(screen.getByTitle("Financial Auth")).toBeInTheDocument();
+      // Seed System was removed as part of mock data cleanup (T5-09)
+      expect(screen.queryByTitle("Seed System")).not.toBeInTheDocument();
     });
   });
 
@@ -2704,9 +2711,9 @@ describe("IntelligenceHub component", () => {
       await flushAsync();
       expect(screen.getByTestId("command-center")).toBeInTheDocument();
 
-      rerender(<IntelligenceHub {...defaultProps} initialTab="safety" />);
+      rerender(<IntelligenceHub {...defaultProps} initialTab="ops" />);
       await flushAsync();
-      expect(screen.getByTestId("safety-view")).toBeInTheDocument();
+      expect(screen.getByTestId("operations-dashboard")).toBeInTheDocument();
     });
   });
 

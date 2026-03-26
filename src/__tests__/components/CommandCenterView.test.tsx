@@ -151,7 +151,10 @@ function buildEvent(
 const defaultProps = {
   session: buildSession(),
   loads: [buildLoad()],
-  users: [buildUser(), buildUser({ id: "driver-1", name: "Mike Driver", role: "driver" as const })],
+  users: [
+    buildUser(),
+    buildUser({ id: "driver-1", name: "Mike Driver", role: "driver" as const }),
+  ],
   currentUser: buildUser(),
   onRecordAction: vi.fn().mockResolvedValue(undefined),
   onNavigate: vi.fn(),
@@ -207,16 +210,17 @@ describe("CommandCenterView", () => {
     expect(
       screen.getByText(/Operational Workspace Resting/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/No Triage Items Detected/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/No Triage Items Detected/)).toBeInTheDocument();
   });
 
   /* ---- FILTER CONTROLS ---- */
 
   it("renders severity filter buttons with correct counts", async () => {
     // Narrow screen prevents auto-select so triage list stays visible
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const incidents = [
       buildIncident({ id: "inc-1", severity: "Medium" }),
       buildIncident({ id: "inc-2", severity: "Low" }),
@@ -241,15 +245,38 @@ describe("CommandCenterView", () => {
 
   it("filters items by severity when a filter button is clicked", async () => {
     // Narrow screen prevents auto-select so triage list stays visible
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const incidents = [
-      buildIncident({ id: "inc-1", severity: "Medium", type: "Breakdown", description: "Engine failure on I-35" }),
-      buildIncident({ id: "inc-2", severity: "Low", type: "Accident", description: "Minor fender bender" }),
+      buildIncident({
+        id: "inc-1",
+        severity: "Medium",
+        type: "Breakdown",
+        description: "Engine failure on I-35",
+      }),
+      buildIncident({
+        id: "inc-2",
+        severity: "Low",
+        type: "Accident",
+        description: "Minor fender bender",
+      }),
     ];
-    const workItems = [buildWorkItem({ id: "wi-filt", priority: "High", description: "Task item here" })];
+    const workItems = [
+      buildWorkItem({
+        id: "wi-filt",
+        priority: "High",
+        description: "Task item here",
+      }),
+    ];
     render(
-      <CommandCenterView {...defaultProps} incidents={incidents} workItems={workItems} />,
+      <CommandCenterView
+        {...defaultProps}
+        incidents={incidents}
+        workItems={workItems}
+      />,
     );
 
     // Wait for triage list to render
@@ -268,7 +295,10 @@ describe("CommandCenterView", () => {
   });
 
   it("filters items to Operational Tasks only", async () => {
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const incidents = [buildIncident({ id: "inc-tasks", severity: "Medium" })];
     const workItems = [buildWorkItem()];
@@ -294,18 +324,31 @@ describe("CommandCenterView", () => {
   /* ---- SEARCH ---- */
 
   it("filters triage list by search term", async () => {
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const incidents = [
-      buildIncident({ id: "inc-1", severity: "Medium", type: "Breakdown", description: "Engine failure on I-35" }),
-      buildIncident({ id: "inc-2", severity: "Low", type: "Accident", description: "Minor fender bender" }),
+      buildIncident({
+        id: "inc-1",
+        severity: "Medium",
+        type: "Breakdown",
+        description: "Engine failure on I-35",
+      }),
+      buildIncident({
+        id: "inc-2",
+        severity: "Low",
+        type: "Accident",
+        description: "Minor fender bender",
+      }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Search triage...")).toBeInTheDocument();
+      expect(
+        screen.getByPlaceholderText("Search triage..."),
+      ).toBeInTheDocument();
     });
 
     const searchInput = screen.getByPlaceholderText("Search triage...");
@@ -320,14 +363,25 @@ describe("CommandCenterView", () => {
   /* ---- INCIDENT CARDS & SELECTION ---- */
 
   it("renders incident cards sorted by severity (Critical first)", async () => {
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const incidents = [
-      buildIncident({ id: "inc-low", severity: "Low", type: "Cargo Issue", description: "Minor scratch" }),
-      buildIncident({ id: "inc-med", severity: "Medium", type: "Breakdown", description: "Engine stutter" }),
+      buildIncident({
+        id: "inc-low",
+        severity: "Low",
+        type: "Cargo Issue",
+        description: "Minor scratch",
+      }),
+      buildIncident({
+        id: "inc-med",
+        severity: "Medium",
+        type: "Breakdown",
+        description: "Engine stutter",
+      }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     // Both incidents should appear in the triage list
     await waitFor(() => {
@@ -342,14 +396,20 @@ describe("CommandCenterView", () => {
   it("selects an incident when its card is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const incidents = [
-      buildIncident({ id: "inc-click", severity: "Medium", type: "Cargo Issue", description: "Damaged pallet" }),
+      buildIncident({
+        id: "inc-click",
+        severity: "Medium",
+        type: "Cargo Issue",
+        description: "Damaged pallet",
+      }),
     ];
     // Force no auto-select by setting narrow width
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
 
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     // Click the incident card
     const card = screen.getByText(/Damaged pallet/);
@@ -379,9 +439,7 @@ describe("CommandCenterView", () => {
   it("calls onNavigate with 'quotes' when New Quote is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onNavigate = vi.fn();
-    render(
-      <CommandCenterView {...defaultProps} onNavigate={onNavigate} />,
-    );
+    render(<CommandCenterView {...defaultProps} onNavigate={onNavigate} />);
 
     await user.click(screen.getByText("New Record & Attach"));
     await user.click(screen.getByText("New Quote"));
@@ -392,9 +450,7 @@ describe("CommandCenterView", () => {
   it("calls onNavigate with 'loads' when New Load is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onNavigate = vi.fn();
-    render(
-      <CommandCenterView {...defaultProps} onNavigate={onNavigate} />,
-    );
+    render(<CommandCenterView {...defaultProps} onNavigate={onNavigate} />);
 
     await user.click(screen.getByText("New Record & Attach"));
     await user.click(screen.getByText("New Load"));
@@ -402,17 +458,15 @@ describe("CommandCenterView", () => {
     expect(onNavigate).toHaveBeenCalledWith("loads");
   });
 
-  it("calls onNavigate with 'safety' when New Incident is clicked", async () => {
+  it("calls onNavigate with 'exceptions' when New Incident is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onNavigate = vi.fn();
-    render(
-      <CommandCenterView {...defaultProps} onNavigate={onNavigate} />,
-    );
+    render(<CommandCenterView {...defaultProps} onNavigate={onNavigate} />);
 
     await user.click(screen.getByText("New Record & Attach"));
     await user.click(screen.getByText("New Incident"));
 
-    expect(onNavigate).toHaveBeenCalledWith("safety");
+    expect(onNavigate).toHaveBeenCalledWith("exceptions", "all");
   });
 
   it("shows success message when Attach Existing is clicked", async () => {
@@ -445,9 +499,7 @@ describe("CommandCenterView", () => {
         slaDeadline: new Date(Date.now() + 600000).toISOString(),
       }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Breakdown")).toBeInTheDocument();
@@ -456,12 +508,8 @@ describe("CommandCenterView", () => {
   });
 
   it("shows crisis workflow chain with Safety, Dispatch, Driver steps", async () => {
-    const incidents = [
-      buildIncident({ id: "inc-wf", status: "Open" }),
-    ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    const incidents = [buildIncident({ id: "inc-wf", status: "Open" })];
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Safety")).toBeInTheDocument();
@@ -474,9 +522,7 @@ describe("CommandCenterView", () => {
 
   it("renders the tactical intervention buttons for a selected incident", async () => {
     const incidents = [buildIncident({ id: "inc-tac" })];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Initiate Repower")).toBeInTheDocument();
@@ -538,9 +584,7 @@ describe("CommandCenterView", () => {
     const incidents = [buildIncident({ id: "inc-rec" })];
     vi.mocked(saveIncident).mockResolvedValue(undefined);
 
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Asset Recovery")).toBeInTheDocument();
@@ -550,8 +594,10 @@ describe("CommandCenterView", () => {
 
     await waitFor(() => {
       expect(saveIncident).toHaveBeenCalled();
-      const savedIncident = vi.mocked(saveIncident).mock.calls[0][0] as Incident;
-      const lastEntry = savedIncident.timeline[savedIncident.timeline.length - 1];
+      const savedIncident = vi.mocked(saveIncident).mock
+        .calls[0][0] as Incident;
+      const lastEntry =
+        savedIncident.timeline[savedIncident.timeline.length - 1];
       expect(lastEntry.action).toBe("RECOVERY_INITIATED");
     });
   });
@@ -647,9 +693,7 @@ describe("CommandCenterView", () => {
 
   it("renders Summary and Chain of Custody tabs for incident", async () => {
     const incidents = [buildIncident({ id: "inc-tabs" })];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Summary")).toBeInTheDocument();
@@ -675,9 +719,7 @@ describe("CommandCenterView", () => {
         ],
       }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Emergency Costs")).toBeInTheDocument();
@@ -686,7 +728,9 @@ describe("CommandCenterView", () => {
     await user.click(screen.getByText("Emergency Costs"));
 
     await waitFor(() => {
-      expect(screen.getByText("Financial Integrity Exposure")).toBeInTheDocument();
+      expect(
+        screen.getByText("Financial Integrity Exposure"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Authorize Entry")).toBeInTheDocument();
       expect(screen.getByText("Tow")).toBeInTheDocument();
       // $500 appears in both the total exposure and the line item
@@ -697,9 +741,7 @@ describe("CommandCenterView", () => {
   it("shows no strategic assets message when billing is empty", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const incidents = [buildIncident({ id: "inc-no-bill", billingItems: [] })];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Emergency Costs")).toBeInTheDocument();
@@ -764,8 +806,12 @@ describe("CommandCenterView", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Breakdown reported by driver/)).toBeInTheDocument();
-      expect(screen.getByText(/GPS ping received from unit/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Breakdown reported by driver/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/GPS ping received from unit/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -789,7 +835,11 @@ describe("CommandCenterView", () => {
   it("switches to timeline detail tab and shows events", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const events: OperationalEvent[] = [
-      buildEvent({ id: "ev-timeline", type: "CALL_LOG", message: "Called shipper" }),
+      buildEvent({
+        id: "ev-timeline",
+        type: "CALL_LOG",
+        message: "Called shipper",
+      }),
     ];
     const incidents = [buildIncident({ id: "inc-timeline" })];
     render(
@@ -862,7 +912,9 @@ describe("CommandCenterView", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Manifest Integrity Overview")).toBeInTheDocument();
+      expect(
+        screen.getByText("Manifest Integrity Overview"),
+      ).toBeInTheDocument();
       expect(screen.getByText("Automotive Parts")).toBeInTheDocument();
       expect(screen.getByText("42,000 lbs")).toBeInTheDocument();
     });
@@ -1043,9 +1095,7 @@ describe("CommandCenterView", () => {
 
   it("renders Linked Load and Assigned Unit cards", async () => {
     const incidents = [buildIncident({ id: "inc-link", loadId: "load-1" })];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("Linked Load")).toBeInTheDocument();
@@ -1056,7 +1106,9 @@ describe("CommandCenterView", () => {
   it("opens load workspace when Linked Load card is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const openRecordWorkspace = vi.fn();
-    const incidents = [buildIncident({ id: "inc-load-link", loadId: "load-1" })];
+    const incidents = [
+      buildIncident({ id: "inc-load-link", loadId: "load-1" }),
+    ];
     render(
       <CommandCenterView
         {...defaultProps}
@@ -1077,7 +1129,10 @@ describe("CommandCenterView", () => {
   /* ---- WORK ITEMS ---- */
 
   it("renders work items alongside incidents in the triage list", async () => {
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const incidents = [buildIncident({ id: "inc-mixed", severity: "Medium" })];
     const workItems = [
       buildWorkItem({
@@ -1099,7 +1154,9 @@ describe("CommandCenterView", () => {
     // Both should appear in the triage list
     await waitFor(() => {
       expect(screen.getByText(/Engine failure/)).toBeInTheDocument();
-      expect(screen.getByText(/Delivery running 3 hours late/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Delivery running 3 hours late/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -1107,7 +1164,10 @@ describe("CommandCenterView", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const openRecordWorkspace = vi.fn();
     // No incidents so no auto-select
-    Object.defineProperty(window, "innerWidth", { writable: true, value: 1200 });
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      value: 1200,
+    });
     const workItems = [
       buildWorkItem({
         id: "wi-click",
@@ -1140,9 +1200,7 @@ describe("CommandCenterView", () => {
         slaDeadline: "2025-01-01T00:00:00Z", // in the past
       }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("BREACHED")).toBeInTheDocument();
@@ -1153,9 +1211,7 @@ describe("CommandCenterView", () => {
     const incidents = [
       buildIncident({ id: "inc-nosla", slaDeadline: undefined }),
     ];
-    render(
-      <CommandCenterView {...defaultProps} incidents={incidents} />,
-    );
+    render(<CommandCenterView {...defaultProps} incidents={incidents} />);
 
     await waitFor(() => {
       expect(screen.getByText("NO SLA")).toBeInTheDocument();
@@ -1441,7 +1497,9 @@ describe("CommandCenterView", () => {
     // Verify all 3 timeline entries are rendered
     expect(screen.getByText("Incident reported")).toBeInTheDocument();
     expect(screen.getByText("Tow truck requested")).toBeInTheDocument();
-    expect(screen.getByText("Status updated to In_Progress")).toBeInTheDocument();
+    expect(
+      screen.getByText("Status updated to In_Progress"),
+    ).toBeInTheDocument();
   });
 
   it("shows action, actor, and timestamp for each timeline entry (R-P6-09)", async () => {
@@ -1541,7 +1599,9 @@ describe("CommandCenterView", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Recovery plan approved")).toBeInTheDocument();
-      expect(screen.getByText("ETA 2 hours for replacement driver")).toBeInTheDocument();
+      expect(
+        screen.getByText("ETA 2 hours for replacement driver"),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -111,12 +111,54 @@ const mockExceptions: Exception[] = [
 ];
 
 const mockTypes: ExceptionType[] = [
-  { typeCode: "UNBILLED_LOAD", displayName: "Unbilled Load", dashboardGroup: "Billing", defaultOwnerTeam: "Finance", defaultSeverity: 2 as any, defaultSlaHours: 48 },
-  { typeCode: "NEGATIVE_MARGIN", displayName: "Negative Margin", dashboardGroup: "Financial", defaultOwnerTeam: "Finance", defaultSeverity: 4 as any, defaultSlaHours: 8 },
-  { typeCode: "UNALLOCATED_EXPENSE", displayName: "Unallocated Expense", dashboardGroup: "Financial", defaultOwnerTeam: "Finance", defaultSeverity: 1 as any, defaultSlaHours: 72 },
-  { typeCode: "DISPUTED_INVOICE", displayName: "Disputed Invoice", dashboardGroup: "Billing", defaultOwnerTeam: "Finance", defaultSeverity: 3 as any, defaultSlaHours: 24 },
-  { typeCode: "SETTLEMENT_HOLD", displayName: "Settlement Hold", dashboardGroup: "Financial", defaultOwnerTeam: "Finance", defaultSeverity: 2 as any, defaultSlaHours: 48 },
-  { typeCode: "MISSING_POD", displayName: "Missing POD", dashboardGroup: "Document Entry", defaultOwnerTeam: "Admin", defaultSeverity: 1 as any, defaultSlaHours: 48 },
+  {
+    typeCode: "UNBILLED_LOAD",
+    displayName: "Unbilled Load",
+    dashboardGroup: "Billing",
+    defaultOwnerTeam: "Finance",
+    defaultSeverity: 2 as any,
+    defaultSlaHours: 48,
+  },
+  {
+    typeCode: "NEGATIVE_MARGIN",
+    displayName: "Negative Margin",
+    dashboardGroup: "Financial",
+    defaultOwnerTeam: "Finance",
+    defaultSeverity: 4 as any,
+    defaultSlaHours: 8,
+  },
+  {
+    typeCode: "UNALLOCATED_EXPENSE",
+    displayName: "Unallocated Expense",
+    dashboardGroup: "Financial",
+    defaultOwnerTeam: "Finance",
+    defaultSeverity: 1 as any,
+    defaultSlaHours: 72,
+  },
+  {
+    typeCode: "DISPUTED_INVOICE",
+    displayName: "Disputed Invoice",
+    dashboardGroup: "Billing",
+    defaultOwnerTeam: "Finance",
+    defaultSeverity: 3 as any,
+    defaultSlaHours: 24,
+  },
+  {
+    typeCode: "SETTLEMENT_HOLD",
+    displayName: "Settlement Hold",
+    dashboardGroup: "Financial",
+    defaultOwnerTeam: "Finance",
+    defaultSeverity: 2 as any,
+    defaultSlaHours: 48,
+  },
+  {
+    typeCode: "MISSING_POD",
+    displayName: "Missing POD",
+    dashboardGroup: "Document Entry",
+    defaultOwnerTeam: "Admin",
+    defaultSeverity: 1 as any,
+    defaultSlaHours: 48,
+  },
 ];
 
 describe("ExceptionConsole deep coverage", () => {
@@ -127,8 +169,8 @@ describe("ExceptionConsole deep coverage", () => {
     vi.mocked(updateException).mockResolvedValue(true);
   });
 
-  describe("filter branches — Not Billed (line 204)", () => {
-    it("filters to Not Billed exceptions", async () => {
+  describe("filter branches — Billing category", () => {
+    it("filters to Billing exceptions (includes UNBILLED_LOAD and DISPUTED_INVOICE)", async () => {
       const user = userEvent.setup();
       render(<ExceptionConsole currentUser={mockUser} />);
 
@@ -136,110 +178,61 @@ describe("ExceptionConsole deep coverage", () => {
         expect(screen.getByText("Unbilled Load")).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText("Not Billed"));
+      await user.click(screen.getByText("Billing"));
 
       await waitFor(() => {
         expect(screen.getByText("Unbilled Load")).toBeInTheDocument();
-      });
-      expect(screen.queryByText("Unallocated Expense")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("filter branches — Negative Margin", () => {
-    it("filters to Negative Margin exceptions", async () => {
-      const user = userEvent.setup();
-      render(<ExceptionConsole currentUser={mockUser} />);
-
-      await waitFor(() => {
-        const allNM = screen.getAllByText("Negative Margin");
-        expect(allNM.length).toBeGreaterThanOrEqual(1);
-      });
-
-      // Click the filter button (not the exception type) - get all and click the button element
-      const allNM = screen.getAllByText("Negative Margin");
-      const filterBtn = allNM.find((el) => el.closest("button[class*='tracking-widest']"));
-      await user.click(filterBtn?.closest("button") || allNM[0]);
-
-      await waitFor(() => {
-        const bodyText = document.body.textContent || "";
-        expect(bodyText).not.toContain("Settlement Hold");
-      });
-    });
-  });
-
-  describe("filter branches — Unallocated", () => {
-    it("filters to Unallocated exceptions", async () => {
-      const user = userEvent.setup();
-      render(<ExceptionConsole currentUser={mockUser} />);
-
-      await waitFor(() => {
-        expect(screen.getByText("Unallocated Expense")).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("Unallocated"));
-
-      await waitFor(() => {
-        expect(screen.getByText("Unallocated Expense")).toBeInTheDocument();
-      });
-      expect(screen.queryByText("Disputed Invoice")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("filter branches — Disputes", () => {
-    it("filters to Disputes exceptions", async () => {
-      const user = userEvent.setup();
-      render(<ExceptionConsole currentUser={mockUser} />);
-
-      await waitFor(() => {
         expect(screen.getByText("Disputed Invoice")).toBeInTheDocument();
       });
-
-      await user.click(screen.getByText("Disputes"));
-
-      await waitFor(() => {
-        expect(screen.getByText("Disputed Invoice")).toBeInTheDocument();
-      });
+      // Non-billing types should be hidden
       expect(screen.queryByText("Unallocated Expense")).not.toBeInTheDocument();
+      expect(screen.queryByText("Settlement Hold")).not.toBeInTheDocument();
     });
   });
 
-  describe("filter branches — Holds", () => {
-    it("filters to Holds exceptions", async () => {
+  describe("filter branches — Documents category", () => {
+    it("filters to Documents exceptions (includes MISSING_POD)", async () => {
       const user = userEvent.setup();
       render(<ExceptionConsole currentUser={mockUser} />);
 
       await waitFor(() => {
-        expect(screen.getByText("Settlement Hold")).toBeInTheDocument();
-      });
-
-      await user.click(screen.getByText("Holds"));
-
-      await waitFor(() => {
-        expect(screen.getByText("Settlement Hold")).toBeInTheDocument();
-      });
-      expect(screen.queryByText("Disputed Invoice")).not.toBeInTheDocument();
-    });
-  });
-
-  describe("filter branches — Triage (open)", () => {
-    it("filters to only open exceptions excluding resolved ones", async () => {
-      const user = userEvent.setup();
-      render(<ExceptionConsole currentUser={mockUser} />);
-
-      await waitFor(() => {
-        // Wait for data to load
         const table = document.querySelector("table");
         expect(table).toBeInTheDocument();
       });
 
-      // The Triage button is in the bottom filter bar
-      const triageButtons = screen.getAllByText("Triage");
-      const filterBtn = triageButtons.find((el) => el.closest("button"));
-      await user.click(filterBtn!);
+      await user.click(screen.getByText("Documents"));
 
       await waitFor(() => {
+        // Only the resolved MISSING_POD exists, so filtered list may be empty
+        // since all MISSING_POD are RESOLVED. Verify the filter is applied by
+        // confirming other types are gone
         const bodyText = document.body.textContent || "";
-        expect(bodyText).not.toContain("Already resolved");
+        expect(bodyText).not.toContain("Settlement Hold");
+        expect(bodyText).not.toContain("Unbilled Load");
+      });
+    });
+  });
+
+  describe("filter branches — All Issues resets filter", () => {
+    it("shows all exceptions when All Issues is selected", async () => {
+      const user = userEvent.setup();
+      render(<ExceptionConsole currentUser={mockUser} />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Unbilled Load")).toBeInTheDocument();
+      });
+
+      // Apply a filter first
+      await user.click(screen.getByText("Billing"));
+      await waitFor(() => {
+        expect(screen.queryByText("Settlement Hold")).not.toBeInTheDocument();
+      });
+
+      // Reset by clicking All Issues
+      await user.click(screen.getByText("All Issues"));
+      await waitFor(() => {
+        expect(screen.getByText("Unbilled Load")).toBeInTheDocument();
+        expect(screen.getByText("Settlement Hold")).toBeInTheDocument();
       });
     });
   });
@@ -262,12 +255,12 @@ describe("ExceptionConsole deep coverage", () => {
       await user.click(actionBtns[0]);
 
       await waitFor(() => {
-        expect(screen.getByText("Resolve Exception")).toBeInTheDocument();
+        expect(screen.getByText("Resolve Issue")).toBeInTheDocument();
       });
 
       await user.click(screen.getByRole("button", { name: /Cancel/i }));
 
-      expect(screen.queryByText("Resolve Exception")).not.toBeInTheDocument();
+      expect(screen.queryByText("Resolve Issue")).not.toBeInTheDocument();
       expect(updateException).not.toHaveBeenCalled();
     });
   });
@@ -299,7 +292,7 @@ describe("ExceptionConsole deep coverage", () => {
         expect(table).toBeInTheDocument();
       });
 
-      const searchInput = screen.getByPlaceholderText(/Filter by Load/i);
+      const searchInput = screen.getByPlaceholderText(/Filter by ID/i);
       await user.type(searchInput, "negative margin");
 
       await waitFor(() => {
@@ -315,10 +308,7 @@ describe("ExceptionConsole deep coverage", () => {
       const onViewDetail = vi.fn();
       const user = userEvent.setup();
       render(
-        <ExceptionConsole
-          currentUser={mockUser}
-          onViewDetail={onViewDetail}
-        />,
+        <ExceptionConsole currentUser={mockUser} onViewDetail={onViewDetail} />,
       );
 
       await waitFor(() => {
@@ -339,8 +329,8 @@ describe("ExceptionConsole deep coverage", () => {
         }
       }
 
-      // In grid view, find "Execute Action" buttons
-      const executeActions = screen.getAllByText(/Execute Action/);
+      // In grid view, find "View Detail" buttons
+      const executeActions = screen.getAllByText(/View Detail/);
       expect(executeActions.length).toBeGreaterThan(0);
       const actionBtn = executeActions[0].closest("button");
       expect(actionBtn).toBeInTheDocument();

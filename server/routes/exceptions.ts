@@ -19,13 +19,32 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     try {
-      const { status, type, severity, entityType, entityId, ownerId } =
-        req.query;
-      let query = "SELECT * FROM exceptions WHERE company_id = ?";
+      const {
+        status,
+        status_not_in,
+        type,
+        severity,
+        entityType,
+        entityId,
+        ownerId,
+        category,
+      } = req.query;
+      let query = "SELECT * FROM exceptions WHERE tenant_id = ?";
       const params: any[] = [req.user.tenantId];
       if (status) {
         query += " AND status = ?";
         params.push(status);
+      }
+      if (status_not_in) {
+        const excluded = (status_not_in as string)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        if (excluded.length > 0) {
+          const placeholders = excluded.map(() => "?").join(", ");
+          query += ` AND status NOT IN (${placeholders})`;
+          params.push(...excluded);
+        }
       }
       if (type) {
         query += " AND type = ?";
@@ -47,6 +66,37 @@ router.get(
         query += " AND owner_user_id = ?";
         params.push(ownerId);
       }
+      // Category filter — maps unified workspace tabs to exception types
+      if (category) {
+        const categoryMap: Record<string, string[]> = {
+          safety: [
+            "SAFETY_INCIDENT",
+            "SAFETY_ALERT",
+            "COMPLIANCE_ALERT",
+            "INCIDENT_GENERAL",
+          ],
+          maintenance: [
+            "MAINTENANCE_REQUEST",
+            "MAINTENANCE_INCIDENT",
+            "SERVICE_TICKET",
+          ],
+          compliance: ["COMPLIANCE_ALERT", "COMPLIANCE_VIOLATION"],
+          billing: [
+            "UNBILLED_LOAD",
+            "INVOICE_OVERDUE",
+            "DISPUTED_INVOICE",
+            "SHORT_PAY",
+            "BILLING_DISPUTE",
+          ],
+          documents: ["MISSING_POD", "DOCUMENT_ISSUE"],
+        };
+        const types = categoryMap[category as string];
+        if (types && types.length > 0) {
+          const placeholders = types.map(() => "?").join(", ");
+          query += ` AND type IN (${placeholders})`;
+          params.push(...types);
+        }
+      }
       query += " ORDER BY severity DESC, sla_due_at ASC";
       const [rows] = await pool.query(query, params);
       res.json(rows);
@@ -66,7 +116,7 @@ router.post(
     const id = uuidv4();
     try {
       await pool.query(
-        "INSERT INTO exceptions (id, company_id, type, status, severity, entity_type, entity_id, owner_user_id, team, sla_due_at, workflow_step, financial_impact_est, description, links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO exceptions (id, tenant_id, type, status, severity, entity_type, entity_id, owner_user_id, team, sla_due_at, workflow_step, financial_impact_est, description, links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           req.user.tenantId,
@@ -113,7 +163,7 @@ router.patch(
       req.body;
     try {
       const [old]: any = await pool.query(
-        "SELECT * FROM exceptions WHERE id = ? AND company_id = ?",
+        "SELECT * FROM exceptions WHERE id = ? AND tenant_id = ?",
         [id, req.user!.tenantId],
       );
       if (old.length === 0) return res.status(404).json({ error: "Not found" });
@@ -140,7 +190,7 @@ router.patch(
         query += ", resolved_at = CURRENT_TIMESTAMP";
       }
 
-      query += " WHERE id = ? AND company_id = ?";
+      query += " WHERE id = ? AND tenant_id = ?";
       params.push(id, req.user!.tenantId);
 
       await pool.query(query, params);
@@ -198,7 +248,7 @@ router.get(
   async (req: any, res) => {
     try {
       const [rows] = await pool.query(
-        "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.company_id = ? ORDER BY ee.timestamp DESC",
+        "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.tenant_id = ? ORDER BY ee.timestamp DESC",
         [req.params.id, req.user!.tenantId],
       );
       res.json(rows);

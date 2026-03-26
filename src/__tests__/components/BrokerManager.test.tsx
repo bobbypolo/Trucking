@@ -29,7 +29,12 @@ vi.mock("../../../services/brokerService", () => ({
       isShared: false,
       clientType: "Direct Customer",
       approvedChassis: [
-        { id: "ch-1", provider: "TRAC", type: "40' Gooseneck", prefixes: ["TRAC", "TXZZ"] },
+        {
+          id: "ch-1",
+          provider: "TRAC",
+          type: "40' Gooseneck",
+          prefixes: ["TRAC", "TXZZ"],
+        },
       ],
       safetyScore: 88,
     },
@@ -57,18 +62,18 @@ describe("BrokerManager component", () => {
   describe("rendering", () => {
     it("renders without crashing", () => {
       render(<BrokerManager {...defaultProps} />);
-      expect(screen.getByText("Partner Network")).toBeInTheDocument();
+      expect(screen.getByText("Entity Registry")).toBeInTheDocument();
     });
 
-    it("renders the Partner Network header", () => {
+    it("renders the Entity Registry header", () => {
       render(<BrokerManager {...defaultProps} />);
-      expect(screen.getByText("Partner Network")).toBeInTheDocument();
+      expect(screen.getByText("Entity Registry")).toBeInTheDocument();
     });
 
     it("renders the subtitle", () => {
       render(<BrokerManager {...defaultProps} />);
       expect(
-        screen.getByText(/Commercial Entity.*Managed Registry/i),
+        screen.getByText(/Unified Entity Management/i),
       ).toBeInTheDocument();
     });
 
@@ -125,11 +130,11 @@ describe("BrokerManager component", () => {
       });
     });
 
-    it("displays client type badges", async () => {
+    it("displays entity class badges", async () => {
       render(<BrokerManager {...defaultProps} />);
       await waitFor(() => {
         expect(screen.getAllByText("Broker").length).toBeGreaterThanOrEqual(2);
-        expect(screen.getByText("Direct Customer")).toBeInTheDocument();
+        expect(screen.getByText("Customer")).toBeInTheDocument();
       });
     });
 
@@ -200,14 +205,14 @@ describe("BrokerManager component", () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(screen.getByText("Add New Client")).toBeInTheDocument();
+      expect(screen.getByText("Add New Entity")).toBeInTheDocument();
     });
 
     it("shows form fields in add form", async () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(screen.getByText("Client Type")).toBeInTheDocument();
+      expect(screen.getByText("Entity Class")).toBeInTheDocument();
       expect(screen.getByText("Visibility")).toBeInTheDocument();
       expect(screen.getByText(/Legal Entity Name/)).toBeInTheDocument();
       expect(screen.getByText("MC Number")).toBeInTheDocument();
@@ -229,9 +234,7 @@ describe("BrokerManager component", () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(
-        screen.getByText("Save Entity Profile"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Save Entity Profile")).toBeInTheDocument();
     });
 
     it("shows Cancel Changes button", async () => {
@@ -245,11 +248,9 @@ describe("BrokerManager component", () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(screen.getByText("Add New Client")).toBeInTheDocument();
+      expect(screen.getByText("Add New Entity")).toBeInTheDocument();
       await user.click(screen.getByText("Cancel Changes"));
-      expect(
-        screen.queryByText("Add New Client"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Add New Entity")).not.toBeInTheDocument();
     });
 
     it("allows typing entity name", async () => {
@@ -293,18 +294,14 @@ describe("BrokerManager component", () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(
-        screen.getByText(/No chassis rules defined/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No chassis rules defined/)).toBeInTheDocument();
     });
 
     it("renders Add to Approved List button", async () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      expect(
-        screen.getByText("Add to Approved List"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Add to Approved List")).toBeInTheDocument();
     });
 
     it("renders chassis type dropdown with options", async () => {
@@ -337,9 +334,7 @@ describe("BrokerManager component", () => {
       await user.click(screen.getByText("Add Entity"));
       await user.click(screen.getByText("Add to Approved List"));
       // Should still show empty message
-      expect(
-        screen.getByText(/No chassis rules defined/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No chassis rules defined/)).toBeInTheDocument();
     });
   });
 
@@ -407,7 +402,7 @@ describe("BrokerManager component", () => {
       );
       if (editBtn) {
         await user.click(editBtn);
-        expect(screen.getByText("Edit Client")).toBeInTheDocument();
+        expect(screen.getByText("Edit Entity")).toBeInTheDocument();
       }
     });
 
@@ -450,9 +445,7 @@ describe("BrokerManager component", () => {
       );
       expect(trashBtn).toBeTruthy();
       await user.click(trashBtn!);
-      expect(
-        screen.getByText(/No chassis rules defined/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/No chassis rules defined/)).toBeInTheDocument();
     });
   });
 

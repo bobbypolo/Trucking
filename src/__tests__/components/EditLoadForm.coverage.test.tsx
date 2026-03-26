@@ -6,9 +6,15 @@ import { EditLoadForm } from "../../../components/EditLoadForm";
 import { LoadData, User, LOAD_STATUS } from "../../../types";
 
 vi.mock("../../../services/brokerService", () => ({
-  getBrokers: vi.fn().mockResolvedValue([
-    { id: "broker-1", name: "Alpha Logistics", mcNumber: "MC-123456" },
-  ]),
+  getBrokers: vi
+    .fn()
+    .mockResolvedValue([
+      { id: "broker-1", name: "Alpha Logistics", mcNumber: "MC-123456" },
+    ]),
+}));
+
+vi.mock("../../../services/networkService", () => ({
+  getParties: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("../../../services/authService", () => ({
@@ -32,6 +38,8 @@ vi.mock("../../../services/authService", () => ({
     role: "admin",
     companyId: "company-1",
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
 }));
 
 const mockUser: User = {

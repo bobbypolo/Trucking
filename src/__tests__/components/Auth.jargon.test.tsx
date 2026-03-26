@@ -88,12 +88,14 @@ describe("R-S20-04: Replacement table fully applied", () => {
     expect(authSource).toContain("LoadPilot");
   });
 
-  it('Auth.tsx tagline uses plain trucking language', () => {
+  it("Auth.tsx tagline uses plain trucking language", () => {
     expect(authSource).not.toContain("Hub of Authority");
-    expect(authSource).toContain("Dispatch management for trucking operations.");
+    expect(authSource).toContain(
+      "Dispatch management for trucking operations.",
+    );
   });
 
-  it('Auth.tsx email placeholder is plain (not authority@logistics.com)', () => {
+  it("Auth.tsx email placeholder is plain (not authority@logistics.com)", () => {
     expect(authSource).not.toContain("authority@logistics.com");
     expect(authSource).toContain('placeholder="you@company.com"');
   });
@@ -147,9 +149,9 @@ describe("R-S20-04: Replacement table fully applied", () => {
     expect(loadListSource).toContain("No loads to show");
   });
 
-  it('NetworkPortal.tsx section is "Broker Network"', () => {
+  it('NetworkPortal.tsx section is "Onboarding"', () => {
     expect(networkSource).not.toContain("Authority Matrix");
-    expect(networkSource).toContain("Broker Network");
+    expect(networkSource).toContain("Onboarding");
   });
 
   it('SidebarTree.tsx nav label is "Company Profile"', () => {

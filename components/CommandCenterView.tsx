@@ -534,7 +534,7 @@ export const CommandCenterView: React.FC<Props> = ({
                           label: "New Incident",
                           icon: ShieldAlert,
                           color: "text-red-400",
-                          action: () => onNavigate?.("safety"),
+                          action: () => onNavigate?.("exceptions", "all"),
                         },
                         {
                           label: "Attach Existing",

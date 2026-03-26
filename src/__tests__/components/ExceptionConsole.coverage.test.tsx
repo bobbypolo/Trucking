@@ -129,9 +129,7 @@ describe("ExceptionConsole coverage — lines 220, 233, 538", () => {
     const buttons = screen.getAllByRole("button");
     const gridBtn = buttons.find((btn) => {
       const svg = btn.querySelector("svg");
-      return (
-        svg && btn.className.includes("rounded-lg") && !btn.textContent
-      );
+      return svg && btn.className.includes("rounded-lg") && !btn.textContent;
     });
     // Click all toggle-like buttons to find the grid one
     for (const btn of buttons) {
@@ -148,14 +146,18 @@ describe("ExceptionConsole coverage — lines 220, 233, 538", () => {
     });
   });
 
-  it("filters exceptions using the predictive filter", async () => {
+  it("filters exceptions using the category filter", async () => {
     const user = userEvent.setup();
     render(<ExceptionConsole currentUser={mockUser} />);
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("AI Risk Predictions"));
-    // The predictive filter should hide normal exceptions
+    await user.click(screen.getByText("Billing"));
+    // The category filter should hide non-billing exceptions
+    await waitFor(() => {
+      const bodyText = document.body.textContent || "";
+      expect(bodyText).not.toContain("Late Delivery");
+    });
   });
 
   it("filters exceptions by search query", async () => {
@@ -164,9 +166,7 @@ describe("ExceptionConsole coverage — lines 220, 233, 538", () => {
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
-    const searchInput = screen.getByPlaceholderText(
-      /Filter by Load #, Driver, or Asset/,
-    );
+    const searchInput = screen.getByPlaceholderText(/Filter by ID/i);
     await user.type(searchInput, "load-1");
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();

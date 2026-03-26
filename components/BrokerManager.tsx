@@ -19,6 +19,9 @@ import {
   Globe,
   ShieldAlert,
   AlertTriangle,
+  Truck,
+  Zap,
+  Tag,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { Broker, Contract, ApprovedChassis } from "../types";
@@ -38,7 +41,52 @@ interface Props {
   onUpdate?: () => void;
   onSave?: (broker: Broker) => void;
   onAddLoad?: (brokerId: string) => void;
+  /** When provided, restricts the view to a specific entity class */
+  entityClassFilter?: string;
 }
+
+/** Unified entity classes supported by the onboarding system */
+type EntityClass = "Customer" | "Broker" | "Vendor" | "Facility" | "Contractor";
+
+const ENTITY_TYPE_OPTIONS: { value: string; label: string }[] = [
+  { value: "Broker", label: "Broker / 3PL" },
+  { value: "Customer", label: "Customer" },
+  { value: "Vendor", label: "Vendor" },
+  { value: "Facility", label: "Facility" },
+  { value: "Contractor", label: "Contractor" },
+];
+
+/** Maps legacy clientType values to unified entity classes */
+const mapToEntityClass = (clientType?: string): EntityClass => {
+  if (!clientType) return "Broker";
+  if (clientType === "Direct Customer" || clientType === "Shipper")
+    return "Customer";
+  if (
+    clientType === "Vendor_Service" ||
+    clientType === "Vendor_Equipment" ||
+    clientType === "Vendor_Product"
+  )
+    return "Vendor";
+  if (clientType === "Carrier") return "Contractor";
+  const valid: EntityClass[] = [
+    "Customer",
+    "Broker",
+    "Vendor",
+    "Facility",
+    "Contractor",
+  ];
+  if (valid.includes(clientType as EntityClass))
+    return clientType as EntityClass;
+  return "Broker";
+};
+
+const ENTITY_ICONS: Record<EntityClass, React.ElementType> = {
+  Customer: Globe,
+  Broker: Building2,
+  Vendor: Zap,
+  Facility: MapPin,
+  Contractor: Truck,
+};
 
 const CHASSIS_TYPES = [
   "40' Gooseneck",
@@ -53,6 +101,7 @@ export const BrokerManager: React.FC<Props> = ({
   onUpdate,
   onSave,
   onAddLoad,
+  entityClassFilter,
 }) => {
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,8 +138,8 @@ export const BrokerManager: React.FC<Props> = ({
       const b = await getBrokers();
       setBrokers(b);
     } catch (err) {
-      console.error("[BrokerManager] Failed to load brokers:", err);
-      setLoadError("Failed to load partner data. Please try again.");
+      console.error("[BrokerManager] Failed to load entities:", err);
+      setLoadError("Failed to load entity data. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -98,12 +147,18 @@ export const BrokerManager: React.FC<Props> = ({
 
   const filteredBrokers = useMemo(() => {
     let list = brokers || [];
+    // Apply entity class filter if provided
+    if (entityClassFilter) {
+      list = list.filter(
+        (b) => mapToEntityClass(b.clientType) === entityClassFilter,
+      );
+    }
     return list.filter(
       (b) =>
         b.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         b.mcNumber?.includes(searchTerm),
     );
-  }, [brokers, searchTerm]);
+  }, [brokers, searchTerm, entityClassFilter]);
 
   const validateBrokerForm = (): Record<string, string> => {
     const errs: Record<string, string> = {};
@@ -141,7 +196,9 @@ export const BrokerManager: React.FC<Props> = ({
     }
   };
 
-  const [chassisErrors, setChassisErrors] = useState<Record<string, string>>({});
+  const [chassisErrors, setChassisErrors] = useState<Record<string, string>>(
+    {},
+  );
 
   const handleAddChassis = () => {
     const errs: Record<string, string> = {};
@@ -200,7 +257,7 @@ export const BrokerManager: React.FC<Props> = ({
           onDismiss={() => setToast(null)}
         />
       )}
-      {/* Header - High Density Version */}
+      {/* Header */}
       <div className="bg-[#0a0f1e]/80 backdrop-blur-md border-b border-white/5 px-8 py-6 sticky top-0 z-10">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
@@ -209,15 +266,20 @@ export const BrokerManager: React.FC<Props> = ({
             </div>
             <div>
               <h1 className="text-xl font-black text-white tracking-widest uppercase">
-                Partner Network
+                {entityClassFilter
+                  ? `${entityClassFilter} Entities`
+                  : "Entity Registry"}
               </h1>
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
-                Commercial Entity & Managed Registry
+                Unified Entity Management
               </p>
             </div>
           </div>
           <div className="flex gap-2.5">
-            <button className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95" aria-label="Scan brokers">
+            <button
+              className="bg-slate-900/50 border border-slate-800 text-slate-400 p-2.5 rounded-xl hover:text-white hover:border-slate-700 transition-all active:scale-95"
+              aria-label="Scan entities"
+            >
               <Scan className="w-4 h-4" />
             </button>
             <button
@@ -226,7 +288,9 @@ export const BrokerManager: React.FC<Props> = ({
                   id: uuidv4(),
                   name: "",
                   mcNumber: "",
-                  clientType: "Broker",
+                  clientType: (entityClassFilter || "Broker") as
+                    | "Broker"
+                    | "Direct Customer",
                   isShared: true,
                   approvedChassis: [],
                 });
@@ -242,7 +306,8 @@ export const BrokerManager: React.FC<Props> = ({
         <div className="flex gap-6">
           <div className="flex-1 relative group">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
-            <input aria-label="SEARCH BY ENTITY NAME, MC#, OR CONTACT..."
+            <input
+              aria-label="Search by entity name, MC#, or contact"
               className="w-full bg-[#020617] border border-slate-800/50 rounded-xl pl-12 pr-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 outline-none transition-all"
               placeholder="SEARCH BY ENTITY NAME, MC#, OR CONTACT..."
               value={searchTerm}
@@ -280,119 +345,134 @@ export const BrokerManager: React.FC<Props> = ({
         {!isLoading && !loadError && filteredBrokers.length === 0 && (
           <EmptyState
             icon={<Building2 className="w-12 h-12" />}
-            title="No partners found"
-            description="Add your first broker or shipper to build your network."
+            title="No entities found"
+            description="Add your first entity to build your network."
           />
         )}
         {!isLoading && !loadError && filteredBrokers.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
-        {filteredBrokers.map((broker) => (
-          <div
-            key={broker.id}
-            className="bg-[#0a0f1e]/40 border border-white/5 rounded-2xl p-6 transition-all hover:bg-[#0a0f1e]/60 hover:border-blue-500/30 group relative overflow-hidden"
-          >
-            <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="flex gap-2">
-                <button
-                  onClick={() => onAddLoad && onAddLoad(broker.id)}
-                  className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors shadow-lg"
-                  title="Create Load"
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
+            {filteredBrokers.map((broker) => {
+              const ec = mapToEntityClass(broker.clientType);
+              const EntityIcon = ENTITY_ICONS[ec] || Building2;
+              return (
+                <div
+                  key={broker.id}
+                  className="bg-[#0a0f1e]/40 border border-white/5 rounded-2xl p-6 transition-all hover:bg-[#0a0f1e]/60 hover:border-blue-500/30 group relative overflow-hidden"
                 >
-                  <Plus className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingBroker(broker);
-                    setShowForm(true);
-                  }}
-                  className="p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors border border-white/5 shadow-lg"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-slate-950 rounded-xl flex items-center justify-center border border-white/5">
-                  <Building2 className="w-6 h-6 text-slate-600 group-hover:text-blue-500 transition-colors" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">
-                      {broker.name}
-                    </h3>
-                    <span
-                      className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${broker.clientType === "Broker" ? "bg-blue-600/10 text-blue-500 border border-blue-500/20" : "bg-purple-600/10 text-purple-500 border border-purple-500/20"}`}
-                    >
-                      {broker.clientType}
-                    </span>
-                  </div>
-                  <div className="flex gap-3 text-[10px] font-bold text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <Info className="w-3 h-3" /> MC:{" "}
-                      {broker.mcNumber || "N/A"}
-                    </span>
-                    <span className="flex items-center gap-1 text-blue-500/80">
-                      <ShieldCheck className="w-3 h-3" /> Score:{" "}
-                      {broker.safetyScore ?? "N/A"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
-                    <Mail className="w-3 h-3" />
-                    <span className="truncate">
-                      {broker.email || "CONTACT PENDING"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
-                    <Phone className="w-3 h-3" />
-                    <span>{broker.phone || "NO RECORD"}</span>
-                  </div>
-                </div>
-                <div className="flex items-end justify-end">
-                  <div className="flex -space-x-2">
-                    {[1, 2].map((i) => (
-                      <div
-                        key={i}
-                        className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[8px] font-bold text-slate-600"
+                  <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => onAddLoad && onAddLoad(broker.id)}
+                        className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors shadow-lg"
+                        title="Create Load"
                       >
-                        U{i}
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingBroker(broker);
+                          setShowForm(true);
+                        }}
+                        className="p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors border border-white/5 shadow-lg"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-slate-950 rounded-xl flex items-center justify-center border border-white/5">
+                        <EntityIcon className="w-6 h-6 text-slate-600 group-hover:text-blue-500 transition-colors" />
                       </div>
-                    ))}
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">
+                            {broker.name}
+                          </h3>
+                          <span
+                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+                              ec === "Broker"
+                                ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
+                                : ec === "Customer"
+                                  ? "bg-purple-600/10 text-purple-500 border border-purple-500/20"
+                                  : ec === "Vendor"
+                                    ? "bg-orange-600/10 text-orange-500 border border-orange-500/20"
+                                    : ec === "Contractor"
+                                      ? "bg-teal-600/10 text-teal-500 border border-teal-500/20"
+                                      : "bg-slate-600/10 text-slate-500 border border-slate-500/20"
+                            }`}
+                          >
+                            {ec}
+                          </span>
+                        </div>
+                        <div className="flex gap-3 text-[10px] font-bold text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Info className="w-3 h-3" /> MC:{" "}
+                            {broker.mcNumber || "N/A"}
+                          </span>
+                          <span className="flex items-center gap-1 text-blue-500/80">
+                            <ShieldCheck className="w-3 h-3" /> Score:{" "}
+                            {broker.safetyScore ?? "N/A"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
+                          <Mail className="w-3 h-3" />
+                          <span className="truncate">
+                            {broker.email || "CONTACT PENDING"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] font-medium text-slate-400">
+                          <Phone className="w-3 h-3" />
+                          <span>{broker.phone || "NO RECORD"}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-end justify-end">
+                        <div className="flex -space-x-2">
+                          {[1, 2].map((i) => (
+                            <div
+                              key={i}
+                              className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[8px] font-bold text-slate-600"
+                            >
+                              U{i}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {broker.approvedChassis &&
+                      broker.approvedChassis.length > 0 && (
+                        <div className="pt-3 flex flex-wrap gap-2">
+                          {broker.approvedChassis.slice(0, 2).map((c, idx) => (
+                            <span
+                              key={idx}
+                              className="bg-slate-950 text-[8px] font-black px-2 py-1 rounded-md border border-white/5 uppercase text-slate-400"
+                            >
+                              {c.provider} {c.type}
+                            </span>
+                          ))}
+                          {broker.approvedChassis.length > 2 && (
+                            <span className="text-[8px] font-black text-blue-500 self-center">
+                              +{broker.approvedChassis.length - 2} MORE
+                            </span>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </div>
-              </div>
-
-              {broker.approvedChassis && broker.approvedChassis.length > 0 && (
-                <div className="pt-3 flex flex-wrap gap-2">
-                  {broker.approvedChassis.slice(0, 2).map((c, idx) => (
-                    <span
-                      key={idx}
-                      className="bg-slate-950 text-[8px] font-black px-2 py-1 rounded-md border border-white/5 uppercase text-slate-400"
-                    >
-                      {c.provider} {c.type}
-                    </span>
-                  ))}
-                  {broker.approvedChassis.length > 2 && (
-                    <span className="text-[8px] font-black text-blue-500 self-center">
-                      +{broker.approvedChassis.length - 2} MORE
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+              );
+            })}
           </div>
-        ))}
-        </div>
         )}
       </div>
 
-      {/* High-Fidelity Add/Edit Form Modal (Matches Mockups) */}
+      {/* Add/Edit Form Modal */}
       {showForm && editingBroker && (
         <div className="fixed inset-0 z-[100] bg-[#020617]/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-[#0a0f1e] rounded-[2.5rem] border border-white/10 w-full max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden flex flex-col max-h-[92vh]">
@@ -400,10 +480,10 @@ export const BrokerManager: React.FC<Props> = ({
             <div className="px-10 py-8 border-b border-white/5 flex justify-between items-center bg-[#0d1428]/50">
               <div>
                 <h2 className="text-2xl font-black text-white tracking-tight">
-                  {editingBroker.name ? "Edit Client" : "Add New Client"}
+                  {editingBroker.name ? "Edit Entity" : "Add New Entity"}
                 </h2>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1">
-                  Registry Entity Configuration
+                  Entity Configuration
                 </p>
               </div>
               <button
@@ -414,16 +494,20 @@ export const BrokerManager: React.FC<Props> = ({
               </button>
             </div>
 
-            {/* Form Body - Matching Image 1/2 */}
+            {/* Form Body */}
             <div className="flex-1 overflow-y-auto p-10 space-y-10 no-scrollbar">
-              {/* Type & Visibility */}
+              {/* Entity Class & Visibility */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label htmlFor="bmClientType" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    Client Type
+                  <label
+                    htmlFor="bmClientType"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                  >
+                    Entity Class
                   </label>
                   <div className="relative">
-                    <select id="bmClientType"
+                    <select
+                      id="bmClientType"
                       className="w-full bg-[#020617] border border-white/5 rounded-2xl px-5 py-4 text-sm text-white font-bold appearance-none outline-none focus:border-blue-500 transition-all"
                       value={editingBroker.clientType}
                       onChange={(e) =>
@@ -433,8 +517,11 @@ export const BrokerManager: React.FC<Props> = ({
                         })
                       }
                     >
-                      <option value="Broker">Broker / 3PL</option>
-                      <option value="Direct Customer">Direct Customer</option>
+                      {ENTITY_TYPE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
                     </select>
                     <MoreVertical className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600 pointer-events-none rotate-90" />
                   </div>
@@ -470,10 +557,14 @@ export const BrokerManager: React.FC<Props> = ({
 
               {/* Name Input */}
               <div className="space-y-3">
-                <label htmlFor="bmLegalEntityName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <label
+                  htmlFor="bmLegalEntityName"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                >
                   Legal Entity Name *
                 </label>
-                <input id="bmLegalEntityName"
+                <input
+                  id="bmLegalEntityName"
                   className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all"
                   placeholder="ENTER FULL REGISTERED COMPANY NAME"
                   value={editingBroker.name}
@@ -481,16 +572,22 @@ export const BrokerManager: React.FC<Props> = ({
                     setEditingBroker({ ...editingBroker, name: e.target.value })
                   }
                 />
-                {formErrors.name && <p className="text-red-400 text-xs mt-1">{formErrors.name}</p>}
+                {formErrors.name && (
+                  <p className="text-red-400 text-xs mt-1">{formErrors.name}</p>
+                )}
               </div>
 
               {/* MC & DOT Numbers */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label htmlFor="bmMcNumber" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label
+                    htmlFor="bmMcNumber"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                  >
                     MC Number
                   </label>
-                  <input id="bmMcNumber"
+                  <input
+                    id="bmMcNumber"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="e.g., MC-123456"
                     value={editingBroker.mcNumber}
@@ -503,10 +600,14 @@ export const BrokerManager: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label htmlFor="bmDotNumber" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label
+                    htmlFor="bmDotNumber"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                  >
                     DOT Number
                   </label>
-                  <input id="bmDotNumber"
+                  <input
+                    id="bmDotNumber"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="e.g., 1234567"
                     value={editingBroker.dotNumber}
@@ -523,10 +624,14 @@ export const BrokerManager: React.FC<Props> = ({
               {/* Email & Phone */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-3">
-                  <label htmlFor="bmPrimaryEmail" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label
+                    htmlFor="bmPrimaryEmail"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                  >
                     Primary Email
                   </label>
-                  <input id="bmPrimaryEmail"
+                  <input
+                    id="bmPrimaryEmail"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="dispatch@client.com"
                     value={editingBroker.email}
@@ -539,10 +644,14 @@ export const BrokerManager: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-3">
-                  <label htmlFor="bmCentralPhone" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  <label
+                    htmlFor="bmCentralPhone"
+                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                  >
                     Central Phone
                   </label>
-                  <input id="bmCentralPhone"
+                  <input
+                    id="bmCentralPhone"
                     className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                     placeholder="(555) 000-0000"
                     value={editingBroker.phone}
@@ -558,10 +667,14 @@ export const BrokerManager: React.FC<Props> = ({
 
               {/* Address */}
               <div className="space-y-3">
-                <label htmlFor="bmMailingAddressCityState" className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                <label
+                  htmlFor="bmMailingAddressCityState"
+                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest"
+                >
                   Mailing Address / City / State
                 </label>
-                <input id="bmMailingAddressCityState"
+                <input
+                  id="bmMailingAddressCityState"
                   className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-800 outline-none focus:border-blue-500 transition-all"
                   placeholder="e.g. 123 Main St, Dallas, TX"
                   value={editingBroker.address}
@@ -574,116 +687,126 @@ export const BrokerManager: React.FC<Props> = ({
                 />
               </div>
 
-              {/* Approved Chassis List Section - High Fidelity Version */}
-              <div className="space-y-6 pt-6 border-t border-white/5">
-                <h4 className="text-[10px] font-black text-white flex items-center gap-3 uppercase tracking-widest">
-                  <div className="w-7 h-7 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20">
-                    <ShieldCheck className="w-4 h-4 text-blue-500" />
-                  </div>
-                  Approved Chassis Requirements
-                </h4>
-
-                <div className="bg-[#020617] border border-white/5 rounded-2xl p-6 space-y-4 shadow-inner">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <input aria-label="PROVIDER (TRAC, FLEXI)"
-                        className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
-                        placeholder="PROVIDER (e.g. TRAC, FLEXI)"
-                        value={chassisForm.provider}
-                        onChange={(e) =>
-                          setChassisForm({
-                            ...chassisForm,
-                            provider: e.target.value,
-                          })
-                        }
-                      />
-                      {chassisErrors.provider && <p className="text-red-400 text-xs mt-1">{chassisErrors.provider}</p>}
+              {/* Approved Chassis Section (shown for Broker entities) */}
+              {(mapToEntityClass(editingBroker.clientType) === "Broker" ||
+                mapToEntityClass(editingBroker.clientType) === "Customer") && (
+                <div className="space-y-6 pt-6 border-t border-white/5">
+                  <h4 className="text-[10px] font-black text-white flex items-center gap-3 uppercase tracking-widest">
+                    <div className="w-7 h-7 bg-blue-600/10 rounded-lg flex items-center justify-center border border-blue-500/20">
+                      <ShieldCheck className="w-4 h-4 text-blue-500" />
                     </div>
-                    <div className="relative">
-                      <select aria-label="Document type"
-                        className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-black uppercase appearance-none outline-none focus:border-blue-500 transition-all"
-                        value={chassisForm.type}
-                        onChange={(e) =>
-                          setChassisForm({
-                            ...chassisForm,
-                            type: e.target.value,
-                          })
-                        }
-                      >
-                        {CHASSIS_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                      <MoreVertical className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 rotate-90" />
-                    </div>
-                  </div>
+                    Approved Chassis Requirements
+                  </h4>
 
-                  <input aria-label="PREFIXES (TRAC, TXZZ, TRLU) - COMMA SEPARATED"
-                    className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
-                    placeholder="PREFIXES (e.g. TRAC, TXZZ, TRLU) - COMMA SEPARATED"
-                    value={prefixInput}
-                    onChange={(e) => setPrefixInput(e.target.value)}
-                  />
-
-                  <button
-                    onClick={handleAddChassis}
-                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/5 transition-all active:scale-[0.98]"
-                  >
-                    Add to Approved List
-                  </button>
-                </div>
-
-                {/* Active Chassis Rules List */}
-                <div className="space-y-3">
-                  {!editingBroker.approvedChassis ||
-                  editingBroker.approvedChassis.length === 0 ? (
-                    <p className="text-[10px] text-slate-600 font-bold italic text-center p-4 bg-slate-950/30 rounded-xl border border-dashed border-white/5">
-                      No chassis rules defined for this entity.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {editingBroker.approvedChassis.map((rule) => (
-                        <div
-                          key={rule.id}
-                          className="bg-slate-950 p-4 rounded-xl border border-white/5 flex justify-between items-start group"
+                  <div className="bg-[#020617] border border-white/5 rounded-2xl p-6 space-y-4 shadow-inner">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <input
+                          aria-label="Chassis provider"
+                          className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
+                          placeholder="PROVIDER (e.g. TRAC, FLEXI)"
+                          value={chassisForm.provider}
+                          onChange={(e) =>
+                            setChassisForm({
+                              ...chassisForm,
+                              provider: e.target.value,
+                            })
+                          }
+                        />
+                        {chassisErrors.provider && (
+                          <p className="text-red-400 text-xs mt-1">
+                            {chassisErrors.provider}
+                          </p>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <select
+                          aria-label="Chassis type"
+                          className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white font-black uppercase appearance-none outline-none focus:border-blue-500 transition-all"
+                          value={chassisForm.type}
+                          onChange={(e) =>
+                            setChassisForm({
+                              ...chassisForm,
+                              type: e.target.value,
+                            })
+                          }
                         >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                                {rule.provider}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-500">
-                                •
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-200">
-                                {rule.type}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {rule.prefixes.map((px, i) => (
-                                <span
-                                  key={i}
-                                  className="bg-blue-600/10 text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-blue-600/20"
-                                >
-                                  {px}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveChassis(rule.id)}
-                            className="text-slate-700 hover:text-red-500 p-1 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
+                          {CHASSIS_TYPES.map((type) => (
+                            <option key={type} value={type}>
+                              {type}
+                            </option>
+                          ))}
+                        </select>
+                        <MoreVertical className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-600 rotate-90" />
+                      </div>
                     </div>
-                  )}
+
+                    <input
+                      aria-label="Chassis prefixes, comma separated"
+                      className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
+                      placeholder="PREFIXES (e.g. TRAC, TXZZ, TRLU) - COMMA SEPARATED"
+                      value={prefixInput}
+                      onChange={(e) => setPrefixInput(e.target.value)}
+                    />
+
+                    <button
+                      onClick={handleAddChassis}
+                      className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/5 transition-all active:scale-[0.98]"
+                    >
+                      Add to Approved List
+                    </button>
+                  </div>
+
+                  {/* Active Chassis Rules List */}
+                  <div className="space-y-3">
+                    {!editingBroker.approvedChassis ||
+                    editingBroker.approvedChassis.length === 0 ? (
+                      <p className="text-[10px] text-slate-600 font-bold italic text-center p-4 bg-slate-950/30 rounded-xl border border-dashed border-white/5">
+                        No chassis rules defined for this entity.
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {editingBroker.approvedChassis.map((rule) => (
+                          <div
+                            key={rule.id}
+                            className="bg-slate-950 p-4 rounded-xl border border-white/5 flex justify-between items-start group"
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                                  {rule.provider}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-500">
+                                  •
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-200">
+                                  {rule.type}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {rule.prefixes.map((px, i) => (
+                                  <span
+                                    key={i}
+                                    className="bg-blue-600/10 text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-blue-600/20"
+                                  >
+                                    {px}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleRemoveChassis(rule.id)}
+                              className="text-slate-700 hover:text-red-500 p-1 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Footer Section */}

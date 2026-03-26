@@ -107,10 +107,10 @@ describe("ExceptionConsole component", () => {
     vi.mocked(updateException).mockResolvedValue(true);
   });
 
-  it("renders the Issue Tracker heading", async () => {
+  it("renders the Issues & Alerts heading", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("Issue Tracker")).toBeInTheDocument();
+      expect(screen.getByText("Issues & Alerts")).toBeInTheDocument();
     });
   });
 
@@ -137,9 +137,7 @@ describe("ExceptionConsole component", () => {
     vi.mocked(getExceptions).mockReturnValue(new Promise(() => {}));
     vi.mocked(getExceptionTypes).mockReturnValue(new Promise(() => {}));
     render(<ExceptionConsole {...defaultProps} />);
-    expect(
-      screen.getByText("Synching Command Center..."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Synching Issues...")).toBeInTheDocument();
   });
 
   it("shows empty state when there are no exceptions", async () => {
@@ -147,7 +145,7 @@ describe("ExceptionConsole component", () => {
     vi.mocked(getExceptionTypes).mockResolvedValue([]);
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("No Active Exceptions")).toBeInTheDocument();
+      expect(screen.getByText("No Active Issues")).toBeInTheDocument();
     });
   });
 
@@ -158,45 +156,44 @@ describe("ExceptionConsole component", () => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      /Filter by Load/i,
-    );
+    const searchInput = screen.getByPlaceholderText(/Filter by ID/i);
     await user.type(searchInput, "load-1");
     // Only exception with entityId "load-1" should remain
     expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     expect(screen.queryByText("Damaged Freight")).not.toBeInTheDocument();
   });
 
-  it("filters by the Missing Docs category button", async () => {
+  it("filters by the Documents category button", async () => {
     const user = userEvent.setup();
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText("Missing Docs"));
-    // MISSING_POD should match the "docs" filter
-    expect(screen.getByText("Missing POD")).toBeInTheDocument();
+    await user.click(screen.getByText("Documents"));
+    // MISSING_POD should match the "documents" filter
+    await waitFor(() => {
+      expect(screen.getByText("Missing POD")).toBeInTheDocument();
+    });
     // Others should be hidden
     expect(screen.queryByText("Late Delivery")).not.toBeInTheDocument();
   });
 
-  it("shows the All filter by default and resets when clicked", async () => {
+  it("shows the All Issues filter by default and resets when clicked", async () => {
     const user = userEvent.setup();
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
 
-    // Click a filter first
-    await user.click(screen.getByText("Triage"));
-    // Click All to reset
-    // There are two All buttons - get the one in the bottom filter bar
-    const filterBar = screen.getByPlaceholderText(/Filter by Load/i).closest("div[class*='space-y']")!;
-    const allButtons = screen.getAllByText("All");
-    await user.click(allButtons[0]);
-    expect(screen.getByText("Late Delivery")).toBeInTheDocument();
-    expect(screen.getByText("Damaged Freight")).toBeInTheDocument();
+    // Click a category filter first
+    await user.click(screen.getByText("Documents"));
+    // Click All Issues to reset
+    await user.click(screen.getByText("All Issues"));
+    await waitFor(() => {
+      expect(screen.getByText("Late Delivery")).toBeInTheDocument();
+      expect(screen.getByText("Damaged Freight")).toBeInTheDocument();
+    });
   });
 
   it("toggles between list and grid view modes", async () => {
@@ -210,26 +207,14 @@ describe("ExceptionConsole component", () => {
     const table = screen.getByRole("table");
     expect(table).toBeInTheDocument();
 
-    // Click the grid view button (second button in the view toggle)
-    const viewToggles = screen
-      .getByText("Issue Tracker")
-      .closest("div[class*='border-b']") as HTMLElement;
-    const buttons = within(viewToggles).getAllByRole("button");
-    // Grid button is after list button - find by checking SVG content
-    // The grid button contains a LayoutGrid icon
-    const gridBtn = buttons.find(
-      (b) =>
-        b.querySelector("svg") &&
-        !b.textContent?.includes("All") &&
-        !b.textContent?.includes("Refresh") &&
-        !b.textContent?.includes("AI"),
+    // Find all icon-only toggle buttons (no text content) to locate the grid button
+    const allButtons = screen.getAllByRole("button");
+    const iconOnlyBtns = allButtons.filter(
+      (b) => !b.textContent?.trim() && b.className.includes("rounded-lg"),
     );
-    // Simply click the last toggle-style button
-    // The view toggle buttons are within a flex container with bg-slate-900
-    const toggleContainer = within(viewToggles).getAllByRole("button");
-    // Button index: 0 = List, 1 = All, 2 = AI Risk, 3 = Grid
-    expect(toggleContainer.length).toBeGreaterThanOrEqual(4);
-    await user.click(toggleContainer[3]);
+    // Click the grid view button (second icon-only toggle button)
+    expect(iconOnlyBtns.length).toBeGreaterThanOrEqual(2);
+    await user.click(iconOnlyBtns[1]);
     // Table should no longer be present in grid mode
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
@@ -260,18 +245,18 @@ describe("ExceptionConsole component", () => {
 
     // Confirm dialog should appear
     await waitFor(() => {
-      expect(screen.getByText("Resolve Exception")).toBeInTheDocument();
+      expect(screen.getByText("Resolve Issue")).toBeInTheDocument();
     });
     expect(
-      screen.getByText("Mark this exception as resolved?"),
+      screen.getByText("Mark this issue as resolved?"),
     ).toBeInTheDocument();
 
     // Click the confirm button in the dialog (labeled "Resolve")
     // Use the ConfirmDialog's confirm button which is inside the dialog panel
     const dialog = screen.getByRole("dialog");
-    const resolveDialogBtn = within(dialog).getAllByRole("button").find(
-      (btn) => btn.textContent === "Resolve",
-    )!;
+    const resolveDialogBtn = within(dialog)
+      .getAllByRole("button")
+      .find((btn) => btn.textContent === "Resolve")!;
     await user.click(resolveDialogBtn);
     expect(updateException).toHaveBeenCalledWith("exc-1", {
       status: "RESOLVED",
@@ -282,9 +267,7 @@ describe("ExceptionConsole component", () => {
   it("calls onViewDetail when clicking an entity link", async () => {
     const user = userEvent.setup();
     const onViewDetail = vi.fn();
-    render(
-      <ExceptionConsole {...defaultProps} onViewDetail={onViewDetail} />,
-    );
+    render(<ExceptionConsole {...defaultProps} onViewDetail={onViewDetail} />);
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
@@ -318,24 +301,24 @@ describe("ExceptionConsole component", () => {
   it("shows bottom summary bar with severity counts", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("1 Critical Exceptions")).toBeInTheDocument();
+      expect(screen.getByText("1 Critical")).toBeInTheDocument();
       expect(screen.getByText("1 High Priority")).toBeInTheDocument();
     });
   });
 
   it("respects initialView prop for filter state", async () => {
-    render(<ExceptionConsole {...defaultProps} initialView="docs" />);
+    render(<ExceptionConsole {...defaultProps} initialView="documents" />);
     await waitFor(() => {
-      // The docs filter should be active, showing only document-related exceptions
+      // The documents filter should be active, showing only document-related exceptions
       expect(screen.getByText("Missing POD")).toBeInTheDocument();
       expect(screen.queryByText("Late Delivery")).not.toBeInTheDocument();
     });
   });
 
-  it("renders the Issue Tracker heading", async () => {
+  it("renders the Issues & Alerts heading", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("Issue Tracker")).toBeInTheDocument();
+      expect(screen.getByText("Issues & Alerts")).toBeInTheDocument();
     });
   });
 
@@ -343,17 +326,15 @@ describe("ExceptionConsole component", () => {
     vi.mocked(getExceptions).mockReturnValue(new Promise(() => {}));
     vi.mocked(getExceptionTypes).mockReturnValue(new Promise(() => {}));
     render(<ExceptionConsole {...defaultProps} />);
-    expect(
-      screen.getByText("Synching Command Center..."),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Synching Issues...")).toBeInTheDocument();
   });
 
-  it("shows No Active Exceptions when exceptions list is empty (line 220)", async () => {
+  it("shows No Active Issues when exceptions list is empty (line 220)", async () => {
     vi.mocked(getExceptions).mockResolvedValue([]);
     vi.mocked(getExceptionTypes).mockResolvedValue([]);
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("No Active Exceptions")).toBeInTheDocument();
+      expect(screen.getByText("No Active Issues")).toBeInTheDocument();
     });
   });
 
@@ -364,24 +345,23 @@ describe("ExceptionConsole component", () => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(/Filter by Load/i);
+    const searchInput = screen.getByPlaceholderText(/Filter by ID/i);
     await user.type(searchInput, "load-1");
     expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     expect(screen.queryByText("Damaged Freight")).not.toBeInTheDocument();
   });
 
-  it("renders filter buttons including Triage and Missing Docs (line 538)", async () => {
+  it("renders category filter tabs (line 538)", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Late Delivery")).toBeInTheDocument();
     });
-    expect(screen.getByText("Triage")).toBeInTheDocument();
-    expect(screen.getByText("Missing Docs")).toBeInTheDocument();
-    expect(screen.getByText("Unallocated")).toBeInTheDocument();
-    expect(screen.getByText("Not Billed")).toBeInTheDocument();
-    expect(screen.getByText("Negative Margin")).toBeInTheDocument();
-    expect(screen.getByText("Disputes")).toBeInTheDocument();
-    expect(screen.getByText("Holds")).toBeInTheDocument();
+    expect(screen.getByText("All Issues")).toBeInTheDocument();
+    expect(screen.getByText("Safety")).toBeInTheDocument();
+    expect(screen.getByText("Maintenance")).toBeInTheDocument();
+    expect(screen.getByText("Compliance")).toBeInTheDocument();
+    expect(screen.getByText("Billing")).toBeInTheDocument();
+    expect(screen.getByText("Documents")).toBeInTheDocument();
   });
 
   it("calls loadData on Refresh button click", async () => {
@@ -398,15 +378,15 @@ describe("ExceptionConsole component", () => {
   it("shows bottom summary bar with severity counts", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("1 Critical Exceptions")).toBeInTheDocument();
+      expect(screen.getByText("1 Critical")).toBeInTheDocument();
       expect(screen.getByText("1 High Priority")).toBeInTheDocument();
     });
   });
 
-  it("shows AI Risk Predictions filter button", async () => {
+  it("shows Billing category tab", async () => {
     render(<ExceptionConsole {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("AI Risk Predictions")).toBeInTheDocument();
+      expect(screen.getByText("Billing")).toBeInTheDocument();
     });
   });
 
@@ -428,9 +408,7 @@ describe("ExceptionConsole component", () => {
   it("calls onViewDetail when entity link is clicked", async () => {
     const user = (await import("@testing-library/user-event")).default.setup();
     const onViewDetail = vi.fn();
-    render(
-      <ExceptionConsole {...defaultProps} onViewDetail={onViewDetail} />,
-    );
+    render(<ExceptionConsole {...defaultProps} onViewDetail={onViewDetail} />);
     await waitFor(() => {
       expect(screen.getByText("LOAD #load-1")).toBeInTheDocument();
     });

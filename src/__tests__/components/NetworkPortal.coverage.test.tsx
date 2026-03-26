@@ -39,7 +39,15 @@ const mockParties: NetworkParty[] = [
     name: "ABC Logistics",
     status: "Approved",
     contacts: [
-      { id: "c-1", partyId: "party-1", name: "Alice Smith", role: "Account Manager", phone: "555-0101", email: "alice@abc.com", isPrimary: true },
+      {
+        id: "c-1",
+        partyId: "party-1",
+        name: "Alice Smith",
+        role: "Account Manager",
+        phone: "555-0101",
+        email: "alice@abc.com",
+        isPrimary: true,
+      },
     ],
     rateTable: [],
     constraints: [],
@@ -103,10 +111,10 @@ describe("NetworkPortal coverage — deeper interactions", () => {
     vi.mocked(saveParty).mockResolvedValue(undefined);
   });
 
-  it("renders header with Partner Network Registry title", async () => {
+  it("renders header with Onboarding title", async () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("Partner Network Registry")).toBeInTheDocument();
+      expect(screen.getByText("Onboarding")).toBeInTheDocument();
     });
   });
 
@@ -133,20 +141,22 @@ describe("NetworkPortal coverage — deeper interactions", () => {
     });
   });
 
-  it("filters parties by type when Shipper filter is clicked", async () => {
+  it("filters parties by type when Customer filter is clicked", async () => {
     const user = userEvent.setup();
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    // Find the Shipper filter button (it's in the filter bar, not the party card)
+    // Find the Customer filter button (it's in the filter bar, not the party card)
     const filterButtons = screen.getAllByRole("button");
-    const shipperFilterBtn = filterButtons.find(
-      (b) => b.textContent?.trim() === "Shipper" && b.className.includes("tracking-widest"),
+    const customerFilterBtn = filterButtons.find(
+      (b) =>
+        b.textContent?.trim() === "Customer" &&
+        b.className.includes("tracking-widest"),
     );
-    expect(shipperFilterBtn).toBeTruthy();
-    await user.click(shipperFilterBtn!);
+    expect(customerFilterBtn).toBeTruthy();
+    await user.click(customerFilterBtn!);
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
       expect(screen.queryByText("XYZ Repairs")).not.toBeInTheDocument();
@@ -162,7 +172,9 @@ describe("NetworkPortal coverage — deeper interactions", () => {
 
     const filterButtons = screen.getAllByRole("button");
     const brokerFilterBtn = filterButtons.find(
-      (b) => b.textContent?.trim() === "Broker" && b.className.includes("tracking-widest"),
+      (b) =>
+        b.textContent?.trim() === "Broker" &&
+        b.className.includes("tracking-widest"),
     );
     expect(brokerFilterBtn).toBeTruthy();
     await user.click(brokerFilterBtn!);
@@ -179,9 +191,7 @@ describe("NetworkPortal coverage — deeper interactions", () => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      /SEARCH BY PARTY NAME/,
-    );
+    const searchInput = screen.getByPlaceholderText(/SEARCH BY ENTITY NAME/);
     await user.type(searchInput, "XYZ");
     await waitFor(() => {
       expect(screen.getByText("XYZ Repairs")).toBeInTheDocument();
@@ -196,9 +206,7 @@ describe("NetworkPortal coverage — deeper interactions", () => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    const searchInput = screen.getByPlaceholderText(
-      /SEARCH BY PARTY NAME/,
-    );
+    const searchInput = screen.getByPlaceholderText(/SEARCH BY ENTITY NAME/);
     await user.type(searchInput, "MC-111");
     await waitFor(() => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
@@ -212,19 +220,23 @@ describe("NetworkPortal coverage — deeper interactions", () => {
       expect(screen.getByText("ABC Logistics")).toBeInTheDocument();
     });
 
-    // Filter to Shipper first
+    // Filter to Customer first
     const filterButtons = screen.getAllByRole("button");
-    const shipperBtn = filterButtons.find(
-      (b) => b.textContent?.trim() === "Shipper" && b.className.includes("tracking-widest"),
+    const customerBtn = filterButtons.find(
+      (b) =>
+        b.textContent?.trim() === "Customer" &&
+        b.className.includes("tracking-widest"),
     );
-    await user.click(shipperBtn!);
+    await user.click(customerBtn!);
     await waitFor(() => {
       expect(screen.queryByText("XYZ Repairs")).not.toBeInTheDocument();
     });
 
     // Click ALL to show all
     const allBtn = filterButtons.find(
-      (b) => b.textContent?.trim() === "ALL" && b.className.includes("tracking-widest"),
+      (b) =>
+        b.textContent?.trim() === "ALL" &&
+        b.className.includes("tracking-widest"),
     );
     await user.click(allBtn!);
     await waitFor(() => {
@@ -285,12 +297,28 @@ describe("NetworkPortal coverage — deeper interactions", () => {
     });
   });
 
-  it("renders Vendor Service and Vendor Equipment filter buttons", async () => {
+  it("renders Vendor, Facility, and Contractor filter buttons", async () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText("Vendor Service")).toBeInTheDocument();
-      expect(screen.getByText("Vendor Equipment")).toBeInTheDocument();
-      expect(screen.getByText("Facility")).toBeInTheDocument();
+      const filterButtons = screen.getAllByRole("button");
+      const vendorBtn = filterButtons.find(
+        (b) =>
+          b.textContent?.trim() === "Vendor" &&
+          b.className.includes("tracking-widest"),
+      );
+      expect(vendorBtn).toBeTruthy();
+      const facilityBtn = filterButtons.find(
+        (b) =>
+          b.textContent?.trim() === "Facility" &&
+          b.className.includes("tracking-widest"),
+      );
+      expect(facilityBtn).toBeTruthy();
+      const contractorBtn = filterButtons.find(
+        (b) =>
+          b.textContent?.trim() === "Contractor" &&
+          b.className.includes("tracking-widest"),
+      );
+      expect(contractorBtn).toBeTruthy();
     });
   });
 });
