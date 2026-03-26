@@ -2,7 +2,7 @@
  * Real Accounting & IFTA Migrations Integration Test.
  * Tests REAL Docker MySQL — verifies all 16 accounting/IFTA tables
  * exist after running migrations 011-013, validates FK relationships,
- * and checks tenant_id columns on IFTA tables.
+ * and checks company_id columns on IFTA tables.
  *
  * R-marker: Tests R-P1-01, R-P1-02, R-P1-03, R-P1-04, R-P1-05, R-P1-06, R-P1-07, R-P1-08
  */
@@ -136,8 +136,8 @@ describe("Accounting & IFTA Migrations (Real MySQL — Docker loadpilot-dev)", (
   });
 
   // R-P1-03: migration 013 creates ifta_trip_evidence and ifta_trips_audit
-  //          with tenant_id column present
-  it("R-P1-03: migration 013 — ifta_trip_evidence and ifta_trips_audit exist with tenant_id", async () => {
+  //          with company_id column present
+  it("R-P1-03: migration 013 — ifta_trip_evidence and ifta_trips_audit exist with company_id", async () => {
     if (skip) {
       console.log("SKIP: Docker container not running");
       return;
@@ -155,12 +155,12 @@ describe("Accounting & IFTA Migrations (Real MySQL — Docker loadpilot-dev)", (
       expect(foundTables, `Table '${table}' should exist`).toContain(table);
     }
 
-    // Verify tenant_id column exists on each IFTA table
+    // Verify company_id column exists on each IFTA table
     const [colRows] = await pool.query<mysql.RowDataPacket[]>(
       `SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
        WHERE TABLE_SCHEMA = ?
          AND TABLE_NAME IN (${IFTA_TABLES_013.map(() => "?").join(",")})
-         AND COLUMN_NAME = 'tenant_id'
+         AND COLUMN_NAME = 'company_id'
        ORDER BY TABLE_NAME`,
       [DB_NAME, ...IFTA_TABLES_013],
     );
@@ -170,7 +170,7 @@ describe("Accounting & IFTA Migrations (Real MySQL — Docker loadpilot-dev)", (
     for (const table of IFTA_TABLES_013) {
       expect(
         tablesWithTenantId,
-        `Table '${table}' should have tenant_id column`,
+        `Table '${table}' should have company_id column`,
       ).toContain(table);
     }
   });

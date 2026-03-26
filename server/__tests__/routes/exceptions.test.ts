@@ -90,7 +90,7 @@ const AUTH_HEADER = "Bearer valid-firebase-token";
 
 const makeException = (overrides = {}) => ({
   id: "ex-001",
-  tenant_id: "DEFAULT",
+  company_id: "DEFAULT",
   type: "DELAY",
   status: "OPEN",
   severity: 2,
@@ -111,7 +111,9 @@ const makeException = (overrides = {}) => ({
 describe("GET /api/exceptions — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
@@ -124,7 +126,9 @@ describe("GET /api/exceptions — auth enforcement", () => {
 describe("POST /api/exceptions — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
@@ -139,7 +143,9 @@ describe("POST /api/exceptions — auth enforcement", () => {
 describe("PATCH /api/exceptions/:id — auth enforcement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns 401 when auth middleware rejects (no token path)", async () => {
@@ -160,7 +166,9 @@ describe("GET /api/exceptions — tenant enforcement (middleware present)", () =
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 
@@ -182,7 +190,9 @@ describe("PATCH /api/exceptions/:id — validation (not found)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 
@@ -205,7 +215,9 @@ describe("GET /api/exceptions — success", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 
@@ -250,7 +262,9 @@ describe("POST /api/exceptions — success", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 
@@ -281,7 +295,9 @@ describe("PATCH /api/exceptions/:id — success", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 
@@ -323,7 +339,9 @@ describe("GET /api/exceptions/:id/events — success", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     app = buildApp();
   });
 

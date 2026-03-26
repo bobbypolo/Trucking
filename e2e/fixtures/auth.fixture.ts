@@ -18,7 +18,7 @@
 
 import type { APIRequestContext } from "@playwright/test";
 
-export const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+export const API_BASE = process.env.E2E_API_URL || "http://localhost:5101";
 const FIREBASE_API_KEY = process.env.FIREBASE_WEB_API_KEY;
 
 // ---------------------------------------------------------------------------
