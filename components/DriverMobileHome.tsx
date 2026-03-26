@@ -453,8 +453,10 @@ export const DriverMobileHome: React.FC<Props> = ({
       await onSaveLoad(newLoad);
 
       // Upload scanned document artifacts to the server
-      if (intakeFormData.scannedDocImages?.length) {
-        for (const [index, doc] of intakeFormData.scannedDocImages.entries()) {
+      let uploadFailures = 0;
+      const totalDocs = intakeFormData.scannedDocImages?.length ?? 0;
+      if (totalDocs > 0) {
+        for (const [index, doc] of intakeFormData.scannedDocImages!.entries()) {
           try {
             const documentType = doc.docType || "BOL";
             const fileName = `driver-intake-${documentType.toLowerCase()}-${index + 1}.${extensionForMimeType(doc.mimeType)}`;
@@ -472,6 +474,7 @@ export const DriverMobileHome: React.FC<Props> = ({
             await api.postFormData("/documents", formData);
           } catch {
             // Non-blocking: load is saved, document upload failures are recoverable
+            uploadFailures++;
           }
         }
       }
@@ -492,9 +495,18 @@ export const DriverMobileHome: React.FC<Props> = ({
         scannedDocTypes: [],
         scannedDocImages: [],
       });
+
+      let toastMessage: string;
+      if (totalDocs === 0) {
+        toastMessage = "Intake submitted";
+      } else if (uploadFailures > 0) {
+        toastMessage = `Intake submitted. ${uploadFailures} of ${totalDocs} document(s) failed to upload — please retry from load detail.`;
+      } else {
+        toastMessage = "Intake submitted and documents uploaded";
+      }
       setToast({
-        message: "Intake submitted and documents uploaded",
-        type: "success",
+        message: toastMessage,
+        type: uploadFailures > 0 ? "warning" : "success",
       });
     } catch {
       setToast({ message: "Failed to submit intake", type: "error" });
