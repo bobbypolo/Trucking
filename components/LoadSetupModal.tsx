@@ -10,11 +10,15 @@ import {
   Settings,
   AlertTriangle,
   ShieldCheck,
+  Search,
 } from "lucide-react";
 import { getBrokers } from "../services/brokerService";
 import { getCompanyUsers, getCompany } from "../services/authService";
 import { generateNextLoadNumber } from "../services/storageService";
 import { Toast } from "./Toast";
+
+/** Sentinel value for "Direct / No Broker" selection */
+const DIRECT_BROKER_ID = "__direct__";
 
 interface Props {
   currentUser: User;
@@ -68,37 +72,41 @@ export const LoadSetupModal: React.FC<Props> = ({
   const handleContinue = async (forcePhoneOrder: boolean = false) => {
     if (selectedDriverId && selectedBrokerId) {
       setIsSubmitting(true);
+      // Resolve "Direct / No Broker" sentinel to empty string for downstream
+      const resolvedBrokerId =
+        selectedBrokerId === DIRECT_BROKER_ID ? "" : selectedBrokerId;
       try {
         if (forcePhoneOrder || isPhoneOrder) {
           const company = await getCompany(currentUser.companyId);
-          const broker = brokers.find((b) => b.id === selectedBrokerId);
+          const broker = brokers.find((b) => b.id === resolvedBrokerId);
           if (company && broker) {
             const newLoadNumber = generateNextLoadNumber(company, broker.name);
             onContinue(
-              selectedBrokerId,
+              resolvedBrokerId,
               selectedDriverId,
               newLoadNumber,
               callNotes,
             );
           } else {
             onContinue(
-              selectedBrokerId,
+              resolvedBrokerId,
               selectedDriverId,
               undefined,
               callNotes,
             );
           }
         } else {
-          onContinue(selectedBrokerId, selectedDriverId);
+          onContinue(resolvedBrokerId, selectedDriverId);
         }
       } finally {
         setIsSubmitting(false);
       }
     } else {
       const errs: Record<string, string> = {};
-      if (!selectedBrokerId) errs.broker = "Broker is required";
+      if (!selectedBrokerId) errs.broker = "Broker or Direct is required";
       if (!selectedDriverId) errs.driver = "Driver is required";
-      if (callNotes.length > 500) errs.callNotes = "Call notes must be 500 characters or fewer";
+      if (callNotes.length > 500)
+        errs.callNotes = "Call notes must be 500 characters or fewer";
       setFormErrors(errs);
     }
   };
@@ -136,21 +144,49 @@ export const LoadSetupModal: React.FC<Props> = ({
         <div className="p-8 space-y-6">
           {/* Broker Selection */}
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400">
+            <label
+              htmlFor="lsmSelectBroker"
+              className="text-xs font-bold text-slate-400"
+            >
               Select Broker / Customer *
             </label>
-            <div className="relative">
-              <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <div
-                className={`w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-sm font-bold flex justify-between items-center ${preSelectedBrokerId ? "text-slate-200" : "text-slate-400"}`}
-              >
-                {brokers.find((b) => b.id === selectedBrokerId)?.name ||
-                  "Select Broker"}
-                {preSelectedBrokerId && (
+            {preSelectedBrokerId ? (
+              /* Locked display when broker is pre-selected (e.g. from Broker Network) */
+              <div className="relative">
+                <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <div className="w-full bg-slate-900/50 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-sm font-bold flex justify-between items-center text-slate-200">
+                  {brokers.find((b) => b.id === selectedBrokerId)?.name ||
+                    "Loading..."}
                   <span className="text-[10px] text-blue-500">(Locked)</span>
-                )}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Interactive dropdown for generic Create Load path */
+              <select
+                id="lsmSelectBroker"
+                value={selectedBrokerId}
+                onChange={(e) => {
+                  setSelectedBrokerId(e.target.value);
+                  if (formErrors.broker) {
+                    setFormErrors((prev) => {
+                      const next = { ...prev };
+                      delete next.broker;
+                      return next;
+                    });
+                  }
+                }}
+                className={`w-full bg-[#0a0f18] border ${formErrors.broker ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
+              >
+                <option value="">Select Broker / Customer</option>
+                <option value={DIRECT_BROKER_ID}>Direct / No Broker</option>
+                {brokers.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                    {b.mcNumber ? ` (${b.mcNumber})` : ""}
+                  </option>
+                ))}
+              </select>
+            )}
             {formErrors.broker && (
               <p className="text-red-400 text-xs mt-1">{formErrors.broker}</p>
             )}
@@ -209,7 +245,11 @@ export const LoadSetupModal: React.FC<Props> = ({
               <p className="text-[9px] text-slate-600 mt-1 text-right">
                 {callNotes.length}/500
               </p>
-              {formErrors.callNotes && <p className="text-red-400 text-xs mt-1">{formErrors.callNotes}</p>}
+              {formErrors.callNotes && (
+                <p className="text-red-400 text-xs mt-1">
+                  {formErrors.callNotes}
+                </p>
+              )}
             </div>
           )}
 
