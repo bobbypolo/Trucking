@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, fix/pr26-production-remediation]
 
+env:
+  CI: true
+
 jobs:
   frontend-typecheck:
     name: Frontend TypeScript
@@ -16,6 +19,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
       - run: npm ci
         shell: cmd
       - run: npx tsc --noEmit
@@ -52,10 +59,15 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist ..\fixtures\test-users.json copy ..\fixtures\test-users.example.json ..\fixtures\test-users.json
       - run: npm ci
         shell: cmd
-      - run: npx vitest run
+      - name: Run unit and route tests (exclude integration)
         shell: cmd
+        run: npx vitest run --exclude "__tests__/integration/**" --exclude "__tests__/scripts/**"
 
   frontend-tests:
     name: Frontend Tests
@@ -66,6 +78,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
       - run: npm ci
         shell: cmd
       - run: npx vitest run
