@@ -1,0 +1,133 @@
+{
+  "_comment": "Development-only seed credentials. Never deploy to production. Listed in .gitignore — do not commit.",
+  "demoFallbackPassword": "12345",
+  "admin": {
+    "email": "admin@loadpilot.com",
+    "password": "admin123",
+    "name": "Authority Admin",
+    "companyName": "LoadPilot Logistics",
+    "accountType": "fleet"
+  },
+  "dispatcher": {
+    "email": "dispatch@loadpilot.com",
+    "password": "dispatch123",
+    "name": "Dispatch Lead",
+    "role": "DISPATCHER"
+  },
+  "opsManager": {
+    "email": "opsmanager@loadpilot.com",
+    "password": "admin123",
+    "name": "Operations Manager",
+    "role": "OPS_MANAGER"
+  },
+  "arSpecialist": {
+    "email": "ar@loadpilot.com",
+    "password": "admin123",
+    "name": "AR Specialist",
+    "role": "ACCOUNTING_AR"
+  },
+  "apClerk": {
+    "email": "ap@loadpilot.com",
+    "password": "admin123",
+    "name": "AP Clerk",
+    "role": "ACCOUNTING_AP"
+  },
+  "payroll": {
+    "email": "payroll@loadpilot.com",
+    "password": "payroll123",
+    "name": "Payroll Controller",
+    "role": "PAYROLL_SETTLEMENTS"
+  },
+  "safety": {
+    "email": "safety@loadpilot.com",
+    "password": "safety123",
+    "name": "Safety Director",
+    "role": "SAFETY_COMPLIANCE"
+  },
+  "maintenance": {
+    "email": "maint@loadpilot.com",
+    "password": "admin123",
+    "name": "Maintenance Lead",
+    "role": "MAINTENANCE_MANAGER"
+  },
+  "smallBiz": {
+    "email": "smallbiz@kci.com",
+    "password": "admin123",
+    "name": "Small Team Owner",
+    "role": "OWNER_ADMIN"
+  },
+  "fusedOps": {
+    "email": "fused_ops@kci.com",
+    "password": "admin123",
+    "name": "Fused Operations",
+    "role": "OPS"
+  },
+  "fusedFinance": {
+    "email": "fused_finance@kci.com",
+    "password": "admin123",
+    "name": "Fused Finance",
+    "role": "FINANCE"
+  },
+  "fleetOwner": {
+    "email": "fleetowner@kci.com",
+    "password": "fleet123",
+    "name": "Master Fleet Owner",
+    "role": "FLEET_OO_ADMIN_PORTAL"
+  },
+  "operator1": {
+    "email": "operator1@gmail.com",
+    "password": "admin123",
+    "name": "Owner Op 1",
+    "role": "owner_operator"
+  },
+  "operator2": {
+    "email": "operator2@gmail.com",
+    "password": "admin123",
+    "name": "Owner Op 2",
+    "role": "owner_operator"
+  },
+  "customer": {
+    "email": "customer@gmail.com",
+    "password": "admin123",
+    "name": "Global Logistics Partner",
+    "role": "customer"
+  },
+  "architect": {
+    "email": "architect@loadpilot.com",
+    "password": "admin123",
+    "name": "System Architect",
+    "role": "ORG_OWNER_SUPER_ADMIN"
+  },
+  "drivers": [
+    {
+      "email": "driver1@loadpilot.com",
+      "password": "driver123",
+      "name": "Marcus Rodriguez",
+      "state": "IL"
+    },
+    {
+      "email": "driver2@loadpilot.com",
+      "password": "driver123",
+      "name": "Sarah Chen",
+      "state": "IN"
+    },
+    {
+      "email": "driver3@loadpilot.com",
+      "password": "driver123",
+      "name": "David Thompson",
+      "state": "OH"
+    },
+    {
+      "email": "driver4@loadpilot.com",
+      "password": "driver123",
+      "name": "Elena Garcia",
+      "state": "TX"
+    },
+    {
+      "email": "driver5@loadpilot.com",
+      "password": "driver123",
+      "name": "James Wilson",
+      "state": "GA"
+    }
+  ]
+}
