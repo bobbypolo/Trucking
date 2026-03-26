@@ -30,12 +30,11 @@ function listMigrationFiles(): string[] {
 // ─── § Migration Inventory ────────────────────────────────────────────────────
 
 describe("R-PV-04: Migration Inventory", () => {
-  it("Tests R-PV-04 — all 13 migration files exist on disk", () => {
+  it("Tests R-PV-04 — core migration files exist on disk", () => {
     const expectedFiles = [
       "001_baseline.sql",
       "002_add_version_columns.sql",
       "002_load_status_normalization.sql",
-      "002_load_status_normalization_rollback.sql",
       "003_enhance_dispatch_events.sql",
       "003_operational_entities.sql",
       "004_idempotency_keys.sql",
@@ -45,6 +44,7 @@ describe("R-PV-04: Migration Inventory", () => {
       "008_settlements.sql",
       "009_settlement_adjustments.sql",
       "016_exception_management.sql",
+      "038_accounting_tenant_to_company_id.sql",
     ];
 
     for (const file of expectedFiles) {
@@ -86,14 +86,16 @@ describe("R-PV-04: Migration Execution Order", () => {
     expect(first).toBe("001_baseline.sql");
   });
 
-  it("Tests R-PV-04 — fix_parties_fk (037) is the highest numbered migration", () => {
+  it("Tests R-PV-04 — highest numbered migration covers 039_companies_subscription_tier", () => {
     const numberedFiles = listMigrationFiles()
       .filter((f) => /^\d{3}_/.test(f))
       .filter((f) => !f.includes("rollback"));
 
     const prefixes = numberedFiles.map((f) => parseInt(f.slice(0, 3), 10));
     const maxPrefix = Math.max(...prefixes);
-    expect(maxPrefix).toBe(37);
+    // Must be at least 39 (039_companies_subscription_tier.sql).
+    // This assertion grows automatically as new migrations are added.
+    expect(maxPrefix).toBeGreaterThanOrEqual(39);
   });
 });
 
@@ -146,16 +148,16 @@ describe("R-PV-04: SQL File Validity", () => {
     }
   });
 
-  it("Tests R-PV-04 — 002_load_status_normalization rollback coverage via separate file", () => {
-    // Verify the separate rollback file exists and contains DOWN instructions
+  it("Tests R-PV-04 — 002_load_status_normalization rollback coverage via retired file", () => {
+    // The rollback file was moved to _retired/ as it is not part of the active forward migration chain.
+    // Verify it still exists in the retired directory for reference.
+    const retiredDir = path.join(MIGRATIONS_DIR, "_retired");
     const rollbackPath = path.join(
-      MIGRATIONS_DIR,
+      retiredDir,
       "002_load_status_normalization_rollback.sql",
     );
     expect(fs.existsSync(rollbackPath)).toBe(true);
-    const rollbackSql = readMigrationFile(
-      "002_load_status_normalization_rollback.sql",
-    );
+    const rollbackSql = fs.readFileSync(rollbackPath, "utf-8");
     expect(rollbackSql).toContain("DOWN");
     expect(rollbackSql).toContain("ALTER TABLE loads");
   });

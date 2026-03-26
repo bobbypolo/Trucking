@@ -4,8 +4,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig(() => {
-  const frontendPort = Number(process.env.VITE_PORT || 3000);
-  const backendPort = Number(process.env.VITE_BACKEND_PORT || 5000);
+  const frontendPort = Number(process.env.VITE_PORT || 3101);
+  const backendPort = Number(process.env.VITE_BACKEND_PORT || 5101);
   return {
     server: {
       port: frontendPort,

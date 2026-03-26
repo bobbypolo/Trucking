@@ -30,7 +30,7 @@ import {
   getBrokerSummary,
   linkSessionToRecord,
 } from "./services/storageService";
-import { getBrokers, saveBroker } from "./services/brokerService";
+import { getBrokers } from "./services/brokerService";
 import {
   User,
   LoadData,
@@ -55,12 +55,6 @@ import {
 const Auth = React.lazy(() =>
   import("./components/Auth").then((m) => ({ default: m.Auth })),
 );
-const Dashboard = React.lazy(() =>
-  import("./components/Dashboard").then((m) => ({ default: m.Dashboard })),
-);
-const LoadList = React.lazy(() =>
-  import("./components/LoadList").then((m) => ({ default: m.LoadList })),
-);
 const LoadBoardEnhanced = React.lazy(() =>
   import("./components/LoadBoardEnhanced").then((m) => ({
     default: m.LoadBoardEnhanced,
@@ -81,19 +75,6 @@ const CompanyProfile = React.lazy(() =>
     default: m.CompanyProfile,
   })),
 );
-const BrokerManager = React.lazy(() =>
-  import("./components/BrokerManager").then((m) => ({
-    default: m.BrokerManager,
-  })),
-);
-const SafetyView = React.lazy(() =>
-  import("./components/SafetyView").then((m) => ({ default: m.SafetyView })),
-);
-const Intelligence = React.lazy(() =>
-  import("./components/Intelligence").then((m) => ({
-    default: m.Intelligence,
-  })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -110,35 +91,19 @@ const QuoteManager = React.lazy(() =>
   })),
 );
 import {
-  LayoutDashboard,
   Calendar,
-  Users,
-  ShieldCheck,
-  BarChart3,
-  Wallet,
-  Settings,
   LogOut,
   Plus,
   Menu,
   X,
   Truck,
   AlertTriangle,
-  Home,
   Building2,
-  ClipboardList,
-  FileText,
-  Map as MapIcon,
-  MessageSquare,
-  ShieldAlert,
   Zap,
-  Phone,
   Search,
   Globe,
-  DollarSign,
   ChevronLeft,
 } from "lucide-react";
-import { seedSafetyData } from "./services/safetyService";
-import { v4 as uuidv4 } from "uuid";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
 );
@@ -151,14 +116,6 @@ const CustomerPortalView = React.lazy(() =>
   import("./components/CustomerPortalView").then((m) => ({
     default: m.CustomerPortalView,
   })),
-);
-const GlobalMapViewEnhanced = React.lazy(() =>
-  import("./components/GlobalMapViewEnhanced").then((m) => ({
-    default: m.GlobalMapViewEnhanced,
-  })),
-);
-const AuditLogs = React.lazy(() =>
-  import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
@@ -173,11 +130,6 @@ const ExceptionConsole = React.lazy(() =>
     default: m.ExceptionConsole,
   })),
 );
-const AnalyticsDashboard = React.lazy(() =>
-  import("./components/AnalyticsDashboard").then((m) => ({
-    default: m.AnalyticsDashboard,
-  })),
-);
 const CommsOverlay = React.lazy(() =>
   import("./components/CommsOverlay").then((m) => ({
     default: m.CommsOverlay,
@@ -188,17 +140,10 @@ const NetworkPortal = React.lazy(() =>
     default: m.NetworkPortal,
   })),
 );
+const TelematicsSetup = React.lazy(
+  () => import("./components/TelematicsSetup"),
+);
 import { getRecord360Data } from "./services/storageService";
-const GoogleMapsAPITester = React.lazy(() =>
-  import("./components/GoogleMapsAPITester").then((m) => ({
-    default: m.GoogleMapsAPITester,
-  })),
-);
-const CommandCenterView = React.lazy(() =>
-  import("./components/CommandCenterView").then((m) => ({
-    default: m.CommandCenterView,
-  })),
-);
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -227,6 +172,16 @@ type AccountingPortalTab =
   | "VAULT"
   | "MAINTENANCE"
   | "AUTOMATION";
+
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  analytics: "operations-hub",
+  audit: "operations-hub",
+  brokers: "network",
+  dashboard: "operations-hub",
+  finance: "accounting",
+  map: "operations-hub",
+  safety: "exceptions",
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -411,7 +366,7 @@ export default function App() {
     } else if (loggedInUser.primaryWorkspace === "Dispatch") {
       setActiveTab("loads");
     } else {
-      setActiveTab("dashboard");
+      setActiveTab("operations-hub");
     }
   };
 
@@ -420,7 +375,7 @@ export default function App() {
     setIsAuthReady(false);
     setUser(null);
     setLoads([]);
-    setActiveTab("dashboard");
+    setActiveTab("operations-hub");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -433,7 +388,8 @@ export default function App() {
   };
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    setActiveTab(tab);
+    const nextTab = LEGACY_TAB_ALIASES[tab] ?? tab;
+    setActiveTab(nextTab);
     setActiveSubTab(subTab || undefined);
     setShowIntelligenceHub(false);
     setIsMobileMenuOpen(false);
@@ -582,27 +538,10 @@ export default function App() {
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
-        { id: "analytics", label: "Reports", icon: BarChart3 },
         {
           id: "loads",
           label: "Load Board",
           icon: Truck,
-          permission: "LOAD_DISPATCH",
-          capability: "LOAD_TRACK",
-        },
-        {
-          id: "quotes",
-          label: "Quotes & Booking",
-          icon: ClipboardList,
-          permission: "LOAD_CREATE",
-          capability: "QUOTE_CREATE",
-        },
-        {
-          id: "map",
-          label: "Fleet Map",
-          icon: MapIcon,
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
@@ -613,65 +552,30 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
+        { id: "network", label: "Onboarding", icon: Globe },
       ],
-    },
-    {
-      title: "NETWORK",
-      items: [{ id: "network", label: "Broker Network", icon: Globe }],
     },
     {
       title: "FINANCIALS",
       items: [
         {
-          id: "finance",
-          label: "Driver Pay",
-          icon: Wallet,
-          permission: "SETTLEMENT_VIEW",
-        },
-        {
           id: "accounting",
-          label: "Accounting",
+          label: "Financials",
           icon: Building2,
           permission: "INVOICE_CREATE",
         },
       ],
     },
     {
-      title: "COMPLIANCE",
+      title: "ADMIN",
       items: [
-        {
-          id: "safety",
-          label: "Safety & Compliance",
-          icon: ShieldCheck,
-          permission: "SAFETY_EVENT_VIEW",
-        },
-        {
-          id: "audit",
-          label: "Activity Log",
-          icon: FileText,
-          permission: "AUDIT_LOG_VIEW",
-        },
-      ],
-    },
-    {
-      title: "SETTINGS",
-      items: [
+        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
         {
           id: "company",
           label: "Company Settings",
           icon: Building2,
           permission: "ORG_SETTINGS_VIEW",
         },
-        ...(features.apiTester
-          ? [
-              {
-                id: "api-tester",
-                permission: "ORG_SETTINGS_VIEW" as PermissionCode,
-                label: "API Tester",
-                icon: Zap,
-              },
-            ]
-          : []),
       ],
     },
   ];
@@ -1022,7 +926,7 @@ export default function App() {
                     brokers={brokers}
                     session={session}
                     setSession={setSession}
-                    onClose={() => handleNavigate("dashboard")}
+                    onClose={() => handleNavigate("loads")}
                     onRecordAction={handleRecordAction}
                     initialTab={hubInitialTab}
                     initialShowCallForm={hubInitialShowCallForm}
@@ -1035,24 +939,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "dashboard" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Dashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onViewLoad={(load) => {
-                      setEditingLoad(load);
-                      handleNavigate("loads");
-                    }}
-                    onNavigate={handleNavigate}
-                    users={companyUsers}
-                    onOpenIssues={() => setActiveTab("exceptions")}
-                  />
-                </Suspense>
-              )}
               {activeTab === "exceptions" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="list" count={3} />}
@@ -1061,18 +947,6 @@ export default function App() {
                     currentUser={user}
                     initialView={activeSubTab}
                     onViewDetail={openRecordWorkspace}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "analytics" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AnalyticsDashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onNavigate={handleNavigate}
                   />
                 </Suspense>
               )}
@@ -1141,24 +1015,6 @@ export default function App() {
                   </div>
                 </div>
               )}
-              {activeTab === "map" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <GlobalMapViewEnhanced
-                    loads={loads}
-                    users={companyUsers}
-                    incidents={incidents}
-                    onViewLoad={(l) => {
-                      setViewingLoad(l);
-                      openRecordWorkspace("LOAD", l.id);
-                    }}
-                    onSelectIncident={(incId) =>
-                      openRecordWorkspace("INCIDENT", incId)
-                    }
-                  />
-                </Suspense>
-              )}
               {activeTab === "calendar" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1187,53 +1043,6 @@ export default function App() {
                   <NetworkPortal companyId={user.companyId} />
                 </Suspense>
               )}
-              {activeTab === "brokers" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="list" count={5} />}
-                >
-                  <BrokerManager
-                    brokers={brokers}
-                    onUpdate={() => refreshData(user)}
-                    onSave={async (b) => {
-                      await saveBroker(b);
-                      refreshData(user);
-                    }}
-                    onAddLoad={(bid) => setShowLoadSetup({ brokerId: bid })}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "safety" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <SafetyView
-                    user={user}
-                    loads={loads}
-                    incidents={incidents}
-                    onSaveIncident={async (inc) => {
-                      await createIncident(inc);
-                      refreshData(user);
-                    }}
-                    onRecordAction={handleRecordAction}
-                    openRecordWorkspace={openRecordWorkspace}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "finance" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AccountingPortal
-                    loads={loads}
-                    users={companyUsers}
-                    currentUser={user!}
-                    onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
               {activeTab === "accounting" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1248,13 +1057,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "audit" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="table" count={3} />}
-                >
-                  <AuditLogs user={user} />
-                </Suspense>
-              )}
               {activeTab === "company" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1265,11 +1067,11 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {features.apiTester && activeTab === "api-tester" && (
+              {activeTab === "telematics-setup" && (
                 <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={1} />}
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <GoogleMapsAPITester />
+                  <TelematicsSetup />
                 </Suspense>
               )}
             </div>

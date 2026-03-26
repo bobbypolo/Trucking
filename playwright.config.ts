@@ -5,7 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Phase 6: E2E Testing Foundation & Validation
  *
  * Tests are structured to be discovered by `npx playwright test --list`.
- * In CI (no server), tests are skipped. In local dev, tests run against localhost:5173.
+ * In CI (no server), tests are skipped. In local dev, tests run against localhost:3101/5101.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -31,7 +31,7 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in tests e.g. await page.goto('/') */
-    baseURL: "http://localhost:5173",
+    baseURL: "http://localhost:3101",
 
     /* Collect trace when retrying failed tests */
     trace: "on-first-retry",
@@ -55,40 +55,31 @@ export default defineConfig({
     ? [
         {
           command: "npm run server",
-          url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
-        timeout: 60_000,
-        reuseExistingServer: true,
-        env: {
-          ...process.env,
-          RATE_LIMIT_MAX: "10000",
-        },
-        stdout: "pipe",
-        stderr: "pipe",
-      },
-        {
-          command: "npm run dev",
-          url: `http://localhost:${process.env.VITE_PORT ?? 5173}`,
+          url: `http://localhost:${process.env.PORT ?? 5101}/api/health`,
           timeout: 60_000,
           reuseExistingServer: true,
-          env: {
-            ...process.env,
+          env: { RATE_LIMIT_MAX: "10000" },
+          stdout: "pipe",
+          stderr: "pipe",
         },
-        stdout: "pipe",
-        stderr: "pipe",
-      },
+        {
+          command: "npm run dev",
+          url: "http://localhost:3101",
+          timeout: 60_000,
+          reuseExistingServer: true,
+          stdout: "pipe",
+          stderr: "pipe",
+        },
       ]
     : [
-      {
-        command: "npm run server",
-        url: `http://localhost:${process.env.PORT ?? 5000}/api/health`,
-        timeout: 60_000,
-        reuseExistingServer: !process.env.CI,
-        env: {
-          ...process.env,
-          RATE_LIMIT_MAX: "10000",
+        {
+          command: "npm run server",
+          url: `http://localhost:${process.env.PORT ?? 5101}/api/health`,
+          timeout: 60_000,
+          reuseExistingServer: !process.env.CI,
+          env: { RATE_LIMIT_MAX: "10000" },
+          stdout: "pipe",
+          stderr: "pipe",
         },
-        stdout: "pipe",
-        stderr: "pipe",
-      },
       ],
 });
