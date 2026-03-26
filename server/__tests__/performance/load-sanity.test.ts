@@ -125,9 +125,7 @@ vi.mock("../../lib/sql-auth", () => ({
 
 // Mock requireTier to pass-through (perf tests focus on latency, not tier gating)
 vi.mock("../../middleware/requireTier", () => ({
-  requireTier:
-    () => (_req: any, _res: any, next: any) =>
-      next(),
+  requireTier: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 import express from "express";
@@ -273,7 +271,7 @@ function makeEquipmentRow(overrides: Record<string, unknown> = {}) {
 function makeSettlementRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "settle-001",
-    tenant_id: "company-perf",
+    company_id: "company-perf",
     driver_id: "driver-1",
     settlement_date: "2026-03-01",
     period_start: "2026-02-15",
@@ -506,7 +504,10 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(loadRoutes);
-      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER).expect(200);
+      await request(app)
+        .get("/api/loads")
+        .set("Authorization", AUTH_HEADER)
+        .expect(200);
 
       console.log(
         `[query-count] GET /api/loads with ${N} loads: ${queryCount} DB queries (expected ~${N + 1})`,
@@ -543,7 +544,10 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(accountingRoutes);
-      await request(app).get("/api/accounting/settlements").set("Authorization", AUTH_HEADER).expect(200);
+      await request(app)
+        .get("/api/accounting/settlements")
+        .set("Authorization", AUTH_HEADER)
+        .expect(200);
 
       console.log(
         `[query-count] GET /api/accounting/settlements with ${N} settlements: ${queryCount} DB queries (expected ~${N + 1})`,
@@ -572,7 +576,10 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(trackingRoutes);
-      await request(app).get("/api/loads/tracking").set("Authorization", AUTH_HEADER).expect(200);
+      await request(app)
+        .get("/api/loads/tracking")
+        .set("Authorization", AUTH_HEADER)
+        .expect(200);
 
       const queriesPerLoad = queryCount / N;
       console.log(
@@ -601,7 +608,10 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(trackingRoutes);
-      await request(app).get("/api/loads/load-single/tracking").set("Authorization", AUTH_HEADER).expect(200);
+      await request(app)
+        .get("/api/loads/load-single/tracking")
+        .set("Authorization", AUTH_HEADER)
+        .expect(200);
 
       console.log(
         `[query-count] GET /api/loads/:id/tracking: ${queryCount} DB queries (target: < 5)`,
@@ -626,7 +636,10 @@ describe("R-P5-05 AC2: N+1 Query Detection", () => {
       });
 
       const app = createApp(loadRoutes);
-      await request(app).get("/api/loads").set("Authorization", AUTH_HEADER).expect(200);
+      await request(app)
+        .get("/api/loads")
+        .set("Authorization", AUTH_HEADER)
+        .expect(200);
 
       const expected = N + 1;
       console.log(

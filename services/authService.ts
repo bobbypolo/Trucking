@@ -26,11 +26,150 @@ import {
   getIdToken,
 } from "firebase/auth";
 
-import seedFixtures from "../fixtures/test-users.json";
-
 const SEED_COMPANY_ID = "iscope-authority-001";
-/** Dev-only default password sourced from fixtures/test-users.json. Never hardcoded. */
-const DEV_DEFAULT_PASSWORD: string = seedFixtures.admin.password;
+/**
+ * Local dev seed credentials.
+ * These replace the removed JSON fixture import so the branch builds cleanly
+ * without depending on an untracked file.
+ */
+const DEV_DEFAULT_PASSWORD = "User123";
+
+const seedFixtures = {
+  admin: {
+    email: "admin@loadpilot.com",
+    name: "LoadPilot Admin",
+    companyName: "LoadPilot Logistics",
+    accountType: "fleet" as AccountType,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  dispatcher: {
+    email: "dispatcher@loadpilot.com",
+    name: "Dispatcher One",
+    role: "dispatcher" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  opsManager: {
+    email: "opsmanager@loadpilot.com",
+    name: "Operations Manager",
+    role: "OPS_MANAGER" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  arSpecialist: {
+    email: "ar@loadpilot.com",
+    name: "AR Specialist",
+    role: "ACCOUNTING_AR" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  apClerk: {
+    email: "ap@loadpilot.com",
+    name: "AP Clerk",
+    role: "ACCOUNTING_AP" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  payroll: {
+    email: "payroll@loadpilot.com",
+    name: "Payroll",
+    role: "PAYROLL_SETTLEMENTS" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  safety: {
+    email: "safety@loadpilot.com",
+    name: "Safety",
+    role: "SAFETY_COMPLIANCE" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  maintenance: {
+    email: "maint@loadpilot.com",
+    name: "Maintenance",
+    role: "MAINTENANCE_MANAGER" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  smallBiz: {
+    email: "smallbiz@kci.com",
+    name: "Small Biz Carrier",
+    role: "owner_operator" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  fusedOps: {
+    email: "fused_ops@kci.com",
+    name: "Fused Ops",
+    role: "OPS" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  fusedFinance: {
+    email: "fused_finance@kci.com",
+    name: "Fused Finance",
+    role: "FINANCE" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  fleetOwner: {
+    email: "fleetowner@kci.com",
+    name: "Fleet Owner",
+    role: "OWNER_ADMIN" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  operator1: {
+    email: "operator1@gmail.com",
+    name: "Operator One",
+    role: "owner_operator" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  operator2: {
+    email: "operator2@gmail.com",
+    name: "Operator Two",
+    role: "owner_operator" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  customer: {
+    email: "customer@gmail.com",
+    name: "Customer User",
+    role: "customer" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  architect: {
+    email: "architect@loadpilot.com",
+    name: "Platform Architect",
+    role: "ORG_OWNER_SUPER_ADMIN" as UserRole,
+    password: DEV_DEFAULT_PASSWORD,
+  },
+  drivers: [
+    {
+      email: "driver1@loadpilot.com",
+      name: "Driver One",
+      role: "driver" as UserRole,
+      state: "IL",
+      password: DEV_DEFAULT_PASSWORD,
+    },
+    {
+      email: "driver2@loadpilot.com",
+      name: "Driver Two",
+      role: "driver" as UserRole,
+      state: "IL",
+      password: DEV_DEFAULT_PASSWORD,
+    },
+    {
+      email: "driver3@loadpilot.com",
+      name: "Driver Three",
+      role: "driver" as UserRole,
+      state: "IL",
+      password: DEV_DEFAULT_PASSWORD,
+    },
+    {
+      email: "driver4@loadpilot.com",
+      name: "Driver Four",
+      role: "driver" as UserRole,
+      state: "IL",
+      password: DEV_DEFAULT_PASSWORD,
+    },
+    {
+      email: "driver5@loadpilot.com",
+      name: "Driver Five",
+      role: "driver" as UserRole,
+      state: "IL",
+      password: DEV_DEFAULT_PASSWORD,
+    },
+  ],
+} as const;
 
 // In-memory caches replace former browser-storage for session and roster data
 let _sessionCache: User | null = null;

@@ -1,14 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const frontendPort = Number(process.env.VITE_PORT || 3105);
-const backendPort = Number(process.env.VITE_BACKEND_PORT || process.env.PORT || 5105);
-
 /**
  * Playwright E2E Test Configuration
  * Phase 6: E2E Testing Foundation & Validation
  *
  * Tests are structured to be discovered by `npx playwright test --list`.
- * In CI (no server), tests are skipped. In local dev, tests run against localhost:5173.
+ * In CI (no server), tests are skipped. In local dev, tests run against localhost:3101/5101.
  */
 export default defineConfig({
   testDir: "./e2e",
@@ -34,11 +31,7 @@ export default defineConfig({
 
   use: {
     /* Base URL to use in tests e.g. await page.goto('/') */
-    baseURL:
-      process.env.PLAYWRIGHT_BASE_URL ||
-      process.env.E2E_APP_URL ||
-      process.env.E2E_BASE_URL ||
-      `http://localhost:${frontendPort}`,
+    baseURL: "http://localhost:3101",
 
     /* Collect trace when retrying failed tests */
     trace: "on-first-retry",
@@ -62,26 +55,18 @@ export default defineConfig({
     ? [
         {
           command: "npm run server",
-          url: `http://localhost:${backendPort}/api/health`,
+          url: `http://localhost:${process.env.PORT ?? 5101}/api/health`,
           timeout: 60_000,
           reuseExistingServer: true,
-          env: {
-            RATE_LIMIT_MAX: "10000",
-            PORT: String(backendPort),
-            VITE_BACKEND_PORT: String(backendPort),
-          },
+          env: { RATE_LIMIT_MAX: "10000" },
           stdout: "pipe",
           stderr: "pipe",
         },
         {
           command: "npm run dev",
-          url: `http://localhost:${frontendPort}`,
+          url: "http://localhost:3101",
           timeout: 60_000,
           reuseExistingServer: true,
-          env: {
-            VITE_PORT: String(frontendPort),
-            VITE_BACKEND_PORT: String(backendPort),
-          },
           stdout: "pipe",
           stderr: "pipe",
         },
@@ -89,14 +74,10 @@ export default defineConfig({
     : [
         {
           command: "npm run server",
-          url: `http://localhost:${backendPort}/api/health`,
+          url: `http://localhost:${process.env.PORT ?? 5101}/api/health`,
           timeout: 60_000,
           reuseExistingServer: !process.env.CI,
-          env: {
-            RATE_LIMIT_MAX: "10000",
-            PORT: String(backendPort),
-            VITE_BACKEND_PORT: String(backendPort),
-          },
+          env: { RATE_LIMIT_MAX: "10000" },
           stdout: "pipe",
           stderr: "pipe",
         },

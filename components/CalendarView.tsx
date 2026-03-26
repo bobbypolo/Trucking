@@ -22,6 +22,7 @@ interface Props {
   selectedDriverId?: string | null;
   onSelectDriver?: (id: string | null) => void;
   onMoveLoad?: (loadId: string, newDate: string) => void; // New prop for Drag & Drop support
+  testId?: string;
 }
 
 // Helper
@@ -248,6 +249,7 @@ export const CalendarView: React.FC<Props> = ({
   selectedDriverId,
   onSelectDriver,
   onMoveLoad,
+  testId,
 }) => {
   // Center around today initially
   const [baseDate, setBaseDate] = useState(new Date());
@@ -338,7 +340,10 @@ export const CalendarView: React.FC<Props> = ({
   }
 
   return (
-    <div className="flex h-full gap-4 relative">
+    <div
+      className="flex h-full gap-4 relative"
+      data-testid={testId || "team2-schedule-shell"}
+    >
       {/* Date Picker Modal */}
       {showDatePicker && (
         <div className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in">

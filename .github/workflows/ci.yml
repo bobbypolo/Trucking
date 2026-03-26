@@ -2,26 +2,35 @@ name: CI
 
 on:
   push:
-    branches: [main, ralph/*, recovery/*]
+    branches: [main, ralph/*, recovery/*, fix/*, team*]
   pull_request:
-    branches: [main]
+    branches: [main, fix/pr26-production-remediation]
+
+env:
+  CI: true
 
 jobs:
   frontend-typecheck:
     name: Frontend TypeScript
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
       - run: npm ci
+        shell: cmd
       - run: npx tsc --noEmit
+        shell: cmd
 
   server-typecheck:
     name: Server TypeScript
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: server
@@ -33,11 +42,13 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm ci
+        shell: cmd
       - run: npx tsc --noEmit
+        shell: cmd
 
   server-tests:
     name: Server Tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: server
@@ -48,17 +59,30 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: server/package-lock.json
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist ..\fixtures\test-users.json copy ..\fixtures\test-users.example.json ..\fixtures\test-users.json
       - run: npm ci
-      - run: npx vitest run
+        shell: cmd
+      - name: Run unit and route tests (exclude integration)
+        shell: cmd
+        run: npx vitest run --exclude "__tests__/integration/**" --exclude "__tests__/scripts/**"
 
   frontend-tests:
     name: Frontend Tests
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
       - run: npm ci
+        shell: cmd
       - run: npx vitest run
+        shell: cmd

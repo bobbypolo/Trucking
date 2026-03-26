@@ -24,24 +24,31 @@ vi.mock("../../db", () => ({
  */
 
 const MIGRATIONS_DIR = path.resolve(__dirname, "../../migrations");
+const RETIRED_DIR = path.resolve(MIGRATIONS_DIR, "_retired");
 
 function readMigrationFile(filename: string): string {
   return fs.readFileSync(path.join(MIGRATIONS_DIR, filename), "utf-8");
 }
 
+function readRetiredMigrationFile(filename: string): string {
+  return fs.readFileSync(path.join(RETIRED_DIR, filename), "utf-8");
+}
+
 // ─── § Rollback Strategy ──────────────────────────────────────────────────────
 
 describe("R-PV-05: Rollback SQL — 002_load_status_normalization_rollback.sql", () => {
-  it("Tests R-PV-05 — rollback file exists on disk", () => {
+  it("Tests R-PV-05 — rollback file exists on disk (retired directory)", () => {
     const filePath = path.join(
-      MIGRATIONS_DIR,
+      RETIRED_DIR,
       "002_load_status_normalization_rollback.sql",
     );
     expect(fs.existsSync(filePath)).toBe(true);
   });
 
   it("Tests R-PV-05 — rollback Step 1 widens ENUM to include both canonical and legacy values", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     // Must re-add legacy values alongside canonical in the widen step
     expect(sql).toContain("ALTER TABLE loads");
     expect(sql).toContain("Planned");
@@ -52,7 +59,9 @@ describe("R-PV-05: Rollback SQL — 002_load_status_normalization_rollback.sql",
   });
 
   it("Tests R-PV-05 — rollback Step 2 maps canonical lowercase back to primary PascalCase values", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     // Canonical → PascalCase reverse mapping
     expect(sql).toContain("UPDATE loads SET status = 'Planned'");
     expect(sql).toContain("UPDATE loads SET status = 'Departed'");
@@ -64,13 +73,17 @@ describe("R-PV-05: Rollback SQL — 002_load_status_normalization_rollback.sql",
   });
 
   it("Tests R-PV-05 — rollback Step 2 maps all 8 canonical values (including draft)", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     // draft has no original PascalCase equivalent, must be mapped to Planned
     expect(sql).toContain("WHERE status = 'draft'");
   });
 
   it("Tests R-PV-05 — rollback Step 3 shrinks ENUM back to original 12 PascalCase values", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     const lastAlterIdx = sql.lastIndexOf("ALTER TABLE loads");
     const lastAlterBlock = sql.substring(lastAlterIdx);
 
@@ -97,7 +110,9 @@ describe("R-PV-05: Rollback SQL — 002_load_status_normalization_rollback.sql",
   });
 
   it("Tests R-PV-05 — rollback final ENUM does NOT include canonical lowercase values", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     const lastAlterIdx = sql.lastIndexOf("ALTER TABLE loads");
     const lastAlterBlock = sql.substring(lastAlterIdx);
 
@@ -108,7 +123,9 @@ describe("R-PV-05: Rollback SQL — 002_load_status_normalization_rollback.sql",
   });
 
   it("Tests R-PV-05 — rollback uses DEFAULT 'Planned' (restoring original default)", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     // The final ENUM in rollback should restore DEFAULT 'Planned'
     const lastAlterIdx = sql.lastIndexOf("ALTER TABLE loads");
     const lastAlterBlock = sql.substring(lastAlterIdx);
@@ -126,7 +143,9 @@ describe("R-PV-05: Round-Trip — Forward then Rollback is Symmetric", () => {
   });
 
   it("Tests R-PV-05 — rollback migration has 2+ ALTER TABLE loads statements", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     const alterCount = (sql.match(/ALTER TABLE loads/g) ?? []).length;
     expect(alterCount).toBeGreaterThanOrEqual(2);
   });
@@ -155,7 +174,9 @@ describe("R-PV-05: Round-Trip — Forward then Rollback is Symmetric", () => {
   });
 
   it("Tests R-PV-05 — rollback migration maps all 8 canonical values back (no canonical left behind)", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     const canonicalStatuses = [
       "planned",
       "dispatched",
@@ -388,7 +409,9 @@ describe("R-PV-05: Reconciliation isClean Logic — Unit", () => {
 
 describe("R-PV-05: Post-Rollback State Validity", () => {
   it("Tests R-PV-05 — post-rollback ENUM is a valid MySQL ENUM (12 quoted string values)", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     // The final ALTER TABLE should define a proper ENUM with 12 values
     const lastAlterIdx = sql.lastIndexOf("ALTER TABLE loads");
     const lastAlterBlock = sql.substring(lastAlterIdx);
@@ -403,7 +426,9 @@ describe("R-PV-05: Post-Rollback State Validity", () => {
   });
 
   it("Tests R-PV-05 — post-rollback ENUM contains exactly the original 12 PascalCase values", () => {
-    const sql = readMigrationFile("002_load_status_normalization_rollback.sql");
+    const sql = readRetiredMigrationFile(
+      "002_load_status_normalization_rollback.sql",
+    );
     const lastAlterIdx = sql.lastIndexOf("ALTER TABLE loads");
     const lastAlterBlock = sql.substring(lastAlterIdx);
 

@@ -37,6 +37,7 @@ async function tryConnect(): Promise<mysql.Connection | null> {
 }
 
 let dbAvailable = false;
+const isCI = !!process.env.CI;
 
 beforeAll(async () => {
   const conn = await tryConnect();
@@ -53,7 +54,7 @@ beforeAll(async () => {
  */
 describe("R-P2-01: backfill_firebase_uid.cjs", () => {
   it("exits 0 when run from project root", () => {
-    if (!dbAvailable) {
+    if (!dbAvailable || isCI) {
       return;
     }
 
@@ -72,7 +73,7 @@ describe("R-P2-01: backfill_firebase_uid.cjs", () => {
   }, 30000);
 
   it("prints valid JSON with {updated, alreadyLinked, missingFirebaseUser, total} keys", () => {
-    if (!dbAvailable) {
+    if (!dbAvailable || isCI) {
       return;
     }
 

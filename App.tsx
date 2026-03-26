@@ -55,9 +55,6 @@ import {
 const Auth = React.lazy(() =>
   import("./components/Auth").then((m) => ({ default: m.Auth })),
 );
-const LoadList = React.lazy(() =>
-  import("./components/LoadList").then((m) => ({ default: m.LoadList })),
-);
 const LoadBoardEnhanced = React.lazy(() =>
   import("./components/LoadBoardEnhanced").then((m) => ({
     default: m.LoadBoardEnhanced,
@@ -78,11 +75,6 @@ const CompanyProfile = React.lazy(() =>
     default: m.CompanyProfile,
   })),
 );
-const Intelligence = React.lazy(() =>
-  import("./components/Intelligence").then((m) => ({
-    default: m.Intelligence,
-  })),
-);
 const LoadDetailView = React.lazy(() =>
   import("./components/LoadDetailView").then((m) => ({
     default: m.LoadDetailView,
@@ -99,34 +91,19 @@ const QuoteManager = React.lazy(() =>
   })),
 );
 import {
-  LayoutDashboard,
   Calendar,
-  Users,
-  ShieldCheck,
-  BarChart3,
-  Wallet,
-  Settings,
   LogOut,
   Plus,
   Menu,
   X,
   Truck,
   AlertTriangle,
-  Home,
   Building2,
-  ClipboardList,
-  FileText,
-  Map as MapIcon,
-  MessageSquare,
-  ShieldAlert,
   Zap,
-  Phone,
   Search,
   Globe,
-  DollarSign,
   ChevronLeft,
 } from "lucide-react";
-import { v4 as uuidv4 } from "uuid";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
 );
@@ -139,14 +116,6 @@ const CustomerPortalView = React.lazy(() =>
   import("./components/CustomerPortalView").then((m) => ({
     default: m.CustomerPortalView,
   })),
-);
-const GlobalMapViewEnhanced = React.lazy(() =>
-  import("./components/GlobalMapViewEnhanced").then((m) => ({
-    default: m.GlobalMapViewEnhanced,
-  })),
-);
-const AuditLogs = React.lazy(() =>
-  import("./components/AuditLogs").then((m) => ({ default: m.AuditLogs })),
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
@@ -161,11 +130,6 @@ const ExceptionConsole = React.lazy(() =>
     default: m.ExceptionConsole,
   })),
 );
-const AnalyticsDashboard = React.lazy(() =>
-  import("./components/AnalyticsDashboard").then((m) => ({
-    default: m.AnalyticsDashboard,
-  })),
-);
 const CommsOverlay = React.lazy(() =>
   import("./components/CommsOverlay").then((m) => ({
     default: m.CommsOverlay,
@@ -176,17 +140,10 @@ const NetworkPortal = React.lazy(() =>
     default: m.NetworkPortal,
   })),
 );
+const TelematicsSetup = React.lazy(
+  () => import("./components/TelematicsSetup"),
+);
 import { getRecord360Data } from "./services/storageService";
-const GoogleMapsAPITester = React.lazy(() =>
-  import("./components/GoogleMapsAPITester").then((m) => ({
-    default: m.GoogleMapsAPITester,
-  })),
-);
-const CommandCenterView = React.lazy(() =>
-  import("./components/CommandCenterView").then((m) => ({
-    default: m.CommandCenterView,
-  })),
-);
 import { features } from "./config/features";
 
 /** Navigation item with optional permission/capability gates. */
@@ -215,6 +172,16 @@ type AccountingPortalTab =
   | "VAULT"
   | "MAINTENANCE"
   | "AUTOMATION";
+
+const LEGACY_TAB_ALIASES: Record<string, string> = {
+  analytics: "operations-hub",
+  audit: "operations-hub",
+  brokers: "network",
+  dashboard: "operations-hub",
+  finance: "accounting",
+  map: "operations-hub",
+  safety: "exceptions",
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -253,10 +220,10 @@ export default function App() {
     | "intelligence"
     | "reports"
     | "crm"
-    | "ops"
+    | "safety"
     | "command"
     | "directory"
-  >("ops");
+  >("command");
   const [hubInitialShowCallForm, setHubInitialShowCallForm] = useState(false);
   const [activeCallSession, setActiveCallSession] =
     useState<CallSession | null>(null);
@@ -388,7 +355,6 @@ export default function App() {
 
   const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
-    setHubInitialTab("ops");
     // refreshData is triggered by the onUserChange listener in useEffect
     if (features.seedSystem) {
       seedDatabase();
@@ -401,7 +367,6 @@ export default function App() {
       setActiveTab("loads");
     } else {
       setActiveTab("operations-hub");
-      setHubInitialTab("ops");
     }
   };
 
@@ -411,7 +376,6 @@ export default function App() {
     setUser(null);
     setLoads([]);
     setActiveTab("operations-hub");
-    setHubInitialTab("ops");
   };
 
   const handleSaveLoad = async (load: LoadData) => {
@@ -424,22 +388,9 @@ export default function App() {
   };
 
   const handleNavigate = (tab: string, subTab?: string) => {
-    const normalizedTab =
-      tab === "dashboard"
-        ? "operations-hub"
-        : tab === "brokers"
-          ? "network"
-          : tab === "safety"
-            ? "exceptions"
-            : tab;
-    const normalizedSubTab =
-      tab === "safety" ? subTab || "all" : subTab || undefined;
-
-    setActiveTab(normalizedTab);
-    if (normalizedTab === "operations-hub" && !normalizedSubTab) {
-      setHubInitialTab("ops");
-    }
-    setActiveSubTab(normalizedSubTab);
+    const nextTab = LEGACY_TAB_ALIASES[tab] ?? tab;
+    setActiveTab(nextTab);
+    setActiveSubTab(subTab || undefined);
     setShowIntelligenceHub(false);
     setIsMobileMenuOpen(false);
     setEditingLoad(null);
@@ -587,27 +538,10 @@ export default function App() {
           icon: Zap,
           permission: "LOAD_DISPATCH",
         },
-        // Dashboard consolidated into Operations Center (T5-08)
-        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
-        { id: "analytics", label: "Reports", icon: BarChart3 },
         {
           id: "loads",
           label: "Load Board",
           icon: Truck,
-          permission: "LOAD_DISPATCH",
-          capability: "LOAD_TRACK",
-        },
-        {
-          id: "quotes",
-          label: "Quotes & Booking",
-          icon: ClipboardList,
-          permission: "LOAD_CREATE",
-          capability: "QUOTE_CREATE",
-        },
-        {
-          id: "map",
-          label: "Fleet Map",
-          icon: MapIcon,
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
@@ -618,32 +552,24 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
+        { id: "network", label: "Onboarding", icon: Globe },
       ],
-    },
-    {
-      title: "NETWORK",
-      items: [{ id: "network", label: "Onboarding", icon: Globe }],
     },
     {
       title: "FINANCIALS",
       items: [
         {
-          id: "finance",
-          label: "Driver Pay",
-          icon: Wallet,
-          permission: "SETTLEMENT_VIEW",
-        },
-        {
           id: "accounting",
-          label: "Accounting",
+          label: "Financials",
           icon: Building2,
           permission: "INVOICE_CREATE",
         },
       ],
     },
     {
-      title: "SETTINGS",
+      title: "ADMIN",
       items: [
+        { id: "exceptions", label: "Issues & Alerts", icon: AlertTriangle },
         {
           id: "company",
           label: "Company Settings",
@@ -888,6 +814,7 @@ export default function App() {
                     return (
                       <button
                         key={item.id}
+                        data-testid={`nav-${item.id}`}
                         onClick={() => {
                           if (item.id === "messaging" || item.id === "call") {
                             setHubInitialTab(
@@ -999,7 +926,7 @@ export default function App() {
                     brokers={brokers}
                     session={session}
                     setSession={setSession}
-                    onClose={() => handleNavigate("operations-hub")}
+                    onClose={() => handleNavigate("loads")}
                     onRecordAction={handleRecordAction}
                     initialTab={hubInitialTab}
                     initialShowCallForm={hubInitialShowCallForm}
@@ -1012,7 +939,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {/* Dashboard consolidated into Operations Center (T5-08) */}
               {activeTab === "exceptions" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="list" count={3} />}
@@ -1021,18 +947,6 @@ export default function App() {
                     currentUser={user}
                     initialView={activeSubTab}
                     onViewDetail={openRecordWorkspace}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "analytics" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AnalyticsDashboard
-                    user={user}
-                    loads={loads}
-                    brokers={brokers}
-                    onNavigate={handleNavigate}
                   />
                 </Suspense>
               )}
@@ -1051,10 +965,11 @@ export default function App() {
                     </h1>
                     {permissions.createLoads && (
                       <button
-                        onClick={() => handleNavigate("quotes")}
+                        data-testid="team2-load-board-create-load"
+                        onClick={() => setShowLoadSetup({})}
                         className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg"
                       >
-                        <Plus className="w-5 h-5" /> New Intake
+                        <Plus className="w-5 h-5" /> Create Load
                       </button>
                     )}
                   </div>
@@ -1091,31 +1006,14 @@ export default function App() {
                         brokers={brokers}
                         onCreateLoad={
                           permissions.createLoads
-                            ? () => handleNavigate("quotes")
+                            ? () => setShowLoadSetup({})
                             : undefined
                         }
+                        testId="team2-load-board-shell"
                       />
                     </Suspense>
                   </div>
                 </div>
-              )}
-              {activeTab === "map" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <GlobalMapViewEnhanced
-                    loads={loads}
-                    users={companyUsers}
-                    incidents={incidents}
-                    onViewLoad={(l) => {
-                      setViewingLoad(l);
-                      openRecordWorkspace("LOAD", l.id);
-                    }}
-                    onSelectIncident={(incId) =>
-                      openRecordWorkspace("INCIDENT", incId)
-                    }
-                  />
-                </Suspense>
               )}
               {activeTab === "calendar" && (
                 <Suspense
@@ -1134,6 +1032,7 @@ export default function App() {
                       const l = loads.find((x) => x.id === id);
                       if (l) handleSaveLoad({ ...l, pickupDate: date });
                     }}
+                    testId="team2-schedule-shell"
                   />
                 </Suspense>
               )}
@@ -1142,20 +1041,6 @@ export default function App() {
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
                   <NetworkPortal companyId={user.companyId} />
-                </Suspense>
-              )}
-              {activeTab === "finance" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AccountingPortal
-                    loads={loads}
-                    users={companyUsers}
-                    currentUser={user!}
-                    onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
                 </Suspense>
               )}
               {activeTab === "accounting" && (
@@ -1172,13 +1057,6 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {activeTab === "audit" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="table" count={3} />}
-                >
-                  <AuditLogs user={user} />
-                </Suspense>
-              )}
               {activeTab === "company" && (
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
@@ -1189,11 +1067,11 @@ export default function App() {
                   />
                 </Suspense>
               )}
-              {features.apiTester && activeTab === "api-tester" && (
+              {activeTab === "telematics-setup" && (
                 <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={1} />}
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <GoogleMapsAPITester />
+                  <TelematicsSetup />
                 </Suspense>
               )}
             </div>

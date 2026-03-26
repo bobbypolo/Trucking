@@ -794,7 +794,7 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
 
       await user.click(screen.getByText("Me"));
       expect(screen.getByText("Compliance Tasks")).toBeInTheDocument();
-      expect(screen.getByText("All Records Pass")).toBeInTheDocument();
+      expect(screen.getByText("No open load issues")).toBeInTheDocument();
     });
 
     it("displays user initial avatar on profile tab", async () => {
@@ -833,7 +833,7 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
   });
 
   describe("map tab — fleet tracking overlay (lines 834-853)", () => {
-    it("shows GPS Connection Stable status on map tab", async () => {
+    it("shows tracking status on map tab", async () => {
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -847,7 +847,9 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
 
       await user.click(screen.getByText("Live Map"));
       expect(screen.getByText("Fleet Tracking")).toBeInTheDocument();
-      expect(screen.getByText("GPS Connection Stable")).toBeInTheDocument();
+      expect(
+        screen.getByText("Tracking setup pending hardware integration"),
+      ).toBeInTheDocument();
     });
   });
 });
