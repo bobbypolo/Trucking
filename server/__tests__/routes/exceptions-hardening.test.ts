@@ -486,7 +486,7 @@ describe("GET /api/exceptions/:id/events — hardening", () => {
       .set("Authorization", "Bearer valid-token");
     const sql = mockQuery.mock.calls[0][0] as string;
     expect(sql).toContain("INNER JOIN exceptions");
-    expect(sql).toContain("company_id = ?");
+    expect(sql).toContain("tenant_id = ?");
     const params = mockQuery.mock.calls[0][1] as unknown[];
     expect(params).toContain("company-aaa");
   });
