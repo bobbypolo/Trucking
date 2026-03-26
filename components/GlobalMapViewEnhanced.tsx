@@ -41,6 +41,7 @@ import {
 import { User, LoadData, LOAD_STATUS, LoadStatus, Incident } from "../types";
 import { getDirections } from "../services/directionsService";
 import { validateCoordinates } from "../services/validationGuards";
+import { api } from "../services/api";
 
 /** Live GPS position from /api/tracking/live endpoint */
 interface LiveGpsPosition {
@@ -91,6 +92,102 @@ const defaultCenter = {
   lat: 39.8283, // Center of USA
   lng: -98.5795,
 };
+
+type RouteStopKind = "pickup" | "dropoff";
+
+type RouteLocation = {
+  facilityName?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+};
+
+function getLoadStopLocation(
+  load: LoadData,
+  kind: RouteStopKind,
+): RouteLocation | null {
+  const legType = kind === "pickup" ? "pickup" : "dropoff";
+  const leg = load.legs?.find(
+    (candidate: any) =>
+      String(candidate?.type ?? "").toLowerCase() === legType &&
+      candidate?.location,
+  ) as any | undefined;
+
+  if (leg?.location) {
+    return leg.location as RouteLocation;
+  }
+
+  return kind === "pickup"
+    ? ((load.pickup as RouteLocation | undefined) ?? null)
+    : ((load.dropoff as RouteLocation | undefined) ?? null);
+}
+
+function formatStopLocation(
+  location: RouteLocation | null,
+  kind: RouteStopKind,
+): string {
+  if (!location) {
+    return `${kind === "pickup" ? "Pickup" : "Dropoff"} location unavailable`;
+  }
+
+  const pieces = [
+    location.facilityName?.trim(),
+    location.address?.trim(),
+    [location.city?.trim(), location.state?.trim()]
+      .filter(Boolean)
+      .join(", ")
+      .trim(),
+  ].filter((part): part is string => Boolean(part));
+
+  if (pieces.length === 0) {
+    return `${kind === "pickup" ? "Pickup" : "Dropoff"} location unavailable`;
+  }
+
+  return `${kind === "pickup" ? "Pickup" : "Dropoff"}: ${pieces.join(" · ")}`;
+}
+
+function formatDirectionsQuery(location: RouteLocation | null): string {
+  if (!location) return "";
+
+  return [
+    location.address?.trim(),
+    location.facilityName?.trim(),
+    [location.city?.trim(), location.state?.trim()]
+      .filter(Boolean)
+      .join(", ")
+      .trim(),
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(", ");
+}
+
+function formatRouteSummary(load: LoadData): string {
+  const pickup = formatStopLocation(
+    getLoadStopLocation(load, "pickup"),
+    "pickup",
+  ).replace(/^Pickup:\s*/, "");
+  const dropoff = formatStopLocation(
+    getLoadStopLocation(load, "dropoff"),
+    "dropoff",
+  ).replace(/^Dropoff:\s*/, "");
+
+  return `${pickup} → ${dropoff}`;
+}
+
+function formatProviderLabel(name?: string | null): string | null {
+  if (!name) return null;
+
+  const normalized = name
+    .toLowerCase()
+    .replace(/[_\s]+/g, " ")
+    .trim();
+  if (normalized === "samsara") return "Samsara";
+  if (normalized === "webhook" || normalized === "generic webhook") {
+    return "Generic Webhook";
+  }
+
+  return name;
+}
 
 const mapOptions = {
   disableDefaultUI: false,
@@ -197,32 +294,34 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const [livePositions, setLivePositions] = useState<LiveGpsPosition[]>([]);
   const [hasLiveData, setHasLiveData] = useState(false);
   const [hasMockPositions, setHasMockPositions] = useState(false);
+  const [trackingState, setTrackingState] = useState<
+    "configured-live" | "configured-idle" | "not-configured" | "provider-error"
+  >("not-configured");
+  const [providerName, setProviderName] = useState<string | null>(null);
   const showMockIndicators = (import.meta as any).env.DEV;
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchLivePositions = useCallback(async () => {
     try {
-      const res = await fetch("/api/tracking/live");
-      if (!res.ok) {
-        // API error — fall back to static data
-        setLivePositions([]);
-        setHasLiveData(false);
-        setHasMockPositions(false);
-        return;
-      }
-      const data = await res.json();
-      const positions: LiveGpsPosition[] = data.positions ?? [];
-
-      setLivePositions(positions);
-      setHasLiveData(positions.length > 0 && positions.some((p) => !p.isMock));
-      setHasMockPositions(showMockIndicators && positions.some((p) => p.isMock));
+      const data = await api.get("/tracking/live");
+      if (!data) return; // request was aborted
+      setLivePositions(data.positions ?? []);
+      setTrackingState(data.trackingState ?? "not-configured");
+      setProviderName(data.providerDisplayName ?? data.providerName ?? null);
+      setHasLiveData(
+        (data.positions?.length ?? 0) > 0 &&
+          data.positions?.some((p: any) => !p.isMock),
+      );
+      setHasMockPositions(
+        showMockIndicators && data.positions?.some((p: any) => p.isMock),
+      );
     } catch {
-      // Network/parse error — fall back to static data
+      setTrackingState("provider-error");
       setLivePositions([]);
       setHasLiveData(false);
       setHasMockPositions(false);
     }
-  }, []);
+  }, [showMockIndicators]);
 
   useEffect(() => {
     // Initial fetch
@@ -397,8 +496,17 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
       for (const load of loads) {
         if (load.status === LOAD_STATUS.In_Transit && !routePaths[load.id]) {
           try {
-            const origin = `${load.pickup?.city ?? ""}, ${load.pickup?.state ?? ""}`;
-            const destination = `${load.dropoff?.city ?? ""}, ${load.dropoff?.state ?? ""}`;
+            const origin = formatDirectionsQuery(
+              getLoadStopLocation(load, "pickup"),
+            );
+            const destination = formatDirectionsQuery(
+              getLoadStopLocation(load, "dropoff"),
+            );
+
+            if (!origin || !destination) {
+              continue;
+            }
+
             const directions = await getDirections(origin, destination);
 
             // Decode polyline (simple version for demo)
@@ -424,13 +532,84 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   // AC3: Graceful fallback when GOOGLE_MAPS_API_KEY is absent
   const hasValidApiKey = GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY.length > 10;
 
+  // Render a tracking state banner element based on the current trackingState
+  const renderTrackingStateBanner = () => {
+    if (trackingState === "configured-live") {
+      return (
+        <div
+          className="flex items-center gap-2 bg-green-900/80 border border-green-700/50 rounded-lg px-3 py-2"
+          data-testid="tracking-state-banner"
+          data-tracking-state="configured-live"
+          role="status"
+        >
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+          </span>
+          <span className="text-[11px] font-bold text-green-300">
+            Live Tracking Active
+            {providerName ? ` - ${formatProviderLabel(providerName)}` : ""}
+          </span>
+        </div>
+      );
+    }
+    if (trackingState === "configured-idle") {
+      return (
+        <div
+          className="flex items-center gap-2 bg-amber-900/80 border border-amber-700/50 rounded-lg px-3 py-2"
+          data-testid="tracking-state-banner"
+          data-tracking-state="configured-idle"
+          role="status"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+          <span className="text-[11px] font-bold text-amber-300">
+            Tracking Idle — No Active Vehicles
+          </span>
+        </div>
+      );
+    }
+    if (trackingState === "not-configured") {
+      return (
+        <div
+          className="flex items-center gap-2 bg-slate-800/90 border border-slate-600/50 rounded-lg px-3 py-2"
+          data-testid="tracking-state-banner"
+          data-tracking-state="not-configured"
+          role="status"
+        >
+          <AlertCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[11px] font-semibold text-slate-300">
+            GPS tracking not configured. Contact your admin to set up a
+            telematics provider.
+          </span>
+        </div>
+      );
+    }
+    if (trackingState === "provider-error") {
+      return (
+        <div
+          className="flex items-center gap-2 bg-red-900/80 border border-red-700/50 rounded-lg px-3 py-2"
+          data-testid="tracking-state-banner"
+          data-tracking-state="provider-error"
+          role="alert"
+        >
+          <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+          <span className="text-[11px] font-semibold text-red-300">
+            Tracking temporarily unavailable. The system will retry
+            automatically.
+          </span>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (!hasValidApiKey) {
     return (
       <div
         className="flex-1 relative overflow-hidden w-full h-full"
         data-testid="map-fallback"
       >
-        {/* Error banner — visible when Google Maps API key not configured */}
+        {/* Error banner — user-friendly message, no raw env var names */}
         <div
           className="absolute top-0 left-0 right-0 z-10 bg-red-900/90 border-b border-red-700 px-4 py-2 flex items-center gap-2"
           data-testid="maps-api-key-error-banner"
@@ -438,9 +617,15 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         >
           <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
           <span className="text-sm font-semibold text-red-200">
-            Google Maps API key not configured — map features are unavailable.
-            Set VITE_GOOGLE_MAPS_API_KEY in your environment.
+            Map display requires configuration. Contact your administrator to
+            enable fleet map.
           </span>
+          {/* Technical detail only shown in development mode */}
+          {(import.meta as any).env.DEV && (
+            <span className="text-xs text-red-400/70 ml-2">
+              (dev: set VITE_GOOGLE_MAPS_API_KEY)
+            </span>
+          )}
         </div>
         <div className="absolute inset-0 bg-slate-950 flex items-center justify-center pt-10">
           <div className="text-center p-8 bg-slate-900/80 border border-slate-700 rounded-2xl max-w-md">
@@ -449,9 +634,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               Map Unavailable
             </h2>
             <p className="text-sm text-slate-400 mb-4">
-              Google Maps API key is not configured. Fleet tracking data is
-              available via the tracking API endpoint.
+              Fleet map display requires administrator configuration. Load
+              positions and tracking data remain available.
             </p>
+            {/* Tracking state banner inside fallback card */}
+            <div className="mb-4">{renderTrackingStateBanner()}</div>
             <div className="bg-slate-950/60 border border-white/5 rounded-xl p-4">
               <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">
                 Fleet Summary
@@ -570,7 +757,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: (pos.isMock && showMockIndicators) ? "#f59e0b" : "#22c55e",
+                        fillColor:
+                          pos.isMock && showMockIndicators
+                            ? "#f59e0b"
+                            : "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,
@@ -624,8 +814,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                         #{selectedVehicle.activeLoad.loadNumber}
                       </div>
                       <div className="text-[9px] text-slate-600 italic">
-                        {selectedVehicle.activeLoad.pickup?.city ?? ""} →{" "}
-                        {selectedVehicle.activeLoad.dropoff?.city ?? ""}
+                        {formatRouteSummary(selectedVehicle.activeLoad)}
                       </div>
                     </div>
                   )}
@@ -663,6 +852,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           <Radio className="w-3 h-3 text-green-400" />
         </div>
       )}
+
+      {/* Tracking state banner — overlay for full-map view */}
+      <div className="absolute top-4 right-20 z-30">
+        {renderTrackingStateBanner()}
+      </div>
 
       {/* Weather Overlay */}
       {weather && !isHighObstruction && (
@@ -894,8 +1088,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                 #{selectedDriverOverlay.activeLoad.loadNumber}
               </div>
               <div className="text-[10px] text-slate-400">
-                {selectedDriverOverlay.activeLoad.pickup?.city ?? ""} →{" "}
-                {selectedDriverOverlay.activeLoad.dropoff?.city ?? ""}
+                {formatRouteSummary(selectedDriverOverlay.activeLoad)}
               </div>
             </div>
           )}
@@ -945,3 +1138,35 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
     </div>
   );
 };
+
+// ---------------------------------------------------------------------------
+// FleetMapWidget — compact embeddable version for Operations Center, Load Detail, etc.
+// ---------------------------------------------------------------------------
+interface FleetMapWidgetProps {
+  loads: LoadData[];
+  users: User[];
+  incidents?: Incident[];
+  onViewLoad?: (load: LoadData) => void;
+  height?: string;
+}
+
+export function FleetMapWidget({
+  loads,
+  users,
+  incidents,
+  onViewLoad,
+  height = "400px",
+}: FleetMapWidgetProps) {
+  return (
+    <div style={{ height }} className="rounded-lg overflow-hidden">
+      <GlobalMapViewEnhanced
+        loads={loads}
+        users={users}
+        incidents={incidents}
+        onViewLoad={onViewLoad}
+        isHighObstruction={false}
+        showSideOverlays={false}
+      />
+    </div>
+  );
+}

@@ -5,7 +5,9 @@ import { GlobalMapView } from "../../../components/GlobalMapView";
 
 // Mock lucide-react icons
 vi.mock("lucide-react", () => {
-  const icon = (props: any) => <span data-testid={props["data-testid"] || "icon"} />;
+  const icon = (props: any) => (
+    <span data-testid={props["data-testid"] || "icon"} />
+  );
   return {
     MapPin: icon,
     Truck: icon,
@@ -204,10 +206,58 @@ describe("GlobalMapView", () => {
   });
 
   it("shows N/A for drivers without safety score", () => {
-    const users = [
-      { id: "d4", name: "New Driver", role: "driver" },
-    ] as any[];
+    const users = [{ id: "d4", name: "New Driver", role: "driver" }] as any[];
     render(<GlobalMapView loads={[]} users={users} />);
     expect(screen.getByText("N/A")).toBeInTheDocument();
+  });
+
+  it("renders trackingState indicator when trackingState prop is provided", () => {
+    render(
+      <GlobalMapView
+        loads={mockLoads}
+        users={mockUsers}
+        trackingState="configured-live"
+      />,
+    );
+    const indicator = screen.getByTestId("tracking-state-indicator");
+    expect(indicator).toBeInTheDocument();
+    expect(indicator.getAttribute("data-tracking-state")).toBe(
+      "configured-live",
+    );
+  });
+
+  it("shows Live Tracking text for configured-live state", () => {
+    render(
+      <GlobalMapView loads={[]} users={[]} trackingState="configured-live" />,
+    );
+    expect(screen.getByText(/live tracking/i)).toBeInTheDocument();
+  });
+
+  it("shows Tracking Idle text for configured-idle state", () => {
+    render(
+      <GlobalMapView loads={[]} users={[]} trackingState="configured-idle" />,
+    );
+    expect(screen.getByText(/tracking idle/i)).toBeInTheDocument();
+  });
+
+  it("shows GPS not configured message for not-configured state", () => {
+    render(
+      <GlobalMapView loads={[]} users={[]} trackingState="not-configured" />,
+    );
+    expect(screen.getByText(/gps not configured/i)).toBeInTheDocument();
+  });
+
+  it("shows Tracking Unavailable for provider-error state", () => {
+    render(
+      <GlobalMapView loads={[]} users={[]} trackingState="provider-error" />,
+    );
+    expect(screen.getByText(/tracking unavailable/i)).toBeInTheDocument();
+  });
+
+  it("does not render tracking state indicator when trackingState prop is omitted", () => {
+    render(<GlobalMapView loads={[]} users={[]} />);
+    expect(
+      screen.queryByTestId("tracking-state-indicator"),
+    ).not.toBeInTheDocument();
   });
 });

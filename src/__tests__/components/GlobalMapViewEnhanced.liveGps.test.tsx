@@ -30,7 +30,8 @@ vi.mock("@react-google-maps/api", () => ({
     onLoad?: (map: any) => void;
   }) => {
     React.useEffect(() => {
-      if (onLoad) onLoad({ getCenter: () => null, panTo: vi.fn(), setZoom: vi.fn() });
+      if (onLoad)
+        onLoad({ getCenter: () => null, panTo: vi.fn(), setZoom: vi.fn() });
     }, [onLoad]);
     return <div data-testid="google-map">{children}</div>;
   },
@@ -43,6 +44,12 @@ vi.mock("@react-google-maps/api", () => ({
 
 vi.mock("../../../services/directionsService", () => ({
   getDirections: vi.fn().mockResolvedValue({ points: "" }),
+}));
+
+vi.mock("../../../services/authService", () => ({
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
+  default: {},
 }));
 
 import { GlobalMapViewEnhanced } from "../../../components/GlobalMapViewEnhanced";
@@ -142,7 +149,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const trackingCalls = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       );
       expect(trackingCalls.length).toBeGreaterThanOrEqual(1);
     });
@@ -175,7 +183,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const initialCalls = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       ).length;
 
       // Advance 30 seconds
@@ -184,7 +193,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const afterOnePoll = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       ).length;
 
       expect(afterOnePoll).toBeGreaterThan(initialCalls);
@@ -195,7 +205,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const afterTwoPolls = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       ).length;
 
       expect(afterTwoPolls).toBeGreaterThan(afterOnePoll);
@@ -241,7 +252,9 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
         await vi.advanceTimersByTimeAsync(100);
       });
 
-      expect(screen.queryByTestId("live-gps-indicator")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("live-gps-indicator"),
+      ).not.toBeInTheDocument();
     });
 
     it("does not show live indicator when API returns error", async () => {
@@ -257,7 +270,9 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
         await vi.advanceTimersByTimeAsync(100);
       });
 
-      expect(screen.queryByTestId("live-gps-indicator")).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("live-gps-indicator"),
+      ).not.toBeInTheDocument();
     });
 
     it("shows simulated label for mock positions", async () => {
@@ -303,7 +318,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const callsBeforeUnmount = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       ).length;
 
       // Unmount the component
@@ -315,7 +331,8 @@ describe("GlobalMapViewEnhanced -- Live GPS polling (S-403)", () => {
       });
 
       const callsAfterUnmount = fetchSpy.mock.calls.filter(
-        (call) => typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
+        (call) =>
+          typeof call[0] === "string" && call[0].includes("/api/tracking/live"),
       ).length;
 
       // No new calls should have been made after unmount
