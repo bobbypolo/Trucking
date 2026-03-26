@@ -3,15 +3,57 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Tests R-FS-05-01, R-FS-05-07, R-S27-01, R-S27-02, R-S27-03, R-S27-04
 
 // Hoisted mocks
-const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
+const {
+  mockQuery,
+  mockResolveSqlPrincipalByFirebaseUid,
+  mockConnectionQuery,
+  mockBeginTransaction,
+  mockCommit,
+  mockRollback,
+  mockRelease,
+  mockGetConnection,
+  mockConnection,
+  mockChildLogger,
+} = vi.hoisted(() => {
   const mockQuery = vi.fn();
   const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
-  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid };
+  const mockConnectionQuery = vi.fn();
+  const mockBeginTransaction = vi.fn().mockResolvedValue(undefined);
+  const mockCommit = vi.fn().mockResolvedValue(undefined);
+  const mockRollback = vi.fn().mockResolvedValue(undefined);
+  const mockRelease = vi.fn();
+  const mockGetConnection = vi.fn();
+  const mockConnection = {
+    beginTransaction: mockBeginTransaction,
+    commit: mockCommit,
+    rollback: mockRollback,
+    release: mockRelease,
+    query: mockConnectionQuery,
+  };
+  const mockChildLogger = {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  };
+  return {
+    mockQuery,
+    mockResolveSqlPrincipalByFirebaseUid,
+    mockConnectionQuery,
+    mockBeginTransaction,
+    mockCommit,
+    mockRollback,
+    mockRelease,
+    mockGetConnection,
+    mockConnection,
+    mockChildLogger,
+  };
 });
 
 vi.mock("../../db", () => ({
   default: {
     query: mockQuery,
+    getConnection: mockGetConnection,
   },
 }));
 
@@ -23,12 +65,7 @@ vi.mock("../../lib/logger", () => ({
     debug: vi.fn(),
     child: vi.fn().mockReturnThis(),
   },
-  createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  }),
+  createChildLogger: () => mockChildLogger,
 }));
 
 vi.mock("../../helpers", () => ({
@@ -567,5 +604,122 @@ describe("POST /api/clients — company_id enforcement (STORY-006)", () => {
       .send({ type: "Broker" });
 
     expect(res.status).toBe(400);
+  });
+});
+
+// ── POST /api/parties — fallback to customers table ─────────────────────────
+
+function makeMissingTableError(tableName: string) {
+  const err: any = new Error(`Table '${tableName}' doesn't exist`);
+  err.code = "ER_NO_SUCH_TABLE";
+  return err;
+}
+
+describe("POST /api/parties - fallback to customers table", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+    vi.clearAllMocks();
+    // Default: getConnection returns the mock connection
+    mockGetConnection.mockResolvedValue(mockConnection);
+  });
+
+  it("preserves original entityClass when falling back to customers table", async () => {
+    // The first connection.query is the REPLACE INTO parties — throw missing table
+    mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
+    // pool.query for the fallback REPLACE INTO customers
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/parties")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        name: "Test Vendor",
+        type: "Broker",
+        entityClass: "Vendor",
+      });
+
+    expect(res.status).toBe(201);
+    // The fallback INSERT into customers should use entityClass ("Vendor"), not type ("Broker")
+    const fallbackCall = mockQuery.mock.calls[0];
+    const sql = fallbackCall[0] as string;
+    expect(sql).toContain("REPLACE INTO customers");
+    const params = fallbackCall[1] as any[];
+    // params layout: [id, finalTenantId, name, entityClass||type, mcNumber, dotNumber, email, phone, address, payment_terms, chassisJson]
+    // Index 3 = entityClass || type
+    expect(params[3]).toBe("Vendor");
+  });
+
+  it("intentionally drops tags with warning log when parties unavailable", async () => {
+    mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/parties")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        name: "Tagged Entity",
+        type: "Carrier",
+        tags: ["preferred", "hazmat"],
+      });
+
+    expect(res.status).toBe(201);
+    // Verify log.warn was called about tags not being persisted
+    expect(mockChildLogger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ tags: ["preferred", "hazmat"] }),
+      expect.stringContaining("Tags not persisted"),
+    );
+    // Verify tags were NOT passed in the customers INSERT params
+    const fallbackCall = mockQuery.mock.calls[0];
+    const sql = fallbackCall[0] as string;
+    expect(sql).toContain("REPLACE INTO customers");
+    // The SQL has 11 placeholders, none of which is for tags
+    expect(sql).not.toContain("tags");
+  });
+
+  it("stores chassis_requirements correctly in fallback mode", async () => {
+    mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const chassisReqs = { type: "53ft", reefer: true };
+    const res = await request(app)
+      .post("/api/parties")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        name: "Chassis Entity",
+        type: "Shipper",
+        chassis_requirements: chassisReqs,
+      });
+
+    expect(res.status).toBe(201);
+    const fallbackCall = mockQuery.mock.calls[0];
+    const params = fallbackCall[1] as any[];
+    // chassis_requirements is the last param (index 10)
+    expect(params[10]).toBe(JSON.stringify(chassisReqs));
+  });
+
+  it("returns fallback indicator in response", async () => {
+    mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+
+    const res = await request(app)
+      .post("/api/parties")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        name: "Fallback Entity",
+        type: "Broker",
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        fallback: "customers",
+        message: "Party synced with Unified Engine",
+      }),
+    );
   });
 });
