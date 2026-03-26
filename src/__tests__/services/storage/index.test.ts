@@ -98,7 +98,7 @@ describe("storage/index.ts — barrel exports", () => {
       (storage as Record<string, unknown>).STORAGE_KEY_VAULT_DOCS,
     ).toBeUndefined();
     expect(storage.getRawVaultDocs).toBeTypeOf("function");
-    expect(storage.saveVaultDoc).toBeTypeOf("function");
+    expect((storage as Record<string, unknown>).saveVaultDoc).toBeUndefined();
     expect(storage.uploadVaultDoc).toBeTypeOf("function");
   });
 

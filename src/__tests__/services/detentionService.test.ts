@@ -1,110 +1,171 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DetentionService } from "../../../services/detentionService";
 
-// Mock uuid to get deterministic IDs
-vi.mock("uuid", () => ({
-  v4: vi.fn(() => "abcdef-1234-5678-9abc-def012345678"),
+// Use vi.hoisted so mock fns are available when vi.mock factory runs (hoisted)
+const { mockPost, mockGet } = vi.hoisted(() => ({
+  mockPost: vi.fn(),
+  mockGet: vi.fn(),
 }));
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    post: mockPost,
+    get: mockGet,
+  },
+}));
+
+import { DetentionService } from "../../../services/detentionService";
 
 describe("DetentionService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  const mockLoad = {
-    id: "LOAD-001",
-    companyId: "COMP-1",
-    driverId: "DRV-1",
-    loadNumber: "LN-001",
-    status: "in_transit" as const,
-    carrierRate: 2500,
-    driverPay: 1800,
-    pickupDate: "2026-03-15",
-    pickup: { city: "Chicago", state: "IL" },
-    dropoff: { city: "Milwaukee", state: "WI" },
-  };
-
   describe("processGeofenceEvent", () => {
-    it("returns isBillable: false for ENTRY events", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "ENTRY",
-        new Date().toISOString(),
-      );
+    it("calls POST /api/geofence-events with event payload", async () => {
+      const mockResponse = { id: "ev-123", message: "Geofence event recorded" };
+      mockPost.mockResolvedValueOnce(mockResponse);
 
-      expect(result).toEqual({ isBillable: false });
+      const event = {
+        loadId: "LOAD-001",
+        eventType: "ENTRY" as const,
+        facilityLat: 33.1234,
+        facilityLng: -97.5678,
+        facilityName: "Warehouse A",
+      };
+
+      const result = await DetentionService.processGeofenceEvent(event);
+
+      expect(mockPost).toHaveBeenCalledWith("/api/geofence-events", event);
+      expect(result.id).toBe("ev-123");
+      expect(result.message).toBe("Geofence event recorded");
     });
 
-    it("returns billable detention when dwell time exceeds free time", async () => {
-      // The mock inside the service creates a 3.5 hour dwell time
-      // Free time is 2h, so billable hours = ceil(3.5 - 2) = 2
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
+    it("passes EXIT event type correctly", async () => {
+      mockPost.mockResolvedValueOnce({
+        id: "ev-456",
+        message: "Geofence event recorded",
+      });
 
-      expect(result.isBillable).toBe(true);
-      expect(result.request).toBeDefined();
-      expect(result.request.loadId).toBe("LOAD-001");
-      expect(result.request.type).toBe("DETENTION");
-      expect(result.request.status).toBe("PENDING_APPROVAL");
-      expect(result.request.createdBy).toBe("Detention-Bot");
+      const event = {
+        loadId: "LOAD-002",
+        eventType: "EXIT" as const,
+        facilityLat: 34.0,
+        facilityLng: -98.0,
+        driverId: "DRV-1",
+        eventTimestamp: "2026-03-20T14:00:00Z",
+      };
+
+      await DetentionService.processGeofenceEvent(event);
+
+      expect(mockPost).toHaveBeenCalledWith("/api/geofence-events", event);
+      expect(mockPost.mock.calls[0][1].eventType).toBe("EXIT");
     });
 
-    it("calculates correct billable amount", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
+    it("propagates API errors", async () => {
+      mockPost.mockRejectedValueOnce(new Error("Network error"));
 
-      // Dwell: ~3.5h, free: 2h, billable: ceil(1.5) = 2h, rate: $50/h
-      expect(result.request.requestedAmount).toBe(100); // 2 * 50
+      const event = {
+        loadId: "LOAD-003",
+        eventType: "ENTRY" as const,
+        facilityLat: 33.0,
+        facilityLng: -97.0,
+      };
+
+      await expect(
+        DetentionService.processGeofenceEvent(event),
+      ).rejects.toThrow("Network error");
+    });
+  });
+
+  describe("calculateDetention", () => {
+    it("calls POST /api/detention/calculate with loadId", async () => {
+      const mockResponse = {
+        loadId: "LOAD-001",
+        records: [
+          {
+            facilityName: "WH-A",
+            entryTime: "2026-03-20T08:00:00",
+            exitTime: "2026-03-20T13:00:00",
+            dwellHours: 5,
+            billableHours: 3,
+            charge: 225,
+            freeHours: 2,
+            hourlyRate: 75,
+          },
+        ],
+        totalCharge: 225,
+        rules: { freeHours: 2, hourlyRate: 75, maxBillableHours: 24 },
+      };
+      mockPost.mockResolvedValueOnce(mockResponse);
+
+      const result = await DetentionService.calculateDetention("LOAD-001");
+
+      expect(mockPost).toHaveBeenCalledWith("/api/detention/calculate", {
+        loadId: "LOAD-001",
+      });
+      expect(result.loadId).toBe("LOAD-001");
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0].charge).toBe(225);
+      expect(result.totalCharge).toBe(225);
+      expect(result.rules.freeHours).toBe(2);
     });
 
-    it("generates detention request with correct ID format", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
+    it("returns zero detention when no records", async () => {
+      mockPost.mockResolvedValueOnce({
+        loadId: "LOAD-EMPTY",
+        records: [],
+        totalCharge: 0,
+        rules: { freeHours: 2, hourlyRate: 75, maxBillableHours: 24 },
+      });
 
-      expect(result.request.id).toMatch(/^DET-[A-Z0-9]{6}$/);
+      const result = await DetentionService.calculateDetention("LOAD-EMPTY");
+
+      expect(result.records).toHaveLength(0);
+      expect(result.totalCharge).toBe(0);
     });
 
-    it("includes dwell time in response", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
+    it("propagates API errors", async () => {
+      mockPost.mockRejectedValueOnce(new Error("Server error"));
 
-      expect(result.dwellTime).toBeGreaterThan(3);
-      expect(result.dwellTime).toBeLessThan(4);
+      await expect(
+        DetentionService.calculateDetention("LOAD-ERR"),
+      ).rejects.toThrow("Server error");
+    });
+  });
+
+  describe("getGeofenceEvents", () => {
+    it("calls GET /api/geofence-events with loadId query param", async () => {
+      const mockEvents = [
+        {
+          id: "ev-1",
+          event_type: "ENTRY",
+          event_timestamp: "2026-03-20T10:00:00",
+        },
+        {
+          id: "ev-2",
+          event_type: "EXIT",
+          event_timestamp: "2026-03-20T14:00:00",
+        },
+      ];
+      mockGet.mockResolvedValueOnce(mockEvents);
+
+      const result = await DetentionService.getGeofenceEvents("LOAD-001");
+
+      expect(mockGet).toHaveBeenCalledWith(
+        "/api/geofence-events?loadId=LOAD-001",
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0].event_type).toBe("ENTRY");
+      expect(result[1].event_type).toBe("EXIT");
     });
 
-    it("includes automated detection note", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
+    it("encodes loadId with special characters", async () => {
+      mockGet.mockResolvedValueOnce([]);
 
-      expect(result.request.notes).toContain("Automated detection");
-      expect(result.request.notes).toContain("dwell time");
-      expect(result.request.notes).toContain("free time exceeded");
-    });
+      await DetentionService.getGeofenceEvents("LOAD/001&x=1");
 
-    it("includes createdAt timestamp in ISO format", async () => {
-      const result = await DetentionService.processGeofenceEvent(
-        mockLoad as any,
-        "EXIT",
-        new Date().toISOString(),
-      );
-
-      expect(result.request.createdAt).toMatch(
-        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,
+      expect(mockGet).toHaveBeenCalledWith(
+        "/api/geofence-events?loadId=LOAD%2F001%26x%3D1",
       );
     });
   });

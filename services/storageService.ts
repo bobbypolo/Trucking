@@ -106,7 +106,7 @@ export {
   saveContact,
   getDirectory,
 } from "./storage/directory";
-export { getRawVaultDocs, saveVaultDoc, uploadVaultDoc } from "./storage/vault";
+export { getRawVaultDocs, uploadVaultDoc } from "./storage/vault";
 export {
   getRawNotificationJobs,
   saveNotificationJob,

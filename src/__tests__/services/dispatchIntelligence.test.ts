@@ -1,4 +1,16 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Use vi.hoisted so mock fns are available when vi.mock factory runs (hoisted)
+const { mockPost } = vi.hoisted(() => ({
+  mockPost: vi.fn(),
+}));
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    post: mockPost,
+    get: vi.fn(),
+  },
+}));
 
 import {
   DispatchIntelligence,
@@ -37,6 +49,10 @@ const makeDriver = (overrides: Partial<User> = {}): User =>
   }) as User;
 
 describe("dispatchIntelligence", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // ─── getRegion ───────────────────────────────────────────────────────
   describe("getRegion", () => {
     it("maps Chicago to Midwest", () => {
@@ -99,78 +115,117 @@ describe("dispatchIntelligence", () => {
     });
   });
 
-  // ─── getBestMatches ──────────────────────────────────────────────────
+  // ─── getBestMatches (API-backed) ────────────────────────────────────
   describe("getBestMatches", () => {
-    it("returns empty when no eligible drivers", async () => {
+    it("calls API with load.id and returns mapped results", async () => {
+      mockPost.mockResolvedValueOnce([
+        {
+          driverId: "drv-1",
+          driverName: "Alice Smith",
+          distanceMiles: 25.3,
+          score: 95,
+          safetyScore: 98,
+          estimatedArrivalHours: 0.46,
+        },
+      ]);
+
+      const load = makeLoad({ id: "load-api-1" });
+      const matches = await DispatchIntelligence.getBestMatches(load);
+
+      expect(mockPost).toHaveBeenCalledWith("/api/dispatch/best-matches", {
+        loadId: "load-api-1",
+      });
+      expect(matches).toHaveLength(1);
+      expect(matches[0].driverId).toBe("drv-1");
+      expect(matches[0].driverName).toBe("Alice Smith");
+      expect(matches[0].distanceToPickup).toBe(25);
+      expect(matches[0].matchScore).toBe(95);
+      expect(matches[0].recommendation).toBe("STRONG_MATCH");
+    });
+
+    it("returns empty array when API returns null", async () => {
+      mockPost.mockResolvedValueOnce(null);
+
       const load = makeLoad();
-      const drivers = [
-        makeDriver({ id: "drv-1", role: "admin" }), // not a driver role
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
+      const matches = await DispatchIntelligence.getBestMatches(load);
       expect(matches).toHaveLength(0);
     });
 
-    it("excludes the currently assigned driver", async () => {
-      const load = makeLoad({ driverId: "drv-assigned" });
-      const drivers = [
-        makeDriver({ id: "drv-assigned", name: "Assigned Driver" }),
-        makeDriver({ id: "drv-other", name: "Other Driver" }),
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
-      expect(matches.every((m) => m.driverId !== "drv-assigned")).toBe(true);
+    it("returns empty array when API returns non-array", async () => {
+      mockPost.mockResolvedValueOnce({ error: "not found" });
+
+      const load = makeLoad();
+      const matches = await DispatchIntelligence.getBestMatches(load);
+      expect(matches).toHaveLength(0);
     });
 
-    it("includes owner_operator role drivers", async () => {
-      const load = makeLoad({ driverId: "none" });
-      const drivers = [
-        makeDriver({ id: "oo-1", name: "Owner Op", role: "owner_operator" }),
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
-      expect(matches).toHaveLength(1);
-      expect(matches[0].driverName).toBe("Owner Op");
+    it("maps CONSIDER recommendation for mid-range scores", async () => {
+      mockPost.mockResolvedValueOnce([
+        {
+          driverId: "drv-2",
+          driverName: "Bob Jones",
+          distanceMiles: 100,
+          score: 70,
+          safetyScore: 85,
+          estimatedArrivalHours: 1.82,
+        },
+      ]);
+
+      const load = makeLoad();
+      const matches = await DispatchIntelligence.getBestMatches(load);
+      expect(matches[0].recommendation).toBe("CONSIDER");
+      expect(matches[0].matchScore).toBe(70);
     });
 
-    it("returns matches sorted by matchScore descending", async () => {
-      const load = makeLoad({ driverId: "none" });
-      const drivers = [
-        makeDriver({ id: "d1", name: "Alex Trucker", safetyScore: 98 }),
-        makeDriver({ id: "d2", name: "John Trucker", safetyScore: 80 }),
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
-      expect(matches.length).toBeGreaterThan(0);
-      for (let i = 1; i < matches.length; i++) {
-        expect(matches[i - 1].matchScore).toBeGreaterThanOrEqual(
-          matches[i].matchScore,
-        );
-      }
-    });
+    it("maps DO_NOT_ASSIGN for low scores", async () => {
+      mockPost.mockResolvedValueOnce([
+        {
+          driverId: "drv-3",
+          driverName: "Far Driver",
+          distanceMiles: 500,
+          score: 30,
+          safetyScore: 60,
+          estimatedArrivalHours: 9.09,
+        },
+      ]);
 
-    it("sets STRONG_MATCH for high-scoring drivers", async () => {
-      const load = makeLoad({ driverId: "none" });
-      const drivers = [
-        makeDriver({ id: "d1", name: "Alex Trucker", safetyScore: 98 }),
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
-      // Alex is placed near the disabled driver location -> high match
-      const alex = matches.find((m) => m.driverName === "Alex Trucker");
-      expect(alex).toBeDefined();
-      expect(alex!.matchScore).toBeGreaterThan(0);
-      expect(["STRONG_MATCH", "CONSIDER"]).toContain(alex!.recommendation);
+      const load = makeLoad();
+      const matches = await DispatchIntelligence.getBestMatches(load);
+      expect(matches[0].recommendation).toBe("DO_NOT_ASSIGN");
+      expect(matches[0].matchScore).toBe(30);
     });
 
     it("returns estimatedArrival as ISO string", async () => {
-      const load = makeLoad({ driverId: "none" });
-      const drivers = [makeDriver({ id: "d1", name: "Test D" })];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
+      mockPost.mockResolvedValueOnce([
+        {
+          driverId: "drv-4",
+          driverName: "Test D",
+          distanceMiles: 50,
+          score: 80,
+          safetyScore: 90,
+          estimatedArrivalHours: 0.91,
+        },
+      ]);
+
+      const load = makeLoad();
+      const matches = await DispatchIntelligence.getBestMatches(load);
       expect(matches[0].estimatedArrival).toMatch(/\d{4}-\d{2}-\d{2}T/);
     });
 
-    it("matchScore is non-negative", async () => {
-      const load = makeLoad({ driverId: "none" });
-      const drivers = [
-        makeDriver({ id: "d1", name: "John Far Away", safetyScore: 50 }),
-      ];
-      const matches = await DispatchIntelligence.getBestMatches(load, drivers);
+    it("matchScore is non-negative even for negative API scores", async () => {
+      mockPost.mockResolvedValueOnce([
+        {
+          driverId: "drv-5",
+          driverName: "Neg Score",
+          distanceMiles: 1000,
+          score: -10,
+          safetyScore: 50,
+          estimatedArrivalHours: 18.18,
+        },
+      ]);
+
+      const load = makeLoad();
+      const matches = await DispatchIntelligence.getBestMatches(load);
       expect(matches[0].matchScore).toBeGreaterThanOrEqual(0);
     });
   });
@@ -547,8 +602,18 @@ describe("dispatchIntelligence", () => {
           driverId: "drv-1",
           status: "completed",
           issues: [
-            { id: "i1", category: "Safety", description: "Speeding", status: "open" },
-            { id: "i2", category: "Incident", description: "Fender bender", status: "open" },
+            {
+              id: "i1",
+              category: "Safety",
+              description: "Speeding",
+              status: "open",
+            },
+            {
+              id: "i2",
+              category: "Incident",
+              description: "Fender bender",
+              status: "open",
+            },
           ],
           miles: 100,
         } as any),
@@ -692,9 +757,7 @@ describe("dispatchIntelligence", () => {
       const result = DispatchIntelligence.reconcileIFTATax(loads);
       // 1000 / 50 = 20 MPG -> improbably high (> 9)
       expect(
-        result.discrepancyAlerts.some((a) =>
-          a.includes("Improbably high MPG"),
-        ),
+        result.discrepancyAlerts.some((a) => a.includes("Improbably high MPG")),
       ).toBe(true);
     });
 
@@ -708,9 +771,7 @@ describe("dispatchIntelligence", () => {
       const result = DispatchIntelligence.reconcileIFTATax(loads);
       // 300 / 200 = 1.5 MPG -> critically low (< 4)
       expect(
-        result.discrepancyAlerts.some((a) =>
-          a.includes("Critically low MPG"),
-        ),
+        result.discrepancyAlerts.some((a) => a.includes("Critically low MPG")),
       ).toBe(true);
     });
 

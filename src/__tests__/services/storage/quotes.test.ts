@@ -1,33 +1,29 @@
 /**
  * Tests for services/storage/quotes.ts
- * Quotes domain -- server-backed CRUD via /api/quotes.
+ * Quotes domain -- server-backed CRUD via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import { getQuotes, saveQuote } from "../../../../services/storage/quotes";
 
 describe("quotes.ts", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const sampleQuote = {
@@ -45,29 +41,27 @@ describe("quotes.ts", () => {
   };
 
   describe("getQuotes", () => {
-    it("calls GET /api/quotes and returns array", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => [sampleQuote],
-      });
+    it("calls api.get /quotes and returns array", async () => {
+      mockApi.get.mockResolvedValueOnce([sampleQuote]);
 
       const result = await getQuotes();
 
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/quotes");
+      expect(mockApi.get).toHaveBeenCalledWith("/quotes");
       expect(result).toEqual([sampleQuote]);
     });
 
-    it("throws on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 403 });
+    it("throws on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(
+        new Error("API Request failed: 403"),
+      );
 
       await expect(getQuotes()).rejects.toThrow(
-        "GET /api/quotes failed: 403",
+        "API Request failed: 403",
       );
     });
 
     it("propagates network errors", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Network error"));
+      mockApi.get.mockRejectedValueOnce(new Error("Network error"));
 
       await expect(getQuotes()).rejects.toThrow("Network error");
     });
@@ -75,76 +69,58 @@ describe("quotes.ts", () => {
 
   describe("saveQuote", () => {
     it("tries PATCH first for existing quote", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleQuote,
-      });
+      mockApi.patch.mockResolvedValueOnce(sampleQuote);
 
       const result = await saveQuote(sampleQuote as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toContain("/quotes/q-1");
-      expect(opts.method).toBe("PATCH");
+      expect(mockApi.patch).toHaveBeenCalledWith(
+        "/quotes/q-1",
+        sampleQuote,
+      );
       expect(result).toEqual(sampleQuote);
     });
 
     it("falls back to POST when PATCH returns 404", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({
-          ok: true,
-          json: async () => sampleQuote,
-        });
+      mockApi.patch.mockRejectedValueOnce(
+        new Error("API Request failed: 404"),
+      );
+      mockApi.post.mockResolvedValueOnce(sampleQuote);
 
       await saveQuote(sampleQuote as any);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const [postUrl, postOpts] = mockFetch.mock.calls[1];
-      expect(postUrl).toBe("http://localhost:5000/api/quotes");
-      expect(postOpts.method).toBe("POST");
+      expect(mockApi.patch).toHaveBeenCalledOnce();
+      expect(mockApi.post).toHaveBeenCalledWith("/quotes", sampleQuote);
     });
 
     it("throws when POST also fails after 404", async () => {
-      mockFetch
-        .mockResolvedValueOnce({ ok: false, status: 404 })
-        .mockResolvedValueOnce({ ok: false, status: 500 });
+      mockApi.patch.mockRejectedValueOnce(
+        new Error("API Request failed: 404"),
+      );
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
+      );
 
       await expect(saveQuote(sampleQuote as any)).rejects.toThrow(
-        "POST /api/quotes failed: 500",
+        "API Request failed: 500",
       );
     });
 
     it("throws when PATCH returns non-404 error", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 422 });
+      mockApi.patch.mockRejectedValueOnce(
+        new Error("API Request failed: 422"),
+      );
 
       await expect(saveQuote(sampleQuote as any)).rejects.toThrow(
-        "PATCH /api/quotes/q-1 failed: 422",
+        "API Request failed: 422",
       );
     });
 
     it("returns server response on successful PATCH", async () => {
       const serverResponse = { ...sampleQuote, status: "Sent" };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => serverResponse,
-      });
+      mockApi.patch.mockResolvedValueOnce(serverResponse);
 
       const result = await saveQuote(sampleQuote as any);
       expect(result.status).toBe("Sent");
-    });
-
-    it("sends full quote payload in body", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleQuote,
-      });
-
-      await saveQuote(sampleQuote as any);
-
-      const [, opts] = mockFetch.mock.calls[0];
-      const body = JSON.parse(opts.body);
-      expect(body.linehaul).toBe(2500);
-      expect(body.pickup.city).toBe("Chicago");
     });
   });
 });

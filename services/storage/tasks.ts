@@ -3,16 +3,11 @@
  * Owner: STORY-016 (Phase 2 migration to server complete).
  */
 import { OperationalTask, WorkItem } from "../../types";
-import { API_URL } from "../config";
-import { getAuthHeaders } from "../authService";
+import { api } from "../api";
 
 export const getRawTasks = async (): Promise<OperationalTask[]> => {
   try {
-    const res = await fetch(`${API_URL}/tasks`, {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await api.get("/tasks");
     const items: any[] = Array.isArray(data) ? data : data.tasks || [];
     return items.map((t: any) => ({
       id: t.id,
@@ -47,29 +42,17 @@ export const saveTask = async (
     links: task.links,
   };
 
-  const patchRes = await fetch(`${API_URL}/tasks/${task.id}`, {
-    method: "PATCH",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!patchRes.ok) {
-    const postRes = await fetch(`${API_URL}/tasks`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...body, id: task.id }),
-    });
-    if (!postRes.ok) throw new Error(`Failed to save task: ${postRes.status}`);
+  try {
+    await api.patch(`/tasks/${task.id}`, body);
+  } catch {
+    await api.post("/tasks", { ...body, id: task.id });
   }
   return task;
 };
 
 export const getRawWorkItems = async (): Promise<WorkItem[]> => {
   try {
-    const res = await fetch(`${API_URL}/work-items`, {
-      headers: await getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await api.get("/work-items");
     const items: any[] = Array.isArray(data)
       ? data
       : data.workItems || data.items || [];
@@ -108,19 +91,10 @@ export const saveWorkItem = async (item: WorkItem): Promise<WorkItem> => {
     entity_id: item.entityId,
   };
 
-  const patchRes = await fetch(`${API_URL}/work-items/${item.id}`, {
-    method: "PATCH",
-    headers: await getAuthHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!patchRes.ok) {
-    const postRes = await fetch(`${API_URL}/work-items`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({ ...body, id: item.id }),
-    });
-    if (!postRes.ok)
-      throw new Error(`Failed to save work item: ${postRes.status}`);
+  try {
+    await api.patch(`/work-items/${item.id}`, body);
+  } catch {
+    await api.post("/work-items", { ...body, id: item.id });
   }
   return item;
 };

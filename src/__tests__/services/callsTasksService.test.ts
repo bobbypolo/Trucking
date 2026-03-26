@@ -13,6 +13,8 @@ vi.mock("../../../services/authService", () => ({
     "Content-Type": "application/json",
     Authorization: "Bearer test-token",
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("test-token"),
 }));
 
 vi.mock("../../../services/config", () => ({
@@ -111,12 +113,12 @@ describe("R-S16-02: API calls used for calls, tasks, work-items CRUD", () => {
     expect(src).toMatch(/call-sessions/);
   });
 
-  it("calls.ts uses getAuthHeaders for auth", () => {
+  it("calls.ts uses api client for auth", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/calls.ts"),
       "utf-8",
     );
-    expect(src).toContain("getAuthHeaders");
+    expect(src).toContain('from "../api"');
   });
 
   it("tasks.ts fetches from tasks endpoint", () => {
@@ -151,20 +153,20 @@ describe("R-S16-02: API calls used for calls, tasks, work-items CRUD", () => {
     expect(src).not.toMatch(/localStorage/);
   });
 
-  it("calls.ts imports API_URL from config", () => {
+  it("calls.ts imports api from api module", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/calls.ts"),
       "utf-8",
     );
-    expect(src).toContain("API_URL");
+    expect(src).toContain('from "../api"');
   });
 
-  it("tasks.ts imports API_URL from config", () => {
+  it("tasks.ts imports api from api module", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/tasks.ts"),
       "utf-8",
     );
-    expect(src).toContain("API_URL");
+    expect(src).toContain('from "../api"');
   });
 });
 

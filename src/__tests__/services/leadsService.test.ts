@@ -8,17 +8,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 
-// Mock authService so the module can be imported without Firebase
-vi.mock("../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
+// Use vi.hoisted so mock fns are available when vi.mock factory runs (hoisted)
+const { mockApiGet, mockApiPost, mockApiPatch } = vi.hoisted(() => ({
+  mockApiGet: vi.fn(),
+  mockApiPost: vi.fn(),
+  mockApiPatch: vi.fn(),
 }));
 
-// Mock config to provide a stable API_URL
-vi.mock("../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: mockApiGet,
+    post: mockApiPost,
+    patch: mockApiPatch,
+  },
 }));
 
 import { getLeads, saveLead } from "../../../services/storage/leads";
@@ -71,28 +73,28 @@ describe("R-S13-02: STORAGE_KEY_LEADS removed from codebase", () => {
 
 // ---- R-S13-03: Lead CRUD uses API endpoints ----
 describe("R-S13-03: Lead CRUD uses API endpoints", () => {
-  it("services/storage/leads.ts imports API_URL from config", () => {
+  it("services/storage/leads.ts imports api from api module", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/leads.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/API_URL/);
+    expect(src).toMatch(/from "\.\.\/api"/);
   });
 
-  it("services/storage/leads.ts uses getAuthHeaders for auth", () => {
+  it("services/storage/leads.ts uses api client for auth", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/leads.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/getAuthHeaders/);
+    expect(src).toMatch(/api\.get|api\.post|api\.patch/);
   });
 
-  it("services/storage/leads.ts has a getLeads function that uses GET /api/leads", () => {
+  it("services/storage/leads.ts has a getLeads function that uses GET /leads", () => {
     const src = fs.readFileSync(
       path.resolve("services/storage/leads.ts"),
       "utf-8",
     );
-    expect(src).toMatch(/fetch\(/);
+    expect(src).toMatch(/api\.get/);
     expect(src).toMatch(/\/leads/);
   });
 
@@ -104,7 +106,7 @@ describe("R-S13-03: Lead CRUD uses API endpoints", () => {
     expect(src).not.toMatch(/localStorage/);
   });
 
-  it("getLeads calls GET /api/leads and returns parsed JSON", async () => {
+  it("getLeads calls api.get(/leads) and returns parsed JSON", async () => {
     const mockLeads = [
       {
         id: "lead-1",
@@ -115,24 +117,15 @@ describe("R-S13-03: Lead CRUD uses API endpoints", () => {
       },
     ];
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(mockLeads),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    mockApiGet.mockResolvedValueOnce(mockLeads);
 
     const leads = await getLeads("co-1");
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/leads"),
-      expect.objectContaining({ headers: expect.any(Object) }),
-    );
+    expect(mockApiGet).toHaveBeenCalledWith("/leads");
     expect(leads).toEqual(mockLeads);
-
-    vi.unstubAllGlobals();
   });
 
-  it("saveLead calls POST for a new lead (no id)", async () => {
+  it("saveLead calls api.post for a new lead (no id)", async () => {
     const newLead = {
       id: "",
       companyId: "co-1",
@@ -142,24 +135,15 @@ describe("R-S13-03: Lead CRUD uses API endpoints", () => {
     };
     const savedLead = { ...newLead, id: "lead-new" };
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(savedLead),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    mockApiPost.mockResolvedValueOnce(savedLead);
 
     const result = await saveLead(newLead);
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/leads"),
-      expect.objectContaining({ method: "POST" }),
-    );
+    expect(mockApiPost).toHaveBeenCalledWith("/leads", newLead);
     expect(result).toEqual(savedLead);
-
-    vi.unstubAllGlobals();
   });
 
-  it("saveLead calls PATCH for an existing lead (has id)", async () => {
+  it("saveLead calls api.patch for an existing lead (has id)", async () => {
     const existingLead = {
       id: "lead-123",
       companyId: "co-1",
@@ -168,19 +152,10 @@ describe("R-S13-03: Lead CRUD uses API endpoints", () => {
       createdAt: new Date().toISOString(),
     };
 
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue(existingLead),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+    mockApiPatch.mockResolvedValueOnce(existingLead);
 
     await saveLead(existingLead);
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/leads/lead-123"),
-      expect.objectContaining({ method: "PATCH" }),
-    );
-
-    vi.unstubAllGlobals();
+    expect(mockApiPatch).toHaveBeenCalledWith("/leads/lead-123", existingLead);
   });
 });

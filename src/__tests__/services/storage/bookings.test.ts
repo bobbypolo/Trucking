@@ -1,20 +1,22 @@
 /**
  * Tests for services/storage/bookings.ts
- * Bookings domain -- API-backed CRUD.
- * Enhances branch coverage beyond existing tests.
+ * Bookings domain -- API-backed CRUD via api client.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../../../../services/authService", () => ({
-  getAuthHeaders: vi.fn().mockResolvedValue({
-    "Content-Type": "application/json",
-    Authorization: "Bearer test-token",
-  }),
-  getCurrentUser: vi.fn(),
+const { mockApi } = vi.hoisted(() => ({
+  mockApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    patch: vi.fn(),
+    delete: vi.fn(),
+    postFormData: vi.fn(),
+  },
 }));
 
-vi.mock("../../../../services/config", () => ({
-  API_URL: "http://localhost:5000/api",
+vi.mock("../../../../services/api", () => ({
+  api: mockApi,
+  apiFetch: vi.fn(),
 }));
 
 import {
@@ -23,15 +25,8 @@ import {
 } from "../../../../services/storage/bookings";
 
 describe("bookings.ts", () => {
-  const mockFetch = vi.fn();
-
   beforeEach(() => {
-    vi.stubGlobal("fetch", mockFetch);
-    mockFetch.mockReset();
-  });
-
-  afterEach(() => {
-    vi.unstubAllGlobals();
+    vi.clearAllMocks();
   });
 
   const sampleBookings = [
@@ -58,24 +53,17 @@ describe("bookings.ts", () => {
   ];
 
   describe("getBookings", () => {
-    it("calls GET /api/bookings and returns all bookings without filter", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleBookings,
-      });
+    it("calls api.get /bookings and returns all bookings without filter", async () => {
+      mockApi.get.mockResolvedValueOnce(sampleBookings);
 
       const result = await getBookings();
 
-      const [url] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/bookings");
+      expect(mockApi.get).toHaveBeenCalledWith("/bookings");
       expect(result).toEqual(sampleBookings);
     });
 
     it("filters by companyId when provided", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleBookings,
-      });
+      mockApi.get.mockResolvedValueOnce(sampleBookings);
 
       const result = await getBookings("co-1");
 
@@ -84,35 +72,31 @@ describe("bookings.ts", () => {
     });
 
     it("returns all bookings when companyId is undefined", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleBookings,
-      });
+      mockApi.get.mockResolvedValueOnce(sampleBookings);
 
       const result = await getBookings(undefined);
       expect(result).toHaveLength(2);
     });
 
     it("returns empty array when no bookings match companyId filter", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => sampleBookings,
-      });
+      mockApi.get.mockResolvedValueOnce(sampleBookings);
 
       const result = await getBookings("nonexistent-co");
       expect(result).toEqual([]);
     });
 
-    it("throws on non-ok response", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
+    it("throws on API error", async () => {
+      mockApi.get.mockRejectedValueOnce(
+        new Error("API Request failed: 500"),
+      );
 
       await expect(getBookings()).rejects.toThrow(
-        "Failed to fetch bookings: 500",
+        "API Request failed: 500",
       );
     });
 
     it("propagates network error", async () => {
-      mockFetch.mockRejectedValueOnce(new Error("Connection reset"));
+      mockApi.get.mockRejectedValueOnce(new Error("Connection reset"));
 
       await expect(getBookings()).rejects.toThrow("Connection reset");
     });
@@ -121,17 +105,11 @@ describe("bookings.ts", () => {
   describe("saveBooking", () => {
     it("sends PATCH for booking with existing id", async () => {
       const booking = sampleBookings[0];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => booking,
-      });
+      mockApi.patch.mockResolvedValueOnce(booking);
 
       const result = await saveBooking(booking as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/bookings/b-1");
-      expect(opts.method).toBe("PATCH");
-      expect(opts.headers["Content-Type"]).toBe("application/json");
+      expect(mockApi.patch).toHaveBeenCalledWith("/bookings/b-1", booking);
       expect(result).toEqual(booking);
     });
 
@@ -144,48 +122,32 @@ describe("bookings.ts", () => {
         requiresAppt: false,
         createdAt: "2026-01-03T00:00:00Z",
       };
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ...newBooking, id: "b-new" }),
-      });
+      mockApi.post.mockResolvedValueOnce({ ...newBooking, id: "b-new" });
 
       const result = await saveBooking(newBooking as any);
 
-      const [url, opts] = mockFetch.mock.calls[0];
-      expect(url).toBe("http://localhost:5000/api/bookings");
-      expect(opts.method).toBe("POST");
+      expect(mockApi.post).toHaveBeenCalledWith("/bookings", newBooking);
       expect(result.id).toBe("b-new");
     });
 
-    it("throws on non-ok response for PATCH", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 422 });
+    it("throws on API error for PATCH", async () => {
+      mockApi.patch.mockRejectedValueOnce(
+        new Error("API Request failed: 422"),
+      );
 
       await expect(
         saveBooking(sampleBookings[0] as any),
-      ).rejects.toThrow("Failed to save booking: 422");
+      ).rejects.toThrow("API Request failed: 422");
     });
 
-    it("throws on non-ok response for POST", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 400 });
+    it("throws on API error for POST", async () => {
+      mockApi.post.mockRejectedValueOnce(
+        new Error("API Request failed: 400"),
+      );
 
       await expect(
         saveBooking({ id: "", quoteId: "q-1" } as any),
-      ).rejects.toThrow("Failed to save booking: 400");
-    });
-
-    it("sends booking data as JSON body", async () => {
-      const booking = sampleBookings[1];
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: async () => booking,
-      });
-
-      await saveBooking(booking as any);
-
-      const [, opts] = mockFetch.mock.calls[0];
-      const body = JSON.parse(opts.body);
-      expect(body.requiresAppt).toBe(true);
-      expect(body.appointmentWindow.start).toBe("2026-01-10T08:00:00Z");
+      ).rejects.toThrow("API Request failed: 400");
     });
   });
 });

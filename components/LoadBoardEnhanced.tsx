@@ -57,6 +57,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
     "rate",
   ]);
   const [iftaMode, setIftaMode] = useState<"Manual" | "Auto">("Auto");
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
 
   // Filter Logic for Sidebar
   const [columnOptions] = useState([
@@ -79,6 +80,63 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
     );
   };
 
+  const getCellValue = (load: LoadData, colId: string): string => {
+    switch (colId) {
+      case "loadNumber":
+        return load.loadNumber ?? "";
+      case "status":
+        return load.status ?? "";
+      case "pickup":
+        return load.pickup
+          ? `${load.pickup.city ?? ""}, ${load.pickup.state ?? ""}`
+          : "";
+      case "dropoff":
+        return load.dropoff
+          ? `${load.dropoff.city ?? ""}, ${load.dropoff.state ?? ""}`
+          : "";
+      case "driver":
+        return users.find((u) => u.id === load.driverId)?.name || "UNASSIGNED";
+      case "rate":
+        return String(load.carrierRate || 0);
+      case "ifta_miles":
+        return String(load.miles || "");
+      case "ifta_fuel":
+        return load.fuelPurchases
+          ? load.fuelPurchases.reduce((a, b) => a + b.gallons, 0).toFixed(1)
+          : "";
+      case "margin":
+        return load.profitMargin
+          ? `${(load.profitMargin * 100).toFixed(1)}%`
+          : "";
+      default:
+        return String(
+          (load as unknown as Record<string, unknown>)[colId] ?? "",
+        );
+    }
+  };
+
+  const handleExportLoadBoard = () => {
+    if (!loads.length) {
+      return;
+    }
+    const cols = columnOptions.filter((c) => visibleColumns.includes(c.id));
+    const headers = cols.map((c) => c.label);
+    const rows = loads.map((load: LoadData) =>
+      cols.map((c) => getCellValue(load, c.id)),
+    );
+    const csv = [
+      headers.join(","),
+      ...rows.map((r: string[]) => r.map((v) => `"${v}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `LoadBoard_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   // IFTA Calculation Logic
   const iftaSummary = useMemo(() => {
     const stats: Record<string, { miles: number; fuel: number }> = {};
@@ -94,6 +152,29 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
     });
     return stats;
   }, [loads]);
+
+  const handleExportIFTA = () => {
+    const entries = Object.entries(iftaSummary) as [
+      string,
+      { miles: number; fuel: number },
+    ][];
+    if (!entries.length) {
+      return;
+    }
+    const headers = ["State", "Total Miles", "Total Gallons"];
+    const rows = entries.map(([state, data]) => [state, data.miles, data.fuel]);
+    const csv = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${v ?? ""}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `IFTA_Filing_${new Date().toISOString().split("T")[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#020617] relative overflow-hidden">
@@ -237,7 +318,10 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                     </div>
                   ))}
                 </div>
-                <button className="w-full py-3 text-[8px] font-black text-blue-500 hover:bg-blue-600 hover:text-white uppercase tracking-widest transition-all">
+                <button
+                  onClick={handleExportIFTA}
+                  className="w-full py-3 text-[8px] font-black text-blue-500 hover:bg-blue-600 hover:text-white uppercase tracking-widest transition-all"
+                >
                   Export IFTA Filing (CSV)
                 </button>
               </div>
@@ -296,12 +380,38 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
               </div>
               {isGridViewOpen && (
                 <div className="flex gap-2 ml-8 border-l border-slate-800 pl-8">
-                  <button className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5">
+                  <button
+                    onClick={handleExportLoadBoard}
+                    className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
+                  >
                     <Download className="w-3 h-3" /> Export CSV
                   </button>
-                  <button className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5 ml-4">
-                    <Columns className="w-3 h-3" /> Select Columns
-                  </button>
+                  <div className="relative ml-4">
+                    <button
+                      onClick={() => setShowColumnPicker(!showColumnPicker)}
+                      className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
+                    >
+                      <Columns className="w-3 h-3" /> Select Columns
+                    </button>
+                    {showColumnPicker && (
+                      <div className="absolute right-0 mt-2 bg-slate-800 border border-white/10 rounded-lg p-3 z-50 shadow-xl min-w-[180px]">
+                        {columnOptions.map((col) => (
+                          <label
+                            key={col.id}
+                            className="flex items-center gap-2 py-1.5 text-[9px] text-slate-300 cursor-pointer hover:text-white"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={visibleColumns.includes(col.id)}
+                              onChange={() => toggleColumn(col.id)}
+                              className="rounded border-slate-600"
+                            />
+                            {col.label}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -395,12 +505,14 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         )}
                         {visibleColumns.includes("pickup") && (
                           <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
-                            {load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}
+                            {load.pickup?.city ?? ""},{" "}
+                            {load.pickup?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("dropoff") && (
                           <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
-                            {load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}
+                            {load.dropoff?.city ?? ""},{" "}
+                            {load.dropoff?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("driver") && (

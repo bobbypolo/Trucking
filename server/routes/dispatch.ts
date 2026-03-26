@@ -7,6 +7,7 @@ import {
 } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
+import { calculateDistance } from "../geoUtils";
 import { createChildLogger } from "../lib/logger";
 
 const router = Router();
@@ -353,6 +354,151 @@ router.get(
         route: "GET /api/dashboard/cards",
       });
       log.error({ err: error }, "SERVER ERROR [GET /api/dashboard/cards]");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// POST /api/dispatch/best-matches — GPS-based driver matching for a load
+router.post(
+  "/api/dispatch/best-matches",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response) => {
+    const { user } = req as AuthenticatedRequest;
+    const { loadId, maxCandidates } = req.body;
+
+    if (!loadId) {
+      return res.status(400).json({ error: "loadId is required" });
+    }
+
+    const limit = maxCandidates && maxCandidates > 0 ? maxCandidates : 10;
+
+    try {
+      // 0. Verify load belongs to user's tenant
+      const [loadCheck]: any = await pool.query(
+        "SELECT company_id FROM loads WHERE id = ?",
+        [loadId],
+      );
+      if (!loadCheck.length || loadCheck[0].company_id !== user.tenantId) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      // 1. Get load pickup coordinates
+      const [legRows]: any = await pool.query(
+        "SELECT latitude, longitude FROM load_legs WHERE load_id = ? AND type = 'Pickup' LIMIT 1",
+        [loadId],
+      );
+
+      if (
+        !legRows.length ||
+        legRows[0].latitude == null ||
+        legRows[0].longitude == null
+      ) {
+        return res
+          .status(400)
+          .json({ error: "Load has no pickup coordinates" });
+      }
+
+      const pickupLat = Number(legRows[0].latitude);
+      const pickupLng = Number(legRows[0].longitude);
+
+      // 2. Get eligible drivers for this company
+      const [driverRows]: any = await pool.query(
+        "SELECT id, name, role, safety_score, home_terminal_lat, home_terminal_lng FROM users WHERE company_id = ? AND role IN ('driver','owner_operator')",
+        [user.tenantId],
+      );
+
+      const candidates: Array<{
+        driverId: string;
+        driverName: string;
+        distanceMiles: number;
+        lastGpsAt: string | null;
+        score: number;
+        safetyScore: number | null;
+        estimatedArrivalHours: number;
+      }> = [];
+
+      for (const driver of driverRows) {
+        // 3. Get latest GPS position (within 48 hours)
+        const [gpsRows]: any = await pool.query(
+          "SELECT latitude, longitude, recorded_at FROM gps_positions WHERE driver_id = ? AND company_id = ? AND recorded_at > DATE_SUB(NOW(), INTERVAL 48 HOUR) ORDER BY recorded_at DESC LIMIT 1",
+          [driver.id, user.tenantId],
+        );
+
+        let driverLat: number | null = null;
+        let driverLng: number | null = null;
+        let lastGpsAt: string | null = null;
+        let gpsRecent = false;
+
+        if (gpsRows.length > 0) {
+          driverLat = Number(gpsRows[0].latitude);
+          driverLng = Number(gpsRows[0].longitude);
+          lastGpsAt = gpsRows[0].recorded_at;
+
+          // Check if GPS is within 4 hours
+          const gpsAge =
+            Date.now() - new Date(gpsRows[0].recorded_at).getTime();
+          gpsRecent = gpsAge < 4 * 3600000;
+        } else if (
+          driver.home_terminal_lat != null &&
+          driver.home_terminal_lng != null
+        ) {
+          // Fallback to home terminal
+          driverLat = Number(driver.home_terminal_lat);
+          driverLng = Number(driver.home_terminal_lng);
+        }
+
+        // Skip drivers with no location data
+        if (driverLat == null || driverLng == null) {
+          continue;
+        }
+
+        // 4. Calculate distance using haversine
+        const distanceMiles = calculateDistance(
+          pickupLat,
+          pickupLng,
+          driverLat,
+          driverLng,
+        );
+
+        // 5. Calculate score
+        const safetyScore = driver.safety_score
+          ? Number(driver.safety_score)
+          : 0;
+        let score = 100 - Math.min(distanceMiles / 5, 50);
+        if (safetyScore > 95) score += 10;
+        else if (safetyScore > 85) score += 5;
+        if (gpsRecent) score += 10;
+
+        // Estimated arrival at 55 mph average
+        const estimatedArrivalHours = distanceMiles / 55;
+
+        candidates.push({
+          driverId: driver.id,
+          driverName: driver.name,
+          distanceMiles: Math.round(distanceMiles * 10) / 10,
+          lastGpsAt,
+          score: Math.round(score * 10) / 10,
+          safetyScore,
+          estimatedArrivalHours: Math.round(estimatedArrivalHours * 100) / 100,
+        });
+      }
+
+      // 6. Sort by score DESC and take top N
+      candidates.sort((a, b) => b.score - a.score);
+      const topCandidates = candidates.slice(0, limit);
+
+      res.json(topCandidates);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/dispatch/best-matches",
+      });
+      log.error(
+        { err: error, userId: user.uid },
+        "SERVER ERROR [POST /api/dispatch/best-matches]",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },

@@ -87,6 +87,14 @@ export const NetworkPortal: React.FC<Props> = ({
     "NONE" | "QUICK_VENDOR" | "QUICK_EQUIP"
   >("NONE");
   const [quickFormData, setQuickFormData] = useState<any>({});
+  const [showAddContact, setShowAddContact] = useState(false);
+  const [newContact, setNewContact] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: "General" as PartyContact["role"],
+  });
+  const [savingContact, setSavingContact] = useState(false);
 
   // Engine Data (Fetched once or mocked for MVP)
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
@@ -181,6 +189,42 @@ export const NetworkPortal: React.FC<Props> = ({
       active: true,
     };
     setCatalogItems([...catalogItems, newItem]);
+  };
+
+  const handleSaveContact = async () => {
+    if (!newContact.name.trim()) {
+      setToast({ message: "Contact name is required", type: "error" });
+      return;
+    }
+    if (!selectedParty) return;
+    setSavingContact(true);
+    try {
+      const contact: PartyContact = {
+        id: uuidv4(),
+        partyId: selectedParty.id,
+        name: newContact.name.trim(),
+        role: newContact.role,
+        email: newContact.email.trim(),
+        phone: newContact.phone.trim(),
+        isPrimary: !selectedParty.contacts?.length,
+      };
+      const updatedContacts = [...(selectedParty.contacts || []), contact];
+      await saveParty({
+        ...selectedParty,
+        contacts: updatedContacts,
+        company_id: companyId,
+      } as any);
+      setSelectedParty({ ...selectedParty, contacts: updatedContacts });
+      setShowAddContact(false);
+      setNewContact({ name: "", email: "", phone: "", role: "General" });
+      setToast({ message: "Contact added successfully", type: "success" });
+      await loadData();
+    } catch (err) {
+      console.error("[NetworkPortal] Failed to add contact:", err);
+      setToast({ message: "Failed to add contact", type: "error" });
+    } finally {
+      setSavingContact(false);
+    }
   };
 
   const filteredParties = useMemo(() => {
@@ -2028,10 +2072,81 @@ export const NetworkPortal: React.FC<Props> = ({
                           Personnel Permissions & Comms Matrix
                         </p>
                       </div>
-                      <button className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all">
+                      <button
+                        onClick={() => setShowAddContact(!showAddContact)}
+                        className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all"
+                      >
                         + Add Contact
                       </button>
                     </div>
+                    {showAddContact && (
+                      <div className="p-4 bg-slate-800/50 border border-white/5 rounded-xl space-y-3">
+                        <input
+                          placeholder="Name *"
+                          value={newContact.name}
+                          onChange={(e) =>
+                            setNewContact({ ...newContact, name: e.target.value })
+                          }
+                          className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white placeholder-slate-500"
+                        />
+                        <input
+                          placeholder="Email"
+                          value={newContact.email}
+                          onChange={(e) =>
+                            setNewContact({ ...newContact, email: e.target.value })
+                          }
+                          className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white placeholder-slate-500"
+                        />
+                        <input
+                          placeholder="Phone"
+                          value={newContact.phone}
+                          onChange={(e) =>
+                            setNewContact({ ...newContact, phone: e.target.value })
+                          }
+                          className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white placeholder-slate-500"
+                        />
+                        <select
+                          value={newContact.role}
+                          onChange={(e) =>
+                            setNewContact({
+                              ...newContact,
+                              role: e.target.value as PartyContact["role"],
+                            })
+                          }
+                          className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white"
+                        >
+                          <option value="General">General</option>
+                          <option value="Operations">Operations</option>
+                          <option value="Billing">Billing</option>
+                          <option value="After-hours">After-hours</option>
+                          <option value="Claims">Claims</option>
+                          <option value="Account Manager">Account Manager</option>
+                        </select>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleSaveContact}
+                            disabled={savingContact}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                          >
+                            {savingContact ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddContact(false);
+                              setNewContact({
+                                name: "",
+                                email: "",
+                                phone: "",
+                                role: "General",
+                              });
+                            }}
+                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {selectedParty.contacts?.map((contact) => (
                         <div

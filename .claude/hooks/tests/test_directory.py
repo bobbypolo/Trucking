@@ -18,14 +18,18 @@ class TestDirectoryService:
         f = REPO_ROOT / "services" / "storage" / "directory.ts"
         assert f.exists(), f"Expected {f} to exist"
 
-    def test_directory_uses_api_url(self):
-        """directory.ts uses API_URL for server calls."""
-        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(encoding="utf-8")
-        assert "API_URL" in content, "directory.ts should use API_URL"
+    def test_directory_uses_api_client(self):
+        """directory.ts uses api client for server calls."""
+        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(
+            encoding="utf-8"
+        )
+        assert "api" in content, "directory.ts should use api client"
 
     def test_directory_no_localstorage(self):
         """directory.ts has no localStorage calls."""
-        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(encoding="utf-8")
+        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(
+            encoding="utf-8"
+        )
         lines = content.splitlines()
         violations = []
         for i, line in enumerate(lines, 1):
@@ -39,5 +43,7 @@ class TestDirectoryService:
 
     def test_directory_exports_get_providers(self):
         """directory.ts exports getProviders function."""
-        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(encoding="utf-8")
+        content = (REPO_ROOT / "services" / "storage" / "directory.ts").read_text(
+            encoding="utf-8"
+        )
         assert "getProviders" in content, "directory.ts should export getProviders"

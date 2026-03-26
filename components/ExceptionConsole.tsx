@@ -29,6 +29,28 @@ import {
   List,
 } from "lucide-react";
 
+const computeSLALabel = (dueAt?: string): string => {
+  if (!dueAt) return "No SLA";
+  const diff = new Date(dueAt).getTime() - Date.now();
+  if (diff <= 0) return "OVERDUE";
+  const mins = Math.floor(diff / 60000);
+  const hrs = Math.floor(mins / 60);
+  return hrs > 0 ? `${hrs}h ${mins % 60}m Left` : `${mins}m Left`;
+};
+
+const SLACell = ({ dueAt }: { dueAt?: string }) => {
+  const [label, setLabel] = useState(() => computeSLALabel(dueAt));
+
+  useEffect(() => {
+    if (!dueAt) return;
+    const update = () => setLabel(computeSLALabel(dueAt));
+    const timer = setInterval(update, 10000);
+    return () => clearInterval(timer);
+  }, [dueAt]);
+
+  return <span>{label}</span>;
+};
+
 interface Props {
   currentUser: User;
   initialView?: string;
@@ -427,13 +449,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                         <div className="flex items-center gap-1.5">
                           <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                           <div className="text-[9px] font-black text-red-500 uppercase">
-                            SLA: {ex.slaDueAt ? (() => {
-                              const diff = new Date(ex.slaDueAt).getTime() - Date.now();
-                              if (diff <= 0) return "Overdue";
-                              const mins = Math.floor(diff / 60000);
-                              const hrs = Math.floor(mins / 60);
-                              return hrs > 0 ? `${hrs}h ${mins % 60}m Left` : `${mins}m Left`;
-                            })() : "No SLA"}
+                            SLA: <SLACell dueAt={ex.slaDueAt} />
                           </div>
                         </div>
                       </div>
