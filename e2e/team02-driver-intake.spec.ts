@@ -1,5 +1,10 @@
 import { Buffer } from "buffer";
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import {
+  expect,
+  test,
+  type APIRequestContext,
+  type Page,
+} from "@playwright/test";
 import { v4 as uuidv4 } from "uuid";
 import {
   API_BASE,
@@ -14,9 +19,7 @@ const UI_EMAIL =
   process.env.E2E_TEST_EMAIL ||
   "driver1@loadpilot.com";
 const UI_PASSWORD =
-  process.env.E2E_DRIVER_PASSWORD ||
-  process.env.E2E_TEST_PASSWORD ||
-  "User123";
+  process.env.E2E_DRIVER_PASSWORD || process.env.E2E_TEST_PASSWORD || "User123";
 
 async function loginAsDriver(page: Page) {
   await page.goto(APP_BASE);
@@ -135,20 +138,20 @@ test.describe("Team 2 - Driver Intake Upload Flow", () => {
     await loginAsDriver(page);
     await page.getByTestId("driver-nav-loads").click();
     await page.getByTestId("new-intake-loads").click();
-    await expect(page.getByRole("heading", { name: "New Load Intake" })).toBeVisible({
+    await expect(
+      page.getByRole("heading", { name: "New Load Intake" }),
+    ).toBeVisible({
       timeout: 10_000,
     });
 
-    await page
-      .getByTestId("scanner-upload-file")
-      .setInputFiles({
-        name: "team2-driver-intake.pdf",
-        mimeType: "application/pdf",
-        buffer: Buffer.from(
-          "%PDF-1.4\n% Team 2 browser intake evidence\n%%EOF",
-          "utf8",
-        ),
-      });
+    await page.getByTestId("scanner-upload-file").setInputFiles({
+      name: "team2-driver-intake.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from(
+        "%PDF-1.4\n% Team 2 browser intake evidence\n%%EOF",
+        "utf8",
+      ),
+    });
 
     await expect(page.getByTestId("intake-review-form")).toBeVisible({
       timeout: 10_000,
@@ -161,18 +164,22 @@ test.describe("Team 2 - Driver Intake Upload Flow", () => {
     await page.getByTestId("intake-pickup-state").fill("IL");
     await page.getByTestId("intake-dropoff-city").fill(dropoffCity);
     await page.getByTestId("intake-dropoff-state").fill("TX");
-    await page.getByTestId("intake-pickup-date").fill(
-      new Date().toISOString().split("T")[0],
-    );
-    await page.getByTestId("intake-commodity").fill("Team 2 browser intake freight");
+    await page
+      .getByTestId("intake-pickup-date")
+      .fill(new Date().toISOString().split("T")[0]);
+    await page
+      .getByTestId("intake-commodity")
+      .fill("Team 2 browser intake freight");
     await page.getByTestId("intake-reference").fill("BROWSER-BOL-2");
     await page.getByTestId("intake-weight").fill("42000");
-    await page.getByTestId("intake-instructions").fill(
-      "Browser evidence intake submission.",
-    );
+    await page
+      .getByTestId("intake-instructions")
+      .fill("Browser evidence intake submission.");
 
     await page.getByTestId("intake-submit").click();
-    await expect(page.getByText("Intake submitted and documents uploaded")).toBeVisible({
+    await expect(
+      page.getByText("Intake submitted and documents uploaded"),
+    ).toBeVisible({
       timeout: 15_000,
     });
 
@@ -186,8 +193,8 @@ test.describe("Team 2 - Driver Intake Upload Flow", () => {
     const loads = await loadsRes.json();
     const created = loads.find(
       (row: Record<string, unknown>) =>
-        row.pickup?.city === pickupCity ||
-        row.commodity === "Team 2 browser intake freight",
+        (row.pickup as Record<string, unknown> | undefined)?.city ===
+          pickupCity || row.commodity === "Team 2 browser intake freight",
     ) as Record<string, unknown> | undefined;
     expect(created).toBeDefined();
 
