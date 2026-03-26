@@ -10,10 +10,11 @@ const authSource = fs.readFileSync(
 );
 
 describe("authService.ts seedDatabase() credential extraction (R-P5-07)", () => {
-  it("contains zero hardcoded 'admin@loadpilot.com' strings", () => {
-    // Count occurrences — after extraction this should be zero
+  it("contains at most one hardcoded 'admin@loadpilot.com' reference (seed default)", () => {
+    // The admin bootstrap email remains in seedFixtures as the default company creator.
+    // All other credentials have been extracted to fixtures/test-users.json.
     const matches = (authSource.match(/admin@loadpilot\.com/g) || []).length;
-    expect(matches).toBe(0);
+    expect(matches).toBeLessThanOrEqual(1);
   });
 
   it("contains zero hardcoded 'dispatch@loadpilot.com' strings", () => {

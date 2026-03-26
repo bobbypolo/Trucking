@@ -13,6 +13,7 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
   }),
   getCompany: vi.fn().mockResolvedValue({ id: "company-1", name: "Test Co" }),
+  getCompanyUsers: vi.fn().mockResolvedValue([]),
   onUserChange: vi.fn(() => () => {}),
 }));
 
@@ -20,6 +21,12 @@ vi.mock("../../../services/authService", () => ({
 vi.mock("../../../services/storageService", () => ({
   generateInvoicePDF: vi.fn(),
   saveLoad: vi.fn().mockResolvedValue(undefined),
+  generateNextLoadNumber: vi.fn().mockReturnValue("LP-100"),
+}));
+
+// Mock brokerService for LoadSetupModal
+vi.mock("../../../services/brokerService", () => ({
+  getBrokers: vi.fn().mockResolvedValue([]),
 }));
 
 const mockUsers: User[] = [
@@ -145,12 +152,11 @@ describe("LoadBoardEnhanced component", () => {
           onCreateLoad={onCreateLoad}
         />,
       );
-      expect(
-        screen.getByRole("button", { name: /create load/i }),
-      ).toBeInTheDocument();
+      const btns = screen.getAllByRole("button", { name: /create load/i });
+      expect(btns.length).toBeGreaterThanOrEqual(1);
     });
 
-    it("calls onCreateLoad when CTA is clicked", async () => {
+    it("opens internal setup modal when CTA is clicked", async () => {
       const user = userEvent.setup();
       const onCreateLoad = vi.fn();
       render(
@@ -160,15 +166,16 @@ describe("LoadBoardEnhanced component", () => {
           onCreateLoad={onCreateLoad}
         />,
       );
-      await user.click(screen.getByRole("button", { name: /create load/i }));
-      expect(onCreateLoad).toHaveBeenCalledTimes(1);
+      const btns = screen.getAllByRole("button", { name: /create load/i });
+      await user.click(btns[0]);
+      expect(screen.getByText("Setup New Load")).toBeInTheDocument();
     });
 
     it("does not show CTA when onCreateLoad is not provided", () => {
       render(<LoadBoardEnhanced {...defaultProps} loads={[]} />);
       expect(
-        screen.queryByRole("button", { name: /create load/i }),
-      ).not.toBeInTheDocument();
+        screen.queryAllByRole("button", { name: /create load/i }),
+      ).toHaveLength(0);
     });
   });
 
