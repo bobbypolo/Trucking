@@ -48,6 +48,8 @@ vi.mock("../../../services/storageService", () => ({
     "Content-Type": "application/json",
   }),
   saveLoad: vi.fn().mockResolvedValue(undefined),
+  saveIncidentCharge: vi.fn().mockResolvedValue(true),
+  saveIncidentAction: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../../services/safetyService", () => ({
@@ -249,6 +251,7 @@ import {
   saveRequest,
   saveNotificationJob,
   saveServiceTicket,
+  saveIncidentCharge,
   initiateRepowerWorkflow,
 } from "../../../services/storageService";
 import { getVendors } from "../../../services/safetyService";
@@ -481,7 +484,11 @@ describe("IntelligenceHub deep coverage", () => {
       await user.click(roadsideBtn);
 
       await waitFor(() => {
-        expect(screen.getByText("Add Temporary Vendor")).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            /Temporary vendors must be onboarded as entities first/,
+          ),
+        ).toBeInTheDocument();
       });
     });
 
@@ -759,11 +766,14 @@ describe("IntelligenceHub deep coverage", () => {
         );
       });
 
-      // Should also post emergency charge for incident (line 1399-1416)
+      // Should also post emergency charge for incident via saveIncidentCharge
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledWith(
-          expect.stringContaining("/incidents/inc-1/charges"),
-          expect.objectContaining({ method: "POST" }),
+        expect(saveIncidentCharge).toHaveBeenCalledWith(
+          "inc-1",
+          expect.objectContaining({
+            category: "Tow",
+            status: "Approved",
+          }),
         );
       });
     });

@@ -36,10 +36,16 @@ vi.mock("../../../services/authService", () => ({
     companyId: "company-1",
     name: "Test Admin",
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("mock-token"),
+  forceRefreshToken: vi.fn().mockResolvedValue("mock-token"),
 }));
 
 vi.mock("../../../services/storageService", () => ({
   generateNextLoadNumber: vi.fn().mockReturnValue("LN-100"),
+}));
+
+vi.mock("../../../services/networkService", () => ({
+  getParties: vi.fn().mockResolvedValue([]),
 }));
 
 const mockUser: User = {

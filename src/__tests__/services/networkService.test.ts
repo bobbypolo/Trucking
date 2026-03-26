@@ -42,11 +42,10 @@ describe("networkService", () => {
       expect(result).toEqual([]);
     });
 
-    it("returns empty array on api error", async () => {
+    it("throws on api error", async () => {
       vi.mocked(api.get).mockRejectedValue(new Error("Network error"));
 
-      const result = await getParties("company-123");
-      expect(result).toEqual([]);
+      await expect(getParties("company-123")).rejects.toThrow("Network error");
     });
   });
 

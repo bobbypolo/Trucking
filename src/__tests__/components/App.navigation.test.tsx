@@ -57,14 +57,10 @@ describe("App.tsx navigation categories labels (R-P1-01)", () => {
   });
 
   it("Safety consolidated into Issues & Alerts (T5-05)", () => {
-    // Safety & Compliance removed from nav — consolidated into Issues & Alerts
-    expect(appSource).toContain(
-      "Safety & Compliance consolidated into Issues & Alerts",
-    );
-  });
-
-  it("uses 'Activity Log' label", () => {
-    expect(appSource).toContain("Activity Log");
+    // Safety tab was removed — incidents now surface via Issues & Alerts.
+    // The nav array should NOT contain a standalone "Safety" item.
+    expect(appSource).not.toMatch(/"Safety & Compliance"/);
+    expect(appSource).not.toMatch(/id:\s*"safety"/);
   });
 
   it("uses 'Company Settings' label", () => {
@@ -154,15 +150,14 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "finance",
     "accounting",
     // "safety" — removed from nav, consolidated into Issues & Alerts (T5-05)
-    "audit",
+    // "audit" — removed from sidebar categories
     "company",
   ];
 
   // All tab IDs that have render blocks (includes legacy routing)
   const renderTabIds = [
     ...navTabIds,
-    "dashboard", // legacy redirect
-    "safety", // legacy redirect to Issues & Alerts
+    "audit", // render block exists even though not in sidebar categories
   ];
 
   it("extracts expected tab IDs from categories", () => {
