@@ -940,7 +940,7 @@ export const CompanyProfile: React.FC<Props> = ({
                       id="cpPhone"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-bold focus:border-blue-500 outline-none transition-all"
                       value={company.phone || ""}
-                      placeholder="(555) 123-4567"
+                      placeholder="Enter phone number"
                       readOnly={!isAdmin}
                       onChange={(e) =>
                         updateCompanyField((prev) => ({
@@ -989,7 +989,7 @@ export const CompanyProfile: React.FC<Props> = ({
                       id="cpMainTerminalAddress"
                       className="w-full bg-slate-900 border border-slate-800 rounded-2xl p-4 text-sm text-white font-bold focus:border-blue-500 outline-none transition-all"
                       value={company.address || ""}
-                      placeholder="123 Main Street"
+                      placeholder="Enter street address"
                       readOnly={!isAdmin}
                       onChange={(e) =>
                         updateCompanyField((prev) => ({

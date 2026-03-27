@@ -11,6 +11,7 @@ vi.mock("../../../services/brokerService", () => ({
     { id: "broker-1", name: "Alpha Logistics", mcNumber: "MC-123" },
     { id: "broker-2", name: "Beta Freight", mcNumber: "MC-456" },
   ]),
+  saveBroker: vi.fn().mockResolvedValue(undefined),
   getContracts: vi.fn().mockResolvedValue([]),
 }));
 
@@ -40,6 +41,7 @@ vi.mock("../../../services/authService", () => ({
     name: "Test Co",
     loadNumberingConfig: { prefix: "LP", nextNumber: 100 },
   }),
+  updateUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../../services/storageService", () => ({
@@ -421,6 +423,160 @@ describe("LoadSetupModal component", () => {
     it("does not show locked indicator when no preSelectedBrokerId", () => {
       render(<LoadSetupModal {...defaultProps} />);
       expect(screen.queryByText("(Locked)")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Quick Add Broker inline form", () => {
+    it("renders Add New button next to broker label when not pre-selected", () => {
+      // Tests R-P1-01: Quick Add button present for broker selector
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(
+        screen.getByRole("button", { name: /Add new broker/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render Add New broker button when broker is pre-selected", () => {
+      // Tests R-P1-02: Locked broker path has no Add New button
+      render(
+        <LoadSetupModal {...defaultProps} preSelectedBrokerId="broker-1" />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /Add new broker/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows quick add broker form when Add New is clicked", async () => {
+      // Tests R-P1-03: Clicking Add New reveals the inline broker form
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new broker/i }));
+      expect(screen.getByText("New Broker / Customer")).toBeInTheDocument();
+      expect(screen.getByLabelText("Name *")).toBeInTheDocument();
+    });
+
+    it("hides quick add broker form when Cancel is clicked", async () => {
+      // Tests R-P1-04: Cancel dismisses the inline form
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new broker/i }));
+      expect(screen.getByText("New Broker / Customer")).toBeInTheDocument();
+      // Cancel via the header toggle button (now shows "Cancel")
+      await user.click(screen.getByRole("button", { name: /Cancel add broker/i }));
+      expect(
+        screen.queryByText("New Broker / Customer"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows validation error when Save Broker clicked with empty name", async () => {
+      // Tests R-P1-05: Name is required for broker creation
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new broker/i }));
+      await user.click(screen.getByRole("button", { name: /Save Broker/i }));
+      expect(screen.getByText("Name is required")).toBeInTheDocument();
+    });
+
+    it("calls saveBroker and refreshes list on valid submission", async () => {
+      // Tests R-P1-06: saveBroker API is called with new broker data
+      const { saveBroker } = await import("../../../services/brokerService");
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new broker/i }));
+      await user.type(screen.getByLabelText("Name *"), "New Test Broker");
+      await user.click(screen.getByRole("button", { name: /Save Broker/i }));
+      await waitFor(() => {
+        expect(saveBroker).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "New Test Broker", clientType: "Broker" }),
+        );
+      });
+    });
+
+    it("shows empty state hint when broker list is empty", async () => {
+      // Tests R-P1-07: Empty state message guides user to create a broker
+      const { getBrokers } = await import("../../../services/brokerService");
+      vi.mocked(getBrokers).mockResolvedValueOnce([]);
+      render(<LoadSetupModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(
+          screen.getByText(/No brokers found/),
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("Quick Add Driver inline form", () => {
+    it("renders Add New button next to driver label", () => {
+      // Tests R-P1-08: Quick Add button present for driver selector
+      render(<LoadSetupModal {...defaultProps} />);
+      expect(
+        screen.getByRole("button", { name: /Add new driver/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows quick add driver form when Add New is clicked", async () => {
+      // Tests R-P1-09: Clicking Add New reveals the inline driver form
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new driver/i }));
+      expect(screen.getByText("New Driver")).toBeInTheDocument();
+      expect(screen.getByLabelText("Name *")).toBeInTheDocument();
+    });
+
+    it("hides quick add driver form when Cancel is clicked", async () => {
+      // Tests R-P1-10: Cancel dismisses the inline driver form
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new driver/i }));
+      expect(screen.getByText("New Driver")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Cancel add driver/i }));
+      expect(screen.queryByText("New Driver")).not.toBeInTheDocument();
+    });
+
+    it("shows validation error when Save Driver clicked with empty name", async () => {
+      // Tests R-P1-11: Name is required for driver creation
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new driver/i }));
+      await user.click(screen.getByRole("button", { name: /Save Driver/i }));
+      expect(screen.getByText("Name is required")).toBeInTheDocument();
+    });
+
+    it("calls updateUser and refreshes driver list on valid submission", async () => {
+      // Tests R-P1-12: updateUser API is called with new driver data
+      const { updateUser } = await import("../../../services/authService");
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new driver/i }));
+      await user.type(screen.getByLabelText("Name *"), "New Test Driver");
+      await user.click(screen.getByRole("button", { name: /Save Driver/i }));
+      await waitFor(() => {
+        expect(updateUser).toHaveBeenCalledWith(
+          expect.objectContaining({ name: "New Test Driver", role: "driver" }),
+        );
+      });
+    });
+
+    it("shows empty state hint when driver list is empty", async () => {
+      // Tests R-P1-13: Empty state message guides user to create a driver
+      const { getCompanyUsers } = await import("../../../services/authService");
+      vi.mocked(getCompanyUsers).mockResolvedValueOnce([]);
+      render(<LoadSetupModal {...defaultProps} />);
+      await waitFor(() => {
+        expect(screen.getByText(/No drivers found/)).toBeInTheDocument();
+      });
+    });
+
+    it("opening driver form closes broker form", async () => {
+      // Tests R-P1-14: Only one quick add form is visible at a time
+      const user = userEvent.setup();
+      render(<LoadSetupModal {...defaultProps} />);
+      await user.click(screen.getByRole("button", { name: /Add new broker/i }));
+      expect(screen.getByText("New Broker / Customer")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /Add new driver/i }));
+      expect(
+        screen.queryByText("New Broker / Customer"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("New Driver")).toBeInTheDocument();
     });
   });
 });

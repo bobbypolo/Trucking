@@ -1,7 +1,6 @@
 import React, {
   useState,
   useEffect,
-  useMemo,
   Suspense,
   useCallback,
 } from "react";
@@ -23,7 +22,6 @@ import {
   Plus,
   ChevronRight,
   FileText,
-  Truck,
   Fuel,
   Settings,
   Download,
@@ -132,15 +130,6 @@ const AccountingPortal: React.FC<Props> = ({
   const [importType, setImportType] = useState<
     "Fuel" | "Bills" | "Invoices" | "CoA" | null
   >(null);
-
-  // Derive repair expense GL account ID from loaded accounts
-  const REPAIR_EXPENSE_ACCT_NUMBER = "5000";
-  const repairExpenseAcctId = useMemo(() => {
-    const acct = accounts.find(
-      (a) => a.accountNumber === REPAIR_EXPENSE_ACCT_NUMBER,
-    );
-    return acct?.id || "";
-  }, [accounts]);
 
   const handleRunEngine = async () => {
     showFeedback("Engine running: Scanning Vault for unlinked receipts...");
@@ -306,7 +295,7 @@ const AccountingPortal: React.FC<Props> = ({
                   label: "Accounts Receivable",
                   val: `$${(Array.isArray(invoices) ? invoices : []).reduce((s, i) => s + (i.balanceDue || 0), 0).toLocaleString()}`,
                   sub: `${(Array.isArray(invoices) ? invoices : []).filter((i) => i.status === "Sent").length} Outstanding`,
-                  trend: "+12%",
+                  trend: null as string | null,
                   color: "text-emerald-500",
                   bg: "bg-emerald-500/5",
                 },
@@ -314,7 +303,7 @@ const AccountingPortal: React.FC<Props> = ({
                   label: "Accounts Payable",
                   val: `$${(Array.isArray(bills) ? bills : []).reduce((s, b) => s + (b.balanceDue || 0), 0).toLocaleString()}`,
                   sub: "Due this week",
-                  trend: "-5%",
+                  trend: null as string | null,
                   color: "text-red-500",
                   bg: "bg-red-500/5",
                 },
@@ -348,9 +337,11 @@ const AccountingPortal: React.FC<Props> = ({
                     {kpi.val}
                   </div>
                   <div className="flex items-center gap-2 mt-4">
-                    <span className="text-[9px] font-black text-white px-2 py-1 bg-white/5 rounded-lg">
-                      {kpi.trend}
-                    </span>
+                    {kpi.trend !== null && (
+                      <span className="text-[9px] font-black text-white px-2 py-1 bg-white/5 rounded-lg">
+                        {kpi.trend}
+                      </span>
+                    )}
                     <span className="text-[9px] font-bold text-slate-500 uppercase">
                       {kpi.sub}
                     </span>
@@ -798,193 +789,23 @@ const AccountingPortal: React.FC<Props> = ({
         )}
 
         {activeTab === "MAINTENANCE" && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex justify-between items-end">
+          <div className="flex items-center justify-center h-full min-h-[400px] animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col items-center gap-6 p-16 bg-[#0a0f1e]/50 border border-white/5 rounded-[2.5rem] backdrop-blur-md max-w-lg text-center">
+              <div className="p-5 rounded-[1.5rem] bg-slate-800/50 border border-white/5">
+                <Wrench className="w-10 h-10 text-slate-600" />
+              </div>
               <div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  Maintenance Financials
+                <h2 className="text-xl font-black text-white uppercase tracking-tighter mb-2">
+                  Maintenance Tracking
                 </h2>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                  Repair Tickets -&gt; A/P Bills -&gt; Cost Per Mile
+                <p className="text-slate-500 text-[11px] font-bold leading-relaxed">
+                  Maintenance tracking is not yet connected to live data.
+                  Service ticket management will be available in a future update.
                 </p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-4 gap-6">
-              {[
-                {
-                  label: "Total Maint Expense",
-                  val: "$12,450",
-                  sub: "Last 30 Days",
-                  color: "text-blue-500",
-                  bg: "bg-blue-500/5",
-                },
-                {
-                  label: "Auth Required",
-                  val: "3",
-                  sub: "Pending Review",
-                  color: "text-orange-500",
-                  bg: "bg-orange-500/5",
-                },
-                {
-                  label: "Cost Per Mile",
-                  val: "$0.42",
-                  sub: "Fleet Average",
-                  color: "text-emerald-500",
-                  bg: "bg-emerald-500/5",
-                },
-                {
-                  label: "Active Tickets",
-                  val: "8",
-                  sub: "In Service",
-                  color: "text-purple-500",
-                  bg: "bg-purple-500/5",
-                },
-              ].map((kpi, i) => (
-                <div
-                  key={i}
-                  className={`p-8 rounded-[2.5rem] border border-white/5 ${kpi.bg} backdrop-blur-sm shadow-xl`}
-                >
-                  <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">
-                    {kpi.label}
-                  </div>
-                  <div
-                    className={`text-3xl font-black tracking-tighter ${kpi.color}`}
-                  >
-                    {kpi.val}
-                  </div>
-                  <div className="text-[9px] font-bold text-slate-500 uppercase mt-2">
-                    {kpi.sub}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-[#0a0f1e]/50 border border-white/5 rounded-[2.5rem] overflow-hidden backdrop-blur-md">
-              <table className="w-full text-left">
-                <thead className="bg-black/20 border-b border-white/5">
-                  <tr>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase">
-                      Service Ticket
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase">
-                      Vendor / Payee
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase">
-                      Unit
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase text-right">
-                      Estimate
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase">
-                      Status
-                    </th>
-                    <th className="px-10 py-6 text-[10px] font-black text-slate-600 uppercase text-right">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {[
-                    {
-                      id: "TK-9021",
-                      vendor: "Love's Travel Stops",
-                      unit: "TR-101",
-                      amount: 850.0,
-                      status: "Authorized",
-                      date: "2026-01-01",
-                    },
-                    {
-                      id: "TK-9025",
-                      vendor: "Speedco Maintenance",
-                      unit: "TR-102",
-                      amount: 125.5,
-                      status: "Pending",
-                      date: "2026-01-02",
-                    },
-                    {
-                      id: "TK-8950",
-                      vendor: "Thermo King",
-                      unit: "RF-5001",
-                      amount: 3200.0,
-                      status: "Authorized",
-                      date: "2025-12-28",
-                    },
-                  ].map((tk, i) => (
-                    <tr
-                      key={i}
-                      className="hover:bg-white/[0.02] transition-colors group"
-                    >
-                      <td className="px-10 py-6">
-                        <div className="font-black text-white uppercase">
-                          {tk.id}
-                        </div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
-                          Logged {tk.date}
-                        </div>
-                      </td>
-                      <td className="px-10 py-6 font-black text-slate-300 uppercase">
-                        {tk.vendor}
-                      </td>
-                      <td className="px-10 py-6">
-                        <div className="flex items-center gap-2">
-                          <Truck className="w-3.5 h-3.5 text-blue-500" />
-                          <span className="text-[11px] font-black text-white">
-                            {tk.unit}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-10 py-6 text-right font-black text-white text-lg">
-                        ${tk.amount.toLocaleString()}
-                      </td>
-                      <td className="px-10 py-6">
-                        <span
-                          className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase border ${tk.status === "Authorized" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"}`}
-                        >
-                          {tk.status}
-                        </span>
-                      </td>
-                      <td className="px-10 py-6 text-right">
-                        <button
-                          onClick={async () => {
-                            const bill = {
-                              vendorId: tk.vendor, // In real app, this would be a UUID
-                              billNumber: tk.id,
-                              billDate: new Date().toISOString().split("T")[0],
-                              dueDate: new Date(
-                                Date.now() + 30 * 24 * 3600 * 1000,
-                              )
-                                .toISOString()
-                                .split("T")[0],
-                              status: "Approved" as any,
-                              totalAmount: tk.amount,
-                              balanceDue: tk.amount,
-                              lines: [
-                                {
-                                  id: "L-1",
-                                  description: `Maintenance: ${tk.id} for ${tk.unit}`,
-                                  category: "Repair" as any,
-                                  amount: tk.amount,
-                                  allocationType: "Truck" as any,
-                                  allocationId: tk.unit,
-                                  glAccountId: repairExpenseAcctId,
-                                },
-                              ] as any,
-                            };
-                            await createAPBill(bill);
-                            showFeedback(
-                              `Ticket ${tk.id} successfully converted to A/P Bill and posted to General Ledger.`,
-                            );
-                          }}
-                          className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
-                        >
-                          Post Bill
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="text-[9px] font-black text-slate-700 uppercase tracking-widest border border-white/5 px-4 py-2 rounded-xl">
+                Coming in a Future Release
+              </div>
             </div>
           </div>
         )}

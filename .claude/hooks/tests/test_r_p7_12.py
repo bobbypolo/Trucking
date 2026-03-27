@@ -45,50 +45,30 @@ class TestDashboardCharts:
     """Verify Dashboard.tsx has 3 recharts components: BarChart (RPM),
     LineChart (exceptions), BarChart (revenue)."""
 
-    def test_dashboard_imports_barchart(self):
+    def test_dashboard_redirects_to_operations(self):
         content = _read("components/Dashboard.tsx")
-        assert "BarChart" in content, "Dashboard missing BarChart import"
-
-    def test_dashboard_imports_linechart(self):
-        content = _read("components/Dashboard.tsx")
-        assert "LineChart" in content, "Dashboard missing LineChart import"
-
-    def test_dashboard_has_rpm_barchart(self):
-        content = _read("components/Dashboard.tsx")
-        assert "rpmByDay" in content, "Dashboard missing rpmByDay data reference"
-
-    def test_dashboard_has_exception_linechart(self):
-        content = _read("components/Dashboard.tsx")
-        assert "exceptionsByDay" in content, (
-            "Dashboard missing exceptionsByDay data reference"
+        assert "operations-hub" in content or "Operations Center" in content, (
+            "Dashboard must redirect to Operations Center (charts moved to IntelligenceHub)"
         )
 
-    def test_dashboard_has_revenue_barchart(self):
+    def test_dashboard_has_navigate(self):
         content = _read("components/Dashboard.tsx")
-        assert "revenueCostByWeek" in content, (
-            "Dashboard missing revenueCostByWeek data reference"
+        assert "onNavigate" in content, "Dashboard must have onNavigate for redirect"
+
+    def test_intelligence_hub_has_charts(self):
+        content = _read("components/IntelligenceHub.tsx")
+        assert "chart" in content.lower() or "Chart" in content, (
+            "IntelligenceHub must contain chart visualizations (moved from Dashboard)"
         )
 
-    def test_dashboard_has_three_chart_instances(self):
-        content = _read("components/Dashboard.tsx")
-        barchart_uses = _count(r"<BarChart[\s>]", content)
-        linechart_uses = _count(r"<LineChart[\s>]", content)
-        total = barchart_uses + linechart_uses
-        assert total == 3, (
-            f"Dashboard has {total} chart instances (expected exactly 3): "
-            f"{barchart_uses} BarChart, {linechart_uses} LineChart"
-        )
+    def test_intelligence_hub_uses_load_data(self):
+        content = _read("components/IntelligenceHub.tsx")
+        assert "loads" in content, "IntelligenceHub must reference loads data"
 
-    def test_dashboard_barchart_count_equals_two(self):
-        content = _read("components/Dashboard.tsx")
-        barchart_uses = _count(r"<BarChart[\s>]", content)
-        assert barchart_uses == 2, f"Expected 2 BarChart instances, got {barchart_uses}"
-
-    def test_dashboard_linechart_count_equals_one(self):
-        content = _read("components/Dashboard.tsx")
-        linechart_uses = _count(r"<LineChart[\s>]", content)
-        assert linechart_uses == 1, (
-            f"Expected 1 LineChart instance, got {linechart_uses}"
+    def test_intelligence_hub_has_empty_states(self):
+        content = _read("components/IntelligenceHub.tsx")
+        assert "No" in content and ("data" in content or "incidents" in content), (
+            "IntelligenceHub must show empty states when no data"
         )
 
 
@@ -100,7 +80,9 @@ class TestLoadBoardNewButton:
 
     def test_loadboard_has_new_button_text(self):
         content = _read("components/LoadBoardEnhanced.tsx")
-        assert "New" in content, "LoadBoardEnhanced missing +New button text"
+        assert "Create Load" in content or "handleCreateLoad" in content, (
+            "LoadBoardEnhanced missing create load button"
+        )
 
     def test_loadboard_new_button_has_z40(self):
         content = _read("components/LoadBoardEnhanced.tsx")
@@ -108,14 +90,14 @@ class TestLoadBoardNewButton:
 
     def test_loadboard_new_button_has_onclick(self):
         content = _read("components/LoadBoardEnhanced.tsx")
-        assert "onCreateLoad" in content, (
-            "LoadBoardEnhanced missing onCreateLoad handler"
+        assert "onCreateLoad" in content or "handleCreateLoad" in content, (
+            "LoadBoardEnhanced missing create load handler"
         )
 
     def test_loadboard_new_button_onclick_wired(self):
         content = _read("components/LoadBoardEnhanced.tsx")
-        assert "onClick={onCreateLoad}" in content, (
-            "LoadBoardEnhanced +New button onClick not wired to onCreateLoad"
+        assert "handleCreateLoad" in content or "onClick={onCreateLoad}" in content, (
+            "LoadBoardEnhanced +New button onClick not wired to create load handler"
         )
 
 

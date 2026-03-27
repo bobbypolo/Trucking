@@ -1345,6 +1345,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                       ).filter((_, idx) => idx !== i),
                                     })
                                   }
+                                  aria-label="Remove contact"
                                   className="text-slate-800 hover:text-red-500"
                                 >
                                   <X className="w-4 h-4" />
@@ -1594,6 +1595,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     );
                                     setFormData({ ...formData, rates: next });
                                   }}
+                                  aria-label="Delete rate"
                                   className="text-slate-800 hover:text-red-500 transition-all"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1642,6 +1644,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                       constraintSets: next,
                                     });
                                   }}
+                                  aria-label="Delete constraint"
                                   className="text-slate-700 hover:text-red-500 transition-all"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -1891,6 +1894,7 @@ export const NetworkPortal: React.FC<Props> = ({
               <div className="flex items-center gap-6">
                 <button
                   onClick={() => setView("dashboard")}
+                  aria-label="Back to registry"
                   className="p-3 bg-slate-900 border border-white/5 rounded-xl text-slate-500 hover:text-white transition-all"
                 >
                   <ChevronRight className="w-5 h-5 rotate-180" />
@@ -2551,6 +2555,7 @@ export const NetworkPortal: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => setActiveModal("NONE")}
+                aria-label="Close"
                 className="p-3 bg-slate-900 border border-white/5 rounded-2xl text-slate-500 hover:text-white transition-all"
               >
                 <X className="w-5 h-5" />

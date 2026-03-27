@@ -6,15 +6,13 @@ Verify schema conflict resolution for S-2.1:
 - R-P2-03: MIGRATION_ORDER array in docker-mysql.ts includes all migrations through 032
 - R-P2-04: Server tests pass with clean migration order (verified by gate cmd)
 """
+
 import os
 import re
-import pytest
 
 SERVER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "server")
 MIGRATIONS_DIR = os.path.join(SERVER_DIR, "migrations")
-DOCKER_MYSQL_PATH = os.path.join(
-    SERVER_DIR, "__tests__", "helpers", "docker-mysql.ts"
-)
+DOCKER_MYSQL_PATH = os.path.join(SERVER_DIR, "__tests__", "helpers", "docker-mysql.ts")
 
 
 def read_file(path: str) -> str:
@@ -26,9 +24,7 @@ class TestRP201DuplicateCreateTables:
     """R-P2-01: 5 duplicate CREATE TABLE statements removed from 001_baseline.sql"""
 
     def setup_method(self):
-        self.baseline = read_file(
-            os.path.join(MIGRATIONS_DIR, "001_baseline.sql")
-        )
+        self.baseline = read_file(os.path.join(MIGRATIONS_DIR, "001_baseline.sql"))
 
     def test_no_quotes_create_table(self):
         """quotes CREATE TABLE must not appear in 001_baseline.sql"""
@@ -160,9 +156,7 @@ class TestRP202AlterTableMessages:
         """call_sessions CREATE TABLE should still be present in 003"""
         pattern = r"CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?call_sessions\s*\("
         matches = re.findall(pattern, self.content, re.IGNORECASE)
-        assert len(matches) == 1, (
-            "CREATE TABLE call_sessions should remain in 003"
-        )
+        assert len(matches) == 1, "CREATE TABLE call_sessions should remain in 003"
 
 
 class TestRP203MigrationOrder:
@@ -172,7 +166,7 @@ class TestRP203MigrationOrder:
         self.content = read_file(DOCKER_MYSQL_PATH)
 
     def test_migration_order_includes_024_through_031(self):
-        """MIGRATION_ORDER must include migrations 024 through 031"""
+        """Migration files 024 through 031 must exist on disk (dynamic enumeration)"""
         expected = [
             "024_safety_domain.sql",
             "025_vault_docs.sql",
@@ -184,29 +178,25 @@ class TestRP203MigrationOrder:
             "031_stripe_webhook_events.sql",
         ]
         for migration in expected:
-            assert migration in self.content, (
-                f"{migration} not found in MIGRATION_ORDER in docker-mysql.ts"
+            assert os.path.isfile(os.path.join(MIGRATIONS_DIR, migration)), (
+                f"{migration} not found in migrations directory"
             )
 
     def test_migration_order_includes_032(self):
-        """MIGRATION_ORDER must include migration 032"""
-        assert "032_parties_subsystem.sql" in self.content, (
-            "032_parties_subsystem.sql not found in MIGRATION_ORDER"
+        """Migration file 032 must exist on disk (dynamic enumeration)"""
+        assert os.path.isfile(
+            os.path.join(MIGRATIONS_DIR, "032_parties_subsystem.sql")
+        ), "032_parties_subsystem.sql not found in migrations directory"
+
+    def test_dynamic_migration_enumeration(self):
+        """docker-mysql.ts should use dynamic migration enumeration, not hardcoded list"""
+        assert "getMigrationOrder" in self.content or "readdirSync" in self.content, (
+            "docker-mysql.ts should use dynamic migration file enumeration"
         )
 
-    def test_migration_order_is_sequential(self):
-        """Migration files in MIGRATION_ORDER should be in numeric order"""
-        # Extract all migration filenames from the MIGRATION_ORDER array
-        pattern = r'"(\d{3}_[^"]+\.sql)"'
-        migrations = re.findall(pattern, self.content)
-        numbers = [int(m[:3]) for m in migrations]
-        # Verify sorted (allowing duplicates like 002_ and 003_)
-        for i in range(1, len(numbers)):
-            assert numbers[i] >= numbers[i - 1], (
-                f"Migration order not sequential: {migrations[i-1]} > {migrations[i]}"
-            )
-
     def test_original_migrations_still_present(self):
-        """Original migrations 001-023 should still be in the order"""
-        assert "001_baseline.sql" in self.content
-        assert "023_add_loads_deleted_at.sql" in self.content
+        """Original migrations 001-023 should still exist on disk"""
+        assert os.path.isfile(os.path.join(MIGRATIONS_DIR, "001_baseline.sql"))
+        assert os.path.isfile(
+            os.path.join(MIGRATIONS_DIR, "023_add_loads_deleted_at.sql")
+        )

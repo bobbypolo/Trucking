@@ -486,14 +486,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 </div>
                 <div className="flex items-center gap-3">
                   <button
-                    onClick={() => setToast({ message: "Version history coming soon", type: "info" })}
-                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                    disabled
+                    title="Feature not yet available"
+                    className="bg-slate-950 border border-white/5 text-slate-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest opacity-50 cursor-not-allowed flex items-center gap-2"
                   >
                     <FileText className="w-4 h-4" /> Version History
                   </button>
                   <button
-                    onClick={() => setToast({ message: "Send update coming soon", type: "info" })}
-                    className="bg-slate-950 border border-white/5 text-slate-300 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
+                    disabled
+                    title="Feature not yet available"
+                    className="bg-slate-950 border border-white/5 text-slate-500 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest opacity-50 cursor-not-allowed flex items-center gap-2"
                   >
                     <Send className="w-4 h-4" /> Send Update
                   </button>
@@ -1091,17 +1093,33 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => {
-                      window.open("tel:5551234567");
-                      // Future: Add integration with IntelligenceHub call session
+                      const leadId = selectedQuote?.leadId;
+                      const phone = leadId
+                        ? leads.find((l) => l.id === leadId)?.callerPhone
+                        : undefined;
+                      if (phone) {
+                        handlePhoneInteraction(phone, "Quote Detail");
+                      }
                     }}
-                    className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 text-[9px] font-black uppercase rounded-lg transition-all"
+                    disabled={
+                      !selectedQuote?.leadId ||
+                      !leads.find((l) => l.id === selectedQuote?.leadId)?.callerPhone
+                    }
+                    title={
+                      !selectedQuote?.leadId ||
+                      !leads.find((l) => l.id === selectedQuote?.leadId)?.callerPhone
+                        ? "No phone on file"
+                        : undefined
+                    }
+                    className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 text-[9px] font-black uppercase rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600/10 disabled:hover:text-blue-500"
                   >
                     Log Contact
                   </button>
                   <button
-                    onClick={() => setToast({ message: "More options menu coming soon", type: "info" })}
-                    className="p-3 bg-slate-800 text-slate-300 rounded-lg"
-                    aria-label="More options"
+                    disabled
+                    title="Feature not yet available"
+                    className="p-3 bg-slate-800 text-slate-500 rounded-lg opacity-50 cursor-not-allowed"
+                    aria-label="More options (not yet available)"
                   >
                     <MoreHorizontal className="w-4 h-4" />
                   </button>
@@ -1218,7 +1236,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                       <div className="flex gap-2">
                         <input id="qmContactIntelligence"
                           className="flex-1 bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
-                          placeholder="(555) 000-0000"
+                          placeholder="Enter phone number"
                           value={
                             selectedQuote?.leadId
                               ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone || ""

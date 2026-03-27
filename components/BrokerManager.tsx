@@ -363,6 +363,7 @@ export const BrokerManager: React.FC<Props> = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => onAddLoad && onAddLoad(broker.id)}
+                        aria-label="Create load"
                         className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-colors shadow-lg"
                         title="Create Load"
                       >
@@ -373,6 +374,7 @@ export const BrokerManager: React.FC<Props> = ({
                           setEditingBroker(broker);
                           setShowForm(true);
                         }}
+                        aria-label="Edit entity"
                         className="p-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-colors border border-white/5 shadow-lg"
                       >
                         <Edit2 className="w-4 h-4" />
@@ -488,6 +490,7 @@ export const BrokerManager: React.FC<Props> = ({
               </div>
               <button
                 onClick={() => setShowForm(false)}
+                aria-label="Close"
                 className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center text-slate-500 hover:text-white hover:bg-slate-800 transition-all border border-white/5"
               >
                 <X className="w-5 h-5" />
@@ -796,6 +799,7 @@ export const BrokerManager: React.FC<Props> = ({
                             </div>
                             <button
                               onClick={() => handleRemoveChassis(rule.id)}
+                              aria-label="Remove chassis rule"
                               className="text-slate-700 hover:text-red-500 p-1 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />

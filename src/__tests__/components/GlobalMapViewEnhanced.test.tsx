@@ -112,9 +112,9 @@ describe("GlobalMapViewEnhanced -- missing API key (fallback)", () => {
     expect(screen.getByTestId("map-fallback")).toBeInTheDocument();
   });
 
-  it("shows Map Unavailable text", () => {
+  it("shows Map Configuration Required text", () => {
     render(<GlobalMapViewEnhanced loads={[]} users={[]} />);
-    expect(screen.getByText("Map Unavailable")).toBeInTheDocument();
+    expect(screen.getByText("Map Configuration Required")).toBeInTheDocument();
   });
 
   it("shows fleet summary labels", () => {

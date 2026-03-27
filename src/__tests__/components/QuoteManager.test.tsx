@@ -1115,8 +1115,10 @@ describe("QuoteManager component", () => {
     ).toBeInTheDocument();
   });
 
-  it("Log Contact button calls window.open with tel: URI", async () => {
-    const openSpy = vi.spyOn(window, "open").mockImplementation(() => null);
+  it("Log Contact button is disabled when selected quote has no linked lead with phone", async () => {
+    // Tests R-P9-01 — button is disabled when no lead phone is available
+    // The component uses window.location.href = tel:... via handlePhoneInteraction.
+    // Without a lead linked to the quote, the button must be disabled.
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -1126,9 +1128,8 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Log Contact")).toBeInTheDocument();
     });
-    await user.click(screen.getByText("Log Contact"));
-    expect(openSpy).toHaveBeenCalledWith("tel:5551234567");
-    openSpy.mockRestore();
+    const logContactBtn = screen.getByText("Log Contact").closest("button");
+    expect(logContactBtn).toBeDisabled();
   });
 
   it("shows the MoreHorizontal options button in comms sidebar", async () => {

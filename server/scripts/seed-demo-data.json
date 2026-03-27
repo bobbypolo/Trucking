@@ -1,0 +1,767 @@
+{
+  "_meta": {
+    "description": "Demo seed data for LoadPilot (DisbatchMe) trucking SaaS. All records use the marker 'DEMO-' in IDs and identifiable company names so they are clearly distinguishable from real production data.",
+    "version": "1.0.0",
+    "lastUpdated": "2026-03-26",
+    "demoTenantName": "Demo Freight Co"
+  },
+
+  "company": {
+    "id": "DEMO-COMPANY-001",
+    "name": "Demo Freight Co",
+    "account_type": "fleet",
+    "email": "ops@demofreightco.example.com",
+    "address": "8400 N Interstate 35 Frontage Rd",
+    "city": "Austin",
+    "state": "TX",
+    "zip": "78753",
+    "tax_id": "12-3456789",
+    "phone": "(512) 555-0100",
+    "mc_number": "MC-999001",
+    "dot_number": "DOT-9990001",
+    "subscription_status": "active"
+  },
+
+  "users": [
+    {
+      "id": "DEMO-USER-ADMIN-001",
+      "name": "Alex Rivera",
+      "email": "alex.rivera@demofreightco.example.com",
+      "role": "admin",
+      "pay_model": "salary",
+      "pay_rate": 75000,
+      "onboarding_status": "Completed"
+    },
+    {
+      "id": "DEMO-USER-DRIVER-001",
+      "name": "Marcus Johnson",
+      "email": "marcus.johnson@demofreightco.example.com",
+      "role": "driver",
+      "pay_model": "mileage",
+      "pay_rate": 0.55,
+      "onboarding_status": "Completed"
+    },
+    {
+      "id": "DEMO-USER-DRIVER-002",
+      "name": "Sandra Torres",
+      "email": "sandra.torres@demofreightco.example.com",
+      "role": "driver",
+      "pay_model": "mileage",
+      "pay_rate": 0.55,
+      "onboarding_status": "Completed"
+    },
+    {
+      "id": "DEMO-USER-DISPATCH-001",
+      "name": "Ray Owens",
+      "email": "ray.owens@demofreightco.example.com",
+      "role": "dispatcher",
+      "pay_model": "salary",
+      "pay_rate": 52000,
+      "onboarding_status": "Completed"
+    }
+  ],
+
+  "customers": [
+    {
+      "id": "DEMO-CUST-SHIPPER-001",
+      "name": "[DEMO] Apex Industrial Supply",
+      "type": "Direct Customer",
+      "mc_number": null,
+      "dot_number": null,
+      "email": "freight@apexindustrial.example.com",
+      "phone": "(713) 555-0210",
+      "address": "3200 Navigation Blvd, Houston, TX 77003",
+      "payment_terms": "Net 30"
+    },
+    {
+      "id": "DEMO-CUST-SHIPPER-002",
+      "name": "[DEMO] Gulf Coast Distributors",
+      "type": "Direct Customer",
+      "mc_number": null,
+      "dot_number": null,
+      "email": "logistics@gulfcoastdist.example.com",
+      "phone": "(504) 555-0340",
+      "address": "1800 Port of New Orleans Blvd, New Orleans, LA 70117",
+      "payment_terms": "Net 45"
+    },
+    {
+      "id": "DEMO-CUST-BROKER-001",
+      "name": "[DEMO] TruckerPath Freight Brokers",
+      "type": "Broker",
+      "mc_number": "MC-220045",
+      "dot_number": null,
+      "email": "dispatch@truckerpathbrokers.example.com",
+      "phone": "(312) 555-0180",
+      "address": "200 W Adams St, Chicago, IL 60606",
+      "payment_terms": "Quick Pay 5%"
+    },
+    {
+      "id": "DEMO-CUST-BROKER-002",
+      "name": "[DEMO] Midland Freight Exchange",
+      "type": "Broker",
+      "mc_number": "MC-318762",
+      "dot_number": null,
+      "email": "ops@midlandfreightex.example.com",
+      "phone": "(214) 555-0095",
+      "address": "6500 Greenville Ave Ste 400, Dallas, TX 75206",
+      "payment_terms": "Net 30"
+    }
+  ],
+
+  "parties": [
+    {
+      "id": "DEMO-PARTY-CARRIER-001",
+      "name": "[DEMO] Lone Star Transport LLC",
+      "type": "carrier",
+      "is_customer": 0,
+      "is_vendor": 1,
+      "status": "active",
+      "mc_number": "MC-447812",
+      "dot_number": "DOT-4478120",
+      "rating": 4.8
+    },
+    {
+      "id": "DEMO-PARTY-CARRIER-002",
+      "name": "[DEMO] Bayou Haulers Inc",
+      "type": "carrier",
+      "is_customer": 0,
+      "is_vendor": 1,
+      "status": "active",
+      "mc_number": "MC-589234",
+      "dot_number": "DOT-5892340",
+      "rating": 4.5
+    }
+  ],
+
+  "loads": [
+    {
+      "id": "DEMO-LOAD-001",
+      "load_number": "DEMO-2026-0001",
+      "status": "completed",
+      "customer_ref": "DEMO-CUST-SHIPPER-001",
+      "driver_ref": "DEMO-USER-DRIVER-001",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 3200.00,
+      "driver_pay": 1280.00,
+      "pickup_date": "2026-03-10",
+      "freight_type": "Dry Van",
+      "commodity": "Industrial Equipment Parts",
+      "weight": 38500,
+      "bol_number": "BOL-DEMO-001",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Apex Industrial Supply Warehouse A",
+          "city": "Houston",
+          "state": "TX",
+          "date": "2026-03-10",
+          "appointment_time": "08:00",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Dallas Distribution Center",
+          "city": "Dallas",
+          "state": "TX",
+          "date": "2026-03-11",
+          "appointment_time": "14:00",
+          "completed": true,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-002",
+      "load_number": "DEMO-2026-0002",
+      "status": "completed",
+      "customer_ref": "DEMO-CUST-BROKER-001",
+      "driver_ref": "DEMO-USER-DRIVER-002",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 4800.00,
+      "driver_pay": 1920.00,
+      "pickup_date": "2026-03-12",
+      "freight_type": "Reefer",
+      "commodity": "Frozen Food Products",
+      "weight": 42000,
+      "bol_number": "BOL-DEMO-002",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Gulf Coast Cold Storage",
+          "city": "New Orleans",
+          "state": "LA",
+          "date": "2026-03-12",
+          "appointment_time": "06:00",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Memphis Regional Distribution",
+          "city": "Memphis",
+          "state": "TN",
+          "date": "2026-03-13",
+          "appointment_time": "16:00",
+          "completed": true,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-003",
+      "load_number": "DEMO-2026-0003",
+      "status": "delivered",
+      "customer_ref": "DEMO-CUST-SHIPPER-002",
+      "driver_ref": "DEMO-USER-DRIVER-001",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 5600.00,
+      "driver_pay": 2240.00,
+      "pickup_date": "2026-03-15",
+      "freight_type": "Flatbed",
+      "commodity": "Steel Coils",
+      "weight": 44000,
+      "bol_number": "BOL-DEMO-003",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Port of New Orleans Steel Terminal",
+          "city": "New Orleans",
+          "state": "LA",
+          "date": "2026-03-15",
+          "appointment_time": "09:00",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Birmingham Steel Works",
+          "city": "Birmingham",
+          "state": "AL",
+          "date": "2026-03-16",
+          "appointment_time": "13:00",
+          "completed": true,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-004",
+      "load_number": "DEMO-2026-0004",
+      "status": "in_transit",
+      "customer_ref": "DEMO-CUST-BROKER-002",
+      "driver_ref": "DEMO-USER-DRIVER-002",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 3750.00,
+      "driver_pay": 1500.00,
+      "pickup_date": "2026-03-25",
+      "freight_type": "Dry Van",
+      "commodity": "Consumer Electronics",
+      "weight": 28000,
+      "bol_number": "BOL-DEMO-004",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Dallas Logistics Hub",
+          "city": "Dallas",
+          "state": "TX",
+          "date": "2026-03-25",
+          "appointment_time": "07:30",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Oklahoma City Fulfillment Center",
+          "city": "Oklahoma City",
+          "state": "OK",
+          "date": "2026-03-26",
+          "appointment_time": "12:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-005",
+      "load_number": "DEMO-2026-0005",
+      "status": "dispatched",
+      "customer_ref": "DEMO-CUST-SHIPPER-001",
+      "driver_ref": "DEMO-USER-DRIVER-001",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 2900.00,
+      "driver_pay": 1160.00,
+      "pickup_date": "2026-03-26",
+      "freight_type": "Dry Van",
+      "commodity": "Auto Parts",
+      "weight": 35000,
+      "bol_number": "BOL-DEMO-005",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Apex Industrial Supply Warehouse B",
+          "city": "Houston",
+          "state": "TX",
+          "date": "2026-03-26",
+          "appointment_time": "10:00",
+          "completed": false,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "San Antonio Auto Assembly",
+          "city": "San Antonio",
+          "state": "TX",
+          "date": "2026-03-26",
+          "appointment_time": "18:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-006",
+      "load_number": "DEMO-2026-0006",
+      "status": "planned",
+      "customer_ref": "DEMO-CUST-BROKER-001",
+      "driver_ref": null,
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 6200.00,
+      "driver_pay": 0.00,
+      "pickup_date": "2026-03-28",
+      "freight_type": "Reefer",
+      "commodity": "Pharmaceuticals",
+      "weight": 18000,
+      "bol_number": null,
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Abbott Medical Distribution",
+          "city": "Chicago",
+          "state": "IL",
+          "date": "2026-03-28",
+          "appointment_time": "08:00",
+          "completed": false,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Detroit Medical Center Receiving",
+          "city": "Detroit",
+          "state": "MI",
+          "date": "2026-03-29",
+          "appointment_time": "09:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-007",
+      "load_number": "DEMO-2026-0007",
+      "status": "planned",
+      "customer_ref": "DEMO-CUST-SHIPPER-002",
+      "driver_ref": null,
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 4100.00,
+      "driver_pay": 0.00,
+      "pickup_date": "2026-03-29",
+      "freight_type": "Flatbed",
+      "commodity": "Lumber and Building Materials",
+      "weight": 40000,
+      "bol_number": null,
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Gulf Lumber Supply",
+          "city": "Mobile",
+          "state": "AL",
+          "date": "2026-03-29",
+          "appointment_time": "07:00",
+          "completed": false,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Nashville Home Depot RDC",
+          "city": "Nashville",
+          "state": "TN",
+          "date": "2026-03-30",
+          "appointment_time": "11:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-008",
+      "load_number": "DEMO-2026-0008",
+      "status": "draft",
+      "customer_ref": "DEMO-CUST-BROKER-002",
+      "driver_ref": null,
+      "dispatcher_ref": null,
+      "carrier_rate": 3400.00,
+      "driver_pay": 0.00,
+      "pickup_date": "2026-04-01",
+      "freight_type": "Dry Van",
+      "commodity": "Packaged Goods",
+      "weight": 32000,
+      "bol_number": null,
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Midland Freight Exchange Yard",
+          "city": "Dallas",
+          "state": "TX",
+          "date": "2026-04-01",
+          "appointment_time": "09:00",
+          "completed": false,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Tulsa Distribution Park",
+          "city": "Tulsa",
+          "state": "OK",
+          "date": "2026-04-02",
+          "appointment_time": "15:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-009",
+      "load_number": "DEMO-2026-0009",
+      "status": "completed",
+      "customer_ref": "DEMO-CUST-BROKER-001",
+      "driver_ref": "DEMO-USER-DRIVER-002",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 7800.00,
+      "driver_pay": 3120.00,
+      "pickup_date": "2026-03-03",
+      "freight_type": "Reefer",
+      "commodity": "Fresh Produce",
+      "weight": 43000,
+      "bol_number": "BOL-DEMO-009",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Rio Grande Valley Produce Exchange",
+          "city": "McAllen",
+          "state": "TX",
+          "date": "2026-03-03",
+          "appointment_time": "04:00",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Chicago Produce Terminal Market",
+          "city": "Chicago",
+          "state": "IL",
+          "date": "2026-03-05",
+          "appointment_time": "06:00",
+          "completed": true,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-010",
+      "load_number": "DEMO-2026-0010",
+      "status": "completed",
+      "customer_ref": "DEMO-CUST-SHIPPER-001",
+      "driver_ref": "DEMO-USER-DRIVER-001",
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 2600.00,
+      "driver_pay": 1040.00,
+      "pickup_date": "2026-03-07",
+      "freight_type": "Dry Van",
+      "commodity": "General Merchandise",
+      "weight": 29500,
+      "bol_number": "BOL-DEMO-010",
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Apex Industrial Supply Dock 3",
+          "city": "Houston",
+          "state": "TX",
+          "date": "2026-03-07",
+          "appointment_time": "11:00",
+          "completed": true,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Baton Rouge Regional Depot",
+          "city": "Baton Rouge",
+          "state": "LA",
+          "date": "2026-03-07",
+          "appointment_time": "19:00",
+          "completed": true,
+          "sequence_order": 2
+        }
+      ]
+    },
+    {
+      "id": "DEMO-LOAD-011",
+      "load_number": "DEMO-2026-0011",
+      "status": "cancelled",
+      "customer_ref": "DEMO-CUST-BROKER-002",
+      "driver_ref": null,
+      "dispatcher_ref": "DEMO-USER-DISPATCH-001",
+      "carrier_rate": 3100.00,
+      "driver_pay": 0.00,
+      "pickup_date": "2026-03-18",
+      "freight_type": "Dry Van",
+      "commodity": "Retail Fixtures",
+      "weight": 26000,
+      "bol_number": null,
+      "legs": [
+        {
+          "type": "Pickup",
+          "facility_name": "Dallas Fixture Warehouse",
+          "city": "Dallas",
+          "state": "TX",
+          "date": "2026-03-18",
+          "appointment_time": "10:00",
+          "completed": false,
+          "sequence_order": 1
+        },
+        {
+          "type": "Dropoff",
+          "facility_name": "Little Rock Distribution Center",
+          "city": "Little Rock",
+          "state": "AR",
+          "date": "2026-03-19",
+          "appointment_time": "14:00",
+          "completed": false,
+          "sequence_order": 2
+        }
+      ]
+    }
+  ],
+
+  "incidents": [
+    {
+      "id": "DEMO-INC-001",
+      "load_ref": "DEMO-LOAD-003",
+      "type": "Breakdown",
+      "severity": "High",
+      "status": "Recovered",
+      "sla_deadline": "2026-03-15T14:00:00Z",
+      "description": "[DEMO] Driver reported engine overheating on I-65 northbound near Montgomery, AL. Roadside assistance dispatched. Load recovered via repower truck. Delivery delayed by 3 hours.",
+      "location_lat": 32.3617,
+      "location_lng": -86.2792,
+      "recovery_plan": "Repower with Unit TRK-042. Notify consignee of revised ETA 16:00."
+    },
+    {
+      "id": "DEMO-INC-002",
+      "load_ref": "DEMO-LOAD-009",
+      "type": "Reefer Temp",
+      "severity": "Critical",
+      "status": "Closed",
+      "sla_deadline": "2026-03-04T08:00:00Z",
+      "description": "[DEMO] Reefer unit temperature alarm triggered at 38°F (target 34°F). Load at risk. Driver pulled off at Texarkana for inspection. Unit recalibrated and load continued.",
+      "location_lat": 33.4251,
+      "location_lng": -94.0477,
+      "recovery_plan": "Recalibrate reefer unit. Verify commodity temp integrity with shipper. Document for claim prevention."
+    },
+    {
+      "id": "DEMO-INC-003",
+      "load_ref": "DEMO-LOAD-004",
+      "type": "HOS Risk",
+      "severity": "Medium",
+      "status": "In_Progress",
+      "sla_deadline": "2026-03-26T20:00:00Z",
+      "description": "[DEMO] Driver approaching 11-hour driving limit. Remaining distance to Oklahoma City is 85 miles. Driver has 1.5 hours remaining HOS. ETA requires revision.",
+      "location_lat": 35.4676,
+      "location_lng": -97.5164,
+      "recovery_plan": "Driver to take 30-min break at Ardmore, OK. Revised ETA 14:30. Notify consignee."
+    },
+    {
+      "id": "DEMO-INC-004",
+      "load_ref": "DEMO-LOAD-001",
+      "type": "Cargo Issue",
+      "severity": "Low",
+      "status": "Closed",
+      "sla_deadline": "2026-03-11T16:00:00Z",
+      "description": "[DEMO] Consignee reported 2 damaged pallets at delivery. Damage attributed to improper stacking at origin. Photos captured. Claim filed with shipper.",
+      "location_lat": 32.7767,
+      "location_lng": -96.7970,
+      "recovery_plan": "File cargo claim with Apex Industrial Supply. Obtain consignee signature on exception. Claim value estimated at $480."
+    },
+    {
+      "id": "DEMO-INC-005",
+      "load_ref": "DEMO-LOAD-002",
+      "type": "Weather Shutdown",
+      "severity": "High",
+      "status": "Recovered",
+      "sla_deadline": "2026-03-13T10:00:00Z",
+      "description": "[DEMO] Severe weather advisory issued on I-55 north of Jackson, MS. Driver held at Meridian, MS truck stop for 4 hours per safety protocol. Load delivered late.",
+      "location_lat": 32.3546,
+      "location_lng": -88.7037,
+      "recovery_plan": "Resume when advisory lifts. Notify Memphis consignee of 4-hour delay. Document detention time for billing."
+    }
+  ],
+
+  "ar_invoices": [
+    {
+      "id": "DEMO-INV-001",
+      "load_ref": "DEMO-LOAD-001",
+      "customer_ref": "DEMO-CUST-SHIPPER-001",
+      "invoice_number": "INV-DEMO-2026-001",
+      "invoice_date": "2026-03-11",
+      "due_date": "2026-04-10",
+      "status": "Paid",
+      "total_amount": 3200.00,
+      "description": "Freight: Houston TX to Dallas TX | BOL-DEMO-001 | Industrial Equipment Parts"
+    },
+    {
+      "id": "DEMO-INV-002",
+      "load_ref": "DEMO-LOAD-002",
+      "customer_ref": "DEMO-CUST-BROKER-001",
+      "invoice_number": "INV-DEMO-2026-002",
+      "invoice_date": "2026-03-13",
+      "due_date": "2026-03-18",
+      "status": "Paid",
+      "total_amount": 4800.00,
+      "description": "Freight: New Orleans LA to Memphis TN | BOL-DEMO-002 | Frozen Food Products"
+    },
+    {
+      "id": "DEMO-INV-003",
+      "load_ref": "DEMO-LOAD-003",
+      "customer_ref": "DEMO-CUST-SHIPPER-002",
+      "invoice_number": "INV-DEMO-2026-003",
+      "invoice_date": "2026-03-16",
+      "due_date": "2026-04-30",
+      "status": "Sent",
+      "total_amount": 5900.00,
+      "description": "Freight: New Orleans LA to Birmingham AL | BOL-DEMO-003 | Steel Coils + $300 Detention"
+    },
+    {
+      "id": "DEMO-INV-004",
+      "load_ref": "DEMO-LOAD-009",
+      "customer_ref": "DEMO-CUST-BROKER-001",
+      "invoice_number": "INV-DEMO-2026-004",
+      "invoice_date": "2026-03-05",
+      "due_date": "2026-03-10",
+      "status": "Paid",
+      "total_amount": 7800.00,
+      "description": "Freight: McAllen TX to Chicago IL | BOL-DEMO-009 | Fresh Produce"
+    },
+    {
+      "id": "DEMO-INV-005",
+      "load_ref": "DEMO-LOAD-010",
+      "customer_ref": "DEMO-CUST-SHIPPER-001",
+      "invoice_number": "INV-DEMO-2026-005",
+      "invoice_date": "2026-03-08",
+      "due_date": "2026-04-07",
+      "status": "Overdue",
+      "total_amount": 2600.00,
+      "description": "Freight: Houston TX to Baton Rouge LA | BOL-DEMO-010 | General Merchandise"
+    }
+  ],
+
+  "ap_bills": [
+    {
+      "id": "DEMO-BILL-001",
+      "vendor_ref": "DEMO-PARTY-CARRIER-001",
+      "bill_number": "BILL-DEMO-2026-001",
+      "bill_date": "2026-03-12",
+      "due_date": "2026-03-27",
+      "status": "Paid",
+      "total_amount": 1850.00,
+      "description": "Carrier fuel surcharge and tolls - Lone Star Transport LLC - Week of Mar 10"
+    },
+    {
+      "id": "DEMO-BILL-002",
+      "vendor_ref": "DEMO-PARTY-CARRIER-002",
+      "bill_number": "BILL-DEMO-2026-002",
+      "bill_date": "2026-03-14",
+      "due_date": "2026-03-29",
+      "status": "Approved",
+      "total_amount": 2400.00,
+      "description": "Carrier line-haul payment - Bayou Haulers Inc - Load DEMO-2026-0002"
+    },
+    {
+      "id": "DEMO-BILL-003",
+      "vendor_ref": "DEMO-PARTY-CARRIER-001",
+      "bill_number": "BILL-DEMO-2026-003",
+      "bill_date": "2026-03-16",
+      "due_date": "2026-03-31",
+      "status": "Pending",
+      "total_amount": 3100.00,
+      "description": "Carrier line-haul + detention - Lone Star Transport LLC - Load DEMO-2026-0003"
+    },
+    {
+      "id": "DEMO-BILL-004",
+      "vendor_ref": "DEMO-PARTY-CARRIER-002",
+      "bill_number": "BILL-DEMO-2026-004",
+      "bill_date": "2026-03-06",
+      "due_date": "2026-03-21",
+      "status": "Paid",
+      "total_amount": 4200.00,
+      "description": "Carrier line-haul payment - Bayou Haulers Inc - Load DEMO-2026-0009"
+    },
+    {
+      "id": "DEMO-BILL-005",
+      "vendor_ref": "DEMO-PARTY-CARRIER-001",
+      "bill_number": "BILL-DEMO-2026-005",
+      "bill_date": "2026-03-08",
+      "due_date": "2026-03-23",
+      "status": "Overdue",
+      "total_amount": 1400.00,
+      "description": "Carrier fuel and accessorial charges - Lone Star Transport LLC - Week of Mar 7"
+    }
+  ],
+
+  "gl_accounts": [
+    {
+      "id": "DEMO-GL-1200",
+      "account_number": "1200",
+      "name": "Accounts Receivable",
+      "type": "Asset",
+      "sub_type": "Current Asset",
+      "description": "Trade receivables from freight billing",
+      "is_active": true
+    },
+    {
+      "id": "DEMO-GL-2000",
+      "account_number": "2000",
+      "name": "Accounts Payable",
+      "type": "Liability",
+      "sub_type": "Current Liability",
+      "description": "Trade payables to carriers and vendors",
+      "is_active": true
+    },
+    {
+      "id": "DEMO-GL-4000",
+      "account_number": "4000",
+      "name": "Freight Revenue",
+      "type": "Income",
+      "sub_type": "Operating Revenue",
+      "description": "Line-haul and accessorial freight revenue",
+      "is_active": true
+    },
+    {
+      "id": "DEMO-GL-6100",
+      "account_number": "6100",
+      "name": "Carrier Cost",
+      "type": "Expense",
+      "sub_type": "COGS",
+      "description": "Carrier line-haul and accessorial payments",
+      "is_active": true
+    },
+    {
+      "id": "DEMO-GL-6200",
+      "account_number": "6200",
+      "name": "Fuel Expense",
+      "type": "Expense",
+      "sub_type": "Operating Expense",
+      "description": "Company fuel card and fuel surcharge expenses",
+      "is_active": true
+    }
+  ]
+}

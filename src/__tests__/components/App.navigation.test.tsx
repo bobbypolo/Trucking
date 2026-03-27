@@ -179,13 +179,14 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "loads",
     "calendar",
     "network",
+    "telematics-setup",
     "accounting",
     "exceptions",
     "company",
   ];
 
-  it("nav has exactly 7 items", () => {
-    expect(idMatches.length).toBe(7);
+  it("nav has exactly 8 items", () => {
+    expect(idMatches.length).toBe(8);
   });
 
   it("extracts expected tab IDs from categories", () => {

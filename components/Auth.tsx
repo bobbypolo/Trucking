@@ -657,7 +657,11 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                 </div>
               </div>
               {error && (
-                <p className="text-red-400 text-xs font-black uppercase tracking-widest">
+                <p
+                  role="alert"
+                  aria-live="assertive"
+                  className="text-red-400 text-xs font-black uppercase tracking-widest"
+                >
                   {error}
                 </p>
               )}
@@ -842,6 +846,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("signup")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -854,6 +859,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-tier"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="grid grid-cols-1 gap-4">
                 <button
                   type="button"
@@ -916,6 +932,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("signup")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -928,6 +945,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-regulatory"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label
@@ -1022,6 +1050,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("regulatory")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1034,6 +1063,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-equipment"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="bg-slate-950 p-4 rounded-2xl border border-slate-800 space-y-4">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-600 rounded-xl">
@@ -1096,6 +1136,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("equipment")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1108,6 +1149,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-money"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-[10px] text-slate-600 font-black uppercase ml-1">
@@ -1175,6 +1227,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("money")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1187,6 +1240,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-ifta"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <label
@@ -1240,6 +1304,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("ifta")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1252,6 +1317,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-templates"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label
@@ -1303,6 +1379,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("templates")}
                   className="p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors flex items-center justify-center"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -1315,6 +1392,17 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   </p>
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  clearWizardState();
+                  setView("login");
+                }}
+                className="flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                data-testid="back-to-login-invites"
+              >
+                <ArrowLeft className="w-3 h-3" /> Back to Login
+              </button>
               <div className="space-y-4">
                 <div className="space-y-1">
                   <label
@@ -1371,8 +1459,20 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   type="button"
                   onClick={() => setView("equipment")}
                   className="absolute left-0 top-0 p-2 hover:bg-slate-800 rounded-lg text-slate-500 hover:text-white transition-colors"
+                  aria-label="Back to previous step"
                 >
                   <ArrowLeft className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearWizardState();
+                    setView("login");
+                  }}
+                  className="absolute right-0 top-0 flex items-center gap-1 text-slate-500 text-xs font-black uppercase tracking-widest hover:text-white transition-colors"
+                  data-testid="back-to-login-payment"
+                >
+                  <ArrowLeft className="w-3 h-3" /> Back to Login
                 </button>
                 <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-green-900/40">
                   <CheckCircle className="w-10 h-10 text-white" />

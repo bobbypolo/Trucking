@@ -3600,6 +3600,18 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
+                      {triageQueues.incidents.filter((i) => !snoozedIds.has(i.id)).length === 0 &&
+                        triageQueues.workItems.filter((wi) => !snoozedIds.has(wi.id) && wi.priority === "Critical").length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
+                            <CheckCircle className="w-10 h-10 text-emerald-500/30" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              No crisis incidents to triage
+                            </p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase">
+                              Your operations are running smoothly
+                            </p>
+                          </div>
+                        )}
                     </div>
                   )}
                   {activeTriageTab === "SUPPORT" && (
@@ -3639,6 +3651,18 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
+                      {triageQueues.requests.filter((r) => !snoozedIds.has(r.id)).length === 0 &&
+                        triageQueues.workItems.filter((wi) => !snoozedIds.has(wi.id) && wi.priority !== "Critical").length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
+                            <ClipboardList className="w-10 h-10 text-slate-500/30" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              No open work items
+                            </p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase">
+                              Pending requests and tasks will appear here
+                            </p>
+                          </div>
+                        )}
                     </div>
                   )}
                   {activeTriageTab === "ASSETS" && (
@@ -3688,6 +3712,18 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
+                      {triageQueues.atRiskLoads.filter((l) => !snoozedIds.has(l.id)).length === 0 &&
+                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id)).length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
+                            <Truck className="w-10 h-10 text-slate-500/30" />
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                              No at-risk assets
+                            </p>
+                            <p className="text-[9px] text-slate-600 font-bold uppercase">
+                              All assets are operating within normal parameters
+                            </p>
+                          </div>
+                        )}
                     </div>
                   )}
 
@@ -4375,6 +4411,29 @@ const IntelligenceHub: React.FC<{
             {/* Content Area */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {directoryTab === "PROVIDERS" &&
+                allProviders.filter(
+                  (p) =>
+                    !directorySearchQuery ||
+                    p.name
+                      .toLowerCase()
+                      .includes(directorySearchQuery.toLowerCase()),
+                ).length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
+                    <Building2 className="w-12 h-12 text-slate-500/30" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      {directorySearchQuery
+                        ? "No providers match your search"
+                        : "No providers in directory"}
+                    </p>
+                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
+                      {directorySearchQuery
+                        ? "Try a different search term"
+                        : "Add providers from the Network portal"}
+                    </p>
+                  </div>
+                )}
+
+              {directoryTab === "PROVIDERS" &&
                 allProviders
                   .filter(
                     (p) =>
@@ -4518,6 +4577,29 @@ const IntelligenceHub: React.FC<{
                   </p>
                 </div>
               )}
+
+              {directoryTab === "CONTACTS" &&
+                allContacts.filter(
+                  (c) =>
+                    !directorySearchQuery ||
+                    (c.name ?? "")
+                      .toLowerCase()
+                      .includes(directorySearchQuery.toLowerCase()),
+                ).length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
+                    <Users className="w-12 h-12 text-slate-500/30" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      {directorySearchQuery
+                        ? "No contacts match your search"
+                        : "No contacts in directory"}
+                    </p>
+                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
+                      {directorySearchQuery
+                        ? "Try a different search term"
+                        : "Add contacts from the Network portal"}
+                    </p>
+                  </div>
+                )}
 
               {directoryTab === "CONTACTS" &&
                 allContacts

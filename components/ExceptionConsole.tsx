@@ -548,12 +548,14 @@ export const ExceptionConsole: React.FC<Props> = ({
             <div className="flex bg-slate-900 rounded-xl p-1 border border-white/5">
               <button
                 onClick={() => setViewMode("list")}
+                aria-label="List view"
                 className={`p-2 rounded-lg transition-all ${viewMode === "list" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-white"}`}
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
                 className={`p-2 rounded-lg transition-all ${viewMode === "grid" ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20" : "text-slate-500 hover:text-white"}`}
               >
                 <LayoutGrid className="w-4 h-4" />

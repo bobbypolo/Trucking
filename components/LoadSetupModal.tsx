@@ -3,22 +3,32 @@ import { useFocusTrap } from "../hooks/useFocusTrap";
 import { Broker, User, FreightType } from "../types";
 import {
   Building2,
-  User as UserIcon,
   ArrowRight,
   X,
   PhoneCall,
-  Settings,
-  AlertTriangle,
-  ShieldCheck,
-  Search,
+  Plus,
+  Check,
+  Loader2,
 } from "lucide-react";
-import { getBrokers } from "../services/brokerService";
-import { getCompanyUsers, getCompany } from "../services/authService";
+import { getBrokers, saveBroker } from "../services/brokerService";
+import { getCompanyUsers, getCompany, updateUser } from "../services/authService";
 import { generateNextLoadNumber } from "../services/storageService";
 import { Toast } from "./Toast";
 
 /** Sentinel value for "Direct / No Broker" selection */
 const DIRECT_BROKER_ID = "__direct__";
+
+interface QuickAddBrokerForm {
+  name: string;
+  email: string;
+  phone: string;
+}
+
+interface QuickAddDriverForm {
+  name: string;
+  email: string;
+  phone: string;
+}
 
 interface Props {
   currentUser: User;
@@ -55,6 +65,25 @@ export const LoadSetupModal: React.FC<Props> = ({
   } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Quick Add Broker state
+  const [showQuickAddBroker, setShowQuickAddBroker] = useState(false);
+  const [quickAddBrokerForm, setQuickAddBrokerForm] =
+    useState<QuickAddBrokerForm>({ name: "", email: "", phone: "" });
+  const [quickAddBrokerErrors, setQuickAddBrokerErrors] = useState<
+    Record<string, string>
+  >({});
+  const [isSavingBroker, setIsSavingBroker] = useState(false);
+
+  // Quick Add Driver state
+  const [showQuickAddDriver, setShowQuickAddDriver] = useState(false);
+  const [quickAddDriverForm, setQuickAddDriverForm] =
+    useState<QuickAddDriverForm>({ name: "", email: "", phone: "" });
+  const [quickAddDriverErrors, setQuickAddDriverErrors] = useState<
+    Record<string, string>
+  >({});
+  const [isSavingDriver, setIsSavingDriver] = useState(false);
+
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusTrap(panelRef, true, onCancel);
 
@@ -111,6 +140,156 @@ export const LoadSetupModal: React.FC<Props> = ({
     }
   };
 
+  // ── Quick Add Broker ───────────────────────────────────────────────────────
+
+  const openQuickAddBroker = () => {
+    setShowQuickAddBroker(true);
+    setShowQuickAddDriver(false);
+    setQuickAddBrokerForm({ name: "", email: "", phone: "" });
+    setQuickAddBrokerErrors({});
+  };
+
+  const cancelQuickAddBroker = () => {
+    setShowQuickAddBroker(false);
+    setQuickAddBrokerErrors({});
+  };
+
+  const handleQuickAddBrokerChange = (
+    field: keyof QuickAddBrokerForm,
+    value: string,
+  ) => {
+    setQuickAddBrokerForm((prev) => ({ ...prev, [field]: value }));
+    if (quickAddBrokerErrors[field]) {
+      setQuickAddBrokerErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveQuickBroker = async () => {
+    const errs: Record<string, string> = {};
+    if (!quickAddBrokerForm.name.trim()) errs.name = "Name is required";
+    if (Object.keys(errs).length > 0) {
+      setQuickAddBrokerErrors(errs);
+      return;
+    }
+
+    setIsSavingBroker(true);
+    try {
+      const newBroker: Broker = {
+        id: `broker-${Date.now()}`,
+        name: quickAddBrokerForm.name.trim(),
+        email: quickAddBrokerForm.email.trim() || undefined,
+        phone: quickAddBrokerForm.phone.trim() || undefined,
+        isShared: false,
+        clientType: "Broker",
+        approvedChassis: [],
+      };
+      await saveBroker(newBroker);
+      // Refresh broker list and auto-select the new broker
+      const refreshed = await getBrokers();
+      setBrokers(refreshed);
+      // Try to find the saved broker by name (server may assign a real id)
+      const saved = refreshed.find(
+        (b) => b.name === newBroker.name,
+      );
+      setSelectedBrokerId(saved?.id ?? newBroker.id);
+      if (formErrors.broker) {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.broker;
+          return next;
+        });
+      }
+      setShowQuickAddBroker(false);
+      setToast({ message: `Broker "${newBroker.name}" created`, type: "success" });
+    } catch (err) {
+      setToast({ message: "Failed to create broker. Please try again.", type: "error" });
+    } finally {
+      setIsSavingBroker(false);
+    }
+  };
+
+  // ── Quick Add Driver ───────────────────────────────────────────────────────
+
+  const openQuickAddDriver = () => {
+    setShowQuickAddDriver(true);
+    setShowQuickAddBroker(false);
+    setQuickAddDriverForm({ name: "", email: "", phone: "" });
+    setQuickAddDriverErrors({});
+  };
+
+  const cancelQuickAddDriver = () => {
+    setShowQuickAddDriver(false);
+    setQuickAddDriverErrors({});
+  };
+
+  const handleQuickAddDriverChange = (
+    field: keyof QuickAddDriverForm,
+    value: string,
+  ) => {
+    setQuickAddDriverForm((prev) => ({ ...prev, [field]: value }));
+    if (quickAddDriverErrors[field]) {
+      setQuickAddDriverErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSaveQuickDriver = async () => {
+    const errs: Record<string, string> = {};
+    if (!quickAddDriverForm.name.trim()) errs.name = "Name is required";
+    if (Object.keys(errs).length > 0) {
+      setQuickAddDriverErrors(errs);
+      return;
+    }
+
+    setIsSavingDriver(true);
+    try {
+      const newDriver: User = {
+        id: `driver-${Date.now()}`,
+        companyId: currentUser.companyId,
+        email: quickAddDriverForm.email.trim() || `driver-${Date.now()}@placeholder.local`,
+        name: quickAddDriverForm.name.trim(),
+        role: "driver",
+        onboardingStatus: "Pending",
+        safetyScore: 0,
+      };
+      await updateUser(newDriver);
+      // Refresh user list and auto-select the new driver
+      const refreshed = await getCompanyUsers(currentUser.companyId);
+      setUsers(refreshed);
+      // Find driver by id or name
+      const saved = refreshed.find(
+        (u) => u.id === newDriver.id || u.name === newDriver.name,
+      );
+      setSelectedDriverId(saved?.id ?? newDriver.id);
+      if (formErrors.driver) {
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.driver;
+          return next;
+        });
+      }
+      setShowQuickAddDriver(false);
+      setToast({ message: `Driver "${newDriver.name}" created`, type: "success" });
+    } catch (err) {
+      setToast({ message: "Failed to create driver. Please try again.", type: "error" });
+    } finally {
+      setIsSavingDriver(false);
+    }
+  };
+
+  // ── Derived ────────────────────────────────────────────────────────────────
+
+  const drivers = users.filter(
+    (u) => u.role === "driver" || u.role === "owner_operator",
+  );
+
   return (
     <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
       {toast && (
@@ -141,15 +320,33 @@ export const LoadSetupModal: React.FC<Props> = ({
           </button>
         </div>
 
-        <div className="p-8 space-y-6">
+        <div className="p-8 space-y-6 overflow-y-auto max-h-[80vh]">
           {/* Broker Selection */}
           <div className="space-y-2">
-            <label
-              htmlFor="lsmSelectBroker"
-              className="text-xs font-bold text-slate-400"
-            >
-              Select Broker / Customer *
-            </label>
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="lsmSelectBroker"
+                className="text-xs font-bold text-slate-400"
+              >
+                Select Broker / Customer *
+              </label>
+              {!preSelectedBrokerId && (
+                <button
+                  type="button"
+                  onClick={showQuickAddBroker ? cancelQuickAddBroker : openQuickAddBroker}
+                  aria-label={showQuickAddBroker ? "Cancel add broker" : "Add new broker"}
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  {showQuickAddBroker ? (
+                    <X className="w-3 h-3" />
+                  ) : (
+                    <Plus className="w-3 h-3" />
+                  )}
+                  {showQuickAddBroker ? "Cancel" : "Add New"}
+                </button>
+              )}
+            </div>
+
             {preSelectedBrokerId ? (
               /* Locked display when broker is pre-selected (e.g. from Broker Network) */
               <div className="relative">
@@ -162,63 +359,281 @@ export const LoadSetupModal: React.FC<Props> = ({
               </div>
             ) : (
               /* Interactive dropdown for generic Create Load path */
-              <select
-                id="lsmSelectBroker"
-                value={selectedBrokerId}
-                onChange={(e) => {
-                  setSelectedBrokerId(e.target.value);
-                  if (formErrors.broker) {
-                    setFormErrors((prev) => {
-                      const next = { ...prev };
-                      delete next.broker;
-                      return next;
-                    });
-                  }
-                }}
-                className={`w-full bg-[#0a0f18] border ${formErrors.broker ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
-              >
-                <option value="">Select Broker / Customer</option>
-                <option value={DIRECT_BROKER_ID}>Direct / No Broker</option>
-                {brokers.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                    {b.mcNumber ? ` (${b.mcNumber})` : ""}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <select
+                  id="lsmSelectBroker"
+                  value={selectedBrokerId}
+                  onChange={(e) => {
+                    setSelectedBrokerId(e.target.value);
+                    if (formErrors.broker) {
+                      setFormErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.broker;
+                        return next;
+                      });
+                    }
+                  }}
+                  className={`w-full bg-[#0a0f18] border ${formErrors.broker ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
+                >
+                  <option value="">Select Broker / Customer</option>
+                  <option value={DIRECT_BROKER_ID}>Direct / No Broker</option>
+                  {brokers.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                      {b.mcNumber ? ` (${b.mcNumber})` : ""}
+                    </option>
+                  ))}
+                </select>
+                {brokers.length === 0 && (
+                  <p className="text-slate-500 text-xs mt-1">
+                    No brokers found. Use "Add New" to create one, or select "Direct / No Broker".
+                  </p>
+                )}
+              </div>
             )}
+
             {formErrors.broker && (
               <p className="text-red-400 text-xs mt-1">{formErrors.broker}</p>
+            )}
+
+            {/* Quick Add Broker Form */}
+            {showQuickAddBroker && (
+              <div
+                aria-label="Quick add broker form"
+                className="mt-2 p-4 bg-slate-900/60 border border-slate-700 rounded-xl space-y-3 animate-in slide-in-from-top-2 duration-200"
+              >
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                  New Broker / Customer
+                </p>
+                <div>
+                  <label
+                    htmlFor="qabroker-name"
+                    className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                  >
+                    Name *
+                  </label>
+                  <input
+                    id="qabroker-name"
+                    type="text"
+                    value={quickAddBrokerForm.name}
+                    onChange={(e) =>
+                      handleQuickAddBrokerChange("name", e.target.value)
+                    }
+                    placeholder="e.g. Acme Logistics"
+                    className={`w-full bg-[#0a0f18] border ${quickAddBrokerErrors.name ? "border-red-500" : "border-slate-700"} rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none`}
+                  />
+                  {quickAddBrokerErrors.name && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {quickAddBrokerErrors.name}
+                    </p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="qabroker-email"
+                      className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                    >
+                      Email (optional)
+                    </label>
+                    <input
+                      id="qabroker-email"
+                      type="email"
+                      value={quickAddBrokerForm.email}
+                      onChange={(e) =>
+                        handleQuickAddBrokerChange("email", e.target.value)
+                      }
+                      placeholder="contact@broker.com"
+                      className="w-full bg-[#0a0f18] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="qabroker-phone"
+                      className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                    >
+                      Phone (optional)
+                    </label>
+                    <input
+                      id="qabroker-phone"
+                      type="tel"
+                      value={quickAddBrokerForm.phone}
+                      onChange={(e) =>
+                        handleQuickAddBrokerChange("phone", e.target.value)
+                      }
+                      placeholder="555-123-4567"
+                      className="w-full bg-[#0a0f18] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSaveQuickBroker}
+                    disabled={isSavingBroker}
+                    className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSavingBroker ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Check className="w-3 h-3" />
+                    )}
+                    {isSavingBroker ? "Saving..." : "Save Broker"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelQuickAddBroker}
+                    className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
           {/* Driver Selection */}
           <div className="space-y-2">
-            <label
-              htmlFor="lsmAssignDriver"
-              className="text-xs font-bold text-slate-400"
-            >
-              Assign Driver *
-            </label>
-            <select
-              id="lsmAssignDriver"
-              value={selectedDriverId}
-              onChange={(e) => setSelectedDriverId(e.target.value)}
-              className={`w-full bg-[#0a0f18] border ${formErrors.driver ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
-            >
-              <option value="">Select Carrier / Driver</option>
-              {users
-                .filter(
-                  (u) => u.role === "driver" || u.role === "owner_operator",
-                )
-                .map((u) => (
+            <div className="flex items-center justify-between">
+              <label
+                htmlFor="lsmAssignDriver"
+                className="text-xs font-bold text-slate-400"
+              >
+                Assign Driver *
+              </label>
+              <button
+                type="button"
+                onClick={showQuickAddDriver ? cancelQuickAddDriver : openQuickAddDriver}
+                aria-label={showQuickAddDriver ? "Cancel add driver" : "Add new driver"}
+                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {showQuickAddDriver ? (
+                  <X className="w-3 h-3" />
+                ) : (
+                  <Plus className="w-3 h-3" />
+                )}
+                {showQuickAddDriver ? "Cancel" : "Add New"}
+              </button>
+            </div>
+
+            <div>
+              <select
+                id="lsmAssignDriver"
+                value={selectedDriverId}
+                onChange={(e) => setSelectedDriverId(e.target.value)}
+                className={`w-full bg-[#0a0f18] border ${formErrors.driver ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
+              >
+                <option value="">Select Carrier / Driver</option>
+                {drivers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
                   </option>
                 ))}
-            </select>
+              </select>
+              {drivers.length === 0 && (
+                <p className="text-slate-500 text-xs mt-1">
+                  No drivers found. Use "Add New" to create one.
+                </p>
+              )}
+            </div>
+
             {formErrors.driver && (
               <p className="text-red-400 text-xs mt-1">{formErrors.driver}</p>
+            )}
+
+            {/* Quick Add Driver Form */}
+            {showQuickAddDriver && (
+              <div
+                aria-label="Quick add driver form"
+                className="mt-2 p-4 bg-slate-900/60 border border-slate-700 rounded-xl space-y-3 animate-in slide-in-from-top-2 duration-200"
+              >
+                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
+                  New Driver
+                </p>
+                <div>
+                  <label
+                    htmlFor="qadriver-name"
+                    className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                  >
+                    Name *
+                  </label>
+                  <input
+                    id="qadriver-name"
+                    type="text"
+                    value={quickAddDriverForm.name}
+                    onChange={(e) =>
+                      handleQuickAddDriverChange("name", e.target.value)
+                    }
+                    placeholder="e.g. John Smith"
+                    className={`w-full bg-[#0a0f18] border ${quickAddDriverErrors.name ? "border-red-500" : "border-slate-700"} rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none`}
+                  />
+                  {quickAddDriverErrors.name && (
+                    <p className="text-red-400 text-xs mt-1">
+                      {quickAddDriverErrors.name}
+                    </p>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label
+                      htmlFor="qadriver-email"
+                      className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                    >
+                      Email (optional)
+                    </label>
+                    <input
+                      id="qadriver-email"
+                      type="email"
+                      value={quickAddDriverForm.email}
+                      onChange={(e) =>
+                        handleQuickAddDriverChange("email", e.target.value)
+                      }
+                      placeholder="driver@example.com"
+                      className="w-full bg-[#0a0f18] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="qadriver-phone"
+                      className="text-[10px] text-slate-400 font-semibold mb-1 block"
+                    >
+                      Phone (optional)
+                    </label>
+                    <input
+                      id="qadriver-phone"
+                      type="tel"
+                      value={quickAddDriverForm.phone}
+                      onChange={(e) =>
+                        handleQuickAddDriverChange("phone", e.target.value)
+                      }
+                      placeholder="555-123-4567"
+                      className="w-full bg-[#0a0f18] border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleSaveQuickDriver}
+                    disabled={isSavingDriver}
+                    className="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {isSavingDriver ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Check className="w-3 h-3" />
+                    )}
+                    {isSavingDriver ? "Saving..." : "Save Driver"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={cancelQuickAddDriver}
+                    className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

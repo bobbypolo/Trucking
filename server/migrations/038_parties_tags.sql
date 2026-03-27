@@ -1,8 +1,6 @@
--- Migration 038: Add tags column to parties table for entity capabilities
--- Team 05: Onboarding entity model (T5-02)
+-- Migration 038_parties_tags: SUPERSEDED
+-- This file is a no-op placeholder. The actual migration was renumbered to
+-- 040_parties_tags.sql to resolve a numbering conflict with
+-- 038_accounting_tenant_to_company_id.sql.
+-- Do not add UP/DOWN sections here.
 
--- UP
-ALTER TABLE parties ADD COLUMN tags JSON DEFAULT NULL COMMENT 'Entity capability tags (e.g. ["fuel","maintenance","rental"])';
-
--- DOWN
-ALTER TABLE parties DROP COLUMN tags;
