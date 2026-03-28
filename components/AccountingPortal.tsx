@@ -425,9 +425,6 @@ const AccountingPortal: React.FC<Props> = ({
                     <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase">
                       Status
                     </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase text-right">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -480,18 +477,6 @@ const AccountingPortal: React.FC<Props> = ({
                           >
                             {inv.status}
                           </span>
-                        </td>
-                        <td className="px-8 py-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button
-                              disabled
-                              title="Line item actions not yet available"
-                              className="p-2 bg-slate-800 text-slate-600 rounded-xl border border-white/5 cursor-not-allowed opacity-50"
-                              aria-label="More options"
-                            >
-                              <FileSpreadsheet className="w-4 h-4" />
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     );

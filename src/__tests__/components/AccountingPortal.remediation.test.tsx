@@ -233,21 +233,19 @@ describe("AccountingPortal Remediation (C-2)", () => {
       expect(mockNavigate).toHaveBeenCalledWith("loads");
     });
 
-    it("R-P4-05: More options buttons show toast", async () => {
+    it("R-P4-05: AR tab has no placeholder action buttons", async () => {
       const user = userEvent.setup();
       render(<AccountingPortal {...defaultProps} />);
       await waitFor(() => {
         expect(screen.getByText("Overview")).toBeInTheDocument();
       });
-      // Switch to AR tab which has More options buttons
+      // Switch to AR tab
       await user.click(screen.getByText("AR / Invoices"));
       await waitFor(() => {
         expect(screen.getByText("Accounts Receivable")).toBeInTheDocument();
       });
-      // More options buttons are now disabled (no fake toasts)
-      const moreButtons = screen.getAllByLabelText("More options");
-      expect(moreButtons.length).toBeGreaterThan(0);
-      expect(moreButtons[0]).toBeDisabled();
+      // Placeholder action buttons have been removed per "real or removed" rule
+      expect(screen.queryAllByLabelText("More options")).toHaveLength(0);
     });
   });
 });
