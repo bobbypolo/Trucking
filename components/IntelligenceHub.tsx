@@ -453,11 +453,7 @@ const IntelligenceHub: React.FC<{
         summary: l.actionSummary || `Status: ${l.status || "Unknown"}`,
         ownerName: "Dispatch",
         ownerId: "system",
-        isAtRisk:
-          l.isActionRequired ||
-          (l.issues &&
-            Array.isArray(l.issues) &&
-            l.issues.some((i: any) => i.status === "Open")),
+        isAtRisk: l.isActionRequired || false,
       }));
 
     const incidentThreads = incidents
