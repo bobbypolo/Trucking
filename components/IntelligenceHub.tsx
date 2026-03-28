@@ -445,23 +445,12 @@ const IntelligenceHub: React.FC<{
 
   const threads = useMemo(() => {
     const activeLoadThreads = (loads || [])
-      .filter(
-        (l) =>
-          l.status === "in_transit" ||
-          (l.issues &&
-            Array.isArray(l.issues) &&
-            l.issues.some((i: any) => i.status === "Open")),
-      )
+      .filter((l) => l.status === "in_transit" || l.isActionRequired)
       .map((l) => ({
         id: l.id,
         primaryContext: { label: `Load #${l.loadNumber || "---"}` },
         lastTouch: new Date(l.createdAt || Date.now()).toISOString(),
-        summary:
-          l.actionSummary ||
-          (l.issues &&
-            Array.isArray(l.issues) &&
-            l.issues.find((i: any) => i.status === "Open")?.description) ||
-          `Status: ${l.status || "Unknown"}`,
+        summary: l.actionSummary || `Status: ${l.status || "Unknown"}`,
         ownerName: "Dispatch",
         ownerId: "system",
         isAtRisk:
@@ -3600,8 +3589,14 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
-                      {triageQueues.incidents.filter((i) => !snoozedIds.has(i.id)).length === 0 &&
-                        triageQueues.workItems.filter((wi) => !snoozedIds.has(wi.id) && wi.priority === "Critical").length === 0 && (
+                      {triageQueues.incidents.filter(
+                        (i) => !snoozedIds.has(i.id),
+                      ).length === 0 &&
+                        triageQueues.workItems.filter(
+                          (wi) =>
+                            !snoozedIds.has(wi.id) &&
+                            wi.priority === "Critical",
+                        ).length === 0 && (
                           <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
                             <CheckCircle className="w-10 h-10 text-emerald-500/30" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -3651,8 +3646,14 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
-                      {triageQueues.requests.filter((r) => !snoozedIds.has(r.id)).length === 0 &&
-                        triageQueues.workItems.filter((wi) => !snoozedIds.has(wi.id) && wi.priority !== "Critical").length === 0 && (
+                      {triageQueues.requests.filter(
+                        (r) => !snoozedIds.has(r.id),
+                      ).length === 0 &&
+                        triageQueues.workItems.filter(
+                          (wi) =>
+                            !snoozedIds.has(wi.id) &&
+                            wi.priority !== "Critical",
+                        ).length === 0 && (
                           <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
                             <ClipboardList className="w-10 h-10 text-slate-500/30" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -3712,8 +3713,11 @@ const IntelligenceHub: React.FC<{
                             }
                           />
                         ))}
-                      {triageQueues.atRiskLoads.filter((l) => !snoozedIds.has(l.id)).length === 0 &&
-                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id)).length === 0 && (
+                      {triageQueues.atRiskLoads.filter(
+                        (l) => !snoozedIds.has(l.id),
+                      ).length === 0 &&
+                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id))
+                          .length === 0 && (
                           <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
                             <Truck className="w-10 h-10 text-slate-500/30" />
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">

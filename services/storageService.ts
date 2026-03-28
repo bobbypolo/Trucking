@@ -654,6 +654,10 @@ export const saveIncidentAction = async (
   return false;
 };
 
+/**
+ * @deprecated Use createException() from exceptionService instead.
+ * Retained as a thin adapter that forwards to the canonical exception queue.
+ */
 export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
   const newIssue: Issue = {
     id: uuidv4(),
@@ -666,18 +670,16 @@ export const saveIssue = async (issue: Partial<Issue>, loadId?: string) => {
   };
 
   try {
-    await api.post("/issues", { ...newIssue, load_id: loadId });
+    await api.post("/exceptions", {
+      type: issue.category === "Safety" ? "SAFETY" : "OPERATIONAL",
+      severity: 2,
+      status: "OPEN",
+      description: newIssue.description,
+      entityType: loadId ? "LOAD" : undefined,
+      entityId: loadId || undefined,
+    });
   } catch (e) {
-    console.error("[storageService] saveIssue sync failed:", e);
-  }
-
-  // If tied to a shipment, update in-memory cache
-  if (loadId) {
-    const idx = _cachedLoads.findIndex((l) => l.id === loadId);
-    if (idx >= 0) {
-      const existingIssues = _cachedLoads[idx].issues || [];
-      _cachedLoads[idx].issues = [...existingIssues, newIssue];
-    }
+    console.error("[storageService] saveIssue → exception sync failed:", e);
   }
 
   return newIssue;
