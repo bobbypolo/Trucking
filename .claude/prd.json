@@ -1,1088 +1,1257 @@
 {
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
-  "plan_hash": "93d020949a22eee543b0adf56f15acb1dc55cf9795877416f6af6e8ed2919a67",
+  "plan_hash": "fd57ec2092a8e7b44ae3c72e75863be9ab913c8c1e0e62fc4a3b65ba5f734654",
   "stories": [
     {
       "id": "S-1.1",
-      "description": "Replace raw fetch() in financialService.ts â€” convert all 20 functions to use api.get/post/patch/delete helpers from services/api.ts which auto-inject auth via getIdTokenAsync()",
+      "description": "Canonicalize port configuration across all config files",
       "phase": 1,
-      "phase_type": "auth",
+      "phase_type": "foundation",
       "scope": [
-        "services/financialService.ts",
-        "src/__tests__/services/financialService.test.ts"
+        "server/index.ts",
+        "vite.config.ts",
+        "playwright.config.ts",
+        ".env.example"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "grep -c fetch( services/financialService.ts returns 0 â€” all raw fetch() calls replaced with api.* helpers",
+          "criterion": "PORT is the single source of truth for Express port",
           "testType": "unit"
         },
         {
           "id": "R-P1-02",
-          "criterion": "Frontend tests pass with no regressions after conversion",
+          "criterion": "Playwright webServer health check URL uses PORT ?? 5000",
           "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": []
-    },
-    {
-      "id": "S-1.2",
-      "description": "Replace raw fetch() in storageService.ts â€” convert 4 functions (getDispatchEvents, getTimeLogs, logTime, logDispatchEvent) to api.* helpers. Remove duplicate 401/403 checks.",
-      "phase": 1,
-      "phase_type": "auth",
-      "scope": [
-        "services/storageService.ts",
-        "src/__tests__/services/"
-      ],
-      "complexity": "simple",
-      "acceptanceCriteria": [
+        },
         {
           "id": "R-P1-03",
-          "criterion": "grep -c fetch( services/storageService.ts returns 0 â€” all raw fetch() calls replaced",
+          "criterion": "Vite proxy target uses VITE_BACKEND_PORT || PORT || 5000 (already correct, verify no regression)",
           "testType": "unit"
         },
         {
           "id": "R-P1-04",
-          "criterion": "Duplicate auth checks at lines 259, 294 removed",
+          "criterion": ".env.example documents both PORT and VITE_PORT with defaults",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "No hardcoded 5101 anywhere in codebase (grep verification)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
+        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-1.1"
-      ]
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "config",
+      "dependsOn": []
     },
     {
-      "id": "S-1.3",
-      "description": "Add auth readiness gate in App.tsx â€” add isAuthReady state, set true AFTER refreshData() completes in onUserChange callback, gate render so children mount only after token confirmed. Reset on logout.",
+      "id": "S-1.2",
+      "description": "Enhance CI pipeline to full release-gate quality",
       "phase": 1,
-      "phase_type": "auth",
+      "phase_type": "foundation",
       "scope": [
-        "App.tsx"
+        ".github/workflows/ci.yml"
       ],
-      "complexity": "moderate",
+      "complexity": "simple",
       "acceptanceCriteria": [
         {
-          "id": "R-P1-05",
-          "criterion": "isAuthReady state added â€” children render blocked until refreshData() completes",
-          "testType": "unit"
-        },
-        {
           "id": "R-P1-06",
-          "criterion": "Login produces no 401 console errors â€” children mount only after auth ready",
-          "testType": "functional"
+          "criterion": "CI runs npm run build and fails merge if build errors",
+          "testType": "unit"
         },
         {
           "id": "R-P1-07",
-          "criterion": "Logout resets isAuthReady to false",
+          "criterion": "CI validates migration file integrity (parse, markers, no filename dupes)",
           "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-1.2"
-      ]
-    },
-    {
-      "id": "S-1.4",
-      "description": "Create useCurrentUser() reactive hook subscribing to onUserChange() from authService. Replace synchronous getCurrentUser() calls in LoadDetailView.tsx, LoadList.tsx, Settlements.tsx.",
-      "phase": 1,
-      "phase_type": "auth",
-      "scope": [
-        "hooks/useCurrentUser.ts",
-        "components/LoadDetailView.tsx",
-        "components/LoadList.tsx",
-        "components/Settlements.tsx"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
+        },
         {
           "id": "R-P1-08",
-          "criterion": "useCurrentUser hook subscribes to onUserChange and returns reactive user state",
+          "criterion": "CI runs deployment-readiness test suite",
           "testType": "unit"
         },
         {
           "id": "R-P1-09",
-          "criterion": "Consumer components re-render on auth state change without null-user crashes",
+          "criterion": "CI starts real Express + MySQL, hits /api/health, verifies status:ok + mysql:connected",
           "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-1.3"
-      ]
-    },
-    {
-      "id": "S-1.5",
-      "description": "Add 401 token refresh + single retry in api.ts. On first 401, force-refresh token via auth.currentUser?.getIdToken(true), retry once with fresh token. Only dispatch auth:session-expired if retry also returns 401.",
-      "phase": 1,
-      "phase_type": "auth",
-      "scope": [
-        "services/api.ts"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
+        },
         {
           "id": "R-P1-10",
-          "criterion": "On first 401, token is force-refreshed and request retried once",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-11",
-          "criterion": "If retry succeeds with fresh token, no auth:session-expired event dispatched",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-12",
-          "criterion": "If retry also returns 401, auth:session-expired event dispatched and error thrown",
+          "criterion": "All 4 new CI jobs are required status checks for PR merge to main",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-1.3"
-      ]
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "config",
+      "dependsOn": []
     },
     {
       "id": "S-2.1",
-      "description": "Fix schema conflicts + update migration runner. Part A: Remove 5 duplicate CREATE TABLEs from 001_baseline.sql (quotes, leads, bookings, messages, work_items â€” authoritative versions in 017/018/019). Remove ALTER TABLE messages from 003_operational_entities.sql. Part B: Update MIGRATION_ORDER in docker-mysql.ts to include all migrations through 032. Part C: Document dev DB reset instructions.",
+      "description": "Remove all silent fallbacks in storageService.ts",
       "phase": 2,
-      "phase_type": "schema",
+      "phase_type": "foundation",
       "scope": [
-        "server/migrations/001_baseline.sql",
-        "server/migrations/003_operational_entities.sql",
-        "server/__tests__/helpers/docker-mysql.ts",
-        "server/__tests__/lib/migrator.test.ts"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P2-01",
-          "criterion": "5 duplicate CREATE TABLE statements removed from 001_baseline.sql (quotes, leads, bookings, messages, work_items)",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P2-02",
-          "criterion": "ALTER TABLE messages ADD COLUMN company_id removed from 003_operational_entities.sql",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P2-03",
-          "criterion": "MIGRATION_ORDER array in docker-mysql.ts updated to include all migrations through 032",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P2-04",
-          "criterion": "Server tests pass with clean migration order",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run --reporter=verbose",
-        "lint": "cd server && npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-1.4",
-        "S-1.5"
-      ]
-    },
-    {
-      "id": "S-2.2",
-      "description": "Create migration 032 â€” parties subsystem. 8 new tables: parties, party_contacts, party_documents, rate_rows, rate_tiers, constraint_sets, constraint_rules, party_catalog_links. All with company_id index for tenant isolation. Schema sourced from server/routes/clients.ts lines 283-600.",
-      "phase": 2,
-      "phase_type": "schema",
-      "scope": [
-        "server/migrations/032_parties_subsystem.sql",
-        "server/__tests__/services/migration-rehearsal.test.ts"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P2-05",
-          "criterion": "Migration 032 creates all 8 party tables with correct columns and FK constraints",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P2-06",
-          "criterion": "GET /api/providers returns 200 (empty array) after migration",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P2-07",
-          "criterion": "GET /api/contacts returns 200 (empty array) after migration",
-          "testType": "integration"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run --reporter=verbose",
-        "lint": "cd server && npx tsc --noEmit",
-        "integration": "cd server && npx vitest run --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-2.1"
-      ]
-    },
-    {
-      "id": "S-2.3",
-      "description": "Company record creation in signup. Signup currently creates company in Firestore only, not MySQL. Add MySQL INSERT INTO companies in signup handler. Ensure company_id foreign keys are satisfied.",
-      "phase": 2,
-      "phase_type": "schema",
-      "scope": [
-        "server/routes/users.ts",
-        "server/routes/clients.ts",
-        "server/lib/sql-auth.ts",
-        "server/__tests__/routes"
+        "services/storageService.ts"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
-          "id": "R-P2-08",
-          "criterion": "Signup handler creates company record in MySQL in addition to Firestore",
-          "testType": "functional"
+          "id": "R-P2-01",
+          "criterion": "getLoads() throws on API failure (no cached fallback)",
+          "testType": "unit"
         },
         {
-          "id": "R-P2-09",
-          "criterion": "GET /api/companies/{id} returns 200 after signup â€” no more 404",
-          "testType": "integration"
+          "id": "R-P2-02",
+          "criterion": "getDispatchEvents() throws on API failure (no empty array fallback)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-03",
+          "criterion": "getIncidents() throws on API failure (no empty array fallback)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-04",
+          "criterion": "createIncident() throws on API failure (no silent false return)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-05",
+          "criterion": "saveIncident() throws on API failure (no silent false return)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-06",
+          "criterion": "saveIncidentAction() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-07",
+          "criterion": "_cachedLoads removed or marked internal-only (never returned to callers on error)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-08",
+          "criterion": "All components calling these functions handle errors (show ErrorState or Toast)",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/routes/company-signup.test.ts --reporter=verbose",
-        "lint": "cd server && npx tsc --noEmit"
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-data-truth",
+      "dependsOn": []
+    },
+    {
+      "id": "S-2.2",
+      "description": "Remove all read fallbacks in authService.ts",
+      "phase": 2,
+      "phase_type": "foundation",
+      "scope": [
+        "services/authService.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P2-09",
+          "criterion": "getCompany() throws on API failure (no cache fallback)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-10",
+          "criterion": "getCompanyUsers() throws on API failure (no cache fallback)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-11",
+          "criterion": "Session hydration failure sets user to null (no silent cache lookup)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-12",
+          "criterion": "Session hydration failure emits event so UI can show re-login prompt",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-data-truth-auth-reads",
+      "dependsOn": []
+    },
+    {
+      "id": "S-2.3",
+      "description": "Remove all write fallbacks in authService.ts",
+      "phase": 2,
+      "phase_type": "foundation",
+      "scope": [
+        "services/authService.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P2-13",
+          "criterion": "updateCompany() throws on ALL errors (network and HTTP)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-14",
+          "criterion": "updateUser() throws on ALL errors (network and HTTP)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-15",
+          "criterion": "Client cache is never mutated unless the API call succeeded",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-16",
+          "criterion": "Components calling these functions show error states on failure",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-data-truth-auth-writes",
       "dependsOn": [
-        "S-2.1"
+        "S-2.2"
       ]
     },
     {
       "id": "S-2.4",
-      "description": "Fix dashboard_card + missing routes. Fix GET /api/dashboard/cards 500 (company_id query), fix GET /api/dispatch/events 404 (frontend calls wrong path), fix GET /api/equipment 404 (requires companyId param). Add route aliases or fix frontend paths.",
+      "description": "Remove all silent fallbacks in brokerService.ts",
       "phase": 2,
-      "phase_type": "schema",
+      "phase_type": "foundation",
       "scope": [
-        "server/routes/dispatch.ts",
-        "server/routes/equipment.ts"
+        "services/brokerService.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P2-17",
+          "criterion": "getBrokers() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-18",
+          "criterion": "saveBroker() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-19",
+          "criterion": "getContracts() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-20",
+          "criterion": "saveContract() throws on API failure",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-data-truth",
+      "dependsOn": []
+    },
+    {
+      "id": "S-2.5",
+      "description": "Remove all silent fallbacks in storage sub-modules",
+      "phase": 2,
+      "phase_type": "foundation",
+      "scope": [
+        "services/storage/calls.ts",
+        "services/storage/tasks.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P2-21",
+          "criterion": "getRawCalls() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-22",
+          "criterion": "getRawTasks() throws on API failure",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-23",
+          "criterion": "getRawWorkItems() throws on API failure",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-data-truth",
+      "dependsOn": []
+    },
+    {
+      "id": "S-3.1",
+      "description": "Audit and enforce company_id in repository method signatures",
+      "phase": 3,
+      "phase_type": "foundation",
+      "scope": [
+        "server/routes/*.ts (except tracking.ts)",
+        "server/services/*.ts (except quickbooks.service.ts",
+        "secret-encryption.ts)"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
-          "id": "R-P2-10",
-          "criterion": "GET /api/dashboard/cards returns 200 with valid auth â€” no more 500",
-          "testType": "integration"
+          "id": "R-P3-01",
+          "criterion": "Every repository function querying tenant tables has companyId as required param",
+          "testType": "unit"
         },
         {
-          "id": "R-P2-11",
-          "criterion": "Dispatch events route accessible from frontend path â€” no more 404",
-          "testType": "integration"
+          "id": "R-P3-02",
+          "criterion": "No route handler passes companyId from an unvalidated source",
+          "testType": "unit"
         },
         {
-          "id": "R-P2-12",
-          "criterion": "Equipment route accessible with tenant-scoped path â€” no more 404",
-          "testType": "integration"
+          "id": "R-P3-03",
+          "criterion": "5+ negative integration tests: wrong companyId → 0 rows or 403",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "CI grep check fails on unscoped tenant-table queries (enforceable, not convention)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-tenant",
+      "dependsOn": []
+    },
+    {
+      "id": "S-3.2",
+      "description": "Harden webhook tenant resolution",
+      "phase": 3,
+      "phase_type": "foundation",
+      "scope": [
+        "server/routes/tracking.ts (lines 400-430 only)"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P3-05",
+          "criterion": "Webhook with missing companyId returns 400",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-06",
+          "criterion": "Webhook with unknown companyId returns 400",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-07",
+          "criterion": "No rows in tracking tables have company_id = \"unresolved\"",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-08",
+          "criterion": "Rejected webhook logs contain only redacted fields (no secrets, no raw coords)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P3-09",
+          "criterion": "Metrics counter incremented on rejection",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-tracking-webhook",
+      "dependsOn": []
+    },
+    {
+      "id": "S-4.1",
+      "description": "Add ALLOW_AUTO_PROVISION feature flag",
+      "phase": 4,
+      "phase_type": "foundation",
+      "scope": [
+        "server/routes/users.ts",
+        "server/lib/env.ts"
+      ],
+      "complexity": "moderate",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-01",
+          "criterion": "ALLOW_AUTO_PROVISION=false (default) → login without SQL profile returns 403",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "ALLOW_AUTO_PROVISION=true → auto-provision works as before",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "Auto-provision emits structured audit log with uid, email, IP, timestamp",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "server/lib/env.ts documents ALLOW_AUTO_PROVISION",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "Existing integration tests pass with ALLOW_AUTO_PROVISION=true",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-identity",
+      "dependsOn": []
+    },
+    {
+      "id": "S-4.2",
+      "description": "Audit and harden dev/demo surfaces for production trust",
+      "phase": 4,
+      "phase_type": "foundation",
+      "scope": [
+        "services/firebase.ts",
+        "services/authService.ts",
+        "config/features.ts",
+        "services/mockDataService.ts"
+      ],
+      "complexity": "moderate",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-06",
+          "criterion": "seedFixtures not present in production bundle (verified by build grep)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "\"admin@loadpilot.com\" and \"User123\" not in dist/ after npm run build",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "DEMO_MODE production guard tested (import.meta.env.PROD + no API key → throws)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "config/features.ts documents dev/prod trust boundary",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P4-10",
+          "criterion": "seedDatabase() uses dynamic import for fixtures (tree-shakeable)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-dev-surfaces",
       "dependsOn": [
         "S-2.2",
         "S-2.3"
       ]
     },
     {
-      "id": "S-3.1",
-      "description": "Fix 403 permission errors (26 errors). Two sources: A) Tenant mismatch from missing company record (resolved by S-2.3). B) Role-based access â€” correct behavior for driver role. Verify 403 count drops from 26 to <5 after S-2.3 fix. Ensure frontend hides role-gated buttons for insufficient roles.",
-      "phase": 3,
-      "phase_type": "http-fix",
-      "scope": [
-        "server/middleware/requireTenant.ts",
-        "server/routes/clients.ts",
-        "server/routes/equipment.ts",
-        "server/routes/dispatch.ts",
-        "hooks/useHasRole.ts",
-        "server/__tests__/middleware/tenant.test.ts",
-        "src/__tests__/hooks/useHasRole.test.tsx"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P3-01",
-          "criterion": "403 error count drops from 26 to less than 5 after tenant mismatch fix",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P3-02",
-          "criterion": "Remaining 403s are legitimate role-based access denials",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run --reporter=verbose && cd .. && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-2.4"
-      ]
-    },
-    {
-      "id": "S-3.2",
-      "description": "Fix 400 malformed request errors (21 errors). Add client-side validation for: AI routes (missing imageBase64), Safety routes (missing required fields), dispatch events (JSON.stringify failures), equipment PATCH (invalid field names), Zod schema mismatches, weather/document (missing coordinates). Guard API calls behind validation checks.",
-      "phase": 3,
-      "phase_type": "http-fix",
-      "scope": [
-        "components/SafetyView.tsx",
-        "components/Scanner.tsx",
-        "components/GlobalMapViewEnhanced.tsx",
-        "services/storageService.ts",
-        "services/validationGuards.ts",
-        "services/weatherService.ts",
-        "src/__tests__/services/"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P3-03",
-          "criterion": "400 error count drops from 21 to less than 3 after client-side validation added",
-          "testType": "functional"
-        },
-        {
-          "id": "R-P3-04",
-          "criterion": "AI route calls guarded by if (!imageBase64) return check",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave1",
-      "dependsOn": [
-        "S-2.4"
-      ]
-    },
-    {
-      "id": "C-1",
-      "description": "SafetyView full remediation â€” remove 12 hardcoded values (quiz scores 85/42/98, test scores 95%/100%/65%, \"324 Certified Units\", safety score \"75\", \"90 Days\", \"Unit 101\"/\"Unit 102\") and wire 4 buttons (Serviceâ†’toast, Historyâ†’toast, View Financialsâ†’navigate('/accounting'), Manageâ†’toast). Replace hardcoded arrays with useState([])+useEffect API calls. Show \"No data yet\" empty states.",
-      "phase": 4,
-      "phase_type": "remediation",
-      "scope": [
-        "components/SafetyView.tsx"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-01",
-          "criterion": "All 12 hardcoded values removed from SafetyView.tsx â€” data fetched from API or shows empty state",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-02",
-          "criterion": "4 SafetyView buttons wired â€” Service/History/Manage show toast, View Financials navigates",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-03",
-          "criterion": "Zero silent no-ops remain â€” every button produces visible result",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "C-2",
-      "description": "AccountingPortal full remediation â€” remove 10 hardcoded values (\"14\" pending docs, \"$2,840\" IFTA, 3 automation rule objects, setTimeout mock matching, glAccountId \"5000\", 4 audit log entries, \"1 hour ago\", \"42.5 hrs\", \"14\" active triggers) and wire 3 buttons (View All Loadsâ†’navigate('/loads'), Create New Ruleâ†’toast, More optionsâ†’toast). Use computed values from actual data.",
-      "phase": 4,
-      "phase_type": "remediation",
-      "scope": [
-        "components/AccountingPortal.tsx"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-04",
-          "criterion": "All 10 hardcoded values removed from AccountingPortal.tsx â€” values computed from real data or API",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-05",
-          "criterion": "3 AccountingPortal buttons wired â€” View All Loads navigates, Create New Rule and More options show toast",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "setTimeout mock matching removed, replaced with API call or removed entirely",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "C-3",
-      "description": "IntelligenceHub full remediation â€” remove 8 mock values (CS-9901 call session, \"888-555-0000\", \"800-SAFE-KCI\", \"45-60 mins\" ETA, \"John Doe\" stats, \"Trucker Tom\", mockCallers array) and add Reports tab showing call metrics (count, avg duration) and interaction summary (calls vs messages count). Use real data or empty states.",
-      "phase": 4,
-      "phase_type": "remediation",
-      "scope": [
-        "components/IntelligenceHub.tsx"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-07",
-          "criterion": "All 8 mock values removed from IntelligenceHub.tsx â€” init empty arrays, use real data",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-08",
-          "criterion": "Reports tab/section added showing computed call metrics or 'No data' empty state",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-09",
-          "criterion": "mockCallers array removed, call queue populated from real data or empty",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "C-4",
-      "description": "Settlements full remediation â€” wire chevron expand toggle (setExpandedRow), wire Batch Print to generate PDF via jsPDF, wire Finalize to PATCH /api/settlements/batch endpoint (add if absent), add Export CSV button. Remove all mock showFeedback-only operations.",
+      "id": "S-5.1",
+      "description": "Extract reusable secret-encryption service",
       "phase": 5,
-      "phase_type": "remediation",
+      "phase_type": "foundation",
       "scope": [
-        "components/Settlements.tsx",
-        "server/routes/accounting.ts"
+        "server/services/secret-encryption.ts",
+        "server/services/quickbooks.service.ts"
       ],
-      "complexity": "complex",
+      "complexity": "simple",
       "acceptanceCriteria": [
         {
           "id": "R-P5-01",
-          "criterion": "Chevron expand wired to setExpandedRow(id) toggle",
+          "criterion": "secret-encryption.ts exports encryptSecret and decryptSecret",
           "testType": "unit"
         },
         {
           "id": "R-P5-02",
-          "criterion": "Batch Print generates PDF using jsPDF for all visible settlement rows",
-          "testType": "functional"
+          "criterion": "quickbooks.service.ts uses shared encryption (no local copy)",
+          "testType": "unit"
         },
         {
           "id": "R-P5-03",
-          "criterion": "Finalize calls PATCH /api/settlements/batch and updates row status",
-          "testType": "integration"
+          "criterion": "SECRET_ENCRYPTION_KEY documented in env.ts and .env.example",
+          "testType": "unit"
         },
         {
           "id": "R-P5-04",
-          "criterion": "Export CSV triggers file download with settlement data",
-          "testType": "functional"
+          "criterion": "Unit tests verify encrypt→decrypt roundtrip, invalid key → throw, tampered ciphertext → throw",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-security",
+      "dependsOn": []
     },
     {
-      "id": "S-4.4",
-      "description": "Remove remaining hardcoded values â€” ExceptionConsole: compute SLA countdown from ex.slaDueAt, compute elapsed time from ex.createdAt, compute avg resolution from resolved exceptions. LoadGantt: use load.pickupTime and load.estimatedDeliveryTime instead of \"04:00 AM\"/\"ETA: 06:30 PM\". QuoteManager: use selectedQuote.customerName/Phone instead of \"Acme Global\"/\"3125550199\". NetworkPortal: replace \"NEW CONTACT\"/\"PENDING@MAIL.COM\"/\"000-000-000\" with empty strings. AccountingView: change misleading \"Mocking\" comment to \"Compute\".",
-      "phase": 4,
-      "phase_type": "remediation",
+      "id": "S-5.2",
+      "description": "Encrypt tracking provider credentials at rest",
+      "phase": 5,
+      "phase_type": "foundation",
       "scope": [
-        "components/ExceptionConsole.tsx",
-        "components/LoadGantt.tsx",
-        "components/QuoteManager.tsx",
-        "components/NetworkPortal.tsx",
-        "components/AccountingView.tsx"
+        "server/routes/tracking.ts (lines 510-540",
+        "690-710)",
+        "server/migrations/ (new migration)"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
-          "id": "R-P4-10",
-          "criterion": "ExceptionConsole 3 hardcoded values replaced with dynamic computations from exception data",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-11",
-          "criterion": "LoadGantt uses load.pickupTime and load.estimatedDeliveryTime â€” no hardcoded times",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-12",
-          "criterion": "QuoteManager uses selectedQuote data â€” no hardcoded customer names or phone numbers",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-13",
-          "criterion": "NetworkPortal uses empty string defaults â€” no fake placeholder data",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P4-14",
-          "criterion": "AccountingView misleading 'Mocking' comment changed to accurately describe computation",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-5.1",
-      "description": "Wire 10 LoadDetailView buttons. REAL implementations: Print BOL (jsPDF generation), Load Stops (scroll to stops section), Documents (fetch from /api/documents?loadId=), Audit Logs (navigate to /activity-log?loadId=), Tag for Action (PATCH loads with flagged:true), Lock/Unlock (PATCH loads with locked toggle), +Add Pickup (add stop form with type=pickup), +Add Drop (add stop form with type=dropoff). TOAST implementations: Carrier Rates (\"Rate card coming soon\"), Show Route (\"Requires Google Maps API key\").",
-      "phase": 5,
-      "phase_type": "buttons",
-      "scope": [
-        "components/LoadDetailView.tsx",
-        "App.tsx",
-        "src/__tests__/components/LoadDetailView.buttons.test.tsx"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
           "id": "R-P5-05",
-          "criterion": "8 REAL buttons call APIs or navigate â€” Print BOL, Load Stops, Documents, Audit Logs, Tag, Lock, +Pickup, +Drop",
-          "testType": "functional"
+          "criterion": "New tracking configs store api_token encrypted",
+          "testType": "unit"
         },
         {
           "id": "R-P5-06",
-          "criterion": "2 TOAST buttons show visible notification â€” Carrier Rates and Show Route",
+          "criterion": "New tracking configs store webhook_secret encrypted",
           "testType": "unit"
         },
         {
           "id": "R-P5-07",
-          "criterion": "Zero silent no-ops remain in LoadDetailView â€” every button produces visible result",
-          "testType": "functional"
+          "criterion": "GET /api/tracking/providers returns masked secrets (\"****1234\"), not plaintext",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-08",
+          "criterion": "POST /api/tracking/providers/:id/test decrypts at point of use",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P5-09",
+          "criterion": "Migration 043 encrypts existing plaintext values",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-tracking-secrets",
       "dependsOn": [
+        "S-5.1",
         "S-3.2"
       ]
     },
     {
       "id": "S-6.1",
-      "description": "Add 3 recharts visualizations to Dashboard. BarChart: RPM by day (last 7 days from loads prop). LineChart: Exception count by day (last 7 days from exceptions prop). BarChart: Revenue vs Cost by week (from loads carrierRate vs customerRate). All charts use existing props. Empty state placeholder when no data.",
+      "description": "Create Firebase Storage adapter and factory",
       "phase": 6,
-      "phase_type": "feature",
+      "phase_type": "foundation",
       "scope": [
-        "components/Dashboard.tsx"
+        "server/services/firebase-storage-adapter.ts",
+        "server/services/document.service.ts"
       ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
           "id": "R-P6-01",
-          "criterion": "3 recharts components render in Dashboard (BarChart RPM, LineChart exceptions, BarChart revenue)",
+          "criterion": "FirebaseStorageAdapter implements StorageAdapter interface",
           "testType": "unit"
         },
         {
           "id": "R-P6-02",
-          "criterion": "Chart data computed from existing props â€” zero hardcoded chart data",
+          "criterion": "Upload paths are tenant-scoped: {companyId}/{type}/{file}",
           "testType": "unit"
         },
         {
           "id": "R-P6-03",
-          "criterion": "Empty state 'No data for this period' shown when no loads/exceptions exist",
+          "criterion": "getSignedUrl returns time-limited Firebase Storage signed URL",
           "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.2",
-      "description": "Fix +New button z-index on Load Board. Sidebar toggle uses z-20, bottom panel uses z-30. Adjust z-index hierarchy so +New button is always clickable.",
-      "phase": 6,
-      "phase_type": "fix",
-      "scope": [
-        "components/LoadBoardEnhanced.tsx",
-        "components/LoadList.tsx"
-      ],
-      "complexity": "simple",
-      "acceptanceCriteria": [
+        },
         {
           "id": "R-P6-04",
-          "criterion": "+New button is clickable and not obscured by other z-index layers â€” opens new load form or navigates",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.3",
-      "description": "Add charts + drill-down to AnalyticsDashboard. Add recharts BarChart for broker RPM comparison. Add recharts PieChart for lane revenue distribution. Add click handlers on broker/lane cards for drill-down navigation.",
-      "phase": 6,
-      "phase_type": "feature",
-      "scope": [
-        "components/AnalyticsDashboard.tsx"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
+          "criterion": "STORAGE_BACKEND=firebase selects Firebase adapter",
+          "testType": "unit"
+        },
         {
           "id": "R-P6-05",
-          "criterion": "At least 2 recharts components render in AnalyticsDashboard (BarChart and PieChart)",
+          "criterion": "STORAGE_BACKEND=disk (default) selects disk adapter",
           "testType": "unit"
         },
         {
           "id": "R-P6-06",
-          "criterion": "Click on broker/lane card navigates to filtered view (drill-down)",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.4",
-      "description": "Fix CalendarView multi-day load visualization. Currently loads only show on pickup day (pickupDate === formatDateKey(date)). Render loads across the full date range (pickupDate through deliveryDate). Show duration span or indicator on each active day.",
-      "phase": 6,
-      "phase_type": "feature",
-      "scope": [
-        "components/CalendarView.tsx"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-07",
-          "criterion": "Multi-day loads appear on all days between pickup and delivery dates, not just pickup day",
+          "criterion": "createStorageAdapter() factory exported from document.service.ts",
           "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.5",
-      "description": "Complete CommandCenter incident detail drawer. Timeline array exists but isn't rendered visually. Render selectedIncident.timeline as a vertical timeline component showing action, actor, timestamp for each entry.",
-      "phase": 6,
-      "phase_type": "feature",
-      "scope": [
-        "components/CommandCenterView.tsx"
-      ],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-08",
-          "criterion": "Incident timeline renders as vertical timeline in detail drawer",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-09",
-          "criterion": "Each timeline entry shows action, actor, and timestamp",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.8",
-      "description": "Wire DriverMobileHome change requests and documents. Add POST /api/loads/:id/change-requests endpoint (INSERT into work_items with type=CHANGE_REQUEST). Add GET /api/loads/:id/change-requests endpoint. Wire frontend createChangeRequest() to POST endpoint. Add change request list with status badges. Add document list from /api/documents?loadId=. Remove \"Mock Change Requests\" comment.",
-      "phase": 6,
-      "phase_type": "feature",
-      "scope": [
-        "components/DriverMobileHome.tsx",
-        "server/routes/loads.ts"
-      ],
-      "complexity": "complex",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-10",
-          "criterion": "createChangeRequest() calls POST /api/loads/:id/change-requests API â€” not in-memory",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P6-11",
-          "criterion": "Change request list renders from GET API data with status badges (PENDING/APPROVED/REJECTED)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-12",
-          "criterion": "Document list populated from /api/documents?loadId= endpoint",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-13",
-          "criterion": "'Mock Change Requests' comment removed from source",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-6.9",
-      "description": "Replace mock location text in DispatcherTimeline. Remove \"Geocoded Terminal Entry (Lat: ...)\" fake label. Format as \"Location: {lat.toFixed(4)}, {lng.toFixed(4)}\" or reverse geocode if Google Maps API available.",
-      "phase": 6,
-      "phase_type": "fix",
-      "scope": [
-        "components/DispatcherTimeline.tsx"
-      ],
-      "complexity": "simple",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-14",
-          "criterion": "Location text shows coordinates in readable format, not fake 'Geocoded Terminal Entry' label",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-15",
-          "criterion": "No reference to 'Geocoded Terminal Entry' remains in component",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave2",
-      "dependsOn": [
-        "S-3.2"
-      ]
-    },
-    {
-      "id": "S-7.1",
-      "description": "Automated test suites baseline gate. Run all test suites and verify zero failures: server tests (cd server && npx vitest run), frontend tests (npx vitest run), frontend TS (npx tsc --noEmit), server TS (cd server && npx tsc --noEmit), hook tests (python -m pytest .claude/hooks/tests/ -v).",
-      "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
-      "complexity": "simple",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-01",
-          "criterion": "Server tests pass with 0 failures",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-02",
-          "criterion": "Frontend tests pass with 0 failures",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-03",
-          "criterion": "TypeScript compilation has 0 errors for both frontend and server",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
-      "dependsOn": [
-        "C-1",
-        "C-2",
-        "C-3",
-        "C-4",
-        "S-4.4",
-        "S-5.1",
-        "S-6.1",
-        "S-6.2",
-        "S-6.3",
-        "S-6.4",
-        "S-6.5",
-        "S-6.8",
-        "S-6.9"
-      ]
-    },
-    {
-      "id": "S-7.2",
-      "description": "Exhaustive static grep verification â€” every hardcoded value must be gone. Run grep checks for all 42 remediated values across SafetyView, AccountingPortal, IntelligenceHub, ExceptionConsole, LoadGantt, QuoteManager, NetworkPortal, DispatcherTimeline, DriverMobileHome. Each grep MUST return 0 matches.",
-      "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-04",
-          "criterion": "All grep checks for hardcoded values return 0 matches across all remediated components",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
-      "dependsOn": [
-        "S-7.1"
-      ]
-    },
-    {
-      "id": "S-7.3",
-      "description": "Dead button audit â€” verify no onClick={undefined} in remediated components. Every button element in LoadDetailView, AccountingPortal, SafetyView, Settlements must have an onClick handler.",
-      "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
-      "complexity": "simple",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-05",
-          "criterion": "No button elements lack onClick handlers in remediated components",
-          "testType": "functional"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
-      "dependsOn": [
-        "S-7.1"
-      ]
-    },
-    {
-      "id": "S-7.4",
-      "description": "Endpoint regression â€” verify 15 endpoints return correct status codes. 9 endpoints must return 200 (were 500): quotes, leads, bookings, work-items, kci-requests, dashboard/cards, providers, contacts, safety/vendors. 2 endpoints must return 200 (were 401): accounting/accounts, accounting/invoices. 3 endpoints must return 200 (were 404): companies/{id}, dispatch-events, equipment.",
-      "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
-      "complexity": "moderate",
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-06",
-          "criterion": "9 endpoints that previously returned 500 now return 200",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P7-07",
-          "criterion": "2 endpoints that previously returned 401 now return 200",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P7-08",
-          "criterion": "3 endpoints that previously returned 404 now return 200",
-          "testType": "integration"
         }
       ],
       "gateCmds": {
         "unit": "cd server && npx vitest run --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/regression/endpoint-status-regression.test.ts --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
-      "dependsOn": [
-        "S-7.1"
-      ]
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-storage",
+      "dependsOn": []
     },
     {
-      "id": "S-7.5",
-      "description": "Console error regression with hard targets. Navigate every page via Playwright, intercept all fetch calls, count errors by category. Targets: HTTP 500 must be 0, HTTP 401 must be 0, HTTP 404 must be â‰¤2, HTTP 403 must be â‰¤3 (role-based only), HTTP 400 must be â‰¤2. Total must be â‰¤12 (down from 120).",
-      "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
-      "complexity": "complex",
+      "id": "S-6.2",
+      "description": "Update documents route to use adapter factory",
+      "phase": 6,
+      "phase_type": "foundation",
+      "scope": [
+        "server/routes/documents.ts"
+      ],
+      "complexity": "simple",
       "acceptanceCriteria": [
         {
-          "id": "R-P7-09",
-          "criterion": "Zero HTTP 500 errors remain across all pages",
-          "testType": "functional"
+          "id": "R-P6-07",
+          "criterion": "documents.ts imports and uses createStorageAdapter() (not hardcoded disk)",
+          "testType": "unit"
         },
         {
-          "id": "R-P7-10",
-          "criterion": "Zero HTTP 401 errors remain across all pages",
-          "testType": "functional"
+          "id": "R-P6-08",
+          "criterion": ".env.example documents STORAGE_BACKEND with description",
+          "testType": "unit"
         },
         {
-          "id": "R-P7-11",
-          "criterion": "Total console errors across all pages is 12 or fewer (down from 120)",
-          "testType": "functional"
+          "id": "R-P6-09",
+          "criterion": "All existing document tests pass with STORAGE_BACKEND=disk (default)",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-storage",
       "dependsOn": [
-        "S-7.2",
-        "S-7.3",
-        "S-7.4"
+        "S-6.1"
       ]
     },
     {
-      "id": "S-7.6",
-      "description": "Component feature verification checklist. Verify each Phase 6 feature independently: Dashboard has 3 recharts, LoadBoard +New button is clickable, Analytics has 2 charts with drill-down, Calendar shows multi-day loads, CommandCenter shows incident timeline, Settlements batch/finalize/export work, IntelligenceHub has reports tab, DriverMobile change requests are API-backed, DispatcherTimeline shows formatted coordinates.",
+      "id": "S-7.1",
+      "description": "E2E test for login → session → expiry → re-login flow",
       "phase": 7,
-      "phase_type": "verification",
-      "scope": [],
+      "phase_type": "integration",
+      "scope": [
+        "e2e/auth-lifecycle.spec.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P7-01",
+          "criterion": "Test covers: login → verify session token → navigate protected route → force token expiry → SessionExpiredModal appears → re-login succeeds",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P7-02",
+          "criterion": "Test runs against Firebase Auth Emulator (required, not optional)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P7-03",
+          "criterion": "Test fails if any step produces a console error (console.error listener)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx playwright test --reporter=list",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "e2e-specs",
+      "dependsOn": []
+    },
+    {
+      "id": "S-8.1",
+      "description": "Strengthen existing quote-to-load E2E spec",
+      "phase": 8,
+      "phase_type": "integration",
+      "scope": [
+        "e2e/quote-to-load.spec.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P8-01",
+          "criterion": "Quote creation → status \"quoted\" verified",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P8-02",
+          "criterion": "Booking conversion → booking.quoteId matches original quote",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P8-03",
+          "criterion": "Load conversion → load appears on board with correct status and booking link",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P8-04",
+          "criterion": "No console errors during entire flow",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx playwright test --reporter=list",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "e2e-specs",
+      "dependsOn": []
+    },
+    {
+      "id": "S-9.1",
+      "description": "Strengthen existing load lifecycle E2E spec",
+      "phase": 9,
+      "phase_type": "integration",
+      "scope": [
+        "e2e/load-lifecycle.spec.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P9-01",
+          "criterion": "Full 8-state lifecycle traversed in one test",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P9-02",
+          "criterion": "Invalid transition returns 400/422 with descriptive error",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P9-03",
+          "criterion": "dispatch_events table has one record per transition (verified via API)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P9-04",
+          "criterion": "UI load detail shows correct status after each transition",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx playwright test --reporter=list",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "e2e-specs",
+      "dependsOn": []
+    },
+    {
+      "id": "S-10.1",
+      "description": "E2E test for document lifecycle",
+      "phase": 10,
+      "phase_type": "integration",
+      "scope": [
+        "e2e/document-lifecycle.spec.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P10-01",
+          "criterion": "Upload document via API → verify stored (response includes document ID + URL)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P10-02",
+          "criterion": "Download document → content matches original upload (byte comparison)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P10-03",
+          "criterion": "Document metadata (type, companyId, status) correctly persisted (verified via GET)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P10-04",
+          "criterion": "User from company B cannot access company A document (returns 403)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx playwright test --reporter=list",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "e2e-specs",
+      "dependsOn": []
+    },
+    {
+      "id": "S-11.1",
+      "description": "E2E test for settlement lifecycle",
+      "phase": 11,
+      "phase_type": "integration",
+      "scope": [
+        "e2e/settlement-lifecycle.spec.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P11-01",
+          "criterion": "Create settlement for completed load → GL journal entries created (verified via accounting API)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P11-02",
+          "criterion": "Posted settlement PUT/PATCH returns 400/409 (immutability enforced)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P11-03",
+          "criterion": "Settlement total_amount matches load rate_amount + sum(expenses)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx playwright test --reporter=list",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "e2e-specs",
+      "dependsOn": []
+    },
+    {
+      "id": "S-12.1",
+      "description": "Remove or replace dead actions in QuoteManager",
+      "phase": 12,
+      "phase_type": "integration",
+      "scope": [
+        "components/QuoteManager.tsx"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P12-01",
+          "criterion": "No elements with title=\"Feature not yet available\" in QuoteManager",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P12-02",
+          "criterion": "No disabled buttons that represent unimplemented features",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P12-03",
+          "criterion": "Remaining buttons all trigger real actions",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-cleanup",
+      "dependsOn": []
+    },
+    {
+      "id": "S-12.2",
+      "description": "Remove Dashboard redirect shim",
+      "phase": 12,
+      "phase_type": "integration",
+      "scope": [
+        "components/Dashboard.tsx",
+        "App.tsx"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P12-04",
+          "criterion": "Dashboard.tsx deleted",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P12-05",
+          "criterion": "App.tsx handles \"dashboard\" route by setting activeTab to \"operations-hub\"",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P12-06",
+          "criterion": "No remaining imports or references to Dashboard component in codebase",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-cleanup",
+      "dependsOn": []
+    },
+    {
+      "id": "S-12.3",
+      "description": "Clean up stale demo documentation",
+      "phase": 12,
+      "phase_type": "integration",
+      "scope": [
+        "docs/demo-runbook.md"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P12-07",
+          "criterion": "demo-runbook.md has no \"avoid this area\" warnings for shipped features (update or remove)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "docs-cleanup",
+      "dependsOn": []
+    },
+    {
+      "id": "S-13.1",
+      "description": "Separate liveness from readiness in health endpoint",
+      "phase": 13,
+      "phase_type": "integration",
+      "scope": [
+        "server/routes/health.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P13-01",
+          "criterion": "GET /api/health/live returns 200 always (process alive)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-02",
+          "criterion": "GET /api/health/ready returns 200 when MySQL + Firebase healthy",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-03",
+          "criterion": "GET /api/health/ready returns 503 when MySQL disconnected",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-04",
+          "criterion": "GET /api/health (legacy) unchanged",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-observability",
+      "dependsOn": []
+    },
+    {
+      "id": "S-13.2",
+      "description": "Add structured request logging with correlation IDs",
+      "phase": 13,
+      "phase_type": "integration",
+      "scope": [
+        "server/middleware/metrics.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P13-05",
+          "criterion": "Every request produces structured log: {method, path, statusCode, duration_ms}",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-06",
+          "criterion": "Correlation ID appears in every request log",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-07",
+          "criterion": "Authenticated requests include companyId in log",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P13-08",
+          "criterion": "Code comment documents production export path",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-observability",
+      "dependsOn": []
+    },
+    {
+      "id": "S-14.1",
+      "description": "Create real load test against staging-like environment",
+      "phase": 14,
+      "phase_type": "integration",
+      "scope": [
+        "server/__tests__/performance/real-load.test.ts"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P14-01",
+          "criterion": "Test starts real Express server with real MySQL (not mocked)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P14-02",
+          "criterion": "Read p99 < 500ms at 10 concurrent requests",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P14-03",
+          "criterion": "Write p99 < 1000ms at 10 concurrent requests",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P14-04",
+          "criterion": "No connection pool errors during test",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P14-05",
+          "criterion": "Test documents that this is single-node baseline (not staging soak)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run --reporter=verbose",
+        "lint": "cd server && npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "backend-perf",
+      "dependsOn": []
+    },
+    {
+      "id": "S-15.1",
+      "description": "Extract subsystem panels from IntelligenceHub",
+      "phase": 15,
+      "phase_type": "module",
+      "scope": [
+        "components/IntelligenceHub.tsx",
+        "components/operations/ (new directory)"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P15-01",
+          "criterion": "IntelligenceHub.tsx reduced to < 2000 lines (orchestration only)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P15-02",
+          "criterion": "Each extracted panel is a self-contained component with own file",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P15-03",
+          "criterion": "No functionality changes — pure extraction refactor",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P15-04",
+          "criterion": "All existing IntelligenceHub tests pass after extraction",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-decomp",
+      "dependsOn": []
+    },
+    {
+      "id": "S-15.2",
+      "description": "Extract QuoteManager subsystems",
+      "phase": 15,
+      "phase_type": "module",
+      "scope": [
+        "components/QuoteManager.tsx",
+        "components/quotes/ (new directory)"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P15-05",
+          "criterion": "QuoteManager.tsx reduced to < 800 lines",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P15-06",
+          "criterion": "Extracted components are independently testable",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P15-07",
+          "criterion": "All existing QuoteManager tests pass",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose",
+        "lint": "npx tsc --noEmit"
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "frontend-decomp",
+      "dependsOn": [
+        "S-12.1"
+      ]
+    },
+    {
+      "id": "S-16.1",
+      "description": "Update stale documentation files",
+      "phase": 16,
+      "phase_type": "e2e",
+      "scope": [
+        "E2E_RESULTS.md",
+        "docs/deployment/MIGRATION_RUNBOOK.md",
+        "server/migrations/README.md"
+      ],
       "complexity": "moderate",
       "acceptanceCriteria": [
         {
-          "id": "R-P7-12",
-          "criterion": "All 9 Phase 6 features verified per checklist â€” each meets its PASS criteria",
-          "testType": "functional"
+          "id": "R-P12-08",
+          "criterion": "E2E_RESULTS.md reflects actual spec count (45 specs) and test count",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P16-01",
+          "criterion": "E2E_RESULTS.md reflects actual Playwright spec count (run npx playwright test --list, count output)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P16-02",
+          "criterion": "MIGRATION_RUNBOOK.md references correct top-of-chain migration (ls server/migrations/*.sql | tail -1)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P16-03",
+          "criterion": "migrations/README.md has correct \"next available\" number",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P16-04",
+          "criterion": "No documentation file references a migration number, test count, or filename that doesn't exist",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-        "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
+        "unit": "echo \"docs-only story\""
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
-      "parallelGroup": "wave3",
-      "dependsOn": [
-        "S-7.2",
-        "S-7.3",
-        "S-7.4"
-      ]
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "docs-cleanup",
+      "dependsOn": []
+    },
+    {
+      "id": "S-17.1",
+      "description": "Create production migration and rollback runbook",
+      "phase": 17,
+      "phase_type": "e2e",
+      "scope": [
+        "docs/ops/migration-runbook.md",
+        "docs/ops/rollback-procedure.md"
+      ],
+      "complexity": "simple",
+      "acceptanceCriteria": [
+        {
+          "id": "R-P17-01",
+          "criterion": "Migration runbook lists exact commands: check pending, apply all, apply one, rollback one",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P17-02",
+          "criterion": "Rollback procedure tested against current schema (commands verified locally)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P17-03",
+          "criterion": "Staging rehearsal documented: exact env vars, DB snapshot command, migration command, smoke test command",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P17-04",
+          "criterion": "All commands are copy-pasteable (no placeholders requiring interpretation — use $VARIABLE syntax for env-specific values)",
+          "testType": "unit"
+        }
+      ],
+      "gateCmds": {
+        "unit": "echo \"docs-only story\""
+      },
+      "passed": false,
+      "verificationRef": "",
+      "parallelGroup": "docs-cleanup",
+      "dependsOn": []
     }
   ]
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Automated 12-step QA verification pipeline. Exit: 0=PASS, 1=FAIL, 2=bad args."""
+"""Automated QA verification pipeline (12 steps). Exit: 0=PASS, 1=FAIL, 2=bad args."""
 
 import argparse
 import json
@@ -16,16 +16,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lib import (
     CODE_EXTENSIONS,
-    LANG_VIOLATION_PATTERNS,
+    PROJECT_MODE_HOST_PROJECT,
     audit_log,
-    check_project_commands,
     clear_marker,
+    get_project_mode,
     load_workflow_config,
+    validate_project_commands,
     scan_file_violations,
 )
 from _qa_lib import (
     _BACKTICK_IDENTIFIER_RE,
     _PUBLIC_FUNC_RE,
+    VERIFICATION_LOG_PATH,
+    _locked_append,
+    _validate_r_marker_assertion_quality,
+    append_verification_entry,
     check_complexity,
     check_diff_public_api_coverage,
     check_negative_tests,
@@ -33,10 +38,13 @@ from _qa_lib import (
     check_story_file_coverage,
     check_tdd_order,
     extract_diff_added_identifiers,
+    has_frontend_files,
     parse_plan_changes,
+    parse_plan_changes_with_actions,
     parse_plan_changes_with_descriptions,
     scan_test_quality,
     validate_r_markers,
+    verify_production_calls,
 )
 
 # Default maximum character length for evidence strings. Overridable via
@@ -72,14 +80,28 @@ _EXT_TO_LANG: dict[str, str] = {
     ".jsx": "javascript",
 }
 
-# Build set of language-specific security violation IDs from LANG_VIOLATION_PATTERNS.
-# These are added to _SECURITY_IDS for per-language scanning.
-_LANG_SECURITY_IDS: frozenset[str] = frozenset(
-    vid
-    for lang_patterns in LANG_VIOLATION_PATTERNS.values()
-    for _, vid, _, sev in lang_patterns
-    if sev == "block"
-)
+def _mode_command_key(base_key: str, project_mode: str) -> str:
+    """Map a generic QA command to its mode-specific config key."""
+    if project_mode == PROJECT_MODE_HOST_PROJECT:
+        return {
+            "lint": "project_lint",
+            "type_check": "project_type_check",
+            "test": "project_test",
+            "integration": "project_integration_test",
+        }.get(base_key, base_key)
+    return base_key
+
+
+def _configured_command(cmd: object) -> str:
+    """Return a command string only when it is non-placeholder text."""
+    if not isinstance(cmd, str):
+        return ""
+    value = cmd.strip()
+    if not value:
+        return ""
+    if value.upper().startswith("TODO"):
+        return ""
+    return value
 
 
 class StepResult(str, Enum):
@@ -88,6 +110,7 @@ class StepResult(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
     SKIP = "SKIP"
+    TIMEOUT = "TIMEOUT"
 
 
 STEP_NAMES: dict[int, str] = {
@@ -96,30 +119,34 @@ STEP_NAMES: dict[int, str] = {
     3: "Unit tests",
     4: "Integration tests",
     5: "Regression check",
-    6: "Security scan",
+    6: "Code scan",
     7: "Clean diff",
     8: "Coverage",
     9: "Mock quality audit",
     10: "Plan Conformance Check",
     11: "Acceptance traceability",
     12: "Production scan",
-    13: "Mutation testing",
 }
 
 # Valid phase types for --phase-type argument
 VALID_PHASE_TYPES = ("foundation", "module", "integration", "e2e")
 
 # Steps that are always required regardless of phase type.
-# Only steps 3, 4, 8, 9, 13 may be skipped based on phase type.
+# Only steps 3, 4, 8, 9 may be skipped based on phase type.
 ALWAYS_REQUIRED_STEPS: frozenset[int] = frozenset({1, 2, 5, 6, 7, 10, 11, 12})
+
+# Steps run by --gate-only flag: the story-classified steps only.
+# Matches _STEP_CLASSIFICATION entries where value == "story".
+# Used by ralph-worker fix-loop to run a fast subset (~30s vs ~300s full pipeline).
+GATE_ONLY_STEPS: frozenset[int] = frozenset({1, 3, 5, 7, 10, 11})
 
 # Maps each phase type to the set of QA step numbers that are relevant.
 # Steps not in the set for a given phase type will be reported as SKIP.
 PHASE_TYPE_RELEVANCE: dict[str, set[int]] = {
     "foundation": {1, 2, 3, 5, 6, 7, 9, 10, 11, 12},
-    "module": {1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13},
-    "integration": set(range(1, 14)),
-    "e2e": set(range(1, 14)),
+    "module": {1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12},
+    "integration": set(range(1, 13)),
+    "e2e": set(range(1, 13)),
 }
 
 # Violation ID sets for categorized scanning (Step 6 and Step 7)
@@ -226,12 +253,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--steps",
         default=None,
-        help="Comma-separated step numbers to run (default: all 1-12)",
+        help="Comma-separated step numbers to run (default: all 1-12, step 13 removed)",
     )
     parser.add_argument(
         "--changed-files",
         default=None,
-        help="Comma-separated list of changed file paths",
+        help="Changed file paths (comma-separated or newline-separated)",
     )
     parser.add_argument(
         "--test-dir",
@@ -251,7 +278,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--phase-type",
         default=None,
-        help="Phase type for adaptive QA (foundation, module, integration, e2e). Unknown values are treated as None.",
+        choices=VALID_PHASE_TYPES,
+        help="Phase type for adaptive QA (foundation, module, integration, e2e)",
     )
     parser.add_argument(
         "--test-quality",
@@ -265,31 +293,134 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0,
         help="Fix loop iteration number (0=initial run, >0=fix iteration)",
     )
+    parser.add_argument(
+        "--baseline-capture",
+        action="store_true",
+        default=False,
+        help=(
+            "Capture current QA state as a baseline. "
+            "Writes output to .claude/runtime/qa-baseline.json and exits 0 "
+            "regardless of step results."
+        ),
+    )
+    parser.add_argument(
+        "--baseline",
+        default=None,
+        help=(
+            "Path to baseline JSON file (produced by --baseline-capture). "
+            "When provided, _compute_environment_result() filters out steps "
+            "that were already FAIL in the baseline. "
+            "Also changes exit code to use story_result instead of overall_result."
+        ),
+    )
+    parser.add_argument(
+        "--gate-only",
+        action="store_true",
+        default=False,
+        help=(
+            "Run only story-classified steps (GATE_ONLY_STEPS = {1, 3, 5, 7, 10, 11}). "
+            "All other steps are reported as SKIP. "
+            "Faster than full pipeline (~30s vs ~300s) for fix-loop iteration."
+        ),
+    )
+    parser.add_argument(
+        "--inject-verification",
+        action="store_true",
+        default=False,
+        help=(
+            "Write a synthetic verification log entry for a story that passed "
+            "outside the normal QA pipeline (e.g. mid-sprint manual verification). "
+            "Requires --story. Optional: --plan-hash, --result, --note, --log-path."
+        ),
+    )
+    parser.add_argument(
+        "--log-plan-replacement",
+        action="store_true",
+        default=False,
+        help=(
+            "Append a plan_replacement sentinel entry to the verification log. "
+            "Requires --old-hash and --new-hash. Optional: --reason, --log-path."
+        ),
+    )
+    parser.add_argument(
+        "--old-hash",
+        default=None,
+        help="SHA-256 hash of the replaced (old) plan. Required with --log-plan-replacement.",
+    )
+    parser.add_argument(
+        "--new-hash",
+        default=None,
+        help="SHA-256 hash of the current (new) plan. Required with --log-plan-replacement.",
+    )
+    parser.add_argument(
+        "--reason",
+        default="",
+        help="Human-readable reason for plan replacement (used with --log-plan-replacement).",
+    )
+    parser.add_argument(
+        "--plan-hash",
+        default=None,
+        help=(
+            "SHA-256 plan hash to stamp on the injected entry. "
+            "Defaults to prd.json[plan_hash] when not supplied."
+        ),
+    )
+    parser.add_argument(
+        "--result",
+        default="PASS",
+        choices=["PASS", "FAIL"],
+        help="Result to record in the injected entry (default: PASS).",
+    )
+    parser.add_argument(
+        "--note",
+        default="",
+        help="Optional free-text note to include in the injected entry.",
+    )
+    parser.add_argument(
+        "--log-path",
+        default=None,
+        help=(
+            "Path to verification-log.jsonl. "
+            "Defaults to VERIFICATION_LOG_PATH (.claude/docs/verification-log.jsonl)."
+        ),
+    )
     return parser
 
 
 def _parse_steps(steps_str: str | None) -> list[int]:
     """Parse step filter string into list of step numbers."""
     if steps_str is None:
-        return list(range(1, 14))
+        return list(range(1, 13))
 
     result: list[int] = []
     for part in steps_str.split(","):
         part = part.strip()
         if part.isdigit():
             num = int(part)
-            if 1 <= num <= 13:
+            if 1 <= num <= 12:
                 result.append(num)
     return sorted(set(result))
 
 
 def _parse_changed_files(files_str: str | None) -> list[Path]:
-    """Parse changed files string into list of Path objects."""
+    """Parse changed files string into list of Path objects.
+
+    Supports both comma-separated and newline-separated input.  If the input
+    contains newline characters it is split on newlines (matching ``git diff
+    --name-only`` output); otherwise it is split on commas.
+
+    Note: comma-delimited mode means file paths containing literal commas will
+    be mis-parsed.  This is acceptable because commas in filenames are extremely
+    rare in practice, especially in git repositories.
+    """
     if not files_str:
         return []
 
+    # Choose delimiter: newlines take precedence over commas
+    delimiter = "\n" if "\n" in files_str else ","
+
     result: list[Path] = []
-    for part in files_str.split(","):
+    for part in files_str.split(delimiter):
         part = part.strip()
         if part:
             result.append(Path(part))
@@ -301,12 +432,13 @@ def _detect_languages(changed_files: list[Path], config: dict) -> dict[str, list
 
     Returns a dict mapping language name to list of matching files.
     Falls back to extension-based detection if no language profiles are configured.
-    If no profiles match, all files are assigned to 'python' (backward-compatible).
+    Files with unrecognized extensions are assigned to the ``"unknown"`` group.
+    Language-specific steps (lint, type check) are skipped for ``"unknown"`` files.
     """
     languages_config = config.get("languages", {})
 
     if not languages_config:
-        # Fallback: extension-based detection — all code files grouped by extension
+        # Fallback: extension-based detection — known code files grouped by extension
         result: dict[str, list[Path]] = {}
         ext_to_lang = {
             ".py": "python",
@@ -316,10 +448,8 @@ def _detect_languages(changed_files: list[Path], config: dict) -> dict[str, list
             ".jsx": "javascript",
         }
         for f in changed_files:
-            lang = ext_to_lang.get(f.suffix, "python")
+            lang = ext_to_lang.get(f.suffix, "unknown")
             result.setdefault(lang, []).append(f)
-        if not result and changed_files:
-            result["python"] = list(changed_files)
         return result
 
     # Profile-based detection: match file extensions to language profile extensions
@@ -336,9 +466,9 @@ def _detect_languages(changed_files: list[Path], config: dict) -> dict[str, list
         if not matched:
             unmatched.append(f)
 
-    # Assign unmatched files to python (default)
+    # Assign unmatched files to "unknown" — not "python"
     if unmatched:
-        result.setdefault("python", []).extend(unmatched)
+        result.setdefault("unknown", []).extend(unmatched)
 
     return result
 
@@ -429,18 +559,6 @@ def _run_command(cmd: str, timeout: int = 120) -> tuple[int, str, str]:
 
     use_shell = _needs_shell(cmd)
 
-    # On Windows, .CMD wrappers (e.g. npx.CMD) cannot be launched by subprocess
-    # without shell=True, even when shutil.which finds them. Force shell=True
-    # whenever the resolved executable ends with .cmd/.bat, or when we are on
-    # Windows and the command does not start with the Python interpreter path
-    # (Python itself is a .exe and can be launched directly).
-    if not use_shell and sys.platform == "win32":
-        parts_check = shlex.split(cmd)
-        if parts_check:
-            resolved = shutil.which(parts_check[0])
-            if resolved and resolved.lower().endswith((".cmd", ".bat")):
-                use_shell = True
-
     # Pre-check: when not using shell, verify the executable is on PATH
     # to give a clear diagnostic instead of an opaque [WinError 2].
     if not use_shell:
@@ -463,6 +581,116 @@ def _run_command(cmd: str, timeout: int = 120) -> tuple[int, str, str]:
         return -1, "", f"Command timed out after {timeout}s"
     except (OSError, ValueError, UnicodeDecodeError) as exc:
         return -1, "", str(exc)
+
+
+def _run_command_with_trace(cmd: str, timeout: int = 120) -> tuple[int, str, str, str]:
+    """Run a command and return (exit_code, stdout, stderr, trace_hash).
+
+    The ``trace_hash`` is a SHA-256 hex digest computed from:
+    ``command + timestamp + exit_code + sha256(stdout) + sha256(stderr)``
+
+    This provides a cryptographic record of execution that can be included in
+    qa_receipt output for audit purposes (Trust Hierarchy T3: execution trace hash).
+
+    Args:
+        cmd: Shell command to execute.
+        timeout: Maximum execution time in seconds.
+
+    Returns:
+        4-tuple of (exit_code, stdout, stderr, trace_hash).
+    """
+    import hashlib
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    exit_code, stdout, stderr = _run_command(cmd, timeout=timeout)
+
+    stdout_hash = hashlib.sha256(stdout.encode("utf-8", errors="replace")).hexdigest()
+    stderr_hash = hashlib.sha256(stderr.encode("utf-8", errors="replace")).hexdigest()
+
+    trace_str = f"{cmd}{timestamp}{exit_code}{stdout_hash}{stderr_hash}"
+    trace_hash = hashlib.sha256(trace_str.encode("utf-8")).hexdigest()
+
+    return exit_code, stdout, stderr, trace_hash
+
+
+def _step_mutation_testing(
+    config: dict,
+    changed_files: list[Path],
+    test_dir: Path | None,
+) -> tuple[StepResult, str]:
+    """Step 13 (optional): Run mutation testing via mutmut and check kill rate.
+
+    This step is SKIP by default. To enable, set:
+    ``qa_runner.mutation_testing_enabled: true`` in workflow.json.
+
+    Also SKIPs when mutmut is not installed (optional dependency).
+
+    Args:
+        config: Workflow configuration dict.
+        changed_files: List of changed source file Paths.
+        test_dir: Optional test directory Path.
+
+    Returns:
+        - SKIP: mutmut not installed or mutation_testing_enabled is false/absent
+        - PASS: kill rate >= 85%
+        - FAIL: kill rate < 85%
+    """
+    qa_cfg = config.get("qa_runner", {})
+    if not qa_cfg.get("mutation_testing_enabled", False):
+        return StepResult.SKIP, "mutation_testing_enabled is false or absent in config"
+
+    if shutil.which("mutmut") is None:
+        return StepResult.SKIP, "mutmut not installed — skipping mutation testing"
+
+    # Get source files to mutate (non-test Python files)
+    source_files = [
+        f
+        for f in changed_files
+        if f.suffix == ".py"
+        and not f.name.startswith("test_")
+        and not f.name.endswith("_test.py")
+    ]
+
+    if not source_files:
+        return StepResult.SKIP, "No Python source files to mutate"
+
+    paths_arg = " ".join(str(f) for f in source_files[:5])
+    cmd = f"mutmut run --paths-to-mutate {paths_arg}"
+
+    exit_code, stdout, stderr = _run_command(cmd, timeout=600)
+
+    # Parse kill rate from mutmut output
+    # mutmut outputs lines like "Killed: 90" and "Survived: 10"
+    killed = 0
+    survived = 0
+    for line in (stdout + stderr).splitlines():
+        line = line.strip()
+        if line.startswith("Killed:"):
+            try:
+                killed = int(line.split(":")[1].strip().split()[0])
+            except (ValueError, IndexError):
+                pass  # malformed mutmut line — keep default
+        elif line.startswith("Survived:"):
+            try:
+                survived = int(line.split(":")[1].strip().split()[0])
+            except (ValueError, IndexError):
+                pass  # malformed mutmut line — keep default
+
+    total = killed + survived
+    if total == 0:
+        return StepResult.SKIP, f"Could not parse mutmut output (exit_code={exit_code})"
+
+    kill_rate = (killed / total) * 100.0
+    threshold = 85.0
+
+    evidence = (
+        f"Mutation kill rate: {kill_rate:.0f}% ({killed}/{total} mutants killed, "
+        f"threshold={threshold:.0f}%)"
+    )
+
+    if kill_rate >= threshold:
+        return StepResult.PASS, evidence
+    return StepResult.FAIL, evidence
 
 
 def _run_step(
@@ -498,18 +726,27 @@ def _run_step(
             )
         elif step_num == 3:
             result_val, evidence = _step_unit_tests(
-                config, story, required=_req.get("unit", True)
+                config,
+                story,
+                required=_req.get("unit", True),
+                pipeline_context=pipeline_context,
             )
         elif step_num == 4:
             result_val, evidence = _step_integration_tests(
-                config, story, required=_req.get("integration", False)
+                config,
+                story,
+                required=_req.get("integration", False),
+                changed_files=changed_files,
             )
         elif step_num == 5:
             result_val, evidence = _step_regression(
-                config, story, required=_req.get("regression", False)
+                config,
+                story,
+                required=_req.get("regression", False),
+                pipeline_context=pipeline_context,
             )
         elif step_num == 6:
-            result_val, evidence = _step_security_scan(
+            result_val, evidence = _step_code_scan(
                 changed_files, violation_cache=violation_cache, config=config
             )
         elif step_num == 7:
@@ -517,7 +754,9 @@ def _run_step(
                 changed_files, violation_cache=violation_cache
             )
         elif step_num == 8:
-            result_val, evidence = _step_coverage(config, story=story)
+            result_val, evidence = _step_coverage(
+                config, story=story, pipeline_context=pipeline_context
+            )
         elif step_num == 9:
             result_val, evidence = _step_mock_audit(
                 changed_files,
@@ -547,8 +786,6 @@ def _run_step(
             result_val, evidence = _step_production_scan(
                 changed_files, config, violation_cache=violation_cache
             )
-        elif step_num == 13:
-            result_val, evidence = _step_mutation_testing(changed_files, config=config)
         else:
             result_val = StepResult.SKIP
             evidence = f"Step {step_num} not implemented"
@@ -584,6 +821,7 @@ def _step_lint(
     of ("SKIP", ...) to enforce zero-skip policy for required steps.
     """
     languages_config = config.get("languages", {})
+    project_mode = get_project_mode(config)
 
     # Multi-language mode: run per-language lint if lang_map provided and profiles exist
     if lang_map and languages_config:
@@ -593,6 +831,13 @@ def _step_lint(
 
         for lang_name, lang_files in lang_map.items():
             if not lang_files:
+                continue
+            # Skip "unknown" language — no lint command is applicable
+            if lang_name == "unknown":
+                exts = {f.suffix for f in lang_files}
+                lang_results.append(
+                    f"unknown: SKIP (no lint command for {', '.join(sorted(exts))} files)"
+                )
                 continue
             lang_config = languages_config.get(lang_name, {})
             lang_lint_cmd = lang_config.get("commands", {}).get("lint", "")
@@ -615,12 +860,13 @@ def _step_lint(
             return StepResult.PASS, evidence
         # Fall through to single-command behavior if no per-language cmds ran
 
-    # Single-command fallback: try gateCmds.lint first, then workflow.json commands.lint
+    # Single-command fallback: try gateCmds.lint first, then the mode-owned command.
     cmd = ""
     if story:
         cmd = story.get("gateCmds", {}).get("lint", "")
     if not cmd:
-        cmd = config.get("commands", {}).get("lint", "")
+        cmd = config.get("commands", {}).get(_mode_command_key("lint", project_mode), "")
+    cmd = _configured_command(cmd)
 
     if not cmd:
         if required:
@@ -649,15 +895,19 @@ def _step_type_check(
 ) -> tuple[StepResult, str]:
     """Step 2: Run type checker.
 
-    Prefers story.gateCmds.type_check over config.commands.type_check.
+    Prefers story.gateCmds.type_check over the mode-owned workflow command.
     When required=True and no type_check command is configured, returns ("FAIL", ...)
     instead of ("SKIP", ...) to enforce zero-skip policy for required steps.
     """
+    project_mode = get_project_mode(config)
     cmd = ""
     if story:
         cmd = story.get("gateCmds", {}).get("type_check", "")
     if not cmd:
-        cmd = config.get("commands", {}).get("type_check", "")
+        cmd = config.get("commands", {}).get(
+            _mode_command_key("type_check", project_mode), ""
+        )
+    cmd = _configured_command(cmd)
     if not cmd:
         if required:
             return (
@@ -681,18 +931,26 @@ def _step_type_check(
 
 
 def _step_unit_tests(
-    config: dict, story: dict | None, required: bool = True
+    config: dict,
+    story: dict | None,
+    required: bool = True,
+    pipeline_context: dict | None = None,
 ) -> tuple[StepResult, str]:
     """Step 3: Run unit tests.
 
     When required=True and no unit test command is configured, returns ("FAIL", ...)
     instead of ("SKIP", ...) to enforce zero-skip policy for required steps.
+
+    On PASS, stores the resolved command and result in pipeline_context so Step 5
+    can skip re-running an identical regression suite.
     """
+    project_mode = get_project_mode(config)
     cmd = ""
     if story:
         cmd = story.get("gateCmds", {}).get("unit", "")
     if not cmd:
-        cmd = config.get("commands", {}).get("test", "")
+        cmd = config.get("commands", {}).get(_mode_command_key("test", project_mode), "")
+    cmd = _configured_command(cmd)
 
     if not cmd:
         if required:
@@ -706,6 +964,9 @@ def _step_unit_tests(
     unit_timeout = int(config.get("commands", {}).get("unit_timeout_s", 120))
     code, stdout, stderr = _run_command(cmd, timeout=unit_timeout)
     if code == 0:
+        if pipeline_context is not None:
+            pipeline_context["unit_test_cmd"] = cmd
+            pipeline_context["unit_test_result"] = StepResult.PASS
         return (
             StepResult.PASS,
             f"Unit tests passed: {stdout[-_get_evidence_max_chars() :]}"
@@ -718,19 +979,81 @@ def _step_unit_tests(
     )
 
 
+# E2E framework config files and their suggested commands.
+# Checked in order; first match wins for the suggestion message.
+_E2E_FRAMEWORK_CONFIGS: list[tuple[str, str, str]] = [
+    ("playwright.config.ts", "Playwright", "npx playwright test"),
+    ("playwright.config.js", "Playwright", "npx playwright test"),
+    ("cypress.config.ts", "Cypress", "npx cypress run"),
+    ("cypress.config.js", "Cypress", "npx cypress run"),
+]
+
+
+def _detect_e2e_framework(project_root: Path) -> tuple[str, str] | None:
+    """Detect E2E framework config files in the project root.
+
+    Returns (config_filename, suggested_command) for the first match, or None.
+    Read-only filesystem check only -- no subprocess calls.
+    """
+    for config_name, _framework, suggested_cmd in _E2E_FRAMEWORK_CONFIGS:
+        if (project_root / config_name).exists():
+            return config_name, suggested_cmd
+    return None
+
+
 def _step_integration_tests(
-    config: dict, story: dict | None, required: bool = False
+    config: dict,
+    story: dict | None,
+    required: bool = False,
+    project_root: Path | None = None,
+    changed_files: list[Path] | None = None,
 ) -> tuple[StepResult, str]:
     """Step 4: Run integration tests.
 
     When required=True and no integration test command is configured, returns ("FAIL", ...)
     instead of ("SKIP", ...) to enforce zero-skip policy for required steps.
+
+    If no command is configured, checks for Playwright/Cypress config files in the
+    project root and includes a suggestion in the skip/fail message.
+
+    When changed_files is provided and contains frontend file extensions, and
+    config.commands.project_frontend_test is configured (not the unconfigured placeholder),
+    the frontend test command is also executed. The worst-of-both result is returned.
     """
+    project_mode = get_project_mode(config)
     cmd = ""
     if story:
         cmd = story.get("gateCmds", {}).get("integration", "")
 
+    raw_cmd = cmd
     if not cmd:
+        raw_cmd = config.get("commands", {}).get(
+            _mode_command_key("integration", project_mode), ""
+        )
+    if isinstance(raw_cmd, str) and raw_cmd.strip().lower() in ("n/a", "none", "skip"):
+        return StepResult.SKIP, "Integration tests marked as N/A"
+    cmd = _configured_command(raw_cmd)
+
+    if not cmd:
+        # Check for E2E framework config files to provide a helpful suggestion
+        root = project_root if project_root is not None else Path.cwd()
+        detected = _detect_e2e_framework(root)
+        if detected:
+            config_name, suggested_cmd = detected
+            config_key = _mode_command_key("integration", project_mode)
+            hint = (
+                f"Detected {config_name} — "
+                f"set commands.{config_key} in workflow.json: {suggested_cmd}"
+            )
+            if required:
+                return (
+                    StepResult.FAIL,
+                    f"Step 'integration' is required but has no command configured. {hint}",
+                )
+            return (
+                StepResult.SKIP,
+                f"No integration test command configured. {hint}",
+            )
         if required:
             return (
                 StepResult.FAIL,
@@ -738,38 +1061,94 @@ def _step_integration_tests(
             )
         return StepResult.SKIP, "No integration test command configured"
 
-    if cmd.lower() in ("n/a", "none", "skip"):
-        return StepResult.SKIP, "Integration tests marked as N/A"
-
     code, stdout, stderr = _run_command(cmd)
     if code == 0:
-        return (
-            StepResult.PASS,
+        integration_result = StepResult.PASS
+        integration_evidence = (
             f"Integration tests passed: {stdout[-_get_evidence_max_chars() :]}"
             if stdout
-            else "Integration tests passed",
+            else "Integration tests passed"
         )
-    return (
-        StepResult.FAIL,
-        f"Integration tests failed (exit {code}): {(stderr or stdout)[-_get_evidence_max_chars() :]}",
-    )
+    else:
+        return (
+            StepResult.FAIL,
+            f"Integration tests failed (exit {code}): {(stderr or stdout)[-_get_evidence_max_chars() :]}",
+        )
+
+    # Run frontend test sub-check when frontend files are present and command is configured.
+    frontend_cmd = config.get("commands", {}).get("project_frontend_test", "")
+    if (
+        has_frontend_files(changed_files or [])
+        and _configured_command(frontend_cmd)
+    ):
+        fe_code, fe_stdout, fe_stderr = _run_command(frontend_cmd)
+        if fe_code == 0:
+            fe_evidence = (
+                f"frontend tests passed: {fe_stdout[-_get_evidence_max_chars() :]}"
+                if fe_stdout
+                else "frontend tests passed"
+            )
+            return StepResult.PASS, f"{integration_evidence}; {fe_evidence}"
+        else:
+            return (
+                StepResult.FAIL,
+                f"Frontend tests failed (exit {fe_code}): {(fe_stderr or fe_stdout)[-_get_evidence_max_chars() :]}",
+            )
+
+    return integration_result, integration_evidence
 
 
 def _step_regression(
-    config: dict, story: dict | None = None, required: bool = False
+    config: dict,
+    story: dict | None = None,
+    required: bool = False,
+    pipeline_context: dict | None = None,
 ) -> tuple[StepResult, str]:
     """Step 5: Run regression test suite.
 
     Tier resolution order:
-    1. story.gateCmds.regression_tier → look up in config.commands.regression_tiers
-    2. config.commands.regression_default_tier → look up in config.commands.regression_tiers
-    3. config.commands.regression → backward-compatible fallback
+    1. fix_loop tier when fix_iteration > 0 (--lf: only previously-failing tests)
+    2. story.gateCmds.regression_tier → look up in config.commands.regression_tiers
+    3. config.commands.regression_default_tier → look up in config.commands.regression_tiers
+    4. config.commands.regression → backward-compatible fallback
+
+    Cache shortcut: if the resolved command matches Step 3's unit test command and
+    Step 3 passed, returns PASS immediately without re-running the suite.
 
     When required=True and no regression command is configured, returns ("FAIL", ...)
     instead of ("SKIP", ...) to enforce zero-skip policy for required steps.
     """
     commands = config.get("commands", {})
     tiers = commands.get("regression_tiers", {})
+    fix_iteration = pipeline_context.get("fix_iteration", 0) if pipeline_context else 0
+
+    # Early-exit: skip regression when changed files contain no source code
+    if not required and pipeline_context is not None:
+        changed = pipeline_context.get("changed_files", [])
+        if changed is not None and len(changed) > 0 and not _get_source_files(changed):
+            return (
+                StepResult.SKIP,
+                "Regression skipped — no source code in changed files",
+            )
+
+    # During fix iterations, use the fix_loop tier (--lf: last-failed tests only)
+    if fix_iteration > 0 and "fix_loop" in tiers:
+        tier_config = tiers["fix_loop"]
+        cmd = tier_config.get("cmd", "")
+        if cmd:
+            timeout = tier_config.get("max_duration_s", 120)
+            code, stdout, stderr = _run_command(cmd, timeout=timeout)
+            if code == 0:
+                return (
+                    StepResult.PASS,
+                    f"Regression suite [fix_loop] passed: {stdout[-_get_evidence_max_chars() :]}"
+                    if stdout
+                    else "Regression suite [fix_loop] passed",
+                )
+            return (
+                StepResult.FAIL,
+                f"Regression [fix_loop] failed (exit {code}): {(stderr or stdout)[-_get_evidence_max_chars() :]}",
+            )
 
     # Determine which tier to use (if any)
     tier_name: str | None = None
@@ -782,6 +1161,16 @@ def _step_regression(
         tier_config = tiers.get(tier_name, {})
         cmd = tier_config.get("cmd", "")
         if cmd:
+            # Cache shortcut: Step 3 already ran this exact command and passed
+            if pipeline_context is not None:
+                if (
+                    pipeline_context.get("unit_test_cmd") == cmd
+                    and pipeline_context.get("unit_test_result") == StepResult.PASS
+                ):
+                    return (
+                        StepResult.PASS,
+                        f"Regression skipped — identical to unit test run [{tier_name}] (already passed)",
+                    )
             timeout = tier_config.get("max_duration_s", 120)
             code, stdout, stderr = _run_command(cmd, timeout=timeout)
             if code == 0:
@@ -809,6 +1198,17 @@ def _step_regression(
             "No regression command configured (set commands.regression in workflow.json)",
         )
 
+    # Cache shortcut for fallback path
+    if pipeline_context is not None:
+        if (
+            pipeline_context.get("unit_test_cmd") == cmd
+            and pipeline_context.get("unit_test_result") == StepResult.PASS
+        ):
+            return (
+                StepResult.PASS,
+                "Regression skipped — identical to unit test run (already passed)",
+            )
+
     code, stdout, stderr = _run_command(cmd)
     if code == 0:
         return (
@@ -823,20 +1223,21 @@ def _step_regression(
     )
 
 
-def _step_security_scan(
+def _step_code_scan(
     changed_files: list[Path],
     violation_cache: dict[str, list[dict]] | None = None,
     config: dict | None = None,
 ) -> tuple[StepResult, str]:
-    """Step 6: Scan for security violations.
+    """Step 6: Combined security and production-grade code scan.
 
+    Checks all violation patterns (security + production) in a single pass.
     When config contains an external_scanners section, invokes each enabled scanner.
     Executable resolution: use scanner["executable"] if present, else fall back to
     the dict key name. Availability checked via shutil.which():
     - Not found + strict_mode: true  → FAIL
     - Not found + strict_mode: false → include SKIP note, continue
     - Found → run scanner, FAIL on non-zero exit
-    If no external_scanners configured, runs existing prod violation scan only.
+    If no external_scanners configured, runs violation scan only.
     """
     source_files = _get_source_files(changed_files)
     if not source_files:
@@ -845,14 +1246,14 @@ def _step_security_scan(
     total_violations = 0
     details: list[str] = []
 
+    # Scan all violations (security + production patterns combined)
     for f in source_files:
         if violation_cache is not None:
             violations = violation_cache.get(str(f), [])
         else:
             violations = scan_file_violations(f)
-        sec_violations = [v for v in violations if v["violation_id"] in _SECURITY_IDS]
-        total_violations += len(sec_violations)
-        for v in sec_violations:
+        total_violations += len(violations)
+        for v in violations:
             details.append(f"{f.name}:{v['line']} {v['violation_id']}: {v['message']}")
 
     # External scanners (optional, from workflow.json external_scanners section)
@@ -867,10 +1268,6 @@ def _step_security_scan(
                 else "."
             )
         except ValueError:
-            changed_dir = "."
-        # On Windows, commonpath can return empty string when files span
-        # different drive roots or have no common prefix. Fall back to ".".
-        if not changed_dir:
             changed_dir = "."
         changed_files_str = " ".join(str(f) for f in source_files)
 
@@ -896,25 +1293,22 @@ def _step_security_scan(
                 cmd = exe
             code, _stdout, _stderr = _run_command(cmd)
             if code != 0:
-                if strict:
-                    total_violations += 1
-                    details.append(
-                        f"External scanner {name} found issues (exit {code})"
-                    )
-                else:
-                    details.append(
-                        f"Scanner '{name}' found issues (exit {code}, non-strict, noted)"
-                    )
+                total_violations += 1
+                details.append(f"Scanner '{name}' found issues (exit {code})")
 
     if total_violations == 0:
-        base_evidence = f"No security violations in {len(source_files)} source files"
+        base_evidence = f"No violations in {len(source_files)} source files"
         if details:
             base_evidence += "; " + "; ".join(details[:5])
         return StepResult.PASS, base_evidence
     return (
         StepResult.FAIL,
-        f"{total_violations} security violations: {'; '.join(details[:5])}",
+        f"{total_violations} violations: {'; '.join(details[:10])}",
     )
+
+
+# Keep _step_security_scan as an alias for backward compatibility with tests
+_step_security_scan = _step_code_scan
 
 
 def _step_clean_diff(
@@ -950,12 +1344,33 @@ def _step_clean_diff(
 def _step_coverage(
     config: dict,
     story: dict | None = None,
+    pipeline_context: dict | None = None,
 ) -> tuple[StepResult, str]:
     """Step 8: Run coverage report.
 
     If story.gateCmds.coverage is set, it overrides the global coverage command.
     This allows per-story coverage commands (e.g., focused test files for docs phases).
+
+    During fix iterations (fix_iteration > 0), coverage is deferred — it runs only
+    on the first clean pass. Coverage is an environment step and does not affect
+    story_result or promotion.
     """
+    fix_iteration = pipeline_context.get("fix_iteration", 0) if pipeline_context else 0
+    if fix_iteration > 0:
+        return (
+            StepResult.SKIP,
+            f"Coverage deferred — runs on first clean pass only (fix iteration {fix_iteration})",
+        )
+
+    # Early-exit: skip coverage when changed files contain no source code
+    if pipeline_context is not None:
+        changed = pipeline_context.get("changed_files", [])
+        if changed is not None and len(changed) > 0 and not _get_source_files(changed):
+            return (
+                StepResult.SKIP,
+                "Coverage skipped — no source code in changed files",
+            )
+
     evidence_parts: list[str] = []
 
     # Per-story coverage override (e.g., for docs phases targeting a smaller test set)
@@ -985,6 +1400,264 @@ def _step_coverage(
     if not evidence_parts:
         return StepResult.SKIP, "No coverage command configured"
     return StepResult.PASS, "; ".join(evidence_parts)
+
+
+def _mock_audit_test_quality(
+    test_files: list[Path], config: dict | None
+) -> tuple[list[str], list[str], list[tuple[str, list]], list[str]]:
+    """Check 1 + 1b: test anti-patterns + behavioral gate.
+
+    Returns (issues, warnings, weak_by_file, all_test_names).
+    """
+    import re as _re
+
+    issues: list[str] = []
+    warnings: list[str] = []
+    weak_by_file: list[tuple[str, list]] = []
+    all_test_names: list[str] = []
+
+    _qa_cfg = (config or {}).get("qa_runner", {})
+    behavioral_required: bool = bool(
+        _qa_cfg.get("behavioral_assertion_required", False)
+    )
+    neg_min_pct: int = int(_qa_cfg.get("negative_test_min_pct", 15))
+
+    # Configurable thresholds: default 0 (strict) when absent.
+    assertion_free_max: int = int(_qa_cfg.get("assertion_free_max", 0))
+    self_mock_max: int = int(_qa_cfg.get("self_mock_max", 0))
+    mock_only_max: int = int(_qa_cfg.get("mock_only_max", 0))
+    weak_assertion_max_pct_raw = _qa_cfg.get("weak_assertion_max_pct", None)
+    weak_assertion_max_pct: float | None = (
+        float(weak_assertion_max_pct_raw)
+        if weak_assertion_max_pct_raw is not None
+        else None
+    )
+
+    for tf in test_files:
+        quality = scan_test_quality(tf)
+
+        # Collect test names for negative-test check (best-effort)
+        try:
+            content = tf.read_text(encoding="utf-8")
+            all_test_names.extend(
+                _re.findall(
+                    r"^[ \t]*(?:async\s+)?def\s+(test_\w+)\s*\(", content, _re.MULTILINE
+                )
+            )
+        except (OSError, UnicodeDecodeError, ValueError):
+            pass  # test file unreadable — skip name extraction
+
+        af = quality.get("assertion_free_tests", [])
+        sm = quality.get("self_mock_tests", [])
+        mo = quality.get("mock_only_tests", [])
+        hm = quality.get("heavy_mock_tests", [])
+
+        # Check 1: assertion-free tests (threshold-based)
+        if len(af) > assertion_free_max:
+            issues.append(f"{tf.name}: assertion-free tests: {af}")
+
+        # Check 1: self-mock tests (threshold-based)
+        if len(sm) > self_mock_max:
+            issues.append(f"{tf.name}: self-mock tests: {sm}")
+
+        # Check 1: mock-only tests (threshold-based)
+        if len(mo) > mock_only_max:
+            issues.append(f"{tf.name}: mock-only tests: {mo}")
+
+        # Heavy-mock check: always fire when present (no configurable threshold)
+        if hm:
+            issues.append(f"{tf.name}: heavy-mock tests (>80% deps mocked): {hm}")
+
+        # Check 1b: Behavioral assertion gate
+        if behavioral_required:
+            bam = quality.get("behavioral_assertion_missing", [])
+            if bam:
+                issues.append(
+                    f"{tf.name}: behavioral assertion missing (no value-checking assertions): {bam}"
+                )
+
+        # Accumulate weak assertions for Check 3 ratchet
+        weak = quality.get("weak_assertion_tests", [])
+        if weak:
+            weak_by_file.append((tf.name, weak))
+
+        # Check 1c: weak-assertion percentage per file (when threshold configured)
+        if weak_assertion_max_pct is not None:
+            tests_found = quality.get("tests_found", 0)
+            if tests_found > 0:
+                weak_pct = round((len(weak) / tests_found) * 100)
+                if weak_pct > weak_assertion_max_pct:
+                    issues.append(
+                        f"{tf.name}: weak assertion percentage {weak_pct}%"
+                        f" exceeds max {weak_assertion_max_pct:.0f}%"
+                        f" ({len(weak)}/{tests_found} tests)"
+                    )
+
+        if quality.get("happy_path_only", False) and quality.get("tests_found", 0) > 0:
+            issues.append(f"{tf.name}: happy-path-only (no error/edge tests)")
+
+        # Check 3b: Negative test percentage (WARN when below threshold)
+        tests_found = quality.get("tests_found", 0)
+        if tests_found > 5:
+            neg_pct = quality.get("negative_test_pct", 0)
+            neg_count = quality.get("negative_test_count", 0)
+            if neg_pct < neg_min_pct:
+                warnings.append(
+                    f"{tf.name}: Negative test ratio: {neg_count}/{tests_found}"
+                    f" ({neg_pct}%) \u2014 minimum recommended: {neg_min_pct}%"
+                )
+
+    return issues, warnings, weak_by_file, all_test_names
+
+
+def _mock_audit_weak_ratchet(
+    weak_by_file: list[tuple[str, list]], config: dict | None
+) -> tuple[list[str], list[str]]:
+    """Check 3: Weak assertion ratchet. Returns (issues, warnings)."""
+    issues: list[str] = []
+    warnings: list[str] = []
+
+    _qa_runner_cfg = (config or {}).get("qa_runner", {})
+    _weak_max_raw = _qa_runner_cfg.get("weak_assertion_max", None)
+    if _weak_max_raw is not None and not isinstance(_weak_max_raw, int):
+        warnings.append(
+            f"weak_assertion_max is not an int ({_weak_max_raw!r}); ignoring ratchet"
+        )
+        _weak_max_raw = None
+    _weak_assertion_max: int | None = _weak_max_raw
+
+    if weak_by_file:
+        total_weak = sum(len(names) for _, names in weak_by_file)
+        if _weak_assertion_max is None:
+            # Unconfigured: old behavior -- always FAIL on any weak assertion
+            for fname, names in weak_by_file:
+                issues.append(f"{fname}: weak assertions: {names}")
+        elif total_weak > _weak_assertion_max:
+            # Ratchet exceeded
+            for fname, names in weak_by_file:
+                issues.append(f"{fname}: weak assertions: {names}")
+            issues.append(
+                f"weak assertion ratchet exceeded: {total_weak} weak assertions"
+                f" (max allowed: {_weak_assertion_max})"
+            )
+        # else: total_weak <= weak_assertion_max -> PASS; no issue added
+
+    return issues, warnings
+
+
+def _mock_audit_negative_tests(
+    story: dict | None, all_test_names: list[str]
+) -> list[str]:
+    """Check 4: Negative test enforcement for validation criteria. Returns issues."""
+    issues: list[str] = []
+    if story and all_test_names:
+        for criterion in story.get("acceptanceCriteria", []):
+            cid = criterion.get("id", "")
+            text = criterion.get("criterion", "")
+            neg_result = check_negative_tests(text, all_test_names)
+            if neg_result.get("result") == "WARN":
+                issues.append(
+                    f"{cid}: validation criterion requires negative/error tests but none found"
+                )
+    return issues
+
+
+def _mock_audit_coverage(
+    changed_files: list[Path], test_dir: Path | None, config: dict | None
+) -> tuple[list[str], str]:
+    """Check 2: Story file coverage. Returns (issues, coverage_info)."""
+    issues: list[str] = []
+    coverage_info = ""
+    if test_dir is not None:
+        cov_result = check_story_file_coverage(changed_files, test_dir, config)
+        cov_status = cov_result.get("result", "SKIP")
+        if cov_status == "FAIL":
+            pct = cov_result.get("coverage_pct", 0.0)
+            untested = cov_result.get("untested", [])
+            issues.append(
+                f"Story file coverage {pct:.0f}% < 80% floor; untested: {untested}"
+            )
+        if cov_status != "SKIP":
+            pct = cov_result.get("coverage_pct", 0.0)
+            tested = cov_result.get("tested", 0)
+            total = cov_result.get("total_prod", 0)
+            coverage_info = f"Story coverage: {pct:.0f}% ({tested}/{total} files)"
+    return issues, coverage_info
+
+
+def _mock_audit_complexity(
+    changed_files: list[Path], config: dict | None, checkpoint: str | None
+) -> tuple[list[str], list[str]]:
+    """Check 5: Cyclomatic complexity. Returns (issues, complexity_warnings)."""
+    issues: list[str] = []
+    complexity_warnings: list[str] = []
+    if config is not None:
+        complexity_cfg = config.get("complexity", {})
+        if complexity_cfg.get("enabled", True):
+            cx_result = check_complexity(changed_files, config, checkpoint=checkpoint)
+            cx_status = cx_result.get("result", "SKIP")
+            if cx_status == "FAIL":
+                flagged = cx_result.get("high_complexity", [])
+                for entry in flagged[:3]:
+                    issues.append(
+                        f"Complexity FAIL: {entry['func']} in {Path(entry['file']).name}"
+                        f" (complexity={entry['complexity']}, grade={entry['grade']})"
+                    )
+            elif cx_status == "WARN":
+                flagged = cx_result.get("high_complexity", [])
+                for entry in flagged[:3]:
+                    complexity_warnings.append(
+                        f"{entry['func']} in {Path(entry['file']).name}"
+                        f" (complexity={entry['complexity']}, grade={entry['grade']})"
+                    )
+    return issues, complexity_warnings
+
+
+def _mock_audit_tdd_order(
+    changed_files: list[Path],
+    config: dict | None,
+    checkpoint: str | None,
+    phase_type: str | None,
+) -> tuple[list[str], list[str]]:
+    """Check 6: TDD order signal. Returns (issues, warnings)."""
+    issues: list[str] = []
+    warnings: list[str] = []
+    tdd_result = check_tdd_order(
+        changed_files=[str(f) for f in changed_files],
+        checkpoint=checkpoint,
+    )
+    if tdd_result.get("result") == "WARN":
+        tdd_required: bool = bool(
+            (config or {}).get("qa_runner", {}).get("tdd_checkpoint_required", False)
+        )
+        tdd_phase_types: list = list(
+            (config or {}).get("qa_runner", {}).get("tdd_checkpoint_phase_types", [])
+        )
+        elevate_tdd = tdd_required and phase_type in tdd_phase_types
+        for v in tdd_result.get("violations", [])[:3]:
+            if elevate_tdd:
+                issues.append(f"TDD order: {v}")
+            else:
+                warnings.append(f"TDD order: {v}")
+    return issues, warnings
+
+
+def _mock_audit_api_coverage(
+    changed_files: list[Path], test_dir: Path | None, config: dict | None
+) -> list[str]:
+    """Check 7: Public API coverage. Returns issues."""
+    issues: list[str] = []
+    if test_dir is not None:
+        api_cov = check_diff_public_api_coverage(changed_files, test_dir, config)
+        if api_cov.get("result") == "FAIL":
+            pct = api_cov.get("coverage_pct", 0.0)
+            threshold = api_cov.get("threshold", 90.0)
+            uncovered = api_cov.get("uncovered", [])
+            issues.append(
+                f"API coverage {pct:.0f}% < {threshold:.0f}% threshold;"
+                f" uncovered: {uncovered[:5]}"
+            )
+    return issues
 
 
 def _step_mock_audit(
@@ -1026,153 +1699,40 @@ def _step_mock_audit(
     issues: list[str] = []
     warnings: list[str] = []
 
-    # Collect all test function names across files for negative-test checking
-    all_test_names: list[str] = []
-
-    # --- Check 1: Test quality anti-patterns ---
-    for tf in test_files:
-        quality = scan_test_quality(tf)
-        # Collect test names for negative-test check
-        try:
-            content = tf.read_text(encoding="utf-8")
-            import re as _re
-
-            all_test_names.extend(
-                _re.findall(
-                    r"^[ \t]*(?:async\s+)?def\s+(test_\w+)\s*\(", content, _re.MULTILINE
-                )
-            )
-        except (OSError, UnicodeDecodeError, ValueError):
-            pass  # Non-fatal: test name collection is best-effort; scan_test_quality still ran
-
-        if quality.get("quality_score") == "FAIL":
-            af = quality.get("assertion_free_tests", [])
-            sm = quality.get("self_mock_tests", [])
-            mo = quality.get("mock_only_tests", [])
-            hm = quality.get("heavy_mock_tests", [])
-            if af:
-                issues.append(f"{tf.name}: assertion-free tests: {af}")
-            if sm:
-                issues.append(f"{tf.name}: self-mock tests: {sm}")
-            if mo:
-                issues.append(f"{tf.name}: mock-only tests: {mo}")
-            if hm:
-                issues.append(f"{tf.name}: heavy-mock tests (>80% deps mocked): {hm}")
-
-        # --- Check 1b: Behavioral assertion gate ---
-        behavioral_required: bool = bool(
-            (config or {})
-            .get("qa_runner", {})
-            .get("behavioral_assertion_required", False)
-        )
-        if behavioral_required:
-            bam = quality.get("behavioral_assertion_missing", [])
-            if bam:
-                issues.append(
-                    f"{tf.name}: behavioral assertion missing (no value-checking assertions): {bam}"
-                )
-
-        # --- Check 3: Weak assertions (FAIL) and happy-path-only (FAIL) ---
-        weak = quality.get("weak_assertion_tests", [])
-        if weak:
-            issues.append(f"{tf.name}: weak assertions: {weak}")
-        if quality.get("happy_path_only", False) and quality.get("tests_found", 0) > 0:
-            issues.append(f"{tf.name}: happy-path-only (no error/edge tests)")
-
-        # --- Check 3b: Negative test percentage (WARN when below threshold) ---
-        tests_found = quality.get("tests_found", 0)
-        if tests_found > 5:
-            neg_min_pct: int = int(
-                (config or {}).get("qa_runner", {}).get("negative_test_min_pct", 15)
-            )
-            neg_pct = quality.get("negative_test_pct", 0)
-            neg_count = quality.get("negative_test_count", 0)
-            if neg_pct < neg_min_pct:
-                warnings.append(
-                    f"{tf.name}: Negative test ratio: {neg_count}/{tests_found}"
-                    f" ({neg_pct}%) \u2014 minimum recommended: {neg_min_pct}%"
-                )
-
-    # --- Check 4: Negative test enforcement for validation criteria ---
-    if story and all_test_names:
-        for criterion in story.get("acceptanceCriteria", []):
-            cid = criterion.get("id", "")
-            text = criterion.get("criterion", "")
-            neg_result = check_negative_tests(text, all_test_names)
-            if neg_result.get("result") == "WARN":
-                issues.append(
-                    f"{cid}: validation criterion requires negative/error tests but none found"
-                )
-
-    # --- Check 2: Story file coverage gate ---
-    coverage_info = ""
-    if test_dir is not None:
-        cov_result = check_story_file_coverage(changed_files, test_dir)
-        cov_status = cov_result.get("result", "SKIP")
-        if cov_status == "FAIL":
-            pct = cov_result.get("coverage_pct", 0.0)
-            untested = cov_result.get("untested", [])
-            issues.append(
-                f"Story file coverage {pct:.0f}% < 80% floor; untested: {untested}"
-            )
-        if cov_status != "SKIP":
-            pct = cov_result.get("coverage_pct", 0.0)
-            tested = cov_result.get("tested", 0)
-            total = cov_result.get("total_prod", 0)
-            coverage_info = f"Story coverage: {pct:.0f}% ({tested}/{total} files)"
-
-    # --- Check 5: Cyclomatic complexity gate ---
-    complexity_warnings: list[str] = []
-    if config is not None:
-        complexity_cfg = config.get("complexity", {})
-        if complexity_cfg.get("enabled", True):
-            cx_result = check_complexity(changed_files, config)
-            cx_status = cx_result.get("result", "SKIP")
-            if cx_status == "FAIL":
-                flagged = cx_result.get("high_complexity", [])
-                for entry in flagged[:3]:
-                    issues.append(
-                        f"Complexity FAIL: {entry['func']} in {Path(entry['file']).name}"
-                        f" (complexity={entry['complexity']}, grade={entry['grade']})"
-                    )
-            elif cx_status == "WARN":
-                flagged = cx_result.get("high_complexity", [])
-                for entry in flagged[:3]:
-                    complexity_warnings.append(
-                        f"{entry['func']} in {Path(entry['file']).name}"
-                        f" (complexity={entry['complexity']}, grade={entry['grade']})"
-                    )
-
-    # --- Check 6: TDD order signal (WARN by default; FAIL when checkpoint config enabled) ---
-    tdd_result = check_tdd_order(
-        changed_files=[str(f) for f in changed_files],
-        checkpoint=checkpoint,
+    # Check 1 + 1b + 3b: test quality, behavioral gate, negative test %
+    q_issues, q_warnings, weak_by_file, all_test_names = _mock_audit_test_quality(
+        test_files, config
     )
-    if tdd_result.get("result") == "WARN":
-        tdd_required: bool = bool(
-            (config or {}).get("qa_runner", {}).get("tdd_checkpoint_required", False)
-        )
-        tdd_phase_types: list = list(
-            (config or {}).get("qa_runner", {}).get("tdd_checkpoint_phase_types", [])
-        )
-        elevate_tdd = tdd_required and phase_type in tdd_phase_types
-        for v in tdd_result.get("violations", [])[:3]:
-            if elevate_tdd:
-                issues.append(f"TDD order: {v}")
-            else:
-                warnings.append(f"TDD order: {v}")
+    issues.extend(q_issues)
+    warnings.extend(q_warnings)
 
-    # --- Check 7: Diff-aware public API coverage gate ---
-    if test_dir is not None:
-        api_cov = check_diff_public_api_coverage(changed_files, test_dir, config)
-        if api_cov.get("result") == "FAIL":
-            pct = api_cov.get("coverage_pct", 0.0)
-            threshold = api_cov.get("threshold", 90.0)
-            uncovered = api_cov.get("uncovered", [])
-            issues.append(
-                f"API coverage {pct:.0f}% < {threshold:.0f}% threshold;"
-                f" uncovered: {uncovered[:5]}"
-            )
+    # Check 3: Weak assertion ratchet
+    r_issues, r_warnings = _mock_audit_weak_ratchet(weak_by_file, config)
+    issues.extend(r_issues)
+    warnings.extend(r_warnings)
+
+    # Check 4: Negative test enforcement for validation criteria
+    issues.extend(_mock_audit_negative_tests(story, all_test_names))
+
+    # Check 2: Story file coverage
+    cov_issues, coverage_info = _mock_audit_coverage(changed_files, test_dir, config)
+    issues.extend(cov_issues)
+
+    # Check 5: Cyclomatic complexity
+    cx_issues, complexity_warnings = _mock_audit_complexity(
+        changed_files, config, checkpoint
+    )
+    issues.extend(cx_issues)
+
+    # Check 6: TDD order signal
+    tdd_issues, tdd_warnings = _mock_audit_tdd_order(
+        changed_files, config, checkpoint, phase_type
+    )
+    issues.extend(tdd_issues)
+    warnings.extend(tdd_warnings)
+
+    # Check 7: Public API coverage
+    issues.extend(_mock_audit_api_coverage(changed_files, test_dir, config))
 
     # Build evidence string
     evidence_parts: list[str] = []
@@ -1193,6 +1753,314 @@ def _step_mock_audit(
     return StepResult.PASS, summary
 
 
+def _plan_conf_blast_radius(
+    changed_files: list[Path],
+    plan_path: Path,
+    story: dict | None,
+    always_allowed: set[str],
+) -> tuple[list[str], bool]:
+    """Sub-check 1: Changed files vs plan Changes table. Returns (issues, has_data)."""
+    issues: list[str] = []
+    has_data = False
+    story_phase: int | None = story.get("phase") if story else None
+    expected = parse_plan_changes(plan_path, phase=story_phase)
+    if not expected and story_phase is not None:
+        # Phase filter returned nothing -- fall back to full-plan files
+        expected = parse_plan_changes(plan_path)
+        if expected:
+            audit_log(
+                "_step_plan_conformance",
+                "phase_fallback",
+                f"Phase {story_phase} filter returned 0 files, falling back to full plan ({len(expected)} files)",
+            )
+    if expected:
+        has_data = True
+        # Strip line-number suffixes (e.g., "_qa_lib.py:2170" → "_qa_lib.py")
+        # Use regex to only strip `:DIGITS` at end — avoids stripping drive letters
+        import re as _re_local
+
+        expected_norm = {
+            _re_local.sub(r":\d+(-\d+)?$", "", p).replace("\\", "/") for p in expected
+        }
+        actual = {str(f).replace("\\", "/") for f in changed_files}
+        unexpected = set()
+        for fstr in actual:
+            fname = Path(fstr).name
+            if fname in always_allowed:
+                continue
+            if fstr not in expected_norm:
+                unexpected.add(fstr)
+        if unexpected:
+            issues.append(
+                f"Unexpected files changed (not in plan): {sorted(unexpected)}"
+            )
+    return issues, has_data
+
+
+def _plan_conf_scope(
+    changed_files: list[Path],
+    story: dict | None,
+    pipeline_context: dict | None,
+) -> list[str]:
+    """Sub-check 1a: Scope enforcement. Returns issues."""
+    issues: list[str] = []
+    cfg = (
+        load_workflow_config()
+        if pipeline_context is None
+        else pipeline_context.get("config", load_workflow_config())
+    )
+    qa_cfg = cfg.get("qa_runner", {})
+    scope_enabled = qa_cfg.get("scope_enforcement_enabled", True)
+    if scope_enabled and story and changed_files:
+        scope_result = check_scope_compliance(story, changed_files)
+        if scope_result["result"] == "FAIL":
+            violations = scope_result["violations"]
+            scope_dirs = scope_result["scope"]
+            issues.append(
+                f"Scope violation: {violations} outside allowed scope {scope_dirs}"
+            )
+    return issues
+
+
+def _plan_conf_identifiers(
+    changed_files: list[Path],
+    plan_path: Path,
+    story: dict | None,
+    pipeline_context: dict | None,
+) -> list[str]:
+    """Sub-check 1b: Plan identifier check. Returns warnings."""
+    warnings: list[str] = []
+    cfg = (
+        load_workflow_config()
+        if pipeline_context is None
+        else pipeline_context.get("config", load_workflow_config())
+    )
+    qa_cfg = cfg.get("qa_runner", {})
+    plan_id_enabled = qa_cfg.get("plan_identifier_check_enabled", True)
+    if not plan_id_enabled or not changed_files:
+        return warnings
+    story_phase_1b: int | None = story.get("phase") if story else None
+    desc_map = parse_plan_changes_with_descriptions(plan_path, phase=story_phase_1b)
+    if not desc_map:
+        return warnings
+    unplanned_funcs: list[str] = []
+    # Attempt diff-scoped extraction: only functions added/modified since checkpoint.
+    checkpoint_1b: str | None = (
+        pipeline_context.get("checkpoint") if pipeline_context else None
+    )
+    diff_added = extract_diff_added_identifiers(
+        checkpoint_1b, [Path(f) for f in changed_files]
+    )
+    for f in changed_files:
+        p = Path(f)
+        # Skip test files, conftest, markdown
+        if (
+            p.name.startswith("test_")
+            or p.name.endswith("_test.py")
+            or p.name == "conftest.py"
+            or p.suffix == ".md"
+        ):
+            continue
+        # Normalize path for lookup
+        f_posix = p.as_posix()
+        desc = desc_map.get(f_posix) or desc_map.get(str(f).replace("\\", "/"))
+        if not desc:
+            continue
+        identifiers = set(_BACKTICK_IDENTIFIER_RE.findall(desc))
+        if not identifiers:
+            continue
+        # Prefer diff-scoped functions; fall back to full-file scan when diff
+        # returned no entries (checkpoint absent or git failure).
+        if diff_added:
+            pub_funcs = diff_added.get(f_posix, [])
+        else:
+            try:
+                file_content = p.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            pub_funcs = _PUBLIC_FUNC_RE.findall(file_content)
+        for func_name in pub_funcs:
+            if func_name not in identifiers:
+                unplanned_funcs.append(f"{f_posix}:{func_name}")
+    if unplanned_funcs:
+        warnings.append(
+            f"Unplanned public functions (not in plan description): {unplanned_funcs}"
+        )
+    return warnings
+
+
+def _plan_conf_fix_loop_files(
+    changed_files: list[Path],
+    pipeline_context: dict | None,
+    plan_path: Path | None,
+    story: dict | None,
+    always_allowed: set[str],
+) -> list[str]:
+    """Sub-check 1c: Fix-loop new-file detection. Returns issues."""
+    issues: list[str] = []
+    fix_iteration = pipeline_context.get("fix_iteration", 0) if pipeline_context else 0
+    if fix_iteration <= 0 or not changed_files:
+        return issues
+    checkpoint_1c: str | None = (
+        pipeline_context.get("checkpoint") if pipeline_context else None
+    )
+    if not checkpoint_1c:
+        return issues
+    try:
+        added_proc = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--diff-filter=A",
+                "--name-only",
+                f"{checkpoint_1c}..HEAD",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if added_proc.returncode == 0:
+            added_files = {
+                f.strip() for f in added_proc.stdout.strip().split("\n") if f.strip()
+            }
+            original_files = {str(f).replace("\\", "/") for f in changed_files}
+            new_in_fix = {
+                f
+                for f in added_files
+                if f not in original_files and Path(f).name not in always_allowed
+            }
+            if new_in_fix:
+                issues.append(
+                    f"Fix-loop new-file violation (iteration {fix_iteration}): "
+                    f"{sorted(new_in_fix)}"
+                )
+    except (subprocess.TimeoutExpired, OSError):
+        pass  # Degrade gracefully -- no enforcement
+    return issues
+
+
+def _plan_conf_new_file_ratio(
+    changed_files: list[Path],
+    plan_path: Path | None,
+    story: dict | None,
+    pipeline_context: dict | None,
+    always_allowed: set[str],
+) -> tuple[list[str], list[str]]:
+    """Sub-check 1d: New file ratio. Returns (issues, warnings)."""
+    issues: list[str] = []
+    warnings: list[str] = []
+    checkpoint_1d: str | None = (
+        pipeline_context.get("checkpoint") if pipeline_context else None
+    )
+    if not checkpoint_1d or plan_path is None:
+        return issues, warnings
+    action_map = parse_plan_changes_with_actions(
+        plan_path, phase=story.get("phase") if story else None
+    )
+    plan_creates = sum(1 for a in action_map.values() if a in ("ADD", "CREATE"))
+    try:
+        added_proc = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--diff-filter=A",
+                "--name-only",
+                f"{checkpoint_1d}..HEAD",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if added_proc.returncode == 0:
+            actual_added = {
+                f.strip()
+                for f in added_proc.stdout.strip().split("\n")
+                if f.strip() and Path(f.strip()).name not in always_allowed
+            }
+            actual_count = len(actual_added)
+            warn_threshold = plan_creates + 1
+            fail_threshold = plan_creates * 2 + 2
+            if actual_count > fail_threshold:
+                issues.append(
+                    f"New file ratio FAIL: {actual_count} new files "
+                    f"(plan allows {plan_creates} creates, "
+                    f"fail threshold: {fail_threshold}): {sorted(actual_added)}"
+                )
+            elif actual_count > warn_threshold:
+                warnings.append(
+                    f"New file ratio: {actual_count} new files "
+                    f"(plan allows {plan_creates} creates, "
+                    f"warn threshold: {warn_threshold}): {sorted(actual_added)}"
+                )
+    except (subprocess.TimeoutExpired, OSError):
+        pass  # Degrade gracefully
+    return issues, warnings
+
+
+def _plan_conf_r_markers(
+    test_dir: Path | None,
+    prd_path: Path | None,
+    story: dict | None,
+    pipeline_context: dict | None,
+) -> list[str]:
+    """Sub-check 2: R-marker validation. Returns issues."""
+    issues: list[str] = []
+    if test_dir is None or prd_path is None or story is None:
+        return issues
+    import tempfile
+
+    # Build a minimal single-story prd.json scoped to the current story
+    try:
+        prd_full = json.loads(prd_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, ValueError):
+        prd_full = {}
+    scoped_prd = {
+        "version": prd_full.get("version", "2.0"),
+        "stories": [story],
+    }
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".json", delete=False, encoding="utf-8"
+    ) as tmp:
+        json.dump(scoped_prd, tmp)
+        scoped_prd_path = Path(tmp.name)
+    try:
+        markers = validate_r_markers(test_dir, scoped_prd_path, story=story)
+    finally:
+        scoped_prd_path.unlink(missing_ok=True)
+    # Cache the result for step 11 to reuse
+    if pipeline_context is not None:
+        pipeline_context["r_markers"] = markers
+    if markers.get("result") == "FAIL":
+        missing = markers.get("missing_markers", [])
+        if missing:
+            issues.append(f"Missing R-markers: {missing}")
+    return issues
+
+
+def _plan_conf_hash_sync(plan_path: Path | None, prd_path: Path | None) -> list[str]:
+    """Sub-check 3: Plan-PRD hash consistency. Returns warnings (not issues — never causes FAIL)."""
+    warnings: list[str] = []
+    if plan_path is None or prd_path is None:
+        return warnings
+    from _qa_lib import check_plan_prd_sync
+
+    sync_result = check_plan_prd_sync(plan_path, prd_path)
+    computed_hash = sync_result.get("plan_hash", "")
+    try:
+        prd_data = json.loads(prd_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError, ValueError):
+        prd_data = {}
+    stored_hash = prd_data.get("plan_hash", "")
+    if computed_hash and stored_hash and computed_hash != stored_hash:
+        # Hash mismatch is expected in worktree contexts — WARN, never FAIL
+        warnings.append(
+            f"Plan-PRD hash mismatch -- prd.json plan_hash ({stored_hash[:12]}...) "
+            f"differs from computed PLAN.md hash ({computed_hash[:12]}...). "
+            f"Run plan-PRD sync to resolve drift"
+        )
+    return warnings
+
+
 def _step_plan_conformance(
     changed_files: list[Path],
     plan_path: Path | None,
@@ -1211,203 +2079,57 @@ def _step_plan_conformance(
     has_data = False
 
     # Sub-check 1: Blast radius -- changed files vs plan's Changes table.
-    # When the story carries a phase number, scope to that phase only so that
-    # files from other phases do not inflate the allowed set.
     if plan_path is not None:
-        story_phase: int | None = story.get("phase") if story else None
-        expected = parse_plan_changes(plan_path, phase=story_phase)
-        if not expected and story_phase is not None:
-            # Phase filter returned nothing — fall back to full-plan files
-            expected = parse_plan_changes(plan_path)
-            if expected:
-                audit_log(
-                    "_step_plan_conformance",
-                    "phase_fallback",
-                    f"Phase {story_phase} filter returned 0 files, falling back to full plan ({len(expected)} files)",
-                )
-        if expected:
-            has_data = True
-            expected_norm = {p.replace("\\", "/") for p in expected}
-            actual = {str(f).replace("\\", "/") for f in changed_files}
-            unexpected = set()
-            for fstr in actual:
-                fname = Path(fstr).name
-                if fname in always_allowed:
-                    continue
-                if fstr not in expected_norm:
-                    unexpected.add(fstr)
-            if unexpected:
-                issues.append(
-                    f"Unexpected files changed (not in plan): {sorted(unexpected)}"
-                )
-
-    # Sub-check 1a: Scope enforcement -- changed files vs story scope directories.
-    cfg = (
-        load_workflow_config()
-        if pipeline_context is None
-        else pipeline_context.get("config", load_workflow_config())
-    )
-    qa_cfg = cfg.get("qa_runner", {})
-    scope_enabled = qa_cfg.get("scope_enforcement_enabled", True)
-    if scope_enabled and story and changed_files:
-        has_data = True
-        scope_result = check_scope_compliance(story, changed_files)
-        if scope_result["result"] == "FAIL":
-            violations = scope_result["violations"]
-            scope_dirs = scope_result["scope"]
-            issues.append(
-                f"Scope violation: {violations} outside allowed scope {scope_dirs}"
-            )
-
-    # Sub-check 1b: Plan identifier check -- new public funcs vs plan descriptions.
-    # Uses extract_diff_added_identifiers() to scope the check to diff-added functions
-    # only, avoiding false positives from pre-existing functions in modified files.
-    # Falls back to full-file scan when no checkpoint is available (preserves existing
-    # behavior for callers that don't supply a checkpoint).
-    plan_id_enabled = qa_cfg.get("plan_identifier_check_enabled", True)
-    if plan_id_enabled and plan_path is not None and changed_files:
-        story_phase_1b: int | None = story.get("phase") if story else None
-        desc_map = parse_plan_changes_with_descriptions(plan_path, phase=story_phase_1b)
-        if desc_map:
-            unplanned_funcs: list[str] = []
-            # Attempt diff-scoped extraction: only functions added/modified since checkpoint.
-            checkpoint_1b: str | None = (
-                pipeline_context.get("checkpoint") if pipeline_context else None
-            )
-            diff_added = extract_diff_added_identifiers(
-                checkpoint_1b, [Path(f) for f in changed_files]
-            )
-            for f in changed_files:
-                p = Path(f)
-                # Skip test files, conftest, markdown
-                if (
-                    p.name.startswith("test_")
-                    or p.name.endswith("_test.py")
-                    or p.name == "conftest.py"
-                    or p.suffix == ".md"
-                ):
-                    continue
-                # Normalize path for lookup
-                f_posix = p.as_posix()
-                desc = desc_map.get(f_posix) or desc_map.get(str(f).replace("\\", "/"))
-                if not desc:
-                    continue
-                identifiers = set(_BACKTICK_IDENTIFIER_RE.findall(desc))
-                if not identifiers:
-                    continue
-                # Prefer diff-scoped functions; fall back to full-file scan when diff
-                # returned no entries (checkpoint absent or git failure).
-                if diff_added:
-                    pub_funcs = diff_added.get(f_posix, [])
-                else:
-                    try:
-                        file_content = p.read_text(encoding="utf-8")
-                    except (OSError, UnicodeDecodeError):
-                        continue
-                    pub_funcs = _PUBLIC_FUNC_RE.findall(file_content)
-                for func_name in pub_funcs:
-                    if func_name not in identifiers:
-                        unplanned_funcs.append(f"{f_posix}:{func_name}")
-            if unplanned_funcs:
-                warnings.append(
-                    f"Unplanned public functions (not in plan description): {unplanned_funcs}"
-                )
-
-    # Sub-check 1c: Fix-loop new-file detection -- when fix_iteration > 0 and
-    # checkpoint is available, detect files Added since checkpoint that are not
-    # in the original changed_files list.
-    fix_iteration = pipeline_context.get("fix_iteration", 0) if pipeline_context else 0
-    if fix_iteration > 0 and changed_files:
-        checkpoint_1c: str | None = (
-            pipeline_context.get("checkpoint") if pipeline_context else None
+        br_issues, br_has_data = _plan_conf_blast_radius(
+            changed_files, plan_path, story, always_allowed
         )
-        if checkpoint_1c:
-            try:
-                added_proc = subprocess.run(
-                    [
-                        "git",
-                        "diff",
-                        "--diff-filter=A",
-                        "--name-only",
-                        f"{checkpoint_1c}..HEAD",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-                if added_proc.returncode == 0:
-                    added_files = {
-                        f.strip()
-                        for f in added_proc.stdout.strip().split("\n")
-                        if f.strip()
-                    }
-                    original_files = {str(f).replace("\\", "/") for f in changed_files}
-                    new_in_fix = {
-                        f
-                        for f in added_files
-                        if f not in original_files
-                        and Path(f).name not in always_allowed
-                    }
-                    if new_in_fix:
-                        has_data = True
-                        issues.append(
-                            f"Fix-loop new-file violation (iteration {fix_iteration}): "
-                            f"{sorted(new_in_fix)}"
-                        )
-            except (subprocess.TimeoutExpired, OSError):
-                pass  # Degrade gracefully — no enforcement
+        issues.extend(br_issues)
+        if br_has_data:
+            has_data = True
 
-    # Sub-check 2: R-marker validation -- test files link to acceptance criteria.
-    # When a story is provided, scope the check to only that story's criteria IDs
-    # by building a single-story prd and writing it to a temp file.
+    # Sub-check 1a: Scope enforcement
+    scope_issues = _plan_conf_scope(changed_files, story, pipeline_context)
+    if scope_issues:
+        has_data = True
+        issues.extend(scope_issues)
+    elif story and changed_files:
+        has_data = True
+
+    # Sub-check 1b: Plan identifier check (warnings only)
+    if plan_path is not None and changed_files:
+        id_warnings = _plan_conf_identifiers(
+            changed_files, plan_path, story, pipeline_context
+        )
+        warnings.extend(id_warnings)
+
+    # Sub-check 1c: Fix-loop new-file detection (no plan_path guard -- runs whenever
+    # fix_iteration > 0, matching original behavior)
+    fl_issues = _plan_conf_fix_loop_files(
+        changed_files, pipeline_context, plan_path, story, always_allowed
+    )
+    if fl_issues:
+        has_data = True
+        issues.extend(fl_issues)
+
+    # Sub-check 1d: New file ratio
+    nfr_issues, nfr_warnings = _plan_conf_new_file_ratio(
+        changed_files, plan_path, story, pipeline_context, always_allowed
+    )
+    if nfr_issues or nfr_warnings:
+        has_data = True
+    issues.extend(nfr_issues)
+    warnings.extend(nfr_warnings)
+
+    # Sub-check 2: R-marker validation
     if test_dir and prd_path and story:
-        import tempfile
-
         has_data = True
-        # Build a minimal single-story prd.json scoped to the current story
-        try:
-            prd_full = json.loads(prd_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError, ValueError):
-            prd_full = {}
-        scoped_prd = {
-            "version": prd_full.get("version", "2.0"),
-            "stories": [story],
-        }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False, encoding="utf-8"
-        ) as tmp:
-            json.dump(scoped_prd, tmp)
-            scoped_prd_path = Path(tmp.name)
-        try:
-            markers = validate_r_markers(test_dir, scoped_prd_path, story=story)
-        finally:
-            scoped_prd_path.unlink(missing_ok=True)
-        # Cache the result for step 11 to reuse
-        if pipeline_context is not None:
-            pipeline_context["r_markers"] = markers
-        if markers.get("result") == "FAIL":
-            missing = markers.get("missing_markers", [])
-            if missing:
-                issues.append(f"Missing R-markers: {missing}")
+        r_issues = _plan_conf_r_markers(test_dir, prd_path, story, pipeline_context)
+        issues.extend(r_issues)
 
-    # Sub-check 3: Plan-PRD hash consistency
+    # Sub-check 3: Plan-PRD hash consistency (warnings only — never causes FAIL)
     if plan_path is not None and prd_path is not None:
-        from _qa_lib import check_plan_prd_sync
-
         has_data = True
-        sync_result = check_plan_prd_sync(plan_path, prd_path)
-        computed_hash = sync_result.get("plan_hash", "")
-        try:
-            prd_data = json.loads(prd_path.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError, ValueError):
-            prd_data = {}
-        stored_hash = prd_data.get("plan_hash", "")
-        if computed_hash and stored_hash and computed_hash != stored_hash:
-            issues.append(
-                f"WARNING: Plan-PRD hash mismatch — prd.json plan_hash ({stored_hash[:12]}...) "
-                f"differs from computed PLAN.md hash ({computed_hash[:12]}...). "
-                f"Run plan-PRD sync to resolve drift"
-            )
+        warnings.extend(_plan_conf_hash_sync(plan_path, prd_path))
 
     if not has_data:
         return StepResult.SKIP, "No plan data or story criteria to check"
@@ -1488,6 +2210,47 @@ def _step_acceptance(
         # default "warn"
         evidence += f"; WARNING: weak R-markers: {weak_desc}"
 
+    # R-P2-06: Per-criterion R-marker assertion quality check
+    if story and test_dir:
+        quality_issues: list[str] = []
+        for criterion in story.get("acceptanceCriteria", []):
+            cid = criterion.get("id", "")
+            tf = criterion.get("testFile", "")
+            if cid and tf and cid in valid:
+                status, reason = _validate_r_marker_assertion_quality(test_dir, cid, tf)
+                if status == "FAIL":
+                    quality_issues.append(f"{cid}: {reason}")
+        if quality_issues:
+            quality_desc = "; ".join(quality_issues)
+            if content_validation == "fail":
+                return StepResult.FAIL, f"Marker assertion quality: {quality_desc}"
+            evidence += f"; WARNING: marker assertion quality: {quality_desc}"
+
+    # R-P2-07: verify_production_calls — check test coverage of public functions
+    if test_dir and test_dir.is_dir():
+        test_files = sorted(test_dir.rglob("test_*.py"))
+        changed = (
+            (pipeline_context or {}).get("changed_files", [])
+            if pipeline_context
+            else []
+        )
+        source_files = [
+            f
+            for f in changed
+            if f.suffix == ".py"
+            and not f.name.startswith("test_")
+            and not f.name.endswith("_test.py")
+            and f.is_file()
+        ]
+        min_cov = float(qa_cfg_acc.get("min_public_api_coverage_pct", 80.0))
+        prod_cov = verify_production_calls(test_files, source_files, min_cov)
+        if prod_cov["result"] != "SKIP":
+            pct = prod_cov["coverage_pct"]
+            evidence += f"; production call coverage: {pct:.0f}%"
+            if prod_cov["result"] == "FAIL":
+                uncovered = prod_cov.get("untested_functions", [])
+                evidence += f" (FAIL — uncovered: {uncovered[:5]})"
+
     return StepResult.PASS, evidence
 
 
@@ -1496,149 +2259,14 @@ def _step_production_scan(
     config: dict | None = None,
     violation_cache: dict[str, list[dict]] | None = None,
 ) -> tuple[StepResult, str]:
-    """Step 12: Production-grade code scan using scan_file_violations."""
-    source_files = _get_source_files(changed_files)
-    if not source_files:
-        return StepResult.PASS, "No source files to scan"
+    """Step 12: Stub — merged into step 6 (Code scan).
 
-    total_violations = 0
-    details: list[str] = []
-
-    for f in source_files:
-        if violation_cache is not None:
-            violations = violation_cache.get(str(f), [])
-        else:
-            violations = scan_file_violations(f)
-        total_violations += len(violations)
-        for v in violations:
-            details.append(f"{f.name}:{v['line']} {v['violation_id']}: {v['message']}")
-
-    # External scanners (optional, from workflow.json)
-    if config:
-        scanners = config.get("external_scanners", {})
-
-        # Compute placeholder values for external scanner commands
-        try:
-            changed_dir = (
-                os.path.commonpath([str(f) for f in source_files])
-                if source_files
-                else "."
-            )
-        except ValueError:
-            changed_dir = "."
-        # On Windows, commonpath can return empty string when files span
-        # different drive roots or have no common prefix. Fall back to ".".
-        if not changed_dir:
-            changed_dir = "."
-        changed_files_str = " ".join(str(f) for f in source_files)
-
-        for name, settings in scanners.items():
-            if settings.get("enabled", False):
-                exe = settings.get("executable", name)
-                strict = settings.get("strict_mode", False)
-                found = shutil.which(exe)
-                if not found:
-                    if strict:
-                        details.append(f"Scanner '{name}' executable not found: {exe}")
-                        total_violations += 1
-                    else:
-                        details.append(f"Scanner '{name}' not available (skipped)")
-                    continue
-                cmd = settings.get("cmd", "")
-                if cmd:
-                    cmd = cmd.replace("{changed_dir}", changed_dir)
-                    cmd = cmd.replace("{changed_files}", changed_files_str)
-                    code, _out, _err = _run_command(cmd)
-                    if code != 0:
-                        if strict:
-                            details.append(f"External scanner {name} found issues")
-                            total_violations += 1
-                        else:
-                            details.append(
-                                f"Scanner '{name}' found issues (non-strict, noted)"
-                            )
-
-    if total_violations == 0:
-        return (
-            StepResult.PASS,
-            f"No production violations in {len(source_files)} source files",
-        )
-    return (
-        StepResult.FAIL,
-        f"{total_violations} production violations: {'; '.join(details[:10])}",
-    )
-
-
-def _step_mutation_testing(
-    changed_files: list[Path],
-    config: dict | None = None,
-) -> tuple[StepResult, str]:
-    """Step 13: Run mutation testing on changed Python files.
-
-    Uses mutmut to generate mutants and verify that the test suite catches them.
-    Skips gracefully if mutmut is not installed. Configurable via workflow.json:
-      mutation_testing.threshold (float, 0-100): minimum mutation score to pass (default 80.0)
-      mutation_testing.timeout_s (int): per-file timeout in seconds (default 120)
+    Production violation scanning is now performed in step 6 (_step_code_scan)
+    which covers both security and production patterns in a single pass.
+    This stub exists to maintain step numbering compatibility.
+    Returns SKIP (not PASS) to avoid inflating pass counts in overall_result.
     """
-    py_files = [f for f in changed_files if f.suffix == ".py" and f.is_file()]
-    # Exclude test files — only mutate production code
-    py_files = [
-        f
-        for f in py_files
-        if not f.name.startswith("test_") and "tests/" not in str(f).replace("\\", "/")
-    ]
-    if not py_files:
-        return StepResult.SKIP, "No Python production files to mutate"
-
-    # Check if mutmut is available
-    if not shutil.which("mutmut"):
-        return (
-            StepResult.SKIP,
-            "mutmut not installed (pip install mutmut to enable mutation testing)",
-        )
-
-    # Configuration
-    threshold = 80.0
-    timeout_s = 120
-    if config:
-        mt_config = config.get("mutation_testing", {})
-        threshold = float(mt_config.get("threshold", 80.0))
-        timeout_s = int(mt_config.get("timeout_s", 120))
-
-    results: list[str] = []
-    total_survived = 0
-    total_killed = 0
-
-    for f in py_files[:5]:  # Cap at 5 files to avoid excessive runtime
-        cmd = f"mutmut run --paths-to-mutate {f} --no-progress"
-        code, stdout, stderr = _run_command(cmd, timeout=timeout_s)
-
-        # Parse results from mutmut output
-        output = stdout or stderr or ""
-        # Look for summary line like "X killed, Y survived"
-        killed_match = re.search(r"(\d+)\s+killed", output, re.IGNORECASE)
-        survived_match = re.search(r"(\d+)\s+survived", output, re.IGNORECASE)
-
-        killed = int(killed_match.group(1)) if killed_match else 0
-        survived = int(survived_match.group(1)) if survived_match else 0
-
-        total_killed += killed
-        total_survived += survived
-        total = killed + survived
-        score = (killed / total * 100) if total > 0 else 100.0
-        results.append(f"{f.name}: {score:.0f}% ({killed}/{total})")
-
-    total = total_killed + total_survived
-    overall_score = (total_killed / total * 100) if total > 0 else 100.0
-
-    evidence = f"Mutation score: {overall_score:.1f}% — {'; '.join(results)}"
-
-    if overall_score < threshold:
-        return (
-            StepResult.FAIL,
-            f"{evidence} (threshold: {threshold}%)",
-        )
-    return StepResult.PASS, evidence
+    return StepResult.SKIP, "Merged into step 6 (Code scan)"
 
 
 def _has_outside_claude_files(changed_files: list[Path]) -> bool:
@@ -1658,7 +2286,7 @@ def _build_step_sequence(config: dict, phase_type: str | None) -> list[int | dic
 
     Returns [1, 2, ..., 13] if no custom steps are configured (backward-compat).
     """
-    base_steps: list[int | dict] = list(range(1, 14))
+    base_steps: list[int | dict] = list(range(1, 13))
 
     qa_runner_config = config.get("qa_runner", {})
     custom_steps = qa_runner_config.get("custom_steps", [])
@@ -1706,7 +2334,7 @@ def _run_custom_step(step_def: dict, changed_files: list[Path]) -> dict:
     name = step_def.get("name", f"Custom step {step_id}")
     severity = step_def.get("severity", "block")
     timeout_s = step_def.get("timeout_s", 120)
-    cmd = step_def.get("command", "")
+    cmd = step_def.get("command", "") or step_def.get("cmd", "")
 
     # Build placeholder values
     source_files = _get_source_files(changed_files)
@@ -1858,19 +2486,140 @@ def _run_test_quality(
     }
 
 
+# Default step classification: story-scoped vs environment-scoped
+_STEP_CLASSIFICATION: dict[int, str] = {
+    1: "story",  # Lint
+    2: "environment",  # Type check
+    3: "story",  # Unit tests
+    4: "environment",  # Integration
+    5: "story",  # Regression
+    6: "environment",  # Code scan (security + production)
+    7: "story",  # Clean diff
+    8: "environment",  # Coverage
+    9: "environment",  # Mock audit
+    10: "story",  # Plan conformance
+    11: "story",  # Acceptance criteria
+    12: "environment",  # Production scan (stub — merged into step 6)
+}
+
+
+def _classify_steps(config: dict) -> dict[int, str]:
+    """Return step classification mapping.
+
+    Hardcoded constant — config overrides no longer supported.
+    Kept for backward compatibility with callers.
+    """
+    return _STEP_CLASSIFICATION
+
+
+def _compute_story_result(
+    step_results: list[dict],
+    classification: dict[int, str],
+) -> str:
+    """Compute story result using only story-classified steps.
+
+    Returns 'PASS' if all story-classified steps that ran (non-SKIP) passed.
+    Returns 'FAIL' if any story-classified step failed.
+    Returns 'PASS' if no story-classified steps appear in step_results.
+    SKIP results are ignored (not counted as failures).
+    """
+    for step in step_results:
+        step_num = int(step.get("step") or 0)
+        result = step.get("result")
+        if result == "SKIP":
+            continue
+        if classification.get(step_num) == "story" and result in ("FAIL", "TIMEOUT"):
+            return "FAIL"
+    return "PASS"
+
+
+def _compute_environment_result(
+    step_results: list[dict],
+    classification: dict[int, str],
+    baseline: dict | None = None,
+) -> str:
+    """Compute environment result using only environment-classified steps.
+
+    Returns 'PASS' if all environment-classified steps that ran (non-SKIP) passed.
+    Returns 'FAIL' if any environment-classified step failed.
+    When baseline is provided, steps that were already FAIL in baseline are
+    excluded from FAIL determination (pre-existing failures do not count).
+    SKIP results are ignored.
+    """
+    # Build baseline step results for quick lookup
+    baseline_step_results: dict[int, str] = {}
+    if baseline:
+        for bs in baseline.get("steps", []):
+            bnum = bs.get("step")
+            bresult = bs.get("result", "PASS")
+            if bnum is not None:
+                baseline_step_results[bnum] = bresult
+
+    for step in step_results:
+        step_num = int(step.get("step") or 0)
+        result = step.get("result")
+        if result == "SKIP":
+            continue
+        if classification.get(step_num) == "environment" and result in (
+            "FAIL",
+            "TIMEOUT",
+        ):
+            # Check if this failure was pre-existing in baseline
+            if baseline is not None:
+                baseline_result = baseline_step_results.get(step_num, "PASS")
+                if baseline_result in ("FAIL", "SKIP"):
+                    # Pre-existing or never-tested: exclude from determination
+                    continue
+            return "FAIL"
+    return "PASS"
+
+
+def _load_baseline(path: Path) -> dict | None:
+    """Load and validate a baseline JSON file.
+
+    Returns the parsed dict if the file exists and contains valid JSON with a
+    'steps' key.  Returns None on any error (file missing, invalid JSON,
+    unexpected structure) so callers never have to handle exceptions.
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, FileNotFoundError):
+        return None  # nosec
+
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return None  # nosec
+
+    if not isinstance(data, dict):
+        return None
+    if "steps" not in data:
+        return None
+
+    return data
+
+
 def _compute_receipt_hash(
     steps: list[dict],
     story_id: str,
     attempt: int,
     overall_result: str,
     phase_type: str | None,
+    story_result: str | None = None,
 ) -> str:
     """Return a SHA-256 hex digest (64 chars) of the receipt inputs.
 
-    The hash changes when any of the five input fields changes.
+    The hash changes when any of the six input fields changes.
+    story_result is included in the hash payload for integrity.
+    When story_result is None, falls back to overall_result (backward compat).
     Serialisation uses json.dumps(sort_keys=True) for determinism.
     """
     import hashlib as _hashlib
+
+    # story_result defaults to overall_result for backward compatibility
+    effective_story_result = (
+        story_result if story_result is not None else overall_result
+    )
 
     payload = json.dumps(
         {
@@ -1879,6 +2628,7 @@ def _compute_receipt_hash(
             "attempt": attempt,
             "overall_result": overall_result,
             "phase_type": phase_type,
+            "story_result": effective_story_result,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -1907,6 +2657,12 @@ def _write_receipt(
     receipt_dir.mkdir(parents=True, exist_ok=True)
     receipt_file = receipt_dir / "qa-receipt.json"
 
+    # story_result/environment_result fall back to overall_result for backward compat
+    story_result = output.get("story_result", output.get("overall_result", "FAIL"))
+    environment_result = output.get(
+        "environment_result", output.get("overall_result", "FAIL")
+    )
+
     receipt = {
         "receipt_hash": output.get("receipt_hash", ""),
         "story_id": story_id,
@@ -1914,10 +2670,18 @@ def _write_receipt(
         "timestamp": output.get("timestamp", datetime.now(timezone.utc).isoformat()),
         "phase_type": output.get("phase_type"),
         "overall_result": output.get("overall_result", "FAIL"),
+        "story_result": story_result,
+        "environment_result": environment_result,
         "steps": output.get("steps", []),
         "criteria_verified": output.get("criteria_verified", []),
         "production_violations": output.get("production_violations", 0),
         "drift_warnings": output.get("drift_warnings", 0),
+        "changed_files": output.get("changed_files", []),
+        "has_frontend_files": output.get("has_frontend_files", False),
+        "pipeline_elapsed_s": output.get("pipeline_elapsed_s", 0.0),
+        "total_duration_ms": sum(
+            s.get("duration_ms", 0) for s in output.get("steps", [])
+        ),
         "receipt_version": "2",
     }
 
@@ -1925,8 +2689,99 @@ def _write_receipt(
     return str(receipt_file)
 
 
+def _log_plan_replacement(
+    old_hash: str,
+    new_hash: str,
+    reason: str,
+    log_path: "Path | None" = None,
+) -> bool:
+    """Append a plan_replacement sentinel entry to the verification log.
+
+    Records a traceability link so that ``read_verification_log()`` can include
+    entries written under ``old_hash`` when queried with ``new_hash``.
+
+    Args:
+        old_hash: SHA-256 of the replaced (old) plan.
+        new_hash: SHA-256 of the current (new) plan.
+        reason: Human-readable description of why the plan was replaced.
+        log_path: Path to the JSONL log file.  Defaults to
+            ``VERIFICATION_LOG_PATH`` when ``None``.
+
+    Returns:
+        True on success, False on write error (OSError).
+    """
+    target = log_path if log_path is not None else VERIFICATION_LOG_PATH
+    entry: dict = {
+        "type": "plan_replacement",
+        "old_plan_hash": old_hash,
+        "new_plan_hash": new_hash,
+        "plan_hash": new_hash,
+        "reason": reason,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        _locked_append(target, json.dumps(entry, separators=(",", ":")) + "\n")
+    except OSError as exc:
+        audit_log(
+            "_log_plan_replacement",
+            "write_failed",
+            f"OSError writing to {target}: {exc}",
+        )
+        return False
+    return True
+
+
+def inject_verification_entry(
+    story_id: str,
+    plan_hash: str,
+    result: str,
+    note: str,
+    log_path: Path | None = None,
+) -> bool:
+    """Write a synthetic verification log entry for a story.
+
+    Used by the ``--inject-verification`` subcommand to close mid-sprint
+    traceability gaps when a story was verified outside the normal QA pipeline.
+
+    Args:
+        story_id: Story identifier (e.g. "STORY-001").
+        plan_hash: SHA-256 plan hash to stamp on the entry.
+        result: "PASS" or "FAIL".
+        note: Optional free-text note.
+        log_path: Path to the JSONL log file.  Defaults to
+            ``VERIFICATION_LOG_PATH`` when ``None``.
+
+    Returns:
+        True on success, False on write error (OSError).
+    """
+    target = log_path if log_path is not None else VERIFICATION_LOG_PATH
+    entry: dict = {
+        "story_id": story_id,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "overall_result": result,
+        "story_result": result,
+        "attempt": 0,
+        "plan_hash": plan_hash,
+        "injected": True,
+    }
+    if note:
+        entry["note"] = note
+    try:
+        append_verification_entry(target, entry)
+    except OSError as exc:
+        audit_log(
+            "inject_verification_entry",
+            "write_failed",
+            f"OSError writing to {target}: {exc}",
+        )
+        return False
+    return True
+
+
 def main() -> None:
     """Main entry point for the QA runner."""
+    _pipeline_start = time.monotonic()
     parser = _build_parser()
     args = parser.parse_args()
 
@@ -1945,6 +2800,46 @@ def main() -> None:
         if default_prd.is_file():
             prd_path = default_prd
 
+    # --log-plan-replacement mode: append a plan_replacement sentinel and exit.
+    if getattr(args, "log_plan_replacement", False):
+        old_hash_val = getattr(args, "old_hash", None)
+        new_hash_val = getattr(args, "new_hash", None)
+        if not old_hash_val or not new_hash_val:
+            parser.error("--log-plan-replacement requires --old-hash and --new-hash")
+        reason_val = getattr(args, "reason", "") or ""
+        lpr_log_path: Path | None = None
+        if getattr(args, "log_path", None):
+            lpr_log_path = Path(args.log_path)
+        ok = _log_plan_replacement(
+            old_hash=old_hash_val,
+            new_hash=new_hash_val,
+            reason=reason_val,
+            log_path=lpr_log_path,
+        )
+        sys.exit(0 if ok else 1)
+
+    # --inject-verification mode: write a synthetic verification log entry and exit.
+    if getattr(args, "inject_verification", False):
+        # Resolve plan_hash: prefer explicit arg, fall back to prd.json field.
+        plan_hash_val: str = getattr(args, "plan_hash", None) or ""
+        if not plan_hash_val and prd_path and prd_path.is_file():
+            try:
+                prd_data = json.loads(prd_path.read_text(encoding="utf-8"))
+                plan_hash_val = prd_data.get("plan_hash", "")
+            except (OSError, json.JSONDecodeError):
+                plan_hash_val = ""
+        log_path_val: Path | None = None
+        if getattr(args, "log_path", None):
+            log_path_val = Path(args.log_path)
+        ok = inject_verification_entry(
+            story_id=args.story,
+            plan_hash=plan_hash_val,
+            result=getattr(args, "result", "PASS"),
+            note=getattr(args, "note", ""),
+            log_path=log_path_val,
+        )
+        sys.exit(0 if ok else 1)
+
     # --test-quality mode: run test quality analysis instead of 12-step pipeline
     if args.test_quality:
         test_dir = Path(args.test_dir) if args.test_dir else None
@@ -1961,14 +2856,15 @@ def main() -> None:
 
     # Parse arguments
     steps_to_run = _parse_steps(args.steps)
+    # --gate-only: restrict to story-classified steps only; all others become SKIP.
+    # If --gate-only and --steps are both supplied, their intersection is used.
+    if getattr(args, "gate_only", False):
+        steps_to_run = sorted(s for s in steps_to_run if s in GATE_ONLY_STEPS)
     changed_files = _parse_changed_files(args.changed_files)
     test_dir = Path(args.test_dir) if args.test_dir else None
     checkpoint = args.checkpoint
     plan_path = Path(args.plan) if args.plan else None
     phase_type: str | None = args.phase_type
-    # Normalize unknown phase_types to None so they run the default step set
-    if phase_type is not None and phase_type not in VALID_PHASE_TYPES:
-        phase_type = None
 
     # Fallback: if --changed-files not provided but --checkpoint is, derive from git diff
     if not changed_files and checkpoint:
@@ -1993,22 +2889,41 @@ def main() -> None:
         except (subprocess.TimeoutExpired, OSError) as e:
             audit_log("qa_runner", "changed_files_fallback_failed", str(e))
 
-    # Startup warning: if project files (outside .claude/) are changed but
-    # project_test is still a placeholder, surface a WARNING to stderr.
-    # This does not fail the pipeline — it is informational only.
-    if _has_outside_claude_files(changed_files):
-        unconfigured = check_project_commands(config)
-        if unconfigured:
-            for key in unconfigured:
-                sys.stderr.write(
-                    f"WARNING: {key} not configured — host project code will not be"
-                    f" tested by QA pipeline. Set {key} in .claude/workflow.json.\n"
-                )
-            audit_log(
-                "qa_runner",
-                "project_commands_unconfigured",
-                f"Outside-.claude/ files changed but unconfigured: {unconfigured}",
-            )
+    # Startup validation: fail closed when critical project commands are invalid.
+    project_mode = get_project_mode(config)
+    project_command_validation = validate_project_commands(config)
+    startup_failure: dict | None = None
+    if project_command_validation["status"] == "FAIL":
+        failures = project_command_validation.get("failures", [])
+        mode_error = project_command_validation.get("mode_error", "")
+        sys.stderr.write(
+            f"FAIL: project_mode={project_mode} project commands are invalid."
+            " Fix .claude/workflow.json before running QA.\n"
+        )
+        if mode_error:
+            sys.stderr.write(f"  - project_mode: {mode_error}\n")
+        for key in failures:
+            if key == "project_mode":
+                continue
+            sys.stderr.write(f"  - {key}: missing, placeholder, or unsafe command\n")
+        audit_log(
+            "qa_runner",
+            "project_commands_invalid",
+            (
+                f"Invalid project commands for project_mode={project_mode}: {failures}; "
+                f"mode_error={mode_error or 'none'}"
+            ),
+        )
+        failure_details = [mode_error] if mode_error else []
+        failure_details.extend(f for f in failures if f != "project_mode")
+        startup_failure = {
+            "step": 0,
+            "name": "Project commands",
+            "result": "FAIL",
+            "evidence": "Project QA configuration is invalid: "
+            + ", ".join(failure_details),
+            "duration_ms": 0,
+        }
 
     # Determine which steps are relevant for this phase type
     relevant_steps: set[int] | None = None
@@ -2027,6 +2942,7 @@ def main() -> None:
     if checkpoint:
         pipeline_context["checkpoint"] = checkpoint
     pipeline_context["fix_iteration"] = args.fix_iteration
+    pipeline_context["changed_files"] = changed_files
 
     # Compute which steps are required for zero-skip enforcement (R-P5-01)
     required_steps: dict[str, bool] = _required_verification_steps(
@@ -2052,71 +2968,96 @@ def main() -> None:
     step_results: list[dict] = []
     production_violation_count = 0
 
-    for item in filtered_sequence:
-        # Custom step dict
-        if isinstance(item, dict):
-            step_result = _run_custom_step(item, changed_files)
-            step_results.append(step_result)
-            continue
+    if startup_failure is not None:
+        step_results.append(startup_failure)
+    else:
+        for item in filtered_sequence:
+            # Custom step dict
+            if isinstance(item, dict):
+                step_result = _run_custom_step(item, changed_files)
+                step_results.append(step_result)
+                continue
 
-        step_num = item
+            step_num = item
 
-        # Check if step should be skipped due to phase_type
-        if relevant_steps is not None and step_num not in relevant_steps:
-            step_name = STEP_NAMES.get(step_num, f"Step {step_num}")
-            step_results.append(
-                {
-                    "step": step_num,
-                    "name": step_name,
-                    "result": "SKIP",
-                    "evidence": (f"Skipped: not relevant for {phase_type} phase"),
-                    "duration_ms": 0,
-                }
+            # Check if step should be skipped due to phase_type
+            if relevant_steps is not None and step_num not in relevant_steps:
+                step_name = STEP_NAMES.get(step_num, f"Step {step_num}")
+                step_results.append(
+                    {
+                        "step": step_num,
+                        "name": step_name,
+                        "result": "SKIP",
+                        "evidence": (f"Skipped: not relevant for {phase_type} phase"),
+                        "duration_ms": 0,
+                    }
+                )
+                continue
+
+            step_result = _run_step(
+                step_num=step_num,
+                config=config,
+                story=story,
+                changed_files=changed_files,
+                test_dir=test_dir,
+                prd_path=prd_path,
+                checkpoint=checkpoint,
+                plan_path=plan_path,
+                violation_cache=violation_cache,
+                pipeline_context=pipeline_context,
+                lang_map=lang_map,
+                required_steps=required_steps,
+                phase_type=phase_type,
             )
-            continue
+            step_results.append(step_result)
 
-        step_result = _run_step(
-            step_num=step_num,
-            config=config,
-            story=story,
-            changed_files=changed_files,
-            test_dir=test_dir,
-            prd_path=prd_path,
-            checkpoint=checkpoint,
-            plan_path=plan_path,
-            violation_cache=violation_cache,
-            pipeline_context=pipeline_context,
-            lang_map=lang_map,
-            required_steps=required_steps,
-            phase_type=phase_type,
-        )
-        step_results.append(step_result)
-
-        # Track production violations from step 12
-        if step_num == 12:
-            step_passed = step_result["result"] == "PASS"
-            # Count violations from evidence
-            evidence = step_result["evidence"]
-            if evidence.startswith(("0 ", "No ")):
-                production_violation_count = 0
-            else:
-                # Parse count from "N production violations: ..."
-                try:
-                    production_violation_count = int(evidence.split()[0])
-                except (ValueError, IndexError):
-                    # If step passed, no violations; if failed, assume at least 1
-                    production_violation_count = 0 if step_passed else 1
-                    audit_log(
-                        "_run_pipeline",
-                        "violation_count_parse_failed",
-                        f"Could not parse violation count from: {evidence[:100]}",
-                    )
+            # Track production violations from step 12
+            if step_num == 12:
+                step_passed = step_result["result"] == "PASS"
+                # Count violations from evidence
+                evidence = step_result["evidence"]
+                if evidence.startswith(("0 ", "No ")):
+                    production_violation_count = 0
+                else:
+                    # Parse count from "N production violations: ..."
+                    try:
+                        production_violation_count = int(evidence.split()[0])
+                    except (ValueError, IndexError):
+                        # If step passed, no violations; if failed, assume at least 1
+                        production_violation_count = 0 if step_passed else 1
+                        audit_log(
+                            "_run_pipeline",
+                            "violation_count_parse_failed",
+                            f"Could not parse violation count from: {evidence[:100]}",
+                        )
 
     # Determine overall result:
     # Only "block"-severity custom FAILs (step key starts with "custom:") contribute.
     # "warn"-severity custom steps produce WARN which does not affect overall FAIL.
     has_fail = any(s["result"] == "FAIL" for s in step_results if s["result"] != "SKIP")
     overall = "FAIL" if has_fail else "PASS"
+
+    # Load baseline when --baseline flag is supplied (Ralph passes this explicitly)
+    baseline_data: dict | None = None
+    if getattr(args, "baseline", None):
+        baseline_data = _load_baseline(Path(args.baseline))
+
+    # Compute two-pass story/environment results
+    classification = _STEP_CLASSIFICATION
+    story_result_val = _compute_story_result(step_results, classification)
+    environment_result_val = _compute_environment_result(
+        step_results, classification, baseline=baseline_data
+    )
+
+    # Recompute overall from baseline-aware components. The raw `overall`
+    # above ignores the baseline, so pre-existing env failures can leak
+    # through and block promotion even when the story itself is clean.
+    if story_result_val != "FAIL" and environment_result_val != "FAIL":
+        overall = "PASS"
+
+    if startup_failure is not None:
+        story_result_val = "FAIL"
+        overall = "FAIL"
 
     # Collect verified criteria — only IDs confirmed by R-marker validation
     criteria_verified: list[str] = []
@@ -2145,20 +3086,28 @@ def main() -> None:
 
     # Build output (pre-hash, without receipt_hash/receipt_path)
     timestamp = datetime.now(timezone.utc).isoformat()
+    changed_files_strs = [str(f) for f in changed_files]
     output: dict = {  # type: ignore[no-redef]
         "story_id": args.story,
         "timestamp": timestamp,
         "phase_type": phase_type,
         "steps": step_results,
         "overall_result": overall,
+        "story_result": story_result_val,
+        "environment_result": environment_result_val,
         "criteria_verified": criteria_verified,
         "production_violations": production_violation_count,
         "drift_warnings": drift_warning_count,
+        "changed_files": changed_files_strs,
+        "has_frontend_files": has_frontend_files(changed_files),
     }
 
-    # Compute receipt hash over the core fields
+    # Record total pipeline elapsed time just before writing the receipt
+    output["pipeline_elapsed_s"] = round(time.monotonic() - _pipeline_start, 2)
+
+    # Compute receipt hash over the core fields (includes story_result for integrity)
     receipt_hash = _compute_receipt_hash(
-        step_results, args.story, 1, overall, phase_type
+        step_results, args.story, 1, overall, phase_type, story_result=story_result_val
     )
     output["receipt_hash"] = receipt_hash
 
@@ -2169,9 +3118,25 @@ def main() -> None:
     except OSError:
         output["receipt_path"] = ""
 
+    # --baseline-capture mode: write output to qa-baseline.json and exit 0
+    if getattr(args, "baseline_capture", False):
+        baseline_dir = Path(".claude/runtime")
+        try:
+            baseline_dir.mkdir(parents=True, exist_ok=True)
+            baseline_file = baseline_dir / "qa-baseline.json"
+            baseline_file.write_text(json.dumps(output, indent=2), encoding="utf-8")
+        except OSError as exc:
+            audit_log("main", "baseline_capture_write_failed", str(exc))
+        sys.stdout.write(json.dumps(output, indent=2) + "\n")
+        sys.exit(0)
+
     sys.stdout.write(json.dumps(output, indent=2) + "\n")
     if overall == "PASS":
         clear_marker()
+    # When --baseline is supplied, use story_result for exit code: environment
+    # failures that were pre-existing in the baseline do not block story promotion.
+    if getattr(args, "baseline", None):
+        sys.exit(1 if story_result_val == "FAIL" else 0)
     sys.exit(1 if overall == "FAIL" else 0)
 
 

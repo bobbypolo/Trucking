@@ -1,1667 +1,1180 @@
-Plan: Full QA Remediation — LoadPilot Integration Fix
-
- Context
-
- A Playwright-driven QA audit on 2026-03-22 found LoadPilot is ~35% functional
- as an integrated product despite 177+ backend endpoints and 15+ polished UI
- pages. This plan remediates every issue cataloged in
- docs/QA-FULL-AUDIT-2026-03-22.md plus page-level feature gaps and HTTP 403/400
-  errors.
-
- Audit totals: 120 console errors (41×500, 26×403, 21×400, 20×401, 11×404), 42
- hardcoded fake values, 18+ dead buttons, 5 schema conflicts, 8 missing tables,
-  18 auth-less service functions, 9 incomplete pages.
-
- Branch: ralph/full-saas-integration-sprint (current)
-
- ---
- Phase 1: Auth Infrastructure (eliminates 401s + race conditions)
-
- S-1.1: Replace raw fetch() in financialService.ts
-
- File: services/financialService.ts
- Reuse: api.get/post/patch/delete from services/api.ts (lines 69-86)
-
- All 20 functions use raw fetch() with no Bearer token. Convert each to the
- api.* helpers which auto-inject auth via getIdTokenAsync().
-
- ┌─────────────────────┬──────┬───────────┐
- │      Function       │ Line │  Method   │
- ├─────────────────────┼──────┼───────────┤
- │ getGLAccounts       │ 7    │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ getLoadProfitLoss   │ 16   │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ createARInvoice     │ 21   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ createAPBill        │ 30   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ createJournalEntry  │ 39   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ getSettlements      │ 48   │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ createSettlement    │ 59   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ importFuelPurchases │ 68   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ getInvoices         │ 75   │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ getBills            │ 84   │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ getVaultDocs        │ 93   │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ uploadToVault       │ 99   │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ updateDocStatus     │ 107  │ api.patch │
- ├─────────────────────┼──────┼───────────┤
- │ getIFTASummary      │ 115  │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ getMileageEntries   │ 124  │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ saveMileageEntry    │ 130  │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ postIFTAToLedger    │ 138  │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ getIFTAEvidence     │ 146  │ api.get   │
- ├─────────────────────┼──────┼───────────┤
- │ analyzeIFTA         │ 151  │ api.post  │
- ├─────────────────────┼──────┼───────────┤
- │ lockIFTATrip        │ 160  │ api.post  │
- └─────────────────────┴──────┴───────────┘
-
- Verify: grep -c "fetch(" services/financialService.ts → 0. Frontend tests
- pass.
-
- S-1.2: Replace raw fetch() in storageService.ts
-
- File: services/storageService.ts
-
- 4 functions use raw fetch() + manual getAuthHeaders(): getDispatchEvents
- (L245), getTimeLogs (L276), logTime, logDispatchEvent. Convert to api.*
- helpers. Remove duplicate 401/403 checks (lines 259, 294).
-
- Verify: grep -c "fetch(" services/storageService.ts → 0. Duplicate auth checks
-  gone.
-
- S-1.3: Auth readiness gate in App.tsx
-
- File: App.tsx
-
- Line 308: setUser(updatedUser) renders children BEFORE refreshData() completes
-  → components fire API calls with stale state.
-
- Fix:
- 1. Add const [isAuthReady, setIsAuthReady] = useState(false)
- 2. In onUserChange callback (L306): call setIsAuthReady(true) AFTER await
- refreshData() completes
- 3. Gate render: if (!user || !isAuthReady) → show <LoadingSkeleton>
- 4. On logout/null user: reset isAuthReady = false
-
- Verify: Login → no 401 console errors. Children mount only after token
- confirmed.
-
- S-1.4: useCurrentUser() reactive hook
-
- Files: NEW hooks/useCurrentUser.ts, consumers: LoadDetailView.tsx:95,
- LoadList.tsx:29, Settlements.tsx
- Reuse: onUserChange() from services/authService.ts:119
-
- getCurrentUser() (authService.ts:396) returns _sessionCache synchronously —
- null before auth settles. Create useCurrentUser() hook subscribing to
- onUserChange(). Replace synchronous getCurrentUser() calls in consumer
- components.
-
- Verify: Components re-render on auth state change. No null-user crashes at
- render time.
-
- S-1.5: 401 token refresh + single retry in api.ts
-
- File: services/api.ts (lines 43-48)
-
- Current: on 401, dispatch auth:session-expired and throw immediately.
-
- Fix: On first 401 → auth.currentUser?.getIdToken(true) to force-refresh →
- retry once with fresh token → if still 401, THEN dispatch event and throw.
-
- Verify: Token expiry mid-session recovers transparently. Modal only on true
- auth failure.
-
- ---
- Phase 2: Database Schema (eliminates 500s + 404s)
-
- S-2.1: Fix schema conflicts + update migration runner
-
- Files: server/migrations/001_baseline.sql,
- server/migrations/003_operational_entities.sql,
- server/__tests__/helpers/docker-mysql.ts
-
- CRITICAL CONTEXT: The migration runner (docker-mysql.ts:119-143) has a
- hardcoded MIGRATION_ORDER array (stops at migration 023). It runs all
- migrations every time with CREATE TABLE IF NOT EXISTS and catch { } — meaning
- if 001 creates a table first, later migrations silently skip.
-
- Three-part fix:
-
- Part A: Remove 5 duplicate CREATE TABLEs from 001_baseline.sql:
-
- ┌────────────┬─────────────────────────┬───────────────────────────────┐
- │   Table    │ Remove from 001 (lines) │    Authoritative migration    │
- ├────────────┼─────────────────────────┼───────────────────────────────┤
- │ quotes     │ ~292-316                │ 017_quotes_leads_bookings.sql │
- ├────────────┼─────────────────────────┼───────────────────────────────┤
- │ leads      │ ~280-290                │ 017_quotes_leads_bookings.sql │
- ├────────────┼─────────────────────────┼───────────────────────────────┤
- │ bookings   │ ~318-329                │ 017_quotes_leads_bookings.sql │
- ├────────────┼─────────────────────────┼───────────────────────────────┤
- │ messages   │ ~261-271                │ 018_messages_threads.sql      │
- ├────────────┼─────────────────────────┼───────────────────────────────┤
- │ work_items │ ~332-345                │ 019_tasks_workitems.sql       │
- └────────────┴─────────────────────────┴───────────────────────────────┘
-
- Also remove the ALTER TABLE messages ADD COLUMN company_id from
- 003_operational_entities.sql (018 includes it).
-
- Part B: Update MIGRATION_ORDER in server/__tests__/helpers/docker-mysql.ts to
- include all migrations through 032:
- Add to MIGRATION_ORDER array (024-031 may already exist from previous sprint):
-   "024_safety_domain.sql",
-   "025_vault_docs.sql",
-   "026_notification_jobs.sql",
-   "027_add_subscription_tier.sql",
-   "028_stripe_subscriptions.sql",
-   "029_quickbooks_tokens.sql",
-   "030_gps_positions.sql",
-   "031_stripe_webhook_events.sql",
-   "032_parties_subsystem.sql",  // new from S-2.2
-
- Part C: For databases where 001 already ran (development), the reconciliation
- migration 017 already uses CREATE TABLE IF NOT EXISTS which will skip. Since
- this is a development project (not production), the fix is: the test runner
- starts from a fresh Docker container each time. Removing from 001 ensures
- fresh DBs get the correct schema. For dev databases, instruct developers to
- reset: docker rm loadpilot-dev and re-run.
-
- Verify: Fresh migration creates tables matching repository expectations:
- - DESCRIBE quotes → has customer_id, broker_id, created_by (017 schema)
- - DESCRIBE leads → has status, source, contact_name (017 schema)
- - DESCRIBE bookings → has customer_id, pickup_date, delivery_date (017 schema)
- - DESCRIBE work_items → has sla_deadline, assignee_id (019 schema)
- - Server tests pass: cd server && npx vitest run
-
- S-2.2: Create migration 032 — parties subsystem
-
- File: NEW server/migrations/032_parties_subsystem.sql
- Schema source: server/routes/clients.ts lines 283-600 (exact columns queried)
-
- 8 missing tables:
- 1. parties (id, company_id, name, type, is_customer, is_vendor, status,
- mc_number, dot_number, rating, created_at, updated_at)
- 2. party_contacts (id, party_id, name, role, email, phone, is_primary,
- created_at) FK→parties CASCADE
- 3. party_documents (id, party_id, document_type, document_url, created_at)
- FK→parties CASCADE
- 4. rate_rows (id, party_id, tenant_id, catalog_item_id, variant_id, direction,
-  currency, price_type, unit_type, base_amount, unit_amount, min_charge,
- max_charge, free_units, effective_start, effective_end, taxable_flag,
- rounding_rule, notes_internal, approval_required) FK→parties CASCADE
- 5. rate_tiers (id, rate_row_id, tier_start, tier_end, unit_amount,
- base_amount) FK→rate_rows CASCADE
- 6. constraint_sets (id, party_id, tenant_id, applies_to, priority, status,
- effective_start, effective_end) FK→parties CASCADE
- 7. constraint_rules (id, constraint_set_id, rule_type, field_key, operator,
- value_text, enforcement, message) FK→constraint_sets CASCADE
- 8. party_catalog_links (id, party_id, catalog_item_id) FK→parties CASCADE
-
- All tables include company_id index for tenant isolation where applicable.
-
- Verify: GET /api/providers, GET /api/contacts (clients.ts route) → 200 (empty
- arrays).
-
- S-2.3: Company record creation in signup
-
- Files: server/routes/users.ts (signup handler)
-
- User's company (5f44e58d-...) returns 404 from /api/companies/{id}. Signup
- creates company in Firestore only, not MySQL.
-
- Fix:
- 1. Add MySQL INSERT INTO companies in signup handler
- 2. Add migration/seed to backfill existing users' missing company records
- 3. Ensure company_id foreign keys are satisfied
-
- Verify: GET /api/companies/{id} → 200. Company Settings page loads (no
- infinite spinner).
-
- S-2.4: Fix dashboard_card + missing routes
-
- Files: server/routes/dispatch.ts:314, server/routes/equipment.ts
-
- Endpoint: GET /api/dashboard/cards
- Issue: 500 — query uses company_id = ? but seeded data may have NULL
- Fix: Fix query or seed data to match tenant format
- ────────────────────────────────────────
- Endpoint: GET /api/dispatch/events
- Issue: 404 — frontend calls /dispatch/events but route is
-   /dispatch-events/:companyId
- Fix: Fix frontend path OR add route alias
- ────────────────────────────────────────
- Endpoint: GET /api/equipment
- Issue: 404 — route requires /:companyId param
- Fix: Fix frontend to pass companyId OR add tenant-scoped route
-
- Verify: All three endpoints return 200.
-
- ---
- Phase 3: HTTP 403 + 400 Error Investigation & Fix
-
- S-3.1: Fix 403 permission errors (26 errors)
-
- Root cause investigation found two sources:
-
- A) Tenant mismatch (requireTenant middleware,
- server/middleware/requireTenant.ts:35-47)
- - Compares URL param :companyId and body field company_id against
- req.user.tenantId
- - If company record is missing (S-2.3 bug), tenantId may be null → false 403s
- - Fix: S-2.3 (company creation) should resolve the cascade. Verify after
- S-2.3.
-
- B) Role-based access (12 endpoints)
- - Routes like /api/clients/:id/archive require ["admin", "dispatcher"]
- - Test user with "driver" role triggers 403 on these routes
- - Fix: This is correct behavior (not a bug). Ensure the demo/test user has
- "admin" or "dispatcher" role. Add role documentation for frontend so UI hides
- buttons the user can't access.
-
- Files: server/middleware/requireTenant.ts, server/routes/clients.ts,
- server/routes/equipment.ts, server/routes/dispatch.ts
-
- Verify: After S-2.3 fix, re-run Playwright session → 403 count drops from 26
- to <5 (only legitimate role-denied ones remain). Frontend hides role-gated
- buttons for insufficient roles.
-
- S-3.2: Fix 400 malformed request errors (21 errors)
-
- Root causes identified:
-
- ┌───────┬───────────────────────────────────┬─────────────────────────────┐
- │ Count │              Source               │             Fix             │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │       │ AI routes (/api/ai/extract-*) —   │ Frontend sends image data   │
- │ 8     │ missing imageBase64 field         │ correctly or doesn't call   │
- │       │                                   │ endpoints without payload   │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │       │ Safety routes — missing required  │ Frontend validates required │
- │ 5     │ fields (title, quiz_id,           │  fields before submitting   │
- │       │ vehicle_id)                       │                             │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │ 2     │ Dispatch events —                 │ Frontend ensures payload is │
- │       │ JSON.stringify(payload) fails     │  serializable               │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │ 2     │ Equipment PATCH — no valid fields │ Frontend sends only allowed │
- │       │  in PATCH_ALLOWED_COLUMNS         │  field names                │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │       │ Zod schema validation — body      │ Frontend aligns form fields │
- │ 2     │ doesn't match                     │  with backend schema        │
- │       │ createEquipmentSchema             │                             │
- ├───────┼───────────────────────────────────┼─────────────────────────────┤
- │ 2     │ Weather/document — missing        │ Frontend validates before   │
- │       │ coordinates or file validation    │ calling                     │
- └───────┴───────────────────────────────────┴─────────────────────────────┘
-
- Fix approach: Add client-side validation in the frontend forms/services that
- call these endpoints. Ensure required fields are always populated. For AI
- routes, guard the API call behind a if (!imageBase64) return check.
-
- Files: Components that trigger these calls (SafetyView form submissions,
- equipment forms, dispatch event logging), services/aiService.ts
-
- Verify: After fixes, re-run Playwright session → 400 count drops from 21 to
- <3.
-
- ---
- Phase 4: Hardcoded Data Removal (42 instances)
-
- S-4.1: SafetyView.tsx — 12 hardcoded values
-
- File: components/SafetyView.tsx
-
- ┌───────────┬────────────────────────┬───────────────────────────────────┐
- │   Lines   │         Value          │                Fix                │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1037,     │                        │ Fetch from                        │
- │ 1044,     │ Quiz scores 85, 42, 98 │ /api/safety/quiz-results or show  │
- │ 1051      │                        │ "No data"                         │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1106,     │ Test scores "95%",     │                                   │
- │ 1112,     │ "100%", "65%" with     │ Fetch from API or empty state     │
- │ 1118      │ fake names             │                                   │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1085      │ "324 Certified Units"  │ Compute from equipment data or    │
- │           │                        │ show "0"                          │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1159      │ Safety Score "75"      │ Fetch from company settings       │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1169      │ Maintenance Interval   │ Fetch from company settings       │
- │           │ "90 Days"              │                                   │
- ├───────────┼────────────────────────┼───────────────────────────────────┤
- │ 1281-82   │ "Unit 101", "Unit 102" │ Fetch from                        │
- │           │                        │ /api/equipment/:companyId         │
- └───────────┴────────────────────────┴───────────────────────────────────┘
-
- Pattern: Replace hardcoded arrays with useState([]) + useEffect API call. Show
-  "No data yet" empty states.
-
- S-4.2: AccountingPortal.tsx — 10 hardcoded values
-
- File: components/AccountingPortal.tsx
-
- ┌───────────┬───────────────────┬─────────────────────────────────────────┐
- │   Lines   │       Value       │                   Fix                   │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 335       │ "14" pending docs │ Compute: invoices.filter(i =>           │
- │           │                   │ !i.pod_attached).length                 │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 343       │ "$2,840" IFTA     │ Fetch from /api/accounting/ifta/summary │
- │           │                   │  or "$0.00"                             │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 123-149   │ 3 automation rule │ Init empty, fetch from API              │
- │           │  objects          │                                         │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 170-176   │ setTimeout mock   │ Replace with API call or remove         │
- │           │ matching          │                                         │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 971       │ glAccountId       │ Lookup from glAccounts.find(a =>        │
- │           │ "5000"            │ a.accountNumber === '5000')             │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 1024-1046 │ 4 hardcoded audit │ Fetch from /api/audit                   │
- │           │  log entries      │                                         │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 1032      │ "1 hour ago"      │ Compute with formatDistanceToNow(date)  │
- │           │ timestamp         │                                         │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 1112      │ "42.5 hrs" time   │ Compute from data or show "—"           │
- │           │ saved             │                                         │
- ├───────────┼───────────────────┼─────────────────────────────────────────┤
- │ 1118      │ "14" active       │ Compute: automationRules.filter(r =>    │
- │           │ triggers          │ r.enabled).length                       │
- └───────────┴───────────────────┴─────────────────────────────────────────┘
-
- S-4.3: IntelligenceHub.tsx — 8 hardcoded values
-
- File: components/IntelligenceHub.tsx
-
- ┌───────────┬────────────────────────┬────────────────────────────────────┐
- │   Lines   │         Value          │                Fix                 │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 515-523   │ Mock call session      │ Init empty array                   │
- │           │ "CS-9901"              │                                    │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1236      │ "888-555-0000" phone   │ Use driver?.phone or ""            │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1242      │ "800-SAFE-KCI" phone   │ Fetch from company settings or ""  │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1413      │ eta "45-60 mins"       │ Compute from vendor/incident       │
- │           │                        │ locations or "TBD"                 │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1604-1614 │ "John Doe", stats      │ Use active load data or "No active │
- │           │                        │  load"                             │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1619      │ "Trucker Tom"          │ Use actual caller data             │
- ├───────────┼────────────────────────┼────────────────────────────────────┤
- │ 1702-1716 │ mockCallers array (3   │ Init empty, populate from call     │
- │           │ entries)               │ queue                              │
- └───────────┴────────────────────────┴────────────────────────────────────┘
-
- S-4.4: Remaining components — 12 hardcoded values
-
- Component: ExceptionConsole.tsx
- Lines: 430
- Value: "SLA: 24m Left"
- Fix: Compute from ex.slaDueAt - Date.now()
- ────────────────────────────────────────
- Component: ExceptionConsole.tsx
- Lines: 525
- Value: "01:42:00"
- Fix: Compute from Date.now() - new Date(ex.createdAt)
- ────────────────────────────────────────
- Component: ExceptionConsole.tsx
- Lines: 571
- Value: "Average Resolution: 1h 14m"
- Fix: Compute from resolved exceptions' createdAt/resolvedAt
- ────────────────────────────────────────
- Component: LoadGantt.tsx
- Lines: 88, 91
- Value: "04:00 AM", "ETA: 06:30 PM"
- Fix: Use load.pickupTime, load.estimatedDeliveryTime
- ────────────────────────────────────────
- Component: QuoteManager.tsx
- Lines: 1189, 1209
- Value: "Acme Global", "3125550199"
- Fix: Use selectedQuote.customerName/Phone
- ────────────────────────────────────────
- Component: NetworkPortal.tsx
- Lines: 1244-47
- Value: "NEW CONTACT", "PENDING@MAIL.COM"
- Fix: Empty strings
- ────────────────────────────────────────
- Component: Auth.tsx
- Lines: 377
- Value: dailyCost: 45
- Fix: FALSE POSITIVE — valid signup default; no company settings exist yet
-   during signup. Keep as-is.
- ────────────────────────────────────────
- Component: AccountingView.tsx
- Lines: 72
- Value: "Mocking" comment
- Fix: FALSE POSITIVE — code computes REAL trends from real load data. Only fix:
-
-   change misleading comment from "Mocking" to "Compute".
-
- ---
- Phase 5: Non-Functional Buttons (18+ buttons)
-
- S-5.1: LoadDetailView.tsx — 10 buttons
-
- File: components/LoadDetailView.tsx
-
- ┌───────┬──────────────┬──────────────────────────────────────────────────┐
- │ Lines │    Button    │                     Handler                      │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 231   │ Print BOL    │ Call BOL generation → open PDF (existing jsPDF   │
- │       │              │ in exportService.ts)                             │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 232   │ Carrier      │ Navigate to rate card or show modal with load's  │
- │       │ Rates        │ carrier rates                                    │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 233   │ Load Stops   │ Scroll to/expand stops section in the detail     │
- │       │              │ view                                             │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 234   │ Documents    │ Open documents modal → fetch from                │
- │       │              │ /api/documents?loadId=                           │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 235   │ Show Route   │ Open map modal (toast "Requires Google Maps API  │
- │       │              │ key" if unconfigured)                            │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 236   │ Audit Logs   │ Navigate to /activity-log?loadId={id}            │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 248   │ Tag for      │ PATCH /api/loads/:id with flagged: true + visual │
- │       │ Action       │  indicator                                       │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 251   │ Lock/Unlock  │ PATCH /api/loads/:id with locked: true/false +   │
- │       │              │ icon toggle                                      │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 464   │ + Add Pickup │ Add stop entry form with type=pickup             │
- ├───────┼──────────────┼──────────────────────────────────────────────────┤
- │ 467   │ + Add Drop   │ Add stop entry form with type=dropoff            │
- └───────┴──────────────┴──────────────────────────────────────────────────┘
-
- No silent no-ops allowed. Every button MUST produce a visible result. The only
-  acceptable "not implemented" is a toast with text "Feature coming soon —
- [feature name]" that is visually distinct (not silent). Buttons with existing
- backend support MUST call the real API.
-
- Implementation classification (no ambiguity):
-
- ┌───────────────┬───────┬─────────────────────────────────────────────────┐
- │    Button     │ Type  │                    Rationale                    │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Print BOL     │ REAL  │ jsPDF exists in exportService.ts, load data     │
- │               │       │ available                                       │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Carrier Rates │ TOAST │ No rate card UI exists yet                      │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Load Stops    │ REAL  │ Scroll-to anchor to stops section (already      │
- │               │       │ rendered)                                       │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Documents     │ REAL  │ /api/documents?loadId= endpoint exists          │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Show Route    │ TOAST │ Requires Google Maps API key (not configured)   │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Audit Logs    │ REAL  │ Navigate to /activity-log?loadId={id}           │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Tag for       │ REAL  │ PATCH /api/loads/:id with flagged field         │
- │ Action        │       │                                                 │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ Lock/Unlock   │ REAL  │ PATCH /api/loads/:id with locked field          │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ + Add Pickup  │ REAL  │ Add stop form entry with type=pickup            │
- ├───────────────┼───────┼─────────────────────────────────────────────────┤
- │ + Add Drop    │ REAL  │ Add stop form entry with type=dropoff           │
- └───────────────┴───────┴─────────────────────────────────────────────────┘
-
- Pass/fail: All 8 REAL buttons call APIs or navigate. 2 TOAST buttons show
- visible notification. Zero silent no-ops.
-
- S-5.2: Remaining 8 buttons
-
- Implementation classification (no ambiguity):
-
- ┌──────────────────┬───────┬────────────┬───────┬─────────────────────────┐
- │    Component     │ Lines │   Button   │ Type  │         Handler         │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ AccountingPortal │ 381   │ View All   │ REAL  │ navigate('/loads')      │
- │                  │       │ Loads      │       │                         │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ AccountingPortal │ 1097  │ Create New │ TOAST │ "Automation rule        │
- │                  │       │  Rule      │       │ builder coming soon"    │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │                  │ 619,  │ More       │       │ "Line item actions      │
- │ AccountingPortal │ 757   │ options    │ TOAST │ coming soon"            │
- │                  │       │ (⋯)        │       │                         │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ SafetyView       │ 743   │ Service    │ TOAST │ "Service request form   │
- │                  │       │            │       │ coming soon"            │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ SafetyView       │ 746   │ History    │ TOAST │ "Maintenance history    │
- │                  │       │            │       │ coming soon"            │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ SafetyView       │ 850   │ View       │ REAL  │ navigate('/accounting') │
- │                  │       │ Financials │       │                         │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ SafetyView       │ 1087  │ Manage     │ TOAST │ "Certification manager  │
- │                  │       │            │       │ coming soon"            │
- ├──────────────────┼───────┼────────────┼───────┼─────────────────────────┤
- │ Settlements      │ 433   │ Chevron    │ REAL  │ Wire setExpandedRow(id) │
- │                  │       │ expand     │       │  toggle                 │
- └──────────────────┴───────┴────────────┴───────┴─────────────────────────┘
-
- Pass/fail: 3 REAL buttons navigate/toggle. 5 TOAST buttons show visible
- notification. Zero silent no-ops.
-
- ---
- Phase 6: Page-Level Feature Completion
-
- S-6.1: Dashboard — add 3 chart visualizations
-
- File: components/Dashboard.tsx
- Library: recharts (already used by IFTAChart in the project — reuse pattern)
-
- Currently: text-only stat cards (lines 214-391). No visualization library
- rendered.
-
- Fix (exactly 3 charts):
- 1. BarChart: RPM by day (last 7 days) — computed from loads prop, group by
- pickupDate, avg ratePerMile
- 2. LineChart: Exception count by day (last 7 days) — computed from exceptions
- prop, group by createdAt date
- 3. BarChart: Revenue vs Cost by week — computed from loads carrierRate vs
- customerRate
-
- All charts render from existing props. If data is empty, show "No data for
- this period" placeholder inside the chart area.
-
- Pass/fail: 3 chart components render. Zero hardcoded chart data. Empty state
- shown when no loads/exceptions exist.
-
- S-6.2: Load Board — fix +New button z-index
-
- File: components/LoadBoardEnhanced.tsx and/or components/LoadList.tsx
-
- Audit reports "+New button z-index blocked". Sidebar toggle uses z-20, bottom
- panel uses z-30. Investigate if LoadList's +New button is behind one of these
- layers.
-
- Fix: Adjust z-index hierarchy so +New button is always clickable. Test click
- target.
-
- Verify: +New button is clickable and either opens new load form or navigates
- to creation page.
-
- S-6.3: Reports/Analytics — add charts + drill-down
-
- File: components/AnalyticsDashboard.tsx
-
- Currently: imports BarChart3 and PieChart icons (L4) but never renders actual
- charts. Text-only cards (lines 141-172).
-
- Fix:
- - Add recharts BarChart: Broker RPM comparison
- - Add recharts PieChart: Lane revenue distribution
- - Add click handlers on broker/lane cards for drill-down navigation
-
- Verify: Charts render with data from props. Click navigates to filtered view.
-
- S-6.4: Schedule/Calendar — multi-day load visualization
-
- File: components/CalendarView.tsx
-
- Line 187: l.pickupDate === formatDateKey(date) — loads only show on pickup
- day.
-
- Fix: Render loads across the date range (pickupDate → deliveryDate). Show
- duration span or indicator on each day the load is active.
-
- Verify: Multi-day loads appear on all days between pickup and delivery.
-
- S-6.5: Command Center — complete incident detail
-
- File: components/CommandCenterView.tsx
-
- Incident detail drawer (L429+) is half-built. timeline array exists (L305) but
-  isn't rendered visually.
-
- Fix: Render selectedIncident.timeline as a vertical timeline component in the
- detail drawer. Show action, actor, timestamp for each entry.
-
- Verify: Clicking an incident opens detail with readable timeline.
-
- S-6.6: Settlements — batch processing + export
-
- Files: components/Settlements.tsx, server/routes/accounting.ts (if new
- endpoint needed)
-
- Line 643: "Batch Print" shows feedback only (mock). Line 650: "Finalize" also
- mocks.
-
- Fix:
- 1. Wire "Batch Print" → generate PDF using jsPDF (reuse pattern from
- exportService.ts) for all visible settlement rows
- 2. Wire "Finalize" → PATCH /api/settlements/batch to mark selected settlements
-  as finalized (add endpoint to server/routes/accounting.ts if absent)
- 3. Add "Export CSV" button → generate CSV from settlement data, trigger
- download
-
- Pass/fail: "Batch Print" produces a PDF. "Finalize" calls an API and updates
- row status. "Export CSV" triggers file download. Zero mock showFeedback-only
- operations remain.
-
- S-6.7: IntelligenceHub — reports section
-
- File: components/IntelligenceHub.tsx
-
- No reports tab exists. Only call sessions and messaging.
-
- Fix: Add "Reports" tab/section showing:
- - Call metrics computed from call session data (count, avg duration)
- - Interaction summary (calls vs messages count)
-
- Verify: Reports tab shows computed metrics or "No data" empty state.
-
- S-6.8: DriverMobileHome — wire change requests + docs
-
- Files: components/DriverMobileHome.tsx, server/routes/loads.ts (for change
- request endpoint)
-
- Line 150: Comment "Mock Change Requests & Docs for MVP". createChangeRequest()
-  (L212) creates in-memory only.
-
- Fix:
- 1. Add POST /api/loads/:id/change-requests endpoint in server/routes/loads.ts
- (INSERT into work_items table with type="CHANGE_REQUEST")
- 2. Add GET /api/loads/:id/change-requests endpoint (SELECT from work_items
- where type="CHANGE_REQUEST")
- 3. Wire frontend createChangeRequest() to call the POST endpoint instead of
- in-memory push
- 4. Add change request list rendered below load card with status badges
- (PENDING/APPROVED/REJECTED)
- 5. Add document list fetched from existing /api/documents?loadId= endpoint
-
- Pass/fail: createChangeRequest() calls API (not in-memory). Change request
- list renders from API data. Document list shows data from /api/documents.
- Remove "Mock Change Requests" comment.
-
- S-6.9: DispatcherTimeline — replace mock location text
-
- File: components/DispatcherTimeline.tsx
-
- Lines 88-90: Shows "Geocoded Terminal Entry (Lat: ...)" — mock text with raw
- coordinates.
-
- Fix: Format as "Location: {lat.toFixed(4)}, {lng.toFixed(4)}" (or reverse
- geocode if Google Maps API key available). Remove "Geocoded Terminal Entry"
- fake label.
-
- Verify: Location text shows coordinates in readable format, not fake label.
-
- ---
- Phase 7: End-to-End Verification
-
- Goal: Prove every fix works with methods that go BEYOND the test suites (which
-  missed these issues originally). Each verification step has a binary
- PASS/FAIL gate.
-
- S-7.1: Automated test suites (baseline gate)
-
- cd server && npx vitest run          # Server tests — MUST: 0 failures
- cd .. && npx vitest run              # Frontend tests — MUST: 0 failures
- npx tsc --noEmit                     # Frontend TS — MUST: 0 errors
- cd server && npx tsc --noEmit        # Server TS — MUST: 0 errors
- python -m pytest .claude/hooks/tests/ -v  # Hook tests — MUST: 0 failures
-
- FAIL if: any test fails or TS error count > 0. Zero regressions allowed.
-
- S-7.2: Exhaustive static grep verification (every hardcoded value)
-
- Each grep MUST return 0 matches. Any match = FAIL.
-
- # ── Auth service: no raw fetch() ──
- grep -c "fetch(" services/financialService.ts           # MUST: 0
- grep -c "fetch(" services/storageService.ts             # MUST: 0
-
- # ── SafetyView.tsx: all 12 hardcoded values removed ──
- grep -Pn 'progress:\s*85' components/SafetyView.tsx     # MUST: 0
- grep -Pn 'progress:\s*42' components/SafetyView.tsx     # MUST: 0
- grep -Pn 'progress:\s*98' components/SafetyView.tsx     # MUST: 0
- grep -n '"95%"' components/SafetyView.tsx                # MUST: 0
- grep -n '"100%"' components/SafetyView.tsx               # MUST: 0 (test score
-  context)
- grep -n '"65%"' components/SafetyView.tsx                # MUST: 0
- grep -n '"324 Certified' components/SafetyView.tsx       # MUST: 0
- grep -n 'value:.*"75"' components/SafetyView.tsx         # MUST: 0 (safety
- score)
- grep -n '"90 Days"' components/SafetyView.tsx            # MUST: 0
- grep -n '"Unit 101"' components/SafetyView.tsx           # MUST: 0
- grep -n '"Unit 102"' components/SafetyView.tsx           # MUST: 0
-
- # ── AccountingPortal.tsx: all 10 hardcoded values removed ──
- grep -n 'val:.*"14"' components/AccountingPortal.tsx     # MUST: 0
- grep -n '"\$2,840"' components/AccountingPortal.tsx      # MUST: 0
- grep -n '"42.5 hrs"' components/AccountingPortal.tsx     # MUST: 0
- grep -n 'setTimeout.*matched' components/AccountingPortal.tsx  # MUST: 0
- grep -n 'glAccountId:.*"5000"' components/AccountingPortal.tsx # MUST: 0
- grep -n '"1 hour ago"' components/AccountingPortal.tsx   # MUST: 0
- grep -n 'value:.*"14".*Active' components/AccountingPortal.tsx # MUST: 0
-
- # ── IntelligenceHub.tsx: all 8 mock values removed ──
- grep -n '"CS-9901"' components/IntelligenceHub.tsx       # MUST: 0
- grep -n '"888-555-0000"' components/IntelligenceHub.tsx  # MUST: 0
- grep -n '"800-SAFE-KCI"' components/IntelligenceHub.tsx  # MUST: 0
- grep -n '"John Doe"' components/IntelligenceHub.tsx      # MUST: 0
- grep -n '"Trucker Tom"' components/IntelligenceHub.tsx   # MUST: 0
- grep -n '"Mike Thompson"' components/IntelligenceHub.tsx # MUST: 0
- grep -n '"Choptank"' components/IntelligenceHub.tsx      # MUST: 0
- grep -n '"Blue Star"' components/IntelligenceHub.tsx     # MUST: 0
- grep -n '"45-60 mins"' components/IntelligenceHub.tsx    # MUST: 0
-
- # ── ExceptionConsole.tsx: all 3 hardcoded values removed ──
- grep -n '"SLA: 24m' components/ExceptionConsole.tsx      # MUST: 0
- grep -n '"01:42:00"' components/ExceptionConsole.tsx     # MUST: 0
- grep -n '"1h 14m"' components/ExceptionConsole.tsx       # MUST: 0
-
- # ── Other components ──
- grep -n '"04:00 AM"' components/LoadGantt.tsx            # MUST: 0
- grep -n '"ETA: 06:30 PM"' components/LoadGantt.tsx       # MUST: 0
- grep -n '"Acme Global"' components/QuoteManager.tsx      # MUST: 0
- grep -n '"3125550199"' components/QuoteManager.tsx       # MUST: 0
- grep -n '"PENDING@MAIL.COM"' components/NetworkPortal.tsx # MUST: 0
- grep -n '"NEW CONTACT"' components/NetworkPortal.tsx     # MUST: 0
- grep -n '"000-000-000"' components/NetworkPortal.tsx     # MUST: 0
- grep -n 'Geocoded Terminal Entry' components/DispatcherTimeline.tsx  # MUST: 0
- grep -n 'Mock Change Requests' components/DriverMobileHome.tsx      # MUST: 0
-
- FAIL if: any grep returns > 0 matches.
-
- S-7.3: Dead button audit (no onClick={undefined})
-
- # Find buttons without onClick handlers in remediated components
- # Each must return 0 matches for buttons WITHOUT handlers
- grep -Pn '<button[^>]*(?<!onClick=\{[^}]+\})>\s*$'
- components/LoadDetailView.tsx  # MUST: 0
-
- Also manually verify by reading each button in the modified components — every
-  <button> element must have an onClick prop.
-
- FAIL if: any button element lacks an onClick handler.
-
- S-7.4: Endpoint regression (15 endpoints — binary pass/fail)
-
- Start server with npm run server. Hit each endpoint with valid auth token.
-
- MUST return 200 (were 500) — 9 endpoints:
-
- ┌──────────────────────────┬──────────┬──────────┐
- │         Endpoint         │ Previous │ Required │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/quotes          │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/leads           │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/bookings        │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/work-items      │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/kci-requests    │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/dashboard/cards │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/providers       │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/contacts        │ 500      │ 200      │
- ├──────────────────────────┼──────────┼──────────┤
- │ GET /api/safety/vendors  │ 500      │ 200      │
- └──────────────────────────┴──────────┴──────────┘
-
- MUST return 200 (were 401) — 2 endpoints:
-
- ┌──────────────────────────────┬──────────┬──────────┐
- │           Endpoint           │ Previous │ Required │
- ├──────────────────────────────┼──────────┼──────────┤
- │ GET /api/accounting/accounts │ 401      │ 200      │
- ├──────────────────────────────┼──────────┼──────────┤
- │ GET /api/accounting/invoices │ 401      │ 200      │
- └──────────────────────────────┴──────────┴──────────┘
-
- MUST return 200 (were 404) — 3 endpoints:
-
- ┌──────────────────────────────────────┬──────────┬──────────┐
- │               Endpoint               │ Previous │ Required │
- ├──────────────────────────────────────┼──────────┼──────────┤
- │ GET /api/companies/{id}              │ 404      │ 200      │
- ├──────────────────────────────────────┼──────────┼──────────┤
- │ GET /api/dispatch-events/{companyId} │ 404      │ 200      │
- ├──────────────────────────────────────┼──────────┼──────────┤
- │ GET /api/equipment/{companyId}       │ 404      │ 200      │
- └──────────────────────────────────────┴──────────┴──────────┘
-
- FAIL if: any endpoint returns its previous error status.
-
- S-7.5: Console error regression (hard targets)
-
- Navigate every page via Playwright. Intercept all fetch calls. Count errors by
-  category.
-
- ┌──────────┬─────────────┬─────────────────────┬───────────┐
- │ Category │ Audit Count │       Target        │ FAIL if > │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ HTTP 500 │ 41          │ 0                   │ 0         │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ HTTP 401 │ 20          │ 0                   │ 0         │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ HTTP 404 │ 11          │ 2                   │ 3         │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ HTTP 403 │ 26          │ 3 (role-based only) │ 5         │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ HTTP 400 │ 21          │ 2                   │ 4         │
- ├──────────┼─────────────┼─────────────────────┼───────────┤
- │ TOTAL    │ 120         │ 7                   │ 12        │
- └──────────┴─────────────┴─────────────────────┴───────────┘
-
- FAIL if: total > 12 or any 500/401 errors remain.
-
- S-7.6: Component feature verification checklist
-
- Every Phase 6 feature must be verified independently:
-
- ┌─────────────────────┬──────────────────────┬────────────────────────────┐
- │        Story        │     Verification     │       PASS criteria        │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.1 Dashboard     │                      │ 3 recharts components      │
- │ charts              │ Open Dashboard page  │ render (BarChart,          │
- │                     │                      │ LineChart, BarChart)       │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.2 Load Board    │ Click +New button on │ Button is clickable, not   │
- │ +New                │  Load Board          │ obscured. Opens form or    │
- │                     │                      │ navigates.                 │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.3 Analytics     │ Open                 │ At least 2 recharts        │
- │ charts              │ Reports/Analytics    │ render. Click broker card  │
- │                     │ page                 │ → navigates.               │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.4 Calendar      │ Create load with     │ Load appears on Mon, Tue,  │
- │ multi-day           │ pickup Mon, delivery │ Wed cells                  │
- │                     │  Wed                 │                            │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.5 Command       │ Click incident in    │ Detail drawer shows        │
- │ Center timeline     │ Command Center       │ timeline entries with      │
- │                     │                      │ timestamps                 │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.6 Settlements   │ Click "Batch Print"  │ PDF generated/downloaded.  │
- │ batch               │ with 2+ settlements  │ Click "Finalize" → API     │
- │                     │                      │ call made.                 │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.7               │                      │ Reports tab/section        │
- │ IntelligenceHub     │ Open IntelligenceHub │ visible. Shows metrics or  │
- │ reports             │                      │ "No data".                 │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.8 DriverMobile  │ Submit change        │ Request appears in list    │
- │ requests            │ request on driver    │ after page refresh.        │
- │                     │ view                 │                            │
- ├─────────────────────┼──────────────────────┼────────────────────────────┤
- │ S-6.9               │ View timeline with   │ Shows "Location: xx.xxxx,  │
- │ DispatcherTimeline  │ location entry       │ yy.yyyy" not "Geocoded     │
- │                     │                      │ Terminal Entry"            │
- └─────────────────────┴──────────────────────┴────────────────────────────┘
-
- FAIL if: any row does not meet PASS criteria.
-
- ---
- ---
- Ralph Orchestration & Agent Isolation
-
- Merge-Conflict Prevention: Combined Stories
-
- Stories touching the same file MUST be handled by the same agent to prevent
- merge conflicts. The following stories are MERGED:
-
- Combined Story: C-1: SafetyView full remediation
- Original Stories: S-4.1 + SafetyView buttons from S-5.2
- File(s): SafetyView.tsx
- Reason: Both modify same file
- ────────────────────────────────────────
- Combined Story: C-2: AccountingPortal full remediation
- Original Stories: S-4.2 + AccountingPortal buttons from S-5.2
- File(s): AccountingPortal.tsx
- Reason: Both modify same file
- ────────────────────────────────────────
- Combined Story: C-3: IntelligenceHub full remediation
- Original Stories: S-4.3 + S-6.7
- File(s): IntelligenceHub.tsx
- Reason: Hardcoded removal + reports section
- ────────────────────────────────────────
- Combined Story: C-4: Settlements full remediation
- Original Stories: Settlements button from S-5.2 + S-6.6
- File(s): Settlements.tsx, server/routes/accounting.ts
- Reason: Button + batch in same file
-
- After merging: 24 execution stories (down from 28).
-
- Worktree Isolation Strategy
-
- All ralph-story agents MUST use isolation: "worktree" + model: "opus".
-
- All agents work on the same feature branch
- (ralph/full-saas-integration-sprint). Each agent gets its own git worktree —
- an isolated filesystem copy of the repo at the current branch HEAD. Changes
- from completed worktrees are merged back to the feature branch before the next
-  wave starts.
-
- Wave model (not free-for-all parallelism):
-
- WAVE 1 (sequential — foundation)
-   Phase 1: S-1.1 → S-1.2 → S-1.3 → S-1.4 → S-1.5
-   Phase 2: S-2.1 → S-2.2 → S-2.3 → S-2.4
-   Phase 3: S-3.1 → S-3.2
-   └─ Each story commits to feature branch. Next story starts from updated
- HEAD.
-   └─ QUALITY GATE: All tests pass, TS clean, before Wave 2 starts.
-
- WAVE 2 (parallel — up to 10 agents in worktrees simultaneously)
-   Each agent gets its own worktree. No two agents touch the same file.
-
-   ┌─ Agent A: C-1 (SafetyView full remediation)
-   │   Files: components/SafetyView.tsx
-   │
-   ├─ Agent B: C-2 (AccountingPortal full remediation)
-   │   Files: components/AccountingPortal.tsx
-   │
-   ├─ Agent C: C-3 (IntelligenceHub full remediation)
-   │   Files: components/IntelligenceHub.tsx
-   │
-   ├─ Agent D: C-4 (Settlements full remediation)
-   │   Files: components/Settlements.tsx, server/routes/accounting.ts
-   │
-   ├─ Agent E: S-4.4 (ExceptionConsole + LoadGantt + QuoteManager +
- NetworkPortal + AccountingView)
-   │   Files: ExceptionConsole.tsx, LoadGantt.tsx, QuoteManager.tsx,
- NetworkPortal.tsx, AccountingView.tsx
-   │
-   ├─ Agent F: S-5.1 (LoadDetailView buttons)
-   │   Files: components/LoadDetailView.tsx
-   │
-   ├─ Agent G: S-6.1 (Dashboard charts)
-   │   Files: components/Dashboard.tsx
-   │
-   ├─ Agent H: S-6.2 + S-6.3 (LoadBoard z-index + Analytics charts)
-   │   Files: components/LoadBoardEnhanced.tsx, components/LoadList.tsx,
- components/AnalyticsDashboard.tsx
-   │
-   ├─ Agent I: S-6.4 + S-6.5 (Calendar multi-day + CommandCenter timeline)
-   │   Files: components/CalendarView.tsx, components/CommandCenterView.tsx
-   │
-   └─ Agent J: S-6.8 + S-6.9 (DriverMobile + DispatcherTimeline)
-       Files: components/DriverMobileHome.tsx,
- components/DispatcherTimeline.tsx, server/routes/loads.ts
-
-   └─ MERGE: Each worktree merged to feature branch as agent completes.
-   └─ QUALITY GATE: All tests pass, TS clean, after all agents merged.
-
- WAVE 3 (sequential — verification)
-   Phase 7: S-7.1 → S-7.2 → S-7.3 → S-7.4 → S-7.5 → S-7.6
-   └─ Runs on merged feature branch. No worktrees needed.
-
- File Ownership Matrix (zero overlap)
-
- CRITICAL: No two parallel agents may modify the same file. This matrix is the
- contract.
-
- ┌─────────────────────────────┬─────────────┬─────────┐
- │            File             │ Owner Agent │ Stories │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ SafetyView.tsx              │ Agent A     │ C-1     │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ AccountingPortal.tsx        │ Agent B     │ C-2     │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ IntelligenceHub.tsx         │ Agent C     │ C-3     │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ Settlements.tsx             │ Agent D     │ C-4     │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ server/routes/accounting.ts │ Agent D     │ C-4     │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ ExceptionConsole.tsx        │ Agent E     │ S-4.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ LoadGantt.tsx               │ Agent E     │ S-4.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ QuoteManager.tsx            │ Agent E     │ S-4.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ NetworkPortal.tsx           │ Agent E     │ S-4.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ AccountingView.tsx          │ Agent E     │ S-4.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ LoadDetailView.tsx          │ Agent F     │ S-5.1   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ Dashboard.tsx               │ Agent G     │ S-6.1   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ LoadBoardEnhanced.tsx       │ Agent H     │ S-6.2   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ LoadList.tsx                │ Agent H     │ S-6.2   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ AnalyticsDashboard.tsx      │ Agent H     │ S-6.3   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ CalendarView.tsx            │ Agent I     │ S-6.4   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ CommandCenterView.tsx       │ Agent I     │ S-6.5   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ DriverMobileHome.tsx        │ Agent J     │ S-6.8   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ DispatcherTimeline.tsx      │ Agent J     │ S-6.9   │
- ├─────────────────────────────┼─────────────┼─────────┤
- │ server/routes/loads.ts      │ Agent J     │ S-6.8   │
- └─────────────────────────────┴─────────────┴─────────┘
-
- Quality Gates
-
- ┌──────┬──────────┬────────────────────────────────────┬──────────────────┐
- │ Gate │  After   │               Checks               │   FAIL action    │
- ├──────┼──────────┼────────────────────────────────────┼──────────────────┤
- │ G1   │ Wave 1   │ npx vitest run (server +           │ Fix before Wave  │
- │      │          │ frontend), npx tsc --noEmit (both) │ 2                │
- ├──────┼──────────┼────────────────────────────────────┼──────────────────┤
- │ G2   │ Wave 2   │ Same + grep verification (S-7.2    │ Reject worktree, │
- │      │ merge    │ subset for merged files)           │  retry           │
- ├──────┼──────────┼────────────────────────────────────┼──────────────────┤
- │ G3   │ Wave 3   │ Full S-7.1 through S-7.6           │ Document         │
- │      │          │                                    │ remaining issues │
- └──────┴──────────┴────────────────────────────────────┴──────────────────┘
-
- Code Quality Constraints (all agents)
-
- 1. Pattern reuse: Use api.get/post/patch/delete from services/api.ts for all
- API calls. Use useState + useEffect pattern from existing components (e.g.,
- LoadList.tsx) for data fetching. Use recharts from existing IFTAChart pattern
- for charts.
- 2. No new abstractions: No new utility functions, helper files, or wrapper
- components unless the story explicitly calls for one (S-1.4 useCurrentUser is
- the only exception).
- 3. Error handling: Use try/catch around API calls. Show user-visible error
- states, not silent failures.
- 4. Empty states: When data is absent, render "No data yet" or "—", never leave
-  hardcoded placeholder.
- 5. Tests: Each agent MUST run npx vitest run in their worktree before marking
- complete. If new backend endpoints are added (S-6.6, S-6.8), add at least 1
- integration test per endpoint.
- 6. Selective staging: git add only the files in the agent's ownership matrix.
- Never git add -A.
-
- New Test Requirements
-
- Stories that add new endpoints or significant new features MUST include tests:
-
- ┌───────┬─────────────────────────────────────┬───────────────────────────┐
- │ Story │          New Test Required          │         Test Type         │
- ├───────┼─────────────────────────────────────┼───────────────────────────┤
- │ S-6.6 │ PATCH /api/settlements/batch        │ Server integration test   │
- │       │ endpoint                            │                           │
- ├───────┼─────────────────────────────────────┼───────────────────────────┤
- │ S-6.8 │ POST /api/loads/:id/change-requests │ Server integration test   │
- │       │  + GET                              │                           │
- ├───────┼─────────────────────────────────────┼───────────────────────────┤
- │ S-1.5 │ 401 retry logic in api.ts           │ Frontend unit test (mock  │
- │       │                                     │ fetch)                    │
- ├───────┼─────────────────────────────────────┼───────────────────────────┤
- │ S-1.4 │ useCurrentUser hook                 │ Frontend unit test (mock  │
- │       │                                     │ onUserChange)             │
- └───────┴─────────────────────────────────────┴───────────────────────────┘
-
- Files Modified (Complete — Post-Merge)
-
- ┌─────────────────────────────────────────┬──────┬────────┬──────────────┐
- │                  File                   │ Agen │ Storie │    Change    │
- │                                         │  t   │   s    │              │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Replace 20   │
- │ services/financialService.ts            │ 1    │ S-1.1  │ raw fetch()  │
- │                                         │      │        │ with api.*   │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Replace 4    │
- │ services/storageService.ts              │ 1    │ S-1.2  │ raw fetch()  │
- │                                         │      │        │ with api.*   │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Add          │
- │ App.tsx                                 │ 1    │ S-1.3  │ isAuthReady  │
- │                                         │      │        │ gate         │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ NEW —        │
- │ hooks/useCurrentUser.ts                 │ 1    │ S-1.4  │ reactive     │
- │                                         │      │        │ auth hook    │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ services/api.ts                         │ Wave │ S-1.5  │ 401 retry    │
- │                                         │ 1    │        │ logic        │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │      │        │ Remove 5     │
- │ server/migrations/001_baseline.sql      │ Wave │ S-2.1  │ duplicate    │
- │                                         │ 1    │        │ CREATE       │
- │                                         │      │        │ TABLEs       │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ server/migrations/003_operational_entit │ Wave │        │ Remove       │
- │ ies.sql                                 │ 1    │ S-2.1  │ messages     │
- │                                         │      │        │ ALTER        │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │      │        │ Update MIGRA │
- │ server/__tests__/helpers/docker-mysql.t │ Wave │ S-2.1  │ TION_ORDER   │
- │ s                                       │ 1    │        │ array (add   │
- │                                         │      │        │ 024-030)     │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ server/migrations/032_parties_subsystem │ Wave │ S-2.2  │ NEW — 8      │
- │ .sql                                    │ 1    │        │ party tables │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Company      │
- │ server/routes/users.ts                  │ 1    │ S-2.3  │ creation in  │
- │                                         │      │        │ signup       │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Fix dashboar │
- │ server/routes/dispatch.ts               │ 1    │ S-2.4  │ d_card +     │
- │                                         │      │        │ routes       │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Wave │        │ Fix          │
- │ server/routes/equipment.ts              │ 1    │ S-2.4  │ equipment    │
- │                                         │      │        │ route path   │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │      │        │ Remove 12    │
- │ components/SafetyView.tsx               │ Agen │ C-1    │ hardcoded +  │
- │                                         │ t A  │        │ wire 4       │
- │                                         │      │        │ buttons      │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │      │        │ Remove 10    │
- │ components/AccountingPortal.tsx         │ Agen │ C-2    │ hardcoded +  │
- │                                         │ t B  │        │ wire 3       │
- │                                         │      │        │ buttons      │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Remove 8     │
- │ components/IntelligenceHub.tsx          │ t C  │ C-3    │ mock items + │
- │                                         │      │        │  add reports │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Compute 3    │
- │ components/ExceptionConsole.tsx         │ t E  │ S-4.4  │ dynamic      │
- │                                         │      │        │ values       │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Use load     │
- │ components/LoadGantt.tsx                │ t E  │ S-4.4  │ data for     │
- │                                         │      │        │ times        │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Use quote    │
- │ components/QuoteManager.tsx             │ t E  │ S-4.4  │ data for     │
- │                                         │      │        │ customer     │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ components/NetworkPortal.tsx            │ Agen │ S-4.4  │ Empty string │
- │                                         │ t E  │        │  defaults    │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │      │        │ Fix          │
- │ components/AccountingView.tsx           │ Agen │ S-4.4  │ misleading   │
- │                                         │ t E  │        │ "Mocking"    │
- │                                         │      │        │ comment      │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Wire 10      │
- │ components/LoadDetailView.tsx           │ t F  │ S-5.1  │ button       │
- │                                         │      │        │ handlers     │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Wire chevron │
- │ components/Settlements.tsx              │ t D  │ C-4    │  + batch +   │
- │                                         │      │        │ export       │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Add batch    │
- │ server/routes/accounting.ts             │ t D  │ C-4    │ settlement   │
- │                                         │      │        │ endpoint     │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Add 3        │
- │ components/Dashboard.tsx                │ t G  │ S-6.1  │ recharts vis │
- │                                         │      │        │ ualizations  │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ components/LoadBoardEnhanced.tsx        │ Agen │ S-6.2  │ Fix +New     │
- │                                         │ t H  │        │ z-index      │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Z-index      │
- │ components/LoadList.tsx                 │ t H  │ S-6.2  │ adjustment   │
- │                                         │      │        │ if needed    │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ components/AnalyticsDashboard.tsx       │ Agen │ S-6.3  │ Add charts + │
- │                                         │ t H  │        │  drill-down  │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │ components/CalendarView.tsx             │ Agen │ S-6.4  │ Multi-day    │
- │                                         │ t I  │        │ load spans   │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Complete     │
- │ components/CommandCenterView.tsx        │ t I  │ S-6.5  │ incident     │
- │                                         │      │        │ timeline     │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Wire change  │
- │ components/DriverMobileHome.tsx         │ t J  │ S-6.8  │ requests +   │
- │                                         │      │        │ docs         │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Replace mock │
- │ components/DispatcherTimeline.tsx       │ t J  │ S-6.9  │  location    │
- │                                         │      │        │ text         │
- ├─────────────────────────────────────────┼──────┼────────┼──────────────┤
- │                                         │ Agen │        │ Add change   │
- │ server/routes/loads.ts                  │ t J  │ S-6.8  │ request      │
- │                                         │      │        │ endpoints    │
- └─────────────────────────────────────────┴──────┴────────┴──────────────┘
-
- Total: 32 files, 7 phases, 24 stories (after merge), 3 waves, 10 parallel
- agents in Wave 2
-
- ---
- Appendix A: Traceability Matrix — Every Audit Finding → Story
-
- Every issue from docs/QA-FULL-AUDIT-2026-03-22.md must map to a story.
- Unmapped items = plan gap.
-
- Section 1: Missing Database Tables (8 tables)
-
- ┌─────────────────────┬───────┬────────┐
- │        Table        │ Story │ Status │
- ├─────────────────────┼───────┼────────┤
- │ parties             │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ party_contacts      │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ party_documents     │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ rate_rows           │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ rate_tiers          │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ constraint_sets     │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ constraint_rules    │ S-2.2 │ MAPPED │
- ├─────────────────────┼───────┼────────┤
- │ party_catalog_links │ S-2.2 │ MAPPED │
- └─────────────────────┴───────┴────────┘
-
- Section 1: Schema Conflicts (5 tables)
-
- ┌─────────────────────────┬───────┬────────┐
- │          Table          │ Story │ Status │
- ├─────────────────────────┼───────┼────────┤
- │ quotes (001 vs 017)     │ S-2.1 │ MAPPED │
- ├─────────────────────────┼───────┼────────┤
- │ leads (001 vs 017)      │ S-2.1 │ MAPPED │
- ├─────────────────────────┼───────┼────────┤
- │ bookings (001 vs 017)   │ S-2.1 │ MAPPED │
- ├─────────────────────────┼───────┼────────┤
- │ messages (001 vs 018)   │ S-2.1 │ MAPPED │
- ├─────────────────────────┼───────┼────────┤
- │ work_items (001 vs 019) │ S-2.1 │ MAPPED │
- └─────────────────────────┴───────┴────────┘
-
- Section 1: Broken Endpoints (9 × 500)
-
- ┌──────────────────────────┬───────┬────────┐
- │         Endpoint         │ Story │ Status │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/quotes          │ S-2.1 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/leads           │ S-2.1 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/bookings        │ S-2.1 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/kci-requests    │ S-2.1 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/work-items      │ S-2.1 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/dashboard/cards │ S-2.4 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/providers       │ S-2.2 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/contacts        │ S-2.2 │ MAPPED │
- ├──────────────────────────┼───────┼────────┤
- │ GET /api/safety/vendors  │ S-2.4 │ MAPPED │
- └──────────────────────────┴───────┴────────┘
-
- Section 3: Hardcoded Data (42 instances)
-
- ┌─────┬───────────────────────┬────────────────┬───────┬──────────────────┐
- │  #  │       Component       │     Value      │ Story │      Status      │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 1   │ SafetyView:1037       │ 85 (quiz)      │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 2   │ SafetyView:1044       │ 42 (quiz)      │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 3   │ SafetyView:1051       │ 98 (quiz)      │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 4   │ SafetyView:1106       │ "95%"          │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 5   │ SafetyView:1112       │ "100%"         │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 6   │ SafetyView:1118       │ "65%"          │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 7   │ SafetyView:1085       │ "324           │ S-4.1 │ MAPPED           │
- │     │                       │ Certified"     │       │                  │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 8   │ SafetyView:1159       │ "75"           │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 9   │ SafetyView:1169       │ "90 Days"      │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 10  │ SafetyView:1281       │ "Unit 101/102" │ S-4.1 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 11  │ AccountingPortal:335  │ "14"           │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 12  │ AccountingPortal:343  │ "$2,840"       │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 13  │ AccountingPortal:1112 │ "42.5 hrs"     │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 14  │ AccountingPortal:1118 │ "14" triggers  │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 15  │ AccountingPortal:123  │ 3 rule objects │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 16  │ AccountingPortal:170  │ setTimeout     │ S-4.2 │ MAPPED           │
- │     │                       │ mock           │       │                  │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 17  │ AccountingPortal:971  │ "5000" GL      │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 18  │ AccountingPortal:1024 │ audit entries  │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 19  │ AccountingPortal:1032 │ "1 hour ago"   │ S-4.2 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 20  │ ExceptionConsole:430  │ "SLA: 24m"     │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 21  │ ExceptionConsole:525  │ "01:42:00"     │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 22  │ ExceptionConsole:571  │ "1h 14m"       │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 23  │ IntelligenceHub:1603  │ "John Doe"     │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 24  │ IntelligenceHub:1618  │ "Trucker Tom"  │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 25  │ IntelligenceHub:1702  │ mockCallers    │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 26  │ IntelligenceHub:515   │ "CS-9901"      │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 27  │ IntelligenceHub:1413  │ "45-60 mins"   │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 28  │ IntelligenceHub:1236  │ "888-555-0000" │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 29  │ IntelligenceHub:1242  │ "800-SAFE-KCI" │ S-4.3 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 30  │ LoadGantt:88          │ "04:00 AM"     │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 31  │ LoadGantt:91          │ "ETA: 06:30    │ S-4.4 │ MAPPED           │
- │     │                       │ PM"            │       │                  │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 32  │ QuoteManager:1189     │ "Acme Global"  │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 33  │ QuoteManager:1209     │ "3125550199"   │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 34  │ NetworkPortal:1246    │ "PENDING@MAIL" │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │     │                       │                │       │ FALSE POSITIVE   │
- │ 35  │ Auth:377              │ dailyCost: 45  │ N/A   │ (valid signup    │
- │     │                       │                │       │ default)         │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │     │                       │ "Mocking"      │       │ MAPPED           │
- │ 36  │ AccountingView:72     │ comment        │ S-4.4 │ (comment-only    │
- │     │                       │                │       │ fix)             │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 37  │ IntelligenceHub:57    │ seedMockData   │ N/A   │ OK (DEV-gated)   │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 38  │ DriverMobileHome:150  │ Mock comment   │ S-6.8 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 39  │ DispatcherTimeline:88 │ Mock location  │ S-6.9 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 40  │ NetworkPortal:1244    │ "NEW CONTACT"  │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 41  │ NetworkPortal:1247    │ "000-000-000"  │ S-4.4 │ MAPPED           │
- ├─────┼───────────────────────┼────────────────┼───────┼──────────────────┤
- │ 42  │ AccountingPortal:1032 │ "1 hour ago"   │ S-4.2 │ MAPPED           │
- └─────┴───────────────────────┴────────────────┴───────┴──────────────────┘
-
- Section 4: Non-Functional Buttons (18 buttons)
-
- ┌─────┬───────────────────────┬─────────────────┬───────┬────────────────┐
- │  #  │       Component       │     Button      │ Story │     Status     │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 1   │ LoadDetailView:231    │ Print BOL       │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 2   │ LoadDetailView:232    │ Carrier Rates   │ S-5.1 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 3   │ LoadDetailView:233    │ Load Stops      │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 4   │ LoadDetailView:234    │ Documents       │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 5   │ LoadDetailView:235    │ Show Route      │ S-5.1 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 6   │ LoadDetailView:236    │ Audit Logs      │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 7   │ LoadDetailView:248    │ Tag for Action  │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 8   │ LoadDetailView:251    │ Lock/Unlock     │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 9   │ LoadDetailView:464    │ + Add Pickup    │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 10  │ LoadDetailView:467    │ + Add Drop      │ S-5.1 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 11  │ AccountingPortal:381  │ View All Loads  │ S-5.2 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 12  │ AccountingPortal:1097 │ Create New Rule │ S-5.2 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 13  │ AccountingPortal:619  │ More options    │ S-5.2 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 14  │ SafetyView:743        │ Service         │ S-5.2 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 15  │ SafetyView:746        │ History         │ S-5.2 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 16  │ SafetyView:850        │ View Financials │ S-5.2 │ MAPPED (REAL)  │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 17  │ SafetyView:1087       │ Manage          │ S-5.2 │ MAPPED (TOAST) │
- ├─────┼───────────────────────┼─────────────────┼───────┼────────────────┤
- │ 18  │ Settlements:433       │ Chevron expand  │ S-5.2 │ MAPPED (REAL)  │
- └─────┴───────────────────────┴─────────────────┴───────┴────────────────┘
-
- Section 5: Auth Bugs (7 bugs)
-
- ┌─────────────────────────────────────────┬───────┬────────┐
- │                   Bug                   │ Story │ Status │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 1: financialService missing auth    │ S-1.1 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 2: No auth readiness gate           │ S-1.3 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 3: Components fire API without auth │ S-1.3 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 4: getCurrentUser() null            │ S-1.4 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 5: storageService raw fetch         │ S-1.2 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 6: No 401 retry                     │ S-1.5 │ MAPPED │
- ├─────────────────────────────────────────┼───────┼────────┤
- │ Bug 7: Company record missing           │ S-2.3 │ MAPPED │
- └─────────────────────────────────────────┴───────┴────────┘
-
- Section 6: Page-Level Gaps (9 pages)
-
- ┌────────────────────┬────────────────────────────┬───────┬────────┐
- │        Page        │           Issue            │ Story │ Status │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Dashboard          │ Missing charts             │ S-6.1 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Load Board         │ +New button blocked        │ S-6.2 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Reports/Analytics  │ No charts, no drill-down   │ S-6.3 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Schedule/Calendar  │ No multi-day loads         │ S-6.4 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Command Center     │ Incident detail incomplete │ S-6.5 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ Settlements        │ No batch/reports           │ S-6.6 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ IntelligenceHub    │ Reports stub               │ S-6.7 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ DriverMobileHome   │ Mock change requests       │ S-6.8 │ MAPPED │
- ├────────────────────┼────────────────────────────┼───────┼────────┤
- │ DispatcherTimeline │ Mock location text         │ S-6.9 │ MAPPED │
- └────────────────────┴────────────────────────────┴───────┴────────┘
-
- Section 7-8: HTTP Error Categories
-
- ┌─────────────────┬───────┬────────────────────────────┬────────┐
- │    Category     │ Count │           Story            │ Status │
- ├─────────────────┼───────┼────────────────────────────┼────────┤
- │ 500 errors (41) │ 41    │ S-2.1, S-2.2, S-2.4        │ MAPPED │
- ├─────────────────┼───────┼────────────────────────────┼────────┤
- │ 401 errors (20) │ 20    │ S-1.1, S-1.2, S-1.3, S-1.5 │ MAPPED │
- ├─────────────────┼───────┼────────────────────────────┼────────┤
- │ 403 errors (26) │ 26    │ S-3.1                      │ MAPPED │
- ├─────────────────┼───────┼────────────────────────────┼────────┤
- │ 400 errors (21) │ 21    │ S-3.2                      │ MAPPED │
- ├─────────────────┼───────┼────────────────────────────┼────────┤
- │ 404 errors (11) │ 11    │ S-2.3, S-2.4               │ MAPPED │
- └─────────────────┴───────┴────────────────────────────┴────────┘
-
- Missing Routes
-
- ┌────────────────────────────┬───────┬────────┐
- │           Route            │ Story │ Status │
- ├────────────────────────────┼───────┼────────┤
- │ /api/dispatch/events (404) │ S-2.4 │ MAPPED │
- ├────────────────────────────┼───────┼────────┤
- │ /api/equipment (404)       │ S-2.4 │ MAPPED │
- ├────────────────────────────┼───────┼────────┤
- │ /api/companies/{id} (404)  │ S-2.3 │ MAPPED 
-Appendix B: Acceptance Criteria R-Markers
-
-Each criterion below is the single source of truth for verification.
-Format: - R-PN-NN: criterion text (story ID)
-
-Phase 1: Auth Infrastructure
-
-- R-P1-01: grep -c fetch( services/financialService.ts returns 0 â€” all raw fetch() calls replaced with api.* helpers (S-1.1)
-- R-P1-02: Frontend tests pass with no regressions after conversion (S-1.1)
-
-- R-P1-03: grep -c fetch( services/storageService.ts returns 0 â€” all raw fetch() calls replaced (S-1.2)
-- R-P1-04: Duplicate auth checks at lines 259, 294 removed (S-1.2)
-
-- R-P1-05: isAuthReady state added â€” children render blocked until refreshData() completes (S-1.3)
-- R-P1-06: Login produces no 401 console errors â€” children mount only after auth ready (S-1.3)
-- R-P1-07: Logout resets isAuthReady to false (S-1.3)
-
-- R-P1-08: useCurrentUser hook subscribes to onUserChange and returns reactive user state (S-1.4)
-- R-P1-09: Consumer components re-render on auth state change without null-user crashes (S-1.4)
-
-- R-P1-10: On first 401, token is force-refreshed and request retried once (S-1.5)
-- R-P1-11: If retry succeeds with fresh token, no auth:session-expired event dispatched (S-1.5)
-- R-P1-12: If retry also returns 401, auth:session-expired event dispatched and error thrown (S-1.5)
-
-Phase 2: Database Schema
-
-- R-P2-01: 5 duplicate CREATE TABLE statements removed from 001_baseline.sql (quotes, leads, bookings, messages, work_items) (S-2.1)
-- R-P2-02: ALTER TABLE messages ADD COLUMN company_id removed from 003_operational_entities.sql (S-2.1)
-- R-P2-03: MIGRATION_ORDER array in docker-mysql.ts updated to include all migrations through 032 (S-2.1)
-- R-P2-04: Server tests pass with clean migration order (S-2.1)
-
-- R-P2-05: Migration 032 creates all 8 party tables with correct columns and FK constraints (S-2.2)
-- R-P2-06: GET /api/providers returns 200 (empty array) after migration (S-2.2)
-- R-P2-07: GET /api/contacts returns 200 (empty array) after migration (S-2.2)
-
-- R-P2-08: Signup handler creates company record in MySQL in addition to Firestore (S-2.3)
-- R-P2-09: GET /api/companies/{id} returns 200 after signup â€” no more 404 (S-2.3)
-
-- R-P2-10: GET /api/dashboard/cards returns 200 with valid auth â€” no more 500 (S-2.4)
-- R-P2-11: Dispatch events route accessible from frontend path â€” no more 404 (S-2.4)
-- R-P2-12: Equipment route accessible with tenant-scoped path â€” no more 404 (S-2.4)
-
-Phase 3: HTTP Error Fixes
-
-- R-P3-01: 403 error count drops from 26 to less than 5 after tenant mismatch fix (S-3.1)
-- R-P3-02: Remaining 403s are legitimate role-based access denials (S-3.1)
-
-- R-P3-03: 400 error count drops from 21 to less than 3 after client-side validation added (S-3.2)
-- R-P3-04: AI route calls guarded by if (!imageBase64) return check (S-3.2)
-
-Phase 4: Hardcoded Data Removal
-
-- R-P4-01: All 12 hardcoded values removed from SafetyView.tsx â€” data fetched from API or shows empty state (C-1)
-- R-P4-02: 4 SafetyView buttons wired â€” Service/History/Manage show toast, View Financials navigates (C-1)
-- R-P4-03: Zero silent no-ops remain â€” every button produces visible result (C-1)
-
-- R-P4-04: All 10 hardcoded values removed from AccountingPortal.tsx â€” values computed from real data or API (C-2)
-- R-P4-05: 3 AccountingPortal buttons wired â€” View All Loads navigates, Create New Rule and More options show toast (C-2)
-- R-P4-06: setTimeout mock matching removed, replaced with API call or removed entirely (C-2)
-
-- R-P4-07: All 8 mock values removed from IntelligenceHub.tsx â€” init empty arrays, use real data (C-3)
-- R-P4-08: Reports tab/section added showing computed call metrics or 'No data' empty state (C-3)
-- R-P4-09: mockCallers array removed, call queue populated from real data or empty (C-3)
-
-Phase 5: Non-Functional Buttons
-
-- R-P5-01: Chevron expand wired to setExpandedRow(id) toggle (C-4)
-- R-P5-02: Batch Print generates PDF using jsPDF for all visible settlement rows (C-4)
-- R-P5-03: Finalize calls PATCH /api/settlements/batch and updates row status (C-4)
-- R-P5-04: Export CSV triggers file download with settlement data (C-4)
-
-Phase 4: Hardcoded Data Removal
-
-- R-P4-10: ExceptionConsole 3 hardcoded values replaced with dynamic computations from exception data (S-4.4)
-- R-P4-11: LoadGantt uses load.pickupTime and load.estimatedDeliveryTime â€” no hardcoded times (S-4.4)
-- R-P4-12: QuoteManager uses selectedQuote data â€” no hardcoded customer names or phone numbers (S-4.4)
-- R-P4-13: NetworkPortal uses empty string defaults â€” no fake placeholder data (S-4.4)
-- R-P4-14: AccountingView misleading 'Mocking' comment changed to accurately describe computation (S-4.4)
-
-Phase 5: Non-Functional Buttons
-
-- R-P5-05: 8 REAL buttons call APIs or navigate â€” Print BOL, Load Stops, Documents, Audit Logs, Tag, Lock, +Pickup, +Drop (S-5.1)
-- R-P5-06: 2 TOAST buttons show visible notification â€” Carrier Rates and Show Route (S-5.1)
-- R-P5-07: Zero silent no-ops remain in LoadDetailView â€” every button produces visible result (S-5.1)
-
-Phase 6: Page-Level Feature Completion
-
-- R-P6-01: 3 recharts components render in Dashboard (BarChart RPM, LineChart exceptions, BarChart revenue) (S-6.1)
-- R-P6-02: Chart data computed from existing props â€” zero hardcoded chart data (S-6.1)
-- R-P6-03: Empty state 'No data for this period' shown when no loads/exceptions exist (S-6.1)
-
-- R-P6-04: +New button is clickable and not obscured by other z-index layers â€” opens new load form or navigates (S-6.2)
-
-- R-P6-05: At least 2 recharts components render in AnalyticsDashboard (BarChart and PieChart) (S-6.3)
-- R-P6-06: Click on broker/lane card navigates to filtered view (drill-down) (S-6.3)
-
-- R-P6-07: Multi-day loads appear on all days between pickup and delivery dates, not just pickup day (S-6.4)
-
-- R-P6-08: Incident timeline renders as vertical timeline in detail drawer (S-6.5)
-- R-P6-09: Each timeline entry shows action, actor, and timestamp (S-6.5)
-
-- R-P6-10: createChangeRequest() calls POST /api/loads/:id/change-requests API â€” not in-memory (S-6.8)
-- R-P6-11: Change request list renders from GET API data with status badges (PENDING/APPROVED/REJECTED) (S-6.8)
-- R-P6-12: Document list populated from /api/documents?loadId= endpoint (S-6.8)
-- R-P6-13: 'Mock Change Requests' comment removed from source (S-6.8)
-
-- R-P6-14: Location text shows coordinates in readable format, not fake 'Geocoded Terminal Entry' label (S-6.9)
-- R-P6-15: No reference to 'Geocoded Terminal Entry' remains in component (S-6.9)
-
-Phase 7: End-to-End Verification
-
-- R-P7-01: Server tests pass with 0 failures (S-7.1)
-- R-P7-02: Frontend tests pass with 0 failures (S-7.1)
-- R-P7-03: TypeScript compilation has 0 errors for both frontend and server (S-7.1)
-
-- R-P7-04: All grep checks for hardcoded values return 0 matches across all remediated components (S-7.2)
-
-- R-P7-05: No button elements lack onClick handlers in remediated components (S-7.3)
-
-- R-P7-06: 9 endpoints that previously returned 500 now return 200 (S-7.4)
-- R-P7-07: 2 endpoints that previously returned 401 now return 200 (S-7.4)
-- R-P7-08: 3 endpoints that previously returned 404 now return 200 (S-7.4)
-
-- R-P7-09: Zero HTTP 500 errors remain across all pages (S-7.5)
-- R-P7-10: Zero HTTP 401 errors remain across all pages (S-7.5)
-- R-P7-11: Total console errors across all pages is 12 or fewer (down from 120) (S-7.5)
-
-- R-P7-12: All 9 Phase 6 features verified per checklist â€” each meets its PASS criteria (S-7.6)
+Plan: Production Hardening — From Demo-Grade to Pilot-Ready
+
+Context
+
+LoadPilot has a strong foundation: real backend boot path with env validation,
+health checks, auth middleware, rate limiting, structured errors, graceful
+shutdown. 169 backend test files, 211 frontend test files, 45 Playwright specs.
+Frontend build passes. Backend deployment-readiness passes.
+
+But trust risks remain that prevent production deployment with real tenants:
+release truth (ports disagree, CI incomplete), data truth (20+ silent
+stale-data fallbacks across 7 service files), tenant isolation gaps, identity
+auto-provisioning, plaintext secrets, local-only document storage, dev/demo
+surfaces in production bundle, and unfinished product surfaces.
+
+This plan covers all three priority tiers:
+- P0: Foundation trust (release, data, tenant, identity, secrets, storage)
+- P1: Workflow trust (core E2E flows, dead affordances, observability, health)
+- P2: Structural trust (monolith breakup, doc drift, rollout procedures)
+
+Decisions (locked 2026-03-28):
+- Ports: 5000 (Express) / 3101 (Vite dev), all configs aligned via env vars
+- Data fallbacks: Remove ALL silent fallbacks — throw errors, let UI show error states
+- Auto-provisioning: Feature flag ALLOW_AUTO_PROVISION, off by default in prod
+- Object storage: Adapter interface + Firebase Storage adapter, keep disk for dev
+- CI: Add build, migration validation, deployment-readiness, and smoke test
+- Scope: All three tiers (P0 + P1 + P2)
+- Auth harness: Firebase Auth Emulator is the required test harness (not "emulator or test project")
+- Metrics: In-memory metrics are pilot-acceptable; plan documents the export path but does not implement external APM in this sprint
+- Webhook logging: Redacted logging only (vehicleId, companyId, timestamp, provider — never api_token or webhook_secret)
+
+Branch: ralph/production-hardening
+
+Execution environment:
+- All Verify: commands assume bash (Unix shell). Ralph agents run in bash
+  regardless of the host OS. Commands use grep, wc, curl, jq, and standard
+  Unix utilities. Windows-native execution is not expected.
+- End-state claim: This plan brings the product from "demo-grade" to
+  "deploy-ready for a controlled pilot with real tenants." It does NOT claim
+  full production-grade SaaS maturity. Specifically, external APM/metrics
+  export and multi-node staging soak testing are documented as future work
+  (see Phase 13 S-13.2 and Phase 14 S-14.1). The plan is honest about
+  where it stops.
+
+---
+## P0 — FOUNDATION TRUST
+---
+
+Phase 1: Release Truth — Port Canonicalization & CI Pipeline
+
+Goal: One canonical runtime contract for ports/environment. CI blocks merges
+unless build, typecheck, backend tests, migration validation, and smoke pass.
+
+S-1.1: Canonicalize port configuration across all config files
+
+Files: server/index.ts, vite.config.ts, playwright.config.ts, .env.example
+Write scope: server/index.ts, vite.config.ts, playwright.config.ts, .env.example
+Parallel group: config
+
+Current state: Server defaults to 5000, Playwright waits on PORT ?? 5101,
+Vite reads VITE_PORT || 3101 and VITE_BACKEND_PORT || PORT || 5000.
+
+Target state:
+- Express always uses PORT env var, default 5000
+- Vite dev always uses VITE_PORT env var, default 3101
+- Playwright webServer uses PORT ?? 5000 (not 5101)
+- .env.example documents: PORT=5000, VITE_PORT=3101
+- Remove all hardcoded 5101 references
+
+Acceptance criteria:
+- R-P1-01: PORT is the single source of truth for Express port
+- R-P1-02: Playwright webServer health check URL uses PORT ?? 5000
+- R-P1-03: Vite proxy target uses VITE_BACKEND_PORT || PORT || 5000 (already correct, verify no regression)
+- R-P1-04: .env.example documents both PORT and VITE_PORT with defaults
+- R-P1-05: No hardcoded 5101 anywhere in codebase (grep verification)
+
+Verify:
+  cmd: grep -r "5101" --include="*.ts" --include="*.yml" --include="*.json" . | grep -v node_modules | grep -v .claude
+  expect: 0 matches
+  cmd: PORT=5000 npm run server &; sleep 3; curl -s http://localhost:5000/api/health | jq .status
+  expect: "ok"
+  cmd: kill %1
+  artifact: screenshot of .env.example showing PORT=5000, VITE_PORT=3101
+
+S-1.2: Enhance CI pipeline to full release-gate quality
+
+File: .github/workflows/ci.yml
+Write scope: .github/workflows/ci.yml
+Parallel group: config
+
+Current state: CI only runs typecheck (frontend + server) and tests
+(frontend + server unit, excluding integration). No build, no migration
+validation, no smoke test.
+
+Target state — add these jobs:
+
+1. frontend-build job: npm run build — catches import errors, chunk size
+   regressions, Vite config problems that typecheck misses.
+
+2. migration-validation job: Node script that calls scanMigrationFiles()
+   from server/lib/migrator.ts, verifies: all .sql files parse, no duplicate
+   filenames, every file has -- UP and -- DOWN markers. No MySQL needed.
+
+3. deployment-readiness job: Run the existing server deployment-readiness
+   test suite (server/__tests__/deployment/).
+
+4. smoke-test job: Uses GitHub Actions mysql:8.0 service container on
+   port 3306. Starts Express server with test DB credentials. Hits
+   GET /api/health. Verifies {"status":"ok","mysql":"connected"}.
+   Exact service container config:
+     services:
+       mysql:
+         image: mysql:8.0
+         env:
+           MYSQL_ROOT_PASSWORD: test
+           MYSQL_DATABASE: loadpilot_test
+         ports: ["3306:3306"]
+         options: --health-cmd="mysqladmin ping" --health-interval=10s
+
+Acceptance criteria:
+- R-P1-06: CI runs npm run build and fails merge if build errors
+- R-P1-07: CI validates migration file integrity (parse, markers, no filename dupes)
+- R-P1-08: CI runs deployment-readiness test suite
+- R-P1-09: CI starts real Express + MySQL, hits /api/health, verifies status:ok + mysql:connected
+- R-P1-10: All 4 new CI jobs are required status checks for PR merge to main
+
+Verify:
+  cmd: Create test PR with deliberate build error (bad import) → CI must block merge
+  cmd: Create test PR with migration missing -- DOWN marker → CI must block
+  cmd: Verify smoke-test job logs show {"status":"ok","mysql":"connected"}
+  artifact: CI run screenshot showing all 8 jobs (4 existing + 4 new) green
+
+---
+
+Phase 2: Data Truth — Remove ALL Silent Stale-Data Fallbacks
+
+Goal: The app never silently substitutes stale cached data or empty arrays
+for failed API responses. Every failure surfaces as an error the UI can
+display. This covers ALL 20+ silent fallback patterns across 7 service files.
+
+S-2.1: Remove all silent fallbacks in storageService.ts
+
+File: services/storageService.ts
+Write scope: services/storageService.ts
+Parallel group: frontend-data-truth
+
+Functions to fix:
+- getLoads() (line 146): catches all errors, returns _cachedLoads → throw instead
+- getDispatchEvents() (line 246): catches all errors, returns [] → throw instead
+- getIncidents() (line 579): catches all errors, returns [] → throw instead
+- createIncident() (line 607): swallows API error, returns false → throw instead
+- saveIncident() (line 631): swallows API error, returns false → throw instead
+- saveIncidentAction() (line 649): swallows API error silently → throw instead
+
+Also: remove _cachedLoads in-memory cache entirely. getRawLoads() callers
+must be migrated to use the async getLoads() path.
+
+Acceptance criteria:
+- R-P2-01: getLoads() throws on API failure (no cached fallback)
+- R-P2-02: getDispatchEvents() throws on API failure (no empty array fallback)
+- R-P2-03: getIncidents() throws on API failure (no empty array fallback)
+- R-P2-04: createIncident() throws on API failure (no silent false return)
+- R-P2-05: saveIncident() throws on API failure (no silent false return)
+- R-P2-06: saveIncidentAction() throws on API failure
+- R-P2-07: _cachedLoads removed or marked internal-only (never returned to callers on error)
+- R-P2-08: All components calling these functions handle errors (show ErrorState or Toast)
+
+Verify:
+  cmd: grep -n "console.warn.*fallback\|console.warn.*API\|return \[\]" services/storageService.ts
+  expect: 0 matches (except seedDemoLoads no-op which is acceptable)
+  cmd: npx vitest run --reporter=verbose -- storageService
+  expect: all tests pass, error-path tests confirm throws
+  artifact: test output showing error-path coverage for each function
+
+S-2.2: Remove all read fallbacks in authService.ts
+
+File: services/authService.ts
+Write scope: services/authService.ts
+Parallel group: frontend-data-truth-auth-reads
+Depends on: nothing
+
+Functions to fix:
+- getCompany() (line 550): catches API error, falls back to getStoredCompanies() → throw instead
+- getCompanyUsers() (line 1038): catches API error, falls back to getStoredUsers() → throw instead
+- onAuthStateChanged handler (line 248): session hydration catches error, falls back to
+  getStoredUsers().find() → on hydration failure, set user to null and emit auth:session-failed event.
+  Do NOT silently resolve to a cached user object.
+
+Acceptance criteria:
+- R-P2-09: getCompany() throws on API failure (no cache fallback)
+- R-P2-10: getCompanyUsers() throws on API failure (no cache fallback)
+- R-P2-11: Session hydration failure sets user to null (no silent cache lookup)
+- R-P2-12: Session hydration failure emits event so UI can show re-login prompt
+
+Verify:
+  cmd: grep -n "getStoredCompanies\|getStoredUsers" services/authService.ts
+  expect: only definition lines and explicit non-fallback usage remain
+  cmd: npx vitest run --reporter=verbose -- authService
+  expect: all tests pass
+  artifact: test showing session hydration failure → user is null
+
+S-2.3: Remove all write fallbacks in authService.ts
+
+File: services/authService.ts
+Write scope: services/authService.ts
+Parallel group: frontend-data-truth-auth-writes
+Depends on: S-2.2 (same file)
+
+Functions to fix:
+- updateCompany() (line 562): re-throws HTTP errors but swallows network errors,
+  then mutates cache → throw ALL errors, only mutate cache after success
+- updateUser() (line 587): same pattern → throw ALL errors, only mutate cache after success
+
+Acceptance criteria:
+- R-P2-13: updateCompany() throws on ALL errors (network and HTTP)
+- R-P2-14: updateUser() throws on ALL errors (network and HTTP)
+- R-P2-15: Client cache is never mutated unless the API call succeeded
+- R-P2-16: Components calling these functions show error states on failure
+
+Verify:
+  cmd: npx vitest run --reporter=verbose -- authService
+  expect: error-path tests confirm: mock network error → throw, cache unchanged
+  artifact: test output showing cache-integrity assertions
+
+S-2.4: Remove all silent fallbacks in brokerService.ts
+
+File: services/brokerService.ts
+Write scope: services/brokerService.ts
+Parallel group: frontend-data-truth
+
+Functions to fix:
+- getBrokers() (line 26): catches API error, returns [] → throw instead
+- saveBroker() (line 44): swallows save failure → throw instead
+- getContracts() (line 72): catches API error, returns [] → throw instead
+- saveContract() (line 86): swallows save failure → throw instead
+
+Acceptance criteria:
+- R-P2-17: getBrokers() throws on API failure
+- R-P2-18: saveBroker() throws on API failure
+- R-P2-19: getContracts() throws on API failure
+- R-P2-20: saveContract() throws on API failure
+
+Verify:
+  cmd: grep -n "console.warn.*failed" services/brokerService.ts
+  expect: 0 matches
+  cmd: npx vitest run --reporter=verbose -- brokerService
+  expect: all tests pass with error-path coverage
+  artifact: test output showing error-path assertions for all 4 functions
+
+S-2.5: Remove all silent fallbacks in storage sub-modules
+
+Files: services/storage/calls.ts, services/storage/tasks.ts
+Write scope: services/storage/calls.ts, services/storage/tasks.ts
+Parallel group: frontend-data-truth
+
+Functions to fix:
+- getRawCalls() (calls.ts line 25): catches API error, returns [] → throw
+- getRawTasks() (tasks.ts line 25): catches API error, returns [] → throw
+- getRawWorkItems() (tasks.ts line 71): catches API error, returns [] → throw
+
+Acceptance criteria:
+- R-P2-21: getRawCalls() throws on API failure
+- R-P2-22: getRawTasks() throws on API failure
+- R-P2-23: getRawWorkItems() throws on API failure
+
+Verify:
+  cmd: grep -rn "return \[\]" services/storage/calls.ts services/storage/tasks.ts
+  expect: 0 matches
+  cmd: npx vitest run --reporter=verbose services/storage/__tests__/calls.test.ts services/storage/__tests__/tasks.test.ts
+  expect: all tests pass
+  artifact: test output showing error-path assertions for getRawCalls, getRawTasks, getRawWorkItems
+
+---
+
+Phase 3: Tenant Safety — Enforce company_id at Repository Layer
+
+Goal: No tenant-scoped repository method can execute without an explicit
+companyId parameter. Middleware is necessary but not sufficient.
+
+S-3.1: Audit and enforce company_id in repository method signatures
+
+Files: server/routes/*.ts, server/services/*.ts
+Write scope: server/routes/*.ts (except tracking.ts), server/services/*.ts (except quickbooks.service.ts, secret-encryption.ts)
+Parallel group: backend-tenant
+
+Current: requireTenant middleware checks :companyId param and body.company_id,
+but the real integration test confirms unfiltered queries return both tenants'
+data. Isolation is "application responsibility."
+
+Target:
+1. Every function that queries a tenant-scoped table MUST accept
+   companyId: string as a required parameter (not optional, not from closure).
+2. Audit all route handlers for direct pool.query calls that touch tenant
+   tables without WHERE company_id = ?.
+3. Add a CI grep check (in ci.yml or as a pre-commit script):
+   For each tenant table (loads, equipment, users, invoices, bills, settlements,
+   documents, tracking_events, incidents, dispatch_events, call_sessions):
+   any SELECT/UPDATE/DELETE on that table MUST include "company_id" in the
+   same query string. Violations fail CI.
+4. At least 5 new negative integration tests: query with wrong companyId → 0 rows.
+
+Acceptance criteria:
+- R-P3-01: Every repository function querying tenant tables has companyId as required param
+- R-P3-02: No route handler passes companyId from an unvalidated source
+- R-P3-03: 5+ negative integration tests: wrong companyId → 0 rows or 403
+- R-P3-04: CI grep check fails on unscoped tenant-table queries (enforceable, not convention)
+
+Verify:
+  cmd: node scripts/check-tenant-scoping.js (new script that greps server/ for unscoped queries)
+  expect: exit 0 (all queries scoped)
+  cmd: cd server && npx vitest run --reporter=verbose -- tenant-isolation
+  expect: all 5+ negative tests pass
+  artifact: CI log showing tenant-scope check green
+
+S-3.2: Harden webhook tenant resolution
+
+File: server/routes/tracking.ts
+Write scope: server/routes/tracking.ts (lines 400-430 only)
+Parallel group: backend-tracking-webhook
+Depends on: nothing
+
+Current: GPS webhook stores events with company_id = "unresolved" when the
+provided companyId doesn't match any tenant.
+
+Target:
+1. Reject webhooks with missing companyId → return 400 {"error": "company_id required"}
+2. Reject webhooks with unknown companyId → return 400 {"error": "unknown company_id"}
+3. Log rejected webhooks with REDACTED fields only: vehicleId, companyId,
+   timestamp, provider_name. NEVER log api_token, webhook_secret, or full
+   GPS coordinates (truncate to 2 decimal places for privacy).
+4. Add metrics counter: tracking.webhook.rejected (by reason)
+5. Remove "unresolved" company_id pattern entirely
+
+Acceptance criteria:
+- R-P3-05: Webhook with missing companyId returns 400
+- R-P3-06: Webhook with unknown companyId returns 400
+- R-P3-07: No rows in tracking tables have company_id = "unresolved"
+- R-P3-08: Rejected webhook logs contain only redacted fields (no secrets, no raw coords)
+- R-P3-09: Metrics counter incremented on rejection
+
+Verify:
+  cmd: curl -X POST localhost:5000/api/tracking/webhook -d '{"vehicleId":"V1","latitude":40.7,"longitude":-74.0}' → 400
+  cmd: curl -X POST localhost:5000/api/tracking/webhook -d '{"vehicleId":"V1","companyId":"nonexistent","latitude":40.7,"longitude":-74.0}' → 400
+  cmd: grep -n "unresolved" server/routes/tracking.ts → 0 matches
+  cmd: cd server && npx vitest run --reporter=verbose -- tracking.webhook
+  expect: all tests pass
+  artifact: test output showing 400 responses and redacted log assertions
+
+---
+
+Phase 4: Identity & Dev Surface Hardening
+
+Goal: Production does not auto-create tenants at login. Dev/demo surfaces
+do not leak into production bundle.
+
+S-4.1: Add ALLOW_AUTO_PROVISION feature flag
+
+File: server/routes/users.ts, server/lib/env.ts
+Write scope: server/routes/users.ts, server/lib/env.ts
+Parallel group: backend-identity
+
+Current: Any verified Firebase identity without a SQL profile auto-creates
+a company + admin user at users.ts:282.
+
+Target:
+1. Read ALLOW_AUTO_PROVISION env var (default: "false")
+2. When false and no SQL principal: return 403 with
+   {"error": "Account not found. Please sign up or contact your administrator."}
+3. When true: keep auto-provision but add structured audit log:
+   {event: "auto_provision", firebaseUid, email, sourceIp, timestamp, newCompanyId, newUserId}
+4. Document in server/lib/env.ts validation and .env.example
+
+Acceptance criteria:
+- R-P4-01: ALLOW_AUTO_PROVISION=false (default) → login without SQL profile returns 403
+- R-P4-02: ALLOW_AUTO_PROVISION=true → auto-provision works as before
+- R-P4-03: Auto-provision emits structured audit log with uid, email, IP, timestamp
+- R-P4-04: server/lib/env.ts documents ALLOW_AUTO_PROVISION
+- R-P4-05: Existing integration tests pass with ALLOW_AUTO_PROVISION=true
+
+Verify:
+  cmd: ALLOW_AUTO_PROVISION=false cd server && npx vitest run -- users.auto-provision
+  expect: test shows 403 for unknown Firebase identity
+  cmd: ALLOW_AUTO_PROVISION=true cd server && npx vitest run -- users.auto-provision
+  expect: test shows successful provision + audit log entry
+  artifact: test output showing both flag states
+
+S-4.2: Audit and harden dev/demo surfaces for production trust
+
+Files: services/firebase.ts, services/authService.ts, config/features.ts, services/mockDataService.ts
+Write scope: services/firebase.ts, services/authService.ts, config/features.ts, services/mockDataService.ts
+Parallel group: frontend-dev-surfaces
+Depends on: S-2.2, S-2.3 (writes authService.ts — moves seedFixtures to dynamic import)
+
+Current state:
+- DEMO_MODE (firebase.ts:23): activates when DEV + no Firebase API key. Has production
+  guard (throws if PROD && DEMO_MODE). This is reasonably safe.
+- seedFixtures (authService.ts:29-100): hardcoded dev credentials. Object is always
+  in the production bundle even though seedDatabase() is gated.
+- seedDatabase() (authService.ts:1052): called from App.tsx:368 only when
+  features.seedSystem is true. features.seedSystem = import.meta.env.DEV.
+- mockDataService.ts: seedMockData tree-shakes to no-op in production.
+- features.ts: 5 flags all gated by import.meta.env.DEV.
+
+Target:
+1. Move seedFixtures to a dev-only module (e.g., services/dev/seed-fixtures.ts)
+   that is only imported when features.seedSystem is true. Use dynamic import
+   so Vite tree-shakes it from production bundle.
+2. Add build-time verification: after npm run build, grep dist/ for known
+   seed strings ("admin@loadpilot.com", "User123", "seedDatabase"). If found,
+   build fails.
+3. Verify DEMO_MODE production guard with an explicit unit test.
+4. Document dev/prod trust boundary in a code comment block at top of
+   config/features.ts.
+
+Acceptance criteria:
+- R-P4-06: seedFixtures not present in production bundle (verified by build grep)
+- R-P4-07: "admin@loadpilot.com" and "User123" not in dist/ after npm run build
+- R-P4-08: DEMO_MODE production guard tested (import.meta.env.PROD + no API key → throws)
+- R-P4-09: config/features.ts documents dev/prod trust boundary
+- R-P4-10: seedDatabase() uses dynamic import for fixtures (tree-shakeable)
+
+Verify:
+  cmd: npm run build && grep -r "admin@loadpilot.com" dist/ && echo "FAIL: seed leaked" || echo "PASS: clean"
+  expect: "PASS: clean"
+  cmd: npm run build && grep -r "User123" dist/ && echo "FAIL: seed leaked" || echo "PASS: clean"
+  expect: "PASS: clean"
+  cmd: npx vitest run --reporter=verbose -- firebase.demo-mode
+  expect: production guard test passes
+  artifact: build output + grep results showing clean production bundle
+
+---
+
+Phase 5: Secret Encryption — Reusable Encryption Service
+
+Goal: No production secret stored plaintext. Tracking provider credentials
+encrypted at rest using the same pattern as QuickBooks tokens.
+
+S-5.1: Extract reusable secret-encryption service
+
+Files: server/services/quickbooks.service.ts, server/services/secret-encryption.ts (new)
+Write scope: server/services/secret-encryption.ts, server/services/quickbooks.service.ts
+Parallel group: backend-security
+
+Current: AES-256-GCM encryption exists in quickbooks.service.ts:64-100 but
+is private to that module.
+
+Target:
+1. Create server/services/secret-encryption.ts
+2. Export: encryptSecret(plaintext: string): string and decryptSecret(ciphertext: string): string
+3. Use SECRET_ENCRYPTION_KEY env var (fall back to QUICKBOOKS_TOKEN_ENCRYPTION_KEY for compat)
+4. Refactor quickbooks.service.ts to import from shared module
+5. Add to server/lib/env.ts: SECRET_ENCRYPTION_KEY documentation
+
+Acceptance criteria:
+- R-P5-01: secret-encryption.ts exports encryptSecret and decryptSecret
+- R-P5-02: quickbooks.service.ts uses shared encryption (no local copy)
+- R-P5-03: SECRET_ENCRYPTION_KEY documented in env.ts and .env.example
+- R-P5-04: Unit tests verify encrypt→decrypt roundtrip, invalid key → throw, tampered ciphertext → throw
+
+Verify:
+  cmd: cd server && npx vitest run --reporter=verbose -- secret-encryption
+  expect: roundtrip, bad-key, and tamper tests pass
+  cmd: grep -n "encryptToken\|decryptToken" server/services/quickbooks.service.ts
+  expect: only import lines, no local implementation
+  artifact: test output
+
+S-5.2: Encrypt tracking provider credentials at rest
+
+File: server/routes/tracking.ts
+Write scope: server/routes/tracking.ts (lines 510-540, 690-710), server/migrations/ (new migration)
+Parallel group: backend-tracking-secrets
+Depends on: S-5.1 (needs shared encryption service), S-3.2 (same file)
+
+Target:
+1. On INSERT/UPDATE: encrypt api_token and webhook_secret via encryptSecret() before storing
+2. On SELECT for use (test endpoint): decrypt via decryptSecret() at point of use only
+3. On SELECT for display (GET providers list): return masked value ("****" + last 4 chars)
+4. New migration (043_encrypt_tracking_secrets.sql): reads existing plaintext values,
+   encrypts them in-place. Idempotent (skip already-encrypted values by checking prefix).
+
+Acceptance criteria:
+- R-P5-05: New tracking configs store api_token encrypted
+- R-P5-06: New tracking configs store webhook_secret encrypted
+- R-P5-07: GET /api/tracking/providers returns masked secrets ("****1234"), not plaintext
+- R-P5-08: POST /api/tracking/providers/:id/test decrypts at point of use
+- R-P5-09: Migration 043 encrypts existing plaintext values
+
+Verify:
+  cmd: cd server && npx vitest run --reporter=verbose -- tracking.provider
+  expect: tests confirm: insert → SELECT raw → value is ciphertext, GET endpoint → masked
+  cmd: SELECT api_token FROM tracking_provider_configs LIMIT 1 (manual DB check)
+  expect: base64-encoded ciphertext, not plaintext
+  artifact: test output + manual DB query screenshot
+
+---
+
+Phase 6: Object Storage — Firebase Storage Adapter
+
+Goal: Production documents in Firebase Storage with signed URLs,
+tenant-aware paths, retention metadata. Disk adapter retained for dev.
+
+S-6.1: Create Firebase Storage adapter and factory
+
+Files: server/services/firebase-storage-adapter.ts (new), server/services/document.service.ts
+Write scope: server/services/firebase-storage-adapter.ts, server/services/document.service.ts
+Parallel group: backend-storage
+
+Target:
+1. Implement FirebaseStorageAdapter satisfying StorageAdapter interface
+2. Tenant-aware paths: {companyId}/{documentType}/{filename}
+3. Signed URLs with configurable expiration (default 1 hour)
+4. Metadata: companyId, uploadedBy, contentType stored as custom metadata
+5. Add createStorageAdapter() factory in document.service.ts:
+   reads STORAGE_BACKEND env var ("firebase" | "disk", default "disk")
+
+Acceptance criteria:
+- R-P6-01: FirebaseStorageAdapter implements StorageAdapter interface
+- R-P6-02: Upload paths are tenant-scoped: {companyId}/{type}/{file}
+- R-P6-03: getSignedUrl returns time-limited Firebase Storage signed URL
+- R-P6-04: STORAGE_BACKEND=firebase selects Firebase adapter
+- R-P6-05: STORAGE_BACKEND=disk (default) selects disk adapter
+- R-P6-06: createStorageAdapter() factory exported from document.service.ts
+
+Verify:
+  cmd: STORAGE_BACKEND=disk cd server && npx vitest run -- document.service
+  expect: tests pass using disk adapter
+  cmd: STORAGE_BACKEND=firebase cd server && npx vitest run -- firebase-storage
+  expect: tests pass against Firebase Storage emulator
+  artifact: test output for both adapters
+
+S-6.2: Update documents route to use adapter factory
+
+File: server/routes/documents.ts
+Write scope: server/routes/documents.ts
+Parallel group: backend-storage
+Depends on: S-6.1
+
+Current: const defaultStorageAdapter = createDiskStorageAdapter() hardcoded at line 39.
+
+Target: Replace with createStorageAdapter() factory call. Add STORAGE_BACKEND
+to .env.example.
+
+Acceptance criteria:
+- R-P6-07: documents.ts imports and uses createStorageAdapter() (not hardcoded disk)
+- R-P6-08: .env.example documents STORAGE_BACKEND with description
+- R-P6-09: All existing document tests pass with STORAGE_BACKEND=disk (default)
+
+Verify:
+  cmd: grep -n "createDiskStorageAdapter" server/routes/documents.ts
+  expect: 0 matches (replaced by factory)
+  cmd: cd server && npx vitest run --reporter=verbose -- documents
+  expect: all tests pass
+  artifact: test output
+
+---
+## P1 — WORKFLOW TRUST
+---
+
+Phase 7: Core Workflow E2E — Login/Session Lifecycle
+
+Goal: Login, session refresh, session expiry, and logout work E2E.
+
+S-7.1: E2E test for login → session → expiry → re-login flow
+
+File: e2e/auth-lifecycle.spec.ts (new)
+Write scope: e2e/auth-lifecycle.spec.ts
+Parallel group: e2e-specs
+Auth harness: Firebase Auth Emulator (FIREBASE_AUTH_EMULATOR_HOST=localhost:9099)
+
+Acceptance criteria:
+- R-P7-01: Test covers: login → verify session token → navigate protected route → force token expiry → SessionExpiredModal appears → re-login succeeds
+- R-P7-02: Test runs against Firebase Auth Emulator (required, not optional)
+- R-P7-03: Test fails if any step produces a console error (console.error listener)
+
+Verify:
+  cmd: FIREBASE_AUTH_EMULATOR_HOST=localhost:9099 npx playwright test e2e/auth-lifecycle.spec.ts
+  expect: all tests pass
+  artifact: Playwright HTML report
+
+---
+
+Phase 8: Core Workflow E2E — Quote-to-Booking-to-Load
+
+Goal: Quote → booking → load creation flow works E2E.
+
+S-8.1: Strengthen existing quote-to-load E2E spec
+
+File: e2e/quote-to-load.spec.ts (exists — strengthen, not create)
+Write scope: e2e/quote-to-load.spec.ts
+Parallel group: e2e-specs
+
+Current: Existing spec covers quote creation → approval → booking → load
+conversion. May not verify all data integrity assertions.
+
+Target: Review and strengthen:
+1. Verify quote status transitions: draft → quoted → booked
+2. Verify booking record links back to quote ID
+3. Verify load record links back to booking ID and has correct initial status
+4. Add console.error listener to fail on any backend errors
+
+Acceptance criteria:
+- R-P8-01: Quote creation → status "quoted" verified
+- R-P8-02: Booking conversion → booking.quoteId matches original quote
+- R-P8-03: Load conversion → load appears on board with correct status and booking link
+- R-P8-04: No console errors during entire flow
+
+Verify:
+  cmd: npx playwright test e2e/quote-to-load.spec.ts --reporter=list
+  expect: all tests pass
+  artifact: Playwright HTML report
+
+---
+
+Phase 9: Core Workflow E2E — Load Dispatch & Status Changes
+
+Goal: Load status machine transitions verified E2E.
+
+S-9.1: Strengthen existing load lifecycle E2E spec
+
+File: e2e/load-lifecycle.spec.ts (exists — strengthen, not create)
+Write scope: e2e/load-lifecycle.spec.ts
+Parallel group: e2e-specs
+
+Current: Existing spec covers load creation, retrieval, update, persistence,
+and auth enforcement. May not cover full 8-state lifecycle.
+
+Target: Ensure coverage of:
+1. Full 8-state lifecycle: DRAFT → POSTED → ASSIGNED → DISPATCHED → IN_TRANSIT → DELIVERED → COMPLETED → ARCHIVED
+2. Invalid transition rejection (e.g., DRAFT → DELIVERED)
+3. Each transition creates dispatch_event record (verified via API)
+4. Status changes visible in UI load detail view
+
+Acceptance criteria:
+- R-P9-01: Full 8-state lifecycle traversed in one test
+- R-P9-02: Invalid transition returns 400/422 with descriptive error
+- R-P9-03: dispatch_events table has one record per transition (verified via API)
+- R-P9-04: UI load detail shows correct status after each transition
+
+Verify:
+  cmd: npx playwright test e2e/load-lifecycle.spec.ts --reporter=list
+  expect: all tests pass
+  artifact: Playwright HTML report
+
+---
+
+Phase 10: Core Workflow E2E — Document Upload/Download
+
+Goal: Document lifecycle works E2E with tenant isolation.
+
+S-10.1: E2E test for document lifecycle
+
+File: e2e/document-lifecycle.spec.ts (new)
+Write scope: e2e/document-lifecycle.spec.ts
+Parallel group: e2e-specs
+
+Acceptance criteria:
+- R-P10-01: Upload document via API → verify stored (response includes document ID + URL)
+- R-P10-02: Download document → content matches original upload (byte comparison)
+- R-P10-03: Document metadata (type, companyId, status) correctly persisted (verified via GET)
+- R-P10-04: User from company B cannot access company A document (returns 403)
+
+Verify:
+  cmd: npx playwright test e2e/document-lifecycle.spec.ts --reporter=list
+  expect: all tests pass including cross-tenant denial
+  artifact: Playwright HTML report showing 4 passed tests
+
+---
+
+Phase 11: Core Workflow E2E — Settlement Posting
+
+Goal: Settlement creation and immutability verified E2E.
+
+S-11.1: E2E test for settlement lifecycle
+
+File: e2e/settlement-lifecycle.spec.ts (new)
+Write scope: e2e/settlement-lifecycle.spec.ts
+Parallel group: e2e-specs
+
+Acceptance criteria:
+- R-P11-01: Create settlement for completed load → GL journal entries created (verified via accounting API)
+- R-P11-02: Posted settlement PUT/PATCH returns 400/409 (immutability enforced)
+- R-P11-03: Settlement total_amount matches load rate_amount + sum(expenses)
+
+Verify:
+  cmd: npx playwright test e2e/settlement-lifecycle.spec.ts --reporter=list
+  expect: all tests pass including immutability enforcement
+  artifact: Playwright HTML report
+
+---
+
+Phase 12: Remove Dead Production Affordances
+
+Goal: No "coming soon" buttons, fake KPIs, or redirect shims in production UI.
+
+S-12.1: Remove or replace dead actions in QuoteManager
+
+File: components/QuoteManager.tsx
+Write scope: components/QuoteManager.tsx
+Parallel group: frontend-cleanup
+
+Current: 4 buttons with disabled title="Feature not yet available" at
+lines 528-539 and 1214-1216.
+
+Target: Remove disabled buttons entirely. If the feature exists behind them,
+wire it up. If not, remove the button.
+
+Acceptance criteria:
+- R-P12-01: No elements with title="Feature not yet available" in QuoteManager
+- R-P12-02: No disabled buttons that represent unimplemented features
+- R-P12-03: Remaining buttons all trigger real actions
+
+Verify:
+  cmd: grep -n "Feature not yet available" components/QuoteManager.tsx
+  expect: 0 matches
+  cmd: npx vitest run -- QuoteManager
+  expect: all tests pass
+  artifact: test output
+
+S-12.2: Remove Dashboard redirect shim
+
+File: components/Dashboard.tsx, App.tsx
+Write scope: components/Dashboard.tsx, App.tsx
+Parallel group: frontend-cleanup
+
+Current: Dashboard.tsx is 31 lines — a redirect to Operations Center.
+
+Target: Delete Dashboard.tsx. Update App.tsx to handle "dashboard" tab by
+redirecting to "operations-hub" inline. Remove lazy import.
+
+Acceptance criteria:
+- R-P12-04: Dashboard.tsx deleted
+- R-P12-05: App.tsx handles "dashboard" route by setting activeTab to "operations-hub"
+- R-P12-06: No remaining imports or references to Dashboard component in codebase
+
+Verify:
+  cmd: test ! -f components/Dashboard.tsx && echo "PASS" || echo "FAIL"
+  expect: PASS
+  cmd: grep -rn "Dashboard" components/ App.tsx --include="*.tsx" | grep -v node_modules
+  expect: 0 matches (no remaining references)
+  cmd: npx vitest run -- App
+  expect: all tests pass
+  artifact: test output
+
+S-12.3: Clean up stale demo documentation
+
+Files: docs/demo-runbook.md
+Write scope: docs/demo-runbook.md
+Parallel group: docs-cleanup
+
+Note: E2E_RESULTS.md accuracy (R-P12-08) is handled in S-16.1 (Documentation Truth)
+to avoid write-scope conflict with the docs-cleanup parallel group.
+
+Acceptance criteria:
+- R-P12-07: demo-runbook.md has no "avoid this area" warnings for shipped features (update or remove)
+
+Verify:
+  cmd: grep -in "avoid\|do not\|skip\|broken" docs/demo-runbook.md
+  expect: 0 matches for shipped features
+  artifact: demo-runbook.md diff
+
+---
+
+Phase 13: Observability — Health Separation & Structured Logging
+
+Goal: Health endpoint separates liveness from readiness. Every request
+produces a structured log line.
+
+S-13.1: Separate liveness from readiness in health endpoint
+
+File: server/routes/health.ts
+Write scope: server/routes/health.ts
+Parallel group: backend-observability
+
+Target:
+1. /api/health/live — returns 200 always if process running (liveness probe)
+2. /api/health/ready — returns 200 only if MySQL connected AND Firebase available
+   AND no pending migrations. Returns 503 with {"ready":false, "reason":"..."} otherwise.
+3. /api/health (legacy) — unchanged for backward compat
+
+Acceptance criteria:
+- R-P13-01: GET /api/health/live returns 200 always (process alive)
+- R-P13-02: GET /api/health/ready returns 200 when MySQL + Firebase healthy
+- R-P13-03: GET /api/health/ready returns 503 when MySQL disconnected
+- R-P13-04: GET /api/health (legacy) unchanged
+
+Verify:
+  cmd: curl -s localhost:5000/api/health/live | jq .status → "alive"
+  cmd: curl -s localhost:5000/api/health/ready | jq .ready → true (when healthy)
+  cmd: cd server && npx vitest run --reporter=verbose -- health
+  expect: all tests pass including degraded-state test
+  artifact: test output showing all 3 endpoint variants
+
+S-13.2: Add structured request logging with correlation IDs
+
+Files: server/middleware/metrics.ts, server/lib/logger.ts
+Write scope: server/middleware/metrics.ts
+Parallel group: backend-observability
+
+Target:
+1. On every response (not just errors): emit structured log line with
+   method, path, statusCode, duration_ms, correlationId, companyId (if auth'd)
+2. Use existing pino logger (server/lib/logger.ts)
+3. In-memory metrics store remains (pilot-acceptable). Add code comment:
+   "PRODUCTION TODO: Export to Prometheus/Datadog/CloudWatch via prom-client
+   or equivalent. In-memory store is single-node only."
+
+Acceptance criteria:
+- R-P13-05: Every request produces structured log: {method, path, statusCode, duration_ms}
+- R-P13-06: Correlation ID appears in every request log
+- R-P13-07: Authenticated requests include companyId in log
+- R-P13-08: Code comment documents production export path
+
+Verify:
+  cmd: cd server && npx vitest run --reporter=verbose -- metrics
+  expect: tests assert structured log output contains all required fields
+  cmd: grep "PRODUCTION TODO" server/middleware/metrics.ts
+  expect: 1 match documenting export path
+  artifact: test output showing log format assertions
+
+---
+
+Phase 14: Performance — Real Load Test Foundation
+
+Goal: At least one real (non-mocked) load test validates latency and
+concurrency against a real database.
+
+S-14.1: Create real load test against staging-like environment
+
+File: server/__tests__/performance/real-load.test.ts (new)
+Write scope: server/__tests__/performance/real-load.test.ts
+Parallel group: backend-perf
+
+Target:
+1. Start real Express server + real MySQL (test DB)
+2. 10 concurrent authenticated GET /api/loads requests
+3. 10 concurrent authenticated POST /api/loads requests
+4. Measure p50, p95, p99 latencies
+5. Assert: p99 read < 500ms, p99 write < 1000ms
+6. Assert: no MySQL connection pool exhaustion (no ECONNREFUSED/PROTOCOL_CONNECTION_LOST)
+7. Note: This proves single-node baseline. Real staging soak test is a future
+   ops task (documented in Phase 17 runbook).
+
+Acceptance criteria:
+- R-P14-01: Test starts real Express server with real MySQL (not mocked)
+- R-P14-02: Read p99 < 500ms at 10 concurrent requests
+- R-P14-03: Write p99 < 1000ms at 10 concurrent requests
+- R-P14-04: No connection pool errors during test
+- R-P14-05: Test documents that this is single-node baseline (not staging soak)
+
+Verify:
+  cmd: cd server && DB_NAME=loadpilot_test npx vitest run -- real-load
+  expect: all assertions pass, p99 values printed
+  artifact: test output showing p50/p95/p99 latency table
+
+---
+## P2 — STRUCTURAL TRUST
+---
+
+Phase 15: Monolith Breakup — Component Decomposition
+
+Goal: Reduce regression-magnet monolith files to bounded feature modules.
+
+S-15.1: Extract subsystem panels from IntelligenceHub
+
+File: components/IntelligenceHub.tsx (5214 lines)
+Write scope: components/IntelligenceHub.tsx, components/operations/ (new directory)
+Parallel group: frontend-decomp
+
+Target: Identify the 3-5 largest subsystem panels and extract each into its
+own component file under components/operations/.
+
+Acceptance criteria:
+- R-P15-01: IntelligenceHub.tsx reduced to < 2000 lines (orchestration only)
+- R-P15-02: Each extracted panel is a self-contained component with own file
+- R-P15-03: No functionality changes — pure extraction refactor
+- R-P15-04: All existing IntelligenceHub tests pass after extraction
+
+Verify:
+  cmd: wc -l components/IntelligenceHub.tsx
+  expect: < 2000
+  cmd: ls components/operations/*.tsx | wc -l
+  expect: >= 3
+  cmd: npx vitest run -- IntelligenceHub
+  expect: all tests pass
+  artifact: line count before/after + test output
+
+S-15.2: Extract QuoteManager subsystems
+
+File: components/QuoteManager.tsx
+Write scope: components/QuoteManager.tsx, components/quotes/ (new directory)
+Parallel group: frontend-decomp
+Depends on: S-12.1 (dead buttons removed before decomposition)
+
+Target: Extract quote detail panel, lead management, booking panel into
+separate components under components/quotes/.
+
+Acceptance criteria:
+- R-P15-05: QuoteManager.tsx reduced to < 800 lines
+- R-P15-06: Extracted components are independently testable
+- R-P15-07: All existing QuoteManager tests pass
+
+Verify:
+  cmd: wc -l components/QuoteManager.tsx
+  expect: < 800
+  cmd: ls components/quotes/*.tsx | wc -l
+  expect: >= 2
+  cmd: npx vitest run -- QuoteManager
+  expect: all tests pass
+  artifact: line count before/after + test output
+
+---
+
+Phase 16: Documentation Truth — Align Docs with Codebase
+
+Goal: Every documentation file accurately reflects current codebase state.
+
+S-16.1: Update stale documentation files
+
+Files: E2E_RESULTS.md, docs/deployment/MIGRATION_RUNBOOK.md, server/migrations/README.md
+Write scope: E2E_RESULTS.md, docs/deployment/MIGRATION_RUNBOOK.md, server/migrations/README.md
+Parallel group: docs-cleanup
+
+Acceptance criteria:
+- R-P12-08: E2E_RESULTS.md reflects actual spec count (45 specs) and test count
+- R-P16-01: E2E_RESULTS.md reflects actual Playwright spec count (run npx playwright test --list, count output)
+- R-P16-02: MIGRATION_RUNBOOK.md references correct top-of-chain migration (ls server/migrations/*.sql | tail -1)
+- R-P16-03: migrations/README.md has correct "next available" number
+- R-P16-04: No documentation file references a migration number, test count, or filename that doesn't exist
+
+Verify:
+  cmd: npx playwright test --list 2>/dev/null | wc -l
+  expect: number matches E2E_RESULTS.md
+  cmd: ls server/migrations/*.sql | tail -1
+  expect: filename matches MIGRATION_RUNBOOK.md top-of-chain reference
+  cmd: grep -oP '\d{3}_\S+\.sql' docs/deployment/MIGRATION_RUNBOOK.md | while read f; do test -f "server/migrations/$f" || echo "MISSING: $f"; done
+  expect: no MISSING output
+  artifact: diff of each updated file
+
+---
+
+Phase 17: Rollout Procedures — Migration Drill & Staging Rehearsal
+
+Goal: Operators have one current migration truth, one staging rehearsal
+command, and one rollback drill.
+
+S-17.1: Create production migration and rollback runbook
+
+Files: docs/ops/migration-runbook.md, docs/ops/rollback-procedure.md
+Write scope: docs/ops/migration-runbook.md, docs/ops/rollback-procedure.md
+Parallel group: docs-cleanup
+
+Acceptance criteria:
+- R-P17-01: Migration runbook lists exact commands: check pending, apply all, apply one, rollback one
+- R-P17-02: Rollback procedure tested against current schema (commands verified locally)
+- R-P17-03: Staging rehearsal documented: exact env vars, DB snapshot command, migration command, smoke test command
+- R-P17-04: All commands are copy-pasteable (no placeholders requiring interpretation — use $VARIABLE syntax for env-specific values)
+
+Verify:
+  cmd: grep -c "TODO\|TBD\|PLACEHOLDER\|XXX" docs/ops/migration-runbook.md docs/ops/rollback-procedure.md
+  expect: 0 matches
+  cmd: Execute the "check pending migrations" command from the runbook
+  expect: command runs successfully and shows current state
+  artifact: screenshot of runbook command execution
+
+---
+
+## Phase Summary
+
+| Phase | Tier | Focus | Stories | Key Files |
+|-------|------|-------|---------|-----------|
+| 1 | P0 | Release truth: ports + CI | 2 | ci.yml, vite.config.ts, playwright.config.ts |
+| 2 | P0 | Data truth: remove ALL fallbacks | 5 | storageService.ts, authService.ts, brokerService.ts, storage/*.ts |
+| 3 | P0 | Tenant safety: repo-layer + webhooks | 2 | server/routes/*.ts, tracking.ts |
+| 4 | P0 | Identity + dev surfaces | 2 | users.ts, firebase.ts, features.ts |
+| 5 | P0 | Secrets: encryption service + tracking | 2 | secret-encryption.ts, tracking.ts, quickbooks.service.ts |
+| 6 | P0 | Storage: Firebase Storage adapter | 2 | document.service.ts, documents.ts |
+| 7 | P1 | E2E: auth lifecycle | 1 | e2e/auth-lifecycle.spec.ts (new) |
+| 8 | P1 | E2E: quote-to-load | 1 | e2e/quote-to-load.spec.ts (strengthen) |
+| 9 | P1 | E2E: load lifecycle | 1 | e2e/load-lifecycle.spec.ts (strengthen) |
+| 10 | P1 | E2E: document lifecycle | 1 | e2e/document-lifecycle.spec.ts (new) |
+| 11 | P1 | E2E: settlement lifecycle | 1 | e2e/settlement-lifecycle.spec.ts (new) |
+| 12 | P1 | Remove dead affordances | 3 | QuoteManager.tsx, Dashboard.tsx, demo-runbook.md |
+| 13 | P1 | Observability + health separation | 2 | health.ts, metrics.ts |
+| 14 | P1 | Real load testing | 1 | performance/ |
+| 15 | P2 | Monolith decomposition | 2 | IntelligenceHub.tsx, QuoteManager.tsx |
+| 16 | P2 | Documentation truth | 1 | E2E_RESULTS.md, MIGRATION_RUNBOOK.md |
+| 17 | P2 | Rollout procedures | 1 | docs/ops/ |
+| **Total** | | | **30 stories** | |
+
+## Parallel Execution Groups
+
+Stories within the same group can run simultaneously (disjoint write scopes).
+Stories in different groups may also parallelize if no depends_on conflict.
+
+| Group | Stories | Write Scope |
+|-------|---------|-------------|
+| config | S-1.1, S-1.2 | server/index.ts, vite.config.ts, playwright.config.ts, ci.yml |
+| frontend-data-truth | S-2.1, S-2.4, S-2.5 | storageService.ts, brokerService.ts, storage/*.ts |
+| frontend-data-truth-auth-reads | S-2.2 | authService.ts (read fallbacks) |
+| frontend-data-truth-auth-writes | S-2.3 (after S-2.2) | authService.ts (write fallbacks) |
+| backend-tenant | S-3.1 | server/routes/* (except tracking.ts) |
+| backend-tracking-webhook | S-3.2 | server/routes/tracking.ts (webhook hardening) |
+| backend-tracking-secrets | S-5.2 (after S-3.2 + S-5.1) | server/routes/tracking.ts (secret encryption) |
+| backend-identity | S-4.1 | server/routes/users.ts, server/lib/env.ts |
+| frontend-dev-surfaces | S-4.2 | firebase.ts, features.ts, mockDataService.ts |
+| backend-security | S-5.1 | secret-encryption.ts, quickbooks.service.ts |
+| backend-storage | S-6.1 → S-6.2 (sequential) | document.service.ts, documents.ts |
+| e2e-specs | S-7.1, S-8.1, S-9.1, S-10.1, S-11.1 | e2e/*.spec.ts (each unique file) |
+| frontend-cleanup | S-12.1, S-12.2 | QuoteManager.tsx, Dashboard.tsx/App.tsx |
+| backend-observability | S-13.1, S-13.2 | health.ts, metrics.ts |
+| backend-perf | S-14.1 | performance/real-load.test.ts |
+| frontend-decomp | S-15.1, S-15.2 | IntelligenceHub.tsx, QuoteManager.tsx |
+| docs-cleanup | S-12.3, S-16.1, S-17.1 | docs only |
+
+## Dependency Graph
+
+S-2.3 depends on S-2.2 (same file: authService.ts — reads first, then writes)
+S-4.2 depends on S-2.2 AND S-2.3 (writes authService.ts — moves seedFixtures)
+S-5.2 depends on S-5.1 (needs encryption service) AND S-3.2 (same file: tracking.ts)
+S-6.2 depends on S-6.1 (needs factory)
+S-15.2 depends on S-12.1 (dead buttons removed before decomposition)
+All P1 E2E specs depend on P0 completion (data truth + tenant safety in place)
+All P2 depends on P1 completion
+
+## Requirement Index
+
+| ID | Description | Phase |
+|----|-------------|-------|
+| R-P1-01 | PORT is single source of truth for Express | 1 |
+| R-P1-02 | Playwright uses PORT ?? 5000 | 1 |
+| R-P1-03 | Vite proxy uses VITE_BACKEND_PORT correctly | 1 |
+| R-P1-04 | .env.example documents PORT and VITE_PORT | 1 |
+| R-P1-05 | No hardcoded 5101 in codebase | 1 |
+| R-P1-06 | CI runs npm run build | 1 |
+| R-P1-07 | CI validates migration integrity | 1 |
+| R-P1-08 | CI runs deployment-readiness | 1 |
+| R-P1-09 | CI runs live smoke (real MySQL) | 1 |
+| R-P1-10 | All CI jobs required for merge | 1 |
+| R-P2-01 | getLoads throws on failure | 2 |
+| R-P2-02 | getDispatchEvents throws on failure | 2 |
+| R-P2-03 | getIncidents throws on failure | 2 |
+| R-P2-04 | createIncident throws on failure | 2 |
+| R-P2-05 | saveIncident throws on failure | 2 |
+| R-P2-06 | saveIncidentAction throws on failure | 2 |
+| R-P2-07 | _cachedLoads not returned on error | 2 |
+| R-P2-08 | Components handle storageService errors | 2 |
+| R-P2-09 | getCompany throws on failure | 2 |
+| R-P2-10 | getCompanyUsers throws on failure | 2 |
+| R-P2-11 | Session hydration failure → user null | 2 |
+| R-P2-12 | Session failure emits auth event | 2 |
+| R-P2-13 | updateCompany throws on ALL errors | 2 |
+| R-P2-14 | updateUser throws on ALL errors | 2 |
+| R-P2-15 | Cache only mutated on success | 2 |
+| R-P2-16 | Components show error on mutation failure | 2 |
+| R-P2-17 | getBrokers throws on failure | 2 |
+| R-P2-18 | saveBroker throws on failure | 2 |
+| R-P2-19 | getContracts throws on failure | 2 |
+| R-P2-20 | saveContract throws on failure | 2 |
+| R-P2-21 | getRawCalls throws on failure | 2 |
+| R-P2-22 | getRawTasks throws on failure | 2 |
+| R-P2-23 | getRawWorkItems throws on failure | 2 |
+| R-P3-01 | Repo functions require companyId param | 3 |
+| R-P3-02 | No unvalidated companyId sources | 3 |
+| R-P3-03 | 5+ negative tenant isolation tests | 3 |
+| R-P3-04 | CI check fails on unscoped tenant queries | 3 |
+| R-P3-05 | Webhook rejects missing companyId (400) | 3 |
+| R-P3-06 | Webhook rejects unknown companyId (400) | 3 |
+| R-P3-07 | No "unresolved" company_id in tracking | 3 |
+| R-P3-08 | Webhook logs redacted (no secrets/raw coords) | 3 |
+| R-P3-09 | Rejection metrics counter | 3 |
+| R-P4-01 | ALLOW_AUTO_PROVISION=false blocks provision | 4 |
+| R-P4-02 | ALLOW_AUTO_PROVISION=true enables provision | 4 |
+| R-P4-03 | Auto-provision audit log | 4 |
+| R-P4-04 | env.ts documents ALLOW_AUTO_PROVISION | 4 |
+| R-P4-05 | Existing tests pass with flag=true | 4 |
+| R-P4-06 | seedFixtures not in production bundle | 4 |
+| R-P4-07 | No dev credentials in dist/ | 4 |
+| R-P4-08 | DEMO_MODE production guard tested | 4 |
+| R-P4-09 | features.ts documents trust boundary | 4 |
+| R-P4-10 | seedDatabase uses dynamic import | 4 |
+| R-P5-01 | Shared encryption service exported | 5 |
+| R-P5-02 | QuickBooks uses shared encryption | 5 |
+| R-P5-03 | SECRET_ENCRYPTION_KEY documented | 5 |
+| R-P5-04 | Encrypt/decrypt roundtrip + tamper tested | 5 |
+| R-P5-05 | Tracking api_token encrypted at rest | 5 |
+| R-P5-06 | Tracking webhook_secret encrypted at rest | 5 |
+| R-P5-07 | GET providers returns masked secrets | 5 |
+| R-P5-08 | Test endpoint decrypts at point of use | 5 |
+| R-P5-09 | Migration encrypts existing values | 5 |
+| R-P6-01 | FirebaseStorageAdapter implements interface | 6 |
+| R-P6-02 | Upload paths tenant-scoped | 6 |
+| R-P6-03 | Signed URLs with time limit | 6 |
+| R-P6-04 | STORAGE_BACKEND=firebase selects Firebase | 6 |
+| R-P6-05 | STORAGE_BACKEND=disk selects disk | 6 |
+| R-P6-06 | Factory exported from document.service.ts | 6 |
+| R-P6-07 | documents.ts uses factory | 6 |
+| R-P6-08 | .env.example documents STORAGE_BACKEND | 6 |
+| R-P6-09 | Tests pass with STORAGE_BACKEND=disk | 6 |
+| R-P7-01 | E2E auth lifecycle test | 7 |
+| R-P7-02 | Test uses Firebase Auth Emulator | 7 |
+| R-P7-03 | No console errors during flow | 7 |
+| R-P8-01 | Quote → "quoted" status | 8 |
+| R-P8-02 | Booking links to quote ID | 8 |
+| R-P8-03 | Load on board with booking link | 8 |
+| R-P8-04 | No console errors during flow | 8 |
+| R-P9-01 | Full 8-state lifecycle | 9 |
+| R-P9-02 | Invalid transitions rejected | 9 |
+| R-P9-03 | Dispatch events recorded per transition | 9 |
+| R-P9-04 | Status visible in UI | 9 |
+| R-P10-01 | Document upload stored | 10 |
+| R-P10-02 | Download matches upload | 10 |
+| R-P10-03 | Metadata correctly persisted | 10 |
+| R-P10-04 | Cross-tenant access blocked | 10 |
+| R-P11-01 | Settlement creates GL entries | 11 |
+| R-P11-02 | Posted settlement immutable | 11 |
+| R-P11-03 | Settlement totals match load | 11 |
+| R-P12-01 | No "Feature not yet available" | 12 |
+| R-P12-02 | No disabled unimplemented buttons | 12 |
+| R-P12-03 | Remaining buttons trigger real actions | 12 |
+| R-P12-04 | Dashboard.tsx deleted | 12 |
+| R-P12-05 | Dashboard route redirects to ops-hub | 12 |
+| R-P12-06 | No broken Dashboard references | 12 |
+| R-P12-07 | demo-runbook.md cleaned | 12 |
+| R-P12-08 | E2E_RESULTS.md accurate | 12 |
+| R-P13-01 | /api/health/live always 200 | 13 |
+| R-P13-02 | /api/health/ready 200 when healthy | 13 |
+| R-P13-03 | /api/health/ready 503 when degraded | 13 |
+| R-P13-04 | Legacy /api/health unchanged | 13 |
+| R-P13-05 | Structured request log every response | 13 |
+| R-P13-06 | Correlation ID in logs | 13 |
+| R-P13-07 | CompanyId in auth'd request logs | 13 |
+| R-P13-08 | Production export path documented | 13 |
+| R-P14-01 | Load test against real server | 14 |
+| R-P14-02 | Read p99 < 500ms at 10 concurrent | 14 |
+| R-P14-03 | Write p99 < 1000ms | 14 |
+| R-P14-04 | No pool exhaustion | 14 |
+| R-P14-05 | Single-node baseline documented | 14 |
+| R-P15-01 | IntelligenceHub < 2000 lines | 15 |
+| R-P15-02 | Extracted panels self-contained | 15 |
+| R-P15-03 | Pure extraction, no behavior changes | 15 |
+| R-P15-04 | IntelligenceHub tests pass | 15 |
+| R-P15-05 | QuoteManager < 800 lines | 15 |
+| R-P15-06 | Extracted components testable | 15 |
+| R-P15-07 | QuoteManager tests pass | 15 |
+| R-P16-01 | E2E_RESULTS.md spec count accurate | 16 |
+| R-P16-02 | MIGRATION_RUNBOOK references correct migration | 16 |
+| R-P16-03 | migrations/README.md correct next number | 16 |
+| R-P16-04 | No doc references to nonexistent files | 16 |
+| R-P17-01 | Migration commands documented | 17 |
+| R-P17-02 | Rollback procedure tested | 17 |
+| R-P17-03 | Staging rehearsal documented | 17 |
+| R-P17-04 | All commands copy-pasteable | 17 |
+
+## Pilot-Ready Checklist (Exit Criteria)
+
+After all 17 phases complete, the product is deploy-ready for a controlled
+pilot with real tenants. It is NOT yet full production-grade SaaS. Remaining
+gaps (documented, not hidden):
+- External APM/metrics export (Phase 13 documents the path, does not implement)
+- Multi-node staging soak test (Phase 14 establishes single-node baseline only)
+- Real load-balancer / CDN / TLS termination configuration
+- Operational alerting and on-call runbooks tied to monitoring signals
+
+Verify:
+
+- [ ] Fresh environment boots with no manual patching, no port guessing
+- [ ] CI blocks merges unless build + typecheck + tests + migration validation + smoke pass
+- [ ] UI never silently substitutes stale data for failed live data (ALL 20+ fallbacks removed)
+- [ ] No tenant-scoped repository method executes without explicit companyId
+- [ ] CI check enforces tenant query scoping (not just convention)
+- [ ] No production secret stored plaintext
+- [ ] No production document lives only on local disk (adapter factory in place)
+- [ ] No dev credentials or seed fixtures in production bundle
+- [ ] DEMO_MODE production guard tested
+- [ ] Top 5 customer workflows pass E2E with Firebase Auth Emulator
+- [ ] Liveness and readiness probes separated
+- [ ] Every request produces structured log with correlation ID
+- [ ] Single-node performance baseline established (p99 < 500ms reads, < 1000ms writes)
+- [ ] Staging migration and rollback runbooks are copy-pasteable
+- [ ] Docs match codebase exactly
