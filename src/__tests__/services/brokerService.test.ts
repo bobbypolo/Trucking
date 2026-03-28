@@ -112,13 +112,24 @@ describe("brokerService (API-only, no localStorage)", () => {
       expect(brokers[0].clientType).toBe("shipper");
     });
 
-    it("returns empty array (not localStorage fallback) when API fails", async () => {
+    // Tests R-P2-17
+    it("throws on API failure instead of returning empty array", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      const brokers = await getBrokers();
+      await expect(getBrokers()).rejects.toThrow("offline");
       // R-P1-30: no localStorage access on failure
       expect(localStorageGetSpy).not.toHaveBeenCalled();
-      expect(brokers).toEqual([]);
+    });
+
+    // Tests R-P2-17
+    it("throws when API returns non-ok response", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      } as any);
+
+      await expect(getBrokers()).rejects.toThrow();
     });
 
     it("does not read localStorage on API success", async () => {
@@ -180,13 +191,28 @@ describe("brokerService (API-only, no localStorage)", () => {
       expect(body.chassis_requirements).toEqual(["TRAC"]);
     });
 
-    it("does not write to localStorage when API fails", async () => {
+    // Tests R-P2-18
+    it("throws on API failure instead of silently swallowing", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      await saveBroker({ id: "b1", name: "Offline Broker" } as any);
-
+      await expect(
+        saveBroker({ id: "b1", name: "Offline Broker" } as any),
+      ).rejects.toThrow("offline");
       // R-P1-32: no localStorage fallback at all
       expect(localStorageSetSpy).not.toHaveBeenCalled();
+    });
+
+    // Tests R-P2-18
+    it("throws when API returns non-ok response", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      } as any);
+
+      await expect(
+        saveBroker({ id: "b1", name: "Fail Broker" } as any),
+      ).rejects.toThrow("Failed to save to backend");
     });
   });
 
@@ -255,10 +281,21 @@ describe("brokerService (API-only, no localStorage)", () => {
       expect(contracts[0].equipmentPreferences).toEqual({ size: "48ft" });
     });
 
-    it("returns empty array when API fails", async () => {
+    // Tests R-P2-19
+    it("throws on API failure instead of returning empty array", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      const contracts = await getContracts("b1");
-      expect(contracts).toEqual([]);
+      await expect(getContracts("b1")).rejects.toThrow("offline");
+    });
+
+    // Tests R-P2-19
+    it("throws when API returns non-ok response", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      } as any);
+
+      await expect(getContracts("b1")).rejects.toThrow();
     });
   });
 
@@ -277,11 +314,25 @@ describe("brokerService (API-only, no localStorage)", () => {
       expect(body.id).toBe("ct1");
     });
 
-    it("handles API failure gracefully", async () => {
+    // Tests R-P2-20
+    it("throws on API failure instead of silently swallowing", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
       await expect(
         saveContract({ id: "ct1" } as any),
-      ).resolves.toBeUndefined();
+      ).rejects.toThrow("offline");
+    });
+
+    // Tests R-P2-20
+    it("throws when API returns non-ok response", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 500,
+        statusText: "Internal Server Error",
+      } as any);
+
+      await expect(
+        saveContract({ id: "ct1" } as any),
+      ).rejects.toThrow("Failed to save contract");
     });
   });
 
