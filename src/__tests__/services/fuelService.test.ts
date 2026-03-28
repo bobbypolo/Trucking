@@ -6,11 +6,13 @@ vi.mock("../../../services/config", () => ({
 }));
 
 vi.mock("../../../services/rulesEngineService", () => ({
-  executeFuelMatchingRule: vi.fn().mockResolvedValue({ matched: 0, orphaned: 1 }),
+  executeFuelMatchingRule: vi
+    .fn()
+    .mockResolvedValue({ matched: 0, orphaned: 1 }),
 }));
 
-vi.mock("../../../services/financialService", () => ({
-  getVaultDocs: vi.fn().mockResolvedValue([]),
+vi.mock("../../../services/storage/vault", () => ({
+  getDocuments: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("uuid", () => ({
@@ -19,7 +21,7 @@ vi.mock("uuid", () => ({
 
 import { FuelCardService } from "../../../services/fuelService";
 import { executeFuelMatchingRule } from "../../../services/rulesEngineService";
-import { getVaultDocs } from "../../../services/financialService";
+import { getDocuments } from "../../../services/storage/vault";
 
 describe("FuelCardService", () => {
   beforeEach(() => {
@@ -80,7 +82,7 @@ describe("FuelCardService", () => {
 
     it("invokes auto-matching rule engine with the fuel entry", async () => {
       await FuelCardService.processIncomingTransaction(sampleTx, "tenant-123");
-      expect(getVaultDocs).toHaveBeenCalledWith({});
+      expect(getDocuments).toHaveBeenCalledWith({ document_type: "Fuel" });
       expect(executeFuelMatchingRule).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ truckId: "TRUCK-42" }),

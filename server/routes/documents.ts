@@ -1,13 +1,16 @@
 /**
- * Documents API Route
+ * Documents API Route — Canonical Document Domain
  *
- * Provides file upload and retrieval endpoints for document management.
- * Uses multer for multipart form parsing and the document.service StorageAdapter pattern.
+ * Single authoritative API for all document operations.
+ * All consumers (FileVault, load docs, finance docs, onboarding docs) use
+ * filtered views via query params on GET /api/documents.
  *
  * Endpoints:
- *   GET  /api/documents              — list documents for authenticated tenant
- *   POST /api/documents              — upload a new document (multipart/form-data)
- *   GET  /api/documents/:id/download — get a signed download URL for a document
+ *   GET    /api/documents              — list documents with filter params
+ *   POST   /api/documents              — upload a new document (multipart/form-data)
+ *   GET    /api/documents/:id          — get a single document by ID
+ *   PATCH  /api/documents/:id          — update status and/or lock state
+ *   GET    /api/documents/:id/download — get a signed download URL for a document
  */
 import { Router } from "express";
 import type { Request, Response } from "express";
@@ -22,6 +25,7 @@ import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
   documentListQuerySchema,
+  documentPatchSchema,
 } from "../schemas/document.schema";
 import { createDiskStorageAdapter } from "../services/disk-storage-adapter";
 
@@ -203,6 +207,92 @@ router.post(
       }
       log.error({ err: error }, "SERVER ERROR [POST /api/documents]");
       res.status(500).json({ error: "Failed to upload document" });
+    }
+  },
+);
+
+// ── GET /api/documents/:id ───────────────────────────────────────────────────
+
+router.get(
+  "/api/documents/:id",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "GET /api/documents/:id",
+    });
+    const companyId = req.user!.tenantId;
+    const { id } = req.params;
+
+    try {
+      const svc = createDocumentsRouteService();
+      const document = await svc.findById(id, companyId);
+      res.json({ document });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        if (error.error_code === "VALIDATION_DOCUMENT_NOT_FOUND") {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      log.error({ err: error }, "SERVER ERROR [GET /api/documents/:id]");
+      res.status(500).json({ error: "Failed to retrieve document" });
+    }
+  },
+);
+
+// ── PATCH /api/documents/:id ────────────────────────────────────────────────
+
+router.patch(
+  "/api/documents/:id",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/documents/:id",
+    });
+    const companyId = req.user!.tenantId;
+    const { id } = req.params;
+
+    const parsed = documentPatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: "Invalid request body",
+        details: parsed.error.issues,
+      });
+      return;
+    }
+
+    const { status, is_locked } = parsed.data;
+    if (status === undefined && is_locked === undefined) {
+      res.status(400).json({
+        error: "At least one of 'status' or 'is_locked' must be provided",
+      });
+      return;
+    }
+
+    try {
+      const svc = createDocumentsRouteService();
+      const updated = await svc.updateStatusAndLock(id, companyId, {
+        status,
+        is_locked,
+      });
+      res.json({ message: "Document updated", document: updated });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        if (error.error_code === "VALIDATION_DOCUMENT_NOT_FOUND") {
+          res.status(404).json({ error: error.message });
+          return;
+        }
+        res.status(400).json({ error: error.message });
+        return;
+      }
+      log.error({ err: error }, "SERVER ERROR [PATCH /api/documents/:id]");
+      res.status(500).json({ error: "Failed to update document" });
     }
   },
 );

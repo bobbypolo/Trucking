@@ -7,6 +7,7 @@ import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 import { getSafetyScore } from "../services/fmcsa.service";
 import { checkExpiring } from "../services/cert-expiry-checker";
+import { syncDomainToException } from "../lib/exception-sync";
 
 const router = Router();
 
@@ -327,6 +328,98 @@ router.post(
         route: "POST /api/safety/maintenance",
       });
       log.error({ err: error }, "Failed to create maintenance record");
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// PATCH /api/safety/maintenance/:id — update maintenance record with reverse exception sync
+router.patch(
+  "/api/safety/maintenance/:id",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const { id } = req.params;
+    const patchLog = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/safety/maintenance/:id",
+    });
+
+    try {
+      // Verify record exists and belongs to tenant
+      const [rows] = await pool.query(
+        "SELECT * FROM safety_maintenance WHERE id = ? AND company_id = ?",
+        [id, companyId],
+      );
+      const existing = (rows as any[])[0];
+      if (!existing) {
+        return res.status(404).json({ error: "Maintenance record not found" });
+      }
+
+      // Build dynamic update
+      const allowedFields = [
+        "status",
+        "description",
+        "scheduled_date",
+        "completed_date",
+        "mileage_at_service",
+        "cost",
+        "vendor_id",
+        "notes",
+      ];
+      const setClauses: string[] = [];
+      const values: unknown[] = [];
+
+      for (const field of allowedFields) {
+        if (field in req.body) {
+          setClauses.push(`${field} = ?`);
+          values.push(req.body[field] ?? null);
+        }
+      }
+
+      if (setClauses.length === 0) {
+        return res.status(400).json({ error: "No valid fields to update" });
+      }
+
+      values.push(id, companyId);
+      await pool.query(
+        `UPDATE safety_maintenance SET ${setClauses.join(", ")} WHERE id = ? AND company_id = ?`,
+        values,
+      );
+
+      // Reverse sync: if status changed, update linked exception
+      if (req.body.status && req.body.status !== existing.status) {
+        try {
+          await syncDomainToException(
+            "maintenanceRecordId",
+            id,
+            companyId,
+            req.body.status,
+            req.correlationId,
+          );
+        } catch (syncErr) {
+          patchLog.warn(
+            { err: syncErr, maintenanceId: id },
+            "Failed to sync maintenance status to exception (non-blocking)",
+          );
+        }
+      }
+
+      // Fetch updated record
+      const [updated] = await pool.query(
+        "SELECT * FROM safety_maintenance WHERE id = ? AND company_id = ?",
+        [id, companyId],
+      );
+      const updatedRecord = (updated as any[])[0];
+
+      patchLog.info({ maintenanceId: id }, "Maintenance record updated");
+      res.json(updatedRecord);
+    } catch (error) {
+      patchLog.error(
+        { err: error },
+        "Failed to update maintenance record",
+      );
       res.status(500).json({ error: "Database error" });
     }
   },

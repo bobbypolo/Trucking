@@ -111,9 +111,25 @@ export const documentStatusUpdateSchema = z.object({
 
 /**
  * Schema for document list query params.
+ * Supports all attachment-key filters for filtered views
+ * (load docs, driver docs, truck docs, vendor docs, customer docs).
  */
 export const documentListQuerySchema = z.object({
   load_id: z.string().optional(),
+  driver_id: z.string().optional(),
+  truck_id: z.string().optional(),
+  trailer_id: z.string().optional(),
+  vendor_id: z.string().optional(),
+  customer_id: z.string().optional(),
   status: z.string().optional(),
   document_type: z.string().optional(),
+  search: z.string().optional(),
+});
+
+/**
+ * Schema for document status/lock update via PATCH /api/documents/:id.
+ */
+export const documentPatchSchema = z.object({
+  status: z.string().min(1).optional(),
+  is_locked: z.boolean().optional(),
 });

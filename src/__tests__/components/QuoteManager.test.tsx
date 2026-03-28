@@ -31,6 +31,18 @@ vi.mock("uuid", () => ({
   v4: vi.fn().mockReturnValue("mock-uuid-001"),
 }));
 
+const mockApiPost = vi
+  .fn()
+  .mockResolvedValue({ id: "bk-converted", load_id: "ld-001" });
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn(),
+    post: mockApiPost,
+    patch: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
 import {
   getQuotes,
   saveQuote,
@@ -140,6 +152,7 @@ describe("QuoteManager component", () => {
     vi.mocked(getWorkItems).mockResolvedValue(mockWorkItems);
     vi.mocked(saveQuote).mockResolvedValue(undefined as any);
     vi.mocked(saveBooking).mockResolvedValue(undefined as any);
+    mockApiPost.mockResolvedValue({ id: "bk-converted", load_id: "ld-001" });
     vi.mocked(saveWorkItem).mockResolvedValue(undefined as any);
   });
 
@@ -456,7 +469,9 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/Chicago, IL/));
     await waitFor(() => {
-      expect(screen.getByText("Financial Engineering")).toBeInTheDocument();
+      expect(
+        screen.getByText("Commercial Estimates (Non-Binding)"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -497,7 +512,7 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/Chicago, IL/));
     await waitFor(() => {
-      expect(screen.getByText("Net Revenue")).toBeInTheDocument();
+      expect(screen.getByText("Estimated Net Revenue")).toBeInTheDocument();
     });
     expect(screen.getByText("Projected Margin")).toBeInTheDocument();
   });
@@ -713,7 +728,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+    expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
   });
 
   it("does not show Accept & Convert for Draft quotes", async () => {
@@ -726,10 +741,10 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/Accept & Convert/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Convert to Load/)).not.toBeInTheDocument();
   });
 
-  it("converts accepted quote to booking", async () => {
+  it("converts accepted quote to booking via canonical conversion endpoint", async () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -737,11 +752,18 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/Atlanta, GA/));
     await waitFor(() => {
-      expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+      expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/Accept & Convert/));
+    await user.click(screen.getByText(/Convert to Load/));
     await waitFor(() => {
-      expect(saveBooking).toHaveBeenCalled();
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/bookings/convert",
+        expect.objectContaining({
+          quote_id: expect.any(String),
+          status: "Confirmed",
+          load_number: expect.stringMatching(/^LD-/),
+        }),
+      );
     });
   });
 
@@ -753,12 +775,14 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/Atlanta, GA/));
     await waitFor(() => {
-      expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+      expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/Accept & Convert/));
+    await user.click(screen.getByText(/Convert to Load/));
     await waitFor(() => {
       expect(
-        screen.getByText(/Quote Converted to Booking/),
+        screen.getByText(
+          /Quote converted to booking with operational load created/,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -1390,10 +1414,12 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/New Quote/));
     await waitFor(() => {
-      expect(screen.getByText("Financial Engineering")).toBeInTheDocument();
+      expect(
+        screen.getByText("Commercial Estimates (Non-Binding)"),
+      ).toBeInTheDocument();
     });
     expect(screen.getByText(/Linehaul & Revenue/)).toBeInTheDocument();
-    expect(screen.getByText("Net Revenue")).toBeInTheDocument();
+    expect(screen.getByText("Estimated Net Revenue")).toBeInTheDocument();
     expect(screen.getByText("Projected Margin")).toBeInTheDocument();
   });
 
@@ -1543,10 +1569,10 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
-    expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+    expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
   });
 
-  it("calls saveBooking when Accept & Convert is clicked", async () => {
+  it("calls canonical conversion endpoint when Convert to Load is clicked", async () => {
     const user = userEvent.setup();
     render(<QuoteManager {...defaultProps} />);
     await waitFor(() => {
@@ -1556,11 +1582,17 @@ describe("QuoteManager component", () => {
       screen.getByText(/Atlanta, GA/).closest("[class*='cursor-pointer']")!,
     );
     await waitFor(() => {
-      expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+      expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
     });
-    await user.click(screen.getByText(/Accept & Convert/));
+    await user.click(screen.getByText(/Convert to Load/));
     await waitFor(() => {
-      expect(saveBooking).toHaveBeenCalled();
+      expect(mockApiPost).toHaveBeenCalledWith(
+        "/bookings/convert",
+        expect.objectContaining({
+          status: "Confirmed",
+          load_number: expect.stringMatching(/^LD-/),
+        }),
+      );
     });
   });
 
@@ -1576,7 +1608,7 @@ describe("QuoteManager component", () => {
     await waitFor(() => {
       expect(screen.getByText("Quote Review")).toBeInTheDocument();
     });
-    expect(screen.queryByText(/Accept & Convert/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Convert to Load/)).not.toBeInTheDocument();
   });
 
   // --- Intake Desk view ---
@@ -1690,7 +1722,9 @@ describe("QuoteManager component", () => {
     });
     await user.click(screen.getByText(/New Quote/));
     await waitFor(() => {
-      expect(screen.getByText("Financial Engineering")).toBeInTheDocument();
+      expect(
+        screen.getByText("Commercial Estimates (Non-Binding)"),
+      ).toBeInTheDocument();
     });
     // Find the linehaul input (placeholder "Linehaul *")
     const linehaulInput = screen.getByPlaceholderText("Linehaul *");
@@ -1698,7 +1732,7 @@ describe("QuoteManager component", () => {
     await user.type(linehaulInput, "3000");
     // The rate calculation should reflect a total
     await waitFor(() => {
-      expect(screen.getByText("Net Revenue")).toBeInTheDocument();
+      expect(screen.getByText("Estimated Net Revenue")).toBeInTheDocument();
     });
   });
 

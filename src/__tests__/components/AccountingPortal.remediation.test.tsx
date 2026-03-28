@@ -78,10 +78,6 @@ vi.mock("../../../services/financialService", () => ({
   ]),
 }));
 
-vi.mock("../../../services/rulesEngineService", () => ({
-  executeFuelMatchingRule: vi.fn().mockResolvedValue({ matched: 5, orphaned: 1 }),
-}));
-
 vi.mock("../../../services/exportService", () => ({
   exportToExcel: vi.fn(),
   exportToPDF: vi.fn(),
@@ -89,12 +85,6 @@ vi.mock("../../../services/exportService", () => ({
 
 vi.mock("../../../services/config", () => ({
   API_URL: "http://localhost:5000/api",
-}));
-
-vi.mock("../../../components/Settlements", () => ({
-  Settlements: () => (
-    <div data-testid="settlements-component">Settlements Content</div>
-  ),
 }));
 
 vi.mock("../../../components/FileVault", () => ({
@@ -199,46 +189,6 @@ describe("AccountingPortal Remediation (C-2)", () => {
       expect(iftaCard?.parentElement?.textContent).not.toContain("$2,840");
     });
 
-    it("R-P4-04: Automation rules initialize empty, not 3 hardcoded objects", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Automation Center")).toBeInTheDocument();
-      });
-      // Should NOT show hardcoded rule names — rules should be empty or from API
-      expect(
-        screen.queryByText("Fuel Receipt Auto-Match"),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText("Auto-IFTA Analysis")).not.toBeInTheDocument();
-      expect(
-        screen.queryByText("Compliance Guard: Lock on POD"),
-      ).not.toBeInTheDocument();
-    });
-
-    it("R-P4-04: Maintenance tab shows unavailable state, no hardcoded service tickets", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Overview")).toBeInTheDocument();
-      });
-      // Switch to Maintenance tab
-      await user.click(screen.getByText("Maintenance"));
-      await waitFor(() => {
-        expect(
-          screen.getByText("Maintenance Tracking"),
-        ).toBeInTheDocument();
-      });
-      // No fake service tickets or hardcoded metrics should appear
-      expect(screen.queryByText("Speedco Maintenance")).not.toBeInTheDocument();
-      expect(screen.queryByText("TK-9025")).not.toBeInTheDocument();
-      expect(screen.queryByText("$12,450")).not.toBeInTheDocument();
-      expect(screen.queryByText("$0.42")).not.toBeInTheDocument();
-    });
-
     it("R-P4-04: Audit log entries are not hardcoded", async () => {
       const user = userEvent.setup();
       render(<AccountingPortal {...defaultProps} />);
@@ -247,14 +197,10 @@ describe("AccountingPortal Remediation (C-2)", () => {
       });
       await user.click(screen.getByText("Audit Log"));
       await waitFor(() => {
-        expect(
-          screen.getByText("Operational Audit Trail"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Operational Audit Trail")).toBeInTheDocument();
       });
       // Hardcoded entries should be gone
-      expect(
-        screen.queryByText("Load #1024 Locked"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Load #1024 Locked")).not.toBeInTheDocument();
       expect(
         screen.queryByText(/Invoice #INV-902 Sent to HUB Group/),
       ).not.toBeInTheDocument();
@@ -268,43 +214,13 @@ describe("AccountingPortal Remediation (C-2)", () => {
       });
       await user.click(screen.getByText("Audit Log"));
       await waitFor(() => {
-        expect(
-          screen.getByText("Operational Audit Trail"),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Operational Audit Trail")).toBeInTheDocument();
       });
       expect(screen.queryByText("1 hour ago")).not.toBeInTheDocument();
     });
-
-    it("R-P4-04: Time Saved stat shows computed value, not hardcoded 42.5 hrs", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Automation Center")).toBeInTheDocument();
-      });
-      // Should NOT show hardcoded 42.5 hrs
-      expect(screen.queryByText("42.5 hrs")).not.toBeInTheDocument();
-    });
-
-    it("R-P4-04: Active Triggers stat shows computed value, not hardcoded 14", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Automation Center")).toBeInTheDocument();
-      });
-      // With empty automation rules, active triggers should be "0", not "14"
-      expect(screen.queryByText("14")).not.toBeInTheDocument();
-    });
   });
 
-  // ── R-P4-05: 3 buttons wired ──
+  // ── R-P4-05: Buttons wired ──
 
   describe("R-P4-05: Buttons wired", () => {
     it("R-P4-05: View All Loads button calls onNavigate with 'loads'", async () => {
@@ -315,24 +231,6 @@ describe("AccountingPortal Remediation (C-2)", () => {
       });
       await user.click(screen.getByText("View All Loads"));
       expect(mockNavigate).toHaveBeenCalledWith("loads");
-    });
-
-    it("R-P4-05: Create New Rule button shows toast", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Create New Rule")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Create New Rule"));
-      await waitFor(() => {
-        expect(
-          screen.getByText(/automation rule builder coming soon/i),
-        ).toBeInTheDocument();
-      });
     });
 
     it("R-P4-05: More options buttons show toast", async () => {
@@ -346,39 +244,10 @@ describe("AccountingPortal Remediation (C-2)", () => {
       await waitFor(() => {
         expect(screen.getByText("Accounts Receivable")).toBeInTheDocument();
       });
-      // Click the More options button (MoreVertical icon)
+      // More options buttons are now disabled (no fake toasts)
       const moreButtons = screen.getAllByLabelText("More options");
       expect(moreButtons.length).toBeGreaterThan(0);
-      await user.click(moreButtons[0]);
-      await waitFor(() => {
-        expect(
-          screen.getByText(/line item actions coming soon/i),
-        ).toBeInTheDocument();
-      });
-    });
-  });
-
-  // ── R-P4-06: setTimeout mock matching removed ──
-
-  describe("R-P4-06: setTimeout mock matching removed", () => {
-    it("R-P4-06: handleRunEngine does not use setTimeout", async () => {
-      const user = userEvent.setup();
-      render(<AccountingPortal {...defaultProps} />);
-      await waitFor(() => {
-        expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-      });
-      await user.click(screen.getByText("Rules Engine"));
-      await waitFor(() => {
-        expect(screen.getByText("Run Full Audit")).toBeInTheDocument();
-      });
-      // Click the Run Full Audit button — this should use the real API, not setTimeout
-      await user.click(screen.getByText("Run Full Audit"));
-      // Should show result from the mocked executeFuelMatchingRule
-      await waitFor(() => {
-        expect(
-          screen.getByText(/Auto-Matched 5 receipts/),
-        ).toBeInTheDocument();
-      });
+      expect(moreButtons[0]).toBeDisabled();
     });
   });
 });

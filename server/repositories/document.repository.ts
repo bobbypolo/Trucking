@@ -111,11 +111,21 @@ export const documentRepository = {
 
   /**
    * Find all documents belonging to a company.
-   * Optionally filtered by load_id, status, or document_type.
+   * Supports all attachment-key filters for filtered views.
    */
   async findByCompany(
     companyId: string,
-    filters?: { load_id?: string; status?: string; document_type?: string },
+    filters?: {
+      load_id?: string;
+      driver_id?: string;
+      truck_id?: string;
+      trailer_id?: string;
+      vendor_id?: string;
+      customer_id?: string;
+      status?: string;
+      document_type?: string;
+      search?: string;
+    },
   ): Promise<DocumentRow[]> {
     let sql = "SELECT * FROM documents WHERE company_id = ?";
     const params: unknown[] = [companyId];
@@ -123,6 +133,26 @@ export const documentRepository = {
     if (filters?.load_id) {
       sql += " AND load_id = ?";
       params.push(filters.load_id);
+    }
+    if (filters?.driver_id) {
+      sql += " AND driver_id = ?";
+      params.push(filters.driver_id);
+    }
+    if (filters?.truck_id) {
+      sql += " AND truck_id = ?";
+      params.push(filters.truck_id);
+    }
+    if (filters?.trailer_id) {
+      sql += " AND trailer_id = ?";
+      params.push(filters.trailer_id);
+    }
+    if (filters?.vendor_id) {
+      sql += " AND vendor_id = ?";
+      params.push(filters.vendor_id);
+    }
+    if (filters?.customer_id) {
+      sql += " AND customer_id = ?";
+      params.push(filters.customer_id);
     }
     if (filters?.status) {
       sql += " AND status = ?";
@@ -132,11 +162,56 @@ export const documentRepository = {
       sql += " AND document_type = ?";
       params.push(filters.document_type);
     }
+    if (filters?.search) {
+      sql += " AND (original_filename LIKE ? OR sanitized_filename LIKE ?)";
+      const searchPattern = `%${filters.search}%`;
+      params.push(searchPattern, searchPattern);
+    }
 
     sql += " ORDER BY created_at DESC";
 
     const [rows] = await pool.query<DocumentRow[]>(sql, params);
     return rows;
+  },
+
+  /**
+   * Update a document's status and/or lock state.
+   * Used by PATCH /api/documents/:id for status/lock management.
+   */
+  async updateStatusAndLock(
+    id: string,
+    companyId: string,
+    updates: { status?: string; is_locked?: boolean },
+  ): Promise<DocumentRow | null> {
+    const setClauses: string[] = [];
+    const params: unknown[] = [];
+
+    if (updates.status !== undefined) {
+      setClauses.push("status = ?");
+      params.push(updates.status);
+    }
+    if (updates.is_locked !== undefined) {
+      setClauses.push("is_locked = ?");
+      params.push(updates.is_locked ? 1 : 0);
+    }
+
+    if (setClauses.length === 0) {
+      return this.findById(id, companyId);
+    }
+
+    setClauses.push("updated_at = NOW()");
+    params.push(id, companyId);
+
+    const [result]: any = await pool.query(
+      `UPDATE documents SET ${setClauses.join(", ")} WHERE id = ? AND company_id = ?`,
+      params,
+    );
+
+    if (result.affectedRows === 0) {
+      return null;
+    }
+
+    return this.findById(id, companyId);
   },
 
   /**

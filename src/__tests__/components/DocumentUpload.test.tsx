@@ -3,22 +3,27 @@
  * Covers FileVault upload, review states, and document workflow.
  */
 import React from "react";
-import {
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { FileVault } from "../../../components/FileVault";
 import { User, LoadData, VaultDoc, LOAD_STATUS } from "../../../types";
 
 // Mock the financial service
-vi.mock("../../../services/financialService", () => ({
-  getVaultDocs: vi.fn().mockResolvedValue([]),
-  uploadToVault: vi.fn().mockResolvedValue({ id: "doc-new-1" }),
-  updateDocStatus: vi.fn().mockResolvedValue({}),
+vi.mock("../../../services/storage/vault", () => ({
+  getDocuments: vi.fn().mockResolvedValue([]),
+  uploadVaultDoc: vi.fn().mockResolvedValue({ id: "doc-new-1" }),
+  updateDocumentStatus: vi.fn().mockResolvedValue({}),
+  downloadVaultDoc: vi.fn(),
+  validateFileType: vi.fn().mockReturnValue(true),
+  validateFileSize: vi.fn().mockReturnValue(true),
+  ALLOWED_MIME_TYPES: [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/tiff",
+  ],
+  MAX_FILE_SIZE_BYTES: 10 * 1024 * 1024,
 }));
 
 const mockUser: User = {
@@ -101,8 +106,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     vi.clearAllMocks();
     // Provide docs by default so the vault UI renders instead of EmptyState.
     // Tests that need different data override with mockResolvedValueOnce.
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValue(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValue(mockDocs);
   });
 
   it("renders FileVault component without crashing", async () => {
@@ -150,19 +155,19 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
     });
   });
 
-  it("loads documents via getVaultDocs on mount", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
+  it("loads documents via getDocuments on mount", async () => {
+    const { getDocuments } = await import("../../../services/storage/vault");
     render(<FileVault {...defaultProps} />);
     await waitFor(() => {
-      expect(getVaultDocs).toHaveBeenCalledTimes(1);
-      expect(getVaultDocs).toHaveBeenCalledWith({});
+      expect(getDocuments).toHaveBeenCalledTimes(1);
+      expect(getDocuments).toHaveBeenCalledWith({});
     });
   });
 
   it("renders loading skeleton while fetching docs", async () => {
-    // getVaultDocs never resolves — component stays in loading state
-    const financialService = await import("../../../services/financialService");
-    vi.mocked(financialService.getVaultDocs).mockReturnValueOnce(
+    // getDocuments never resolves — component stays in loading state
+    const financialService = await import("../../../services/storage/vault");
+    vi.mocked(financialService.getDocuments).mockReturnValueOnce(
       new Promise(() => {}),
     );
 
@@ -173,8 +178,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
   });
 
   it("displays documents once loaded from vault", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValueOnce(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValueOnce(mockDocs);
 
     render(<FileVault {...defaultProps} />);
 
@@ -184,8 +189,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
   });
 
   it("shows document status badge for each document", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValueOnce(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValueOnce(mockDocs);
 
     render(<FileVault {...defaultProps} />);
 
@@ -196,8 +201,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
   });
 
   it("filters documents by type when type filter is changed", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValueOnce(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValueOnce(mockDocs);
 
     render(<FileVault {...defaultProps} />);
 
@@ -218,8 +223,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
   });
 
   it("filters documents by search query", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValueOnce(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValueOnce(mockDocs);
 
     render(<FileVault {...defaultProps} />);
 
@@ -241,8 +246,8 @@ describe("FileVault — document upload and review (R-FS-06-03)", () => {
   });
 
   it("shows empty state when no docs match filter", async () => {
-    const { getVaultDocs } = await import("../../../services/financialService");
-    vi.mocked(getVaultDocs).mockResolvedValueOnce(mockDocs);
+    const { getDocuments } = await import("../../../services/storage/vault");
+    vi.mocked(getDocuments).mockResolvedValueOnce(mockDocs);
 
     render(<FileVault {...defaultProps} />);
 

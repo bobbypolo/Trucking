@@ -3,7 +3,11 @@ import type { Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
-import { createBookingSchema, updateBookingSchema } from "../schemas/booking";
+import {
+  createBookingSchema,
+  updateBookingSchema,
+  convertBookingSchema,
+} from "../schemas/booking";
 import { bookingRepository } from "../repositories/booking.repository";
 import { createChildLogger } from "../lib/logger";
 
@@ -105,6 +109,59 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
+
+// POST /api/bookings/convert — atomically create booking + canonical operational load
+// This is the canonical quote-to-load conversion endpoint.
+// It creates a booking record AND an operational load in a single DB transaction.
+// Financial estimates from the quote (driver pay, margin) are NOT carried into the load —
+// only carrier_rate is set as a reference. driver_pay on the load is always 0 until
+// settlement is explicitly created by accounting.
+router.post(
+  "/api/bookings/convert",
+  requireAuth,
+  requireTenant,
+  validateBody(convertBookingSchema),
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const userId = req.user!.uid;
+    try {
+      const {
+        load_number,
+        freight_type,
+        commodity,
+        weight,
+        carrier_rate,
+        ...bookingData
+      } = req.body;
+
+      const loadInput = {
+        load_number,
+        customer_id: bookingData.customer_id ?? null,
+        pickup_date: bookingData.pickup_date ?? null,
+        delivery_date: bookingData.delivery_date ?? null,
+        freight_type: freight_type ?? null,
+        commodity: commodity ?? null,
+        weight: weight ?? null,
+        carrier_rate: carrier_rate ?? 0,
+      };
+
+      const booking = await bookingRepository.createWithLoad(
+        bookingData,
+        loadInput,
+        companyId,
+        userId,
+      );
+      res.status(201).json(booking);
+    } catch (error) {
+      const log = createChildLogger({
+        correlationId: req.correlationId,
+        route: "POST /api/bookings/convert",
+      });
+      log.error({ err: error }, "Failed to convert booking to load");
       res.status(500).json({ error: "Database error" });
     }
   },

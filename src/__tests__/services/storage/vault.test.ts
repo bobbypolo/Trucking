@@ -44,10 +44,9 @@ describe("vault.ts (storage/ path, API-backed)", () => {
     ).toBeUndefined();
   });
 
-  it("getRawVaultDocs returns [] on API failure", async () => {
+  it("getRawVaultDocs propagates error on API failure", async () => {
     mockApi.get.mockRejectedValueOnce(new Error("network"));
-    const result = await getRawVaultDocs();
-    expect(result).toEqual([]);
+    await expect(getRawVaultDocs()).rejects.toThrow("network");
   });
 
   it("getRawVaultDocs returns docs on success", async () => {
@@ -83,7 +82,7 @@ describe("vault.ts (storage/ path, API-backed)", () => {
 
     expect(mockApi.postFormData).toHaveBeenCalledOnce();
     const [endpoint, formData] = mockApi.postFormData.mock.calls[0];
-    expect(endpoint).toBe("/vault-docs");
+    expect(endpoint).toBe("/documents");
     expect(formData).toBeInstanceOf(FormData);
     expect(result.id).toBe("d1");
     expect(result.type).toBe("BOL");

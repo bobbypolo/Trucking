@@ -2,10 +2,17 @@ import path from "path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import dotenv from "dotenv";
+
+// Load .env so Vite proxy auto-discovers the same PORT the server uses
+dotenv.config();
 
 export default defineConfig(() => {
   const frontendPort = Number(process.env.VITE_PORT || 3101);
-  const backendPort = Number(process.env.VITE_BACKEND_PORT || 5101);
+  // Backend port: check VITE_BACKEND_PORT, then fall back to the server's PORT env var, then 5000
+  const backendPort = Number(
+    process.env.VITE_BACKEND_PORT || process.env.PORT || 5000,
+  );
   return {
     server: {
       port: frontendPort,

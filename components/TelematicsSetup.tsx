@@ -154,6 +154,10 @@ export function TelematicsSetup(): React.ReactElement {
   // ---- Delete state ----
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // ---- Live tracking status ----
+  const [trackingState, setTrackingState] = useState<string | null>(null);
+  const [trackingProvider, setTrackingProvider] = useState<string | null>(null);
+
   // ---- Vehicle mapping form state ----
   const [showMappingForm, setShowMappingForm] = useState(false);
   const [mappingForm, setMappingForm] = useState({
@@ -175,12 +179,20 @@ export function TelematicsSetup(): React.ReactElement {
     setLoading(true);
     setError(null);
     try {
-      const [cfgs, maps] = await Promise.all([
+      const [cfgs, maps, liveStatus] = await Promise.all([
         api.get("/tracking/providers") as Promise<ProviderConfig[]>,
         api.get("/tracking/vehicles/mapping") as Promise<VehicleMapping[]>,
+        api.get("/tracking/live").catch(() => null) as Promise<{
+          trackingState?: string;
+          providerDisplayName?: string;
+        } | null>,
       ]);
       setConfigs(cfgs ?? []);
       setMappings(maps ?? []);
+      if (liveStatus) {
+        setTrackingState(liveStatus.trackingState ?? null);
+        setTrackingProvider(liveStatus.providerDisplayName ?? null);
+      }
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -541,23 +553,34 @@ export function TelematicsSetup(): React.ReactElement {
             <p className="text-xs text-slate-400 mt-1">Vehicles Mapped</p>
           </div>
           <div className="bg-slate-900 rounded-lg p-3 text-center">
-            {lastTest ? (
+            {trackingState === "configured-live" ? (
               <>
-                <p
-                  className={`text-lg font-bold ${
-                    lastTest.status === "success"
-                      ? "text-emerald-400"
-                      : "text-red-400"
-                  }`}
-                >
-                  {lastTest.status === "success" ? "OK" : "FAIL"}
+                <p data-testid="tracking-status-value" className="text-lg font-bold text-emerald-400">LIVE</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Tracking Status{trackingProvider ? ` (${trackingProvider})` : ""}
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Last Test Result</p>
+              </>
+            ) : trackingState === "configured-idle" ? (
+              <>
+                <p data-testid="tracking-status-value" className="text-lg font-bold text-amber-400">IDLE</p>
+                <p className="text-xs text-slate-400 mt-1">Tracking Status — No Active Vehicles</p>
+              </>
+            ) : trackingState === "configured-no-credentials" ? (
+              <>
+                <p data-testid="tracking-status-value" className="text-lg font-bold text-amber-400">NO CREDS</p>
+                <p className="text-xs text-slate-400 mt-1">Provider Set Up — Credentials Missing</p>
+              </>
+            ) : trackingState === "provider-error" ? (
+              <>
+                <p data-testid="tracking-status-value" className="text-lg font-bold text-red-400">ERROR</p>
+                <p className="text-xs text-slate-400 mt-1">Provider Error — Retrying</p>
               </>
             ) : (
               <>
-                <p className="text-lg font-bold text-slate-500">—</p>
-                <p className="text-xs text-slate-400 mt-1">Last Test Result</p>
+                <p data-testid="tracking-status-value" className="text-lg font-bold text-slate-500">—</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  {configs.length === 0 ? "No Provider Configured" : "Tracking Status"}
+                </p>
               </>
             )}
           </div>

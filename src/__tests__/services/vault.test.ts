@@ -39,14 +39,18 @@ describe("vault.ts (API-backed)", () => {
   // R-P1-22
   describe("R-P1-22: STORAGE_KEY_VAULT_DOCS constant removed", () => {
     it("does not export STORAGE_KEY_VAULT_DOCS", () => {
-      expect((vaultModule as Record<string, unknown>)["STORAGE_KEY_VAULT_DOCS"]).toBeUndefined();
+      expect(
+        (vaultModule as Record<string, unknown>)["STORAGE_KEY_VAULT_DOCS"],
+      ).toBeUndefined();
     });
   });
 
   // S-R07: saveVaultDoc removed
   describe("S-R07: saveVaultDoc no-op stub removed", () => {
     it("does not export saveVaultDoc", () => {
-      expect((vaultModule as Record<string, unknown>)["saveVaultDoc"]).toBeUndefined();
+      expect(
+        (vaultModule as Record<string, unknown>)["saveVaultDoc"],
+      ).toBeUndefined();
     });
   });
 
@@ -61,7 +65,9 @@ describe("vault.ts (API-backed)", () => {
     });
 
     it("uploadVaultDoc does not call localStorage.setItem", async () => {
-      const file = new File(["pdf content"], "test.pdf", { type: "application/pdf" });
+      const file = new File(["pdf content"], "test.pdf", {
+        type: "application/pdf",
+      });
       mockApi.postFormData.mockResolvedValueOnce({
         documentId: "doc-abc-123",
         storagePath: "/uploads/doc-abc-123/test.pdf",
@@ -78,7 +84,9 @@ describe("vault.ts (API-backed)", () => {
   // R-P1-23
   describe("R-P1-23: uploadVaultDoc calls POST /api/vault-docs with multipart form data", () => {
     it("calls api.postFormData with /vault-docs endpoint", async () => {
-      const file = new File(["content"], "bol.pdf", { type: "application/pdf" });
+      const file = new File(["content"], "bol.pdf", {
+        type: "application/pdf",
+      });
       mockApi.postFormData.mockResolvedValueOnce({
         documentId: "doc-001",
         storagePath: "/uploads/doc-001/bol.pdf",
@@ -90,12 +98,14 @@ describe("vault.ts (API-backed)", () => {
 
       expect(mockApi.postFormData).toHaveBeenCalledOnce();
       const [endpoint, formData] = mockApi.postFormData.mock.calls[0];
-      expect(endpoint).toBe("/vault-docs");
+      expect(endpoint).toBe("/documents");
       expect(formData).toBeInstanceOf(FormData);
     });
 
     it("sends FormData body with file and document_type fields", async () => {
-      const file = new File(["pdf bytes"], "pod.pdf", { type: "application/pdf" });
+      const file = new File(["pdf bytes"], "pod.pdf", {
+        type: "application/pdf",
+      });
       mockApi.postFormData.mockResolvedValueOnce({
         documentId: "doc-002",
         storagePath: "/uploads/doc-002/pod.pdf",
@@ -131,11 +141,15 @@ describe("vault.ts (API-backed)", () => {
       const file = new File(["data"], "bad.pdf", { type: "application/pdf" });
       mockApi.postFormData.mockRejectedValueOnce(new Error("File too large"));
 
-      await expect(uploadVaultDoc(file, "BOL", "tenant-001")).rejects.toThrow("File too large");
+      await expect(uploadVaultDoc(file, "BOL", "tenant-001")).rejects.toThrow(
+        "File too large",
+      );
     });
 
     it("returns VaultDoc shape built from server response", async () => {
-      const file = new File(["bytes"], "insurance.pdf", { type: "application/pdf" });
+      const file = new File(["bytes"], "insurance.pdf", {
+        type: "application/pdf",
+      });
       mockApi.postFormData.mockResolvedValueOnce({
         documentId: "doc-005",
         storagePath: "/uploads/doc-005/insurance.pdf",
@@ -161,28 +175,38 @@ describe("vault.ts (API-backed)", () => {
 
       await getRawVaultDocs();
 
-      expect(mockApi.get).toHaveBeenCalledWith("/vault-docs");
+      expect(mockApi.get).toHaveBeenCalledWith("/documents");
     });
 
     it("returns documents array from API response", async () => {
-      const docs = [{ id: "d1", tenantId: "t1", type: "BOL", url: "/up/d1", filename: "bol.pdf",
-        status: "Submitted", isLocked: false, version: 1, createdBy: "u1", createdAt: "2026-01-01T00:00:00Z" }];
+      const docs = [
+        {
+          id: "d1",
+          tenantId: "t1",
+          type: "BOL",
+          url: "/up/d1",
+          filename: "bol.pdf",
+          status: "Submitted",
+          isLocked: false,
+          version: 1,
+          createdBy: "u1",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ];
       mockApi.get.mockResolvedValueOnce({ documents: docs });
 
       const result = await getRawVaultDocs();
       expect(result).toEqual(docs);
     });
 
-    it("returns empty array when API throws", async () => {
+    it("propagates error when API throws", async () => {
       mockApi.get.mockRejectedValueOnce(new Error("401"));
-      const result = await getRawVaultDocs();
-      expect(result).toEqual([]);
+      await expect(getRawVaultDocs()).rejects.toThrow("401");
     });
 
-    it("returns empty array when fetch throws a network error", async () => {
+    it("propagates error when fetch throws a network error", async () => {
       mockApi.get.mockRejectedValueOnce(new Error("network error"));
-      const result = await getRawVaultDocs();
-      expect(result).toEqual([]);
+      await expect(getRawVaultDocs()).rejects.toThrow("network error");
     });
   });
 });

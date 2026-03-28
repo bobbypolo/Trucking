@@ -10,6 +10,121 @@ import {
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 
+/**
+ * Maps an exception status to the corresponding domain-record status.
+ * Exception RESOLVED -> domain "Resolved"; CLOSED -> domain "Closed".
+ */
+function mapExceptionStatusToDomain(exceptionStatus: string): string {
+  switch (exceptionStatus) {
+    case "RESOLVED":
+      return "Resolved";
+    case "CLOSED":
+      return "Closed";
+    default:
+      return exceptionStatus;
+  }
+}
+
+/**
+ * Syncs exception status changes to linked domain records.
+ * Best-effort, non-blocking: failures are logged but do not block the response.
+ */
+async function syncExceptionToDomain(
+  exceptionId: string,
+  tenantId: string,
+  newStatus: string,
+  correlationId?: string,
+): Promise<void> {
+  const log = createChildLogger({
+    correlationId: correlationId ?? "unknown",
+    route: "syncExceptionToDomain",
+  });
+
+  try {
+    const [rows]: any = await pool.query(
+      "SELECT links, entity_type, entity_id FROM exceptions WHERE id = ? AND tenant_id = ?",
+      [exceptionId, tenantId],
+    );
+    if (rows.length === 0) return;
+
+    const exception = rows[0];
+    let links: Record<string, string> = {};
+    try {
+      links =
+        typeof exception.links === "string"
+          ? JSON.parse(exception.links)
+          : exception.links || {};
+    } catch {
+      log.warn({ exceptionId }, "Failed to parse exception links JSON");
+      return;
+    }
+
+    const domainStatus = mapExceptionStatusToDomain(newStatus);
+
+    // Sync to incident
+    if (links.incidentId) {
+      try {
+        await pool.query(
+          "UPDATE incidents SET status = ? WHERE id = ? AND company_id = ?",
+          [domainStatus, links.incidentId, tenantId],
+        );
+        log.info(
+          { incidentId: links.incidentId, domainStatus },
+          "Synced exception status to incident",
+        );
+      } catch (err) {
+        log.warn(
+          { err, incidentId: links.incidentId },
+          "Failed to sync exception status to incident (non-blocking)",
+        );
+      }
+    }
+
+    // Sync to service ticket
+    if (links.serviceTicketId) {
+      try {
+        await pool.query(
+          "UPDATE service_tickets SET status = ? WHERE id = ? AND company_id = ?",
+          [domainStatus, links.serviceTicketId, tenantId],
+        );
+        log.info(
+          { serviceTicketId: links.serviceTicketId, domainStatus },
+          "Synced exception status to service ticket",
+        );
+      } catch (err) {
+        log.warn(
+          { err, serviceTicketId: links.serviceTicketId },
+          "Failed to sync exception status to service ticket (non-blocking)",
+        );
+      }
+    }
+
+    // Sync to maintenance record
+    if (links.maintenanceRecordId) {
+      try {
+        await pool.query(
+          "UPDATE safety_maintenance SET status = ? WHERE id = ? AND company_id = ?",
+          [domainStatus, links.maintenanceRecordId, tenantId],
+        );
+        log.info(
+          { maintenanceRecordId: links.maintenanceRecordId, domainStatus },
+          "Synced exception status to maintenance record",
+        );
+      } catch (err) {
+        log.warn(
+          { err, maintenanceRecordId: links.maintenanceRecordId },
+          "Failed to sync exception status to maintenance record (non-blocking)",
+        );
+      }
+    }
+  } catch (err) {
+    log.warn(
+      { err, exceptionId },
+      "syncExceptionToDomain failed (non-blocking)",
+    );
+  }
+}
+
 const router = Router();
 
 // Exception Management
@@ -195,28 +310,13 @@ router.patch(
 
       await pool.query(query, params);
 
-      // [RESOLUTION HOOKS] - Trigger cross-module updates
-      if (status === "RESOLVED") {
-        const [ex]: any = await pool.query(
-          "SELECT * FROM exceptions WHERE id = ?",
-          [id],
-        );
-        const exception = ex[0];
-
-        // Dispatch Update: If Delay, update ETA or Status
-        // Billing Update: If POD Received, unlock Invoicing
-        // Payroll Update: If doc correct, approve settlement line
-        const log = createChildLogger({
-          correlationId: req.correlationId,
-          route: "PATCH /api/exceptions",
-        });
-        log.info(
-          {
-            exceptionType: exception.type,
-            entityType: exception.entity_type,
-            entityId: exception.entity_id,
-          },
-          "Automated resolution triggered",
+      // Bidirectional sync: propagate status changes to linked domain records
+      if (status === "RESOLVED" || status === "CLOSED") {
+        await syncExceptionToDomain(
+          id,
+          req.user!.tenantId,
+          status,
+          req.correlationId,
         );
       }
 

@@ -1,7 +1,7 @@
 import { api, ApiFetchOptions } from './api';
 import {
     GLAccount, JournalEntry, ARInvoice, APBill, DriverSettlement, FuelEntry,
-    IFTASummary, MileageEntry, VaultDoc, IFTATripEvidence, IFTATripAudit
+    IFTASummary, MileageEntry, IFTATripEvidence, IFTATripAudit
 } from '../types';
 
 export const getGLAccounts = async (
@@ -54,19 +54,6 @@ export const getBills = async (
   signal?: AbortSignal,
 ): Promise<APBill[]> => {
   return api.get('/accounting/bills', { signal } as ApiFetchOptions);
-};
-
-export const getVaultDocs = async (filters: any): Promise<any[]> => {
-    const query = new URLSearchParams(filters).toString();
-    return api.get(`/accounting/docs?${query}`);
-};
-
-export const uploadToVault = async (doc: Partial<VaultDoc>): Promise<void> => {
-    await api.post('/accounting/docs', doc);
-};
-
-export const updateDocStatus = async (id: string, status: string, isLocked: boolean, updatedBy?: string): Promise<void> => {
-    await api.patch(`/accounting/docs/${id}`, { status, is_locked: isLocked, updatedBy });
 };
 
 export const batchFinalizeSettlements = async (ids: string[], status: string = 'Finalized'): Promise<{ updated: number }> => {

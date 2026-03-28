@@ -6,12 +6,15 @@ import { LoadDetailView } from "../../../components/LoadDetailView";
 import { LoadData, User, Broker, LOAD_STATUS } from "../../../types";
 
 // Mock services at network boundary
-const mockGetVaultDocs = vi.fn();
+const mockGetDocuments = vi.fn();
 const mockCreateARInvoice = vi.fn();
 const mockSaveLoad = vi.fn();
 
+vi.mock("../../../services/storage/vault", () => ({
+  getDocuments: (...args: unknown[]) => mockGetDocuments(...args),
+}));
+
 vi.mock("../../../services/financialService", () => ({
-  getVaultDocs: (...args: unknown[]) => mockGetVaultDocs(...args),
   createARInvoice: (...args: unknown[]) => mockCreateARInvoice(...args),
 }));
 
@@ -128,7 +131,7 @@ describe("LoadDetailView deep coverage — lines 151-190", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetVaultDocs.mockResolvedValue([]);
+    mockGetDocuments.mockResolvedValue([]);
     mockCreateARInvoice.mockResolvedValue({ id: "inv-1" });
     mockSaveLoad.mockResolvedValue(undefined);
   });
@@ -263,21 +266,21 @@ describe("LoadDetailView deep coverage — lines 151-190", () => {
   });
 
   describe("vault docs loading on mount (lines 83-90)", () => {
-    it("calls getVaultDocs with load id on mount", async () => {
+    it("calls getDocuments with load id on mount", async () => {
       render(<LoadDetailView {...defaultProps} />);
 
       await waitFor(() => {
-        expect(mockGetVaultDocs).toHaveBeenCalledWith({ loadId: "load-1" });
+        expect(mockGetDocuments).toHaveBeenCalledWith({ load_id: "load-1" });
       });
     });
 
     it("handles vault doc loading failure gracefully without crash", async () => {
-      mockGetVaultDocs.mockRejectedValue(new Error("Vault unavailable"));
+      mockGetDocuments.mockRejectedValue(new Error("Vault unavailable"));
 
       render(<LoadDetailView {...defaultProps} />);
 
       await waitFor(() => {
-        expect(mockGetVaultDocs).toHaveBeenCalled();
+        expect(mockGetDocuments).toHaveBeenCalled();
       });
 
       // Component should still render without crashing
@@ -285,7 +288,7 @@ describe("LoadDetailView deep coverage — lines 151-190", () => {
     });
 
     it("renders vault document cards when documents are loaded", async () => {
-      mockGetVaultDocs.mockResolvedValue([
+      mockGetDocuments.mockResolvedValue([
         {
           id: "doc-1",
           filename: "BOL-001.pdf",
@@ -309,7 +312,7 @@ describe("LoadDetailView deep coverage — lines 151-190", () => {
     });
 
     it("renders vault document type labels", async () => {
-      mockGetVaultDocs.mockResolvedValue([
+      mockGetDocuments.mockResolvedValue([
         {
           id: "doc-1",
           filename: "BOL-001.pdf",
@@ -326,7 +329,7 @@ describe("LoadDetailView deep coverage — lines 151-190", () => {
     });
 
     it("renders vault document status badges", async () => {
-      mockGetVaultDocs.mockResolvedValue([
+      mockGetDocuments.mockResolvedValue([
         {
           id: "doc-1",
           filename: "BOL-001.pdf",

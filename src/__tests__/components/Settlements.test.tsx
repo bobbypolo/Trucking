@@ -135,14 +135,18 @@ describe("Settlements component", () => {
   it("renders the header subtitle", () => {
     render(<Settlements {...defaultProps} />);
     expect(
-      screen.getByText("Payroll Approval, Invoicing, and Profitability Analysis."),
+      screen.getByText(
+        "Payroll Approval, Invoicing, and Profitability Analysis.",
+      ),
     ).toBeInTheDocument();
   });
 
   it("renders the three tab buttons", () => {
     render(<Settlements {...defaultProps} />);
     expect(screen.getByText("Payroll Approval")).toBeInTheDocument();
-    expect(screen.getByText("Accounts Receivable (Invoicing)")).toBeInTheDocument();
+    expect(
+      screen.getByText("Accounts Receivable (Invoicing)"),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Profit & Loss/)).toBeInTheDocument();
   });
 
@@ -233,9 +237,8 @@ describe("Settlements component", () => {
   });
 
   it("calls createSettlement when Authorize & Pay is clicked", async () => {
-    const { createSettlement } = await import(
-      "../../../services/financialService"
-    );
+    const { createSettlement } =
+      await import("../../../services/financialService");
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     await user.click(await screen.findByText("Test Driver"));
@@ -257,14 +260,13 @@ describe("Settlements component", () => {
     });
     await user.click(screen.getByText(/Authorize & Pay/));
     await waitFor(() => {
-      expect(screen.getByText(/Settlement finalized for Test Driver/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Settlement finalized for Test Driver/),
+      ).toBeInTheDocument();
     });
   });
 
-  it("calls uploadToVault when Generate Statement is clicked", async () => {
-    const { uploadToVault } = await import(
-      "../../../services/financialService"
-    );
+  it("shows deferred statement feedback when Generate Statement is clicked", async () => {
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     await user.click(await screen.findByText("Test Driver"));
@@ -273,7 +275,9 @@ describe("Settlements component", () => {
     });
     await user.click(screen.getByText("Generate Statement"));
     await waitFor(() => {
-      expect(uploadToVault).toHaveBeenCalled();
+      expect(
+        screen.getByText(/Statement generation requested/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -286,7 +290,9 @@ describe("Settlements component", () => {
     });
     await user.click(screen.getByText("Generate Statement"));
     await waitFor(() => {
-      expect(screen.getByText(/Audit-Ready Statement generated/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Statement generation requested/),
+      ).toBeInTheDocument();
     });
   });
 
@@ -345,11 +351,15 @@ describe("Settlements component", () => {
       expect(screen.getByText(/Settlement finalized/)).toBeInTheDocument();
     });
     // Find and click the dismiss X button on the feedback bar
-    const feedbackBar = screen.getByText(/Settlement finalized/).closest("div")!.parentElement!;
+    const feedbackBar = screen
+      .getByText(/Settlement finalized/)
+      .closest("div")!.parentElement!;
     const xBtn = feedbackBar.querySelector("button");
     await user.click(xBtn!);
     await waitFor(() => {
-      expect(screen.queryByText(/Settlement finalized/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Settlement finalized/),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -451,9 +461,8 @@ describe("Settlements component", () => {
 
   // R-P5-03: Finalize calls PATCH /api/settlements/batch
   it("R-P5-03: Finalize All calls batchFinalizeSettlements API", async () => {
-    const { batchFinalizeSettlements } = await import(
-      "../../../services/financialService"
-    );
+    const { batchFinalizeSettlements } =
+      await import("../../../services/financialService");
     const user = userEvent.setup();
     render(<Settlements {...defaultProps} />);
     await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
@@ -497,7 +506,10 @@ describe("Settlements component", () => {
     const mockCreateObjectURL = vi.fn().mockReturnValue("blob:test");
     const mockRevokeObjectURL = vi.fn();
     Object.defineProperty(window, "URL", {
-      value: { createObjectURL: mockCreateObjectURL, revokeObjectURL: mockRevokeObjectURL },
+      value: {
+        createObjectURL: mockCreateObjectURL,
+        revokeObjectURL: mockRevokeObjectURL,
+      },
       writable: true,
     });
     const mockClick = vi.fn();
@@ -526,11 +538,15 @@ describe("Settlements component", () => {
 
   it("shows empty invoice message when no delivered loads", async () => {
     const user = userEvent.setup();
-    const loadsNoDelivered = mockLoads.filter((l) => l.status !== LOAD_STATUS.Delivered);
+    const loadsNoDelivered = mockLoads.filter(
+      (l) => l.status !== LOAD_STATUS.Delivered,
+    );
     render(<Settlements loads={loadsNoDelivered} users={[mockDriver]} />);
     await user.click(screen.getByText("Accounts Receivable (Invoicing)"));
     await waitFor(() => {
-      expect(screen.getByText(/No pending deliveries found for invoicing/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/No pending deliveries found for invoicing/),
+      ).toBeInTheDocument();
     });
   });
 

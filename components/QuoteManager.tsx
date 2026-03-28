@@ -175,19 +175,25 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
   const validateQuoteForm = (data: Quote): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!data.pickup?.city?.trim()) errs.pickupCity = "Pickup city is required";
-    if (!data.dropoff?.city?.trim()) errs.dropoffCity = "Dropoff city is required";
+    if (!data.dropoff?.city?.trim())
+      errs.dropoffCity = "Dropoff city is required";
     if (!data.totalRate || data.totalRate <= 0) errs.rate = "Rate is required";
     return errs;
   };
 
   const isSelectedQuoteValid = selectedQuote
-    ? !!selectedQuote.pickup?.city?.trim() && !!selectedQuote.dropoff?.city?.trim() &&
-      !!selectedQuote.totalRate && selectedQuote.totalRate > 0
+    ? !!selectedQuote.pickup?.city?.trim() &&
+      !!selectedQuote.dropoff?.city?.trim() &&
+      !!selectedQuote.totalRate &&
+      selectedQuote.totalRate > 0
     : false;
 
   const handleSaveQuote = async (data: Quote) => {
     const errs = validateQuoteForm(data);
-    if (Object.keys(errs).length > 0) { setQuoteErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setQuoteErrors(errs);
+      return;
+    }
     setQuoteErrors({});
     setIsSubmitting(true);
     try {
@@ -202,26 +208,40 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
   const handleConvert = async (quote: Quote) => {
     if (quote.status !== "Accepted") return;
+    setIsSubmitting(true);
+    try {
+      // Use the canonical conversion endpoint that atomically creates
+      // both a booking AND an operational load in a single transaction.
+      // Quote financial estimates (driver pay, margin) are NOT passed —
+      // the load starts with driver_pay = 0 until settlement is created.
+      const { api } = await import("../services/api");
+      await api.post("/bookings/convert", {
+        quote_id: quote.id,
+        customer_id: null,
+        status: "Confirmed",
+        pickup_date: quote.validUntil ?? null,
+        delivery_date: null,
+        notes: quote.notes ?? null,
+        load_number: `LD-${Date.now()}`,
+        freight_type: quote.equipmentType ?? null,
+        carrier_rate: quote.totalRate ?? 0,
+      });
 
-    const booking: Booking = {
-      id: uuidv4(),
-      quoteId: quote.id,
-      companyId: user.companyId,
-      status: "Accepted",
-      requiresAppt: true,
-      createdAt: new Date().toISOString(),
-    };
-
-    await saveBooking(booking);
-    await loadData();
-    // Reset and maybe show success / switch view
-    setSelectedQuote(null);
-    setActiveView("pipeline");
-    // In a real app, this would navigate to the Dispatch Board or booking details
-    setToast({
-      message: "Quote Converted to Booking! Ready for Dispatch.",
-      type: "success",
-    });
+      await loadData();
+      setSelectedQuote(null);
+      setActiveView("pipeline");
+      setToast({
+        message: "Quote converted to booking with operational load created.",
+        type: "success",
+      });
+    } catch (err) {
+      setToast({
+        message: "Failed to convert quote. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEnterIntake = () => {
@@ -250,11 +270,18 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
     setActiveView("intake");
   };
 
-  const handlePhoneInteraction = async (phoneNumber: string, context: string) => {
+  const handlePhoneInteraction = async (
+    phoneNumber: string,
+    context: string,
+  ) => {
     // Log the call attempt (non-blocking — don't prevent dialer if logging fails)
     try {
       const { api } = await import("../services/api");
-      await api.post("/call-logs", { phoneNumber, context, direction: "outbound" });
+      await api.post("/call-logs", {
+        phoneNumber,
+        context,
+        direction: "outbound",
+      });
     } catch (err) {
       console.warn("Failed to log call:", err);
     }
@@ -323,7 +350,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
         <div className="flex items-center gap-4">
           <div className="relative group">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-            <input aria-label="Find Quote or Lane..."
+            <input
+              aria-label="Find Quote or Lane..."
               type="text"
               placeholder="Find Quote or Lane..."
               className="bg-slate-950 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-xs text-white outline-none focus:border-blue-500/50 w-64 transition-all"
@@ -412,7 +440,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             </div>
                             {quote.margin && (
                               <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
-                                Margin: ${quote.margin}
+                                Est. Margin: ${quote.margin}
                               </div>
                             )}
                           </div>
@@ -502,9 +530,11 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   {selectedQuote.status === "Accepted" && (
                     <button
                       onClick={() => handleConvert(selectedQuote)}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2"
+                      disabled={isSubmitting}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                      <Zap className="w-4 h-4 fill-current" /> Accept & Convert
+                      <Zap className="w-4 h-4 fill-current" />{" "}
+                      {isSubmitting ? "Converting..." : "Convert to Load"}
                     </button>
                   )}
                 </div>
@@ -530,10 +560,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           </div>
                           <div className="space-y-4">
                             <div>
-                              <label htmlFor="qmFacilityDesignation" className="text-[10px] text-slate-600 font-black uppercase mb-1.5 block">
+                              <label
+                                htmlFor="qmFacilityDesignation"
+                                className="text-[10px] text-slate-600 font-black uppercase mb-1.5 block"
+                              >
                                 Facility Designation
                               </label>
-                              <input id="qmFacilityDesignation"
+                              <input
+                                id="qmFacilityDesignation"
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase tracking-tight"
                                 placeholder="Location Alpha"
                                 value={selectedQuote.pickup?.facilityName || ""}
@@ -550,7 +584,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <input aria-label="City"
+                                <input
+                                  aria-label="City"
                                   className={`w-full bg-slate-950 border ${quoteErrors.pickupCity ? "border-red-500" : "border-white/5"} rounded-xl p-3.5 text-sm text-white font-black uppercase`}
                                   placeholder="City *"
                                   value={selectedQuote.pickup?.city ?? ""}
@@ -564,9 +599,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                     })
                                   }
                                 />
-                                {quoteErrors.pickupCity && <p className="text-red-400 text-xs mt-1">{quoteErrors.pickupCity}</p>}
+                                {quoteErrors.pickupCity && (
+                                  <p className="text-red-400 text-xs mt-1">
+                                    {quoteErrors.pickupCity}
+                                  </p>
+                                )}
                               </div>
-                              <input aria-label="State"
+                              <input
+                                aria-label="State"
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
                                 value={selectedQuote.pickup?.state ?? ""}
@@ -592,10 +632,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           </div>
                           <div className="space-y-4">
                             <div>
-                              <label htmlFor="qmFacilityDesignation2" className="text-[10px] text-slate-600 font-black uppercase mb-1.5 block">
+                              <label
+                                htmlFor="qmFacilityDesignation2"
+                                className="text-[10px] text-slate-600 font-black uppercase mb-1.5 block"
+                              >
                                 Facility Designation
                               </label>
-                              <input id="qmFacilityDesignation2"
+                              <input
+                                id="qmFacilityDesignation2"
                                 className="w-full bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase tracking-tight"
                                 placeholder="Location Omega"
                                 value={
@@ -614,7 +658,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div>
-                                <input aria-label="City"
+                                <input
+                                  aria-label="City"
                                   className={`w-full bg-slate-950 border ${quoteErrors.dropoffCity ? "border-red-500" : "border-white/5"} rounded-xl p-3.5 text-sm text-white font-black uppercase`}
                                   placeholder="City *"
                                   value={selectedQuote.dropoff?.city ?? ""}
@@ -628,9 +673,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                     })
                                   }
                                 />
-                                {quoteErrors.dropoffCity && <p className="text-red-400 text-xs mt-1">{quoteErrors.dropoffCity}</p>}
+                                {quoteErrors.dropoffCity && (
+                                  <p className="text-red-400 text-xs mt-1">
+                                    {quoteErrors.dropoffCity}
+                                  </p>
+                                )}
                               </div>
-                              <input aria-label="State"
+                              <input
+                                aria-label="State"
                                 className="bg-slate-950 border border-white/5 rounded-xl p-3.5 text-sm text-white font-black uppercase"
                                 placeholder="State"
                                 value={selectedQuote.dropoff?.state ?? ""}
@@ -658,12 +708,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                       <div className="bg-slate-900 border border-white/5 rounded-[2rem] p-8 shadow-xl space-y-6">
                         <div className="grid grid-cols-2 gap-8">
                           <div className="space-y-4">
-                            <label htmlFor="qmValidThrough" className="text-[10px] text-slate-500 font-black uppercase tracking-widest block">
+                            <label
+                              htmlFor="qmValidThrough"
+                              className="text-[10px] text-slate-500 font-black uppercase tracking-widest block"
+                            >
                               Valid Through
                             </label>
                             <div className="flex items-center gap-4">
                               <Clock className="w-5 h-5 text-blue-500" />
-                              <input id="qmValidThrough"
+                              <input
+                                id="qmValidThrough"
                                 type="date"
                                 className="flex-1 bg-slate-950 border border-white/5 rounded-xl p-4 text-sm text-white font-black outline-none focus:border-blue-500/50 transition-all"
                                 value={
@@ -681,12 +735,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                             </div>
                           </div>
                           <div className="space-y-4">
-                            <label htmlFor="qmEquipmentProfile" className="text-[10px] text-slate-500 font-black uppercase tracking-widest block">
+                            <label
+                              htmlFor="qmEquipmentProfile"
+                              className="text-[10px] text-slate-500 font-black uppercase tracking-widest block"
+                            >
                               Equipment Profile
                             </label>
                             <div className="flex items-center gap-4">
                               <Zap className="w-5 h-5 text-yellow-500" />
-                              <select id="qmEquipmentProfile"
+                              <select
+                                id="qmEquipmentProfile"
                                 className="flex-1 bg-slate-950 border border-white/5 rounded-xl p-4 text-sm text-white font-black outline-none appearance-none"
                                 value={selectedQuote.equipmentType}
                                 onChange={(e) =>
@@ -712,10 +770,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <label htmlFor="qmContractualConstraintsNotes" className="text-[10px] text-slate-500 font-black uppercase tracking-widest block">
+                          <label
+                            htmlFor="qmContractualConstraintsNotes"
+                            className="text-[10px] text-slate-500 font-black uppercase tracking-widest block"
+                          >
                             Contractual Constraints / Notes
                           </label>
-                          <textarea id="qmContractualConstraintsNotes"
+                          <textarea
+                            id="qmContractualConstraintsNotes"
                             className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-white font-bold h-32 outline-none focus:border-blue-500/50 transition-all no-scrollbar"
                             placeholder="Specify any equipment age requirements, insurance mandates, or special handling instructions..."
                             value={selectedQuote.notes || ""}
@@ -735,7 +797,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     <section className="space-y-6">
                       <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.3em] flex items-center gap-3 px-1">
                         <div className="w-1.5 h-1.5 rounded-full bg-yellow-500" />{" "}
-                        Financial Engineering
+                        Commercial Estimates (Non-Binding)
                       </h3>
                       <div className="bg-slate-900 border border-yellow-500/20 rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
                         <div className="space-y-6 relative z-10">
@@ -759,7 +821,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">
                                   $
                                 </span>
-                                <input aria-label="Linehaul"
+                                <input
+                                  aria-label="Linehaul"
                                   type="number"
                                   className={`w-full bg-slate-950 border ${quoteErrors.rate ? "border-red-500" : "border-white/10"} rounded-xl pl-8 pr-4 py-3 text-lg font-black text-white outline-none focus:border-yellow-500/50 transition-all font-mono`}
                                   placeholder="Linehaul *"
@@ -795,13 +858,18 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[8px] font-bold text-slate-500">
                                   BASE
                                 </span>
-                                {quoteErrors.rate && <p className="text-red-400 text-xs mt-1">{quoteErrors.rate}</p>}
+                                {quoteErrors.rate && (
+                                  <p className="text-red-400 text-xs mt-1">
+                                    {quoteErrors.rate}
+                                  </p>
+                                )}
                               </div>
                               <div className="relative group">
                                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-slate-600">
                                   $
                                 </span>
-                                <input aria-label="FSC"
+                                <input
+                                  aria-label="FSC"
                                   type="number"
                                   className="w-full bg-slate-950 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-lg font-black text-white outline-none focus:border-yellow-500/50 transition-all font-mono"
                                   placeholder="FSC"
@@ -835,7 +903,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs font-black text-red-500/50">
                                 - $
                               </span>
-                              <input aria-label="Disconnect / Adjustment"
+                              <input
+                                aria-label="Disconnect / Adjustment"
                                 type="number"
                                 className="w-full bg-slate-950/50 border border-red-500/10 rounded-xl pl-8 pr-4 py-2 text-sm font-bold text-red-400 outline-none focus:border-red-500/50 transition-all font-mono"
                                 placeholder="Disconnect / Adjustment"
@@ -867,7 +936,10 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
 
                           {/* Cost Breakdown */}
                           <div className="space-y-3">
-                            <label htmlFor="qmCostStructure" className="text-[9px] text-slate-500 font-black uppercase tracking-widest ml-1">
+                            <label
+                              htmlFor="qmCostStructure"
+                              className="text-[9px] text-slate-500 font-black uppercase tracking-widest ml-1"
+                            >
                               Cost Structure
                             </label>
                             <div className="bg-slate-950/50 rounded-xl p-4 space-y-3 border border-white/5">
@@ -875,7 +947,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 <span className="font-bold text-slate-400">
                                   Driver Pay (Est.)
                                 </span>
-                                <input id="qmCostStructure"
+                                <input
+                                  id="qmCostStructure"
                                   type="number"
                                   className="w-24 bg-transparent text-right font-mono font-bold text-white border-b border-dashed border-slate-700 outline-none focus:border-blue-500 p-1"
                                   value={selectedQuote.estimatedDriverPay || 0}
@@ -899,7 +972,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 <span className="font-bold text-slate-400">
                                   Sales Commission
                                 </span>
-                                <input aria-label="Sales commission"
+                                <input
+                                  aria-label="Sales commission"
                                   type="number"
                                   className="w-24 bg-transparent text-right font-mono font-bold text-white border-b border-dashed border-slate-700 outline-none focus:border-blue-500 p-1"
                                   value={selectedQuote.commission || 0}
@@ -933,7 +1007,7 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           <div className="pt-6 border-t border-white/10 space-y-2">
                             <div className="flex justify-between items-center">
                               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                Net Revenue
+                                Estimated Net Revenue
                               </span>
                               <span className="text-xl font-black text-white tracking-tighter">
                                 $
@@ -999,7 +1073,12 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                                 </div>
                               </div>
                               <button
-                                onClick={() => setToast({ message: `Work item "${item.label}" marked complete`, type: "success" })}
+                                onClick={() =>
+                                  setToast({
+                                    message: `Work item "${item.label}" marked complete`,
+                                    type: "success",
+                                  })
+                                }
                                 className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-white transition-all"
                                 aria-label="Mark as complete"
                               >
@@ -1086,7 +1165,8 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 </div>
               </div>
               <div className="p-6 bg-slate-950/50 border-t border-white/5 space-y-4">
-                <textarea aria-label="Quick note for call log..."
+                <textarea
+                  aria-label="Quick note for call log..."
                   className="w-full bg-slate-950 border border-white/5 rounded-xl p-4 text-xs text-white font-bold h-24 outline-none no-scrollbar"
                   placeholder="Quick note for call log..."
                 />
@@ -1103,11 +1183,13 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     }}
                     disabled={
                       !selectedQuote?.leadId ||
-                      !leads.find((l) => l.id === selectedQuote?.leadId)?.callerPhone
+                      !leads.find((l) => l.id === selectedQuote?.leadId)
+                        ?.callerPhone
                     }
                     title={
                       !selectedQuote?.leadId ||
-                      !leads.find((l) => l.id === selectedQuote?.leadId)?.callerPhone
+                      !leads.find((l) => l.id === selectedQuote?.leadId)
+                        ?.callerPhone
                         ? "No phone on file"
                         : undefined
                     }
@@ -1204,10 +1286,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div className="space-y-2">
-                      <label htmlFor="qmInquiryChannel" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      <label
+                        htmlFor="qmInquiryChannel"
+                        className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                      >
                         Inquiry Channel
                       </label>
-                      <select id="qmInquiryChannel" className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer hover:border-white/20">
+                      <select
+                        id="qmInquiryChannel"
+                        className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer hover:border-white/20"
+                      >
                         <option>Phone Interaction</option>
                         <option>Direct Email</option>
                         <option>DAT / Truckstop Direct</option>
@@ -1215,31 +1303,41 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                       </select>
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="qmCompanyEntityName" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      <label
+                        htmlFor="qmCompanyEntityName"
+                        className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                      >
                         Company / Entity Name
                       </label>
-                      <input id="qmCompanyEntityName"
+                      <input
+                        id="qmCompanyEntityName"
                         className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                         placeholder="Enter Prospect or Customer Name"
                         value={
                           selectedQuote?.leadId
-                            ? leads.find((l) => l.id === selectedQuote.leadId)?.customerName || ""
+                            ? leads.find((l) => l.id === selectedQuote.leadId)
+                                ?.customerName || ""
                             : ""
                         }
                         readOnly={!!selectedQuote?.notes}
                       />
                     </div>
                     <div className="space-y-2">
-                      <label htmlFor="qmContactIntelligence" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                      <label
+                        htmlFor="qmContactIntelligence"
+                        className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                      >
                         Contact Intelligence
                       </label>
                       <div className="flex gap-2">
-                        <input id="qmContactIntelligence"
+                        <input
+                          id="qmContactIntelligence"
                           className="flex-1 bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                           placeholder="Enter phone number"
                           value={
                             selectedQuote?.leadId
-                              ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone || ""
+                              ? leads.find((l) => l.id === selectedQuote.leadId)
+                                  ?.callerPhone || ""
                               : ""
                           }
                           readOnly={!!selectedQuote?.notes}
@@ -1249,7 +1347,9 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           onClick={() =>
                             handlePhoneInteraction(
                               (selectedQuote?.leadId
-                                ? leads.find((l) => l.id === selectedQuote.leadId)?.callerPhone
+                                ? leads.find(
+                                    (l) => l.id === selectedQuote.leadId,
+                                  )?.callerPhone
                                 : "") || "",
                               "New Opportunity Intake",
                             )
@@ -1274,10 +1374,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     <div className="bg-[#020617]/50 border border-white/5 rounded-3xl p-6 space-y-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label htmlFor="qmCityHub" className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                          <label
+                            htmlFor="qmCityHub"
+                            className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                          >
                             City Hub
                           </label>
-                          <input id="qmCityHub"
+                          <input
+                            id="qmCityHub"
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all font-mono tracking-tight"
                             placeholder="CHICAGO"
                             value={selectedQuote?.pickup?.city || ""}
@@ -1294,10 +1398,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label htmlFor="qmStateProv" className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                          <label
+                            htmlFor="qmStateProv"
+                            className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                          >
                             State / Prov
                           </label>
-                          <input id="qmStateProv"
+                          <input
+                            id="qmStateProv"
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all font-mono"
                             placeholder="IL"
                             maxLength={2}
@@ -1326,10 +1434,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     <div className="bg-[#020617]/50 border border-white/5 rounded-3xl p-6 space-y-6">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label htmlFor="qmCityHub2" className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                          <label
+                            htmlFor="qmCityHub2"
+                            className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                          >
                             City Hub
                           </label>
-                          <input id="qmCityHub2"
+                          <input
+                            id="qmCityHub2"
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500/50 transition-all font-mono tracking-tight"
                             placeholder="DALLAS"
                             value={selectedQuote?.dropoff?.city || ""}
@@ -1346,10 +1458,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label htmlFor="qmStateProv2" className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1">
+                          <label
+                            htmlFor="qmStateProv2"
+                            className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                          >
                             State / Prov
                           </label>
-                          <input id="qmStateProv2"
+                          <input
+                            id="qmStateProv2"
                             className="w-full bg-[#020617] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-bold outline-none focus:border-purple-500/50 transition-all font-mono"
                             placeholder="TX"
                             maxLength={2}
@@ -1376,10 +1492,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                 {/* Section 3: Operational Requirements */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div className="space-y-2">
-                    <label htmlFor="qmEquipmentConfiguration" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label
+                      htmlFor="qmEquipmentConfiguration"
+                      className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                    >
                       Equipment Configuration
                     </label>
-                    <select id="qmEquipmentConfiguration"
+                    <select
+                      id="qmEquipmentConfiguration"
                       className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all appearance-none cursor-pointer hover:border-white/20"
                       value={selectedQuote?.equipmentType || "Dry Van"}
                       onChange={(e) =>
@@ -1399,10 +1519,14 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
                     </select>
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <label htmlFor="qmMissionNotesRiskFactors" className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                    <label
+                      htmlFor="qmMissionNotesRiskFactors"
+                      className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
+                    >
                       Mission Notes / Risk Factors
                     </label>
-                    <input id="qmMissionNotesRiskFactors"
+                    <input
+                      id="qmMissionNotesRiskFactors"
                       className="w-full bg-[#020617] border border-white/10 rounded-2xl px-5 py-4 text-xs text-white font-bold outline-none focus:border-blue-500/50 transition-all placeholder:text-slate-800"
                       placeholder="Specify high-value cargo, appointments, or specialized handling..."
                       value={selectedQuote?.notes || ""}

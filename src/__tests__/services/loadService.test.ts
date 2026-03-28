@@ -510,4 +510,140 @@ describe("loadService", () => {
       expect(results).toHaveLength(0);
     });
   });
+
+  // ─── createDriverIntake — canonical intake write contract ──────────
+  describe("createDriverIntake", () => {
+    let createDriverIntake: typeof import("../../../services/loadService").createDriverIntake;
+
+    beforeEach(async () => {
+      // Dynamic import to pick up the mock
+      const mod = await import("../../../services/loadService");
+      createDriverIntake = mod.createDriverIntake;
+    });
+
+    it("creates load with Pickup and Dropoff legs via POST /api/loads", async () => {
+      mockApi.post.mockResolvedValue({});
+
+      const result = await createDriverIntake({
+        pickup: { city: "Miami", state: "FL", facilityName: "Port Miami" },
+        dropoff: { city: "Atlanta", state: "GA", facilityName: "Hub ATL" },
+        pickupDate: "2026-04-01",
+        commodity: "Electronics",
+        weight: 20000,
+        referenceNumbers: ["REF-001"],
+        driverId: "driver-42",
+        companyId: "company-99",
+        source: "driver_intake",
+      });
+
+      expect(mockApi.post).toHaveBeenCalledWith(
+        "/loads",
+        expect.objectContaining({
+          status: "draft",
+          driver_id: "driver-42",
+          pickup_date: "2026-04-01",
+          commodity: "Electronics",
+          weight: 20000,
+        }),
+      );
+
+      // Verify canonical legs structure was sent
+      const payload = mockApi.post.mock.calls[0][1] as Record<string, any>;
+      expect(payload.legs).toHaveLength(2);
+      expect(payload.legs[0].type).toBe("Pickup");
+      expect(payload.legs[0].city).toBe("Miami");
+      expect(payload.legs[0].state).toBe("FL");
+      expect(payload.legs[0].facility_name).toBe("Port Miami");
+      expect(payload.legs[0].date).toBe("2026-04-01");
+      expect(payload.legs[0].sequence_order).toBe(0);
+      expect(payload.legs[1].type).toBe("Dropoff");
+      expect(payload.legs[1].city).toBe("Atlanta");
+      expect(payload.legs[1].state).toBe("GA");
+      expect(payload.legs[1].facility_name).toBe("Hub ATL");
+      expect(payload.legs[1].sequence_order).toBe(1);
+
+      // Verify returned LoadData shape
+      expect(result.status).toBe("draft");
+      expect(result.driverId).toBe("driver-42");
+      expect(result.pickupDate).toBe("2026-04-01");
+    });
+
+    it("generates unique load number with DI- prefix", async () => {
+      mockApi.post.mockResolvedValue({});
+
+      await createDriverIntake({
+        pickup: { city: "LA", state: "CA" },
+        dropoff: { city: "SF", state: "CA" },
+        pickupDate: "2026-04-01",
+        driverId: "d1",
+        companyId: "c1",
+        source: "driver_intake",
+      });
+
+      const payload = mockApi.post.mock.calls[0][1] as Record<string, any>;
+      expect(payload.load_number).toMatch(/^DI-/);
+    });
+  });
+
+  // ─── Round-trip: legs-based load survives mapRow → mapPayload cycle ─
+  describe("canonical round-trip: legs survive save-then-fetch", () => {
+    it("load created with legs retains pickup/dropoff after server round-trip", async () => {
+      // Simulate server returning the same load with legs
+      const serverRow = {
+        id: "rt-load-1",
+        company_id: "comp-1",
+        driver_id: "drv-1",
+        load_number: "INT-TEST",
+        status: "draft",
+        pickup_date: "2026-04-15",
+        commodity: "Paper",
+        weight: 15000,
+        legs: [
+          {
+            id: "leg-p",
+            type: "Pickup",
+            city: "Portland",
+            state: "OR",
+            facility_name: "Mill #3",
+            date: "2026-04-15",
+            completed: false,
+          },
+          {
+            id: "leg-d",
+            type: "Dropoff",
+            city: "Seattle",
+            state: "WA",
+            facility_name: "Recycler HQ",
+            date: "2026-04-16",
+            completed: false,
+          },
+        ],
+      };
+
+      mockApi.get.mockResolvedValue([serverRow]);
+      const loads = await fetchLoads();
+      const load = loads[0];
+
+      // After fetch, pickup/dropoff must be derived from legs
+      expect(load.pickup.city).toBe("Portland");
+      expect(load.pickup.state).toBe("OR");
+      expect(load.pickup.facilityName).toBe("Mill #3");
+      expect(load.dropoff.city).toBe("Seattle");
+      expect(load.dropoff.state).toBe("WA");
+      expect(load.dropoff.facilityName).toBe("Recycler HQ");
+      expect(load.pickupDate).toBe("2026-04-15");
+      expect(load.dropoffDate).toBe("2026-04-16");
+
+      // Now re-save the load through createLoad and verify legs are sent back
+      mockApi.post.mockResolvedValue({});
+      await createLoad(load);
+
+      const saved = mockApi.post.mock.calls[0][1] as Record<string, any>;
+      expect(saved.legs).toHaveLength(2);
+      expect(saved.legs[0].type).toBe("Pickup");
+      expect(saved.legs[0].city).toBe("Portland");
+      expect(saved.legs[1].type).toBe("Dropoff");
+      expect(saved.legs[1].city).toBe("Seattle");
+    });
+  });
 });

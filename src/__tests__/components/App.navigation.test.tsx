@@ -173,7 +173,7 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     (m) => m[1],
   );
 
-  // End-state nav: exactly 7 items (finance is a legacy alias, not a nav item)
+  // End-state nav: 9 items (driver-pay added for settlement visibility)
   const navTabIds = [
     "operations-hub",
     "loads",
@@ -181,12 +181,13 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     "network",
     "telematics-setup",
     "accounting",
+    "driver-pay",
     "exceptions",
     "company",
   ];
 
-  it("nav has exactly 8 items", () => {
-    expect(idMatches.length).toBe(8);
+  it("nav has exactly 9 items", () => {
+    expect(idMatches.length).toBe(9);
   });
 
   it("extracts expected tab IDs from categories", () => {

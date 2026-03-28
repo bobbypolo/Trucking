@@ -8,7 +8,7 @@ S-203: Create GPS provider interface + Samsara adapter.
 
 R-P2-10: GpsProvider interface is provider-agnostic with no Samsara-specific types
 R-P2-11: Samsara adapter returns parsed GpsPosition array from API, with 5s timeout and 60s cache
-R-P2-12: Missing SAMSARA_API_TOKEN returns mock positions with isMock: true
+R-P2-12: Missing SAMSARA_API_TOKEN returns empty positions (no mock fallback)
 R-P2-13: Factory returns SamsaraAdapter for samsara, throws for unknown provider
 """
 
@@ -17,15 +17,13 @@ import re
 import subprocess
 
 
-SERVER_DIR = os.path.join(
-    os.path.dirname(__file__),
-    "..", "..", "..", "server"
-)
+SERVER_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "server")
 
 GPS_DIR = os.path.join(SERVER_DIR, "services", "gps")
 
 
 # --- R-P2-10: Interface is provider-agnostic ---
+
 
 def test_interface_exports_gps_position_with_all_fields():
     """R-P2-10: GpsPosition interface has all required provider-agnostic fields."""
@@ -35,8 +33,14 @@ def test_interface_exports_gps_position_with_all_fields():
 
     assert "interface GpsPosition" in content, "Missing GpsPosition interface"
     required_fields = [
-        "vehicleId", "latitude", "longitude", "speed",
-        "heading", "recordedAt", "provider", "providerVehicleId"
+        "vehicleId",
+        "latitude",
+        "longitude",
+        "speed",
+        "heading",
+        "recordedAt",
+        "provider",
+        "providerVehicleId",
     ]
     for field in required_fields:
         assert field in content, f"Missing required field: {field}"
@@ -51,8 +55,12 @@ def test_interface_exports_gps_provider_with_both_methods():
     assert "getVehicleLocations" in content, "Missing getVehicleLocations method"
     assert "getVehicleLocation" in content, "Missing getVehicleLocation method"
     # Methods return correct types
-    assert "Promise<GpsPosition[]>" in content, "getVehicleLocations must return Promise<GpsPosition[]>"
-    assert "Promise<GpsPosition | null>" in content, "getVehicleLocation must return Promise<GpsPosition | null>"
+    assert "Promise<GpsPosition[]>" in content, (
+        "getVehicleLocations must return Promise<GpsPosition[]>"
+    )
+    assert "Promise<GpsPosition | null>" in content, (
+        "getVehicleLocation must return Promise<GpsPosition | null>"
+    )
 
 
 def test_interface_contains_no_samsara_references():
@@ -60,8 +68,12 @@ def test_interface_contains_no_samsara_references():
     path = os.path.join(GPS_DIR, "gps-provider.interface.ts")
     content = open(path, encoding="utf-8").read()
 
-    assert "SamsaraAdapter" not in content, "Interface must not reference SamsaraAdapter"
-    assert "samsara.adapter" not in content, "Interface must not import from samsara adapter"
+    assert "SamsaraAdapter" not in content, (
+        "Interface must not reference SamsaraAdapter"
+    )
+    assert "samsara.adapter" not in content, (
+        "Interface must not import from samsara adapter"
+    )
     # No import statements referencing samsara
     for line in content.split("\n"):
         if line.strip().startswith("import"):
@@ -76,10 +88,13 @@ def test_interface_has_no_samsara_api_constants():
     content = open(path, encoding="utf-8").read()
 
     assert "api.samsara.com" not in content, "No Samsara API URLs in interface"
-    assert "SAMSARA_API_TOKEN" not in content, "No Samsara token references in interface"
+    assert "SAMSARA_API_TOKEN" not in content, (
+        "No Samsara token references in interface"
+    )
 
 
 # --- R-P2-11: Samsara adapter with timeout and cache ---
+
 
 def test_samsara_adapter_class_implements_interface():
     """R-P2-11: SamsaraAdapter class implements GpsProvider and imports from interface."""
@@ -89,7 +104,9 @@ def test_samsara_adapter_class_implements_interface():
 
     assert "class SamsaraAdapter" in content, "Missing SamsaraAdapter class"
     assert "GpsProvider" in content, "Must reference GpsProvider interface"
-    assert "gps-provider.interface" in content, "Must import from gps-provider.interface"
+    assert "gps-provider.interface" in content, (
+        "Must import from gps-provider.interface"
+    )
 
 
 def test_samsara_adapter_has_5s_timeout_constant():
@@ -98,7 +115,9 @@ def test_samsara_adapter_has_5s_timeout_constant():
     content = open(path, encoding="utf-8").read()
 
     assert "5000" in content, "Missing 5000ms timeout constant"
-    assert "AbortSignal.timeout" in content, "Must use AbortSignal.timeout for request timeout"
+    assert "AbortSignal.timeout" in content, (
+        "Must use AbortSignal.timeout for request timeout"
+    )
 
 
 def test_samsara_adapter_has_60s_cache_ttl():
@@ -117,7 +136,9 @@ def test_samsara_adapter_calls_correct_api_endpoint():
     content = open(path, encoding="utf-8").read()
 
     assert "api.samsara.com" in content, "Must call Samsara API"
-    assert "fleet/vehicles/locations" in content, "Must use fleet vehicles locations endpoint"
+    assert "fleet/vehicles/locations" in content, (
+        "Must use fleet vehicles locations endpoint"
+    )
 
 
 def test_samsara_adapter_parses_api_response():
@@ -125,14 +146,17 @@ def test_samsara_adapter_parses_api_response():
     path = os.path.join(GPS_DIR, "samsara.adapter.ts")
     content = open(path, encoding="utf-8").read()
 
-    assert "parseSamsaraLocation" in content, "Must have parse function for Samsara response"
+    assert "parseSamsaraLocation" in content, (
+        "Must have parse function for Samsara response"
+    )
     # Verify it maps to GpsPosition fields
     assert "latitude" in content, "Must map latitude"
     assert "longitude" in content, "Must map longitude"
-    assert "provider: \"samsara\"" in content, "Must set provider to 'samsara'"
+    assert 'provider: "samsara"' in content, "Must set provider to 'samsara'"
 
 
 # --- R-P2-12: Mock fallback ---
+
 
 def test_samsara_adapter_checks_api_token():
     """R-P2-12: Adapter checks SAMSARA_API_TOKEN env var."""
@@ -143,27 +167,26 @@ def test_samsara_adapter_checks_api_token():
     assert "process.env.SAMSARA_API_TOKEN" in content, "Must read from process.env"
 
 
-def test_samsara_adapter_mock_positions_have_is_mock_flag():
-    """R-P2-12: Mock positions include isMock: true flag."""
+def test_samsara_adapter_returns_empty_without_token():
+    """R-P2-12: Adapter returns empty array when no API token (no mock fallback)."""
     path = os.path.join(GPS_DIR, "samsara.adapter.ts")
     content = open(path, encoding="utf-8").read()
 
-    assert "isMock: true" in content, "Mock positions must have isMock: true"
-    assert "getMockPositions" in content, "Must have mock positions generator function"
+    # Mock positions removed during 10-agent remediation (no mock/live ambiguity).
+    assert "return []" in content, "Must return empty array when no token"
+    assert "getMockPositions" not in content, "Mock generator must be removed"
 
 
-def test_samsara_adapter_mock_has_valid_coordinates():
-    """R-P2-12: Mock positions have realistic GPS coordinates (not 0,0)."""
+def test_samsara_adapter_no_mock_live_ambiguity():
+    """R-P2-12: No isMock flag in production adapter (mock positions removed)."""
     path = os.path.join(GPS_DIR, "samsara.adapter.ts")
     content = open(path, encoding="utf-8").read()
 
-    # Find mock positions and verify they have non-zero coordinates
-    mock_section = content[content.index("getMockPositions"):]
-    assert re.search(r"latitude:\s*\d+\.\d+", mock_section), "Mock must have real latitude"
-    assert re.search(r"longitude:\s*-?\d+\.\d+", mock_section), "Mock must have real longitude"
+    assert "isMock" not in content, "No isMock flag in production adapter"
 
 
 # --- R-P2-13: Factory function ---
+
 
 def test_index_barrel_exports_factory_and_types():
     """R-P2-13: index.ts exports getGpsProvider factory and re-exports types."""
@@ -191,8 +214,12 @@ def test_factory_throws_for_unknown_provider():
     path = os.path.join(GPS_DIR, "index.ts")
     content = open(path, encoding="utf-8").read()
 
-    assert "throw new Error" in content, "Factory must throw Error for unknown providers"
-    assert "Unknown GPS provider" in content, "Error message must mention 'Unknown GPS provider'"
+    assert "throw new Error" in content, (
+        "Factory must throw Error for unknown providers"
+    )
+    assert "Unknown GPS provider" in content, (
+        "Error message must mention 'Unknown GPS provider'"
+    )
 
 
 def test_factory_does_not_silently_return_null():
@@ -201,9 +228,11 @@ def test_factory_does_not_silently_return_null():
     content = open(path, encoding="utf-8").read()
 
     # The default case in switch must throw, not return null
-    switch_section = content[content.index("switch"):]
+    switch_section = content[content.index("switch") :]
     assert "return null" not in switch_section, "Factory must throw, not return null"
-    assert "return undefined" not in switch_section, "Factory must throw, not return undefined"
+    assert "return undefined" not in switch_section, (
+        "Factory must throw, not return undefined"
+    )
 
 
 def test_vitest_gps_tests_pass():

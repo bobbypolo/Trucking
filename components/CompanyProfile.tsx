@@ -386,9 +386,8 @@ export const CompanyProfile: React.FC<Props> = ({
 
   const isAdmin =
     user.role === "admin" ||
-    user.role === "payroll_manager" ||
-    user.role === "dispatcher" ||
-    user.role === "OWNER_ADMIN";
+    user.role === "OWNER_ADMIN" ||
+    user.role === "ORG_OWNER_SUPER_ADMIN";
   const isDriver = user.role === "driver" || user.role === "owner_operator";
   const resolvedCompanyId = user.companyId || user.id;
 
@@ -586,11 +585,17 @@ export const CompanyProfile: React.FC<Props> = ({
   };
 
   const handleUserUpdate = async (updatedUser: User) => {
-    await updateUser(updatedUser);
-    setEditingUser(null);
-    const u = await getCompanyUsers(resolvedCompanyId);
-    setUsers(u);
-    if (onUserRegistryChange) onUserRegistryChange();
+    try {
+      await updateUser(updatedUser);
+      setEditingUser(null);
+      const u = await getCompanyUsers(resolvedCompanyId);
+      setUsers(u);
+      if (onUserRegistryChange) onUserRegistryChange();
+      showMsg("User updated successfully.", 3000);
+    } catch (err) {
+      console.error("[CompanyProfile] User update failed:", err);
+      showMsg("Failed to save user changes. Please try again.", 4000);
+    }
   };
 
   const toggleFreightAuthorization = (type: FreightType) => {

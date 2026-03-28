@@ -7,6 +7,7 @@ import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
 import { NotFoundError } from "../errors/AppError";
+import { syncDomainToException } from "../lib/exception-sync";
 
 /**
  * Creates a linked exception record for an incident so it appears
@@ -224,6 +225,61 @@ router.post(
         "SERVER ERROR [POST /api/incidents/actions]",
       );
       res.status(500).json({ error: "Failed to process incident" });
+    }
+  },
+);
+
+// PATCH /api/incidents/:id — update incident with reverse exception sync
+router.patch(
+  "/api/incidents/:id",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res) => {
+    const companyId = req.user!.tenantId;
+    const incidentId = req.params.id;
+    const patchLog = createChildLogger({
+      correlationId: req.correlationId,
+      route: "PATCH /api/incidents/:id",
+    });
+
+    try {
+      const existing = await incidentRepository.findById(
+        incidentId,
+        companyId,
+      );
+      if (!existing) {
+        return res.status(404).json({ error: "Incident not found" });
+      }
+
+      const updated = await incidentRepository.update(
+        incidentId,
+        req.body,
+        companyId,
+      );
+
+      // Reverse sync: if status changed, update linked exception
+      if (req.body.status && req.body.status !== existing.status) {
+        try {
+          await syncDomainToException(
+            "incidentId",
+            incidentId,
+            companyId,
+            req.body.status,
+            req.correlationId,
+          );
+        } catch (syncErr) {
+          patchLog.warn(
+            { err: syncErr, incidentId },
+            "Failed to sync incident status to exception (non-blocking)",
+          );
+        }
+      }
+
+      patchLog.info({ incidentId }, "Incident updated");
+      res.json({ message: "Incident updated", incident: updated });
+    } catch (error) {
+      patchLog.error({ err: error }, "SERVER ERROR [PATCH /api/incidents/:id]");
+      res.status(500).json({ error: "Failed to update incident" });
     }
   },
 );

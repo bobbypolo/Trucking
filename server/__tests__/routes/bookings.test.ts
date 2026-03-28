@@ -1,15 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Hoisted mocks for pool.query and sql-auth
-const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
+// Hoisted mocks for pool.query, pool.getConnection and sql-auth
+const {
+  mockQuery,
+  mockResolveSqlPrincipalByFirebaseUid,
+  mockConnectionQuery,
+  mockGetConnection,
+} = vi.hoisted(() => {
   const mockQuery = vi.fn();
   const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
-  return { mockQuery, mockResolveSqlPrincipalByFirebaseUid };
+  const mockConnectionQuery = vi.fn();
+  const mockGetConnection = vi.fn();
+  return {
+    mockQuery,
+    mockResolveSqlPrincipalByFirebaseUid,
+    mockConnectionQuery,
+    mockGetConnection,
+  };
 });
 
 vi.mock("../../db", () => ({
   default: {
     query: mockQuery,
+    getConnection: mockGetConnection,
   },
 }));
 
@@ -155,10 +168,11 @@ describe("GET /api/bookings — success", () => {
 
     expect(res.status).toBe(200);
     // Verify the query was called with offset=(2-1)*10=10 and limit=10
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("LIMIT"),
-      ["company-aaa", 10, 10],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT"), [
+      "company-aaa",
+      10,
+      10,
+    ]);
   });
 
   it("defaults to page=1, limit=50 when not provided", async () => {
@@ -168,10 +182,11 @@ describe("GET /api/bookings — success", () => {
       .get("/api/bookings")
       .set("Authorization", "Bearer valid-token");
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("LIMIT"),
-      ["company-aaa", 50, 0],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT"), [
+      "company-aaa",
+      50,
+      0,
+    ]);
   });
 
   it("returns 500 on database error", async () => {
@@ -296,9 +311,7 @@ describe("POST /api/bookings — creation", () => {
     // Verify INSERT received tenant ID and field values
     const insertCall = mockQuery.mock.calls[0];
     expect(insertCall[0]).toMatch(/INSERT/i);
-    expect(insertCall[1]).toEqual(
-      expect.arrayContaining(["company-aaa"]),
-    );
+    expect(insertCall[1]).toEqual(expect.arrayContaining(["company-aaa"]));
   });
 
   it("returns 201 with minimal data (defaults status to Pending)", async () => {
@@ -597,5 +610,182 @@ describe("Bookings — tenant isolation across operations", () => {
 
     expect(res.status).toBe(404);
     expect(res.body.error).toBe("Booking not found");
+  });
+});
+
+// ── POST /api/bookings/convert — quote-to-load conversion ───────────────────
+
+describe("POST /api/bookings/convert — atomic booking+load creation", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  function setupConnectionMock() {
+    const mockConnection = {
+      beginTransaction: vi.fn().mockResolvedValue(undefined),
+      query: mockConnectionQuery,
+      commit: vi.fn().mockResolvedValue(undefined),
+      rollback: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn(),
+    };
+    mockGetConnection.mockResolvedValue(mockConnection);
+    return mockConnection;
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+  });
+
+  it("returns 201 and creates both booking and load atomically", async () => {
+    const mockConnection = setupConnectionMock();
+    // connection.query calls: INSERT loads, INSERT load_legs (pickup), INSERT load_legs (delivery), INSERT bookings
+    mockConnectionQuery.mockResolvedValue([{ affectedRows: 1 }, []]);
+    // After commit, findById returns the created booking with load_id populated
+    const createdBooking = {
+      id: "bk-converted",
+      company_id: "company-aaa",
+      status: "Confirmed",
+      quote_id: "q-001",
+      load_id: "ld-001",
+    };
+    mockQuery.mockResolvedValueOnce([[createdBooking], []]);
+
+    const res = await request(app)
+      .post("/api/bookings/convert")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        quote_id: "q-001",
+        customer_id: "cust-001",
+        status: "Confirmed",
+        pickup_date: "2026-04-01",
+        load_number: "LD-12345",
+        freight_type: "Dry Van",
+        carrier_rate: 2500,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.load_id).toBe("ld-001");
+    expect(res.body.company_id).toBe("company-aaa");
+
+    // Verify transaction was used
+    expect(mockConnection.beginTransaction).toHaveBeenCalledOnce();
+    expect(mockConnection.commit).toHaveBeenCalledOnce();
+    expect(mockConnection.release).toHaveBeenCalledOnce();
+
+    // Verify 4 queries: load insert, pickup leg, delivery leg, booking insert
+    expect(mockConnectionQuery).toHaveBeenCalledTimes(4);
+
+    // Verify the load INSERT sets driver_pay to 0 (never from quote estimates)
+    const loadInsertCall = mockConnectionQuery.mock.calls[0];
+    expect(loadInsertCall[0]).toMatch(/INSERT INTO loads/i);
+    // driver_pay is the 9th parameter (index 8) and should be 0
+    expect(loadInsertCall[1][8]).toBe(0);
+
+    // Verify load status is "draft" (canonical initial status)
+    expect(loadInsertCall[1][6]).toBe("draft");
+  });
+
+  it("returns 400 when load_number is missing", async () => {
+    const res = await request(app)
+      .post("/api/bookings/convert")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        quote_id: "q-001",
+        status: "Confirmed",
+        // load_number missing
+      });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rolls back transaction on database error", async () => {
+    const mockConnection = setupConnectionMock();
+    // First query (load insert) fails
+    mockConnectionQuery.mockRejectedValueOnce(
+      new Error("DB constraint violation"),
+    );
+
+    const res = await request(app)
+      .post("/api/bookings/convert")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        quote_id: "q-001",
+        load_number: "LD-12345",
+        carrier_rate: 2500,
+      });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe("Database error");
+
+    // Verify rollback was called, commit was not
+    expect(mockConnection.rollback).toHaveBeenCalledOnce();
+    expect(mockConnection.commit).not.toHaveBeenCalled();
+    expect(mockConnection.release).toHaveBeenCalledOnce();
+  });
+
+  it("returns 401 when not authenticated", async () => {
+    const res = await request(app).post("/api/bookings/convert").send({
+      load_number: "LD-12345",
+      carrier_rate: 2500,
+    });
+
+    expect(res.status).toBe(401);
+  });
+
+  it("sets carrier_rate from input but never sets driver_pay from quote estimates", async () => {
+    const mockConnection = setupConnectionMock();
+    mockConnectionQuery.mockResolvedValue([{ affectedRows: 1 }, []]);
+    const createdBooking = {
+      id: "bk-converted-2",
+      company_id: "company-aaa",
+      status: "Confirmed",
+      load_id: "ld-002",
+    };
+    mockQuery.mockResolvedValueOnce([[createdBooking], []]);
+
+    const res = await request(app)
+      .post("/api/bookings/convert")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        quote_id: "q-002",
+        load_number: "LD-67890",
+        carrier_rate: 3500,
+      });
+
+    expect(res.status).toBe(201);
+
+    // Verify carrier_rate is set to the provided value (3500)
+    const loadInsertCall = mockConnectionQuery.mock.calls[0];
+    expect(loadInsertCall[1][7]).toBe(3500); // carrier_rate
+
+    // Verify driver_pay is 0 — NOT any estimated value
+    expect(loadInsertCall[1][8]).toBe(0); // driver_pay
+  });
+
+  it("defaults carrier_rate to 0 when not provided", async () => {
+    const mockConnection = setupConnectionMock();
+    mockConnectionQuery.mockResolvedValue([{ affectedRows: 1 }, []]);
+    const createdBooking = {
+      id: "bk-converted-3",
+      company_id: "company-aaa",
+      status: "Confirmed",
+      load_id: "ld-003",
+    };
+    mockQuery.mockResolvedValueOnce([[createdBooking], []]);
+
+    const res = await request(app)
+      .post("/api/bookings/convert")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        load_number: "LD-99999",
+      });
+
+    expect(res.status).toBe(201);
+
+    // carrier_rate should default to 0
+    const loadInsertCall = mockConnectionQuery.mock.calls[0];
+    expect(loadInsertCall[1][7]).toBe(0);
   });
 });

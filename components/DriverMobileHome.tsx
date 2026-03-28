@@ -422,11 +422,46 @@ export const DriverMobileHome: React.FC<Props> = ({
 
     setIntakeSubmitting(true);
     try {
+      // Build canonical LoadData WITH legs — the canonical source of
+      // route/location truth.  Without legs the load loses its pickup/dropoff
+      // after a server round-trip because mapRowToLoadData derives
+      // pickup/dropoff from the legs array.
+      const loadId = uuidv4();
+      const pickupLegId = uuidv4();
+      const dropoffLegId = uuidv4();
+      const loadNumber = `INT-${Date.now().toString(36).toUpperCase()}`;
+
+      const pickupLeg = {
+        id: pickupLegId,
+        type: "Pickup" as const,
+        location: {
+          city: intakeFormData.pickupCity,
+          state: intakeFormData.pickupState,
+          facilityName: intakeFormData.pickupFacility || "",
+        },
+        date: intakeFormData.pickupDate,
+        appointmentTime: "",
+        completed: false,
+      };
+
+      const dropoffLeg = {
+        id: dropoffLegId,
+        type: "Dropoff" as const,
+        location: {
+          city: intakeFormData.dropoffCity,
+          state: intakeFormData.dropoffState,
+          facilityName: intakeFormData.dropoffFacility || "",
+        },
+        date: "",
+        appointmentTime: "",
+        completed: false,
+      };
+
       const newLoad: LoadData = {
-        id: uuidv4(),
+        id: loadId,
         companyId: user.companyId || "",
         driverId: user.id,
-        loadNumber: `INT-${Date.now().toString(36).toUpperCase()}`,
+        loadNumber,
         status: LOAD_STATUS.Draft as LoadStatus,
         carrierRate: 0,
         driverPay: 0,
@@ -441,6 +476,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           state: intakeFormData.dropoffState,
           facilityName: intakeFormData.dropoffFacility || undefined,
         },
+        legs: [pickupLeg, dropoffLeg],
         commodity: intakeFormData.commodity || undefined,
         weight: intakeFormData.weight
           ? parseFloat(intakeFormData.weight) || undefined
@@ -450,9 +486,16 @@ export const DriverMobileHome: React.FC<Props> = ({
         dispatchNotes: `Driver intake via document scan. Docs: ${intakeFormData.scannedDocTypes.join(", ")}`,
       };
 
+      // Save via the canonical onSaveLoad path (storageService.saveLoad ->
+      // loadService.createLoad -> POST /api/loads) which calls
+      // mapLoadDataToPayload and writes legs to load_legs table.  The
+      // handleSaveLoad wrapper in App.tsx then calls refreshData() to reload
+      // from server truth so the load board, schedule, and this component all
+      // see the same canonical shape.
       await onSaveLoad(newLoad);
 
-      // Upload scanned document artifacts to the server
+      // Upload scanned document artifacts to the canonical document domain
+      // (POST /api/documents).  Uses the same loadId so documents are linked.
       let uploadFailures = 0;
       const totalDocs = intakeFormData.scannedDocImages?.length ?? 0;
       if (totalDocs > 0) {
@@ -466,10 +509,10 @@ export const DriverMobileHome: React.FC<Props> = ({
               base64ToFile(doc.base64, doc.mimeType, fileName),
             );
             formData.append("document_type", documentType);
-            formData.append("load_id", newLoad.id);
+            formData.append("load_id", loadId);
             formData.append(
               "description",
-              `Driver intake upload (${documentType}) for ${newLoad.loadNumber}`,
+              `Driver intake upload (${documentType}) for ${loadNumber}`,
             );
             await api.postFormData("/documents", formData);
           } catch {

@@ -52,6 +52,7 @@ export interface SqlCompanyRow extends RowDataPacket {
   load_numbering_config?: unknown;
   accessorial_rates?: unknown;
   operating_mode?: string | null;
+  driver_visibility_settings?: unknown;
 }
 
 export interface UserWriteInput {
@@ -141,6 +142,8 @@ export function mapCompanyRowToApiCompany(row: SqlCompanyRow) {
     accessorialRates: parseJsonColumn(row.accessorial_rates),
     operating_mode: row.operating_mode ?? undefined,
     operatingMode: row.operating_mode ?? undefined,
+    driver_visibility_settings: parseJsonColumn(row.driver_visibility_settings),
+    driverVisibilitySettings: parseJsonColumn(row.driver_visibility_settings),
   };
 }
 

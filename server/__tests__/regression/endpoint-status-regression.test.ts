@@ -157,6 +157,7 @@ vi.mock("../../schemas/lead", () => ({
 vi.mock("../../schemas/booking", () => ({
   createBookingSchema: {},
   updateBookingSchema: {},
+  convertBookingSchema: {},
 }));
 
 vi.mock("../../schemas/task", () => ({
@@ -208,9 +209,7 @@ vi.mock("../../schemas/equipment", () => ({
 }));
 
 vi.mock("../../middleware/requireTier", () => ({
-  requireTier:
-    () => (_req: any, _res: any, next: any) =>
-      next(),
+  requireTier: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("../../errors/AppError", () => ({

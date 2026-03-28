@@ -35,6 +35,18 @@ vi.mock("uuid", () => ({
   v4: vi.fn().mockReturnValue("mock-uuid-001"),
 }));
 
+const mockApiPost = vi
+  .fn()
+  .mockResolvedValue({ id: "bk-converted", load_id: "ld-001" });
+vi.mock("../../../services/api", () => ({
+  api: {
+    get: vi.fn(),
+    post: mockApiPost,
+    patch: vi.fn(),
+    delete: vi.fn(),
+  },
+}));
+
 import {
   getQuotes,
   getLeads,
@@ -127,6 +139,7 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     user = userEvent.setup();
+    mockApiPost.mockResolvedValue({ id: "bk-converted", load_id: "ld-001" });
   });
 
   describe("details view - quote editing (lines 955-993)", () => {
@@ -421,11 +434,13 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
       await user.click(screen.getByText(/Chicago, IL/));
 
       await waitFor(() => {
-        expect(screen.getByText("Financial Engineering")).toBeInTheDocument();
+        expect(
+          screen.getByText("Commercial Estimates (Non-Binding)"),
+        ).toBeInTheDocument();
       });
 
-      // Should show Net Revenue and Projected Margin sections
-      expect(screen.getByText("Net Revenue")).toBeInTheDocument();
+      // Should show Estimated Net Revenue and Projected Margin sections
+      expect(screen.getByText("Estimated Net Revenue")).toBeInTheDocument();
       expect(screen.getByText("Projected Margin")).toBeInTheDocument();
       expect(screen.getByText("Cost Structure")).toBeInTheDocument();
     });
@@ -462,7 +477,7 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
       await user.click(screen.getByText(/Chicago, IL/));
 
       await waitFor(() => {
-        expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+        expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
       });
     });
 
@@ -477,19 +492,21 @@ describe("QuoteManager deep coverage - uncovered lines 955-1326", () => {
       await user.click(screen.getByText(/Chicago, IL/));
 
       await waitFor(() => {
-        expect(screen.getByText(/Accept & Convert/)).toBeInTheDocument();
+        expect(screen.getByText(/Convert to Load/)).toBeInTheDocument();
       });
 
-      await user.click(screen.getByText(/Accept & Convert/));
+      await user.click(screen.getByText(/Convert to Load/));
 
       await waitFor(() => {
-        expect(mockSaveBooking).toHaveBeenCalledTimes(1);
+        expect(mockApiPost).toHaveBeenCalledWith(
+          "/bookings/convert",
+          expect.objectContaining({
+            quote_id: "q-1",
+            status: "Confirmed",
+            load_number: expect.stringMatching(/^LD-/),
+          }),
+        );
       });
-
-      const booking = mockSaveBooking.mock.calls[0][0];
-      expect(booking.quoteId).toBe("q-1");
-      expect(booking.companyId).toBe("company-1");
-      expect(booking.status).toBe("Accepted");
     });
   });
 

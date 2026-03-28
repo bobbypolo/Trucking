@@ -1,17 +1,20 @@
 /**
- * Vault Documents domain — API-backed service.
- * Tests: src/__tests__/services/vault.test.ts
+ * Canonical Document Client Service
  *
- * R-P1-21: No local-storage calls (fully API-backed).
- * R-P1-22: Vault storage key constant removed (API-backed).
- * R-P1-23: uploadVaultDoc uses POST /api/vault-docs multipart.
+ * All document operations use the single canonical API at /api/documents.
+ * No parallel vault systems — this is the sole client-side document service.
+ *
+ * Endpoints consumed:
+ *   GET    /api/documents              — list with filters
+ *   POST   /api/documents              — upload (multipart/form-data)
+ *   PATCH  /api/documents/:id          — update status/lock
+ *   GET    /api/documents/:id/download — signed download URL
  */
-// Tests R-P1-21, R-P1-22, R-P1-23
 import { VaultDoc, VaultDocType } from "../../types";
 import { api } from "../api";
 
 /**
- * Allowed MIME types for vault uploads.
+ * Allowed MIME types for document uploads.
  * Must stay in sync with server/schemas/document.schema.ts.
  */
 export const ALLOWED_MIME_TYPES: readonly string[] = [
@@ -34,7 +37,6 @@ export interface ValidationResult {
 
 /**
  * Validate file MIME type against allowed types.
- * R-W5-03b: Invalid MIME type shows clear rejection message.
  */
 export const validateFileType = (file: File): ValidationResult => {
   if (ALLOWED_MIME_TYPES.includes(file.type)) {
@@ -48,7 +50,6 @@ export const validateFileType = (file: File): ValidationResult => {
 
 /**
  * Validate file size against the 10 MB limit.
- * R-W5-03c: File size limit enforced with user-visible error.
  */
 export const validateFileSize = (file: File): ValidationResult => {
   if (file.size <= MAX_FILE_SIZE_BYTES) {
@@ -62,20 +63,33 @@ export const validateFileSize = (file: File): ValidationResult => {
 };
 
 /**
- * Fetch all vault documents for the current tenant from the API.
+ * Fetch documents from canonical GET /api/documents with optional filters.
  */
-export const getRawVaultDocs = async (): Promise<VaultDoc[]> => {
-  try {
-    const data = await api.get("/vault-docs");
-    return Array.isArray(data?.documents) ? data.documents : [];
-  } catch {
-    return [];
+export const getDocuments = async (
+  filters: Record<string, string | undefined> = {},
+): Promise<VaultDoc[]> => {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== "") {
+      params.set(key, value);
+    }
   }
+  const query = params.toString();
+  const url = query ? `/documents?${query}` : "/documents";
+  const data = await api.get(url);
+  return Array.isArray(data?.documents) ? data.documents : [];
 };
 
 /**
- * Upload a file to the vault via POST /api/vault-docs (multipart/form-data).
- * Returns the server response cast to a partial VaultDoc shape.
+ * Fetch all documents for the current tenant (no filters).
+ * Backward-compatible alias used by barrel exports.
+ */
+export const getRawVaultDocs = async (): Promise<VaultDoc[]> => {
+  return getDocuments();
+};
+
+/**
+ * Upload a file via canonical POST /api/documents (multipart/form-data).
  */
 export const uploadVaultDoc = async (
   file: File,
@@ -90,10 +104,8 @@ export const uploadVaultDoc = async (
   if (metadata.description)
     form.append("description", String(metadata.description));
 
-  const result = await api.postFormData("/vault-docs", form);
+  const result = await api.postFormData("/documents", form);
 
-  // Build a client-side VaultDoc shape from the server response.
-  // The server returns { documentId, storagePath, status, sanitizedFilename }.
   const doc: VaultDoc = {
     id: result.documentId,
     tenantId,
@@ -114,11 +126,19 @@ export const uploadVaultDoc = async (
 };
 
 /**
- * Get a download URL for a vault document.
- * Calls GET /api/documents/:id/download which returns { url } pointing
- * to the DiskStorageAdapter file on the server.
- *
- * R-W6-02c: FileVault component calls download endpoint.
+ * Update document status and/or lock state via PATCH /api/documents/:id.
+ */
+export const updateDocumentStatus = async (
+  id: string,
+  status: string,
+  isLocked: boolean,
+): Promise<void> => {
+  await api.patch(`/documents/${id}`, { status, is_locked: isLocked });
+};
+
+/**
+ * Get a download URL for a document.
+ * Calls GET /api/documents/:id/download.
  */
 export const getDocumentDownloadUrl = async (
   documentId: string,
@@ -129,16 +149,12 @@ export const getDocumentDownloadUrl = async (
 
 /**
  * Trigger a file download in the browser.
- * Fetches the download URL then opens it to initiate the browser download.
- *
- * R-W6-02c: FileVault component calls download endpoint.
  */
 export const downloadVaultDoc = async (
   documentId: string,
   filename: string,
 ): Promise<void> => {
   const url = await getDocumentDownloadUrl(documentId);
-  // Use a temporary anchor element to trigger download
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;

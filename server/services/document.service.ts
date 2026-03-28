@@ -252,13 +252,59 @@ export function createDocumentService(storage: StorageAdapter) {
 
     /**
      * List documents for a company with optional filters.
+     * Supports all attachment-key filters for filtered views.
      * Enforces tenant isolation.
      */
     async listDocuments(
       companyId: string,
-      filters?: { load_id?: string; status?: string; document_type?: string },
+      filters?: {
+        load_id?: string;
+        driver_id?: string;
+        truck_id?: string;
+        trailer_id?: string;
+        vendor_id?: string;
+        customer_id?: string;
+        status?: string;
+        document_type?: string;
+        search?: string;
+      },
     ) {
       return documentRepository.findByCompany(companyId, filters);
+    },
+
+    /**
+     * Update a document's status and/or lock state.
+     * Used for status management and compliance locking.
+     */
+    async updateStatusAndLock(
+      documentId: string,
+      companyId: string,
+      updates: { status?: string; is_locked?: boolean },
+    ) {
+      const doc = await documentRepository.findById(documentId, companyId);
+      if (!doc) {
+        throw new ValidationError(
+          "Document not found",
+          { documentId, companyId },
+          "VALIDATION_DOCUMENT_NOT_FOUND",
+        );
+      }
+      return documentRepository.updateStatusAndLock(documentId, companyId, updates);
+    },
+
+    /**
+     * Find a single document by ID, scoped to tenant.
+     */
+    async findById(documentId: string, companyId: string) {
+      const doc = await documentRepository.findById(documentId, companyId);
+      if (!doc) {
+        throw new ValidationError(
+          "Document not found",
+          { documentId, companyId },
+          "VALIDATION_DOCUMENT_NOT_FOUND",
+        );
+      }
+      return doc;
     },
 
     /**

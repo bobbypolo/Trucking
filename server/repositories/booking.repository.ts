@@ -12,6 +12,21 @@ const BOOKING_UPDATABLE_COLUMNS = [
   "notes",
 ] as const;
 
+/**
+ * Shape of the load payload created alongside a booking.
+ * Contains only operational truth — no settlement or financial amounts.
+ */
+export interface BookingLoadInput {
+  load_number: string;
+  customer_id?: string | null;
+  pickup_date?: string | null;
+  delivery_date?: string | null;
+  freight_type?: string | null;
+  commodity?: string | null;
+  weight?: number | null;
+  carrier_rate?: number;
+}
+
 export const bookingRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
     const offset = (page - 1) * limit;
@@ -29,6 +44,10 @@ export const bookingRepository = {
     return (rows as any[])[0] || null;
   },
 
+  /**
+   * Create a booking record (without auto-creating a load).
+   * Used only when load creation is handled externally or not needed.
+   */
   async create(data: any, companyId: string, userId: string) {
     const id = data.id || uuidv4();
     await pool.query(
@@ -50,6 +69,139 @@ export const bookingRepository = {
       ],
     );
     return this.findById(id);
+  },
+
+  /**
+   * Atomically create a booking AND its canonical operational load in a single
+   * database transaction. If load creation fails, the booking is rolled back.
+   *
+   * The created load receives only operational truth (pickup/delivery legs,
+   * customer, commodity, weight). Estimated rates from the quote are stored as
+   * carrier_rate on the load for reference but driver_pay is always 0
+   * (never auto-populated from quote estimates).
+   *
+   * @returns The created booking record with load_id populated.
+   */
+  async createWithLoad(
+    data: any,
+    loadInput: BookingLoadInput,
+    companyId: string,
+    userId: string,
+  ) {
+    const bookingId = data.id || uuidv4();
+    const loadId = uuidv4();
+    const connection = await pool.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      // 1. Insert the canonical operational load
+      await connection.query(
+        `INSERT INTO loads (id, company_id, customer_id, driver_id, dispatcher_id,
+                  load_number, status, carrier_rate, driver_pay, pickup_date,
+                  freight_type, commodity, weight, container_number, chassis_number,
+                  bol_number, notification_emails, contract_id, gps_history, pod_urls,
+                  customer_user_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          loadId,
+          companyId,
+          loadInput.customer_id ?? data.customer_id ?? null,
+          null, // driver_id — unassigned at booking time
+          null, // dispatcher_id — unassigned at booking time
+          loadInput.load_number,
+          "draft", // canonical initial status
+          loadInput.carrier_rate ?? 0,
+          0, // driver_pay — NEVER auto-populated from quote estimates
+          loadInput.pickup_date ?? data.pickup_date ?? null,
+          loadInput.freight_type ?? null,
+          loadInput.commodity ?? null,
+          loadInput.weight ?? null,
+          null, // container_number
+          null, // chassis_number
+          null, // bol_number
+          JSON.stringify([]),
+          null, // contract_id
+          JSON.stringify([]),
+          JSON.stringify([]),
+          null, // customer_user_id
+        ],
+      );
+
+      // 2. Insert pickup leg
+      const pickupLegId = uuidv4();
+      await connection.query(
+        `INSERT INTO load_legs (id, load_id, type, facility_name, city, state, date,
+                  appointment_time, completed, sequence_order, latitude, longitude)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          pickupLegId,
+          loadId,
+          "Pickup",
+          null,
+          null,
+          null,
+          loadInput.pickup_date ?? data.pickup_date ?? null,
+          null,
+          false,
+          0,
+          null,
+          null,
+        ],
+      );
+
+      // 3. Insert delivery leg
+      const deliveryLegId = uuidv4();
+      await connection.query(
+        `INSERT INTO load_legs (id, load_id, type, facility_name, city, state, date,
+                  appointment_time, completed, sequence_order, latitude, longitude)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          deliveryLegId,
+          loadId,
+          "Dropoff",
+          null,
+          null,
+          null,
+          loadInput.delivery_date ?? data.delivery_date ?? null,
+          null,
+          false,
+          1,
+          null,
+          null,
+        ],
+      );
+
+      // 4. Insert booking with load_id already linked
+      await connection.query(
+        `INSERT INTO bookings (id, company_id, quote_id, customer_id, status,
+          pickup_date, delivery_date, load_id, notes, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          bookingId,
+          companyId,
+          data.quote_id,
+          data.customer_id,
+          data.status || "Pending",
+          data.pickup_date,
+          data.delivery_date,
+          loadId, // load_id populated atomically
+          data.notes,
+          userId,
+          userId,
+        ],
+      );
+
+      await connection.commit();
+
+      // Return the created booking (with load_id populated)
+      return this.findById(bookingId);
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
   },
 
   async update(id: string, data: any, userId: string) {

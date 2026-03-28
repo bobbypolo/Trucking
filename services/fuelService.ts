@@ -1,7 +1,7 @@
 import { API_URL as API_BASE } from "./config";
 import { FuelEntry, VaultDoc, AutomationRule } from "../types";
 import { executeFuelMatchingRule } from "./rulesEngineService";
-import { getVaultDocs } from "./financialService";
+import { getDocuments } from "./storage/vault";
 import { v4 as uuidv4 } from "uuid";
 
 /**
@@ -32,8 +32,9 @@ export const FuelCardService = {
       isBillableToLoad: false,
     };
 
-    // Auto-Trigger Matching Logic
-    const docs = await getVaultDocs({});
+    // Auto-Trigger Matching Logic — uses canonical document API
+    const docsResponse = await getDocuments({ document_type: "Fuel" });
+    const docs: VaultDoc[] = Array.isArray(docsResponse) ? docsResponse : [];
     const defaultMatchRule: AutomationRule = {
       id: "auto-fuel-match",
       name: "Stream Meta-Match",

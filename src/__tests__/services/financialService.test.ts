@@ -17,9 +17,6 @@ import {
   importFuelPurchases,
   getInvoices,
   getBills,
-  getVaultDocs,
-  uploadToVault,
-  updateDocStatus,
   getIFTASummary,
   getMileageEntries,
   saveMileageEntry,
@@ -88,9 +85,7 @@ describe("financialService (api.* helpers)", () => {
 
   describe("getSettlements", () => {
     it("fetches all settlements when no driverId", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        okJson([{ id: "s1" }]),
-      );
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(okJson([{ id: "s1" }]));
 
       const settlements = await getSettlements();
       expect(settlements).toHaveLength(1);
@@ -134,17 +129,6 @@ describe("financialService (api.* helpers)", () => {
     });
   });
 
-  describe("getVaultDocs", () => {
-    it("passes filters as query parameters", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(okJson([]));
-
-      await getVaultDocs({ status: "active", type: "BOL" });
-      const url = (globalThis.fetch as any).mock.calls[0][0];
-      expect(url).toContain("status=active");
-      expect(url).toContain("type=BOL");
-    });
-  });
-
   describe("getIFTASummary", () => {
     it("passes quarter and year as query params", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(
@@ -161,9 +145,7 @@ describe("financialService (api.* helpers)", () => {
 
   describe("getMileageEntries", () => {
     it("fetches all mileage entries when no truckId", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        okJson([{ id: "m1" }]),
-      );
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(okJson([{ id: "m1" }]));
 
       const entries = await getMileageEntries();
       expect(entries).toHaveLength(1);
@@ -226,9 +208,7 @@ describe("financialService (api.* helpers)", () => {
 
   describe("createJournalEntry", () => {
     it("posts journal entry via api.post", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        okJson({ id: "je-1" }),
-      );
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(okJson({ id: "je-1" }));
 
       const result = await createJournalEntry({
         description: "Test entry",
@@ -264,17 +244,6 @@ describe("financialService (api.* helpers)", () => {
     });
   });
 
-  describe("uploadToVault", () => {
-    it("posts vault doc data via api.post", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(okVoid());
-
-      await uploadToVault({ fileName: "test.pdf", type: "BOL" } as any);
-
-      const fetchCall = (globalThis.fetch as any).mock.calls[0];
-      expect(fetchCall[1].method).toBe("POST");
-    });
-  });
-
   describe("saveMileageEntry", () => {
     it("posts mileage entry via api.post", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(okVoid());
@@ -301,9 +270,7 @@ describe("financialService (api.* helpers)", () => {
 
   describe("analyzeIFTA", () => {
     it("posts analysis request via api.post", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        okJson({ result: "ok" }),
-      );
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(okJson({ result: "ok" }));
 
       const result = await analyzeIFTA({ pings: [], mode: "GPS" });
       expect(result.result).toBe("ok");
@@ -426,24 +393,6 @@ describe("financialService (api.* helpers)", () => {
     });
   });
 
-  // ─── PATCH endpoints ─────────────────────────────────────────────────
-  describe("updateDocStatus", () => {
-    it("patches doc status via api.patch", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(okVoid());
-
-      await updateDocStatus("doc-1", "approved", true, "admin");
-
-      const fetchCall = (globalThis.fetch as any).mock.calls[0];
-      expect(fetchCall[0]).toContain("docs/doc-1");
-      expect(fetchCall[1].method).toBe("PATCH");
-
-      const body = JSON.parse(fetchCall[1].body as string);
-      expect(body.status).toBe("approved");
-      expect(body.is_locked).toBe(true);
-      expect(body.updatedBy).toBe("admin");
-    });
-  });
-
   // ─── Auth injection verification ─────────────────────────────────────
   describe("auth injection", () => {
     it("all GET requests include Authorization header", async () => {
@@ -458,14 +407,6 @@ describe("financialService (api.* helpers)", () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue(okVoid());
 
       await importFuelPurchases([]);
-      const headers = (globalThis.fetch as any).mock.calls[0][1].headers;
-      expect(headers.Authorization).toBe("Bearer mock-jwt-token");
-    });
-
-    it("all PATCH requests include Authorization header", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(okVoid());
-
-      await updateDocStatus("doc-1", "approved", false);
       const headers = (globalThis.fetch as any).mock.calls[0][1].headers;
       expect(headers.Authorization).toBe("Bearer mock-jwt-token");
     });

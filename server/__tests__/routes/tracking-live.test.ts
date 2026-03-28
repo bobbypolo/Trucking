@@ -23,6 +23,11 @@ vi.mock("../../services/gps", () => ({
   getGpsProvider: () => ({
     getVehicleLocations: mockGetVehicleLocations,
   }),
+  getGpsProviderForTenant: vi.fn().mockResolvedValue({
+    provider: { getVehicleLocations: mockGetVehicleLocations },
+    state: "configured-live",
+    providerName: "samsara",
+  }),
 }));
 
 // Mock firebase-admin for requireAuth
@@ -67,9 +72,7 @@ vi.mock("../../lib/sql-auth", () => ({
 
 // Mock requireTier to pass-through (these tests focus on GPS functionality, not tier gating)
 vi.mock("../../middleware/requireTier", () => ({
-  requireTier:
-    () => (_req: any, _res: any, next: any) =>
-      next(),
+  requireTier: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 import trackingRouter from "../../routes/tracking";
@@ -92,6 +95,8 @@ describe("S-303: GPS Live Tracking Routes", () => {
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+    // Default mock: return empty result for any unmatched DB query
+    mockQuery.mockResolvedValue([[], []]);
     // Reset env
     delete process.env.GPS_WEBHOOK_SECRET;
   });
@@ -154,12 +159,7 @@ describe("S-303: GPS Live Tracking Routes", () => {
       // Verify DB insert was called for position storage
       expect(mockQuery).toHaveBeenCalledWith(
         expect.stringContaining("INSERT INTO gps_positions"),
-        expect.arrayContaining([
-          "company-aaa",
-          "truck-1",
-          40.7128,
-          -74.006,
-        ]),
+        expect.arrayContaining(["company-aaa", "truck-1", 40.7128, -74.006]),
       );
     });
 
@@ -208,13 +208,11 @@ describe("S-303: GPS Live Tracking Routes", () => {
       process.env.GPS_WEBHOOK_SECRET = "test-gps-secret-key";
 
       const app = createApp();
-      const res = await request(app)
-        .post("/api/tracking/webhook")
-        .send({
-          vehicleId: "truck-1",
-          latitude: 40.7128,
-          longitude: -74.006,
-        });
+      const res = await request(app).post("/api/tracking/webhook").send({
+        vehicleId: "truck-1",
+        latitude: 40.7128,
+        longitude: -74.006,
+      });
 
       expect(res.status).toBe(401);
       expect(res.body.error).toMatch(/API key/i);

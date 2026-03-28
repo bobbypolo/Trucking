@@ -90,8 +90,16 @@ import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
 // Default: admin principal (most tests need admin to pass role checks)
 const ADMIN_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "admin" };
-const DISPATCHER_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "dispatcher", email: "test@loadpilot.com" };
-const DRIVER_PRINCIPAL = { ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" };
+const DISPATCHER_PRINCIPAL = {
+  ...DEFAULT_SQL_PRINCIPAL,
+  role: "dispatcher",
+  email: "test@loadpilot.com",
+};
+const DRIVER_PRINCIPAL = {
+  ...DEFAULT_SQL_PRINCIPAL,
+  role: "driver",
+  email: "test@loadpilot.com",
+};
 
 function buildApp() {
   const app = express();
@@ -514,7 +522,11 @@ describe("POST /api/users — auth + role enforcement (AUTH-01b)", () => {
   });
 
   it("returns 201 when user self-syncs (matching email)", async () => {
-    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" });
+    setupPrincipal({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "driver",
+      email: "test@loadpilot.com",
+    });
     const res = await request(app)
       .post("/api/users")
       .set("Authorization", AUTH_HEADER)
@@ -527,7 +539,11 @@ describe("POST /api/users — auth + role enforcement (AUTH-01b)", () => {
   });
 
   it("returns 403 when non-admin syncs different user", async () => {
-    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "driver", email: "test@loadpilot.com" });
+    setupPrincipal({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "driver",
+      email: "test@loadpilot.com",
+    });
     const res = await request(app)
       .post("/api/users")
       .set("Authorization", AUTH_HEADER)
@@ -695,5 +711,99 @@ describe("GET /api/users/me — success", () => {
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(404);
+  });
+});
+
+// =============================================================================
+// OWNER_ADMIN and ORG_OWNER_SUPER_ADMIN role acceptance
+// =============================================================================
+describe("POST /api/auth/register — extended admin roles", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    app = buildApp();
+    mockUpsertSqlUser.mockResolvedValue(undefined);
+    mockMirrorUserToFirestore.mockResolvedValue(undefined);
+  });
+
+  it("allows OWNER_ADMIN to register users", async () => {
+    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "OWNER_ADMIN" });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
+    expect(res.status).toBe(201);
+  });
+
+  it("allows ORG_OWNER_SUPER_ADMIN to register users", async () => {
+    setupPrincipal({
+      ...DEFAULT_SQL_PRINCIPAL,
+      role: "ORG_OWNER_SUPER_ADMIN",
+    });
+    const res = await request(app)
+      .post("/api/auth/register")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "newuser@test.com",
+        name: "New User",
+        role: "driver",
+        password: "securepass123",
+      });
+    expect(res.status).toBe(201);
+  });
+});
+
+describe("POST /api/users — extended admin roles for user sync", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    app = buildApp();
+    mockUpsertSqlUser.mockResolvedValue(undefined);
+    mockMirrorUserToFirestore.mockResolvedValue(undefined);
+  });
+
+  it("allows OWNER_ADMIN to sync another user", async () => {
+    setupPrincipal({ ...DEFAULT_SQL_PRINCIPAL, role: "OWNER_ADMIN" });
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "another@test.com",
+        name: "Another User",
+        role: "driver",
+      });
+    expect(res.status).toBe(201);
+  });
+
+  it("returns 403 when dispatcher syncs another user", async () => {
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "another@test.com",
+        name: "Another User",
+        role: "driver",
+      });
+    expect(res.status).toBe(403);
+  });
+
+  it("allows dispatcher to sync their own profile (self-sync)", async () => {
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: DISPATCHER_PRINCIPAL.email,
+        name: "My Updated Name",
+      });
+    expect(res.status).toBe(201);
   });
 });

@@ -112,7 +112,12 @@ router.post(
       route: "POST /api/auth/register",
     });
 
-    if (authReq.user.role !== "admin") {
+    const registerAdminRoles = [
+      "admin",
+      "OWNER_ADMIN",
+      "ORG_OWNER_SUPER_ADMIN",
+    ];
+    if (!registerAdminRoles.includes(authReq.user.role)) {
       return res.status(403).json({ error: "Admin role required." });
     }
 
@@ -162,7 +167,8 @@ router.post(
       route: "POST /api/users",
     });
 
-    const isAdmin = authReq.user.role === "admin";
+    const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
+    const isAdmin = adminRoles.includes(authReq.user.role);
     const isSelfSync = authReq.user.email === req.body.email;
 
     if (!isAdmin && !isSelfSync) {
