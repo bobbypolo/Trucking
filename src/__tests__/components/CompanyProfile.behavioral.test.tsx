@@ -1056,10 +1056,10 @@ describe("CompanyProfile component", () => {
   });
 
   // =========================================================================
-  // DISPATCHER VIEW (admin-like)
+  // DISPATCHER VIEW (read-only, not admin)
   // =========================================================================
   describe("Dispatcher view", () => {
-    it("shows admin tabs for dispatcher role", async () => {
+    it("shows read-only banner for dispatcher role", async () => {
       render(
         <CompanyProfile
           user={dispatcherUser}
@@ -1068,14 +1068,11 @@ describe("CompanyProfile component", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Identity")).toBeInTheDocument();
+        expect(screen.getByText(/viewing as read-only/i)).toBeInTheDocument();
       });
-
-      expect(screen.getByText("Operations")).toBeInTheDocument();
-      expect(screen.getByText("Personnel")).toBeInTheDocument();
     });
 
-    it("shows Save Changes button for dispatcher", async () => {
+    it("shows disabled Save Changes button for dispatcher", async () => {
       render(
         <CompanyProfile
           user={dispatcherUser}
@@ -1084,9 +1081,8 @@ describe("CompanyProfile component", () => {
       );
 
       await waitFor(() => {
-        expect(
-          screen.getByRole("button", { name: /save changes/i }),
-        ).toBeInTheDocument();
+        const saveBtn = screen.getByRole("button", { name: /save changes/i });
+        expect(saveBtn).toBeDisabled();
       });
     });
   });

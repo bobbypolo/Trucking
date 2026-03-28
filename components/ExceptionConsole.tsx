@@ -34,7 +34,41 @@ import {
   DollarSign,
   AlertTriangle,
   Activity,
+  ExternalLink,
 } from "lucide-react";
+
+/** Parse the links JSON from an exception record into a typed object. */
+function parseExceptionLinks(
+  links?: Record<string, string> | string | null,
+): Record<string, string> {
+  if (!links) return {};
+  if (typeof links === "string") {
+    try {
+      return JSON.parse(links);
+    } catch {
+      return {};
+    }
+  }
+  return links;
+}
+
+/** Map a link field name to a human-readable label and navigation target. */
+function getLinkInfo(key: string): { label: string; navTarget: string } | null {
+  switch (key) {
+    case "incidentId":
+      return { label: "Incident", navTarget: "incidents" };
+    case "serviceTicketId":
+      return { label: "Service Ticket", navTarget: "service-tickets" };
+    case "maintenanceRecordId":
+      return { label: "Maintenance", navTarget: "maintenance" };
+    case "safetyEventId":
+      return { label: "Safety Event", navTarget: "safety" };
+    case "loadId":
+      return { label: "Load", navTarget: "loads" };
+    default:
+      return null;
+  }
+}
 const computeSLALabel = (dueAt?: string): string => {
   if (!dueAt) return "No SLA";
   const diff = new Date(dueAt).getTime() - Date.now();
@@ -763,10 +797,31 @@ export const ExceptionConsole: React.FC<Props> = ({
                             <div className="text-xs font-bold text-blue-400 group-hover/link:text-blue-300 transition-colors uppercase">
                               {ex.entityType} #{ex.entityId}
                             </div>
-                            <div className="text-[10px] text-slate-600 font-bold uppercase">
-                              Full Details &rarr;
-                            </div>
                           </button>
+                          {/* Linked-record drilldown chips */}
+                          <div className="flex flex-wrap gap-1.5 mt-1.5" data-testid="linked-record-chips">
+                            {Object.entries(parseExceptionLinks(ex.links)).map(
+                              ([key, value]) => {
+                                const info = getLinkInfo(key);
+                                if (!info || !value) return null;
+                                return (
+                                  <button
+                                    key={key}
+                                    data-testid={`drilldown-${key}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onNavigate?.(info.navTarget);
+                                      onViewDetail?.(info.navTarget, value);
+                                    }}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all"
+                                  >
+                                    <ExternalLink className="w-2.5 h-2.5" />
+                                    {info.label}
+                                  </button>
+                                );
+                              },
+                            )}
+                          </div>
                         </td>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-2">
@@ -897,6 +952,32 @@ export const ExceptionConsole: React.FC<Props> = ({
                         </div>
                       </div>
                     </div>
+                    {/* Linked-record drilldown chips (grid view) */}
+                    {Object.keys(parseExceptionLinks(ex.links)).length > 0 && (
+                      <div className="flex flex-wrap gap-1.5" data-testid="linked-record-chips">
+                        {Object.entries(parseExceptionLinks(ex.links)).map(
+                          ([key, value]) => {
+                            const info = getLinkInfo(key);
+                            if (!info || !value) return null;
+                            return (
+                              <button
+                                key={key}
+                                data-testid={`drilldown-${key}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onNavigate?.(info.navTarget);
+                                  onViewDetail?.(info.navTarget, value);
+                                }}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all"
+                              >
+                                <ExternalLink className="w-2.5 h-2.5" />
+                                {info.label}
+                              </button>
+                            );
+                          },
+                        )}
+                      </div>
+                    )}
                     <div className="flex items-center justify-between pt-2">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500">

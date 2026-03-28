@@ -10,7 +10,6 @@ import {
   createJournalEntrySchema,
   createInvoiceSchema,
   createBillSchema,
-  createDocumentVaultSchema,
   batchImportSchema,
   batchUpdateSettlementsSchema,
 } from "../schemas/accounting";
@@ -480,7 +479,43 @@ router.get(
   },
 );
 
-// Driver Settlements List
+// --- Settlement Role Constants ---
+const SETTLEMENT_ADMIN_ROLES = [
+  "admin",
+  "payroll_manager",
+  "dispatcher",
+  "PAYROLL_SETTLEMENTS",
+  "FINANCE",
+  "OWNER_ADMIN",
+  "ORG_OWNER_SUPER_ADMIN",
+  "ACCOUNTING_AR",
+];
+const SETTLEMENT_EDIT_ROLES = [
+  "admin",
+  "payroll_manager",
+  "PAYROLL_SETTLEMENTS",
+  "FINANCE",
+  "OWNER_ADMIN",
+  "ORG_OWNER_SUPER_ADMIN",
+];
+const SETTLEMENT_APPROVE_ROLES = [
+  "admin",
+  "payroll_manager",
+  "PAYROLL_SETTLEMENTS",
+  "FINANCE",
+  "OWNER_ADMIN",
+  "ORG_OWNER_SUPER_ADMIN",
+];
+const DRIVER_ROLES = ["driver", "DRIVER_PORTAL"];
+const CANONICAL_STATUSES = ["Draft", "Calculated", "Approved", "Paid"] as const;
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  Draft: ["Calculated"],
+  Calculated: ["Approved"],
+  Approved: ["Paid"],
+  Paid: [],
+};
+
+// Driver Settlements List — role-enforced
 router.get(
   "/api/accounting/settlements",
   requireAuth,
@@ -488,13 +523,35 @@ router.get(
   async (req: any, res) => {
     try {
       const tenantId = req.user.tenantId;
-      const { driverId } = req.query;
+      const userRole = req.user.role;
+      const userId = req.user.id;
+      const isDriver = DRIVER_ROLES.includes(userRole);
+      const isAdmin = SETTLEMENT_ADMIN_ROLES.includes(userRole);
+
+      // Drivers can only see their own settlements (server-enforced self-scope)
+      // Admin/payroll/finance roles can view all or filter by driverId
+      if (!isDriver && !isAdmin) {
+        return res
+          .status(403)
+          .json({ error: "Insufficient permissions to view settlements" });
+      }
+
       let query = "SELECT * FROM driver_settlements WHERE company_id = ?";
       const params: any[] = [tenantId];
-      if (driverId) {
+
+      if (isDriver) {
+        // Force self-scope: ignore client-provided driverId param
         query += " AND driver_id = ?";
-        params.push(driverId);
+        params.push(userId);
+      } else {
+        // Admin/payroll: allow optional driverId filter
+        const { driverId } = req.query;
+        if (driverId) {
+          query += " AND driver_id = ?";
+          params.push(driverId);
+        }
       }
+
       query += " ORDER BY settlement_date DESC";
       const [rows]: any = await pool.query(query, params);
       const enriched = await Promise.all(
@@ -527,6 +584,13 @@ router.post(
   requireTenant,
   validateBody(createSettlementSchema),
   async (req: any, res) => {
+    // Role guard: only payroll/admin roles can create settlements
+    const userRole = req.user.role;
+    if (!SETTLEMENT_EDIT_ROLES.includes(userRole)) {
+      return res
+        .status(403)
+        .json({ error: "Insufficient permissions to create settlements" });
+    }
     const tenantId = req.user.tenantId;
     const set = req.body;
     const connection = await pool.getConnection();
@@ -652,16 +716,63 @@ router.patch(
   requireTenant,
   validateBody(batchUpdateSettlementsSchema),
   async (req: any, res) => {
+    // Role guard: only payroll/admin roles can approve/finalize settlements
+    const userRole = req.user.role;
+    if (!SETTLEMENT_APPROVE_ROLES.includes(userRole)) {
+      return res
+        .status(403)
+        .json({ error: "Insufficient permissions to update settlements" });
+    }
     const tenantId = req.user.tenantId;
-    const { ids, status } = req.body;
+    const { ids, status: targetStatus } = req.body;
+
+    // Normalize "Finalized" to canonical "Paid" to prevent status vocabulary drift
+    const normalizedStatus =
+      targetStatus === "Finalized" ? "Paid" : targetStatus;
+
+    // Validate target status is canonical
+    if (
+      !CANONICAL_STATUSES.includes(
+        normalizedStatus as (typeof CANONICAL_STATUSES)[number],
+      )
+    ) {
+      return res.status(400).json({
+        error: `Invalid status "${targetStatus}". Allowed: ${CANONICAL_STATUSES.join(", ")}`,
+      });
+    }
+
     try {
+      // Fetch current statuses to enforce valid transitions
       const placeholders = ids.map(() => "?").join(",");
-      const [result]: any = await pool.query(
-        `UPDATE driver_settlements SET status = ? WHERE company_id = ? AND id IN (${placeholders})`,
-        [status, tenantId, ...ids],
+      const [currentRows]: any = await pool.query(
+        `SELECT id, status FROM driver_settlements WHERE company_id = ? AND id IN (${placeholders})`,
+        [tenantId, ...ids],
       );
-      const updated = result.affectedRows || 0;
-      res.json({ updated });
+
+      const blocked: string[] = [];
+      const allowed: string[] = [];
+      for (const row of currentRows) {
+        const validNext = ALLOWED_TRANSITIONS[row.status] || [];
+        if (validNext.includes(normalizedStatus)) {
+          allowed.push(row.id);
+        } else {
+          blocked.push(
+            `${row.id}: cannot transition from ${row.status} to ${normalizedStatus}`,
+          );
+        }
+      }
+
+      let updated = 0;
+      if (allowed.length > 0) {
+        const allowedPlaceholders = allowed.map(() => "?").join(",");
+        const [result]: any = await pool.query(
+          `UPDATE driver_settlements SET status = ? WHERE company_id = ? AND id IN (${allowedPlaceholders})`,
+          [normalizedStatus, tenantId, ...allowed],
+        );
+        updated = result.affectedRows || 0;
+      }
+
+      res.json({ updated, blocked: blocked.length > 0 ? blocked : undefined });
     } catch (error) {
       const log = createChildLogger({
         correlationId: req.correlationId,
@@ -672,110 +783,6 @@ router.patch(
         "SERVER ERROR [PATCH /api/accounting/settlements/batch]",
       );
       res.status(500).json({ error: "Failed to batch update settlements" });
-    }
-  },
-);
-
-// Document Vault
-router.get(
-  "/api/accounting/docs",
-  requireAuth,
-  requireTenant,
-  async (req: any, res) => {
-    try {
-      const tenantId = req.user.tenantId;
-      const { loadId, driverId, truckId } = req.query;
-      let query = "SELECT * FROM document_vault WHERE company_id = ?";
-      const params: any[] = [tenantId];
-      if (loadId) {
-        query += " AND load_id = ?";
-        params.push(loadId);
-      }
-      if (driverId) {
-        query += " AND driver_id = ?";
-        params.push(driverId);
-      }
-      if (truckId) {
-        query += " AND truck_id = ?";
-        params.push(truckId);
-      }
-      query += " ORDER BY created_at DESC";
-      const [rows] = await pool.query(query, params);
-      res.json(rows);
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/accounting/docs",
-      });
-      log.error({ err: error }, "SERVER ERROR [GET /api/accounting/docs]");
-      res.status(500).json({ error: "Database error" });
-    }
-  },
-);
-
-router.post(
-  "/api/accounting/docs",
-  requireAuth,
-  requireTenant,
-  validateBody(createDocumentVaultSchema),
-  async (req: any, res) => {
-    const tenantId = req.user.tenantId;
-    const doc = req.body;
-    try {
-      await pool.query(
-        "INSERT INTO document_vault (id, company_id, type, url, filename, load_id, driver_id, truck_id, vendor_id, customer_id, amount, date, state_code, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          doc.id || uuidv4(),
-          tenantId,
-          doc.type,
-          doc.url,
-          doc.filename,
-          doc.loadId,
-          doc.driverId,
-          doc.truckId,
-          doc.vendorId,
-          doc.customerId,
-          doc.amount,
-          doc.date,
-          doc.stateCode,
-          doc.status || "Draft",
-        ],
-      );
-      res.status(201).json({ message: "Document archived in vault" });
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/accounting/docs",
-      });
-      log.error({ err: error }, "SERVER ERROR [POST /api/accounting/docs]");
-      res.status(500).json({ error: "Database error" });
-    }
-  },
-);
-
-router.patch(
-  "/api/accounting/docs/:id",
-  requireAuth,
-  requireTenant,
-  async (req: any, res) => {
-    const { status, is_locked } = req.body;
-    const tenantId = req.user.tenantId;
-    try {
-      await pool.query(
-        "UPDATE document_vault SET status = ?, is_locked = ? WHERE id = ? AND company_id = ?",
-        [status, is_locked, req.params.id, tenantId],
-      );
-      res.json({ message: "Document status updated" });
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "PATCH /api/accounting/docs/:id",
-      });
-      log.error(
-        { err: error },
-        "SERVER ERROR [PATCH /api/accounting/docs/:id]",
-      );
-      res.status(500).json({ error: "Database error" });
     }
   },
 );
@@ -820,24 +827,26 @@ router.post(
       return;
     }
 
-    if (mode === "GPS") {
-      const jurisdictionMiles: any = {};
-      for (let i = 1; i < pings.length; i++) {
-        const p1 = pings[i - 1];
-        const p2 = pings[i];
-        const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
-        const state = detectState(p2.lat, p2.lng);
-        jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
-      }
-      return res.json({
-        jurisdictionMiles,
-        method: "ACTUAL_GPS",
-        confidence: "HIGH",
-      });
+    if (mode !== "GPS") {
+      res
+        .status(400)
+        .json({ error: "Only GPS mode is supported for IFTA analysis" });
+      return;
     }
 
-    // Tier C logic placeholder (actual Google call would happen here or frontend)
-    res.json({ message: "Routing engine ready" });
+    const jurisdictionMiles: any = {};
+    for (let i = 1; i < pings.length; i++) {
+      const p1 = pings[i - 1];
+      const p2 = pings[i];
+      const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+      const state = detectState(p2.lat, p2.lng);
+      jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
+    }
+    res.json({
+      jurisdictionMiles,
+      method: "ACTUAL_GPS",
+      confidence: "HIGH",
+    });
   },
 );
 

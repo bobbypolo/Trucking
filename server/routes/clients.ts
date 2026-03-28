@@ -3,7 +3,11 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
-import { createPartySchema } from "../schemas/parties";
+import {
+  createPartySchema,
+  normalizeEntityClass,
+  CANONICAL_ENTITY_CLASSES,
+} from "../schemas/parties";
 import { createClientSchema } from "../schemas/client";
 import pool from "../db";
 import db from "../firestore";
@@ -233,6 +237,14 @@ router.get(
       correlationId: req.correlationId,
       route: "GET /api/companies",
     });
+
+    // Explicit tenant isolation: :id must match authenticated user's tenant
+    const tenantId = req.user?.tenantId || req.user?.companyId;
+    if (req.params.id !== tenantId) {
+      res.status(403).json({ error: "Access denied: tenant mismatch" });
+      return;
+    }
+
     try {
       // Try Firestore first (primary source for company settings)
       try {
@@ -294,31 +306,64 @@ router.post(
       correlationId: req.correlationId,
       route: "POST /api/companies",
     });
-    const {
-      id,
-      name,
-      account_type,
-      email,
-      address,
-      city,
-      state,
-      zip,
-      tax_id,
-      phone,
-      mc_number,
-      dot_number,
-      load_numbering_config,
-      accessorial_rates,
-    } = req.body;
+
+    // Enforce admin-only access for company settings changes
+    const callerRole = req.user?.role;
+    const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
+    if (!adminRoles.includes(callerRole)) {
+      return res
+        .status(403)
+        .json({ error: "Admin role required to update company settings." });
+    }
+
+    // Explicit tenant isolation: body.id must match authenticated user's tenant
+    const tenantId = req.user?.tenantId || req.user?.companyId;
+    if (req.body.id && req.body.id !== tenantId) {
+      return res.status(403).json({ error: "Access denied: tenant mismatch" });
+    }
+
+    // Accept both camelCase (frontend) and snake_case field names
+    const body = req.body;
+    const id = body.id || tenantId;
+    const name = body.name;
+    const account_type = body.account_type ?? body.accountType;
+    const email = body.email;
+    const address = body.address;
+    const city = body.city;
+    const state = body.state;
+    const zip = body.zip;
+    const tax_id = body.tax_id ?? body.taxId;
+    const phone = body.phone;
+    const mc_number = body.mc_number ?? body.mcNumber;
+    const dot_number = body.dot_number ?? body.dotNumber;
+    const load_numbering_config =
+      body.load_numbering_config ?? body.loadNumberingConfig;
+    const accessorial_rates = body.accessorial_rates ?? body.accessorialRates;
+    const operating_mode = body.operating_mode ?? body.operatingMode;
+    const driver_visibility_settings =
+      body.driver_visibility_settings ?? body.driverVisibilitySettings;
+
     try {
-      const normalizedLoadNumberingConfig =
-        typeof load_numbering_config === "string"
-          ? JSON.parse(load_numbering_config)
-          : load_numbering_config;
-      const normalizedAccessorialRates =
-        typeof accessorial_rates === "string"
-          ? JSON.parse(accessorial_rates)
-          : accessorial_rates;
+      const normalizeJson = (val: unknown): string | null => {
+        if (val == null) return null;
+        if (typeof val === "string") {
+          try {
+            JSON.parse(val);
+            return val;
+          } catch {
+            return null;
+          }
+        }
+        return JSON.stringify(val);
+      };
+
+      const normalizedLoadNumberingConfig = normalizeJson(
+        load_numbering_config,
+      );
+      const normalizedAccessorialRates = normalizeJson(accessorial_rates);
+      const normalizedDriverVisibilitySettings = normalizeJson(
+        driver_visibility_settings,
+      );
 
       await pool.query(
         `INSERT INTO companies (
@@ -335,8 +380,10 @@ router.post(
           mc_number,
           dot_number,
           load_numbering_config,
-          accessorial_rates
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          accessorial_rates,
+          operating_mode,
+          driver_visibility_settings
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           name = VALUES(name),
           account_type = VALUES(account_type),
@@ -350,7 +397,9 @@ router.post(
           mc_number = VALUES(mc_number),
           dot_number = VALUES(dot_number),
           load_numbering_config = VALUES(load_numbering_config),
-          accessorial_rates = VALUES(accessorial_rates)`,
+          accessorial_rates = VALUES(accessorial_rates),
+          operating_mode = VALUES(operating_mode),
+          driver_visibility_settings = VALUES(driver_visibility_settings)`,
         [
           id,
           name,
@@ -364,43 +413,80 @@ router.post(
           phone ?? null,
           mc_number ?? null,
           dot_number ?? null,
-          normalizedLoadNumberingConfig
-            ? JSON.stringify(normalizedLoadNumberingConfig)
-            : null,
-          normalizedAccessorialRates
-            ? JSON.stringify(normalizedAccessorialRates)
-            : null,
+          normalizedLoadNumberingConfig,
+          normalizedAccessorialRates,
+          operating_mode ?? null,
+          normalizedDriverVisibilitySettings,
         ],
       );
 
+      // Mirror all settings to Firestore (full company object) so that
+      // GET /api/companies/:id returns governance, permissions, scoring, etc.
+      // Fields without a dedicated SQL column are stored only in Firestore.
+      const firestorePayload: Record<string, unknown> = {
+        id,
+        name,
+        account_type,
+        accountType: account_type,
+        email,
+        address,
+        city,
+        state,
+        zip,
+        tax_id,
+        taxId: tax_id,
+        phone,
+        mc_number,
+        mcNumber: mc_number,
+        dot_number,
+        dotNumber: dot_number,
+        load_numbering_config: normalizedLoadNumberingConfig
+          ? JSON.parse(normalizedLoadNumberingConfig)
+          : null,
+        loadNumberingConfig: normalizedLoadNumberingConfig
+          ? JSON.parse(normalizedLoadNumberingConfig)
+          : null,
+        accessorial_rates: normalizedAccessorialRates
+          ? JSON.parse(normalizedAccessorialRates)
+          : null,
+        accessorialRates: normalizedAccessorialRates
+          ? JSON.parse(normalizedAccessorialRates)
+          : null,
+        operating_mode,
+        operatingMode: operating_mode,
+        driverVisibilitySettings: driver_visibility_settings,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Persist settings that have no SQL column into Firestore only
+      const firestoreOnlyFields = [
+        "governance",
+        "scoringConfig",
+        "driverPermissions",
+        "ownerOpPermissions",
+        "dispatcherPermissions",
+        "capabilityMatrix",
+        "supportedFreightTypes",
+        "defaultFreightType",
+      ];
+      for (const field of firestoreOnlyFields) {
+        if (body[field] !== undefined) {
+          firestorePayload[field] = body[field];
+        }
+      }
+
       try {
-        await db.collection("companies").doc(id).set(
-          {
-            id,
-            name,
-            account_type,
-            email,
-            address,
-            city,
-            state,
-            zip,
-            tax_id,
-            phone,
-            mc_number,
-            dot_number,
-            load_numbering_config: normalizedLoadNumberingConfig,
-            accessorial_rates: normalizedAccessorialRates,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true },
-        );
+        await db
+          .collection("companies")
+          .doc(id)
+          .set(firestorePayload, { merge: true });
       } catch (firestoreError) {
         log.warn(
           { err: firestoreError },
           "Firestore company mirror failed; MySQL settings remain authoritative",
         );
       }
-      res.status(201).json({ message: "Company created" });
+      res.status(201).json({ message: "Company settings saved" });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [POST /api/companies]");
       res.status(500).json({ error: "Database error" });
@@ -514,29 +600,42 @@ router.get(
             [p.id],
           );
 
-          // Parse entity_class from the type field (unified entity model)
-          // Entity classes: Customer, Broker, Vendor, Facility, Contractor
-          // Legacy types (Shipper, Vendor_Service, etc.) map to the new model
-          const entityClass = p.entity_class || p.type;
+          // Normalize entity class via alias map (handles any legacy data)
+          const rawClass = p.entity_class || p.type;
+          const entityClass =
+            normalizeEntityClass(rawClass) || rawClass || "Customer";
           const tags = p.tags
             ? typeof p.tags === "string"
               ? JSON.parse(p.tags)
               : p.tags
             : [];
+          const vendorProfileData = p.vendor_profile
+            ? typeof p.vendor_profile === "string"
+              ? JSON.parse(p.vendor_profile)
+              : p.vendor_profile
+            : null;
 
           return {
-            ...p,
+            id: p.id,
+            companyId: p.company_id,
+            name: p.name,
+            type: entityClass,
             entityClass,
             tags,
             isCustomer: !!p.is_customer,
             isVendor: !!p.is_vendor,
+            status: p.status,
             mcNumber: p.mc_number,
             dotNumber: p.dot_number,
+            rating: p.rating,
+            vendorProfile: vendorProfileData,
             contacts,
             documents: docs,
             rates: groupedRates,
             constraintSets: enrichedConstraints,
             catalogLinks: catalogLinks.map((cl: any) => cl.catalog_item_id),
+            createdAt: p.created_at,
+            updatedAt: p.updated_at,
           };
         }),
       );
@@ -547,44 +646,16 @@ router.get(
         route: "GET /api/parties",
       });
       if (isMissingTableError(error, "parties")) {
-        try {
-          const [customers]: any = await pool.query(
-            "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
-            [req.user!.tenantId],
-          );
-          const fallbackParties = customers.map((p: any) => {
-            const tags = p.tags
-              ? typeof p.tags === "string"
-                ? JSON.parse(p.tags)
-                : p.tags
-              : [];
-
-            return {
-              ...p,
-              entityClass: p.entity_class || p.type || "Customer",
-              tags,
-              isCustomer:
-                p.is_customer === 1 ||
-                p.isCustomer === 1 ||
-                p.type === "Customer",
-              isVendor:
-                p.is_vendor === 1 || p.isVendor === 1 || p.type === "Vendor",
-              mcNumber: p.mc_number,
-              dotNumber: p.dot_number,
-              contacts: [],
-              documents: [],
-              rates: [],
-              constraintSets: [],
-              catalogLinks: [],
-            };
-          });
-          return res.json(fallbackParties);
-        } catch (fallbackError) {
-          log.error(
-            { err: fallbackError },
-            "Fallback GET /api/parties via customers failed",
-          );
-        }
+        log.error(
+          { err: error },
+          "parties table unavailable — returning 503 (no silent fallback to customers)",
+        );
+        res.status(503).json({
+          error: "Party registry unavailable",
+          details:
+            "The parties table is not available. Please run database migrations.",
+        });
+        return;
       }
       log.error({ err: error }, "SERVER ERROR [GET /api/parties]");
       res.status(500).json({ error: "Database error" });
@@ -636,6 +707,11 @@ router.post(
   requireTenant,
   validateBody(createPartySchema),
   async (req: any, res) => {
+    const log = createChildLogger({
+      correlationId: req.correlationId,
+      route: "POST /api/parties",
+    });
+
     const {
       id,
       name,
@@ -650,14 +726,26 @@ router.post(
       rates,
       constraintSets,
       catalogLinks,
+      vendorProfile,
     } = req.body;
 
-    // Entity class and tags — passed alongside validated fields.
-    // entityClass maps to the `type` column for unified entity model.
-    // tags are stored as JSON in the `type` field metadata for future
-    // migration to a dedicated column when the DB schema is extended.
-    const entityClass = req.body.entityClass || type;
-    const tags = req.body.tags || [];
+    // Alias normalization: resolve legacy type names to canonical entity classes.
+    // entityClass from body takes priority, then type field, both normalized.
+    const rawEntityClass = req.body.entityClass || type;
+    const resolvedEntityClass = normalizeEntityClass(rawEntityClass);
+
+    if (!resolvedEntityClass) {
+      log.warn({ rawEntityClass }, "Unrecognized entity class rejected");
+      res.status(400).json({
+        error: "Invalid entity class",
+        details: `"${rawEntityClass}" is not a recognized entity class. Valid classes: ${CANONICAL_ENTITY_CLASSES.join(", ")}. Legacy aliases (Shipper, Carrier, Vendor_Service, Vendor_Equipment, Vendor_Product) are also accepted.`,
+      });
+      return;
+    }
+
+    // Tags are always persisted as JSON — never silently dropped
+    const tags: string[] = Array.isArray(req.body.tags) ? req.body.tags : [];
+    const tagsJson = JSON.stringify(tags);
     const partyId = id || uuidv4();
 
     const finalCompanyId = req.user.tenantId;
@@ -666,23 +754,39 @@ router.post(
     try {
       await connection.beginTransaction();
 
-      // Use entityClass as the type value for unified entity model
-      // Tags stored as JSON string in the tags column
-      const tagsJson = tags && tags.length > 0 ? JSON.stringify(tags) : null;
+      // Persist party row with canonical entity class and tags
       await connection.query(
-        "REPLACE INTO parties (id, company_id, name, type, is_customer, is_vendor, status, mc_number, dot_number, rating, tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO parties (id, company_id, name, type, entity_class, is_customer, is_vendor, status, mc_number, dot_number, rating, tags, vendor_profile) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           partyId,
           finalCompanyId,
           name,
-          entityClass || type,
-          isCustomer,
-          isVendor,
-          status,
-          mcNumber,
-          dotNumber,
-          rating,
+          resolvedEntityClass,
+          resolvedEntityClass,
+          isCustomer ??
+            (resolvedEntityClass === "Customer" ||
+              resolvedEntityClass === "Broker"),
+          isVendor ?? resolvedEntityClass === "Vendor",
+          status || "Draft",
+          mcNumber || null,
+          dotNumber || null,
+          rating || null,
           tagsJson,
+          resolvedEntityClass === "Contractor" && vendorProfile
+            ? JSON.stringify({
+                capabilities: vendorProfile.capabilities || tags,
+                serviceArea: vendorProfile.serviceArea || [],
+                equipmentOwnership: vendorProfile.equipmentOwnership || null,
+                insuranceProvider: vendorProfile.insuranceProvider || null,
+                insurancePolicyNumber:
+                  vendorProfile.insurancePolicyNumber || null,
+                cdlNumber: vendorProfile.cdlNumber || null,
+                cdlState: vendorProfile.cdlState || null,
+                cdlExpiry: vendorProfile.cdlExpiry || null,
+              })
+            : vendorProfile
+              ? JSON.stringify(vendorProfile)
+              : null,
         ],
       );
 
@@ -812,54 +916,33 @@ router.post(
       }
 
       await connection.commit();
-      res
-        .status(201)
-        .json({ message: "Party synced with Unified Engine", id: partyId });
-    } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/parties",
+
+      log.info(
+        { partyId, entityClass: resolvedEntityClass, tags },
+        "Party created/updated via canonical registry",
+      );
+
+      res.status(201).json({
+        message: "Party synced with Unified Engine",
+        id: partyId,
+        entityClass: resolvedEntityClass,
       });
+    } catch (error) {
       await connection.rollback();
 
       if (isMissingTableError(error, "parties")) {
-        try {
-          if (tags && tags.length > 0) {
-            log.warn(
-              { tags },
-              "Tags not persisted in fallback mode — customers table has no tags column",
-            );
-          }
-          const chassisJson = req.body.chassis_requirements
-            ? JSON.stringify(req.body.chassis_requirements)
-            : null;
-          await pool.query(
-            "REPLACE INTO customers (id, company_id, name, type, mc_number, dot_number, email, phone, address, payment_terms, chassis_requirements) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-              id || uuidv4(),
-              finalTenantId,
-              name,
-              entityClass || type,
-              mcNumber || null,
-              dotNumber || null,
-              req.body.email || null,
-              req.body.phone || null,
-              req.body.address || null,
-              req.body.payment_terms || null,
-              chassisJson,
-            ],
-          );
-          return res.status(201).json({
-            message: "Party synced with Unified Engine",
-            fallback: "customers",
-          });
-        } catch (fallbackError) {
-          log.error(
-            { err: fallbackError },
-            "Fallback POST /api/parties via customers failed",
-          );
-        }
+        log.error(
+          { err: error },
+          "parties table unavailable — returning 503 (no silent fallback to customers)",
+        );
+        res.status(503).json({
+          error: "Party registry unavailable",
+          details:
+            "The parties table is not available. Please run database migrations.",
+        });
+        return;
       }
+
       log.error({ err: error }, "SERVER ERROR [POST /api/parties]");
       res.status(500).json({
         error: "Database error",

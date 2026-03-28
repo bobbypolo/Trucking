@@ -5,6 +5,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, LOAD_STATUS } from "../../../types";
 
+// Mock exceptionService to capture createException calls
+vi.mock("../../../services/exceptionService", () => ({
+  createException: vi.fn().mockResolvedValue({ id: "exc-1" }),
+}));
+
 vi.mock("../../../components/Scanner", () => ({
   Scanner: ({
     onDataExtracted,
@@ -193,7 +198,9 @@ describe("DriverMobileHome coverage — lines 749-962", () => {
     const profileBtn = screen.getByText("Me");
     await user.click(profileBtn);
     expect(screen.getByText("Compliance Tasks")).toBeInTheDocument();
-    expect(screen.getByText("No open load issues")).toBeInTheDocument();
+    expect(
+      screen.getByText("Issues tracked via exceptions queue"),
+    ).toBeInTheDocument();
   });
 
   it("renders the map tab with Fleet Tracking header", async () => {

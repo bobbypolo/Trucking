@@ -16,6 +16,10 @@ vi.mock("firebase/auth", () => ({
   getIdToken: vi.fn(),
 }));
 
+/** Helper: create a fetch mock response with .json() support */
+const mockOkResponse = (body: any = { message: "ok" }) =>
+  ({ ok: true, status: 200, json: () => Promise.resolve(body) }) as any;
+
 // Mock the fixtures import
 vi.mock("../../../fixtures/test-users.json", () => ({
   default: {
@@ -233,7 +237,7 @@ describe("authService", () => {
     });
 
     it("reflects companies added via updateCompany", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateCompany({ id: "gsc-reflect-1", name: "Cache Co" } as any);
 
       const companies = getStoredCompanies();
@@ -253,7 +257,7 @@ describe("authService", () => {
 
     it("getCompany uses API-first then falls back to in-memory cache", async () => {
       // Seed cache
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateCompany({
         id: "gsc-api-fallback-1",
         name: "Cached Value",
@@ -751,9 +755,7 @@ describe("authService", () => {
   // ─── updateCompany ───────────────────────────────────────────────────
   describe("updateCompany", () => {
     it("stores company in in-memory cache on new entry", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-      } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const company = {
         id: "uc-new-1",
@@ -770,7 +772,7 @@ describe("authService", () => {
     });
 
     it("updates existing company in in-memory cache", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const original = { id: "uc-existing-1", name: "Old Name" } as any;
       await updateCompany(original);
@@ -785,7 +787,7 @@ describe("authService", () => {
     });
 
     it("does not write to localStorage", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
 
       await updateCompany({ id: "uc-nols-1", name: "No-LS Corp" } as any);
@@ -812,7 +814,7 @@ describe("authService", () => {
 
     it("falls back to in-memory cache when API fails", async () => {
       // Seed the in-memory cache via updateCompany
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateCompany({ id: "gc-fallback-1", name: "Cached Corp" } as any);
 
       // Now fail the API
@@ -854,7 +856,7 @@ describe("authService", () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
       // Pre-populate cache via updateUser
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateUser({
         id: "u3",
         companyId: "c1",
@@ -871,7 +873,7 @@ describe("authService", () => {
   // ─── addDriver ───────────────────────────────────────────────────────
   describe("addDriver", () => {
     it("creates a new driver user and adds to cache", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const driver = await addDriver(
         "c1",
@@ -891,7 +893,7 @@ describe("authService", () => {
     });
 
     it("defaults payModel to percent for non-admin roles", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const driver = await addDriver("c1", "D2", "d2@test.com", "driver");
       expect(driver.payModel).toBe("percent");
@@ -899,7 +901,7 @@ describe("authService", () => {
     });
 
     it("defaults payModel to salary for admin roles", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const admin = await addDriver("c1", "Admin", "admin2@test.com", "admin");
       expect(admin.payModel).toBe("salary");
@@ -913,7 +915,7 @@ describe("authService", () => {
     let registerCompany: any;
 
     beforeEach(async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       const mod = await import("../../../services/authService");
       registerCompany = mod.registerCompany;
     });
@@ -1116,7 +1118,7 @@ describe("authService", () => {
     let seedDatabase: any;
 
     beforeEach(async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       const mod = await import("../../../services/authService");
       seedDatabase = mod.seedDatabase;
     });
@@ -1129,7 +1131,7 @@ describe("authService", () => {
   // ─── addDriver with managedByUserId ──────────────────────────────────
   describe("addDriver — additional paths", () => {
     it("sets managedByUserId when provided", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const driver = await addDriver(
         "c1",
@@ -1145,7 +1147,7 @@ describe("authService", () => {
     });
 
     it("sets custom password when provided", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       const driver = await addDriver(
         "c1",
@@ -1165,7 +1167,7 @@ describe("authService", () => {
   // ─── updateUser — session update path ────────────────────────────────
   describe("updateUser — session refresh", () => {
     it("updates session cache when updating current user", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
 
       // First login to set current user
       const {
@@ -1194,7 +1196,7 @@ describe("authService", () => {
       await loginFn("test@test.com", "pass");
 
       // Now update that same user
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateUser({
         id: "u99",
         email: "test@test.com",

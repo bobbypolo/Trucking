@@ -4,7 +4,7 @@
  * Implements GpsProvider interface by calling Samsara Fleet API.
  * - 5-second timeout on all requests
  * - 60-second in-memory cache per company
- * - Mock fallback when SAMSARA_API_TOKEN is not configured
+ * - Returns empty positions when SAMSARA_API_TOKEN is not configured
  *
  * @see https://developers.samsara.com/reference/listvehiclelocations
  * @see .claude/docs/PLAN.md S-203
@@ -59,52 +59,10 @@ function parseSamsaraLocation(
 }
 
 /**
- * Generate mock GPS positions for development/testing
- * when SAMSARA_API_TOKEN is not configured.
- */
-function getMockPositions(): GpsPosition[] {
-  return [
-    {
-      vehicleId: "mock-vehicle-1",
-      latitude: 41.8781,
-      longitude: -87.6298,
-      speed: 55,
-      heading: 180,
-      recordedAt: new Date(),
-      provider: "samsara",
-      providerVehicleId: "mock-vehicle-1",
-      isMock: true,
-    },
-    {
-      vehicleId: "mock-vehicle-2",
-      latitude: 34.0522,
-      longitude: -118.2437,
-      speed: 0,
-      heading: 90,
-      recordedAt: new Date(),
-      provider: "samsara",
-      providerVehicleId: "mock-vehicle-2",
-      isMock: true,
-    },
-    {
-      vehicleId: "mock-vehicle-3",
-      latitude: 29.7604,
-      longitude: -95.3698,
-      speed: 62,
-      heading: 270,
-      recordedAt: new Date(),
-      provider: "samsara",
-      providerVehicleId: "mock-vehicle-3",
-      isMock: true,
-    },
-  ];
-}
-
-/**
  * Samsara GPS adapter.
  *
  * Calls the Samsara Fleet API to retrieve vehicle locations.
- * Falls back to mock data when SAMSARA_API_TOKEN is not set.
+ * Returns empty positions when SAMSARA_API_TOKEN is not set.
  */
 export class SamsaraAdapter implements GpsProvider {
   private cache: Map<string, CacheEntry> = new Map();
@@ -113,18 +71,18 @@ export class SamsaraAdapter implements GpsProvider {
    * Get current locations for all vehicles in a company.
    *
    * @param companyId - LoadPilot company identifier
-   * @returns Array of GPS positions (empty on error/timeout)
+   * @returns Array of GPS positions (empty on error/timeout/no credentials)
    */
   async getVehicleLocations(companyId: string): Promise<GpsPosition[]> {
     const apiToken = process.env.SAMSARA_API_TOKEN;
 
-    // No API token — return mock data
+    // No API token — return empty (no mock data)
     if (!apiToken) {
       log.info(
         { companyId },
-        "SAMSARA_API_TOKEN not set, returning mock positions",
+        "SAMSARA_API_TOKEN not set, returning empty positions",
       );
-      return getMockPositions();
+      return [];
     }
 
     // Check cache
@@ -214,8 +172,11 @@ export class SamsaraAdapter implements GpsProvider {
     const apiToken = process.env.SAMSARA_API_TOKEN;
 
     if (!apiToken) {
-      const mocks = getMockPositions();
-      return mocks.find((p) => p.vehicleId === vehicleId) || null;
+      log.info(
+        { vehicleId },
+        "SAMSARA_API_TOKEN not set, returning null for single vehicle",
+      );
+      return null;
     }
 
     const startTime = Date.now();

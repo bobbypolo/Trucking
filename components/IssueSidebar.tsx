@@ -1,13 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { LoadData, User, Issue, IssueCategory, Exception } from "../types";
+import { LoadData, User, Exception } from "../types";
 import {
   AlertTriangle,
   X,
   CheckCircle,
   Wrench,
   DollarSign,
-  Truck,
-  AlertOctagon,
   ArrowRight,
   Headset,
   History,
@@ -65,21 +63,6 @@ export const IssueSidebar: React.FC<Props> = ({
     };
   }, [isOpen]);
 
-  // Aggregate all active issues from all loads (legacy path)
-  const activeIssues = useMemo(() => {
-    const issuesList: { issue: Issue; load: LoadData }[] = [];
-    loads.forEach((load) => {
-      if (load.issues) {
-        load.issues.forEach((issue) => {
-          if (issue.status !== "Resolved") {
-            issuesList.push({ issue, load });
-          }
-        });
-      }
-    });
-    return issuesList;
-  }, [loads]);
-
   // Open exceptions (from unified API)
   const openExceptions = useMemo(
     () =>
@@ -100,41 +83,6 @@ export const IssueSidebar: React.FC<Props> = ({
   );
   const isAdmin = currentUser.role === "admin";
 
-  const filteredIssues = useMemo(() => {
-    if (currentUser.role === "admin") return activeIssues;
-    if (currentUser.role === "safety_manager")
-      return activeIssues.filter(
-        (i) =>
-          i.issue.category === "Safety" ||
-          i.issue.category === "Maintenance" ||
-          i.issue.category === "Incident",
-      );
-    if (currentUser.role === "payroll_manager")
-      return activeIssues.filter((i) => i.issue.category === "Payroll");
-    if (currentUser.role === "dispatcher")
-      return activeIssues.filter(
-        (i) =>
-          i.issue.category === "Dispatch" || i.issue.category === "Handoff",
-      );
-    return [];
-  }, [activeIssues, currentUser.role]);
-
-  const handleResolve = (load: LoadData, issueId: string) => {
-    const updatedIssues = load.issues?.map((i) =>
-      i.id === issueId
-        ? {
-            ...i,
-            status: "Resolved" as const,
-            resolvedAt: new Date().toISOString(),
-            resolvedBy: currentUser.name,
-          }
-        : i,
-    );
-    const updatedLoad = { ...load, issues: updatedIssues };
-    saveLoad(updatedLoad, currentUser);
-    onRefresh();
-  };
-
   const handleResolveException = async (exceptionId: string) => {
     const success = await updateException(exceptionId, {
       status: "RESOLVED",
@@ -146,21 +94,6 @@ export const IssueSidebar: React.FC<Props> = ({
           e.id === exceptionId ? { ...e, status: "RESOLVED" } : e,
         ),
       );
-    }
-  };
-
-  const getCategoryColor = (cat: IssueCategory) => {
-    switch (cat) {
-      case "Payroll":
-        return "text-yellow-400 border-yellow-500/50 bg-yellow-900/20";
-      case "Safety":
-        return "text-red-400 border-red-500/50 bg-red-900/20";
-      case "Maintenance":
-        return "text-orange-400 border-orange-500/50 bg-orange-900/20";
-      case "Handoff":
-        return "text-purple-400 border-purple-500/50 bg-purple-900/20";
-      default:
-        return "text-blue-400 border-blue-500/50 bg-blue-900/20";
     }
   };
 
@@ -218,24 +151,7 @@ export const IssueSidebar: React.FC<Props> = ({
     onRefresh();
   };
 
-  const getCategoryIcon = (cat: IssueCategory) => {
-    switch (cat) {
-      case "Payroll":
-        return <DollarSign className="w-4 h-4" />;
-      case "Safety":
-        return <AlertOctagon className="w-4 h-4" />;
-      case "Maintenance":
-        return <Wrench className="w-4 h-4" />;
-      case "Dispatch":
-        return <Truck className="w-4 h-4" />;
-      case "Handoff":
-        return <ArrowRight className="w-4 h-4" />;
-      default:
-        return <AlertTriangle className="w-4 h-4" />;
-    }
-  };
-
-  const totalIssueCount = filteredIssues.length + openExceptions.length;
+  const totalIssueCount = openExceptions.length;
 
   if (!isOpen) return null;
 
@@ -347,68 +263,6 @@ export const IssueSidebar: React.FC<Props> = ({
               </div>
             )}
 
-            {/* Legacy load-based issues */}
-            {filteredIssues.length > 0 && (
-              <div className="space-y-2">
-                {openExceptions.length > 0 && (
-                  <h3 className="text-[8px] font-black text-slate-500 uppercase tracking-[0.25em] flex items-center gap-2 mb-2">
-                    Load Issues ({filteredIssues.length})
-                  </h3>
-                )}
-                {filteredIssues.map(({ issue, load }) => (
-                  <div
-                    key={issue.id}
-                    className={`p-4 rounded-xl border ${getCategoryColor(issue.category)} relative group shadow-lg`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest">
-                        {getCategoryIcon(issue.category)} {issue.category}
-                      </span>
-                      <span className="text-[8px] text-slate-500 font-bold">
-                        {new Date(issue.reportedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    <p className="text-xs text-white font-medium mb-2 leading-relaxed">
-                      {issue.description}
-                    </p>
-
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/5">
-                      <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
-                        Manifest #{load.loadNumber}
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => onViewLoad(load)}
-                          aria-label="View load"
-                          className="p-1.5 bg-slate-900/50 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-all border border-white/5"
-                        >
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={
-                            canResolve
-                              ? () => handleResolve(load, issue.id)
-                              : undefined
-                          }
-                          disabled={!canResolve}
-                          aria-label="Resolve issue"
-                          title={
-                            !canResolve
-                              ? "Only admins, safety managers, and dispatchers can resolve issues"
-                              : undefined
-                          }
-                          className={`p-1.5 rounded-lg transition-all border ${canResolve ? "bg-green-600/10 hover:bg-green-600 text-green-500 hover:text-white border-green-500/20" : "bg-slate-800/30 text-slate-600 border-slate-700/30 cursor-not-allowed opacity-50"}`}
-                        >
-                          <CheckCircle className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {totalIssueCount === 0 && !exceptionsLoading && (
               <div className="text-center text-slate-700 py-10">
                 <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-10" />
@@ -425,16 +279,14 @@ export const IssueSidebar: React.FC<Props> = ({
               </div>
             )}
 
-            {exceptionsLoading &&
-              openExceptions.length === 0 &&
-              filteredIssues.length === 0 && (
-                <div className="text-center text-slate-700 py-10 animate-pulse">
-                  <Clock className="w-12 h-12 mx-auto mb-2 opacity-10" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">
-                    Loading issues...
-                  </p>
-                </div>
-              )}
+            {exceptionsLoading && openExceptions.length === 0 && (
+              <div className="text-center text-slate-700 py-10 animate-pulse">
+                <Clock className="w-12 h-12 mx-auto mb-2 opacity-10" />
+                <p className="text-[10px] font-black uppercase tracking-widest">
+                  Loading issues...
+                </p>
+              </div>
+            )}
 
             {/* Handoff/Action Required Section */}
             {loads.filter((l) => l.isActionRequired).length > 0 && (

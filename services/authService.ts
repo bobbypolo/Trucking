@@ -563,8 +563,17 @@ export const updateCompany = async (company: Company) => {
   try {
     const { api } = await import("./api");
     await api.post("/companies", company);
-  } catch (e) {
-    console.warn("[authService] API fallback:", e);
+  } catch (e: unknown) {
+    // Re-throw HTTP errors (403, 500) so callers know the save truly failed.
+    // Swallow network/offline errors so the app degrades gracefully.
+    const { ForbiddenError } = await import("./api");
+    if (
+      e instanceof ForbiddenError ||
+      (e instanceof Error && /API Request failed/.test(e.message))
+    ) {
+      throw e;
+    }
+    console.warn("[authService] updateCompany network fallback:", e);
   }
 
   const idx = _companiesCache.findIndex((c) => c.id === company.id);
@@ -579,8 +588,17 @@ export const updateUser = async (user: User) => {
   try {
     const { api } = await import("./api");
     await api.post("/users", user);
-  } catch (e) {
-    console.warn("[authService] API fallback:", e);
+  } catch (e: unknown) {
+    // Re-throw HTTP errors (403, 500) so callers know the save truly failed.
+    // Swallow network/offline errors so the app degrades gracefully.
+    const { ForbiddenError } = await import("./api");
+    if (
+      e instanceof ForbiddenError ||
+      (e instanceof Error && /API Request failed/.test(e.message))
+    ) {
+      throw e;
+    }
+    console.warn("[authService] updateUser network fallback:", e);
   }
 
   upsertCachedUser(user);

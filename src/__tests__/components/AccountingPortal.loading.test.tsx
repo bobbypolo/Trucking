@@ -11,6 +11,7 @@ vi.mock("../../../services/financialService", () => ({
   createAPBill: vi.fn(),
   createJournalEntry: vi.fn(),
   getSettlements: vi.fn(),
+  getIFTASummary: vi.fn().mockResolvedValue(null),
   getInvoices: vi.fn(),
   getBills: vi.fn(),
 }));
@@ -96,7 +97,9 @@ describe("AccountingPortal — Loading and Error States (R-P2-01, R-P2-03)", () 
       resolveAccounts = r;
     });
 
-    (getGLAccounts as ReturnType<typeof vi.fn>).mockReturnValue(accountsPromise);
+    (getGLAccounts as ReturnType<typeof vi.fn>).mockReturnValue(
+      accountsPromise,
+    );
     (getInvoices as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (getBills as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     (getSettlements as ReturnType<typeof vi.fn>).mockResolvedValue([]);
@@ -157,9 +160,7 @@ describe("AccountingPortal — Loading and Error States (R-P2-01, R-P2-03)", () 
     });
 
     // ErrorState has a retry button
-    expect(
-      screen.getByRole("button", { name: /retry/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
   it("R-P2-03: ErrorState retry button re-fetches data", async () => {

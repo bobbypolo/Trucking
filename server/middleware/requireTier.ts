@@ -53,15 +53,35 @@ async function resolveTierInfo(
     return req[TIER_CACHE_KEY];
   }
 
-  const [rows] = await pool.execute(
-    "SELECT subscription_tier, subscription_status FROM companies WHERE id = ?",
-    [companyId],
-  );
-
-  const resultRows = rows as Array<{
+  let resultRows: Array<{
     subscription_tier: string | null;
     subscription_status: string | null;
   }>;
+
+  try {
+    const [rows] = await pool.execute(
+      "SELECT subscription_tier, subscription_status FROM companies WHERE id = ?",
+      [companyId],
+    );
+    resultRows = rows as typeof resultRows;
+  } catch (err: any) {
+    // Legacy schema compatibility: if subscription_tier column doesn't exist
+    // (migration 027/039 not yet applied), bypass tier enforcement entirely.
+    // This allows dev/demo environments to function without all migrations.
+    if (
+      err.message?.includes("Unknown column") ||
+      err.code === "ER_BAD_FIELD_ERROR"
+    ) {
+      const log = createChildLogger({ route: "requireTier" });
+      log.warn(
+        { companyId },
+        "subscription_tier column missing — bypassing tier enforcement (legacy schema)",
+      );
+      // Return a sentinel value that the middleware will recognize
+      return { tier: "LEGACY_BYPASS" as SubscriptionTier, status: "active" };
+    }
+    throw err; // Re-throw real DB errors (connection failures, etc.)
+  }
 
   if (!resultRows || resultRows.length === 0) {
     return null;
@@ -112,10 +132,7 @@ export function requireTier(
 
     let tierInfo: TierInfo | null;
     try {
-      tierInfo = await resolveTierInfo(
-        req as TierCachedRequest,
-        companyId,
-      );
+      tierInfo = await resolveTierInfo(req as TierCachedRequest, companyId);
     } catch (error) {
       const log = createChildLogger({
         correlationId: (req as any).correlationId,
@@ -138,6 +155,12 @@ export function requireTier(
         error: "Company not found. Cannot verify subscription tier.",
         error_code: "TIER_NO_COMPANY_001",
       });
+      return;
+    }
+
+    // Legacy schema bypass: subscription_tier column missing, skip enforcement
+    if ((tierInfo.tier as string) === "LEGACY_BYPASS") {
+      next();
       return;
     }
 

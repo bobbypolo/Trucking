@@ -25,14 +25,16 @@ const SUPPORTED_PROVIDERS = ["samsara", "webhook"] as const;
 
 /**
  * Represents the tracking configuration state for a tenant.
- * - 'configured-live': provider configured and returning position data
- * - 'configured-idle': provider configured but returned empty positions
- * - 'not-configured': no active provider config or missing API token
+ * - 'configured-live': provider configured and returning real position data
+ * - 'configured-idle': provider configured but returned empty positions (no active vehicles)
+ * - 'configured-no-credentials': provider configured but missing API token / credentials
+ * - 'not-configured': no active provider config at all
  * - 'provider-error': provider configured but threw an error
  */
 export type TrackingState =
   | "configured-live"
   | "configured-idle"
+  | "configured-no-credentials"
   | "not-configured"
   | "provider-error";
 
@@ -95,7 +97,7 @@ export async function getGpsProviderForTenant(
   if (!config.api_token) {
     return {
       provider: null,
-      state: "not-configured",
+      state: "configured-no-credentials",
       providerName: config.provider_name,
     };
   }

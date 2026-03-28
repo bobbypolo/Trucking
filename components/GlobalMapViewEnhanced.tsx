@@ -252,6 +252,8 @@ interface Props {
   isHighObstruction?: boolean;
   obstructionLevel?: string;
   showSideOverlays?: boolean;
+  /** When true, hides search/filter, side panels, weather, and bottom controls for embedded use. */
+  compact?: boolean;
 }
 
 export const GlobalMapViewEnhanced: React.FC<Props> = ({
@@ -263,6 +265,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   isHighObstruction = false,
   obstructionLevel = "NOMINAL",
   showSideOverlays = true,
+  compact = false,
 }) => {
   const [libraries] = useState<("geometry" | "drawing" | "places")[]>([
     "geometry",
@@ -295,7 +298,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const [hasLiveData, setHasLiveData] = useState(false);
   const [hasMockPositions, setHasMockPositions] = useState(false);
   const [trackingState, setTrackingState] = useState<
-    "configured-live" | "configured-idle" | "not-configured" | "provider-error"
+    | "configured-live"
+    | "configured-idle"
+    | "configured-no-credentials"
+    | "not-configured"
+    | "provider-error"
   >("not-configured");
   const [providerName, setProviderName] = useState<string | null>(null);
   const showMockIndicators = (import.meta as any).env.DEV;
@@ -371,11 +378,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           }
         }
 
-        // Online status and ping time from real load data — no mock seed generation
-        const isOnline = !!activeLoad;
-        const lastPing = activeLoad
-          ? new Date().toISOString()
-          : (driver as any).lastSeenAt || new Date(0).toISOString();
+        // Online status requires real GPS positions — having an active load alone
+        // does not mean GPS is connected. Show "Awaiting GPS" until real pings arrive.
+        const hasRealPosition = lat !== 0 && lng !== 0;
+        const isOnline = hasRealPosition;
+        const lastPing = (driver as any).lastSeenAt || null;
         const heading = (activeLoad as any)?.heading ?? 0;
 
         return {
@@ -568,6 +575,22 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       );
     }
+    if (trackingState === "configured-no-credentials") {
+      return (
+        <div
+          className="flex items-center gap-2 bg-amber-900/80 border border-amber-700/50 rounded-lg px-3 py-2"
+          data-testid="tracking-state-banner"
+          data-tracking-state="configured-no-credentials"
+          role="status"
+        >
+          <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span className="text-[11px] font-semibold text-amber-300">
+            Provider configured — credentials missing. Add API token in
+            Telematics settings.
+          </span>
+        </div>
+      );
+    }
     if (trackingState === "not-configured") {
       return (
         <div
@@ -716,30 +739,34 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             }}
             onLoad={onLoad}
           >
-            {filteredVehicles.map((vehicle) => (
-              <Marker
-                key={vehicle.driver.id}
-                position={vehicle.coords}
-                icon={
-                  typeof google !== "undefined"
-                    ? {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: vehicle.hasIncident
-                          ? "#ef4444"
-                          : vehicle.isOnline
-                            ? "#3b82f6"
-                            : "#64748b",
-                        fillOpacity: 1,
-                        strokeColor: "#ffffff",
-                        strokeWeight: isHighObstruction ? 1 : 2,
-                        rotation: vehicle.heading,
-                        scale: isHighObstruction ? 3.5 : 5,
-                      }
-                    : undefined
-                }
-                onClick={() => setSelectedVehicle(vehicle)}
-              />
-            ))}
+            {filteredVehicles
+              .filter(
+                (v) => !livePositions.some((p) => p.driverId === v.driver.id),
+              )
+              .map((vehicle) => (
+                <Marker
+                  key={vehicle.driver.id}
+                  position={vehicle.coords}
+                  icon={
+                    typeof google !== "undefined"
+                      ? {
+                          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                          fillColor: vehicle.hasIncident
+                            ? "#ef4444"
+                            : vehicle.isOnline
+                              ? "#3b82f6"
+                              : "#64748b",
+                          fillOpacity: 1,
+                          strokeColor: "#ffffff",
+                          strokeWeight: isHighObstruction ? 1 : 2,
+                          rotation: vehicle.heading,
+                          scale: isHighObstruction ? 3.5 : 5,
+                        }
+                      : undefined
+                  }
+                  onClick={() => setSelectedVehicle(vehicle)}
+                />
+              ))}
 
             {/* Live GPS markers (S-403) — pulsing indicator for live positions */}
             {livePositions.map((pos) => (
@@ -751,10 +778,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor:
-                          pos.isMock && showMockIndicators
-                            ? "#f59e0b"
-                            : "#22c55e",
+                        fillColor: "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,
@@ -838,7 +862,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
             Live
           </span>
-          {hasMockPositions && (
+          {hasMockPositions && showMockIndicators && (
             <span className="text-[9px] text-amber-400 font-semibold">
               (simulated)
             </span>
@@ -852,8 +876,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         {renderTrackingStateBanner()}
       </div>
 
-      {/* Weather Overlay */}
-      {weather && !isHighObstruction && (
+      {/* Weather Overlay — hidden in compact mode */}
+      {weather && !isHighObstruction && !compact && (
         <div className="absolute top-8 right-8 z-20 bg-[#0a0f1e]/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl animate-in slide-in-from-right duration-500">
           <div className="flex items-center justify-between mb-3">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
@@ -882,8 +906,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Active Incidents overlay (left panel) */}
-      {localOverlaysVisible && (
+      {/* Active Incidents overlay (left panel) — hidden in compact mode */}
+      {localOverlaysVisible && !compact && (
         <div
           className={`absolute top-8 left-8 z-20 space-y-4 transition-all duration-500 transform ${isHighObstruction ? "-translate-x-[110%] opacity-0" : "translate-x-0 opacity-100"} w-80`}
         >
@@ -949,8 +973,8 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Driver/Truck List panel */}
-      {localOverlaysVisible && (
+      {/* Driver/Truck List panel — hidden in compact mode */}
+      {localOverlaysVisible && !compact && (
         <div
           className={`absolute top-8 right-8 z-20 space-y-4 transition-all duration-500 transform ${rightPanelCollapsed || (isHighObstruction && !searchTerm) ? "translate-x-[110%] opacity-0" : "translate-x-0 opacity-100"} ${isHighObstruction ? "w-64" : "w-80"} ${weather ? "mt-32" : ""}`}
         >
@@ -1101,34 +1125,36 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Bottom Controls - Fixed for functional use */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
-        <div className="bg-[#0a0f1e]/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-2.5 flex items-center gap-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
-          <button
-            onClick={() => setLocalOverlaysVisible(!localOverlaysVisible)}
-            className={`p-4 ${localOverlaysVisible ? "bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]" : "bg-slate-900/50 text-slate-500"} hover:bg-indigo-500 hover:text-white rounded-2xl transition-all active:scale-95 group/btn`}
-          >
-            <Layers className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-500" />
-          </button>
-          <button
-            onClick={() => {
-              if (document.fullscreenElement) document.exitFullscreen();
-              else document.documentElement.requestFullscreen();
-            }}
-            className="p-4 text-slate-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all"
-            title="Toggle Fullscreen"
-          >
-            <Maximize2 className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
-            className={`p-4 ${!rightPanelCollapsed ? "text-blue-400 bg-blue-400/10" : "text-slate-400"} hover:text-white hover:bg-white/5 rounded-2xl transition-all`}
-            title="Toggle Fleet Panel"
-          >
-            <LayoutDashboard className="w-5 h-5" />
-          </button>
+      {/* Bottom Controls - Fixed for functional use — hidden in compact mode */}
+      {!compact && (
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10">
+          <div className="bg-[#0a0f1e]/80 backdrop-blur-3xl border border-white/10 rounded-[2rem] p-2.5 flex items-center gap-2 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7)] group">
+            <button
+              onClick={() => setLocalOverlaysVisible(!localOverlaysVisible)}
+              className={`p-4 ${localOverlaysVisible ? "bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.4)]" : "bg-slate-900/50 text-slate-500"} hover:bg-indigo-500 hover:text-white rounded-2xl transition-all active:scale-95 group/btn`}
+            >
+              <Layers className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-500" />
+            </button>
+            <button
+              onClick={() => {
+                if (document.fullscreenElement) document.exitFullscreen();
+                else document.documentElement.requestFullscreen();
+              }}
+              className="p-4 text-slate-400 hover:text-white hover:bg-white/5 rounded-2xl transition-all"
+              title="Toggle Fullscreen"
+            >
+              <Maximize2 className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setRightPanelCollapsed(!rightPanelCollapsed)}
+              className={`p-4 ${!rightPanelCollapsed ? "text-blue-400 bg-blue-400/10" : "text-slate-400"} hover:text-white hover:bg-white/5 rounded-2xl transition-all`}
+              title="Toggle Fleet Panel"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -1160,6 +1186,7 @@ export function FleetMapWidget({
         onViewLoad={onViewLoad}
         isHighObstruction={false}
         showSideOverlays={false}
+        compact
       />
     </div>
   );

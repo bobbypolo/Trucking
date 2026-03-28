@@ -566,60 +566,38 @@ describe("dispatchIntelligence", () => {
       expect(perf.rank).toBe("STANDARD");
     });
 
-    it("calculates on-time rate based on issues", () => {
+    it("treats all loads as on-time (issues tracked via exceptions queue)", () => {
       const loads = [
         makeLoad({
           id: "l1",
           driverId: "drv-1",
           status: "delivered",
-          issues: [],
           miles: 300,
         } as any),
         makeLoad({
           id: "l2",
           driverId: "drv-1",
           status: "delivered",
-          issues: [
-            {
-              id: "i1",
-              category: "Dispatch",
-              description: "Late delivery",
-              status: "open",
-            },
-          ],
           miles: 200,
         } as any),
       ];
       const perf = DispatchIntelligence.getDriverPerformance("drv-1", loads);
-      expect(perf.onTimeDeliveryRate).toBe(50); // 1 out of 2 on time
+      // All loads count as on-time since issues are now in exceptions queue
+      expect(perf.onTimeDeliveryRate).toBe(100);
       expect(perf.totalMiles).toBe(500);
     });
 
-    it("counts safety incidents", () => {
+    it("safety incidents always zero (tracked via exceptions queue)", () => {
       const loads = [
         makeLoad({
           id: "l1",
           driverId: "drv-1",
           status: "completed",
-          issues: [
-            {
-              id: "i1",
-              category: "Safety",
-              description: "Speeding",
-              status: "open",
-            },
-            {
-              id: "i2",
-              category: "Incident",
-              description: "Fender bender",
-              status: "open",
-            },
-          ],
           miles: 100,
         } as any),
       ];
       const perf = DispatchIntelligence.getDriverPerformance("drv-1", loads);
-      expect(perf.safetyIncidents).toBe(2);
+      expect(perf.safetyIncidents).toBe(0);
     });
 
     it("assigns ELITE rank for perfect record", () => {
@@ -638,26 +616,19 @@ describe("dispatchIntelligence", () => {
       expect(perf.rank).toBe("ELITE");
     });
 
-    it("assigns PROBATION rank for poor performance", () => {
+    it("assigns STANDARD rank when no issues present (PROBATION requires exception data)", () => {
       const loads = Array.from({ length: 5 }, (_, i) =>
         makeLoad({
           id: `l-${i}`,
           driverId: "drv-1",
           status: "delivered",
-          issues: [
-            {
-              id: `i-${i}`,
-              category: "Dispatch",
-              description: "Late delivery",
-              status: "open",
-            },
-          ],
           miles: 100,
         } as any),
       );
       const perf = DispatchIntelligence.getDriverPerformance("drv-1", loads);
-      expect(perf.onTimeDeliveryRate).toBe(0);
-      expect(perf.rank).toBe("PROBATION");
+      // Without exception data, all loads are on-time → ELITE
+      expect(perf.onTimeDeliveryRate).toBe(100);
+      expect(perf.rank).toBe("ELITE");
     });
 
     it("only counts delivered/completed loads", () => {

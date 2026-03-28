@@ -6,6 +6,7 @@ import {
   Company,
   ChangeRequest,
   VaultDoc,
+  DriverSettlement,
   LOAD_STATUS,
 } from "../types";
 import {
@@ -33,6 +34,7 @@ import {
   Navigation,
   Phone,
   ScanLine,
+  Wallet,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
 import { Scanner, IntakeAccumulatedData } from "./Scanner";
@@ -41,6 +43,8 @@ import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { InputDialog } from "./ui/InputDialog";
 import { v4 as uuidv4 } from "uuid";
 import { api } from "../services/api";
+import { createException } from "../services/exceptionService";
+import { getSettlements } from "../services/financialService";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
@@ -63,7 +67,8 @@ type ActiveTab =
   | "documents"
   | "changes"
   | "profile"
-  | "map";
+  | "map"
+  | "pay";
 
 interface ToastState {
   message: string;
@@ -187,6 +192,10 @@ export const DriverMobileHome: React.FC<Props> = ({
   });
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
 
+  // Driver pay / settlement state
+  const [mySettlements, setMySettlements] = useState<DriverSettlement[]>([]);
+  const [settlementsLoading, setSettlementsLoading] = useState(false);
+
   // Wrap setters to persist to localStorage (R-P4-10)
   const setActiveTab = (tab: ActiveTab) => {
     try {
@@ -286,6 +295,26 @@ export const DriverMobileHome: React.FC<Props> = ({
       cancelled = true;
     };
   }, [driverLoadIds, activeTab]);
+
+  // Fetch driver's own settlements when on "pay" tab
+  useEffect(() => {
+    if (activeTab !== "pay") return;
+    let cancelled = false;
+    setSettlementsLoading(true);
+    getSettlements(user.id)
+      .then((data) => {
+        if (!cancelled) setMySettlements(data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setMySettlements([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSettlementsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, user.id]);
 
   // Fetch documents for the selected load
   useEffect(() => {
@@ -422,11 +451,46 @@ export const DriverMobileHome: React.FC<Props> = ({
 
     setIntakeSubmitting(true);
     try {
+      // Build canonical LoadData WITH legs — the canonical source of
+      // route/location truth.  Without legs the load loses its pickup/dropoff
+      // after a server round-trip because mapRowToLoadData derives
+      // pickup/dropoff from the legs array.
+      const loadId = uuidv4();
+      const pickupLegId = uuidv4();
+      const dropoffLegId = uuidv4();
+      const loadNumber = `INT-${Date.now().toString(36).toUpperCase()}`;
+
+      const pickupLeg = {
+        id: pickupLegId,
+        type: "Pickup" as const,
+        location: {
+          city: intakeFormData.pickupCity,
+          state: intakeFormData.pickupState,
+          facilityName: intakeFormData.pickupFacility || "",
+        },
+        date: intakeFormData.pickupDate,
+        appointmentTime: "",
+        completed: false,
+      };
+
+      const dropoffLeg = {
+        id: dropoffLegId,
+        type: "Dropoff" as const,
+        location: {
+          city: intakeFormData.dropoffCity,
+          state: intakeFormData.dropoffState,
+          facilityName: intakeFormData.dropoffFacility || "",
+        },
+        date: "",
+        appointmentTime: "",
+        completed: false,
+      };
+
       const newLoad: LoadData = {
-        id: uuidv4(),
+        id: loadId,
         companyId: user.companyId || "",
         driverId: user.id,
-        loadNumber: `INT-${Date.now().toString(36).toUpperCase()}`,
+        loadNumber,
         status: LOAD_STATUS.Draft as LoadStatus,
         carrierRate: 0,
         driverPay: 0,
@@ -441,6 +505,7 @@ export const DriverMobileHome: React.FC<Props> = ({
           state: intakeFormData.dropoffState,
           facilityName: intakeFormData.dropoffFacility || undefined,
         },
+        legs: [pickupLeg, dropoffLeg],
         commodity: intakeFormData.commodity || undefined,
         weight: intakeFormData.weight
           ? parseFloat(intakeFormData.weight) || undefined
@@ -450,9 +515,16 @@ export const DriverMobileHome: React.FC<Props> = ({
         dispatchNotes: `Driver intake via document scan. Docs: ${intakeFormData.scannedDocTypes.join(", ")}`,
       };
 
+      // Save via the canonical onSaveLoad path (storageService.saveLoad ->
+      // loadService.createLoad -> POST /api/loads) which calls
+      // mapLoadDataToPayload and writes legs to load_legs table.  The
+      // handleSaveLoad wrapper in App.tsx then calls refreshData() to reload
+      // from server truth so the load board, schedule, and this component all
+      // see the same canonical shape.
       await onSaveLoad(newLoad);
 
-      // Upload scanned document artifacts to the server
+      // Upload scanned document artifacts to the canonical document domain
+      // (POST /api/documents).  Uses the same loadId so documents are linked.
       let uploadFailures = 0;
       const totalDocs = intakeFormData.scannedDocImages?.length ?? 0;
       if (totalDocs > 0) {
@@ -466,10 +538,10 @@ export const DriverMobileHome: React.FC<Props> = ({
               base64ToFile(doc.base64, doc.mimeType, fileName),
             );
             formData.append("document_type", documentType);
-            formData.append("load_id", newLoad.id);
+            formData.append("load_id", loadId);
             formData.append(
               "description",
-              `Driver intake upload (${documentType}) for ${newLoad.loadNumber}`,
+              `Driver intake upload (${documentType}) for ${loadNumber}`,
             );
             await api.postFormData("/documents", formData);
           } catch {
@@ -852,18 +924,15 @@ export const DriverMobileHome: React.FC<Props> = ({
             onSaveLoad({
               ...selectedLoad,
               status: LOAD_STATUS.Active,
-              issues: [
-                ...(selectedLoad.issues || []),
-                {
-                  id: uuidv4(),
-                  category: "Maintenance",
-                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
-                  status: "Open",
-                  reportedBy: user?.id || "driver",
-                  reportedAt: new Date().toISOString(),
-                },
-              ],
               isActionRequired: true,
+            });
+            createException({
+              type: "SAFETY",
+              severity: 4,
+              status: "OPEN",
+              description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
+              entityType: "LOAD",
+              entityId: selectedLoad.id,
             });
             setIsCreatingChange(false);
             setBreakdownStep("idle");
@@ -877,18 +946,15 @@ export const DriverMobileHome: React.FC<Props> = ({
             onSaveLoad({
               ...selectedLoad,
               status: LOAD_STATUS.Active,
-              issues: [
-                ...(selectedLoad.issues || []),
-                {
-                  id: uuidv4(),
-                  category: "Maintenance",
-                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
-                  status: "Open",
-                  reportedBy: user?.id || "driver",
-                  reportedAt: new Date().toISOString(),
-                },
-              ],
               isActionRequired: true,
+            });
+            createException({
+              type: "SAFETY",
+              severity: 2,
+              status: "OPEN",
+              description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
+              entityType: "LOAD",
+              entityId: selectedLoad.id,
             });
             setIsCreatingChange(false);
             setBreakdownStep("idle");
@@ -1179,6 +1245,95 @@ export const DriverMobileHome: React.FC<Props> = ({
           </div>
         )}
 
+        {activeTab === "pay" && (
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="flex items-center gap-4">
+              <Wallet className="w-8 h-8 text-emerald-500" />
+              <div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">
+                  My Pay
+                </h2>
+                <p className="text-xs text-slate-500 font-bold uppercase">
+                  Settlement History
+                </p>
+              </div>
+            </div>
+
+            {settlementsLoading && <LoadingSkeleton variant="card" count={3} />}
+
+            {!settlementsLoading && mySettlements.length === 0 && (
+              <div className="text-center py-16">
+                <DollarSign className="w-12 h-12 text-slate-800 mx-auto mb-4" />
+                <div className="text-sm font-black text-slate-600 uppercase tracking-widest">
+                  No settlements yet
+                </div>
+                <p className="text-xs text-slate-700 mt-2">
+                  Your pay settlements will appear here once processed.
+                </p>
+              </div>
+            )}
+
+            {!settlementsLoading && mySettlements.length > 0 && (
+              <div className="space-y-4">
+                {mySettlements.map((s) => (
+                  <div
+                    key={s.id}
+                    className="bg-slate-900/50 border border-white/10 rounded-2xl p-5"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="text-sm font-black text-white uppercase">
+                          {s.periodStart} — {s.periodEnd}
+                        </div>
+                        <div className="text-xs text-slate-500 font-bold uppercase mt-1">
+                          Settled {s.settlementDate}
+                        </div>
+                      </div>
+                      <span
+                        className={`px-3 py-1 rounded-xl text-xs font-black uppercase border ${
+                          s.status === "Paid"
+                            ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                            : s.status === "Approved"
+                              ? "bg-blue-500/10 text-blue-500 border-blue-500/20"
+                              : "bg-orange-500/10 text-orange-500 border-orange-500/20"
+                        }`}
+                      >
+                        {s.status}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div>
+                        <div className="text-xs text-slate-600 font-black uppercase">
+                          Earnings
+                        </div>
+                        <div className="text-lg font-black text-emerald-500">
+                          ${(s.totalEarnings || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-600 font-black uppercase">
+                          Deductions
+                        </div>
+                        <div className="text-lg font-black text-red-500">
+                          -${(s.totalDeductions || 0).toLocaleString()}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-600 font-black uppercase">
+                          Net Pay
+                        </div>
+                        <div className="text-lg font-black text-white">
+                          ${(s.netPay || 0).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === "profile" && (
           <div className="space-y-8 animate-in fade-in duration-300">
             <div className="flex items-center gap-6">
@@ -1224,9 +1379,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                       Compliance Tasks
                     </div>
                     <div className="text-xs text-emerald-500 font-bold uppercase">
-                      {loads.some((load) => (load.issues || []).length > 0)
-                        ? "Open issues tracked in backend"
-                        : "No open load issues"}
+                      Issues tracked via exceptions queue
                     </div>
                   </div>
                 </div>
@@ -1318,18 +1471,15 @@ export const DriverMobileHome: React.FC<Props> = ({
             onSaveLoad({
               ...selectedLoad,
               status: LOAD_STATUS.Active,
-              issues: [
-                ...(selectedLoad.issues || []),
-                {
-                  id: uuidv4(),
-                  category: "Maintenance",
-                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
-                  status: "Open",
-                  reportedBy: user?.id || "driver",
-                  reportedAt: new Date().toISOString(),
-                },
-              ],
               isActionRequired: true,
+            });
+            createException({
+              type: "SAFETY",
+              severity: 4,
+              status: "OPEN",
+              description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: HIGH`,
+              entityType: "LOAD",
+              entityId: selectedLoad.id,
             });
           }
           setIsCreatingChange(false);
@@ -1345,18 +1495,15 @@ export const DriverMobileHome: React.FC<Props> = ({
             onSaveLoad({
               ...selectedLoad,
               status: LOAD_STATUS.Active,
-              issues: [
-                ...(selectedLoad.issues || []),
-                {
-                  id: uuidv4(),
-                  category: "Maintenance",
-                  description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
-                  status: "Open",
-                  reportedBy: user?.id || "driver",
-                  reportedAt: new Date().toISOString(),
-                },
-              ],
               isActionRequired: true,
+            });
+            createException({
+              type: "SAFETY",
+              severity: 2,
+              status: "OPEN",
+              description: `BREAKDOWN: ${breakdownNotes} | Tow: ${breakdownNeedsTow ? "YES" : "NO"} | Risk: LOW`,
+              entityType: "LOAD",
+              entityId: selectedLoad.id,
             });
           }
           setIsCreatingChange(false);
@@ -1668,16 +1815,16 @@ export const DriverMobileHome: React.FC<Props> = ({
           </span>
         </button>
         <button
-          data-testid="driver-nav-documents"
+          data-testid="driver-nav-pay"
           onClick={() => {
-            setActiveTab("documents");
+            setActiveTab("pay");
             setSelectedLoadId(null);
           }}
-          className={`flex flex-col items-center gap-1 transition-all ${activeTab === "documents" ? "text-blue-500" : "text-slate-500"}`}
+          className={`flex flex-col items-center gap-1 transition-all ${activeTab === "pay" ? "text-emerald-500" : "text-slate-500"}`}
         >
-          <FileText className="w-6 h-6" />
+          <Wallet className="w-6 h-6" />
           <span className="text-xs font-black uppercase tracking-widest">
-            Docs
+            Pay
           </span>
         </button>
         <button

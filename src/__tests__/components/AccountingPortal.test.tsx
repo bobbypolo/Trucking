@@ -21,6 +21,7 @@ vi.mock("../../../services/financialService", () => ({
   createAPBill: vi.fn(),
   createJournalEntry: vi.fn(),
   getSettlements: vi.fn().mockResolvedValue([]),
+  getIFTASummary: vi.fn().mockResolvedValue(null),
   getInvoices: vi.fn().mockResolvedValue([
     {
       id: "inv-1",
@@ -44,10 +45,6 @@ vi.mock("../../../services/financialService", () => ({
   ]),
 }));
 
-vi.mock("../../../services/rulesEngineService", () => ({
-  executeFuelMatchingRule: vi.fn(),
-}));
-
 vi.mock("../../../services/exportService", () => ({
   exportToExcel: vi.fn(),
   exportToPDF: vi.fn(),
@@ -55,13 +52,6 @@ vi.mock("../../../services/exportService", () => ({
 
 vi.mock("../../../services/config", () => ({
   API_URL: "http://localhost:5000/api",
-}));
-
-// Lazy-loaded sub-components need mocking since they load asynchronously
-vi.mock("../../../components/Settlements", () => ({
-  Settlements: () => (
-    <div data-testid="settlements-component">Settlements Content</div>
-  ),
 }));
 
 vi.mock("../../../components/FileVault", () => ({
@@ -144,11 +134,9 @@ describe("AccountingPortal component", () => {
       expect(screen.getByText("Overview")).toBeInTheDocument();
       expect(screen.getByText("AR / Invoices")).toBeInTheDocument();
       expect(screen.getByText("AP / Bills")).toBeInTheDocument();
-      expect(screen.getByText("Settlements")).toBeInTheDocument();
-      expect(screen.getByText("Fuel & IFTA")).toBeInTheDocument();
       expect(screen.getByText("File Vault")).toBeInTheDocument();
+      expect(screen.getByText("Fuel & IFTA")).toBeInTheDocument();
       expect(screen.getByText("Audit Log")).toBeInTheDocument();
-      expect(screen.getByText("Rules Engine")).toBeInTheDocument();
     });
   });
 
@@ -199,19 +187,6 @@ describe("AccountingPortal component", () => {
     });
   });
 
-  it("renders the lazy-loaded Settlements tab", async () => {
-    const user = userEvent.setup();
-    render(<AccountingPortal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText("Settlements")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Settlements"));
-    await waitFor(() => {
-      expect(screen.getByTestId("settlements-component")).toBeInTheDocument();
-    });
-  });
-
   it("renders the lazy-loaded IFTA tab", async () => {
     const user = userEvent.setup();
     render(<AccountingPortal {...defaultProps} />);
@@ -220,9 +195,12 @@ describe("AccountingPortal component", () => {
     });
 
     await user.click(screen.getByText("Fuel & IFTA"));
-    await waitFor(() => {
-      expect(screen.getByTestId("ifta-component")).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("ifta-component")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it("renders the lazy-loaded File Vault tab", async () => {
@@ -233,15 +211,16 @@ describe("AccountingPortal component", () => {
     });
 
     await user.click(screen.getByText("File Vault"));
-    await waitFor(() => {
-      expect(screen.getByTestId("file-vault-component")).toBeInTheDocument();
-    }, { timeout: 5000 });
+    await waitFor(
+      () => {
+        expect(screen.getByTestId("file-vault-component")).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
   });
 
   it("renders with empty loads and users without crashing", async () => {
-    render(
-      <AccountingPortal {...defaultProps} loads={[]} users={[]} />,
-    );
+    render(<AccountingPortal {...defaultProps} loads={[]} users={[]} />);
     await waitFor(() => {
       expect(screen.getByText("Overview")).toBeInTheDocument();
     });
@@ -250,33 +229,15 @@ describe("AccountingPortal component", () => {
   it("has a Batch Import Engine button", async () => {
     render(<AccountingPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(
-        screen.getByText("Batch Import Engine"),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("switches to Rules Engine tab and shows Automation Center", async () => {
-    const user = userEvent.setup();
-    render(<AccountingPortal {...defaultProps} />);
-    await waitFor(() => {
-      expect(screen.getByText("Rules Engine")).toBeInTheDocument();
-    });
-
-    await user.click(screen.getByText("Rules Engine"));
-    await waitFor(() => {
-      // Automation rules are initially empty (fetched from API)
-      expect(
-        screen.getByText("Automation Center"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Batch Import Engine")).toBeInTheDocument();
     });
   });
 
   // R-P3-08: QB Sync section not rendered in AccountingPortal
-  it('does not render a QB Sync section (R-P3-08)', async () => {
+  it("does not render a QB Sync section (R-P3-08)", async () => {
     render(<AccountingPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('Overview')).toBeInTheDocument();
+      expect(screen.getByText("Overview")).toBeInTheDocument();
     });
     // QB Sync / QuickBooks section must be absent
     expect(screen.queryByText(/quickbooks/i)).not.toBeInTheDocument();
@@ -285,10 +246,10 @@ describe("AccountingPortal component", () => {
   });
 
   // R-P3-12: No button triggers a fake success toast for unimplemented features
-  it('does not show coming soon or unimplemented feature toasts (R-P3-12)', async () => {
+  it("does not show coming soon or unimplemented feature toasts (R-P3-12)", async () => {
     render(<AccountingPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(screen.getByText('Overview')).toBeInTheDocument();
+      expect(screen.getByText("Overview")).toBeInTheDocument();
     });
     // There should be no "Coming Soon" text anywhere in the rendered output
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();

@@ -3,8 +3,7 @@ import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
 const APP_BASE = process.env.E2E_APP_URL || "http://localhost:3103";
 
 async function loginAsAdmin(page: import("@playwright/test").Page) {
-  const email =
-    process.env.E2E_ADMIN_EMAIL || process.env.E2E_TEST_EMAIL || "";
+  const email = process.env.E2E_ADMIN_EMAIL || process.env.E2E_TEST_EMAIL || "";
   const password =
     process.env.E2E_ADMIN_PASSWORD || process.env.E2E_TEST_PASSWORD || "";
 
@@ -46,12 +45,10 @@ test.describe("Team 3 - Embedded Map Evidence", () => {
     }
 
     const res = await auth.get(`${API_BASE}/api/tracking/live`, request);
-    expect([200, 500]).toContain(res.status());
-    if (res.status() !== 200) {
-      const body = await res.text();
-      expect(body).toContain("TIER_DB_ERROR_001");
-      return;
-    }
+    // 200 = success (tier allowed or gracefully bypassed on legacy schema)
+    // 403 = tier enforced and company lacks Fleet Core — valid, not a server error
+    expect([200, 403]).toContain(res.status());
+    if (res.status() === 403) return;
 
     const body = (await res.json()) as {
       trackingState?: string;

@@ -36,11 +36,8 @@ import {
   LoadData,
 } from "../types";
 import {
-  getVaultDocs,
-  uploadToVault,
-  updateDocStatus,
-} from "../services/financialService";
-import {
+  getDocuments,
+  updateDocumentStatus,
   validateFileType,
   validateFileSize,
   uploadVaultDoc,
@@ -185,7 +182,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getVaultDocs({});
+      const data = await getDocuments({});
       setDocs(Array.isArray(data) ? data : []);
     } catch (error) {
       setLoadError(

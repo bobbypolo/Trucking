@@ -1,5 +1,4 @@
 import { FuelEntry, VaultDoc, AutomationRule } from "../types";
-import { getBills, uploadToVault, getVaultDocs } from "./financialService";
 
 export const executeFuelMatchingRule = async (
   purchases: FuelEntry[],

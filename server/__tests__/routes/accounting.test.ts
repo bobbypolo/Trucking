@@ -166,6 +166,16 @@ describe("R-P3-05: POST /api/accounting/sync-qb stub removed", () => {
 
 describe("R-P5-03: PATCH /api/accounting/settlements/batch", () => {
   it("updates settlement status for given IDs and returns count", async () => {
+    // Mock 1: SELECT current statuses (Approved → Paid is valid via "Finalized" normalization)
+    mockPoolQuery.mockResolvedValueOnce([
+      [
+        { id: "s1", status: "Approved" },
+        { id: "s2", status: "Approved" },
+        { id: "s3", status: "Approved" },
+      ],
+      [],
+    ]);
+    // Mock 2: UPDATE result
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 3 }, []]);
     const app = buildApp();
     const res = await request(app)
@@ -177,6 +187,12 @@ describe("R-P5-03: PATCH /api/accounting/settlements/batch", () => {
   });
 
   it("scopes update to company_id from auth context", async () => {
+    // Mock 1: SELECT current statuses (Approved → Paid is valid)
+    mockPoolQuery.mockResolvedValueOnce([
+      [{ id: "s1", status: "Approved" }],
+      [],
+    ]);
+    // Mock 2: UPDATE result
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     const app = buildApp();
     await request(app)

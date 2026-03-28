@@ -30,8 +30,7 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
 
   try {
     // Base query: all non-deleted loads for this tenant
-    let sql =
-      "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
+    let sql = "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
     const params: any[] = [companyId];
 
     // For schedule queries, only return loads that have a pickup_date
@@ -232,88 +231,10 @@ router.post(
         }
       }
 
-      // --- KCI BREAKDOWN INTELLIGENCE FLOW ---
-      const issues = req.body.issues;
-      if (issues && Array.isArray(issues)) {
-        for (const issue of issues) {
-          const issueId = issue.id || uuidv4();
-          await connection.query(
-            "REPLACE INTO issues (id, company_id, load_id, driver_id, category, description, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              issueId,
-              company_id,
-              id,
-              driver_id,
-              issue.category,
-              issue.description,
-              issue.status || "Open",
-            ],
-          );
-
-          if (issue.description.includes("BREAKDOWN")) {
-            const incidentId = uuidv4();
-
-            // 1. Get current driver location for lateness calculation
-            const [logs]: any = await pool.query(
-              "SELECT location_lat, location_lng FROM driver_time_logs WHERE user_id = ? ORDER BY clock_in DESC LIMIT 1",
-              [driver_id],
-            );
-            const lat = logs[0]?.location_lat || 38.8794;
-            const lng = logs[0]?.location_lng || -99.3267;
-
-            const lateCalc = await checkBreakdownLateness(id, lat, lng);
-            const severity = lateCalc.isLate ? "Critical" : "High";
-            const recoveryPlan = lateCalc.isLate
-              ? "REPOWER REQUIRED: Delivery at risk."
-              : "Monitor recovery; possible on-time delivery.";
-
-            // 2. Automated Incident Record
-            await connection.query(
-              "INSERT INTO incidents (id, load_id, type, severity, status, description, location_lat, location_lng, recovery_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-              [
-                incidentId,
-                id,
-                "Breakdown",
-                severity,
-                "Open",
-                issue.description,
-                lat,
-                lng,
-                recoveryPlan,
-              ],
-            );
-
-            // 3. Automated Work Items (Audit Trail for Safety & Dispatch)
-            await connection.query(
-              "INSERT INTO work_items (id, company_id, type, priority, label, description, entity_id, entity_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-              [
-                uuidv4(),
-                company_id,
-                "SAFETY_ALARM",
-                severity,
-                `Breakdown Alert: Load #${load_number}`,
-                `Driver reported breakdown at Lat: ${lat}, Lng: ${lng}. ${recoveryPlan}`,
-                incidentId,
-                "INCIDENT",
-              ],
-            );
-
-            await connection.query(
-              "INSERT INTO work_items (id, company_id, type, priority, label, description, entity_id, entity_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-              [
-                uuidv4(),
-                company_id,
-                "LOAD_EXCEPTION",
-                severity,
-                `Repower Analysis: Load #${load_number}`,
-                `System calculates ${lateCalc.dist} miles to destination. Est. ${lateCalc.required} hours with recovery.`,
-                id,
-                "LOAD",
-              ],
-            );
-          }
-        }
-      }
+      // Issues are now created via /api/exceptions (canonical queue).
+      // The legacy req.body.issues → issues table path has been removed.
+      // Breakdown incidents are created client-side via createException()
+      // and synced to incidents via exception-domain sync.
 
       await connection.commit();
 

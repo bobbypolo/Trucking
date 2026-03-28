@@ -37,7 +37,9 @@ describe("DiskStorageAdapter", () => {
       const buffer = Buffer.from("nested content");
       const path = "tenant-456/subdir/deep/file.pdf";
 
-      await adapter.uploadBlob(path, buffer, { contentType: "application/pdf" });
+      await adapter.uploadBlob(path, buffer, {
+        contentType: "application/pdf",
+      });
 
       const written = await readFile(join(tempDir, path));
       expect(written.toString()).toBe("nested content");
@@ -98,25 +100,22 @@ describe("DiskStorageAdapter", () => {
   });
 
   describe("getSignedUrl", () => {
-    it("returns a download URL path for the given file path", async () => {
+    it("returns a disk:// URI for the given file path", async () => {
       const adapter = createDiskStorageAdapter(tempDir);
       const path = "tenant-123/document.pdf";
 
       const url = await adapter.getSignedUrl(path, 3600000);
 
-      expect(url).toBe(
-        `/api/documents/${encodeURIComponent(path)}/download`,
-      );
+      expect(url).toBe(`disk://${path}`);
     });
 
-    it("properly encodes special characters in the path", async () => {
+    it("preserves the full path in the disk URI", async () => {
       const adapter = createDiskStorageAdapter(tempDir);
       const path = "tenant-123/file with spaces.pdf";
 
       const url = await adapter.getSignedUrl(path, 3600000);
 
-      expect(url).toContain(encodeURIComponent(path));
-      expect(url).toMatch(/^\/api\/documents\/.+\/download$/);
+      expect(url).toBe(`disk://${path}`);
     });
   });
 

@@ -3,15 +3,18 @@ import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { IssueSidebar } from "../../../components/IssueSidebar";
-import { LoadData, User, LOAD_STATUS, Issue } from "../../../types";
+import { LoadData, User, LOAD_STATUS, Exception } from "../../../types";
 
 vi.mock("../../../services/storageService", () => ({
   saveLoad: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockGetExceptions = vi.fn().mockResolvedValue([]);
+const mockUpdateException = vi.fn().mockResolvedValue(true);
+
 vi.mock("../../../services/exceptionService", () => ({
-  getExceptions: vi.fn().mockResolvedValue([]),
-  updateException: vi.fn().mockResolvedValue(true),
+  getExceptions: (...args: unknown[]) => mockGetExceptions(...args),
+  updateException: (...args: unknown[]) => mockUpdateException(...args),
 }));
 
 import { saveLoad } from "../../../services/storageService";
@@ -26,59 +29,56 @@ const mockUser: User = {
   safetyScore: 100,
 };
 
-const mockIssues: Issue[] = [
+// Mock exceptions using the Exception type (from unified exceptions API)
+const mockExceptions: Exception[] = [
   {
-    id: "issue-1",
-    loadId: "load-1",
-    type: "delay",
-    category: "Dispatch",
-    severity: "high",
-    status: "Open",
+    id: "exc-1",
+    tenantId: "company-1",
+    type: "dispatch",
+    severity: 3,
+    status: "OPEN",
+    entityType: "LOAD",
+    entityId: "load-1",
     description: "Driver delayed at pickup",
     createdAt: "2026-01-15T10:00:00Z",
-    createdBy: "admin",
-    reportedAt: "2026-01-15T10:00:00Z",
-    reportedBy: "admin",
+    updatedAt: "2026-01-15T10:00:00Z",
   },
   {
-    id: "issue-2",
-    loadId: "load-1",
-    type: "damage",
-    category: "Safety",
-    severity: "critical",
-    status: "Open",
+    id: "exc-2",
+    tenantId: "company-1",
+    type: "safety",
+    severity: 4,
+    status: "OPEN",
+    entityType: "LOAD",
+    entityId: "load-1",
     description: "Trailer tire blowout",
     createdAt: "2026-01-14T08:00:00Z",
-    createdBy: "driver",
-    reportedAt: "2026-01-14T08:00:00Z",
-    reportedBy: "driver",
+    updatedAt: "2026-01-14T08:00:00Z",
   },
   {
-    id: "issue-3",
-    loadId: "load-2",
-    type: "payment",
-    category: "Payroll",
-    severity: "medium",
-    status: "Resolved",
+    id: "exc-3",
+    tenantId: "company-1",
+    type: "billing",
+    severity: 2,
+    status: "RESOLVED",
+    entityType: "LOAD",
+    entityId: "load-2",
     description: "Driver pay discrepancy",
     createdAt: "2026-01-13T14:00:00Z",
-    createdBy: "payroll",
+    updatedAt: "2026-01-14T08:00:00Z",
     resolvedAt: "2026-01-14T08:00:00Z",
-    reportedAt: "2026-01-13T14:00:00Z",
-    reportedBy: "payroll",
   },
   {
-    id: "issue-4",
-    loadId: "load-1",
+    id: "exc-4",
+    tenantId: "company-1",
     type: "handoff",
-    category: "Handoff",
-    severity: "medium",
-    status: "Open",
+    severity: 2,
+    status: "OPEN",
+    entityType: "LOAD",
+    entityId: "load-1",
     description: "Missing handoff documentation",
     createdAt: "2026-01-15T12:00:00Z",
-    createdBy: "dispatcher",
-    reportedAt: "2026-01-15T12:00:00Z",
-    reportedBy: "dispatcher",
+    updatedAt: "2026-01-15T12:00:00Z",
   },
 ];
 
@@ -94,7 +94,6 @@ const mockLoads: LoadData[] = [
     pickupDate: "2026-01-15",
     pickup: { city: "Chicago", state: "IL" },
     dropoff: { city: "Dallas", state: "TX" },
-    issues: [mockIssues[0], mockIssues[1], mockIssues[3]],
   },
   {
     id: "load-2",
@@ -107,7 +106,6 @@ const mockLoads: LoadData[] = [
     pickupDate: "2026-01-14",
     pickup: { city: "Atlanta", state: "GA" },
     dropoff: { city: "Miami", state: "FL" },
-    issues: [mockIssues[2]],
   },
 ];
 
@@ -123,6 +121,13 @@ describe("IssueSidebar component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: return open exceptions only (exc-1, exc-2, exc-4); exc-3 is RESOLVED
+    mockGetExceptions.mockResolvedValue([
+      mockExceptions[0],
+      mockExceptions[1],
+      mockExceptions[2],
+      mockExceptions[3],
+    ]);
   });
 
   it("renders the Issues & Alerts header when open", async () => {
@@ -139,7 +144,7 @@ describe("IssueSidebar component", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("displays active (non-resolved) issues for admin", async () => {
+  it("displays active (non-resolved) exceptions", async () => {
     render(<IssueSidebar {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
@@ -150,7 +155,7 @@ describe("IssueSidebar component", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not display resolved issues", async () => {
+  it("does not display resolved exceptions", async () => {
     render(<IssueSidebar {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
@@ -160,53 +165,53 @@ describe("IssueSidebar component", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the issue count badge with correct number", async () => {
+  it("shows the issue count badge with correct number of open exceptions", async () => {
     render(<IssueSidebar {...defaultProps} />);
-    // Admin sees 3 active load issues + 0 unified exceptions = 3
+    // 3 open exceptions (exc-1, exc-2, exc-4); exc-3 is RESOLVED and filtered out
     await waitFor(() => {
       expect(screen.getByText("3")).toBeInTheDocument();
     });
   });
 
-  it("filters issues for safety_manager role (Safety, Maintenance, Incident)", async () => {
+  it("shows all open exceptions for safety_manager role", async () => {
     const safetyUser = { ...mockUser, role: "safety_manager" as const };
     render(<IssueSidebar {...defaultProps} currentUser={safetyUser} />);
+    // All open exceptions are shown regardless of role (role filtering removed)
     await waitFor(() => {
       expect(screen.getByText("Trailer tire blowout")).toBeInTheDocument();
     });
+    expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
     expect(
-      screen.queryByText("Driver delayed at pickup"),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText("Missing handoff documentation"),
-    ).not.toBeInTheDocument();
+      screen.getByText("Missing handoff documentation"),
+    ).toBeInTheDocument();
   });
 
-  it("filters issues for dispatcher role (Dispatch, Handoff)", async () => {
+  it("shows all open exceptions for dispatcher role", async () => {
     const dispatcherUser = { ...mockUser, role: "dispatcher" as const };
     render(<IssueSidebar {...defaultProps} currentUser={dispatcherUser} />);
     await waitFor(() => {
       expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
     });
+    expect(screen.getByText("Trailer tire blowout")).toBeInTheDocument();
     expect(
       screen.getByText("Missing handoff documentation"),
     ).toBeInTheDocument();
-    expect(screen.queryByText("Trailer tire blowout")).not.toBeInTheDocument();
   });
 
-  it("filters issues for payroll_manager role (only Payroll category)", async () => {
+  it("shows all open exceptions for payroll_manager role", async () => {
     const payrollUser = { ...mockUser, role: "payroll_manager" as const };
     render(<IssueSidebar {...defaultProps} currentUser={payrollUser} />);
-    // All payroll issues are resolved, so nothing shows
     await waitFor(() => {
-      expect(
-        screen.queryByText("Driver delayed at pickup"),
-      ).not.toBeInTheDocument();
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
     });
-    expect(screen.queryByText("Trailer tire blowout")).not.toBeInTheDocument();
+    // Resolved exception still not shown
+    expect(
+      screen.queryByText("Driver pay discrepancy"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows no-access message for driver role", async () => {
+    mockGetExceptions.mockResolvedValue([]);
     const driverUser = { ...mockUser, role: "driver" as const };
     render(<IssueSidebar {...defaultProps} currentUser={driverUser} />);
     // Driver role is not in the role-mapped list, so shows the non-mapped message
@@ -228,33 +233,44 @@ describe("IssueSidebar component", () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onViewLoad when the view-load arrow button is clicked", async () => {
+  it("calls updateException when admin clicks the resolve button on an exception", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
     });
-    const issueText = screen.getByText("Driver delayed at pickup");
-    const card = issueText.closest("div[class*='rounded-xl']") as HTMLElement;
-    const viewBtn = within(card).getAllByRole("button")[0];
-    await user.click(viewBtn);
-    expect(defaultProps.onViewLoad).toHaveBeenCalledWith(mockLoads[0]);
+    const resolveButtons = screen.getAllByRole("button", {
+      name: "Resolve issue",
+    });
+    await user.click(resolveButtons[0]);
+    expect(mockUpdateException).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ status: "RESOLVED" }),
+    );
   });
 
-  it("resolves an issue when admin clicks the resolve button", async () => {
+  it("does not render resolve buttons for payroll_manager (no canResolve)", async () => {
+    const payrollUser = { ...mockUser, role: "payroll_manager" as const };
+    render(<IssueSidebar {...defaultProps} currentUser={payrollUser} />);
+    await waitFor(() => {
+      expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("button", { name: "Resolve issue" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saveLoad is NOT called when resolving exceptions (legacy behavior removed)", async () => {
     const user = userEvent.setup();
     render(<IssueSidebar {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("Driver delayed at pickup")).toBeInTheDocument();
     });
-    const card = screen
-      .getByText("Driver delayed at pickup")
-      .closest("div[class*='rounded-xl']") as HTMLElement;
-    const buttons = within(card).getAllByRole("button");
-    const resolveBtn = buttons[1];
-    await user.click(resolveBtn);
-    expect(saveLoad).toHaveBeenCalled();
-    expect(defaultProps.onRefresh).toHaveBeenCalled();
+    const resolveButtons = screen.getAllByRole("button", {
+      name: "Resolve issue",
+    });
+    await user.click(resolveButtons[0]);
+    expect(saveLoad).not.toHaveBeenCalled();
   });
 
   it("switches between All Issues and Calls tabs", async () => {
@@ -293,24 +309,34 @@ describe("IssueSidebar component", () => {
     expect(screen.getByText("Dispatcher Jane")).toBeInTheDocument();
   });
 
-  it("shows the No Active Issues empty state when loads have no issues", async () => {
-    const loadsNoIssues: LoadData[] = [
-      {
-        id: "load-x",
-        companyId: "company-1",
-        driverId: "d-1",
-        loadNumber: "LN-X",
-        status: LOAD_STATUS.In_Transit,
-        carrierRate: 1000,
-        driverPay: 600,
-        pickupDate: "2026-01-15",
-        pickup: { city: "A", state: "TX" },
-        dropoff: { city: "B", state: "OK" },
-      },
-    ];
-    render(<IssueSidebar {...defaultProps} loads={loadsNoIssues} />);
+  it("shows the No Active Issues empty state when exceptions API returns no open issues", async () => {
+    mockGetExceptions.mockResolvedValue([]);
+    render(<IssueSidebar {...defaultProps} />);
     await waitFor(() => {
       expect(screen.getByText("No Active Issues")).toBeInTheDocument();
     });
+  });
+
+  it("calls onViewLoad from the call log view button", async () => {
+    const user = userEvent.setup();
+    const loadsWithCalls: LoadData[] = [
+      {
+        ...mockLoads[0],
+        callLogs: [
+          {
+            id: "call-1",
+            type: "Inbound",
+            recordedBy: "Dispatcher Jane",
+            timestamp: "2026-01-15T11:00:00Z",
+            notes: "Driver called about pickup delay",
+          },
+        ],
+      },
+    ];
+    render(<IssueSidebar {...defaultProps} loads={loadsWithCalls} />);
+    await user.click(screen.getByText("Call Matrix"));
+    const viewBtn = screen.getByRole("button", { name: /view/i });
+    await user.click(viewBtn);
+    expect(defaultProps.onViewLoad).toHaveBeenCalledWith(loadsWithCalls[0]);
   });
 });

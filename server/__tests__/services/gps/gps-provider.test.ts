@@ -62,9 +62,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -126,9 +125,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -155,9 +153,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const abortError = new DOMException(
         "The operation was aborted",
@@ -182,9 +179,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       mockFetch.mockResolvedValueOnce({
         ok: false,
@@ -209,9 +205,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const apiResponse = {
         ok: true,
@@ -258,9 +253,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const makeResponse = () => ({
         ok: true,
@@ -309,9 +303,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -351,9 +344,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       mockFetch.mockResolvedValueOnce({
         ok: true,
@@ -368,7 +360,7 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
   });
 
   describe("R-P2-12: Missing SAMSARA_API_TOKEN returns mock positions", () => {
-    it("returns mock positions with isMock: true when no API token", async () => {
+    it("returns empty positions when no API token (no mock fallback)", async () => {
       delete process.env.SAMSARA_API_TOKEN;
 
       vi.doMock("../../../lib/logger", () => ({
@@ -379,20 +371,13 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const adapter = new SamsaraAdapter();
       const positions = await adapter.getVehicleLocations("co-1");
 
-      expect(positions.length).toBeGreaterThan(0);
-      expect(positions.every((p) => (p as any).isMock === true)).toBe(true);
-      // Mock positions should still have required GpsPosition fields
-      expect(positions[0].latitude).toBeDefined();
-      expect(positions[0].longitude).toBeDefined();
-      expect(positions[0].vehicleId).toBeDefined();
-      expect(positions[0].provider).toBe("samsara");
+      expect(positions).toEqual([]);
     });
 
     it("does not call fetch when no API token", async () => {
@@ -406,9 +391,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
         }),
       }));
 
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const adapter = new SamsaraAdapter();
       await adapter.getVehicleLocations("co-1");
@@ -430,9 +414,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
       }));
 
       const { getGpsProvider } = await import("../../../services/gps");
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const provider = getGpsProvider();
       expect(provider).toBeInstanceOf(SamsaraAdapter);
@@ -466,9 +449,8 @@ describe("S-203: GPS Provider Interface + Samsara Adapter", () => {
       }));
 
       const { getGpsProvider } = await import("../../../services/gps");
-      const { SamsaraAdapter } = await import(
-        "../../../services/gps/samsara.adapter"
-      );
+      const { SamsaraAdapter } =
+        await import("../../../services/gps/samsara.adapter");
 
       const provider = getGpsProvider();
       expect(provider).toBeInstanceOf(SamsaraAdapter);

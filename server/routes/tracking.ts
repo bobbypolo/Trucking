@@ -285,31 +285,31 @@ router.get(
         const result = await getGpsProviderForTenant(companyId, pool);
         providerName = result.providerName;
 
-        if (!result.provider) {
-          // No config or missing credentials — fall back to env-based provider
+        if (result.state === "configured-no-credentials") {
+          // Provider configured but missing credentials
+          trackingState = "configured-no-credentials";
+        } else if (!result.provider && result.state === "not-configured") {
+          // No DB config at all — check env-based provider as fallback
           const gps = getGpsProvider();
           positions = await gps.getVehicleLocations(companyId);
+          // env-based adapter returns empty when no token (no mock data)
           trackingState =
             positions.length > 0 ? "configured-live" : "not-configured";
-        } else {
+        } else if (result.provider) {
+          // DB-backed provider with credentials — fetch real positions
           positions = await result.provider.getVehicleLocations(companyId);
           trackingState =
             positions.length > 0 ? "configured-live" : "configured-idle";
+        } else {
+          // Webhook or other null-provider configured state
+          trackingState = result.state;
         }
       } catch (providerErr) {
         log.error(
           { err: providerErr },
-          "GPS provider lookup failed, using env fallback",
+          "GPS provider lookup failed",
         );
-        // DB query or provider instantiation failed — use env-based fallback
-        const gps = getGpsProvider();
-        try {
-          positions = await gps.getVehicleLocations(companyId);
-          trackingState =
-            positions.length > 0 ? "configured-live" : "configured-idle";
-        } catch {
-          trackingState = "provider-error";
-        }
+        trackingState = "provider-error";
       }
 
       // Store positions in DB (best-effort)
@@ -690,7 +690,7 @@ router.post(
 
     try {
       const [rows]: any = await pool.query(
-        `SELECT id, provider_name, api_token, webhook_secret
+        `SELECT id, provider_name, api_token, webhook_url, webhook_secret
          FROM tracking_provider_configs
          WHERE id = ? AND company_id = ?`,
         [configId, companyId],
@@ -701,18 +701,17 @@ router.post(
       }
 
       const config = rows[0];
-
-      if (!config.api_token) {
-        return res.json({
-          status: "no_credentials",
-          message: "No API token configured for this provider",
-        });
-      }
-
       const startMs = Date.now();
 
-      // Test by calling the provider API with the stored token
+      // Test Samsara provider — call the real API with stored token
       if (config.provider_name === "samsara") {
+        if (!config.api_token) {
+          return res.json({
+            status: "no_credentials",
+            message: "No API token configured for this provider",
+          });
+        }
+
         try {
           const response = await fetch(
             "https://api.samsara.com/fleet/vehicles/locations",
@@ -748,14 +747,15 @@ router.post(
               latencyMs,
             });
           }
-        } catch (err: any) {
+        } catch (err: unknown) {
           const latencyMs = Date.now() - startMs;
           const isTimeout =
             err instanceof DOMException &&
             (err.name === "AbortError" || err.name === "TimeoutError");
+          const errMessage = err instanceof Error ? err.message : String(err);
 
           log.warn(
-            { companyId, configId, latencyMs, err: err.message },
+            { companyId, configId, latencyMs, err: errMessage },
             "Provider test failed",
           );
 
@@ -763,23 +763,91 @@ router.post(
             status: "failed",
             message: isTimeout
               ? "Connection timed out after 8 seconds"
-              : `Connection failed: ${err.message}`,
+              : `Connection failed: ${errMessage}`,
             latencyMs,
           });
         }
       }
 
-      // Webhook provider — verify webhook secret is configured
+      // Webhook provider — validate actual connectivity to the configured webhook URL
       if (config.provider_name === "webhook") {
-        const hasSecret =
-          config.webhook_secret && config.webhook_secret.length > 0;
-        return res.json({
-          status: hasSecret ? "success" : "no_credentials",
-          message: hasSecret
-            ? "Webhook secret configured — ready to receive GPS data"
-            : "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
-          latencyMs: Date.now() - startMs,
-        });
+        if (!config.webhook_url) {
+          return res.json({
+            status: "no_credentials",
+            message: "No webhook URL configured. Set a webhook URL to enable GPS data ingestion.",
+            latencyMs: Date.now() - startMs,
+          });
+        }
+
+        if (!config.webhook_secret) {
+          return res.json({
+            status: "no_credentials",
+            message: "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
+            latencyMs: Date.now() - startMs,
+          });
+        }
+
+        // Perform actual HTTP POST to the webhook URL with a test payload
+        try {
+          const testPayload = {
+            type: "connectivity_test",
+            timestamp: new Date().toISOString(),
+            source: "loadpilot",
+          };
+
+          const response = await fetch(config.webhook_url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-GPS-API-Key": config.webhook_secret,
+            },
+            body: JSON.stringify(testPayload),
+            signal: AbortSignal.timeout(8000),
+          });
+
+          const latencyMs = Date.now() - startMs;
+
+          if (response.ok || response.status === 201) {
+            log.info(
+              { companyId, configId, latencyMs },
+              "Webhook connectivity test succeeded",
+            );
+            return res.json({
+              status: "success",
+              message: `Webhook endpoint reachable (HTTP ${response.status})`,
+              latencyMs,
+            });
+          } else {
+            log.warn(
+              { companyId, configId, httpStatus: response.status, latencyMs },
+              "Webhook connectivity test returned non-OK status",
+            );
+            return res.json({
+              status: "failed",
+              message: `Webhook endpoint returned HTTP ${response.status}`,
+              latencyMs,
+            });
+          }
+        } catch (err: unknown) {
+          const latencyMs = Date.now() - startMs;
+          const isTimeout =
+            err instanceof DOMException &&
+            (err.name === "AbortError" || err.name === "TimeoutError");
+          const errMessage = err instanceof Error ? err.message : String(err);
+
+          log.warn(
+            { companyId, configId, latencyMs, err: errMessage },
+            "Webhook connectivity test failed",
+          );
+
+          return res.json({
+            status: "failed",
+            message: isTimeout
+              ? "Webhook endpoint timed out after 8 seconds"
+              : `Webhook endpoint unreachable: ${errMessage}`,
+            latencyMs,
+          });
+        }
       }
 
       // Unsupported provider

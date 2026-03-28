@@ -214,19 +214,6 @@ describe("R-P1-01: GET routes include company_id filter", () => {
     expect(params as unknown[]).toContain(TEST_TENANT_ID);
   });
 
-  it("GET /api/accounting/docs — SQL contains company_id and params include tenantId", async () => {
-    const app = buildApp();
-    await request(app)
-      .get("/api/accounting/docs")
-      .set("Authorization", AUTH_HEADER)
-      .send();
-
-    expect(mockPoolQuery).toHaveBeenCalled();
-    const [sql, params] = mockPoolQuery.mock.calls[0];
-    expect((sql as string).toLowerCase()).toContain("company_id");
-    expect(params as unknown[]).toContain(TEST_TENANT_ID);
-  });
-
   it("GET /api/accounting/ifta-evidence/:loadId — SQL contains company_id and params include tenantId", async () => {
     const app = buildApp();
     await request(app)
@@ -390,30 +377,6 @@ describe("R-P1-02: POST routes use req.user.tenantId for INSERT company_id", () 
     expect(allInsertParams).not.toContain(BODY_TENANT_ID);
   });
 
-  it("POST /api/accounting/docs — uses req.user.tenantId, NOT body tenantId or DEFAULT", async () => {
-    const app = buildApp();
-    await request(app)
-      .post("/api/accounting/docs")
-      .set("Authorization", AUTH_HEADER)
-      .send({
-        id: "doc-001",
-        tenantId: BODY_TENANT_ID,
-        type: "BOL",
-        url: "https://example.com/doc.pdf",
-        filename: "doc.pdf",
-        loadId: "load-001",
-        status: "Draft",
-      });
-
-    expect(mockPoolQuery).toHaveBeenCalled();
-    const allParams = mockPoolQuery.mock.calls
-      .map((call: any[]) => call[1])
-      .flat();
-    expect(allParams).toContain(TEST_TENANT_ID);
-    expect(allParams).not.toContain(BODY_TENANT_ID);
-    expect(allParams).not.toContain("DEFAULT");
-  });
-
   it("POST /api/accounting/ifta-audit-lock — INSERT includes company_id = req.user.tenantId", async () => {
     const app = buildApp();
     await request(app)
@@ -554,46 +517,5 @@ describe("R-P1-03: No DEFAULT fallback company_id values (structural)", () => {
   });
 });
 
-// ============================================================
-// PATCH /api/accounting/docs/:id — tenant isolation
-// ============================================================
-
-describe("PATCH /api/accounting/docs/:id — tenant isolation", () => {
-  it("SQL contains company_id in WHERE clause and params include req.user.tenantId", async () => {
-    const app = buildApp();
-    await request(app)
-      .patch("/api/accounting/docs/doc-001")
-      .set("Authorization", AUTH_HEADER)
-      .send({ status: "Approved", is_locked: true });
-
-    expect(mockPoolQuery).toHaveBeenCalled();
-    const [sql, params] = mockPoolQuery.mock.calls[0];
-    expect((sql as string).toLowerCase()).toContain("company_id");
-    expect(params as unknown[]).toContain(TEST_TENANT_ID);
-  });
-
-  it("cannot modify a document belonging to a different tenant", async () => {
-    const ATTACKER_TENANT = "tenant-attacker-xyz";
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
-      ...DEFAULT_SQL_PRINCIPAL,
-      tenantId: ATTACKER_TENANT,
-      companyId: ATTACKER_TENANT,
-    });
-
-    const attackerApp = buildApp();
-
-    // Return 0 affected rows (the attacker's tenantId doesn't match victim's doc)
-    mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
-
-    await request(attackerApp)
-      .patch("/api/accounting/docs/victim-doc-001")
-      .set("Authorization", AUTH_HEADER)
-      .send({ status: "Approved", is_locked: true });
-
-    expect(mockPoolQuery).toHaveBeenCalled();
-    const [sql, params] = mockPoolQuery.mock.calls[0];
-    expect((sql as string).toLowerCase()).toContain("company_id");
-    expect(params as unknown[]).toContain(ATTACKER_TENANT);
-    expect(params as unknown[]).not.toContain(TEST_TENANT_ID);
-  });
-});
+// Note: PATCH /api/accounting/docs/:id tests removed — document operations
+// moved to canonical /api/documents endpoint (Agent 9).

@@ -105,6 +105,7 @@ import {
   Globe,
   ChevronLeft,
   Radio,
+  Wallet,
 } from "lucide-react";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
@@ -121,6 +122,11 @@ const CustomerPortalView = React.lazy(() =>
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
+const Settlements = React.lazy(() =>
+  import("./components/Settlements").then((m) => ({
+    default: m.Settlements,
+  })),
+);
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -164,16 +170,7 @@ interface NavCategory {
 }
 
 /** Valid tab IDs for AccountingPortal. */
-type AccountingPortalTab =
-  | "DASHBOARD"
-  | "AR"
-  | "AP"
-  | "SETTLEMENTS"
-  | "GL"
-  | "IFTA"
-  | "VAULT"
-  | "MAINTENANCE"
-  | "AUTOMATION";
+type AccountingPortalTab = "DASHBOARD" | "AR" | "AP" | "GL" | "IFTA" | "VAULT";
 
 const LEGACY_TAB_ALIASES: Record<string, string> = {
   analytics: "operations-hub",
@@ -183,6 +180,8 @@ const LEGACY_TAB_ALIASES: Record<string, string> = {
   finance: "accounting",
   map: "operations-hub",
   safety: "exceptions",
+  settlements: "driver-pay",
+  payroll: "driver-pay",
 };
 
 export default function App() {
@@ -580,6 +579,11 @@ export default function App() {
           icon: Building2,
           permission: "INVOICE_CREATE",
         },
+        {
+          id: "driver-pay",
+          label: "Driver Pay",
+          icon: Wallet,
+        },
       ],
     },
     {
@@ -970,7 +974,11 @@ export default function App() {
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <QuoteManager user={user} company={company} />
+                  <QuoteManager
+                    user={user}
+                    company={company}
+                    onLoadCreated={() => refreshData(user)}
+                  />
                 </Suspense>
               )}
               {activeTab === "loads" && (
@@ -1069,6 +1077,18 @@ export default function App() {
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
+                    onNavigate={handleNavigate}
+                  />
+                </Suspense>
+              )}
+              {activeTab === "driver-pay" && (
+                <Suspense
+                  fallback={<LoadingSkeleton variant="card" count={3} />}
+                >
+                  <Settlements
+                    loads={loads}
+                    users={companyUsers}
+                    onUserUpdate={() => refreshData(user!)}
                     onNavigate={handleNavigate}
                   />
                 </Suspense>

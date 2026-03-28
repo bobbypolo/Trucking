@@ -285,7 +285,10 @@ describe("CompanyProfile deep coverage", () => {
       await waitFor(() => {
         expect(mockUpdateCompany).toHaveBeenCalledWith(
           expect.objectContaining({
-            supportedFreightTypes: expect.arrayContaining(["Dry Van", "Reefer"]),
+            supportedFreightTypes: expect.arrayContaining([
+              "Dry Van",
+              "Reefer",
+            ]),
           }),
         );
       });
@@ -439,8 +442,8 @@ describe("CompanyProfile deep coverage", () => {
     });
   });
 
-  describe("payroll_manager role has admin access", () => {
-    it("shows admin tabs for payroll_manager role", async () => {
+  describe("payroll_manager role is read-only (not admin)", () => {
+    it("shows read-only banner for payroll_manager role", async () => {
       const payrollUser: User = {
         ...adminUser,
         role: "payroll_manager",
@@ -455,11 +458,8 @@ describe("CompanyProfile deep coverage", () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText("Identity")).toBeInTheDocument();
+        expect(screen.getByText(/viewing as read-only/i)).toBeInTheDocument();
       });
-
-      expect(screen.getByText("Operations")).toBeInTheDocument();
-      expect(screen.getByText("Personnel")).toBeInTheDocument();
     });
   });
 });

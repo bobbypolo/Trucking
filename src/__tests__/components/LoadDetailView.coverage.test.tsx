@@ -5,23 +5,26 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LoadDetailView } from "../../../components/LoadDetailView";
 import { LoadData, User, Broker, LOAD_STATUS } from "../../../types";
 
-vi.mock("../../../services/financialService", () => ({
-  getVaultDocs: vi.fn().mockResolvedValue([
+vi.mock("../../../services/storage/vault", () => ({
+  getDocuments: vi.fn().mockResolvedValue([
     {
       id: "doc-1",
       filename: "BOL-001.pdf",
-      docType: "BOL",
+      type: "BOL",
       uploadedAt: "2025-12-01T08:00:00Z",
       fileSize: 102400,
     },
     {
       id: "doc-2",
       filename: "POD-001.pdf",
-      docType: "POD",
+      type: "POD",
       uploadedAt: "2025-12-03T16:00:00Z",
       fileSize: 204800,
     },
   ]),
+}));
+
+vi.mock("../../../services/financialService", () => ({
   createARInvoice: vi.fn().mockResolvedValue({ id: "inv-1" }),
 }));
 

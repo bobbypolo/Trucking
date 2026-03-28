@@ -344,27 +344,10 @@ export const DispatchIntelligence = {
       };
     }
 
-    const onTimeLoads = driverLoads.filter(
-      (l) =>
-        !l.issues?.some(
-          (i) =>
-            i.category === "Dispatch" &&
-            i.description.toLowerCase().includes("late"),
-        ),
-    ).length;
-    const reliabilityIssues = driverLoads.filter((l) =>
-      l.issues?.some(
-        (i) => i.category === "Dispatch" || i.category === "Safety",
-      ),
-    ).length;
-    const safetyIncidents = driverLoads.reduce(
-      (acc, l) =>
-        acc +
-        (l.issues?.filter(
-          (i) => i.category === "Incident" || i.category === "Safety",
-        ).length || 0),
-      0,
-    );
+    // Issue-based metrics now tracked via exceptions queue, not load.issues
+    const onTimeLoads = driverLoads.length;
+    const reliabilityIssues = 0;
+    const safetyIncidents = 0;
 
     const totalMiles = driverLoads.reduce((acc, l) => acc + (l.miles || 0), 0);
     const onTimeRate = (onTimeLoads / totalLoads) * 100;

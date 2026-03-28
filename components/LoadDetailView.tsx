@@ -41,7 +41,8 @@ import {
   Trash2,
   Activity,
 } from "lucide-react";
-import { getVaultDocs, createARInvoice } from "../services/financialService";
+import { createARInvoice } from "../services/financialService";
+import { getDocuments } from "../services/storage/vault";
 import { saveLoad, generateBolPDF } from "../services/storageService";
 import { api } from "../services/api";
 import { useCurrentUser } from "../hooks/useCurrentUser";
@@ -112,7 +113,7 @@ export const LoadDetailView: React.FC<Props> = ({
 
   const loadVault = async () => {
     try {
-      const docs = await getVaultDocs({ loadId: load.id });
+      const docs = await getDocuments({ load_id: load.id });
       setVaultDocs(docs);
     } catch (e) {
       // Vault docs unavailable — non-blocking, UI shows empty state

@@ -38,5 +38,12 @@ export {
   saveContact,
   getDirectory,
 } from "./directory";
-export { getRawVaultDocs, uploadVaultDoc } from "./vault";
+export {
+  getDocuments,
+  getRawVaultDocs,
+  uploadVaultDoc,
+  updateDocumentStatus,
+  downloadVaultDoc,
+  getDocumentDownloadUrl,
+} from "./vault";
 export { getRawNotificationJobs, saveNotificationJob } from "./notifications";

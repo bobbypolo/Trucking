@@ -1665,18 +1665,32 @@ export interface EquipmentAsset {
   capabilities: string[];
 }
 
+/**
+ * Canonical entity classes for the party registry.
+ * Legacy types (Shipper, Carrier, Vendor_Service, etc.) are aliased
+ * to these 5 classes on write via normalizeEntityClass().
+ */
+export type EntityClass =
+  | "Customer"
+  | "Broker"
+  | "Vendor"
+  | "Facility"
+  | "Contractor";
+
 export interface NetworkParty {
   id: string;
   companyId?: string;
-  tenantId: string;
+  tenantId?: string;
   name: string;
   type: PartyType;
+  entityClass?: EntityClass;
   status: OnboardingStatus;
   isCustomer?: boolean;
   isVendor?: boolean;
   mcNumber?: string;
   dotNumber?: string;
   rating?: number;
+  tags?: string[];
 
   contacts: PartyContact[];
   documents?: PartyDocument[];
@@ -1706,6 +1720,12 @@ export interface NetworkParty {
     serviceArea?: string[];
     taxId?: string;
     offeringTypes?: string[];
+    equipmentOwnership?: string;
+    insuranceProvider?: string;
+    insurancePolicyNumber?: string;
+    cdlNumber?: string;
+    cdlState?: string;
+    cdlExpiry?: string;
   };
   preferredPartners?: {
     id: string;

@@ -126,11 +126,9 @@ describe("DriverMobileHome localStorage persistence (R-P4-09, R-P4-10)", () => {
       />,
     );
 
-    // Go to docs tab
-    const docsBtn = screen.getByText("Docs").closest("button");
-    await user.click(docsBtn!);
-    expect(localStorage.getItem("driver_driver-99_activeTab")).toBe(
-      "documents",
-    );
+    // Go to pay tab
+    const payBtn = screen.getByText("Pay").closest("button");
+    await user.click(payBtn!);
+    expect(localStorage.getItem("driver_driver-99_activeTab")).toBe("pay");
   });
 });

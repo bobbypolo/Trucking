@@ -40,7 +40,6 @@ import { addDriver } from "../services/authService";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import {
   createSettlement,
-  uploadToVault,
   getSettlements,
   getBills,
   batchFinalizeSettlements,
@@ -77,8 +76,9 @@ export const Settlements: React.FC<Props> = ({
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [finalizedLoads, setFinalizedLoads] = useState<Set<string>>(new Set());
-  const [feedback, showFeedback, clearFeedback] =
-    useAutoFeedback<string | null>(null);
+  const [feedback, showFeedback, clearFeedback] = useAutoFeedback<
+    string | null
+  >(null);
   const [settlements, setSettlements] = useState<DriverSettlement[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -155,7 +155,7 @@ export const Settlements: React.FC<Props> = ({
       totalDeductions: data.deductions.reduce((s, d) => s + d.amount, 0),
       totalReimbursements: data.reimbursements,
       netPay: data.netPay,
-      status: "Paid",
+      status: "Draft",
       lines: [
         {
           id: uuidv4(),
@@ -186,28 +186,6 @@ export const Settlements: React.FC<Props> = ({
     if (onUserUpdate) onUserUpdate();
   };
 
-  const handleGenerateStatement = async (user: User) => {
-    const data = calculatePayData(user);
-    const docId = uuidv4();
-
-    // Statement vault entry — URL is populated by real PDF generation in production.
-    await uploadToVault({
-      id: docId,
-      tenantId: currentUser?.companyId || "",
-      type: "Statement",
-      filename: `Statement_${user.name.replace(" ", "_")}_${new Date().toISOString().split("T")[0]}.pdf`,
-      url: "",
-      driverId: user.id,
-      status: "Locked",
-      isLocked: true,
-      createdBy: currentUser?.name || "System",
-    });
-
-    showFeedback(
-      `Audit-Ready Statement generated and saved to Vault for ${user.name}`,
-    );
-  };
-
   const handleBatchPrint = async () => {
     const deliveredLoads = loads.filter((l) => l.status === "delivered");
     if (deliveredLoads.length === 0) {
@@ -232,8 +210,16 @@ export const Settlements: React.FC<Props> = ({
         doc.setFontSize(11);
         doc.text(`${idx + 1}. Load #${load.loadNumber}`, 14, yPos);
         doc.setFontSize(9);
-        doc.text(`Customer: ${load.pickup?.facilityName ?? "N/A"}`, 20, yPos + 6);
-        doc.text(`Amount: $${(load.carrierRate || 0).toLocaleString()}`, 20, yPos + 12);
+        doc.text(
+          `Customer: ${load.pickup?.facilityName ?? "N/A"}`,
+          20,
+          yPos + 6,
+        );
+        doc.text(
+          `Amount: $${(load.carrierRate || 0).toLocaleString()}`,
+          20,
+          yPos + 12,
+        );
         doc.text(
           `Route: ${load.pickup?.city ?? ""}, ${load.pickup?.state ?? ""} → ${load.dropoff?.city ?? ""}, ${load.dropoff?.state ?? ""}`,
           20,
@@ -243,7 +229,9 @@ export const Settlements: React.FC<Props> = ({
       });
 
       doc.save("settlement-batch-report.pdf");
-      showFeedback(`PDF generated — ${deliveredLoads.length} settlement(s) printed.`);
+      showFeedback(
+        `PDF generated — ${deliveredLoads.length} settlement(s) printed.`,
+      );
     } catch (err) {
       console.error("[Settlements] Batch Print PDF error:", err);
       showFeedback("Failed to generate PDF. Please try again.");
@@ -258,7 +246,7 @@ export const Settlements: React.FC<Props> = ({
     }
     try {
       const ids = deliveredLoads.map((l) => l.id);
-      await batchFinalizeSettlements(ids, "Finalized");
+      await batchFinalizeSettlements(ids, "Approved");
       setFinalizedLoads(new Set(ids));
       showFeedback(
         `Finalized ${deliveredLoads.length} settlement(s). Ledger updated.`,
@@ -275,7 +263,16 @@ export const Settlements: React.FC<Props> = ({
       showFeedback("No delivered loads to export.");
       return;
     }
-    const headers = ["Load #", "Customer", "Amount", "Status", "Pickup City", "Pickup State", "Dropoff City", "Dropoff State"];
+    const headers = [
+      "Load #",
+      "Customer",
+      "Amount",
+      "Status",
+      "Pickup City",
+      "Pickup State",
+      "Dropoff City",
+      "Dropoff State",
+    ];
     const rows = deliveredLoads.map((l) => [
       l.loadNumber || "",
       l.pickup?.facilityName ?? "",
@@ -286,7 +283,10 @@ export const Settlements: React.FC<Props> = ({
       l.dropoff?.city ?? "",
       l.dropoff?.state ?? "",
     ]);
-    const csvContent = [headers.join(","), ...rows.map((r) => r.map((v) => `"${v}"`).join(","))].join("\n");
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((r) => r.map((v) => `"${v}"`).join(",")),
+    ].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -424,9 +424,7 @@ export const Settlements: React.FC<Props> = ({
       )}
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar pb-24">
-        {isLoading && (
-          <LoadingSkeleton variant="table" count={5} />
-        )}
+        {isLoading && <LoadingSkeleton variant="table" count={5} />}
         {!isLoading && loadError && (
           <ErrorState message={loadError} onRetry={loadAccountingData} />
         )}
@@ -529,7 +527,9 @@ export const Settlements: React.FC<Props> = ({
                           e.stopPropagation();
                           setExpandedUser(isExpanded ? null : u.id);
                         }}
-                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                        aria-label={
+                          isExpanded ? "Collapse details" : "Expand details"
+                        }
                         className="text-slate-500 hover:text-white transition-colors"
                       >
                         {isExpanded ? (
@@ -707,15 +707,6 @@ export const Settlements: React.FC<Props> = ({
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleGenerateStatement(u);
-                          }}
-                          className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold flex items-center gap-2 border border-slate-700 transition-all active:scale-95"
-                        >
-                          <Printer className="w-4 h-4" /> Generate Statement
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
                             handleAuthorize(u);
                           }}
                           className="bg-green-600 hover:bg-green-500 text-white px-8 py-4 rounded-xl font-bold flex items-center gap-3 transition-all shadow-lg shadow-green-500/20 active:scale-95 border border-green-400/30"
@@ -796,7 +787,9 @@ export const Settlements: React.FC<Props> = ({
                                   setExpandedRow(isRowExpanded ? null : load.id)
                                 }
                                 className="text-slate-500 hover:text-white transition-colors"
-                                title={isRowExpanded ? "Collapse row" : "Expand row"}
+                                title={
+                                  isRowExpanded ? "Collapse row" : "Expand row"
+                                }
                               >
                                 {isRowExpanded ? (
                                   <ChevronDown className="w-4 h-4" />
@@ -809,23 +802,29 @@ export const Settlements: React.FC<Props> = ({
                               {load.loadNumber}
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-400">
-                              {load.pickup?.facilityName ?? ''}
+                              {load.pickup?.facilityName ?? ""}
                             </td>
                             <td className="px-6 py-4 text-sm font-mono text-white">
                               ${(load.carrierRate || 0).toLocaleString()}
                             </td>
                             <td className="px-6 py-4">
-                              <span className={`text-[10px] font-bold px-2 py-1 rounded-full border uppercase ${
-                                finalizedLoads.has(load.id)
-                                  ? "text-green-400 bg-green-900/20 border-green-900/50"
-                                  : "text-blue-400 bg-blue-900/20 border-blue-900/50"
-                              }`}>
-                                {finalizedLoads.has(load.id) ? "Finalized" : "Pending Invoice"}
+                              <span
+                                className={`text-[10px] font-bold px-2 py-1 rounded-full border uppercase ${
+                                  finalizedLoads.has(load.id)
+                                    ? "text-green-400 bg-green-900/20 border-green-900/50"
+                                    : "text-blue-400 bg-blue-900/20 border-blue-900/50"
+                                }`}
+                              >
+                                {finalizedLoads.has(load.id)
+                                  ? "Finalized"
+                                  : "Pending Invoice"}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-right space-x-2">
                               <button
-                                onClick={async () => await generateInvoicePDF(load)}
+                                onClick={async () =>
+                                  await generateInvoicePDF(load)
+                                }
                                 className="text-slate-500 hover:text-white"
                                 title="Generate PDF"
                               >
@@ -838,25 +837,46 @@ export const Settlements: React.FC<Props> = ({
                               <td colSpan={6} className="px-8 py-4">
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div>
-                                    <span className="text-slate-500 text-xs uppercase font-bold">Route:</span>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">
+                                      Route:
+                                    </span>
                                     <span className="text-slate-300 ml-2">
-                                      {load.pickup?.city ?? ""}, {load.pickup?.state ?? ""} → {load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}
+                                      {load.pickup?.city ?? ""},{" "}
+                                      {load.pickup?.state ?? ""} →{" "}
+                                      {load.dropoff?.city ?? ""},{" "}
+                                      {load.dropoff?.state ?? ""}
                                     </span>
                                   </div>
                                   <div>
-                                    <span className="text-slate-500 text-xs uppercase font-bold">Driver Pay:</span>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">
+                                      Driver Pay:
+                                    </span>
                                     <span className="text-slate-300 ml-2 font-mono">
-                                      ${(load.driverPay || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      $
+                                      {(load.driverPay || 0).toLocaleString(
+                                        undefined,
+                                        { minimumFractionDigits: 2 },
+                                      )}
                                     </span>
                                   </div>
                                   <div>
-                                    <span className="text-slate-500 text-xs uppercase font-bold">Pickup Date:</span>
-                                    <span className="text-slate-300 ml-2">{load.pickupDate ?? "N/A"}</span>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">
+                                      Pickup Date:
+                                    </span>
+                                    <span className="text-slate-300 ml-2">
+                                      {load.pickupDate ?? "N/A"}
+                                    </span>
                                   </div>
                                   <div>
-                                    <span className="text-slate-500 text-xs uppercase font-bold">Carrier Rate:</span>
+                                    <span className="text-slate-500 text-xs uppercase font-bold">
+                                      Carrier Rate:
+                                    </span>
                                     <span className="text-slate-300 ml-2 font-mono">
-                                      ${(load.carrierRate || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                      $
+                                      {(load.carrierRate || 0).toLocaleString(
+                                        undefined,
+                                        { minimumFractionDigits: 2 },
+                                      )}
                                     </span>
                                   </div>
                                 </div>

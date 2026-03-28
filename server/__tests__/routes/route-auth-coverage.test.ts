@@ -288,6 +288,7 @@ vi.mock("../../lib/safe-update", () => ({
 vi.mock("../../schemas/booking", () => ({
   createBookingSchema: { parse: (v: any) => v },
   updateBookingSchema: { parse: (v: any) => v },
+  convertBookingSchema: { parse: (v: any) => v },
 }));
 
 vi.mock("../../schemas/contact", () => ({
@@ -567,7 +568,6 @@ import stripeRouter from "../../routes/stripe";
 import tasksRouter from "../../routes/tasks";
 import trackingRouter from "../../routes/tracking";
 import usersRouter from "../../routes/users";
-import vaultDocsRouter from "../../routes/vault-docs";
 import weatherRouter from "../../routes/weather";
 
 function buildApp(): express.Express {
@@ -607,7 +607,6 @@ function buildApp(): express.Express {
   app.use(tasksRouter);
   app.use(trackingRouter);
   app.use(usersRouter);
-  app.use(vaultDocsRouter);
   app.use(weatherRouter);
 
   app.use(errorHandler);
@@ -872,12 +871,6 @@ describe("Route Authorization Coverage (CORE-07)", () => {
       expect(res.status).toBe(401);
     });
 
-    // vault-docs.ts
-    it("GET /api/vault-docs -> 401", async () => {
-      const res = await request(app).get("/api/vault-docs");
-      expect(res.status).toBe(401);
-    });
-
     // weather.ts
     it("GET /api/weather?lat=30&lng=-90 -> 401", async () => {
       const res = await request(app).get("/api/weather?lat=30&lng=-90");
@@ -1021,12 +1014,6 @@ describe("Route Authorization Coverage (CORE-07)", () => {
       expect(res.status).not.toBe(403);
     });
 
-    it("GET /api/vault-docs -> not 401/403", async () => {
-      const res = await request(app).get("/api/vault-docs");
-      expect(res.status).not.toBe(401);
-      expect(res.status).not.toBe(403);
-    });
-
     it("GET /api/weather?lat=30&lng=-90 -> not 401/403", async () => {
       const res = await request(app).get("/api/weather?lat=30&lng=-90");
       expect(res.status).not.toBe(401);
@@ -1047,7 +1034,7 @@ describe("Route Authorization Coverage (CORE-07)", () => {
       // health, incidents, kci-requests, leads, loads,
       // messages, metrics, notification-jobs, providers,
       // quickbooks, quotes, safety, service-tickets, stripe,
-      // tasks, tracking, users, vault-docs, weather
+      // tasks, tracking, users, weather
       expect(moduleCount).toBe(34);
     });
   });

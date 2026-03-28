@@ -10,6 +10,7 @@ import {
 } from "../schemas/service-ticket";
 import { serviceTicketRepository } from "../repositories/service-ticket.repository";
 import { createChildLogger } from "../lib/logger";
+import { syncDomainToException } from "../lib/exception-sync";
 import pool from "../db";
 
 const router = Router();
@@ -130,6 +131,29 @@ router.patch(
         req.body,
         userId,
       );
+
+      // Reverse sync: if status changed, update linked exception
+      if (req.body.status && req.body.status !== existing.status) {
+        try {
+          await syncDomainToException(
+            "serviceTicketId",
+            req.params.id,
+            companyId,
+            req.body.status,
+            req.correlationId,
+          );
+        } catch (syncErr) {
+          const syncLog = createChildLogger({
+            correlationId: req.correlationId,
+            route: "PATCH /api/service-tickets/:id",
+          });
+          syncLog.warn(
+            { err: syncErr, ticketId: req.params.id },
+            "Failed to sync service ticket status to exception (non-blocking)",
+          );
+        }
+      }
+
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: "Database error" });

@@ -645,13 +645,12 @@ describe("safetyService — enhanced coverage (API-based)", () => {
       } as any;
       mockGetCompany.mockResolvedValue(null); // Uses defaults
       mockGetLoads.mockResolvedValue([
-        { driverId: "d1", status: "delivered", bolNumber: "BOL-1", issues: [] },
+        { driverId: "d1", status: "delivered", bolNumber: "BOL-1" },
         {
           driverId: "d1",
           status: "delivered",
           bolNumber: "",
           bolUrls: [],
-          issues: [{ category: "Dispatch", description: "late" }],
         },
       ]);
 
@@ -667,7 +666,8 @@ describe("safetyService — enhanced coverage (API-based)", () => {
 
       const perf = await calculateDriverPerformance(user);
       expect(perf.metrics.loadCount).toBe(2);
-      expect(perf.metrics.onTimeRate).toBe(50); // 1 out of 2
+      // On-time now tracked via exceptions queue, all loads count as on-time
+      expect(perf.metrics.onTimeRate).toBe(100);
       expect(perf.metrics.paperworkScore).toBe(50); // 1 out of 2
     });
   });

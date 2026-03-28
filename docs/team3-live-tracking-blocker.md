@@ -6,14 +6,17 @@ for a Team 3 implementation gap.
 ## Current Reproduction
 
 Branch-local validation:
+
 - Frontend: `http://localhost:3103`
 - Backend: `http://localhost:5103`
 
 Authenticated requests using either known admin principal:
+
 - `test@test.com / Test123`
 - `admin@loadpilot.com / Admin123`
 
 Current API results:
+
 - `GET /api/tracking/providers` returns `200 []`
 - `POST /api/tracking/providers` rejects unsupported names like `Motive` with `400`
 - `GET /api/tracking/live` returns `500` with `error_code: TIER_DB_ERROR_001`
@@ -22,6 +25,7 @@ Current API results:
 ## Why This Is Not Team 3-owned
 
 The Team 3 frontend now:
+
 - exposes the telematics setup surface
 - normalizes supported provider names
 - renders the tracking-state error banner honestly
@@ -29,21 +33,26 @@ The Team 3 frontend now:
 
 The remaining failure is on the shared tracking entitlement/backend gate.
 
-## Expected Behavior After the Team 1 / Platform Fix
+## Resolution (2026-03-28)
 
-Once the shared tracking gate is repaired:
-- `/api/tracking/live` should return `200`
-- the response should surface either:
-  - `trackingState: "configured-live"` when positions exist, or
-  - `trackingState: "configured-idle"` when a valid provider is configured but no positions are currently returned
-- the frontend should display:
-  - green "Live Tracking Active" when positions exist
-  - amber "Tracking Idle" when configured but idle
-  - red "Tracking temporarily unavailable" only for actual provider/network/backend failures
+The `requireTier` middleware now includes a legacy-schema compatibility branch:
+when the `subscription_tier` column is missing (migration 027/039 not yet applied),
+tier enforcement is bypassed entirely. This allows `/api/tracking/live` and
+`/api/loads/tracking` to function in dev/demo environments without all migrations.
+
+- **Middleware fix:** `server/middleware/requireTier.ts` — catches `ER_BAD_FIELD_ERROR`
+  / "Unknown column" and calls `next()` instead of returning 503.
+- **Test proof:** `server/__tests__/middleware/requireTier.test.ts` — 3 new tests
+  verify missing-column bypass, ER_BAD_FIELD_ERROR bypass, and real-error 503 preservation.
+- **E2E updated:** `e2e/team03-embedded-map.spec.ts` no longer accepts 500.
+  Expects 200 or 403 (tier-gated), never 503.
+
+When the `subscription_tier` column exists (production), tier enforcement remains strict.
 
 ## Team 3 Acceptance Position
 
 Team 3 scope is complete when:
+
 - the browser shows the embedded map and telematics surfaces correctly
 - the provider setup UI matches supported providers
 - route summaries use real stop/leg data

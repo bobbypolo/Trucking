@@ -607,7 +607,10 @@ describe("POST /api/clients — company_id enforcement (STORY-006)", () => {
   });
 });
 
-// ── POST /api/parties — fallback to customers table ─────────────────────────
+// ── POST /api/parties — 503 when parties table is missing ───────────────────
+// Per product requirements: explicit failure, no silent degradation to
+// the customers table. When parties table does not exist, the route must
+// return 503 so the caller knows the feature is unavailable.
 
 function makeMissingTableError(tableName: string) {
   const err: any = new Error(`Table '${tableName}' doesn't exist`);
@@ -615,7 +618,7 @@ function makeMissingTableError(tableName: string) {
   return err;
 }
 
-describe("POST /api/parties - fallback to customers table", () => {
+describe("POST /api/parties - 503 when parties table is missing", () => {
   let app: ReturnType<typeof buildApp>;
 
   beforeEach(() => {
@@ -628,11 +631,9 @@ describe("POST /api/parties - fallback to customers table", () => {
     mockGetConnection.mockResolvedValue(mockConnection);
   });
 
-  it("preserves original entityClass when falling back to customers table", async () => {
-    // The first connection.query is the REPLACE INTO parties — throw missing table
+  it("returns 503 when parties table does not exist (entityClass payload)", async () => {
+    // REPLACE INTO parties throws ER_NO_SUCH_TABLE — no fallback
     mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
-    // pool.query for the fallback REPLACE INTO customers
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const res = await request(app)
       .post("/api/parties")
@@ -643,20 +644,11 @@ describe("POST /api/parties - fallback to customers table", () => {
         entityClass: "Vendor",
       });
 
-    expect(res.status).toBe(201);
-    // The fallback INSERT into customers should use entityClass ("Vendor"), not type ("Broker")
-    const fallbackCall = mockQuery.mock.calls[0];
-    const sql = fallbackCall[0] as string;
-    expect(sql).toContain("REPLACE INTO customers");
-    const params = fallbackCall[1] as any[];
-    // params layout: [id, finalTenantId, name, entityClass||type, mcNumber, dotNumber, email, phone, address, payment_terms, chassisJson]
-    // Index 3 = entityClass || type
-    expect(params[3]).toBe("Vendor");
+    expect(res.status).toBe(503);
   });
 
-  it("intentionally drops tags with warning log when parties unavailable", async () => {
+  it("returns 503 when parties table does not exist (tags payload)", async () => {
     mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const res = await request(app)
       .post("/api/parties")
@@ -667,23 +659,11 @@ describe("POST /api/parties - fallback to customers table", () => {
         tags: ["preferred", "hazmat"],
       });
 
-    expect(res.status).toBe(201);
-    // Verify log.warn was called about tags not being persisted
-    expect(mockChildLogger.warn).toHaveBeenCalledWith(
-      expect.objectContaining({ tags: ["preferred", "hazmat"] }),
-      expect.stringContaining("Tags not persisted"),
-    );
-    // Verify tags were NOT passed in the customers INSERT params
-    const fallbackCall = mockQuery.mock.calls[0];
-    const sql = fallbackCall[0] as string;
-    expect(sql).toContain("REPLACE INTO customers");
-    // The SQL has 11 placeholders, none of which is for tags
-    expect(sql).not.toContain("tags");
+    expect(res.status).toBe(503);
   });
 
-  it("stores chassis_requirements correctly in fallback mode", async () => {
+  it("returns 503 when parties table does not exist (chassis_requirements payload)", async () => {
     mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const chassisReqs = { type: "53ft", reefer: true };
     const res = await request(app)
@@ -695,16 +675,11 @@ describe("POST /api/parties - fallback to customers table", () => {
         chassis_requirements: chassisReqs,
       });
 
-    expect(res.status).toBe(201);
-    const fallbackCall = mockQuery.mock.calls[0];
-    const params = fallbackCall[1] as any[];
-    // chassis_requirements is the last param (index 10)
-    expect(params[10]).toBe(JSON.stringify(chassisReqs));
+    expect(res.status).toBe(503);
   });
 
-  it("returns fallback indicator in response", async () => {
+  it("returns 503 with error message when parties table does not exist", async () => {
     mockConnectionQuery.mockRejectedValueOnce(makeMissingTableError("parties"));
-    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
     const res = await request(app)
       .post("/api/parties")
@@ -714,12 +689,7 @@ describe("POST /api/parties - fallback to customers table", () => {
         type: "Broker",
       });
 
-    expect(res.status).toBe(201);
-    expect(res.body).toEqual(
-      expect.objectContaining({
-        fallback: "customers",
-        message: "Party synced with Unified Engine",
-      }),
-    );
+    expect(res.status).toBe(503);
+    expect(res.body.error).toBeDefined();
   });
 });

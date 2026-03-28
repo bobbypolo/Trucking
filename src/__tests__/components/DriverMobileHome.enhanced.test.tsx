@@ -149,7 +149,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
       expect(screen.getByText("Today")).toBeInTheDocument();
       expect(screen.getByText("Loads")).toBeInTheDocument();
       expect(screen.getByText("Live Map")).toBeInTheDocument();
-      expect(screen.getByText("Docs")).toBeInTheDocument();
+      expect(screen.getByText("Pay")).toBeInTheDocument();
     });
 
     it("calls onLogout when Sign Out is clicked on profile tab", async () => {
@@ -524,7 +524,7 @@ describe("DriverMobileHome — enhanced coverage", () => {
       expect(screen.getByText("Load History")).toBeInTheDocument();
     });
 
-    it("switches to Docs tab and shows My Documents", async () => {
+    it("switches to Pay tab and shows My Pay", async () => {
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -535,10 +535,9 @@ describe("DriverMobileHome — enhanced coverage", () => {
           onOpenHub={onOpenHub}
         />,
       );
-      await user.click(screen.getByText("Docs"));
-      expect(screen.getByText("My Documents")).toBeInTheDocument();
-      expect(screen.getByText("Scan New")).toBeInTheDocument();
-      expect(screen.getByText("Vault Access")).toBeInTheDocument();
+      await user.click(screen.getByText("Pay"));
+      expect(screen.getByText("My Pay")).toBeInTheDocument();
+      expect(screen.getByText("Settlement History")).toBeInTheDocument();
     });
 
     it("switches to Live Map tab and shows map", async () => {
