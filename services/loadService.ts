@@ -145,12 +145,6 @@ function mapLoadDataToPayload(load: LoadData): Record<string, unknown> {
       completed: leg.completed,
       sequence_order: i,
     })),
-    issues: load.issues?.map((issue) => ({
-      id: issue.id,
-      category: issue.category,
-      description: issue.description,
-      status: issue.status,
-    })),
   };
 }
 

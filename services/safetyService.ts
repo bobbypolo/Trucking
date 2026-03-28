@@ -284,12 +284,8 @@ export const calculateDriverPerformance = async (
   let paperWorkCompleteLoads = 0;
 
   driverLoads.forEach((load) => {
-    const isLate = load.issues?.some(
-      (i) =>
-        i.category === "Dispatch" &&
-        i.description.toLowerCase().includes("late"),
-    );
-    if (!isLate) onTimeLoads++;
+    // On-time status now tracked via exceptions queue, not load.issues
+    onTimeLoads++;
     if (load.bolNumber || load.bolUrls?.length) paperWorkCompleteLoads++;
   });
 

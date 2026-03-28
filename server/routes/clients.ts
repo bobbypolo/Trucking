@@ -237,6 +237,14 @@ router.get(
       correlationId: req.correlationId,
       route: "GET /api/companies",
     });
+
+    // Explicit tenant isolation: :id must match authenticated user's tenant
+    const tenantId = req.user?.tenantId || req.user?.companyId;
+    if (req.params.id !== tenantId) {
+      res.status(403).json({ error: "Access denied: tenant mismatch" });
+      return;
+    }
+
     try {
       // Try Firestore first (primary source for company settings)
       try {
@@ -308,9 +316,15 @@ router.post(
         .json({ error: "Admin role required to update company settings." });
     }
 
+    // Explicit tenant isolation: body.id must match authenticated user's tenant
+    const tenantId = req.user?.tenantId || req.user?.companyId;
+    if (req.body.id && req.body.id !== tenantId) {
+      return res.status(403).json({ error: "Access denied: tenant mismatch" });
+    }
+
     // Accept both camelCase (frontend) and snake_case field names
     const body = req.body;
-    const id = body.id;
+    const id = body.id || tenantId;
     const name = body.name;
     const account_type = body.account_type ?? body.accountType;
     const email = body.email;

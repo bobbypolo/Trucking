@@ -777,19 +777,6 @@ export const getUnifiedEvents = async (
         loadId: load.id,
       });
     });
-    (load.issues || []).forEach((issue) => {
-      events.push({
-        id: issue.id,
-        type: "ISSUE",
-        timestamp: issue.reportedAt,
-        actorId: "user",
-        actorName: issue.reportedBy,
-        message: `Issue Logged: ${issue.category} - ${issue.description}`,
-        payload: issue,
-        loadId: load.id,
-        isActionRequired: issue.status === "Open",
-      });
-    });
   });
 
   rawMessages.forEach((msg) => {
@@ -992,7 +979,9 @@ export const globalSearch = async (
 
   // Try to fetch from backend first for 360-degree intelligence
   try {
-    const data = await api.get(`/global-search?query=${encodeURIComponent(query)}`);
+    const data = await api.get(
+      `/global-search?query=${encodeURIComponent(query)}`,
+    );
     if (data) return data;
   } catch (e) {
     console.error("[storageService] globalSearch API failed:", e);
