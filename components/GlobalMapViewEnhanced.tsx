@@ -378,11 +378,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
           }
         }
 
-        // Online status and ping time from real load data — no mock seed generation
-        const isOnline = !!activeLoad;
-        const lastPing = activeLoad
-          ? new Date().toISOString()
-          : (driver as any).lastSeenAt || new Date(0).toISOString();
+        // Online status requires real GPS positions — having an active load alone
+        // does not mean GPS is connected. Show "Awaiting GPS" until real pings arrive.
+        const hasRealPosition = lat !== 0 && lng !== 0;
+        const isOnline = hasRealPosition;
+        const lastPing = (driver as any).lastSeenAt || null;
         const heading = (activeLoad as any)?.heading ?? 0;
 
         return {
@@ -739,30 +739,34 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             }}
             onLoad={onLoad}
           >
-            {filteredVehicles.map((vehicle) => (
-              <Marker
-                key={vehicle.driver.id}
-                position={vehicle.coords}
-                icon={
-                  typeof google !== "undefined"
-                    ? {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor: vehicle.hasIncident
-                          ? "#ef4444"
-                          : vehicle.isOnline
-                            ? "#3b82f6"
-                            : "#64748b",
-                        fillOpacity: 1,
-                        strokeColor: "#ffffff",
-                        strokeWeight: isHighObstruction ? 1 : 2,
-                        rotation: vehicle.heading,
-                        scale: isHighObstruction ? 3.5 : 5,
-                      }
-                    : undefined
-                }
-                onClick={() => setSelectedVehicle(vehicle)}
-              />
-            ))}
+            {filteredVehicles
+              .filter(
+                (v) => !livePositions.some((p) => p.driverId === v.driver.id),
+              )
+              .map((vehicle) => (
+                <Marker
+                  key={vehicle.driver.id}
+                  position={vehicle.coords}
+                  icon={
+                    typeof google !== "undefined"
+                      ? {
+                          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                          fillColor: vehicle.hasIncident
+                            ? "#ef4444"
+                            : vehicle.isOnline
+                              ? "#3b82f6"
+                              : "#64748b",
+                          fillOpacity: 1,
+                          strokeColor: "#ffffff",
+                          strokeWeight: isHighObstruction ? 1 : 2,
+                          rotation: vehicle.heading,
+                          scale: isHighObstruction ? 3.5 : 5,
+                        }
+                      : undefined
+                  }
+                  onClick={() => setSelectedVehicle(vehicle)}
+                />
+              ))}
 
             {/* Live GPS markers (S-403) — pulsing indicator for live positions */}
             {livePositions.map((pos) => (
@@ -774,10 +778,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   typeof google !== "undefined"
                     ? {
                         path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
-                        fillColor:
-                          pos.isMock && showMockIndicators
-                            ? "#f59e0b"
-                            : "#22c55e",
+                        fillColor: "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",
                         strokeWeight: 2,

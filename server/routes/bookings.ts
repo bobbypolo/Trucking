@@ -135,6 +135,12 @@ router.post(
         commodity,
         weight,
         carrier_rate,
+        pickup_city,
+        pickup_state,
+        pickup_facility,
+        dropoff_city,
+        dropoff_state,
+        dropoff_facility,
         ...bookingData
       } = req.body;
 
@@ -147,6 +153,12 @@ router.post(
         commodity: commodity ?? null,
         weight: weight ?? null,
         carrier_rate: carrier_rate ?? 0,
+        pickup_city: pickup_city ?? null,
+        pickup_state: pickup_state ?? null,
+        pickup_facility: pickup_facility ?? null,
+        dropoff_city: dropoff_city ?? null,
+        dropoff_state: dropoff_state ?? null,
+        dropoff_facility: dropoff_facility ?? null,
       };
 
       const booking = await bookingRepository.createWithLoad(

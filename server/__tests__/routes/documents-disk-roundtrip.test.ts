@@ -232,15 +232,25 @@ describe("R-W6-02b: GET /api/documents/:id/download retrieves file", () => {
       status: "finalized",
     });
 
+    // Write a test file to disk so the download endpoint can serve it
+    const { join } = await import("path");
+    const { writeFile, mkdir } = await import("fs/promises");
+    const baseDir = process.env.UPLOAD_DIR || "./uploads";
+    const storagePath = "tenants/company-aaa/documents/doc-001/invoice.pdf";
+    const fullPath = join(baseDir, storagePath);
+    await mkdir(join(baseDir, "tenants/company-aaa/documents/doc-001"), {
+      recursive: true,
+    });
+    await writeFile(fullPath, "PDF content for test");
+
     const res = await request(buildApp())
       .get("/api/documents/doc-001/download")
       .set("Authorization", "Bearer valid-token");
 
+    // Disk mode serves the file directly with proper content-type
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("url");
-    // DiskStorageAdapter returns /api/documents/<encoded-path>/download
-    expect(res.body.url).toContain("/api/documents/");
-    expect(res.body.url).toContain("/download");
+    expect(res.headers["content-type"]).toContain("application/pdf");
+    expect(res.headers["content-disposition"]).toContain("invoice.pdf");
   });
 
   it("R-W6-02b: returns 404 for non-existent document", async () => {
@@ -254,9 +264,8 @@ describe("R-W6-02b: GET /api/documents/:id/download retrieves file", () => {
     expect(res.body).toHaveProperty("error");
   });
 
-  it("R-W6-02b: download URL includes storage path", async () => {
-    const storagePath =
-      "tenants/company-aaa/documents/doc-002/test-file.pdf";
+  it("R-W6-02b: disk download serves file content", async () => {
+    const storagePath = "tenants/company-aaa/documents/doc-002/test-file.pdf";
     mockFindById.mockResolvedValue({
       id: "doc-002",
       company_id: "company-aaa",
@@ -267,13 +276,22 @@ describe("R-W6-02b: GET /api/documents/:id/download retrieves file", () => {
       status: "finalized",
     });
 
+    // Write test file
+    const { join } = await import("path");
+    const { writeFile, mkdir } = await import("fs/promises");
+    const baseDir = process.env.UPLOAD_DIR || "./uploads";
+    const fullPath = join(baseDir, storagePath);
+    await mkdir(join(baseDir, "tenants/company-aaa/documents/doc-002"), {
+      recursive: true,
+    });
+    await writeFile(fullPath, "Test PDF content");
+
     const res = await request(buildApp())
       .get("/api/documents/doc-002/download")
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(200);
-    // The URL should reference the storage path
-    expect(res.body.url).toContain(encodeURIComponent(storagePath));
+    expect(Buffer.from(res.body).toString()).toBe("Test PDF content");
   });
 });
 
@@ -289,9 +307,8 @@ describe("R-W6-VPC-702: Route integration with DiskStorageAdapter", () => {
 
   it("R-W6-VPC-702: documents route uses DiskStorageAdapter (not memory no-op)", async () => {
     // Import the route module and check the factory uses disk storage
-    const { createDocumentsRouteService } = await import(
-      "../../routes/documents"
-    );
+    const { createDocumentsRouteService } =
+      await import("../../routes/documents");
     const svc = createDocumentsRouteService();
     // The service should be defined and have the expected methods
     expect(svc).toBeDefined();

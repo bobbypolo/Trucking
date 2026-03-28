@@ -40,6 +40,11 @@ vi.mock("../../../components/GlobalMapViewEnhanced", () => ({
   GlobalMapViewEnhanced: () => <div data-testid="map-mock">Map</div>,
 }));
 
+// Mock exceptionService to capture createException calls
+vi.mock("../../../services/exceptionService", () => ({
+  createException: vi.fn().mockResolvedValue({ id: "exc-1" }),
+}));
+
 // Mock api to prevent real API calls from useEffect hooks
 vi.mock("../../../services/api", () => ({
   api: {
@@ -180,7 +185,7 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
     (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
   >;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     onSaveLoad = vi
       .fn<(load: LoadData) => Promise<void>>()
       .mockResolvedValue(undefined);
@@ -190,6 +195,10 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
         (tab?: "feed" | "messaging" | "intelligence" | "reports") => void
       >();
     localStorage.clear();
+    // Reset createException mock between tests so call counts are isolated
+    const { createException } =
+      await import("../../../services/exceptionService");
+    (createException as ReturnType<typeof vi.fn>).mockClear();
   });
 
   describe("change requests tab — add button and display (lines 741-749)", () => {
@@ -496,6 +505,8 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
 
   describe("breakdown flow — cargo at risk with HIGH risk (lines 894-927)", () => {
     it("confirms high-risk cargo and calls onSaveLoad with HIGH risk issue", async () => {
+      const { createException } =
+        await import("../../../services/exceptionService");
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -539,14 +550,19 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
         expect(onSaveLoad).toHaveBeenCalledTimes(1);
       });
 
+      // Breakdown flow no longer writes load.issues — it calls createException
       const savedLoad = onSaveLoad.mock.calls[0][0] as LoadData;
       expect(savedLoad.status).toBe("in_transit");
       expect(savedLoad.isActionRequired).toBe(true);
-      expect(savedLoad.issues).toHaveLength(1);
-      expect(savedLoad.issues![0].category).toBe("Maintenance");
-      expect(savedLoad.issues![0].description).toContain("Risk: HIGH");
-      expect(savedLoad.issues![0].description).toContain("Tow: YES");
-      expect(savedLoad.issues![0].status).toBe("Open");
+      expect(savedLoad.issues).toBeUndefined();
+
+      // Exception is routed through createException with HIGH risk details
+      expect(createException).toHaveBeenCalledTimes(1);
+      const exceptionArg = (createException as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as { description: string; severity: number };
+      expect(exceptionArg.description).toContain("Risk: HIGH");
+      expect(exceptionArg.description).toContain("Tow: YES");
+      expect(exceptionArg.severity).toBe(4);
     });
 
     it("shows emergency toast after high-risk breakdown report", async () => {
@@ -597,6 +613,8 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
 
   describe("breakdown flow — cargo at risk with LOW risk (lines 928-949)", () => {
     it("declines cargo risk and calls onSaveLoad with LOW risk issue", async () => {
+      const { createException } =
+        await import("../../../services/exceptionService");
       const user = userEvent.setup();
       render(
         <DriverMobileHome
@@ -640,12 +658,19 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
         expect(onSaveLoad).toHaveBeenCalledTimes(1);
       });
 
+      // Breakdown flow no longer writes load.issues — it calls createException
       const savedLoad = onSaveLoad.mock.calls[0][0] as LoadData;
       expect(savedLoad.status).toBe("in_transit");
       expect(savedLoad.isActionRequired).toBe(true);
-      expect(savedLoad.issues).toHaveLength(1);
-      expect(savedLoad.issues![0].description).toContain("Risk: LOW");
-      expect(savedLoad.issues![0].description).toContain("Tow: NO");
+      expect(savedLoad.issues).toBeUndefined();
+
+      // Exception is routed through createException with LOW risk details
+      expect(createException).toHaveBeenCalledTimes(1);
+      const exceptionArg = (createException as ReturnType<typeof vi.fn>).mock
+        .calls[0][0] as { description: string; severity: number };
+      expect(exceptionArg.description).toContain("Risk: LOW");
+      expect(exceptionArg.description).toContain("Tow: NO");
+      expect(exceptionArg.severity).toBe(2);
     });
 
     it("shows emergency toast after low-risk breakdown report", async () => {
@@ -794,7 +819,9 @@ describe("DriverMobileHome deep coverage — lines 741-749, 861-949", () => {
 
       await user.click(screen.getByText("Me"));
       expect(screen.getByText("Compliance Tasks")).toBeInTheDocument();
-      expect(screen.getByText("No open load issues")).toBeInTheDocument();
+      expect(
+        screen.getByText("Issues tracked via exceptions queue"),
+      ).toBeInTheDocument();
     });
 
     it("displays user initial avatar on profile tab", async () => {

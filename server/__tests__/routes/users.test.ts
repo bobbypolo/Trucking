@@ -807,3 +807,72 @@ describe("POST /api/users — extended admin roles for user sync", () => {
     expect(res.status).toBe(201);
   });
 });
+
+describe("POST /api/users — self-escalation prevention (SEC-01)", () => {
+  let app: ReturnType<typeof buildApp>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    app = buildApp();
+    mockUpsertSqlUser.mockResolvedValue(undefined);
+    mockMirrorUserToFirestore.mockResolvedValue(undefined);
+  });
+
+  it("returns 403 when driver attempts to self-escalate to admin", async () => {
+    setupPrincipal(DRIVER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: DRIVER_PRINCIPAL.email,
+        role: "admin",
+      });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("cannot change own role");
+    expect(mockUpsertSqlUser).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when dispatcher attempts to self-escalate to OWNER_ADMIN", async () => {
+    setupPrincipal(DISPATCHER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: DISPATCHER_PRINCIPAL.email,
+        role: "OWNER_ADMIN",
+      });
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("cannot change own role");
+    expect(mockUpsertSqlUser).not.toHaveBeenCalled();
+  });
+
+  it("self-sync preserves existing role even if role field is omitted", async () => {
+    setupPrincipal(DRIVER_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: DRIVER_PRINCIPAL.email,
+        name: "Updated Name",
+      });
+    expect(res.status).toBe(201);
+    expect(mockUpsertSqlUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "driver" }),
+    );
+  });
+
+  it("admin CAN change another user's role", async () => {
+    setupPrincipal(ADMIN_PRINCIPAL);
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", AUTH_HEADER)
+      .send({
+        email: "driver@test.com",
+        role: "dispatcher",
+      });
+    expect(res.status).toBe(201);
+    expect(mockUpsertSqlUser).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "dispatcher" }),
+    );
+  });
+});

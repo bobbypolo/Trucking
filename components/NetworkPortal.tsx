@@ -2264,9 +2264,9 @@ export const NetworkPortal: React.FC<Props> = ({
                           Compliance & Legal
                         </p>
                       </div>
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all">
-                        + Upload Document
-                      </button>
+                      <span className="px-4 py-2 bg-slate-800 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                        Documents managed via File Vault
+                      </span>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {selectedParty.documents?.map((doc) => (
@@ -2296,9 +2296,6 @@ export const NetworkPortal: React.FC<Props> = ({
                               >
                                 {doc.status}
                               </span>
-                              <button className="text-[9px] font-black text-slate-500 hover:text-white uppercase tracking-widest">
-                                View PDF
-                              </button>
                             </div>
                           </div>
                         </div>

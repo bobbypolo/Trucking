@@ -314,6 +314,26 @@ router.get(
     try {
       const svc = createDocumentsRouteService();
       const url = await svc.getDownloadUrl(id, companyId);
+      // Disk storage returns disk:// URIs — serve the file directly
+      if (url.startsWith("disk://")) {
+        const { join } = await import("path");
+        const { readFile } = await import("fs/promises");
+        const storagePath = url.replace("disk://", "");
+        const baseDir = process.env.UPLOAD_DIR || "./uploads";
+        const fullPath = join(baseDir, storagePath);
+        const doc = await svc.findById(id, companyId);
+        const buffer = await readFile(fullPath);
+        res.setHeader(
+          "Content-Type",
+          doc?.mime_type || "application/octet-stream",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${doc?.original_filename || "download"}"`,
+        );
+        res.send(buffer);
+        return;
+      }
       res.json({ url });
     } catch (error) {
       if (error instanceof ValidationError) {

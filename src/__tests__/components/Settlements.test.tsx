@@ -227,15 +227,6 @@ describe("Settlements component", () => {
     });
   });
 
-  it("shows Generate Statement button in expanded card", async () => {
-    const user = userEvent.setup();
-    render(<Settlements {...defaultProps} />);
-    await user.click(await screen.findByText("Test Driver"));
-    await waitFor(() => {
-      expect(screen.getByText("Generate Statement")).toBeInTheDocument();
-    });
-  });
-
   it("calls createSettlement when Authorize & Pay is clicked", async () => {
     const { createSettlement } =
       await import("../../../services/financialService");
@@ -262,36 +253,6 @@ describe("Settlements component", () => {
     await waitFor(() => {
       expect(
         screen.getByText(/Settlement finalized for Test Driver/),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows deferred statement feedback when Generate Statement is clicked", async () => {
-    const user = userEvent.setup();
-    render(<Settlements {...defaultProps} />);
-    await user.click(await screen.findByText("Test Driver"));
-    await waitFor(() => {
-      expect(screen.getByText("Generate Statement")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Generate Statement"));
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Statement generation requested/),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("shows feedback after Generate Statement is clicked", async () => {
-    const user = userEvent.setup();
-    render(<Settlements {...defaultProps} />);
-    await user.click(await screen.findByText("Test Driver"));
-    await waitFor(() => {
-      expect(screen.getByText("Generate Statement")).toBeInTheDocument();
-    });
-    await user.click(screen.getByText("Generate Statement"));
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Statement generation requested/),
       ).toBeInTheDocument();
     });
   });

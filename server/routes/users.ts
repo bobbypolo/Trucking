@@ -177,6 +177,18 @@ router.post(
         .json({ error: "Forbidden: cannot sync another user." });
     }
 
+    // Prevent self-escalation: non-admin users cannot change their own role
+    if (
+      isSelfSync &&
+      !isAdmin &&
+      req.body.role &&
+      req.body.role !== authReq.user.role
+    ) {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: cannot change own role." });
+    }
+
     const companyId = authReq.user.tenantId;
 
     log.info({ data: { email: req.body.email } }, "User sync request received");
@@ -187,7 +199,10 @@ router.post(
         companyId,
         email: req.body.email,
         name: resolveString(req.body.name) || req.body.email,
-        role: resolveString(req.body.role) || "driver",
+        role:
+          isSelfSync && !isAdmin
+            ? authReq.user.role
+            : resolveString(req.body.role) || "driver",
         passwordHash: req.body.password
           ? await bcrypt.hash(req.body.password, 10)
           : null,

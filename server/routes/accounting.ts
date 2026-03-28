@@ -827,24 +827,26 @@ router.post(
       return;
     }
 
-    if (mode === "GPS") {
-      const jurisdictionMiles: any = {};
-      for (let i = 1; i < pings.length; i++) {
-        const p1 = pings[i - 1];
-        const p2 = pings[i];
-        const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
-        const state = detectState(p2.lat, p2.lng);
-        jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
-      }
-      return res.json({
-        jurisdictionMiles,
-        method: "ACTUAL_GPS",
-        confidence: "HIGH",
-      });
+    if (mode !== "GPS") {
+      res
+        .status(400)
+        .json({ error: "Only GPS mode is supported for IFTA analysis" });
+      return;
     }
 
-    // Tier C logic placeholder (actual Google call would happen here or frontend)
-    res.json({ message: "Routing engine ready" });
+    const jurisdictionMiles: any = {};
+    for (let i = 1; i < pings.length; i++) {
+      const p1 = pings[i - 1];
+      const p2 = pings[i];
+      const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
+      const state = detectState(p2.lat, p2.lng);
+      jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
+    }
+    res.json({
+      jurisdictionMiles,
+      method: "ACTUAL_GPS",
+      confidence: "HIGH",
+    });
   },
 );
 

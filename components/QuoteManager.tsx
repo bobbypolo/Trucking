@@ -56,9 +56,14 @@ import { checkCapability } from "../services/authService";
 interface Props {
   user: User;
   company: Company | null;
+  onLoadCreated?: () => void;
 }
 
-export const QuoteManager: React.FC<Props> = ({ user, company }) => {
+export const QuoteManager: React.FC<Props> = ({
+  user,
+  company,
+  onLoadCreated,
+}) => {
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -225,9 +230,16 @@ export const QuoteManager: React.FC<Props> = ({ user, company }) => {
         load_number: `LD-${Date.now()}`,
         freight_type: quote.equipmentType ?? null,
         carrier_rate: quote.totalRate ?? 0,
+        pickup_city: quote.pickup?.city ?? null,
+        pickup_state: quote.pickup?.state ?? null,
+        pickup_facility: quote.pickup?.facilityName ?? null,
+        dropoff_city: quote.dropoff?.city ?? null,
+        dropoff_state: quote.dropoff?.state ?? null,
+        dropoff_facility: quote.dropoff?.facilityName ?? null,
       });
 
       await loadData();
+      onLoadCreated?.();
       setSelectedQuote(null);
       setActiveView("pipeline");
       setToast({

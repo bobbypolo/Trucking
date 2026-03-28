@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Shield,
   Map,
   Activity,
   CheckCircle,
   AlertTriangle,
   Lock,
   ChevronRight,
-  MapPin,
   Fuel,
   ArrowRight,
   Search,
@@ -16,7 +14,6 @@ import {
   Eye,
   Download,
   FileText,
-  History,
 } from "lucide-react";
 import { IFTATripEvidence, IFTATripAudit, LoadData } from "../types";
 import {
@@ -41,7 +38,7 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [attested, setAttested] = useState(false);
-  const [viewMode, setViewMode] = useState<"GPS" | "ROUTES">("GPS");
+  const viewMode = "GPS" as const;
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
@@ -174,74 +171,19 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
 
           {/* ANALYSIS (Step 1-2) */}
           <div className="flex-1 p-10 overflow-auto space-y-10">
-            {/* DECISION TREE SELECTOR */}
-            <div className="grid grid-cols-3 gap-6">
-              {[
-                {
-                  tier: "Tier A",
-                  label: "Actual GPS",
-                  desc: "Breadcrumb Summation",
-                  icon: Map,
-                  color: "blue",
-                  disabled: evidence.length < 5,
-                  mode: "GPS",
-                },
-                {
-                  tier: "Tier B",
-                  label: "Hybrid Recon",
-                  desc: "GPS + Google Gaps",
-                  icon: History,
-                  color: "indigo",
-                  disabled: false,
-                  mode: "HYBRID",
-                },
-                {
-                  tier: "Tier C",
-                  label: "Route Estimate",
-                  desc: "Google Maps Path",
-                  icon: Shield,
-                  color: "slate",
-                  disabled: false,
-                  mode: "ROUTES",
-                },
-              ].map((tier) => (
-                <button
-                  key={tier.tier}
-                  disabled={tier.disabled}
-                  onClick={() => setViewMode(tier.mode as any)}
-                  className={`p-6 rounded-3xl border text-left transition-all ${viewMode === tier.mode ? `bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/50` : "bg-slate-900/50 border-white/5 opacity-50"}`}
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div
-                      className={`text-[9px] font-black uppercase tracking-widest ${viewMode === tier.mode ? "text-blue-500" : "text-slate-600"}`}
-                    >
-                      {tier.tier}
-                    </div>
-                    <tier.icon
-                      className={`w-5 h-5 ${viewMode === tier.mode ? "text-blue-500" : "text-slate-600"}`}
-                    />
-                  </div>
-                  <div className="text-lg font-black text-white uppercase tracking-tighter">
-                    {tier.label}
-                  </div>
-                  <div className="text-[9px] text-slate-500 font-black uppercase mt-1">
-                    {tier.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* MAP PREVIEW PLACEHOLDER */}
-            <div className="aspect-video bg-slate-950 border border-white/5 rounded-[2.5rem] relative overflow-hidden flex items-center justify-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent" />
-              <div className="relative text-center">
-                <MapPin className="w-12 h-12 text-slate-800 mb-4 mx-auto" />
-                <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                  Interactive Audit Map Pipeline
+            {/* GPS ANALYSIS METHOD */}
+            <div className="p-6 rounded-3xl border bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/50">
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-[9px] font-black uppercase tracking-widest text-blue-500">
+                  Analysis Method
                 </div>
-                <div className="text-[9px] text-slate-700 uppercase mt-2">
-                  {viewMode} Mode Visualization
-                </div>
+                <Map className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="text-lg font-black text-white uppercase tracking-tighter">
+                Actual GPS Breadcrumb Summation
+              </div>
+              <div className="text-[9px] text-slate-500 font-black uppercase mt-1">
+                {evidence.length} pings collected
               </div>
             </div>
 

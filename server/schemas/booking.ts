@@ -50,4 +50,12 @@ export const convertBookingSchema = z.object({
   commodity: z.string().optional(),
   weight: z.number().optional(),
   carrier_rate: z.number().default(0),
+
+  // Route data — carried from quote into load legs
+  pickup_city: z.string().optional(),
+  pickup_state: z.string().optional(),
+  pickup_facility: z.string().optional(),
+  dropoff_city: z.string().optional(),
+  dropoff_state: z.string().optional(),
+  dropoff_facility: z.string().optional(),
 });

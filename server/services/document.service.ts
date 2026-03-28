@@ -289,7 +289,11 @@ export function createDocumentService(storage: StorageAdapter) {
           "VALIDATION_DOCUMENT_NOT_FOUND",
         );
       }
-      return documentRepository.updateStatusAndLock(documentId, companyId, updates);
+      return documentRepository.updateStatusAndLock(
+        documentId,
+        companyId,
+        updates,
+      );
     },
 
     /**

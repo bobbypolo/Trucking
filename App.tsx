@@ -974,7 +974,11 @@ export default function App() {
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
-                  <QuoteManager user={user} company={company} />
+                  <QuoteManager
+                    user={user}
+                    company={company}
+                    onLoadCreated={() => refreshData(user)}
+                  />
                 </Suspense>
               )}
               {activeTab === "loads" && (

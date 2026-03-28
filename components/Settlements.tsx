@@ -186,18 +186,6 @@ export const Settlements: React.FC<Props> = ({
     if (onUserUpdate) onUserUpdate();
   };
 
-  const handleGenerateStatement = async (user: User) => {
-    const data = calculatePayData(user);
-
-    // Statement generation — PDF is produced by the backend pipeline.
-    // Documents are uploaded to the canonical /api/documents endpoint
-    // by the backend when the PDF is ready. No client-side vault entry
-    // is created without a real file.
-    showFeedback(
-      `Statement generation requested for ${user.name}. Document will appear in the vault when ready.`,
-    );
-  };
-
   const handleBatchPrint = async () => {
     const deliveredLoads = loads.filter((l) => l.status === "delivered");
     if (deliveredLoads.length === 0) {
@@ -716,15 +704,6 @@ export const Settlements: React.FC<Props> = ({
                       </div>
 
                       <div className="flex justify-end gap-3 pt-6">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleGenerateStatement(u);
-                          }}
-                          className="px-6 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold flex items-center gap-2 border border-slate-700 transition-all active:scale-95"
-                        >
-                          <Printer className="w-4 h-4" /> Generate Statement
-                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

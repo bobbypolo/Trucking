@@ -11,7 +11,6 @@ import {
   Plus,
   FileText,
   Fuel,
-  Download,
   CheckCircle,
   X,
   HardDrive,
@@ -405,22 +404,6 @@ const AccountingPortal: React.FC<Props> = ({
                   Invoicing & Collections Control
                 </p>
               </div>
-              <div className="flex gap-4">
-                <button
-                  disabled
-                  title="Statement generation not yet available"
-                  className="px-6 py-3 bg-white/5 text-slate-600 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed opacity-50"
-                >
-                  Generate Statements
-                </button>
-                <button
-                  disabled
-                  title="Invoice creation not yet available"
-                  className="px-6 py-3 bg-emerald-600/50 text-white/50 rounded-xl text-[10px] font-black uppercase tracking-widest cursor-not-allowed opacity-50"
-                >
-                  Create New Invoice
-                </button>
-              </div>
             </div>
 
             <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] overflow-hidden backdrop-blur-md">
@@ -577,9 +560,6 @@ const AccountingPortal: React.FC<Props> = ({
                     <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       Approval
                     </th>
-                    <th className="px-8 py-6 text-[10px] font-black text-slate-600 uppercase tracking-widest text-right">
-                      Actions
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -609,14 +589,10 @@ const AccountingPortal: React.FC<Props> = ({
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
-                          <button
-                            disabled
-                            title="Payment scheduling not yet available"
-                            className="px-3 py-1 bg-blue-600/10 text-blue-500/50 border border-blue-500/20 rounded-lg text-[8px] font-black uppercase cursor-not-allowed opacity-50"
-                          >
-                            Schedule
-                          </button>
-                          <Clock className="w-3.5 h-3.5 text-slate-700" />
+                          <Clock className="w-3.5 h-3.5 text-slate-600" />
+                          <span className="text-[9px] text-slate-500 font-bold uppercase">
+                            Due {bill.dueDate}
+                          </span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
@@ -626,24 +602,12 @@ const AccountingPortal: React.FC<Props> = ({
                           {bill.status}
                         </span>
                       </td>
-                      <td className="px-8 py-6 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            disabled
-                            title="Bill actions not yet available"
-                            className="p-2 bg-slate-800 text-slate-600 rounded-xl border border-white/5 cursor-not-allowed opacity-50"
-                            aria-label="More options"
-                          >
-                            <FileSpreadsheet className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
                     </tr>
                   ))}
                   {bills.length === 0 && (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-8 py-20 text-center text-slate-700 font-black uppercase tracking-widest italic opacity-50"
                       >
                         No pending bills found.
@@ -679,13 +643,6 @@ const AccountingPortal: React.FC<Props> = ({
                   Post-Lock Event Log
                 </p>
               </div>
-              <button
-                disabled
-                title="Audit log export not yet available"
-                className="flex items-center gap-2 px-6 py-3 bg-white/5 text-slate-600 rounded-2xl border border-white/10 text-[10px] font-black uppercase tracking-widest cursor-not-allowed opacity-50"
-              >
-                <Download className="w-4 h-4" /> Export Audit Log (PDF)
-              </button>
             </div>
 
             <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-[2.5rem] p-10 backdrop-blur-md">

@@ -25,6 +25,12 @@ export interface BookingLoadInput {
   commodity?: string | null;
   weight?: number | null;
   carrier_rate?: number;
+  pickup_city?: string | null;
+  pickup_state?: string | null;
+  pickup_facility?: string | null;
+  dropoff_city?: string | null;
+  dropoff_state?: string | null;
+  dropoff_facility?: string | null;
 }
 
 export const bookingRepository = {
@@ -138,9 +144,9 @@ export const bookingRepository = {
           pickupLegId,
           loadId,
           "Pickup",
-          null,
-          null,
-          null,
+          loadInput.pickup_facility ?? null,
+          loadInput.pickup_city ?? null,
+          loadInput.pickup_state ?? null,
           loadInput.pickup_date ?? data.pickup_date ?? null,
           null,
           false,
@@ -160,9 +166,9 @@ export const bookingRepository = {
           deliveryLegId,
           loadId,
           "Dropoff",
-          null,
-          null,
-          null,
+          loadInput.dropoff_facility ?? null,
+          loadInput.dropoff_city ?? null,
+          loadInput.dropoff_state ?? null,
           loadInput.delivery_date ?? data.delivery_date ?? null,
           null,
           false,

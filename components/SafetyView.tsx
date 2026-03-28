@@ -1679,27 +1679,19 @@ export const SafetyView: React.FC<Props> = ({
                       };
                       await createIncident(newIncident as any);
 
-                      // Also add an issue to the load for visibility in Dispatch Board
+                      // Flag the load for dispatch visibility (incident lives in /api/exceptions)
                       const targetLoad = loads.find(
                         (l) => l.id === formData.loadId,
                       );
                       if (targetLoad) {
-                        const newIssue = {
-                          id: uuidv4(),
-                          category: formData.category || "Incident",
-                          description:
-                            formData.description || "No description provided.",
-                          reportedAt: new Date().toISOString(),
-                          reportedBy: user.name,
-                          status: "Open" as const,
-                        };
-                        const updatedLoad = {
-                          ...targetLoad,
-                          issues: [...(targetLoad.issues || []), newIssue],
-                          isActionRequired: true,
-                          actionSummary: `CRISIS ALERT: ${formData.description}`,
-                        };
-                        await saveLoad(updatedLoad, user);
+                        await saveLoad(
+                          {
+                            ...targetLoad,
+                            isActionRequired: true,
+                            actionSummary: `CRISIS ALERT: ${formData.description}`,
+                          },
+                          user,
+                        );
                       }
                     }
 

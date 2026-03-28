@@ -192,19 +192,6 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
     expect(paidSettlement.netPay).toBeGreaterThan(0);
   });
 
-  it("renders Generate Statement button in expanded driver panel", async () => {
-    const user = userEvent.setup();
-    render(<Settlements {...defaultProps} />);
-
-    // Click on driver row to expand the panel
-    const driverRow = await screen.findByText(/John Driver/i);
-    await user.click(driverRow);
-
-    await waitFor(() => {
-      expect(document.body.innerHTML).toContain("Generate Statement");
-    });
-  });
-
   it("Profit and Loss tab is accessible for admin role", async () => {
     render(<Settlements {...defaultProps} />);
     await waitFor(() => {
@@ -228,7 +215,9 @@ describe("Settlements Immutability — posted/locked state (R-FS-06-04)", () => 
   });
 
   it("empty loads shows no payroll entries", async () => {
-    const { container } = render(<Settlements loads={[]} users={[driverUser]} />);
+    const { container } = render(
+      <Settlements loads={[]} users={[driverUser]} />,
+    );
     await waitFor(() => {
       // Component should render but show no loaded pay entries
       expect(container).toBeInTheDocument();

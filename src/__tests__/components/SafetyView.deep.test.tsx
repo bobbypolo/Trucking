@@ -266,7 +266,7 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       expect(screen.getByText(/PRO LD-100/)).toBeInTheDocument();
     });
 
-    it("submits incident and creates both incident and load issue", async () => {
+    it("submits incident and flags load for action", async () => {
       render(<SafetyView user={mockUser} loads={mockLoads} />);
       await waitFor(() =>
         expect(screen.getByText("Safety & Compliance")).toBeInTheDocument(),
@@ -326,8 +326,6 @@ describe("SafetyView deep coverage - uncovered lines 1238-1297, 1315-1393", () =
       const updatedLoad = mockSaveLoad.mock.calls[0][0];
       expect(updatedLoad.isActionRequired).toBe(true);
       expect(updatedLoad.actionSummary).toContain("CRISIS ALERT");
-      expect(updatedLoad.issues).toHaveLength(1);
-      expect(updatedLoad.issues[0].category).toBe("Safety");
     });
   });
 

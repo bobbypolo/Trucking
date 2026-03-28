@@ -52,7 +52,9 @@ export function createDiskStorageAdapter(
      * The path is URI-encoded so it can be used directly in links.
      */
     async getSignedUrl(path: string, _expiresInMs: number): Promise<string> {
-      return `/api/documents/${encodeURIComponent(path)}/download`;
+      // For disk storage, return a file:// URI or relative path that the
+      // download endpoint can resolve to serve the actual file.
+      return `disk://${path}`;
     },
   };
 }
