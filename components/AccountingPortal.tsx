@@ -26,11 +26,13 @@ import {
   createJournalEntry,
   getInvoices,
   getBills,
+  getIFTASummary,
 } from "../services/financialService";
 import {
   GLAccount,
   ARInvoice,
   APBill,
+  IFTASummary,
   LoadData,
   User as UserType,
 } from "../types";
@@ -73,6 +75,7 @@ const AccountingPortal: React.FC<Props> = ({
   const [accounts, setAccounts] = useState<GLAccount[]>([]);
   const [invoices, setInvoices] = useState<ARInvoice[]>([]);
   const [bills, setBills] = useState<APBill[]>([]);
+  const [iftaSummary, setIftaSummary] = useState<IFTASummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -88,15 +91,20 @@ const AccountingPortal: React.FC<Props> = ({
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [accs, invs, bs] = await Promise.all([
+      const now = new Date();
+      const currentQuarter = Math.ceil((now.getMonth() + 1) / 3);
+      const currentYear = now.getFullYear();
+      const [accs, invs, bs, ifta] = await Promise.all([
         getGLAccounts(signal),
         getInvoices(signal),
         getBills(signal),
+        getIFTASummary(currentQuarter, currentYear).catch(() => null),
       ]);
       if (signal?.aborted) return;
       setAccounts(Array.isArray(accs) ? accs : []);
       setInvoices(Array.isArray(invs) ? invs : []);
       setBills(Array.isArray(bs) ? bs : []);
+      setIftaSummary(ifta || null);
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") return;
       if (signal?.aborted) return;
@@ -210,7 +218,9 @@ const AccountingPortal: React.FC<Props> = ({
         {activeTab === "DASHBOARD" && (
           <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* KPI ROW */}
-            <div className="grid grid-cols-4 gap-6">
+            <div
+              className={`grid gap-6 ${iftaSummary ? "grid-cols-4" : "grid-cols-3"}`}
+            >
               {[
                 {
                   label: "Accounts Receivable",
@@ -241,14 +251,18 @@ const AccountingPortal: React.FC<Props> = ({
                   color: "text-orange-500",
                   bg: "bg-orange-500/5",
                 },
-                {
-                  label: "IFTA Liability",
-                  val: "$0.00",
-                  sub: "Current Quarter",
-                  trend: "Accrued",
-                  color: "text-blue-500",
-                  bg: "bg-blue-500/5",
-                },
+                ...(iftaSummary
+                  ? [
+                      {
+                        label: "IFTA Liability",
+                        val: `$${(iftaSummary.netTaxDue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                        sub: `Q${iftaSummary.quarter} ${iftaSummary.year}`,
+                        trend: iftaSummary.netTaxDue > 0 ? "Due" : "Clear",
+                        color: "text-blue-500",
+                        bg: "bg-blue-500/5",
+                      },
+                    ]
+                  : []),
               ].map((kpi, i) => (
                 <div
                   key={i}

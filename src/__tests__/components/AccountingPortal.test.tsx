@@ -21,6 +21,7 @@ vi.mock("../../../services/financialService", () => ({
   createAPBill: vi.fn(),
   createJournalEntry: vi.fn(),
   getSettlements: vi.fn().mockResolvedValue([]),
+  getIFTASummary: vi.fn().mockResolvedValue(null),
   getInvoices: vi.fn().mockResolvedValue([
     {
       id: "inv-1",

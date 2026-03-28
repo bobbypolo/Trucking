@@ -37,6 +37,7 @@ vi.mock("../../../services/financialService", () => ({
   createAPBill: vi.fn(),
   createJournalEntry: vi.fn(),
   getSettlements: vi.fn().mockResolvedValue([]),
+  getIFTASummary: vi.fn().mockResolvedValue(null),
   getInvoices: vi.fn().mockResolvedValue([
     {
       id: "inv-1",
@@ -179,14 +180,15 @@ describe("AccountingPortal Remediation (C-2)", () => {
       expect(screen.getByText("1")).toBeInTheDocument();
     });
 
-    it("R-P4-04: IFTA Liability KPI shows computed value, not hardcoded $2,840", async () => {
+    it("R-P4-04: IFTA Liability KPI is absent when no IFTA data available", async () => {
       render(<AccountingPortal {...defaultProps} />);
       await waitFor(() => {
-        expect(screen.getByText("IFTA Liability")).toBeInTheDocument();
+        expect(screen.getByText("Accounts Receivable")).toBeInTheDocument();
       });
-      // Should NOT show the hardcoded $2,840
-      const iftaCard = screen.getByText("IFTA Liability").closest("div");
-      expect(iftaCard?.parentElement?.textContent).not.toContain("$2,840");
+      // When getIFTASummary returns null, the KPI card should not render
+      expect(screen.queryByText("IFTA Liability")).not.toBeInTheDocument();
+      // Hardcoded $2,840 must not exist
+      expect(document.body.textContent).not.toContain("$2,840");
     });
 
     it("R-P4-04: Audit log entries are not hardcoded", async () => {

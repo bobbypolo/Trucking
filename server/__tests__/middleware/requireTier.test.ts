@@ -298,7 +298,9 @@ describe("requireTier — edge cases", () => {
   });
 
   it("returns 503 when subscription tier lookup fails at the DB layer", async () => {
-    mockExecute.mockRejectedValueOnce(new Error("Unknown column 'subscription_tier'"));
+    mockExecute.mockRejectedValueOnce(
+      new Error("ECONNREFUSED: Connection refused"),
+    );
 
     const middleware = requireTier("Fleet Core");
     const req = mockReq(makeUser());
@@ -312,6 +314,65 @@ describe("requireTier — edge cases", () => {
         error_code: "TIER_DB_ERROR_001",
         retryable: true,
       }),
+    );
+    expect(nextFn).not.toHaveBeenCalled();
+  });
+});
+
+// ── Legacy Schema Compatibility (missing subscription_tier column) ──────────
+
+describe("requireTier — legacy schema compatibility (missing column)", () => {
+  let nextFn: NextFunction & ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    nextFn = vi.fn() as NextFunction & ReturnType<typeof vi.fn>;
+    mockExecute.mockReset();
+  });
+
+  it("calls next() when subscription_tier column is missing (Unknown column)", async () => {
+    const dbError = new Error(
+      "Unknown column 'subscription_tier' in 'field list'",
+    );
+    mockExecute.mockRejectedValueOnce(dbError);
+
+    const middleware = requireTier("Fleet Core", "Fleet Command");
+    const req = mockReq(makeUser());
+    const res = mockRes();
+
+    await middleware(req, res, nextFn);
+
+    // Should bypass tier enforcement, not return 503
+    expect(nextFn).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("calls next() when subscription_tier column is missing (ER_BAD_FIELD_ERROR)", async () => {
+    const dbError: any = new Error("Bad field");
+    dbError.code = "ER_BAD_FIELD_ERROR";
+    mockExecute.mockRejectedValueOnce(dbError);
+
+    const middleware = requireTier("Fleet Core", "Fleet Command");
+    const req = mockReq(makeUser());
+    const res = mockRes();
+
+    await middleware(req, res, nextFn);
+
+    expect(nextFn).toHaveBeenCalledOnce();
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("still returns 503 for real DB errors (connection failure)", async () => {
+    mockExecute.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+    const middleware = requireTier("Fleet Core", "Fleet Command");
+    const req = mockReq(makeUser());
+    const res = mockRes();
+
+    await middleware(req, res, nextFn);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error_code: "TIER_DB_ERROR_001" }),
     );
     expect(nextFn).not.toHaveBeenCalled();
   });
