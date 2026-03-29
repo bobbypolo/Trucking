@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { v4 as uuidv4 } from "uuid";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -38,10 +38,7 @@ router.post(
       );
       res.status(201).json({ id });
     } catch (err: unknown) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/call-logs",
-      });
+      const log = createRequestLogger(req, "POST /api/call-logs");
       log.error({ err }, "Failed to log call");
       res.status(500).json({ error: "Failed to log call" });
     }
@@ -62,10 +59,7 @@ router.get(
       );
       res.json({ callLogs: rows });
     } catch (err: unknown) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/call-logs",
-      });
+      const log = createRequestLogger(req, "GET /api/call-logs");
       log.error({ err }, "Failed to fetch call logs");
       res.status(500).json({ error: "Failed to fetch call logs" });
     }

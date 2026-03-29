@@ -24,7 +24,7 @@ import {
   syncBillToQBO,
   getConnectionStatus,
 } from "../services/quickbooks.service";
-import { createChildLogger } from "../lib/logger";
+import { createChildLogger, createRequestLogger } from "../lib/logger";
 
 const router = Router();
 const log = createChildLogger({ route: "quickbooks" });
@@ -67,11 +67,15 @@ router.get(
       const { code, realmId } = req.query;
 
       if (!code || typeof code !== "string") {
-        return res.status(400).json({ error: "Missing required query parameter: code" });
+        return res
+          .status(400)
+          .json({ error: "Missing required query parameter: code" });
       }
 
       if (!realmId || typeof realmId !== "string") {
-        return res.status(400).json({ error: "Missing required query parameter: realmId" });
+        return res
+          .status(400)
+          .json({ error: "Missing required query parameter: realmId" });
       }
 
       const companyId = (req as any).user?.companyId;

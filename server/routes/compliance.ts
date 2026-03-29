@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -28,10 +28,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/compliance",
-      });
+      const log = createRequestLogger(req, "GET /api/compliance");
       log.error({ err: error }, "SERVER ERROR [GET /api/compliance]");
       res.status(500).json({ error: "Database error" });
     }
@@ -86,10 +83,7 @@ router.post(
         .status(201)
         .json({ message: "Compliance alert created", id: exceptionId });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/compliance/alert",
-      });
+      const log = createRequestLogger(req, "POST /api/compliance/alert");
       log.error({ err: error }, "Failed to create compliance alert");
       res.status(500).json({ error: "Database error" });
     }

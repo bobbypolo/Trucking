@@ -5,7 +5,7 @@ import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createContactSchema, updateContactSchema } from "../schemas/contact";
 import { contactRepository } from "../repositories/contact.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -26,10 +26,7 @@ router.get(
       );
       res.json(contacts);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/contacts",
-      });
+      const log = createRequestLogger(req, "GET /api/contacts");
       log.error({ err: error }, "Failed to fetch contacts");
       res.status(500).json({ error: "Database error" });
     }
@@ -53,10 +50,7 @@ router.post(
       );
       res.status(201).json(contact);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/contacts",
-      });
+      const log = createRequestLogger(req, "POST /api/contacts");
       log.error({ err: error }, "Failed to create contact");
       res.status(500).json({ error: "Database error" });
     }

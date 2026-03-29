@@ -5,7 +5,7 @@ import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createQuoteSchema, updateQuoteSchema } from "../schemas/quote";
 import { quoteRepository } from "../repositories/quote.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { NotFoundError } from "../errors/AppError";
 
 const router = Router();
@@ -27,10 +27,7 @@ router.get(
       );
       res.json(quotes);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/quotes",
-      });
+      const log = createRequestLogger(req, "GET /api/quotes");
       log.error({ err: error }, "Failed to fetch quotes");
       res.status(500).json({ error: "Database error" });
     }
@@ -70,10 +67,7 @@ router.post(
       const quote = await quoteRepository.create(req.body, companyId, userId);
       res.status(201).json(quote);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/quotes",
-      });
+      const log = createRequestLogger(req, "POST /api/quotes");
       log.error({ err: error }, "Failed to create quote");
       res.status(500).json({ error: "Database error" });
     }

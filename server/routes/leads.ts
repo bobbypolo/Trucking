@@ -5,7 +5,7 @@ import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createLeadSchema, updateLeadSchema } from "../schemas/lead";
 import { leadRepository } from "../repositories/lead.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -22,10 +22,7 @@ router.get(
       const leads = await leadRepository.findByCompany(companyId, page, limit);
       res.json(leads);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/leads",
-      });
+      const log = createRequestLogger(req, "GET /api/leads");
       log.error({ err: error }, "Failed to fetch leads");
       res.status(500).json({ error: "Database error" });
     }
@@ -65,10 +62,7 @@ router.post(
       const lead = await leadRepository.create(req.body, companyId, userId);
       res.status(201).json(lead);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/leads",
-      });
+      const log = createRequestLogger(req, "POST /api/leads");
       log.error({ err: error }, "Failed to create lead");
       res.status(500).json({ error: "Database error" });
     }
