@@ -35,7 +35,7 @@ This checklist ensures all development configurations are switched to production
 
 **Why:** Azure Maps provides professional-grade weather data better suited for commercial logistics applications.
 
-**Reference:** See `WEATHER_SETUP_DEV.md` for migration instructions
+**Reference:** See `WEATHER_API_SETUP.md` for migration instructions
 
 ---
 

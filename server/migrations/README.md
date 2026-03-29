@@ -10,7 +10,7 @@ The migration runner lives at `server/lib/migrator.ts`. Key behaviors:
 - **Delimiters**: Each file uses `-- UP` / `-- DOWN` section markers
 - **Transactions**: Each migration runs inside a transaction; failures trigger rollback
 
-## Known Duplicate Numbering (002, 003)
+## Known Duplicate Numbering (002, 003, 038, 039)
 
 Early migrations were authored by different agents on parallel branches and merged
 with duplicate numeric prefixes. Because the runner sorts **alphabetically**, the
@@ -26,9 +26,14 @@ execution order is deterministic and correct:
 | 6   | `004_idempotency_keys.sql`                | Idempotency key tracking                                                  |
 | 7+  | `005_*` through `037_*`                   | See individual file headers                                               |
 | 38  | `038_accounting_tenant_to_company_id.sql` | Reconcile tenant_id to company_id on all accounting/IFTA/exception tables |
-| 39  | `039_companies_subscription_tier.sql`      | Restore companies.subscription_tier and seed supported dev tenants      |
+| 38  | `038_parties_tags.sql`                    | Add tags column to parties table (duplicate prefix — see note below)      |
+| 39  | `039_companies_subscription_tier.sql`     | Restore companies.subscription_tier and seed supported dev tenants        |
+| 39  | `039_tracking_provider_configs.sql`       | Tracking provider configuration table (duplicate prefix — see note below) |
+| 40  | `040_parties_tags.sql`                    | Parties tags (renumbered from duplicate 038)                              |
+| 41  | `041_tracking_provider_configs.sql`       | Tracking provider configs (renumbered from duplicate 039)                 |
+| 42  | `042_add_documents_is_locked.sql`         | Add is_locked column to documents table                                   |
 
-The duplicate prefixes (two `002_*` and two `003_*`) are harmless because:
+The duplicate prefixes (two `002_*`, two `003_*`, two `038_*`, and two `039_*`) are harmless because:
 
 1. Alphabetical sort produces a stable, unambiguous order
 2. The `_migrations` table tracks by **full filename**, not by prefix number
@@ -80,7 +85,7 @@ seeds the supported dev tenants used by Team 1 and Team 3 validation.
 
 ## Adding New Migrations
 
-1. Use the next available 3-digit prefix (currently `040`)
+1. Use the next available 3-digit prefix (currently `043`)
 2. Include both `-- UP` and `-- DOWN` sections
 3. Use `company_id` (not `tenant_id`) for multi-tenant columns
 4. Keep `companies.subscription_tier` present for tier-gated features
