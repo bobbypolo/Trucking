@@ -81,6 +81,12 @@ vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+  createRequestLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
     warn: vi.fn((...warnArgs: any[]) => {
       // pino-style: first arg is object, second is message string
       logWarnCalls.push({

@@ -107,6 +107,7 @@ vi.mock("../../lib/logger", () => {
   return {
     logger,
     createChildLogger: () => logger,
+    createRequestLogger: () => logger,
   };
 });
 
