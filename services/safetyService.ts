@@ -130,42 +130,37 @@ export const saveMaintenanceRecord = async (
 // ── Service Tickets ───────────────────────────────────────────────────────
 
 export const getServiceTickets = async (): Promise<ServiceTicket[]> => {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/service-tickets`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/safety/service-tickets`, { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch service tickets: ${res.status}`);
   }
+  return await res.json();
 };
 
 export const saveServiceTicket = async (
   ticket: ServiceTicket,
 ): Promise<void> => {
-  try {
-    const headers = await getAuthHeaders();
-    await fetch(`${API_URL}/safety/service-tickets`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(ticket),
-    });
-  } catch {
-    // silently ignore
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/safety/service-tickets`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(ticket),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to save service ticket: ${res.status}`);
   }
 };
 
 // ── Vendors ───────────────────────────────────────────────────────────────
 
 export const getVendors = async (): Promise<Provider[]> => {
-  try {
-    const headers = await getAuthHeaders();
-    const res = await fetch(`${API_URL}/safety/vendors`, { headers });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
+  const headers = await getAuthHeaders();
+  const res = await fetch(`${API_URL}/safety/vendors`, { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch vendors: ${res.status}`);
   }
+  return await res.json();
 };
 
 export const saveVendor = async (vendor: Provider): Promise<void> => {

@@ -365,6 +365,7 @@ export const CompanyProfile: React.FC<Props> = ({
     { type: string; time: string; date: string; status: string }[]
   >([]);
   const [timeLogsLoading, setTimeLogsLoading] = useState(false);
+  const [timeLogsError, setTimeLogsError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [billingAvailable, setBillingAvailable] = useState<boolean | null>(
     null,
@@ -467,6 +468,7 @@ export const CompanyProfile: React.FC<Props> = ({
     if (!isDriver) return;
     const fetchLogs = async () => {
       setTimeLogsLoading(true);
+      setTimeLogsError(null);
       try {
         const logs = await getTimeLogs(user.id);
         const recent = logs.slice(0, 5).map((log) => ({
@@ -484,7 +486,7 @@ export const CompanyProfile: React.FC<Props> = ({
         setTimeLogs(recent);
       } catch (err) {
         console.error("[CompanyProfile] Failed to load time logs:", err);
-        setTimeLogs([]);
+        setTimeLogsError("Unable to load time entries. Please retry.");
       } finally {
         setTimeLogsLoading(false);
       }
@@ -830,6 +832,10 @@ export const CompanyProfile: React.FC<Props> = ({
                     {timeLogsLoading ? (
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center py-8 animate-pulse">
                         Loading time entries...
+                      </div>
+                    ) : timeLogsError ? (
+                      <div className="text-[10px] font-black text-red-400 uppercase tracking-widest text-center py-8">
+                        {timeLogsError}
                       </div>
                     ) : timeLogs.length === 0 ? (
                       <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest text-center py-8">

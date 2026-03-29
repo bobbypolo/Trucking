@@ -51,17 +51,16 @@ describe("exceptionService", () => {
       expect(endpoint).toContain("/exceptions?");
     });
 
-    it("returns empty array when api throws", async () => {
+    // R-P2-03: getExceptions throws on API failure
+    it("throws when api returns server error", async () => {
       mockGet.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-      const result = await getExceptions();
-      expect(result).toEqual([]);
+      await expect(getExceptions()).rejects.toThrow("500 Internal Server Error");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error", async () => {
       mockGet.mockRejectedValueOnce(new Error("offline"));
-      const result = await getExceptions();
-      expect(result).toEqual([]);
+      await expect(getExceptions()).rejects.toThrow("offline");
     });
   });
 
@@ -81,17 +80,16 @@ describe("exceptionService", () => {
       );
     });
 
-    it("returns null when api throws on bad request", async () => {
+    // R-P2-04: createException throws on failure
+    it("throws when api returns bad request", async () => {
       mockPost.mockRejectedValueOnce(new Error("400 Bad Request"));
 
-      const result = await createException({ type: "TEST" as any });
-      expect(result).toBeNull();
+      await expect(createException({ type: "TEST" as any })).rejects.toThrow("400 Bad Request");
     });
 
-    it("returns null on network error", async () => {
+    it("throws on network error", async () => {
       mockPost.mockRejectedValueOnce(new Error("offline"));
-      const result = await createException({ type: "TEST" as any });
-      expect(result).toBeNull();
+      await expect(createException({ type: "TEST" as any })).rejects.toThrow("offline");
     });
   });
 
@@ -107,17 +105,16 @@ describe("exceptionService", () => {
       });
     });
 
-    it("returns false when api throws on not found", async () => {
+    // R-P2-04: updateException throws on failure
+    it("throws when api returns not found", async () => {
       mockPatch.mockRejectedValueOnce(new Error("404 Not Found"));
 
-      const result = await updateException("exc-1", { status: "resolved" });
-      expect(result).toBe(false);
+      await expect(updateException("exc-1", { status: "resolved" })).rejects.toThrow("404 Not Found");
     });
 
-    it("returns false on network error", async () => {
+    it("throws on network error", async () => {
       mockPatch.mockRejectedValueOnce(new Error("offline"));
-      const result = await updateException("exc-1", { status: "resolved" });
-      expect(result).toBe(false);
+      await expect(updateException("exc-1", { status: "resolved" })).rejects.toThrow("offline");
     });
   });
 
@@ -135,17 +132,16 @@ describe("exceptionService", () => {
       expect(mockGet).toHaveBeenCalledWith("/exceptions/exc-1/events");
     });
 
-    it("returns empty array when api throws", async () => {
+    // R-P2-03: getExceptionEvents throws on failure
+    it("throws when api returns server error", async () => {
       mockGet.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-      const result = await getExceptionEvents("exc-1");
-      expect(result).toEqual([]);
+      await expect(getExceptionEvents("exc-1")).rejects.toThrow("500 Internal Server Error");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error", async () => {
       mockGet.mockRejectedValueOnce(new Error("offline"));
-      const result = await getExceptionEvents("exc-1");
-      expect(result).toEqual([]);
+      await expect(getExceptionEvents("exc-1")).rejects.toThrow("offline");
     });
   });
 
@@ -163,17 +159,16 @@ describe("exceptionService", () => {
       expect(mockGet).toHaveBeenCalledWith("/exception-types");
     });
 
-    it("returns empty array when api throws", async () => {
+    // R-P2-03: getExceptionTypes throws on failure
+    it("throws when api returns server error", async () => {
       mockGet.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-      const result = await getExceptionTypes();
-      expect(result).toEqual([]);
+      await expect(getExceptionTypes()).rejects.toThrow("500 Internal Server Error");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error", async () => {
       mockGet.mockRejectedValueOnce(new Error("offline"));
-      const result = await getExceptionTypes();
-      expect(result).toEqual([]);
+      await expect(getExceptionTypes()).rejects.toThrow("offline");
     });
   });
 
@@ -188,17 +183,16 @@ describe("exceptionService", () => {
       expect(mockGet).toHaveBeenCalledWith("/dashboard/cards");
     });
 
-    it("returns empty array when api throws", async () => {
+    // R-P2-03: getDashboardCards throws on failure
+    it("throws when api returns server error", async () => {
       mockGet.mockRejectedValueOnce(new Error("500 Internal Server Error"));
 
-      const result = await getDashboardCards();
-      expect(result).toEqual([]);
+      await expect(getDashboardCards()).rejects.toThrow("500 Internal Server Error");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error", async () => {
       mockGet.mockRejectedValueOnce(new Error("offline"));
-      const result = await getDashboardCards();
-      expect(result).toEqual([]);
+      await expect(getDashboardCards()).rejects.toThrow("offline");
     });
   });
 });

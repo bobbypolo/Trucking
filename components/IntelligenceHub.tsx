@@ -1164,7 +1164,13 @@ const IntelligenceHub: React.FC<{
   }, [showDirectoryDrawer]);
 
   useEffect(() => {
-    getVendors().then(setRoadsideVendors);
+    getVendors()
+      .then(setRoadsideVendors)
+      .catch((err) => {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          setToast({ message: "Failed to load roadside vendors", type: "error" });
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -1544,7 +1550,15 @@ const IntelligenceHub: React.FC<{
       updatedAt: new Date().toISOString(),
     };
 
-    await saveServiceTicket(ticket);
+    try {
+      await saveServiceTicket(ticket);
+    } catch (e) {
+      setToast({
+        message: `Failed to save service ticket: ${e instanceof Error ? e.message : "Unknown error"}`,
+        type: "error",
+      });
+      return;
+    }
 
     // Record Emergency Charge (Financial Audit)
     if (activeRecord.type === "INCIDENT") {
@@ -3836,22 +3850,29 @@ const IntelligenceHub: React.FC<{
                     }
                   }
 
-                  onRecordAction({
-                    id: uuidv4(),
-                    type: "SYSTEM",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    loadId: active360Data?.load?.id,
-                    message: `Operational Handoff: Transtioned to ${assignedUser.name}. Note: ${handoffData.notes}`,
-                    payload: handoffData,
-                  });
+                  try {
+                    await onRecordAction({
+                      id: uuidv4(),
+                      type: "SYSTEM",
+                      timestamp: new Date().toISOString(),
+                      actorId: user.id,
+                      actorName: user.name,
+                      loadId: active360Data?.load?.id,
+                      message: `Operational Handoff: Transtioned to ${assignedUser.name}. Note: ${handoffData.notes}`,
+                      payload: handoffData,
+                    });
 
-                  await fetchQueues();
-                  setShowHandoffForm(false);
-                  showSuccessMessage(
-                    `Operational Handoff Committed to ${assignedUser.name}`,
-                  );
+                    await fetchQueues();
+                    setShowHandoffForm(false);
+                    showSuccessMessage(
+                      `Operational Handoff Committed to ${assignedUser.name}`,
+                    );
+                  } catch (e) {
+                    setToast({
+                      message: `Handoff failed: ${e instanceof Error ? e.message : "Unknown error"}`,
+                      type: "error",
+                    });
+                  }
                 }}
                 className="w-full py-4 bg-blue-600 rounded-2xl text-[11px] font-black text-white uppercase shadow-xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
               >

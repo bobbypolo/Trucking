@@ -271,25 +271,20 @@ export const getTimeLogs = async (
   const endpoint = isCompany
     ? `/time-logs/company/${userIdOrCompanyId}`
     : `/time-logs/${userIdOrCompanyId}`;
-  try {
-    const data = await api.get(endpoint, { signal });
-    if (!data) return []; // request was aborted
-    return data.map((t: any) => ({
-      ...t,
-      userId: t.user_id,
-      loadId: t.load_id,
-      activityType: t.activity_type,
-      clockIn: t.clock_in,
-      clockOut: t.clock_out,
-      location: {
-        lat: t.location_lat,
-        lng: t.location_lng,
-      },
-    }));
-  } catch (e) {
-    console.warn("[storageService] getTimeLogs failed:", e);
-    return [];
-  }
+  const data = await api.get(endpoint, { signal });
+  if (!data) return []; // request was aborted
+  return data.map((t: any) => ({
+    ...t,
+    userId: t.user_id,
+    loadId: t.load_id,
+    activityType: t.activity_type,
+    clockIn: t.clock_in,
+    clockOut: t.clock_out,
+    location: {
+      lat: t.location_lat,
+      lng: t.location_lng,
+    },
+  }));
 };
 
 // Consolidated Work Item logic at the end of the file
@@ -713,11 +708,7 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
     ...callLog,
   };
 
-  try {
-    await api.post("/call-logs", newCall);
-  } catch (e) {
-    console.error("[storageService] saveCallLog sync failed:", e);
-  }
+  await api.post("/call-logs", newCall);
 
   // Update related shipment in-memory cache if applicable
   if (newCall.entityId && newCall.entityId !== "global") {

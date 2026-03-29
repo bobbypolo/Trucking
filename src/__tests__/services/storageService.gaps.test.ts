@@ -377,12 +377,11 @@ describe("storageService — gap coverage", () => {
       expect(callLog.notes).toBe("Called driver");
     });
 
-    it("handles API failure gracefully", async () => {
+    // R-P2-02: saveCallLog throws on sync failure
+    it("throws on API failure instead of returning synthetic record", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      const callLog = await saveCallLog({ notes: "Test" });
-      expect(callLog).toBeDefined();
-      expect(callLog.id).toBeTruthy();
+      await expect(saveCallLog({ notes: "Test" })).rejects.toThrow("offline");
     });
   });
 
