@@ -2,7 +2,7 @@ import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { callSessionRepository } from "../repositories/call-session.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -21,10 +21,7 @@ router.get(
       const sessions = await callSessionRepository.findByCompany(companyId);
       res.json({ sessions });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/call-sessions",
-      });
+      const log = createRequestLogger(req, "GET /api/call-sessions");
       log.error({ err: error }, "SERVER ERROR [GET /api/call-sessions]");
       res.status(500).json({ error: "Database error" });
     }
@@ -77,10 +74,7 @@ router.post(
       );
       res.status(201).json({ session });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/call-sessions",
-      });
+      const log = createRequestLogger(req, "POST /api/call-sessions");
       log.error({ err: error }, "SERVER ERROR [POST /api/call-sessions]");
       res.status(500).json({ error: "Database error" });
     }
@@ -110,10 +104,7 @@ router.put(
       }
       res.json({ session });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "PUT /api/call-sessions/:id",
-      });
+      const log = createRequestLogger(req, "PUT /api/call-sessions/:id");
       log.error({ err: error }, "SERVER ERROR [PUT /api/call-sessions/:id]");
       res.status(500).json({ error: "Database error" });
     }
@@ -139,10 +130,7 @@ router.delete(
       }
       res.status(204).send();
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "DELETE /api/call-sessions/:id",
-      });
+      const log = createRequestLogger(req, "DELETE /api/call-sessions/:id");
       log.error({ err: error }, "SERVER ERROR [DELETE /api/call-sessions/:id]");
       res.status(500).json({ error: "Database error" });
     }

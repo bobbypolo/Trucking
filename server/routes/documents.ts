@@ -17,7 +17,7 @@ import type { Request, Response } from "express";
 import multer from "multer";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { createDocumentService } from "../services/document.service";
 import type { StorageAdapter } from "../services/document.service";
 import { ValidationError } from "../errors/AppError";
@@ -111,10 +111,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents",
-    });
+    const log = createRequestLogger(req, "GET /api/documents");
     const companyId = req.user!.tenantId;
 
     const parsed = documentListQuerySchema.safeParse(req.query);
@@ -140,10 +137,7 @@ router.post(
   upload.single("file"),
   multerErrorHandler,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/documents",
-    });
+    const log = createRequestLogger(req, "POST /api/documents");
     const companyId = req.user!.tenantId;
     const uploadedBy = req.user!.uid;
 
@@ -218,10 +212,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents/:id",
-    });
+    const log = createRequestLogger(req, "GET /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
@@ -251,10 +242,7 @@ router.patch(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/documents/:id",
-    });
+    const log = createRequestLogger(req, "PATCH /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
@@ -304,10 +292,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents/:id/download",
-    });
+    const log = createRequestLogger(req, "GET /api/documents/:id/download");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 

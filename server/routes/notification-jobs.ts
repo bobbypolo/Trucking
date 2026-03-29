@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { deliverNotification } from "../services/notification-delivery.service";
 
 const router = Router();
@@ -16,10 +16,7 @@ router.get(
   requireTenant,
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/notification-jobs",
-    });
+    const log = createRequestLogger(req, "GET /api/notification-jobs");
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM notification_jobs WHERE company_id = ? ORDER BY sent_at DESC",
@@ -48,10 +45,7 @@ router.get(
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/notification-jobs/:id",
-    });
+    const log = createRequestLogger(req, "GET /api/notification-jobs/:id");
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM notification_jobs WHERE id = ?",
@@ -86,10 +80,7 @@ router.post(
   requireTenant,
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/notification-jobs",
-    });
+    const log = createRequestLogger(req, "POST /api/notification-jobs");
     const {
       id: providedId,
       loadId,
@@ -186,10 +177,7 @@ router.patch(
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/notification-jobs/:id",
-    });
+    const log = createRequestLogger(req, "PATCH /api/notification-jobs/:id");
 
     const { status, sync_error } = req.body;
 

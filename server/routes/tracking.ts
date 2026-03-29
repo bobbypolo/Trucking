@@ -4,7 +4,7 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
 import type { GpsPosition, TrackingState } from "../services/gps";
 
@@ -39,11 +39,14 @@ interface TrackingLoad {
 
 type SupportedProviderName = "samsara" | "webhook";
 
-function normalizeSupportedProviderName(name: unknown): SupportedProviderName | null {
+function normalizeSupportedProviderName(
+  name: unknown,
+): SupportedProviderName | null {
   if (typeof name !== "string") return null;
   const normalized = name.toLowerCase().replace(/\s+/g, "_").trim();
   if (normalized === "samsara") return "samsara";
-  if (normalized === "webhook" || normalized === "generic_webhook") return "webhook";
+  if (normalized === "webhook" || normalized === "generic_webhook")
+    return "webhook";
   return null;
 }
 
@@ -146,10 +149,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/loads/tracking",
-      });
+      const log = createRequestLogger(req, "GET /api/loads/tracking");
       log.error({ err: error }, "SERVER ERROR [GET /api/loads/tracking]");
       res.status(500).json({ error: "Database error" });
     }
@@ -198,10 +198,10 @@ router.get(
         currentPosition: deriveCurrentPosition(legs),
       });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: `GET /api/loads/${req.params.id}/tracking`,
-      });
+      const log = createRequestLogger(
+        req,
+        `GET /api/loads/${req.params.id}/tracking`,
+      );
       log.error(
         { err: error },
         `SERVER ERROR [GET /api/loads/${req.params.id}/tracking]`,
@@ -218,7 +218,7 @@ router.get(
 async function storePositions(
   companyId: string,
   positions: GpsPosition[],
-  log: ReturnType<typeof createChildLogger>,
+  log: ReturnType<typeof createRequestLogger>,
 ): Promise<void> {
   // Filter out mock positions — never persist simulated data
   const realPositions = positions.filter((p) => !p.isMock);
@@ -270,10 +270,7 @@ router.get(
   requireTier("Fleet Core", "Fleet Command"),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/live",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/live");
 
     try {
       // Try DB-backed provider config first
@@ -305,10 +302,7 @@ router.get(
           trackingState = result.state;
         }
       } catch (providerErr) {
-        log.error(
-          { err: providerErr },
-          "GPS provider lookup failed",
-        );
+        log.error({ err: providerErr }, "GPS provider lookup failed");
         trackingState = "provider-error";
       }
 
@@ -352,10 +346,7 @@ setInterval(() => {
  * Not Firebase auth — ELD providers can't do Firebase.
  */
 router.post("/api/tracking/webhook", async (req: any, res) => {
-  const log = createChildLogger({
-    correlationId: req.correlationId,
-    route: "POST /api/tracking/webhook",
-  });
+  const log = createRequestLogger(req, "POST /api/tracking/webhook");
 
   // Validate X-GPS-API-Key header
   const apiKey = req.headers["x-gps-api-key"];
@@ -506,15 +497,13 @@ router.post(
 
     if (!providerName) {
       return res.status(400).json({
-        error: "Unsupported providerName. Supported values are Samsara and Generic Webhook.",
+        error:
+          "Unsupported providerName. Supported values are Samsara and Generic Webhook.",
       });
     }
 
     const id = randomUUID();
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/providers",
-    });
+    const log = createRequestLogger(req, "POST /api/tracking/providers");
 
     try {
       // Upsert: insert or replace existing config for this company+provider
@@ -573,10 +562,7 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/providers",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/providers");
 
     try {
       const [rows]: any = await pool.query(
@@ -632,10 +618,7 @@ router.delete(
     }
 
     const configId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "DELETE /api/tracking/providers/:id",
-    });
+    const log = createRequestLogger(req, "DELETE /api/tracking/providers/:id");
 
     try {
       // Verify ownership before delete
@@ -683,10 +666,10 @@ router.post(
     }
 
     const configId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/providers/:id/test",
-    });
+    const log = createRequestLogger(
+      req,
+      "POST /api/tracking/providers/:id/test",
+    );
 
     try {
       const [rows]: any = await pool.query(
@@ -774,7 +757,8 @@ router.post(
         if (!config.webhook_url) {
           return res.json({
             status: "no_credentials",
-            message: "No webhook URL configured. Set a webhook URL to enable GPS data ingestion.",
+            message:
+              "No webhook URL configured. Set a webhook URL to enable GPS data ingestion.",
             latencyMs: Date.now() - startMs,
           });
         }
@@ -782,7 +766,8 @@ router.post(
         if (!config.webhook_secret) {
           return res.json({
             status: "no_credentials",
-            message: "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
+            message:
+              "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
             latencyMs: Date.now() - startMs,
           });
         }
@@ -894,10 +879,7 @@ router.post(
       });
     }
 
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/vehicles/mapping",
-    });
+    const log = createRequestLogger(req, "POST /api/tracking/vehicles/mapping");
 
     try {
       // Verify the provider config belongs to this tenant
@@ -961,10 +943,7 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/vehicles/mapping",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/vehicles/mapping");
 
     try {
       const [rows]: any = await pool.query(
@@ -1021,10 +1000,10 @@ router.delete(
     }
 
     const mappingId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "DELETE /api/tracking/vehicles/mapping/:id",
-    });
+    const log = createRequestLogger(
+      req,
+      "DELETE /api/tracking/vehicles/mapping/:id",
+    );
 
     try {
       const [rows]: any = await pool.query(

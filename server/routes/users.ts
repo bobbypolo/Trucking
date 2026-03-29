@@ -14,7 +14,7 @@ import {
   resetPasswordSchema,
   syncUserSchema,
 } from "../schemas/users";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import {
   ensureMySqlCompany,
   findSqlUserById,
@@ -107,10 +107,7 @@ router.post(
   validateBody(registerUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/register",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/register");
 
     const registerAdminRoles = [
       "admin",
@@ -162,10 +159,7 @@ router.post(
   validateBody(syncUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/users",
-    });
+    const log = createRequestLogger(req, "POST /api/users");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
     const isAdmin = adminRoles.includes(authReq.user.role);
@@ -243,10 +237,7 @@ router.post(
   loginLimiter,
   validateBody(loginUserSchema),
   async (req, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/login",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/login");
 
     if (!firebaseAdminReady()) {
       return res.status(500).json({
@@ -381,10 +372,7 @@ router.post(
   resetPasswordLimiter,
   validateBody(resetPasswordSchema),
   async (req, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/reset-password",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/reset-password");
 
     const { email } = req.body as { email: string };
 
@@ -418,10 +406,7 @@ router.get("/api/users/me", requireAuth, async (req: any, res) => {
 
     res.json(mapUserRowToApiUser(user));
   } catch (error) {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/users/me",
-    });
+    const log = createRequestLogger(req, "GET /api/users/me");
     log.error({ err: error }, "SERVER ERROR [GET /api/users/me]");
     res.status(500).json({ error: "Server error" });
   }
@@ -436,10 +421,7 @@ router.get(
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/users",
-      });
+      const log = createRequestLogger(req, "GET /api/users");
       log.error({ err: error }, "SERVER ERROR [GET /api/users]");
       res.status(500).json({ error: "Database error" });
     }
