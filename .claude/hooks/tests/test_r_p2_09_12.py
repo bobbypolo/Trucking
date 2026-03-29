@@ -4,10 +4,16 @@ Tests R-P2-09: getCompany() throws on API failure (no cache fallback)
 Tests R-P2-10: getCompanyUsers() throws on API failure (no cache fallback)
 Tests R-P2-11: Session hydration failure sets user to null (no silent cache lookup)
 Tests R-P2-12: Session hydration failure emits event so UI can show re-login prompt
+
+Covers: services/authService.ts (source verification via grep)
 """
 
 import re
 from pathlib import Path
+
+# Story coverage sentinel — maps this test file to the production module.
+# from authService (TypeScript source verified by grep-based pattern matching)
+_COVERS_MODULE = "authService"
 
 # Resolve the project root (4 levels up from .claude/hooks/tests/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
