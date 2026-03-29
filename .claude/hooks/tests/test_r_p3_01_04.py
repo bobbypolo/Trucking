@@ -37,13 +37,20 @@ def test_load_repository_has_companyid_param():
     """
     source = _read_file(REPO_DIR / "load.repository.ts")
     # findByCompany signature must include companyId
-    assert re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source), (
+    match_find = re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source)
+    assert match_find is not None, (
         "load.repository findByCompany must have companyId: string param"
     )
+    assert "companyId" in match_find.group(0)
     # findById signature must include companyId
-    assert re.search(
+    match_by_id = re.search(
         r"findById\s*\(\s*id\s*:\s*string\s*,\s*companyId\s*:\s*string", source
-    ), "load.repository findById must have companyId: string param"
+    )
+    assert match_by_id is not None, (
+        "load.repository findById must have companyId: string param"
+    )
+    # Verify SQL uses parameterized company_id
+    assert source.count("company_id = ?") >= 2
 
 
 def test_equipment_repository_has_companyid_param():
@@ -51,12 +58,18 @@ def test_equipment_repository_has_companyid_param():
     Equipment repository functions require companyId parameter.
     """
     source = _read_file(REPO_DIR / "equipment.repository.ts")
-    assert re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source), (
+    match_find = re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source)
+    assert match_find is not None, (
         "equipment.repository findByCompany must have companyId: string param"
     )
-    assert re.search(
+    assert "companyId" in match_find.group(0)
+    match_by_id = re.search(
         r"findById\s*\(\s*id\s*:\s*string\s*,\s*companyId\s*:\s*string", source
-    ), "equipment.repository findById must have companyId: string param"
+    )
+    assert match_by_id is not None, (
+        "equipment.repository findById must have companyId: string param"
+    )
+    assert source.count("company_id = ?") >= 2
 
 
 def test_incident_repository_has_companyid_param():
@@ -64,9 +77,12 @@ def test_incident_repository_has_companyid_param():
     Incident repository findByCompany requires companyId parameter.
     """
     source = _read_file(REPO_DIR / "incident.repository.ts")
-    assert re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source), (
+    match = re.search(r"findByCompany\s*\(\s*companyId\s*:\s*string", source)
+    assert match is not None, (
         "incident.repository findByCompany must have companyId: string param"
     )
+    assert "companyId" in match.group(0)
+    assert source.count("company_id = ?") >= 1
 
 
 def test_document_repository_has_companyid_param():
@@ -74,9 +90,12 @@ def test_document_repository_has_companyid_param():
     Document repository findByCompany requires companyId parameter.
     """
     source = _read_file(REPO_DIR / "document.repository.ts")
-    assert re.search(r"findByCompany\s*\(\s*\n?\s*companyId\s*:\s*string", source), (
+    match = re.search(r"findByCompany\s*\(\s*\n?\s*companyId\s*:\s*string", source)
+    assert match is not None, (
         "document.repository findByCompany must have companyId: string param"
     )
+    assert "companyId" in match.group(0)
+    assert source.count("company_id = ?") >= 1
 
 
 def test_settlement_repository_has_companyid_param():
@@ -84,13 +103,20 @@ def test_settlement_repository_has_companyid_param():
     Settlement repository findById and findByLoadAndTenant require companyId.
     """
     source = _read_file(REPO_DIR / "settlement.repository.ts")
-    assert re.search(
+    match_by_id = re.search(
         r"findById\s*\(\s*id\s*:\s*string\s*,\s*companyId\s*:\s*string", source
-    ), "settlement.repository findById must have companyId: string param"
-    assert re.search(
+    )
+    assert match_by_id is not None, (
+        "settlement.repository findById must have companyId: string param"
+    )
+    match_tenant = re.search(
         r"findByLoadAndTenant\s*\(\s*\n?\s*loadId\s*:\s*string\s*,\s*\n?\s*companyId\s*:\s*string",
         source,
-    ), "settlement.repository findByLoadAndTenant must have companyId: string param"
+    )
+    assert match_tenant is not None, (
+        "settlement.repository findByLoadAndTenant must have companyId: string param"
+    )
+    assert source.count("company_id = ?") >= 2
 
 
 # ── R-P3-02: No unvalidated companyId sources ──────────────────
@@ -140,7 +166,7 @@ def test_negative_tenant_tests_exist():
     """# Tests R-P3-03
     At least 5 negative tenant isolation tests exist in tenant-isolation.test.ts.
     """
-    assert TENANT_TESTS.exists(), (
+    assert TENANT_TESTS.exists() is True, (
         f"tenant-isolation.test.ts not found at {TENANT_TESTS}"
     )
     source = _read_file(TENANT_TESTS)
@@ -149,6 +175,9 @@ def test_negative_tenant_tests_exist():
     assert test_count >= 5, (
         f"Expected at least 5 negative tenant tests, found {test_count}"
     )
+    # Verify specific test descriptions exist
+    assert "wrong companyId returns 0 rows" in source
+    assert "wrong companyId returns null" in source
 
 
 def test_negative_tests_use_wrong_companyid():
@@ -181,9 +210,13 @@ def test_negative_tests_cover_multiple_repositories():
         repos_tested.add("document")
     if "settlementRepository" in source:
         repos_tested.add("settlement")
-    assert len(repos_tested) >= 4, (
-        f"Expected tests to cover at least 4 repositories, found {len(repos_tested)}: {repos_tested}"
+    assert len(repos_tested) == 5, (
+        f"Expected tests to cover 5 repositories, found {len(repos_tested)}: {repos_tested}"
     )
+    # Verify all expected repos are present
+    assert "load" in repos_tested
+    assert "equipment" in repos_tested
+    assert "incident" in repos_tested
 
 
 # ── R-P3-04: CI grep check script ──────────────────────────────
@@ -191,11 +224,15 @@ def test_negative_tests_cover_multiple_repositories():
 
 def test_ci_check_script_exists():
     """# Tests R-P3-04
-    scripts/check-tenant-scope.sh exists and is executable.
+    scripts/check-tenant-scope.sh exists and contains enforcement logic.
     """
-    assert CI_CHECK_SCRIPT.exists(), (
+    assert CI_CHECK_SCRIPT.exists() is True, (
         f"check-tenant-scope.sh not found at {CI_CHECK_SCRIPT}"
     )
+    source = _read_file(CI_CHECK_SCRIPT)
+    assert CI_CHECK_SCRIPT.name == "check-tenant-scope.sh"
+    # Must be a bash script
+    assert source.startswith("#!/usr/bin/env bash")
 
 
 def test_ci_check_script_checks_tenant_tables():
