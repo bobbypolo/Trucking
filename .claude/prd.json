@@ -747,8 +747,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -787,8 +787,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -827,8 +827,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -862,8 +862,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
