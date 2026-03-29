@@ -730,7 +730,8 @@ describe("authService", () => {
       expect(cached!.name).toBe("Updated");
     });
 
-    it("falls back gracefully when API call fails", async () => {
+    it("throws on network error (no silent fallback)", async () => {
+      // R-P2-14: updateUser must throw on ALL errors
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
         new Error("Network error"),
       );
@@ -743,8 +744,7 @@ describe("authService", () => {
         name: "Offline User",
       } as any;
 
-      // Should not throw
-      await expect(updateUser(user)).resolves.toBeUndefined();
+      await expect(updateUser(user)).rejects.toThrow("Network error");
     });
   });
 
@@ -818,7 +818,9 @@ describe("authService", () => {
         new Error("Network error"),
       );
 
-      await expect(getCompany("gc-fallback-1")).rejects.toThrow("Network error");
+      await expect(getCompany("gc-fallback-1")).rejects.toThrow(
+        "Network error",
+      );
     });
 
     it("throws on API failure even when company not in cache — R-P2-09", async () => {
@@ -826,7 +828,9 @@ describe("authService", () => {
         new Error("Network error"),
       );
 
-      await expect(getCompany("gc-nonexistent-xyz")).rejects.toThrow("Network error");
+      await expect(getCompany("gc-nonexistent-xyz")).rejects.toThrow(
+        "Network error",
+      );
     });
   });
 
