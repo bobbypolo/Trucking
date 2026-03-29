@@ -255,21 +255,17 @@ describe("authService", () => {
       expect(lsCalls.length).toBe(0);
     });
 
-    it("getCompany uses API-first then falls back to in-memory cache", async () => {
-      // Seed cache
+    it("getCompany throws on API failure (no cache fallback) — R-P2-09", async () => {
+      // Seed cache so fallback would have returned something
       vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateCompany({
         id: "gsc-api-fallback-1",
         name: "Cached Value",
       } as any);
 
-      // API fails -> returns from in-memory cache
+      // API fails -> should throw, not fall back to cache
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      const fromCache = await getCompany("gsc-api-fallback-1");
-      expect(fromCache).toEqual({
-        id: "gsc-api-fallback-1",
-        name: "Cached Value",
-      });
+      await expect(getCompany("gsc-api-fallback-1")).rejects.toThrow("offline");
     });
   });
 
@@ -812,27 +808,25 @@ describe("authService", () => {
       expect(result).toEqual(mockCompany);
     });
 
-    it("falls back to in-memory cache when API fails", async () => {
+    it("throws on API failure instead of falling back to cache — R-P2-09", async () => {
       // Seed the in-memory cache via updateCompany
       vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateCompany({ id: "gc-fallback-1", name: "Cached Corp" } as any);
 
-      // Now fail the API
+      // Now fail the API — should throw, not fall back
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
         new Error("Network error"),
       );
 
-      const result = await getCompany("gc-fallback-1");
-      expect(result).toEqual({ id: "gc-fallback-1", name: "Cached Corp" });
+      await expect(getCompany("gc-fallback-1")).rejects.toThrow("Network error");
     });
 
-    it("returns undefined when company not found in cache", async () => {
+    it("throws on API failure even when company not in cache — R-P2-09", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
         new Error("Network error"),
       );
 
-      const result = await getCompany("gc-nonexistent-xyz");
-      expect(result).toBeUndefined();
+      await expect(getCompany("gc-nonexistent-xyz")).rejects.toThrow("Network error");
     });
   });
 
@@ -852,10 +846,8 @@ describe("authService", () => {
       expect(result).toEqual(mockUsers);
     });
 
-    it("falls back to cached users filtered by companyId when API fails", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-
-      // Pre-populate cache via updateUser
+    it("throws on API failure (no cache fallback) — R-P2-10", async () => {
+      // Pre-populate cache so fallback would have returned something
       vi.spyOn(globalThis, "fetch").mockResolvedValue(mockOkResponse());
       await updateUser({
         id: "u3",
@@ -864,9 +856,9 @@ describe("authService", () => {
         role: "driver",
       } as any);
 
+      // API fails -> should throw, not fall back to cache
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      const result = await getCompanyUsers("c1");
-      expect(result.some((u) => u.id === "u3")).toBe(true);
+      await expect(getCompanyUsers("c1")).rejects.toThrow("offline");
     });
   });
 
@@ -1103,13 +1095,12 @@ describe("authService", () => {
 
   // ─── safeParseCompanies edge case ────────────────────────────────────
   describe("localStorage edge cases", () => {
-    it("handles corrupted companies JSON gracefully", async () => {
+    it("getCompany throws on API failure even with corrupted localStorage — R-P2-09", async () => {
       localStorageMock["loadpilot_companies_v1"] = "{invalid json";
 
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      // getCompany should not throw, just return undefined
-      const result = await getCompany("nonexistent");
-      expect(result).toBeUndefined();
+      // getCompany should throw — no fallback to cache
+      await expect(getCompany("nonexistent")).rejects.toThrow("offline");
     });
   });
 
