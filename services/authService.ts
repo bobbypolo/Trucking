@@ -254,18 +254,15 @@ if (!DEMO_MODE) {
       try {
         resolvedUser = await hydrateSessionFromApi();
       } catch (error) {
-        console.warn("[authService] Session hydration fallback:", error);
-      }
-
-      if (!resolvedUser) {
-        const users = getStoredUsers();
-        resolvedUser =
-          users.find(
-            (u) => u.email.toLowerCase() === fbUser.email?.toLowerCase(),
-          ) || null;
-        if (resolvedUser) {
-          _sessionCache = resolvedUser;
-        }
+        console.warn("[authService] Session hydration failed:", error);
+        // R-P2-11: Set user to null on hydration failure (no silent cache lookup)
+        _sessionCache = null;
+        // R-P2-12: Emit event so UI can show re-login prompt
+        window.dispatchEvent(
+          new CustomEvent("auth:session-failed", {
+            detail: { error, email: fbUser.email },
+          }),
+        );
       }
 
       notifyUserChange(resolvedUser);
@@ -550,13 +547,8 @@ export const getCurrentUser = (): User | null => _sessionCache;
 export const getCompany = async (
   companyId: string,
 ): Promise<Company | undefined> => {
-  try {
-    const { api } = await import("./api");
-    return await api.get(`/companies/${companyId}`);
-  } catch (e) {
-    console.warn("[authService] API fallback:", e);
-  }
-  return getStoredCompanies().find((c) => c.id === companyId);
+  const { api } = await import("./api");
+  return await api.get(`/companies/${companyId}`);
 };
 
 export const updateCompany = async (company: Company) => {
@@ -1036,13 +1028,8 @@ export const addDriver = async (
 };
 
 export const getCompanyUsers = async (companyId: string): Promise<User[]> => {
-  try {
-    const { api } = await import("./api");
-    return await api.get(`/users/${companyId}`);
-  } catch (e) {
-    console.warn("[authService] API fallback:", e);
-  }
-  return getStoredUsers().filter((u) => u.companyId === companyId);
+  const { api } = await import("./api");
+  return await api.get(`/users/${companyId}`);
 };
 
 // Seed credentials are loaded from fixtures/test-users.json at runtime.
