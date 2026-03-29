@@ -39,6 +39,39 @@ interface TrackingLoad {
 
 type SupportedProviderName = "samsara" | "webhook";
 
+/**
+ * Simple in-memory metrics counter for webhook rejection tracking.
+ * Keyed by rejection reason (e.g., "missing_company_id", "unknown_company_id").
+ */
+const webhookRejectionMetrics = new Map<string, number>();
+
+/** Increment a webhook rejection counter by reason. */
+function incrementWebhookRejection(reason: string): void {
+  webhookRejectionMetrics.set(
+    reason,
+    (webhookRejectionMetrics.get(reason) ?? 0) + 1,
+  );
+}
+
+/** Get the current rejection count for a given reason (exposed for testing). */
+export function getWebhookRejectionCount(reason: string): number {
+  return webhookRejectionMetrics.get(reason) ?? 0;
+}
+
+/** Reset all rejection counters (exposed for testing). */
+export function resetWebhookRejectionMetrics(): void {
+  webhookRejectionMetrics.clear();
+}
+
+/**
+ * Truncate a GPS coordinate to 2 decimal places for privacy.
+ * Full precision (~1m) is never logged; 2 decimals (~1km) is sufficient for debugging.
+ */
+function redactCoordinate(coord: number | null | undefined): string {
+  if (coord == null) return "null";
+  return Number(coord).toFixed(2);
+}
+
 function normalizeSupportedProviderName(name: unknown): SupportedProviderName | null {
   if (typeof name !== "string") return null;
   const normalized = name.toLowerCase().replace(/\s+/g, "_").trim();
@@ -407,34 +440,61 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
       .json({ error: `Missing required fields: ${missing.join(", ")}` });
   }
 
-  // Resolve and validate company ID
-  let resolvedCompanyId = "unresolved";
-  if (companyId) {
-    // Validate that companyId is a known tenant to prevent cross-tenant data injection
-    try {
-      const [companies]: any = await pool.query(
-        `SELECT id FROM companies WHERE id = ? LIMIT 1`,
-        [companyId],
-      );
-      if (companies.length > 0) {
-        resolvedCompanyId = companyId;
-      } else {
-        log.warn(
-          { vehicleId, companyId },
-          "GPS webhook companyId does not match any known tenant — stored as 'unresolved'",
-        );
-      }
-    } catch {
-      log.warn(
-        { vehicleId, companyId },
-        "GPS webhook companyId validation failed — stored as 'unresolved'",
-      );
-    }
-  } else {
+  // Validate company ID — reject if missing or unknown (never store "unresolved")
+  if (!companyId) {
+    incrementWebhookRejection("missing_company_id");
     log.warn(
-      { vehicleId },
-      "GPS webhook missing companyId — stored as 'unresolved'",
+      {
+        vehicleId,
+        lat: redactCoordinate(latitude),
+        lng: redactCoordinate(longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: missing company_id",
     );
+    return res
+      .status(400)
+      .json({ error: "company_id required" });
+  }
+
+  let resolvedCompanyId: string;
+  try {
+    const [companies]: any = await pool.query(
+      `SELECT id FROM companies WHERE id = ? LIMIT 1`,
+      [companyId],
+    );
+    if (companies.length === 0) {
+      incrementWebhookRejection("unknown_company_id");
+      log.warn(
+        {
+          vehicleId,
+          companyId,
+          lat: redactCoordinate(latitude),
+          lng: redactCoordinate(longitude),
+          provider: "webhook",
+        },
+        "GPS webhook rejected: unknown company_id",
+      );
+      return res
+        .status(400)
+        .json({ error: "unknown company_id" });
+    }
+    resolvedCompanyId = companyId;
+  } catch {
+    incrementWebhookRejection("unknown_company_id");
+    log.warn(
+      {
+        vehicleId,
+        companyId,
+        lat: redactCoordinate(latitude),
+        lng: redactCoordinate(longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: company_id validation failed",
+    );
+    return res
+      .status(400)
+      .json({ error: "unknown company_id" });
   }
 
   try {
