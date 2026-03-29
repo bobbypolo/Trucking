@@ -958,8 +958,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "docs-cleanup",
       "dependsOn": []
     },
