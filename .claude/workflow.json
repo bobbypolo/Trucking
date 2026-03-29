@@ -40,15 +40,15 @@
     "project_lint": "npx tsc --noEmit && cd server && npx tsc --noEmit",
     "project_type_check": "npx tsc --noEmit && cd server && npx tsc --noEmit",
     "_project_note": "DisbatchMe runs in host_project mode. project_* commands below are wired to the repo's frontend Vitest, server Vitest, Vite/server builds, and Playwright E2E flow.",
-    "project_integration_test": "set PORT=5101 && set E2E_SERVER_RUNNING=1 && npx playwright test && cd server && npx vitest run --reporter=verbose __tests__/integration",
+    "project_integration_test": "PORT=5000 E2E_SERVER_RUNNING=1 npx playwright test && cd server && npx vitest run --reporter=verbose __tests__/integration",
     "project_build": "npm run build && cd server && npm run build",
     "project_frontend_test": "npx vitest run --reporter=verbose",
     "project_backend_test": "cd server && npx vitest run --reporter=verbose",
-    "project_dev_server": "set PORT=5101 && npm run server",
-    "project_dev_server_port": 5101,
+    "project_dev_server": "PORT=5000 npm run server",
+    "project_dev_server_port": 5000,
     "project_dev_server_host": "127.0.0.1",
     "project_dev_server_timeout_s": 60,
-    "project_dev_server_ready_pattern": "Server running on port 5101",
+    "project_dev_server_ready_pattern": "Server running on port 5000",
     "project_smoke_endpoints": [
       "/api/health"
     ]
@@ -249,7 +249,7 @@
     "cumulative_drift_threshold": 10,
     "frontend_verification": "fail",
     "auto_create_pr": false,
-    "parallel_dispatch_enabled": false,
+    "parallel_dispatch_enabled": true,
     "parallel_batch_size": 3
   },
   "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",

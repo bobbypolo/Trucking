@@ -87,6 +87,19 @@ jobs:
       - run: npx vitest run
         shell: cmd
 
+  # ---- Tenant isolation enforcement (S-3.1: R-P3-04) ----
+
+  tenant-scope-check:
+    name: Tenant Scope Check
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for unscoped tenant-table queries (R-P3-04)
+        shell: bash
+        run: |
+          chmod +x scripts/check-tenant-scope.sh
+          bash scripts/check-tenant-scope.sh
+
   # ---- New CI jobs (S-1.2: R-P1-06 through R-P1-10) ----
 
   frontend-build:

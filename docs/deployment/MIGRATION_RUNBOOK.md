@@ -25,14 +25,14 @@ Run these checks before applying any migrations to staging or production.
 ### 1.1 Verify migration chain
 
 ```bash
-# List all numbered migration files (should end at 015)
+# List all numbered migration files (should end at 043)
 ls server/migrations/*.sql | sort
 
-# Confirm the highest-numbered migration is 015_add_users_phone
-ls server/migrations/015_add_users_phone.sql && echo "015 present"
+# Confirm the highest-numbered migration is 043_encrypt_tracking_secrets
+ls server/migrations/043_encrypt_tracking_secrets.sql && echo "043 present"
 
-# Confirm 014 is present
-ls server/migrations/014_companies_visibility_settings.sql && echo "014 present"
+# See the canonical runbook at docs/ops/migration-runbook.md for
+# detailed apply/rollback/staging-rehearsal commands.
 ```
 
 ### 1.2 Check pending migrations

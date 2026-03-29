@@ -635,8 +635,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
+      "passed": false,
+      "verificationRef": "",
       "parallelGroup": "backend-storage",
       "dependsOn": []
     },
@@ -670,8 +670,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl",
+      "passed": false,
+      "verificationRef": "",
       "parallelGroup": "backend-storage",
       "dependsOn": [
         "S-6.1"
