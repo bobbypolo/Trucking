@@ -581,8 +581,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-tracking-secrets",
       "dependsOn": [
         "S-5.1",
@@ -1248,8 +1248,8 @@
       "gateCmds": {
         "unit": "echo \"docs-only story\""
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "docs-cleanup",
       "dependsOn": []
     }
