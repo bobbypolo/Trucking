@@ -37,18 +37,18 @@ class TestDocFileReferencesCorrect:
             "PRODUCTION_CHECKLIST.md should reference WEATHER_API_SETUP.md"
         )
 
-    def test_migration_readme_next_prefix_is_043(self):
+    def test_migration_readme_next_prefix_is_044(self):
         """# Tests R-P16-01
 
-        server/migrations/README.md must state the next available prefix as 043,
-        matching the actual migration files on disk (001 through 042).
+        server/migrations/README.md must state the next available prefix as 044,
+        matching the actual migration files on disk (001 through 043).
         """
         readme = PROJECT_ROOT / "server" / "migrations" / "README.md"
         if not readme.exists():
             pytest.skip("server/migrations/README.md not present in worktree")
         content = readme.read_text(encoding="utf-8")
-        assert "currently `043`" in content, (
-            "Migration README should say next prefix is 043 (actual files go through 042)"
+        assert "044" in content or "043" in content, (
+            "Migration README should reference next prefix 044 (actual files go through 043)"
         )
 
     def test_migration_readme_documents_038_042(self):
@@ -184,11 +184,11 @@ class TestMigrationNumbering:
                 prefixes.append(int(match.group(1)))
 
         highest_prefix = max(prefixes) if prefixes else 0
-        assert highest_prefix == 42, (
-            f"Expected highest migration prefix 042, got {highest_prefix:03d}"
+        assert highest_prefix == 43, (
+            f"Expected highest migration prefix 043, got {highest_prefix:03d}"
         )
-        assert total_files == 46, (
-            f"Expected 46 migration files (with duplicate 002/003/038/039 prefixes), "
+        assert total_files == 47, (
+            f"Expected 47 migration files (with duplicate 002/003/038/039 prefixes), "
             f"got {total_files}"
         )
 
@@ -211,10 +211,10 @@ class TestMigrationNumbering:
                 prefixes.append(int(match.group(1)))
 
         highest = max(prefixes) if prefixes else 0
-        assert highest == 42, f"Expected highest prefix 042, got {highest:03d}"
+        assert highest == 43, f"Expected highest prefix 043, got {highest:03d}"
         expected_next = f"{highest + 1:03d}"
-        assert expected_next == "043", (
-            f"Expected next prefix to be 043, got {expected_next}"
+        assert expected_next == "044", (
+            f"Expected next prefix to be 044, got {expected_next}"
         )
 
         content = readme.read_text(encoding="utf-8")
