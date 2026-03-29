@@ -315,7 +315,7 @@ describe("R-W6-VPC-702: Route integration with DiskStorageAdapter", () => {
     // Import the route module and check the factory uses disk storage
     const { createDocumentsRouteService } =
       await import("../../routes/documents");
-    const svc = createDocumentsRouteService();
+    const svc = await createDocumentsRouteService();
     // The service should be defined and have the expected methods
     expect(svc).toBeDefined();
     expect(typeof svc.upload).toBe("function");

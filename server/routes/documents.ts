@@ -28,21 +28,28 @@ import {
   documentPatchSchema,
 } from "../schemas/document.schema";
 import { createDiskStorageAdapter } from "../services/disk-storage-adapter";
+import { createStorageAdapter } from "../services/document.service";
 
 const router = Router();
 
 /**
- * Default storage adapter: DiskStorageAdapter.
- * Files are persisted to ./uploads on the local filesystem.
- * Suitable for development and single-server deployments.
+ * Storage adapter resolved via STORAGE_BACKEND env var.
+ * Defaults to disk; set STORAGE_BACKEND=firebase for cloud storage.
+ * Initialized lazily on first request to allow async factory.
  */
-const defaultStorageAdapter: StorageAdapter = createDiskStorageAdapter();
+let resolvedStorageAdapter: StorageAdapter | null = null;
+
+async function getStorageAdapter(): Promise<StorageAdapter> {
+  if (!resolvedStorageAdapter) {
+    resolvedStorageAdapter = await createStorageAdapter();
+  }
+  return resolvedStorageAdapter;
+}
 
 /** Factory so tests can inject a custom storage adapter. */
-export function createDocumentsRouteService(
-  storage: StorageAdapter = defaultStorageAdapter,
-) {
-  return createDocumentService(storage);
+export async function createDocumentsRouteService(storage?: StorageAdapter) {
+  const adapter = storage ?? (await getStorageAdapter());
+  return createDocumentService(adapter);
 }
 
 /**
@@ -118,7 +125,7 @@ router.get(
     const filters = parsed.success ? parsed.data : {};
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const documents = await svc.listDocuments(companyId, filters);
       res.json({ documents });
     } catch (error) {
@@ -165,7 +172,7 @@ router.post(
     const loadId: string | undefined = req.body?.load_id;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const result = await svc.upload({
         companyId,
         originalFilename: originalname,
@@ -217,7 +224,7 @@ router.get(
     const { id } = req.params;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const document = await svc.findById(id, companyId);
       res.json({ document });
     } catch (error) {
@@ -264,7 +271,7 @@ router.patch(
     }
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const updated = await svc.updateStatusAndLock(id, companyId, {
         status,
         is_locked,
@@ -297,7 +304,7 @@ router.get(
     const { id } = req.params;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const url = await svc.getDownloadUrl(id, companyId);
       // Disk storage returns disk:// URIs — serve the file directly
       if (url.startsWith("disk://")) {
