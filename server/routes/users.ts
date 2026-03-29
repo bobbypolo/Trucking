@@ -356,12 +356,17 @@ router.post(
         }
 
         // Structured audit log for auto-provision event
+        // Use "provisionedEmail" instead of "email" to avoid pino redaction
+        // (top-level "email" is in the redact paths for PII safety)
         log.info(
           {
             event: "auto_provision",
             firebaseUid: decodedToken.uid,
-            email,
-            sourceIp,
+            provisionedEmail: email,
+            sourceIp:
+              typeof sourceIp === "string" && sourceIp.includes(",")
+                ? sourceIp.split(",")[0].trim()
+                : sourceIp,
             timestamp: new Date().toISOString(),
             newCompanyId,
             newUserId,

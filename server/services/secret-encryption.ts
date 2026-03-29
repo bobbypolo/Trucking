@@ -30,7 +30,13 @@ function getEncryptionKey(): Buffer {
       "SECRET_ENCRYPTION_KEY (or QUICKBOOKS_TOKEN_ENCRYPTION_KEY) not set",
     );
   }
-  return Buffer.from(keyHex, "hex");
+  const key = Buffer.from(keyHex, "hex");
+  if (key.length !== 32) {
+    throw new Error(
+      `SECRET_ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes). Got ${keyHex.length} hex characters (${key.length} bytes).`,
+    );
+  }
+  return key;
 }
 
 /**
@@ -70,9 +76,10 @@ export function decryptSecret(stored: string): string {
   const ciphertext = raw.subarray(28);
   const decipher = createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(authTag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString(
-    "utf8",
-  );
+  return Buffer.concat([
+    decipher.update(ciphertext),
+    decipher.final(),
+  ]).toString("utf8");
 }
 
 /**

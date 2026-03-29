@@ -333,7 +333,7 @@ describe("POST /api/auth/login — ALLOW_AUTO_PROVISION feature flag", () => {
       const auditPayload = auditCall![0] as Record<string, unknown>;
       expect(auditPayload.event).toBe("auto_provision");
       expect(auditPayload.firebaseUid).toBe(FIREBASE_UID);
-      expect(auditPayload.email).toBe(EMAIL);
+      expect(auditPayload.provisionedEmail).toBe(EMAIL);
       expect(auditPayload.sourceIp).toBeDefined();
       expect(auditPayload.timestamp).toBeDefined();
       expect(auditPayload.newCompanyId).toBeDefined();
