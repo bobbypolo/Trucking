@@ -7,6 +7,11 @@ import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
 import type { GpsPosition, TrackingState } from "../services/gps";
+import {
+  encryptSecret,
+  decryptSecret,
+  maskSecret,
+} from "../services/secret-encryption";
 
 const router = Router();
 
@@ -560,6 +565,12 @@ router.post(
     const log = createRequestLogger(req, "POST /api/tracking/providers");
 
     try {
+      // Encrypt secrets before storage — never store plaintext credentials
+      const encryptedApiToken = apiToken ? encryptSecret(apiToken) : null;
+      const encryptedWebhookSecret = webhookSecret
+        ? encryptSecret(webhookSecret)
+        : null;
+
       // Upsert: insert or replace existing config for this company+provider
       await pool.query(
         `INSERT INTO tracking_provider_configs
@@ -575,9 +586,9 @@ router.post(
           id,
           companyId,
           providerName,
-          apiToken || null,
+          encryptedApiToken,
           webhookUrl || null,
-          webhookSecret || null,
+          encryptedWebhookSecret,
           isActive !== undefined ? (isActive ? 1 : 0) : 1,
         ],
       );
@@ -620,9 +631,7 @@ router.get(
 
     try {
       const [rows]: any = await pool.query(
-        `SELECT id, provider_name, is_active, created_at,
-                (api_token IS NOT NULL AND api_token != '') AS has_api_token,
-                (webhook_url IS NOT NULL AND webhook_url != '') AS has_webhook_url
+        `SELECT id, provider_name, api_token, webhook_secret, webhook_url, is_active, created_at
          FROM tracking_provider_configs
          WHERE company_id = ?
          ORDER BY created_at DESC`,
@@ -630,15 +639,42 @@ router.get(
       );
 
       res.json(
-        rows.map((r: any) => ({
-          id: r.id,
-          providerName: r.provider_name,
-          providerDisplayName: formatProviderDisplayName(r.provider_name),
-          isActive: Boolean(r.is_active),
-          createdAt: r.created_at,
-          hasApiToken: Boolean(r.has_api_token),
-          hasWebhookUrl: Boolean(r.has_webhook_url),
-        })),
+        rows.map((r: any) => {
+          // Mask secrets for display — decrypt first to get last 4 chars of original
+          let maskedApiToken: string | null = null;
+          let maskedWebhookSecret: string | null = null;
+
+          if (r.api_token) {
+            try {
+              const plainToken = decryptSecret(r.api_token);
+              maskedApiToken = maskSecret(plainToken);
+            } catch {
+              // If decryption fails (e.g., legacy plaintext), mask the raw value
+              maskedApiToken = maskSecret(r.api_token);
+            }
+          }
+
+          if (r.webhook_secret) {
+            try {
+              const plainSecret = decryptSecret(r.webhook_secret);
+              maskedWebhookSecret = maskSecret(plainSecret);
+            } catch {
+              maskedWebhookSecret = maskSecret(r.webhook_secret);
+            }
+          }
+
+          return {
+            id: r.id,
+            providerName: r.provider_name,
+            providerDisplayName: formatProviderDisplayName(r.provider_name),
+            isActive: Boolean(r.is_active),
+            createdAt: r.created_at,
+            hasApiToken: Boolean(r.api_token),
+            hasWebhookUrl: Boolean(r.webhook_url),
+            apiToken: maskedApiToken,
+            webhookSecret: maskedWebhookSecret,
+          };
+        }),
       );
     } catch (error) {
       if (isMissingTableError(error, "tracking_provider_configs")) {
@@ -740,9 +776,30 @@ router.post(
       const config = rows[0];
       const startMs = Date.now();
 
+      // Decrypt secrets at point of use — never hold plaintext longer than needed
+      let plainApiToken: string | null = null;
+      let plainWebhookSecret: string | null = null;
+
+      if (config.api_token) {
+        try {
+          plainApiToken = decryptSecret(config.api_token);
+        } catch {
+          // Legacy plaintext value — use as-is during migration transition
+          plainApiToken = config.api_token;
+        }
+      }
+
+      if (config.webhook_secret) {
+        try {
+          plainWebhookSecret = decryptSecret(config.webhook_secret);
+        } catch {
+          plainWebhookSecret = config.webhook_secret;
+        }
+      }
+
       // Test Samsara provider — call the real API with stored token
       if (config.provider_name === "samsara") {
-        if (!config.api_token) {
+        if (!plainApiToken) {
           return res.json({
             status: "no_credentials",
             message: "No API token configured for this provider",
@@ -754,7 +811,7 @@ router.post(
             "https://api.samsara.com/fleet/vehicles/locations",
             {
               headers: {
-                Authorization: `Bearer ${config.api_token}`,
+                Authorization: `Bearer ${plainApiToken}`,
                 "Content-Type": "application/json",
               },
               signal: AbortSignal.timeout(8000),
@@ -817,7 +874,7 @@ router.post(
           });
         }
 
-        if (!config.webhook_secret) {
+        if (!plainWebhookSecret) {
           return res.json({
             status: "no_credentials",
             message:
@@ -838,7 +895,7 @@ router.post(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-GPS-API-Key": config.webhook_secret,
+              "X-GPS-API-Key": plainWebhookSecret,
             },
             body: JSON.stringify(testPayload),
             signal: AbortSignal.timeout(8000),
