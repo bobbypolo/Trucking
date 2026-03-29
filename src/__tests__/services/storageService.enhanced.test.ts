@@ -389,10 +389,10 @@ describe("storageService — enhanced coverage", () => {
       );
     });
 
-    it("returns empty array on API failure", async () => {
+    // R-P2-01: getTimeLogs throws on non-abort failures
+    it("throws on API failure", async () => {
       mockApiGet.mockRejectedValueOnce(new Error("offline"));
-      const logs = await getTimeLogs("u1");
-      expect(logs).toEqual([]);
+      await expect(getTimeLogs("u1")).rejects.toThrow("offline");
     });
   });
 

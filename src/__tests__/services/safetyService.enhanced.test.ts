@@ -104,14 +104,16 @@ describe("safetyService — enhanced coverage (API-based)", () => {
       expect(await getMaintenanceRecords()).toEqual([]);
     });
 
-    it("getServiceTickets returns empty array on network failure", async () => {
+    // R-P2-06: getServiceTickets throws on failure
+    it("getServiceTickets throws on network failure", async () => {
       mockFetchFail();
-      expect(await getServiceTickets()).toEqual([]);
+      await expect(getServiceTickets()).rejects.toThrow();
     });
 
-    it("getVendors returns empty array on network failure", async () => {
+    // R-P2-06: getVendors throws on failure
+    it("getVendors throws on network failure", async () => {
       mockFetchFail();
-      expect(await getVendors()).toEqual([]);
+      await expect(getVendors()).rejects.toThrow();
     });
 
     it("getStoredQuizzes returns data from API", async () => {
@@ -171,11 +173,12 @@ describe("safetyService — enhanced coverage (API-based)", () => {
       expect(calls[0][1].method).toBe("POST");
     });
 
-    it("does not throw on network failure", async () => {
+    // R-P2-05: saveServiceTicket throws on failure
+    it("throws on network failure", async () => {
       mockFetchFail();
       await expect(
         saveServiceTicket({ id: "st-1" } as any),
-      ).resolves.not.toThrow();
+      ).rejects.toThrow();
     });
   });
 
