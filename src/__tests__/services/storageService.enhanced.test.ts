@@ -101,6 +101,7 @@ const mockDeleteLoadApi = deleteLoadApi as ReturnType<typeof vi.fn>;
 const mockGetCompany = getCompany as ReturnType<typeof vi.fn>;
 const mockUpdateCompany = updateCompany as ReturnType<typeof vi.fn>;
 const mockApiGet = api.get as ReturnType<typeof vi.fn>;
+const mockApiPost = api.post as ReturnType<typeof vi.fn>;
 
 describe("storageService — enhanced coverage", () => {
   let localStorageMock: Record<string, string>;
@@ -127,6 +128,7 @@ describe("storageService — enhanced coverage", () => {
     mockDeleteLoadApi.mockReset();
     mockGetCompany.mockReset();
     mockUpdateCompany.mockReset();
+    mockApiPost.mockReset();
   });
 
   afterEach(() => {
@@ -169,19 +171,11 @@ describe("storageService — enhanced coverage", () => {
       expect(loads[0].driverId).toBe("d1");
     });
 
-    it("returns cached loads when API fails", async () => {
-      // First call succeeds to populate cache
-      mockApiFetchLoads.mockResolvedValueOnce([
-        { id: "l1", companyId: "c1", driverId: "d1" },
-      ]);
+    it("throws when the loads API fails", async () => {
       const user = { id: "u1", companyId: "c1", role: "admin" } as any;
-      await getLoads(user);
-
-      // Second call fails
       mockApiFetchLoads.mockRejectedValueOnce(new Error("offline"));
-      const loads = await getLoads(user);
-      // Should return cached loads
-      expect(loads).toBeDefined();
+
+      await expect(getLoads(user)).rejects.toThrow("offline");
     });
 
     it("returns loads for safety_manager role", async () => {
@@ -349,10 +343,10 @@ describe("storageService — enhanced coverage", () => {
       expect(mockApiGet).toHaveBeenCalledWith("/dispatch-events/c1", expect.anything());
     });
 
-    it("returns empty array on API failure", async () => {
+    it("throws on API failure", async () => {
       mockApiGet.mockRejectedValueOnce(new Error("offline"));
-      const events = await getDispatchEvents("c1");
-      expect(events).toEqual([]);
+
+      await expect(getDispatchEvents("c1")).rejects.toThrow("offline");
     });
   });
 
@@ -506,34 +500,25 @@ describe("storageService — enhanced coverage", () => {
   // ─── getIncidents ────────────────────────────────────────────────────
   describe("getIncidents", () => {
     it("fetches incidents from API", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({
-        ok: true,
-        json: () =>
-          Promise.resolve([
-            { id: "inc-1", description: "Flat tire", load_id: "l1" },
-          ]),
-      } as any);
-
-      const incidents = await getIncidents();
-      expect(incidents.length).toBeGreaterThanOrEqual(0);
-    });
-
-    it("falls back to localStorage when API fails", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-
-      localStorageMock["loadpilot_test-co_incidents_v1"] = JSON.stringify([
-        { id: "inc-1", timeline: [], billingItems: [] },
+      mockApiGet.mockResolvedValueOnce([
+        { id: "inc-1", description: "Flat tire", load_id: "l1" },
       ]);
 
       const incidents = await getIncidents();
       expect(incidents.length).toBeGreaterThanOrEqual(0);
     });
+
+    it("throws when the incidents API fails", async () => {
+      mockApiGet.mockRejectedValueOnce(new Error("offline"));
+
+      await expect(getIncidents()).rejects.toThrow("offline");
+    });
   });
 
   // ─── saveIncident ────────────────────────────────────────────────────
   describe("saveIncident", () => {
-    it("posts incident to API and updates localStorage", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true } as any);
+    it("posts incident to API and resolves true", async () => {
+      mockApiPost.mockResolvedValueOnce({});
 
       const incident = {
         id: "inc-new",
@@ -542,15 +527,15 @@ describe("storageService — enhanced coverage", () => {
         billingItems: [],
       } as any;
 
-      await saveIncident(incident);
-      // Should not throw
+      await expect(saveIncident(incident)).resolves.toBe(true);
     });
 
-    it("handles API failure gracefully", async () => {
-      vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+    it("throws when the API call fails", async () => {
+      mockApiPost.mockRejectedValueOnce(new Error("offline"));
 
-      // Should not throw
-      await saveIncident({ id: "inc-1", timeline: [], billingItems: [] } as any);
+      await expect(
+        saveIncident({ id: "inc-1", timeline: [], billingItems: [] } as any),
+      ).rejects.toThrow("offline");
     });
   });
 

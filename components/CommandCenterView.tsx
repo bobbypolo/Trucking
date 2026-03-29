@@ -160,6 +160,44 @@ export const CommandCenterView: React.FC<Props> = ({
     },
     [setSuccessMessage],
   );
+  const incidentRefreshErrorShownRef = useRef(false);
+  const formatActionError = useCallback(
+    (fallback: string, err: unknown) => {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return fallback;
+      }
+      const detail = err instanceof Error ? err.message.trim() : "";
+      return detail ? `${fallback} ${detail}` : fallback;
+    },
+    [],
+  );
+  const refreshLocalIncidents = useCallback(
+    async (signal?: AbortSignal) => {
+      if (Array.isArray(propsIncidents) && propsIncidents.length > 0) return true;
+      try {
+        const incs = await getIncidents();
+        if (signal?.aborted) return false;
+        incidentRefreshErrorShownRef.current = false;
+        setLocalIncidents(incs);
+        return true;
+      } catch (err: unknown) {
+        if (err instanceof DOMException && err.name === "AbortError") return false;
+        if (signal?.aborted) return false;
+        if (!incidentRefreshErrorShownRef.current) {
+          incidentRefreshErrorShownRef.current = true;
+          showManagedMessage(
+            formatActionError(
+              "Unable to refresh incidents from live data.",
+              err,
+            ),
+            4000,
+          );
+        }
+        return false;
+      }
+    },
+    [formatActionError, propsIncidents, showManagedMessage],
+  );
   const [localIncidents, setLocalIncidents] = useState<Incident[]>([]);
   const incidents = useMemo(() => {
     if (Array.isArray(propsIncidents) && propsIncidents.length > 0)
@@ -196,16 +234,7 @@ export const CommandCenterView: React.FC<Props> = ({
   useEffect(() => {
     const controller = new AbortController();
     const fetchLocal = async () => {
-      try {
-        if (!propsIncidents || propsIncidents.length === 0) {
-          const incs = await getIncidents();
-          if (controller.signal.aborted) return;
-          setLocalIncidents(incs);
-        }
-      } catch (err: unknown) {
-        if (err instanceof DOMException && err.name === "AbortError") return;
-        if (controller.signal.aborted) return;
-      }
+      await refreshLocalIncidents(controller.signal);
     };
     fetchLocal();
     const interval = setInterval(fetchLocal, 5000);
@@ -213,7 +242,7 @@ export const CommandCenterView: React.FC<Props> = ({
       controller.abort();
       clearInterval(interval);
     };
-  }, [propsIncidents]);
+  }, [refreshLocalIncidents]);
 
   const selectedIncident = useMemo(
     () => incidents.find((i) => i.id === selectedIncidentId),
@@ -299,92 +328,100 @@ export const CommandCenterView: React.FC<Props> = ({
 
   const handleAction = async (actionType: string) => {
     if (!selectedIncident) return;
+    try {
+      let updatedIncident = {
+        ...selectedIncident,
+        timeline: selectedIncident.timeline ?? [],
+      };
+      const timestamp = new Date().toISOString();
 
-    let updatedIncident = {
-      ...selectedIncident,
-      timeline: selectedIncident.timeline ?? [],
-    };
-    const timestamp = new Date().toISOString();
+      if (actionType === "CLOSE") {
+        updatedIncident.status = "Closed";
+        updatedIncident.timeline.push({
+          id: uuidv4(),
+          timestamp,
+          actorName: currentUser.name,
+          action: "INCIDENT_CLOSED",
+          notes: "Incident resolved and closed via Command Center",
+        });
+        await saveIncident(updatedIncident);
+      } else if (actionType === "REPOWER") {
+        if (onRepower) onRepower(selectedIncident.loadId);
+        else
+          await initiateRepower(
+            selectedIncident.loadId,
+            currentUser,
+            "Repower initiated from Command Center",
+          );
+      } else if (actionType === "ROADSIDE") {
+        if (onRoadside) onRoadside();
+        else {
+          updatedIncident.timeline.push({
+            id: uuidv4(),
+            timestamp,
+            actorName: currentUser.name,
+            action: "ROADSIDE_DISPATCHED",
+            notes: "Vendor dispatched for roadside assistance",
+          });
+          await saveIncident(updatedIncident);
+        }
+      } else if (actionType === "RECOVERY") {
+        updatedIncident.timeline.push({
+          id: uuidv4(),
+          timestamp,
+          actorName: currentUser.name,
+          action: "RECOVERY_INITIATED",
+          notes: "Tow service dispatched",
+        });
+        await saveIncident(updatedIncident);
+      } else if (actionType === "NOTIFY") {
+        if (onNotify) onNotify();
+        else {
+          updatedIncident.timeline.push({
+            id: uuidv4(),
+            timestamp,
+            actorName: currentUser.name,
+            action: "STAKEHOLDERS_NOTIFIED",
+            notes: "Sent alert to all relevant parties",
+          });
+          await saveIncident(updatedIncident);
+        }
+      }
 
-    if (actionType === "CLOSE") {
-      updatedIncident.status = "Closed";
-      updatedIncident.timeline.push({
+      if (actionType === "CLOSE") {
+        setSelectedIncidentId(null);
+        setUserManuallyClosed(true);
+        if (onCloseContext) onCloseContext();
+      }
+
+      await refreshLocalIncidents();
+      await onRecordAction({
         id: uuidv4(),
+        type: "SYSTEM",
         timestamp,
+        actorId: currentUser.id,
         actorName: currentUser.name,
-        action: "INCIDENT_CLOSED",
-        notes: "Incident resolved and closed via Command Center",
+        message: `Action ${actionType} triggered on Incident ${selectedIncident.id}`,
       });
-      await saveIncident(updatedIncident);
-    } else if (actionType === "REPOWER") {
-      if (onRepower) onRepower(selectedIncident.loadId);
-      else
-        await initiateRepower(
-          selectedIncident.loadId,
-          currentUser,
-          "Repower initiated from Command Center",
+
+      // Integrated UI feedback for testing
+      if (actionType === "REPOWER") {
+        showManagedMessage(
+          "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
+          4000,
         );
-    } else if (actionType === "ROADSIDE") {
-      if (onRoadside) onRoadside();
-      else {
-        updatedIncident.timeline.push({
-          id: uuidv4(),
-          timestamp,
-          actorName: currentUser.name,
-          action: "ROADSIDE_DISPATCHED",
-          notes: "Vendor dispatched for roadside assistance",
-        });
-        await saveIncident(updatedIncident);
+      } else if (actionType === "ROADSIDE") {
+        showManagedMessage(
+          "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
+          4000,
+        );
       }
-    } else if (actionType === "RECOVERY") {
-      updatedIncident.timeline.push({
-        id: uuidv4(),
-        timestamp,
-        actorName: currentUser.name,
-        action: "RECOVERY_INITIATED",
-        notes: "Tow service dispatched",
-      });
-      await saveIncident(updatedIncident);
-    } else if (actionType === "NOTIFY") {
-      if (onNotify) onNotify();
-      else {
-        updatedIncident.timeline.push({
-          id: uuidv4(),
-          timestamp,
-          actorName: currentUser.name,
-          action: "STAKEHOLDERS_NOTIFIED",
-          notes: "Sent alert to all relevant parties",
-        });
-        await saveIncident(updatedIncident);
-      }
-    }
-
-    if (actionType === "CLOSE") {
-      setSelectedIncidentId(null);
-      setUserManuallyClosed(true);
-      if (onCloseContext) onCloseContext();
-    }
-
-    const currentIncs = await getIncidents();
-    setLocalIncidents(currentIncs);
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp,
-      actorId: currentUser.id,
-      actorName: currentUser.name,
-      message: `Action ${actionType} triggered on Incident ${selectedIncident.id}`,
-    });
-
-    // Integrated UI feedback for testing
-    if (actionType === "REPOWER") {
+    } catch (err: unknown) {
       showManagedMessage(
-        "REPOWER WORKFLOW INITIATED: Evaluating fallback carriers and nearest available units.",
-        4000,
-      );
-    } else if (actionType === "ROADSIDE") {
-      showManagedMessage(
-        "SERVICE DISPATCHED: Roadside assistance units have been notified and tracked via GPS.",
+        formatActionError(
+          `Unable to complete ${actionType.toLowerCase()} action.`,
+          err,
+        ),
         4000,
       );
     }
