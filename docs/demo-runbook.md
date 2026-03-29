@@ -195,6 +195,9 @@ Once the seed data is loaded, visit these pages to see populated data.
 | Accounting — AR | `/accounting` (AR tab) | 5 invoices: Paid, Sent, Overdue states |
 | Accounting — AP | `/accounting` (AP tab) | 5 bills: Paid, Approved, Pending, Overdue states |
 | Accounting — GL | `/accounting` (GL tab) | 10 auto-posted journal entries from invoices and bills |
+| Safety & Compliance | `/safety` | KPI tiles (computed from real data), driver compliance status, service tickets |
+| Fleet Map | `/map` | Live vehicle positions on map (requires `VITE_GOOGLE_MAPS_API_KEY`; graceful fallback if absent) |
+| Quotes & Booking | `/quotes` | Quote creation, conversion to loads, call logging |
 | Broker Network | `/network` | 4 customers (shippers + brokers) + 2 carrier parties |
 | Reports | `/reports` | Completed loads available for P&L and IFTA reports |
 
@@ -206,7 +209,10 @@ Once the seed data is loaded, visit these pages to see populated data.
 4. **Issues & Alerts** — open the Breakdown incident (DEMO-INC-001) — shows recovery plan
 5. **Accounting AR** — show INV-DEMO-2026-003 (Sent, $5,900 with detention) and INV-DEMO-2026-005 (Overdue)
 6. **Accounting AP** — show BILL-DEMO-2026-003 (Pending) and BILL-DEMO-2026-005 (Overdue)
-7. **Broker Network** — show the 2 brokers and 2 carriers, search and filter
+7. **Safety & Compliance** — show KPI tiles (dynamically computed), compliance overview
+8. **Fleet Map** — show vehicle positions (or graceful fallback if API key is not configured)
+9. **Quotes & Booking** — create a quote, show conversion workflow
+10. **Broker Network** — show the 2 brokers and 2 carriers, search and filter
 
 ---
 
@@ -220,16 +226,6 @@ Once the seed data is loaded, visit these pages to see populated data.
 - **IFTA trip evidence** — the IFTA module will show empty states; add fuel ledger entries manually if needed
 - **Compliance records** — the `compliance_records` table is empty; Safety & Compliance will show blank driver records
 - **Driver settlements** — no settlements are seeded; Settlements tab will show empty state
-
-### Demo areas to avoid
-
-| Area | Reason | Workaround |
-|---|---|---|
-| Safety & Compliance Overview | Hardcoded "13 Non-Compliant Drivers" KPI tile (open bug DB-1) | Skip or acknowledge it is placeholder |
-| Fleet Map | Requires `VITE_GOOGLE_MAPS_API_KEY` | Configure API key or skip this page |
-| Quotes & Booking | May return 403 if user role lacks permission (bug AT-1) | Skip or use an admin-role user |
-| "Create New Rule" in Accounting Automation | Shows "coming soon" toast | Avoid clicking |
-| "Carrier Rates" in Load Detail | Shows "coming soon" toast | Avoid clicking |
 
 ### Changing the demo data
 
