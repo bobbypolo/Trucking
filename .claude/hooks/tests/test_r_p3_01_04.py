@@ -109,6 +109,7 @@ def test_settlement_repository_has_companyid_param():
     assert match_by_id is not None, (
         "settlement.repository findById must have companyId: string param"
     )
+    assert "companyId" in match_by_id.group(0)
     match_tenant = re.search(
         r"findByLoadAndTenant\s*\(\s*\n?\s*loadId\s*:\s*string\s*,\s*\n?\s*companyId\s*:\s*string",
         source,
@@ -116,7 +117,11 @@ def test_settlement_repository_has_companyid_param():
     assert match_tenant is not None, (
         "settlement.repository findByLoadAndTenant must have companyId: string param"
     )
-    assert source.count("company_id = ?") >= 2
+    assert "companyId" in match_tenant.group(0)
+    company_id_count = source.count("company_id = ?")
+    assert company_id_count >= 2, (
+        f"Expected at least 2 company_id = ? in settlement repository, got {company_id_count}"
+    )
 
 
 # ── R-P3-02: No unvalidated companyId sources ──────────────────
