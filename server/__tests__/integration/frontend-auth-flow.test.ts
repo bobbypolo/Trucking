@@ -99,8 +99,16 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
+// Auto-provision flag: always enabled in integration tests to preserve
+// pre-existing login behavior (S-4.1 added this flag, default false).
+vi.mock("../../lib/env", () => ({
+  isAutoProvisionEnabled: () => true,
+  validateEnv: vi.fn(),
+  getCorsOrigin: vi.fn().mockReturnValue("*"),
+}));
+
 // ---------------------------------------------------------------------------
-// Imports — sql-auth is NOT mocked; real MySQL is used
+// Imports -- sql-auth is NOT mocked; real MySQL is used
 // ---------------------------------------------------------------------------
 import { closePool } from "../../db";
 import usersRouter from "../../routes/users";
@@ -489,7 +497,11 @@ describe("R-P5-07: DEMO_MODE is off throughout the entire test run", () => {
   it("demo auth fallback is not active: auth service uses Firebase not local store", () => {
     // The services/authService.ts must use real Firebase signInWithEmailAndPassword
     // and must not fall back to localStorage-based demo auth
-    const authServicePath = path.join(projectRoot, "services", "authService.ts");
+    const authServicePath = path.join(
+      projectRoot,
+      "services",
+      "authService.ts",
+    );
     if (!fs.existsSync(authServicePath)) {
       // authService.ts may not exist in this project structure — verify via firebase.ts
       const firebaseSvcPath = path.join(projectRoot, "services", "firebase.ts");

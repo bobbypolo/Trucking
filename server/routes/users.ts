@@ -15,6 +15,7 @@ import {
   syncUserSchema,
 } from "../schemas/users";
 import { createChildLogger } from "../lib/logger";
+import { isAutoProvisionEnabled } from "../lib/env";
 import {
   ensureMySqlCompany,
   findSqlUserById,
@@ -280,6 +281,20 @@ router.post(
       }
 
       if (!principal) {
+        // Feature flag: ALLOW_AUTO_PROVISION (default false)
+        // When false: return 403 — unknown Firebase identities must be
+        // pre-created by an admin before they can log in.
+        if (!isAutoProvisionEnabled()) {
+          log.warn(
+            { firebaseUid: decodedToken.uid, email: decodedToken.email },
+            "Login rejected — no SQL profile and auto-provision disabled",
+          );
+          return res.status(403).json({
+            error:
+              "Account not found. Please sign up or contact your administrator.",
+          });
+        }
+
         // Auto-provision: create a default company + admin user for verified
         // Firebase users who have no SQL record yet (e.g. created via console).
         const email = decodedToken.email;
@@ -293,10 +308,8 @@ router.post(
           });
         }
 
-        log.info(
-          { firebaseUid: decodedToken.uid, email },
-          "Auto-provisioning SQL user for verified Firebase identity",
-        );
+        const sourceIp =
+          req.ip || (req.headers["x-forwarded-for"] as string) || "unknown";
 
         const newCompanyId = uuidv4();
         const newUserId = uuidv4();
@@ -350,6 +363,20 @@ router.post(
             error: "Auto-provisioning failed. Please contact support.",
           });
         }
+
+        // Structured audit log for auto-provision event
+        log.info(
+          {
+            event: "auto_provision",
+            firebaseUid: decodedToken.uid,
+            email,
+            sourceIp,
+            timestamp: new Date().toISOString(),
+            newCompanyId,
+            newUserId,
+          },
+          "Auto-provisioned new tenant from Firebase login",
+        );
       }
 
       const [userRow, company] = await Promise.all([
