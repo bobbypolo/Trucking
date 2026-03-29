@@ -32,8 +32,8 @@ describe("authService.ts seedDatabase() credential extraction (R-P5-07)", () => 
     expect(matches).toBe(0);
   });
 
-  it("imports credentials from fixtures/test-users.json", () => {
-    expect(authSource).toContain("fixtures/test-users.json");
+  it("loads credentials via dynamic import from mockDataService.ts", () => {
+    expect(authSource).toContain("mockDataService");
   });
 });
 
