@@ -13,11 +13,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const TEST_TENANT_ID = "company-aaa";
 
-const { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
-  const mockPoolQuery = vi.fn();
-  const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
-  return { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid };
-});
+const { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(
+  () => {
+    const mockPoolQuery = vi.fn();
+    const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
+    return { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid };
+  },
+);
 
 vi.mock("../../db", () => ({ default: { query: mockPoolQuery } }));
 
@@ -28,11 +30,18 @@ vi.mock("../../lib/logger", () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   }),
-  createRequestLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
+  createRequestLogger: () => ({
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
 }));
 
 vi.mock("firebase-admin", () => {
-  const mockAuth = { verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }) };
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
   return { default: { app: vi.fn(), auth: () => mockAuth } };
 });
 
@@ -69,17 +78,35 @@ describe("POST /api/dispatch-events — DB error handling", () => {
     mockPoolQuery.mockResolvedValueOnce([[{ company_id: TEST_TENANT_ID }], []]);
     mockPoolQuery.mockRejectedValueOnce(new Error("DB write error"));
     const app = buildApp();
-    const res = await request(app).post("/api/dispatch-events").set("Authorization", "Bearer valid-token").send({ load_id: "load-001", dispatcher_id: "user-001", event_type: "StatusChange", message: "Test", payload: {} });
+    const res = await request(app)
+      .post("/api/dispatch-events")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        load_id: "load-001",
+        dispatcher_id: "user-001",
+        event_type: "StatusChange",
+        message: "Test",
+        payload: {},
+      });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 500 when DB throws on ownership SELECT", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB read error"));
     const app = buildApp();
-    const res = await request(app).post("/api/dispatch-events").set("Authorization", "Bearer valid-token").send({ load_id: "load-001", dispatcher_id: "user-001", event_type: "StatusChange", message: "Test", payload: {} });
+    const res = await request(app)
+      .post("/api/dispatch-events")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        load_id: "load-001",
+        dispatcher_id: "user-001",
+        event_type: "StatusChange",
+        message: "Test",
+        payload: {},
+      });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -87,18 +114,42 @@ describe("POST /api/dispatch-events — DB error handling", () => {
 
 describe("POST /api/time-logs — role-based access control", () => {
   it("driver can only log for themselves — rejects logging for another user_id", async () => {
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({ ...DEFAULT_SQL_PRINCIPAL, id: "driver-001", role: "driver" });
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "driver-001",
+      role: "driver",
+    });
     const app = buildApp();
-    const res = await request(app).post("/api/time-logs").set("Authorization", "Bearer valid-token").send({ user_id: "driver-other", load_id: "load-001", activity_type: "driving" });
+    const res = await request(app)
+      .post("/api/time-logs")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        user_id: "driver-other",
+        load_id: "load-001",
+        activity_type: "driving",
+      });
     expect(res.status).toBe(403);
     expect(res.body.error).toBe("Access denied");
   });
 
   it("driver can log for themselves", async () => {
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({ ...DEFAULT_SQL_PRINCIPAL, id: "driver-001", role: "driver" });
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "driver-001",
+      role: "driver",
+    });
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     const app = buildApp();
-    const res = await request(app).post("/api/time-logs").set("Authorization", "Bearer valid-token").send({ user_id: "driver-001", load_id: "load-001", activity_type: "driving", location_lat: 41.8, location_lng: -87.6 });
+    const res = await request(app)
+      .post("/api/time-logs")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        user_id: "driver-001",
+        load_id: "load-001",
+        activity_type: "driving",
+        location_lat: 41.8,
+        location_lng: -87.6,
+      });
     expect(res.status).toBe(201);
   });
 
@@ -106,16 +157,26 @@ describe("POST /api/time-logs — role-based access control", () => {
     mockPoolQuery.mockResolvedValueOnce([[{ company_id: TEST_TENANT_ID }], []]);
     mockPoolQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     const app = buildApp();
-    const res = await request(app).post("/api/time-logs").set("Authorization", "Bearer valid-token").send({ user_id: "driver-999", load_id: "load-001", activity_type: "driving" });
+    const res = await request(app)
+      .post("/api/time-logs")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        user_id: "driver-999",
+        load_id: "load-001",
+        activity_type: "driving",
+      });
     expect(res.status).toBe(201);
   });
 
   it("returns 500 on DB error during time log INSERT", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).post("/api/time-logs").set("Authorization", "Bearer valid-token").send({ user_id: "1", load_id: "load-001", activity_type: "driving" });
+    const res = await request(app)
+      .post("/api/time-logs")
+      .set("Authorization", "Bearer valid-token")
+      .send({ user_id: "1", load_id: "load-001", activity_type: "driving" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -123,36 +184,59 @@ describe("POST /api/time-logs — role-based access control", () => {
 
 describe("GET /api/time-logs/:userId — role-based access", () => {
   it("driver cannot access another user time logs", async () => {
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({ ...DEFAULT_SQL_PRINCIPAL, id: "driver-001", role: "driver" });
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "driver-001",
+      role: "driver",
+    });
     const app = buildApp();
-    const res = await request(app).get("/api/time-logs/driver-other").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/time-logs/driver-other")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(403);
     expect(res.body.error).toBe("Unauthorized profile access");
   });
 
   it("driver can access own time logs", async () => {
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({ ...DEFAULT_SQL_PRINCIPAL, id: "driver-001", role: "driver" });
-    mockPoolQuery.mockResolvedValueOnce([[{ id: "log-001", user_id: "driver-001" }], []]);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "driver-001",
+      role: "driver",
+    });
+    mockPoolQuery.mockResolvedValueOnce([
+      [{ id: "log-001", user_id: "driver-001" }],
+      [],
+    ]);
     const app = buildApp();
-    const res = await request(app).get("/api/time-logs/driver-001").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/time-logs/driver-001")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
   it("dispatcher can access any user time logs", async () => {
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({ ...DEFAULT_SQL_PRINCIPAL, id: "dispatch-001", role: "dispatcher" });
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
+      ...DEFAULT_SQL_PRINCIPAL,
+      id: "dispatch-001",
+      role: "dispatcher",
+    });
     mockPoolQuery.mockResolvedValueOnce([[], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/time-logs/driver-001").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/time-logs/driver-001")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
   });
 
   it("returns 500 on DB error", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).get("/api/time-logs/1").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/time-logs/1")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -160,9 +244,16 @@ describe("GET /api/time-logs/:userId — role-based access", () => {
 
 describe("GET /api/time-logs/company/:companyId — success", () => {
   it("returns company time logs with 200", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[{ id: "log-001" }, { id: "log-002" }], []]);
+    mockPoolQuery.mockResolvedValueOnce([
+      [{ id: "log-001" }, { id: "log-002" }],
+      [],
+    ]);
     const app = buildApp();
-    const res = await request(app).get(`/api/time-logs/company/${TEST_TENANT_ID}?companyId=${TEST_TENANT_ID}`).set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get(
+        `/api/time-logs/company/${TEST_TENANT_ID}?companyId=${TEST_TENANT_ID}`,
+      )
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
@@ -171,9 +262,13 @@ describe("GET /api/time-logs/company/:companyId — success", () => {
   it("returns 500 on DB error", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).get(`/api/time-logs/company/${TEST_TENANT_ID}?companyId=${TEST_TENANT_ID}`).set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get(
+        `/api/time-logs/company/${TEST_TENANT_ID}?companyId=${TEST_TENANT_ID}`,
+      )
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -181,9 +276,17 @@ describe("GET /api/time-logs/company/:companyId — success", () => {
 
 describe("GET /api/dispatch-events/:companyId — success and error paths", () => {
   it("returns dispatch events with 200", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[{ id: "de-001", event_type: "StatusChange" }, { id: "de-002", event_type: "DriverAssigned" }], []]);
+    mockPoolQuery.mockResolvedValueOnce([
+      [
+        { id: "de-001", event_type: "StatusChange" },
+        { id: "de-002", event_type: "DriverAssigned" },
+      ],
+      [],
+    ]);
     const app = buildApp();
-    const res = await request(app).get(`/api/dispatch-events/${TEST_TENANT_ID}`).set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get(`/api/dispatch-events/${TEST_TENANT_ID}`)
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(2);
   });
@@ -191,9 +294,11 @@ describe("GET /api/dispatch-events/:companyId — success and error paths", () =
   it("returns 500 on DB error", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).get(`/api/dispatch-events/${TEST_TENANT_ID}`).set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get(`/api/dispatch-events/${TEST_TENANT_ID}`)
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -201,9 +306,16 @@ describe("GET /api/dispatch-events/:companyId — success and error paths", () =
 
 describe("GET /api/audit — filtering, pagination, and error paths", () => {
   it("returns audit entries with 200 (no filters)", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[{ id: "de-001", event_type: "StatusChange", load_number: "LD-001" }], []]).mockResolvedValueOnce([[{ total: 1 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([
+        [{ id: "de-001", event_type: "StatusChange", load_number: "LD-001" }],
+        [],
+      ])
+      .mockResolvedValueOnce([[{ total: 1 }], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/audit").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("entries");
     expect(res.body).toHaveProperty("total");
@@ -211,27 +323,39 @@ describe("GET /api/audit — filtering, pagination, and error paths", () => {
   });
 
   it("supports type filter", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[], []]).mockResolvedValueOnce([[{ total: 0 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([[{ total: 0 }], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/audit?type=StatusChange").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit?type=StatusChange")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     const entrySql = mockPoolQuery.mock.calls[0][0] as string;
     expect(entrySql).toContain("event_type = ?");
   });
 
   it("supports loadId filter", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[], []]).mockResolvedValueOnce([[{ total: 0 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([[{ total: 0 }], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/audit?loadId=load-001").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit?loadId=load-001")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     const entrySql = mockPoolQuery.mock.calls[0][0] as string;
     expect(entrySql).toContain("load_id = ?");
   });
 
   it("supports combined type and loadId filters", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[], []]).mockResolvedValueOnce([[{ total: 0 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([[{ total: 0 }], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/audit?type=StatusChange&loadId=load-001").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit?type=StatusChange&loadId=load-001")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     const entrySql = mockPoolQuery.mock.calls[0][0] as string;
     expect(entrySql).toContain("event_type = ?");
@@ -239,9 +363,13 @@ describe("GET /api/audit — filtering, pagination, and error paths", () => {
   });
 
   it("supports limit and offset pagination", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[], []]).mockResolvedValueOnce([[{ total: 100 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([[{ total: 100 }], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/audit?limit=10&offset=20").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit?limit=10&offset=20")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     const entryParams = mockPoolQuery.mock.calls[0][1] as unknown[];
     expect(entryParams).toContain(10);
@@ -249,9 +377,13 @@ describe("GET /api/audit — filtering, pagination, and error paths", () => {
   });
 
   it("caps limit at 500", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[], []]).mockResolvedValueOnce([[{ total: 0 }], []]);
+    mockPoolQuery
+      .mockResolvedValueOnce([[], []])
+      .mockResolvedValueOnce([[{ total: 0 }], []]);
     const app = buildApp();
-    await request(app).get("/api/audit?limit=1000").set("Authorization", "Bearer valid-token");
+    await request(app)
+      .get("/api/audit?limit=1000")
+      .set("Authorization", "Bearer valid-token");
     const entryParams = mockPoolQuery.mock.calls[0][1] as unknown[];
     expect(entryParams).toContain(500);
   });
@@ -259,9 +391,11 @@ describe("GET /api/audit — filtering, pagination, and error paths", () => {
   it("returns 500 on DB error", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).get("/api/audit").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/audit")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -269,9 +403,17 @@ describe("GET /api/audit — filtering, pagination, and error paths", () => {
 
 describe("GET /api/dashboard/cards — success and error paths", () => {
   it("returns dashboard cards with 200", async () => {
-    mockPoolQuery.mockResolvedValueOnce([[{ id: "card-1", company_id: TEST_TENANT_ID, sort_order: 1 }, { id: "card-2", company_id: null, sort_order: 2 }], []]);
+    mockPoolQuery.mockResolvedValueOnce([
+      [
+        { id: "card-1", company_id: TEST_TENANT_ID, sort_order: 1 },
+        { id: "card-2", company_id: null, sort_order: 2 },
+      ],
+      [],
+    ]);
     const app = buildApp();
-    const res = await request(app).get("/api/dashboard/cards").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/dashboard/cards")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
@@ -280,7 +422,9 @@ describe("GET /api/dashboard/cards — success and error paths", () => {
   it("returns empty array when no cards exist", async () => {
     mockPoolQuery.mockResolvedValueOnce([[], []]);
     const app = buildApp();
-    const res = await request(app).get("/api/dashboard/cards").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/dashboard/cards")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
   });
@@ -288,9 +432,11 @@ describe("GET /api/dashboard/cards — success and error paths", () => {
   it("returns 500 on DB error", async () => {
     mockPoolQuery.mockRejectedValueOnce(new Error("DB error"));
     const app = buildApp();
-    const res = await request(app).get("/api/dashboard/cards").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/dashboard/cards")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -299,7 +445,9 @@ describe("GET /api/dashboard/cards — success and error paths", () => {
 describe("Dispatch routes — auth enforcement", () => {
   it("POST /api/time-logs returns 401 without auth", async () => {
     const app = buildApp();
-    const res = await request(app).post("/api/time-logs").send({ user_id: "u", activity_type: "driving" });
+    const res = await request(app)
+      .post("/api/time-logs")
+      .send({ user_id: "u", activity_type: "driving" });
     expect(res.status).toBe(401);
   });
 

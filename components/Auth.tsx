@@ -977,7 +977,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     htmlFor="authTaxIDEIN"
                     className="text-[10px] text-slate-600 font-black uppercase ml-1"
                   >
-                    Tax ID / EIN *
+                    Tax ID / EIN <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="authTaxIDEIN"
@@ -994,7 +994,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   htmlFor="authBillingStreetAddress"
                   className="text-[10px] text-slate-600 font-black uppercase ml-1"
                 >
-                  Billing Street Address *
+                  Billing Street Address <span className="text-red-400">*</span>
                 </label>
                 <input
                   id="authBillingStreetAddress"

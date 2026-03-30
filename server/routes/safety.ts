@@ -27,7 +27,7 @@ router.get(
   "/api/safety/quizzes",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query(
@@ -36,9 +36,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/quizzes");
-      log.error({ err: error }, "Failed to fetch safety quizzes");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -48,7 +46,7 @@ router.get(
   "/api/safety/quizzes/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
     try {
@@ -62,9 +60,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/quizzes/:id");
-      log.error({ err: error }, "Failed to fetch safety quiz");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -75,7 +71,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createSafetyQuizSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { title, description, status } = req.body;
 
@@ -89,9 +85,7 @@ router.post(
       log.info({ quizId: id }, "Safety quiz created");
       res.status(201).json({ message: "Quiz created", id });
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/safety/quizzes");
-      log.error({ err: error }, "Failed to create safety quiz");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -103,7 +97,7 @@ router.get(
   "/api/safety/quiz-results",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query(
@@ -112,9 +106,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/quiz-results");
-      log.error({ err: error }, "Failed to fetch safety quiz results");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -125,7 +117,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createQuizResultSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { quiz_id, driver_id, driver_name, score, passed } = req.body;
 
@@ -152,9 +144,7 @@ router.post(
       );
       res.status(201).json({ message: "Quiz result recorded", id });
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/safety/quiz-results");
-      log.error({ err: error }, "Failed to record safety quiz result");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -166,7 +156,7 @@ router.get(
   "/api/safety/maintenance",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query(
@@ -175,9 +165,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/maintenance");
-      log.error({ err: error }, "Failed to fetch maintenance records");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -187,7 +175,7 @@ router.get(
   "/api/safety/maintenance/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
     try {
@@ -201,9 +189,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/maintenance/:id");
-      log.error({ err: error }, "Failed to fetch maintenance record");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -214,7 +200,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createMaintenanceSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const {
       vehicle_id,
@@ -287,9 +273,7 @@ router.post(
       log.info({ maintenanceId: id }, "Maintenance record created");
       res.status(201).json({ message: "Maintenance record created", id });
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/safety/maintenance");
-      log.error({ err: error }, "Failed to create maintenance record");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -300,7 +284,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchMaintenanceSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
     const patchLog = createRequestLogger(req, "PATCH /api/safety/maintenance/:id");
@@ -375,11 +359,7 @@ router.patch(
       patchLog.info({ maintenanceId: id }, "Maintenance record updated");
       res.json(updatedRecord);
     } catch (error) {
-      patchLog.error(
-        { err: error },
-        "Failed to update maintenance record",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -391,7 +371,7 @@ router.get(
   "/api/safety/vendors",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query(
@@ -400,9 +380,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/vendors");
-      log.error({ err: error }, "Failed to fetch safety vendors");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -412,7 +390,7 @@ router.get(
   "/api/safety/vendors/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
     try {
@@ -426,9 +404,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/vendors/:id");
-      log.error({ err: error }, "Failed to fetch safety vendor");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -439,7 +415,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createSafetyVendorSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const {
       name,
@@ -475,9 +451,7 @@ router.post(
       log.info({ vendorId: id }, "Safety vendor created");
       res.status(201).json({ message: "Vendor created", id });
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/safety/vendors");
-      log.error({ err: error }, "Failed to create safety vendor");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -489,7 +463,7 @@ router.get(
   "/api/safety/activity",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query(
@@ -498,9 +472,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/activity");
-      log.error({ err: error }, "Failed to fetch safety activity log");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -511,7 +483,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createSafetyActivitySchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { action, entity_type, entity_id, actor, details } = req.body;
 
@@ -533,9 +505,7 @@ router.post(
       );
       res.status(201).json({ message: "Activity logged", id });
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/safety/activity");
-      log.error({ err: error }, "Failed to log safety activity");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -547,7 +517,7 @@ router.get(
   "/api/safety/expiring-certs",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const daysAhead = req.query.days
       ? parseInt(req.query.days as string, 10)
@@ -556,9 +526,7 @@ router.get(
       const certs = await checkExpiring(companyId, daysAhead);
       res.json(certs);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/expiring-certs");
-      log.error({ err: error }, "Failed to check expiring certificates");
-      res.status(500).json({ error: "Failed to check expiring certificates" });
+      next(error);
     }
   },
 );
@@ -570,18 +538,13 @@ router.get(
   "/api/safety/fmcsa/:dotNumber",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const { dotNumber } = req.params;
     try {
       const result = await getSafetyScore(dotNumber);
       res.json(result);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/safety/fmcsa/:dotNumber");
-      log.error(
-        { err: error, dotNumber },
-        "Failed to fetch FMCSA safety score",
-      );
-      res.status(500).json({ error: "Failed to fetch FMCSA safety score" });
+      next(error);
     }
   },
 );

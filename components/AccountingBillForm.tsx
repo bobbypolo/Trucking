@@ -201,7 +201,7 @@ export const AccountingBillForm: React.FC<Props> = ({
             </div>
             <div className="space-y-2">
               <label htmlFor="abfVendorEntity" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Vendor Entity *
+                Vendor Entity <span className="text-red-400">*</span>
               </label>
               <select id="abfVendorEntity"
                 className={`w-full bg-slate-900 border ${errors.vendorId ? "border-red-500" : "border-white/10"} rounded-2xl p-4 text-[11px] font-black uppercase text-white outline-none focus:border-emerald-500/50 appearance-none`}
@@ -217,7 +217,7 @@ export const AccountingBillForm: React.FC<Props> = ({
             </div>
             <div className="space-y-2">
               <label htmlFor="abfInvoiceDate" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Invoice Date *
+                Invoice Date <span className="text-red-400">*</span>
               </label>
               <input id="abfInvoiceDate"
                 type="date"
@@ -229,7 +229,7 @@ export const AccountingBillForm: React.FC<Props> = ({
             </div>
             <div className="space-y-2">
               <label htmlFor="abfPaymentDue" className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
-                Payment Due *
+                Payment Due <span className="text-red-400">*</span>
               </label>
               <input id="abfPaymentDue"
                 type="date"

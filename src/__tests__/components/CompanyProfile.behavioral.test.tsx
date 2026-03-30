@@ -1126,7 +1126,11 @@ describe("CompanyProfile component", () => {
       );
 
       await waitFor(() => {
-        expect(mockGetTimeLogs).toHaveBeenCalledWith("user-driver");
+        expect(mockGetTimeLogs).toHaveBeenCalledWith(
+          "user-driver",
+          false,
+          expect.any(AbortSignal),
+        );
       });
     });
 

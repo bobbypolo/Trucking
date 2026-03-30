@@ -421,7 +421,9 @@ export const CompanyProfile: React.FC<Props> = ({
   }, [resolvedCompanyId, user, isDriver]);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    loadData().catch(() => {});
+    return () => controller.abort();
   }, [loadData]);
 
   // Mark dirty when company state changes (after initial load)
@@ -439,9 +441,11 @@ export const CompanyProfile: React.FC<Props> = ({
   // Fetch QuickBooks connection status
   useEffect(() => {
     if (!isAdmin) return;
+    const controller = new AbortController();
     const checkQb = async () => {
       try {
-        const data = await api.get("/quickbooks/status");
+        const data = await api.get("/quickbooks/status", { signal: controller.signal });
+        if (data === undefined) return; // aborted
         setQbStatus({
           available: true,
           connected: data.connected || false,
@@ -452,6 +456,7 @@ export const CompanyProfile: React.FC<Props> = ({
       }
     };
     checkQb();
+    return () => controller.abort();
   }, [isAdmin]);
 
   // Determine billing availability from company stripe data
@@ -466,11 +471,13 @@ export const CompanyProfile: React.FC<Props> = ({
 
   useEffect(() => {
     if (!isDriver) return;
+    const controller = new AbortController();
     const fetchLogs = async () => {
       setTimeLogsLoading(true);
       setTimeLogsError(null);
       try {
-        const logs = await getTimeLogs(user.id);
+        const logs = await getTimeLogs(user.id, false, controller.signal);
+        if (controller.signal.aborted) return;
         const recent = logs.slice(0, 5).map((log) => ({
           type: log.clockOut ? "ClockOut" : "ClockIn",
           time: new Date(log.clockOut || log.clockIn || "").toLocaleTimeString(
@@ -485,13 +492,15 @@ export const CompanyProfile: React.FC<Props> = ({
         }));
         setTimeLogs(recent);
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
         console.error("[CompanyProfile] Failed to load time logs:", err);
         setTimeLogsError("Unable to load time entries. Please retry.");
       } finally {
-        setTimeLogsLoading(false);
+        if (!controller.signal.aborted) setTimeLogsLoading(false);
       }
     };
     fetchLogs();
+    return () => controller.abort();
   }, [user.id, isDriver, isClockedIn]);
 
   const handleClockIn = async () => {

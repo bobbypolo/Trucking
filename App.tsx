@@ -806,12 +806,14 @@ export default function App() {
             </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label="Toggle sidebar"
               className={`hidden md:flex p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 transition-all ${sidebarCollapsed ? "mx-auto rotate-180" : ""}`}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close menu"
               className="md:hidden text-slate-400"
             >
               <X className="w-5 h-5" />
@@ -896,6 +898,7 @@ export default function App() {
             <div className="flex items-center gap-10">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Open menu"
                 className="md:hidden text-slate-400 p-2 hover:bg-slate-800 rounded-xl"
               >
                 <Menu className="w-5 h-5" />

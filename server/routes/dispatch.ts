@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
   requireAuth,
@@ -24,7 +24,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createTimeLogSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const {
       id,
@@ -83,7 +83,7 @@ router.post(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/time-logs]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -92,7 +92,7 @@ router.get(
   "/api/time-logs/:userId",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     if (user.uid !== req.params.userId && user.role === "driver") {
       return res.status(403).json({ error: "Unauthorized profile access" });
@@ -110,7 +110,7 @@ router.get(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/time-logs]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -119,7 +119,7 @@ router.get(
   "/api/time-logs/company/:companyId",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     try {
       const [rows] = await pool.query(
@@ -133,7 +133,7 @@ router.get(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/time-logs-company]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -143,7 +143,7 @@ router.get(
   "/api/dispatch-events/:companyId",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     try {
       const [rows] = await pool.query(
@@ -157,7 +157,7 @@ router.get(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/dispatch-events]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -167,7 +167,7 @@ router.get(
   "/api/dispatch/events",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     try {
       const [rows] = await pool.query(
@@ -181,7 +181,7 @@ router.get(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/dispatch/events]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -191,7 +191,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createDispatchEventSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const { id, load_id, dispatcher_id, event_type, message, payload } =
       req.body;
@@ -242,7 +242,7 @@ router.post(
         { err: error, userId: user.uid, loadId: load_id },
         "SERVER ERROR [POST /api/dispatch-events]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -252,7 +252,7 @@ router.get(
   "/api/audit",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const tenantId = user.tenantId;
 
@@ -316,7 +316,7 @@ router.get(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/audit]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -326,7 +326,7 @@ router.get(
   "/api/dashboard/cards",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const [rows] = await pool.query(
         "SELECT * FROM dashboard_card ORDER BY sort_order ASC",
@@ -335,7 +335,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/dashboard/cards");
       log.error({ err: error }, "SERVER ERROR [GET /api/dashboard/cards]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -346,7 +346,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(bestMatchesSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const { loadId, maxCandidates } = req.body;
 
@@ -474,7 +474,7 @@ router.post(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/dispatch/best-matches]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

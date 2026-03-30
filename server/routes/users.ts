@@ -106,7 +106,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(registerUserSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const log = createRequestLogger(req, "POST /api/auth/register");
 
@@ -144,11 +144,7 @@ router.post(
 
       res.status(201).json({ message: "User registered successfully" });
     } catch (error) {
-      log.error({ err: error }, "Registration failed");
-      res.status(500).json({
-        error: "Registration failed",
-        details: "Internal error",
-      });
+      next(error);
     }
   },
 );
@@ -158,7 +154,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(syncUserSchema),
-  async (req, res) => {
+  async (req, res, next) => {
     const authReq = req as AuthenticatedRequest;
     const log = createRequestLogger(req, "POST /api/users");
 
@@ -224,11 +220,7 @@ router.post(
 
       res.status(201).json({ message: "User updated/created" });
     } catch (error) {
-      log.error({ err: error }, "User sync failed");
-      res.status(500).json({
-        error: "User sync failed",
-        details: "Internal error",
-      });
+      next(error);
     }
   },
 );
@@ -429,7 +421,7 @@ router.post(
   },
 );
 
-router.get("/api/users/me", requireAuth, async (req: any, res) => {
+router.get("/api/users/me", requireAuth, async (req: any, res, next) => {
   try {
     const user = await findSqlUserById(req.user.uid);
     if (!user) {
@@ -438,9 +430,7 @@ router.get("/api/users/me", requireAuth, async (req: any, res) => {
 
     res.json(mapUserRowToApiUser(user));
   } catch (error) {
-    const log = createRequestLogger(req, "GET /api/users/me");
-    log.error({ err: error }, "SERVER ERROR [GET /api/users/me]");
-    res.status(500).json({ error: "Server error" });
+    next(error);
   }
 });
 
@@ -448,14 +438,12 @@ router.get(
   "/api/users/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/users");
-      log.error({ err: error }, "SERVER ERROR [GET /api/users]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

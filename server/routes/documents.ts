@@ -13,7 +13,7 @@
  *   GET    /api/documents/:id/download — get a signed download URL for a document
  */
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import multer from "multer";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -117,7 +117,7 @@ router.get(
   "/api/documents",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/documents");
     const companyId = req.user!.tenantId;
 
@@ -130,7 +130,7 @@ router.get(
       res.json({ documents });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [GET /api/documents]");
-      res.status(500).json({ error: "Failed to retrieve documents" });
+      next(error);
     }
   },
 );
@@ -143,7 +143,7 @@ router.post(
   requireTenant,
   upload.single("file"),
   multerErrorHandler,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/documents");
     const companyId = req.user!.tenantId;
     const uploadedBy = req.user!.uid;
@@ -207,7 +207,7 @@ router.post(
         return;
       }
       log.error({ err: error }, "SERVER ERROR [POST /api/documents]");
-      res.status(500).json({ error: "Failed to upload document" });
+      next(error);
     }
   },
 );
@@ -218,7 +218,7 @@ router.get(
   "/api/documents/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
@@ -237,7 +237,7 @@ router.get(
         return;
       }
       log.error({ err: error }, "SERVER ERROR [GET /api/documents/:id]");
-      res.status(500).json({ error: "Failed to retrieve document" });
+      next(error);
     }
   },
 );
@@ -248,7 +248,7 @@ router.patch(
   "/api/documents/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
@@ -287,7 +287,7 @@ router.patch(
         return;
       }
       log.error({ err: error }, "SERVER ERROR [PATCH /api/documents/:id]");
-      res.status(500).json({ error: "Failed to update document" });
+      next(error);
     }
   },
 );
@@ -298,7 +298,7 @@ router.get(
   "/api/documents/:id/download",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/documents/:id/download");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
@@ -340,7 +340,7 @@ router.get(
         { err: error },
         "SERVER ERROR [GET /api/documents/:id/download]",
       );
-      res.status(500).json({ error: "Failed to generate download URL" });
+      next(error);
     }
   },
 );

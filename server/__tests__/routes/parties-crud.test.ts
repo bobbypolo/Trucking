@@ -751,7 +751,7 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
         .send(makePartyBody({ type: "Customer", name: "Failing Party" }));
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe("Database error");
+      expect(res.body.message).toBeDefined();
       expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
       expect(mockConnection.release).toHaveBeenCalledTimes(1);
     });

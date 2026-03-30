@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -37,7 +37,7 @@ router.get(
   "/api/clients/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const includeArchived = req.query.include_archived === "true";
       const sql = includeArchived
@@ -67,7 +67,7 @@ router.get(
         }
       }
       log.error({ err: error }, "SERVER ERROR [GET /api/clients]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -79,7 +79,7 @@ router.patch(
   "/api/clients/:id/archive",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/archive");
 
     if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
@@ -108,7 +108,7 @@ router.patch(
         { err: error },
         "SERVER ERROR [PATCH /api/clients/:id/archive]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -118,7 +118,7 @@ router.patch(
   "/api/clients/:id/unarchive",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/unarchive");
 
     if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
@@ -147,7 +147,7 @@ router.patch(
         { err: error },
         "SERVER ERROR [PATCH /api/clients/:id/unarchive]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -157,7 +157,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createClientSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user!.tenantId;
     const log = createRequestLogger(req, "POST /api/clients");
 
@@ -210,7 +210,7 @@ router.post(
       res.status(201).json({ message: "Client saved" });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [POST /api/clients]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -220,7 +220,7 @@ router.get(
   "/api/companies/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/companies");
 
     // Explicit tenant isolation: :id must match authenticated user's tenant
@@ -274,10 +274,7 @@ router.get(
       return res.status(404).json({ error: "Company not found" });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [GET /api/companies]");
-      res.status(500).json({
-        error: "Database error",
-        details: "Internal error",
-      });
+      next(error);
     }
   },
 );
@@ -286,7 +283,7 @@ router.post(
   "/api/companies",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/companies");
 
     // Enforce admin-only access for company settings changes
@@ -471,7 +468,7 @@ router.post(
       res.status(201).json({ message: "Company settings saved" });
     } catch (error) {
       log.error({ err: error }, "SERVER ERROR [POST /api/companies]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -481,7 +478,7 @@ router.get(
   "/api/parties",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const [parties]: any = await pool.query(
         "SELECT * FROM parties WHERE company_id = ?",
@@ -705,7 +702,7 @@ router.get(
         return;
       }
       log.error({ err: error }, "SERVER ERROR [GET /api/parties]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -715,7 +712,7 @@ router.patch(
   "/api/parties/:id/status",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const { status } = req.body;
     const tenantId = req.user.tenantId;
     const log = createRequestLogger(req, "PATCH /api/parties/:id/status");
@@ -740,7 +737,7 @@ router.patch(
       res.json({ message: "Party status updated" });
     } catch (error) {
       log.error({ err: error }, "Failed to update party status");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -750,7 +747,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createPartySchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/parties");
 
     const {
@@ -985,10 +982,7 @@ router.post(
       }
 
       log.error({ err: error }, "SERVER ERROR [POST /api/parties]");
-      res.status(500).json({
-        error: "Database error",
-        details: "Internal error",
-      });
+      next(error);
     } finally {
       connection.release();
     }
@@ -1000,7 +994,7 @@ router.get(
   "/api/global-search",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const { query } = req.query;
     const companyId = req.user.companyId;
 
@@ -1082,7 +1076,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/global-search");
       log.error({ err: error }, "Search failed");
-      res.status(500).json({ error: "Search failed" });
+      next(error);
     }
   },
 );

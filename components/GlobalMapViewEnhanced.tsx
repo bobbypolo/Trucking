@@ -308,9 +308,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const showMockIndicators = (import.meta as any).env.DEV;
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchLivePositions = useCallback(async () => {
+  const fetchLivePositions = useCallback(async (signal?: AbortSignal) => {
     try {
-      const data = await api.get("/tracking/live");
+      const data = await api.get("/tracking/live", signal ? { signal } : undefined);
       if (!data) return; // request was aborted
       setLivePositions(data.positions ?? []);
       setTrackingState(data.trackingState ?? "not-configured");
@@ -331,17 +331,20 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   }, [showMockIndicators]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     // Initial fetch
-    fetchLivePositions();
+    fetchLivePositions(controller.signal);
 
     // Set up 30-second polling
     pollTimerRef.current = setInterval(
-      fetchLivePositions,
+      () => fetchLivePositions(controller.signal),
       LIVE_GPS_POLL_INTERVAL_MS,
     );
 
-    // Cleanup on unmount — stop polling (R-P4-12)
+    // Cleanup on unmount — stop polling and cancel in-flight requests (R-P4-12)
     return () => {
+      controller.abort();
       if (pollTimerRef.current !== null) {
         clearInterval(pollTimerRef.current);
         pollTimerRef.current = null;
@@ -499,8 +502,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
   // Calculate routes for active loads
   useEffect(() => {
+    const controller = new AbortController();
     const fetchRoutes = async () => {
       for (const load of loads) {
+        if (controller.signal.aborted) return;
         if (load.status === LOAD_STATUS.In_Transit && !routePaths[load.id]) {
           try {
             const origin = formatDirectionsQuery(
@@ -515,6 +520,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             }
 
             const directions = await getDirections(origin, destination);
+            if (controller.signal.aborted) return;
 
             // Decode polyline (simple version for demo)
             if (typeof google !== "undefined" && google.maps.geometry) {
@@ -528,12 +534,14 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               setRoutePaths((prev) => ({ ...prev, [load.id]: points }));
             }
           } catch (e) {
+            if (e instanceof Error && e.name === "AbortError") return;
             console.warn("Failed to fetch route directions:", e);
           }
         }
       }
     };
     fetchRoutes();
+    return () => controller.abort();
   }, [loads, routePaths]);
 
   // AC3: Graceful fallback when GOOGLE_MAPS_API_KEY is absent

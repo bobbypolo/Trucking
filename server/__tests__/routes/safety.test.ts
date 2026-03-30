@@ -700,8 +700,7 @@ describe("GET /api/safety/quiz-results — R-P1-09", () => {
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
-    const body = res.body as { error: string };
-    expect(body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("SQL query scopes results to authenticated tenant company_id", async () => {
@@ -735,7 +734,12 @@ describe("POST /api/safety/quiz-results — R-P1-10", () => {
   it("returns 401 without Authorization header", async () => {
     const res = await request(app)
       .post("/api/safety/quiz-results")
-      .send({ quiz_id: "quiz-001", driver_id: "driver-001", score: 85, passed: true });
+      .send({
+        quiz_id: "quiz-001",
+        driver_id: "driver-001",
+        score: 85,
+        passed: true,
+      });
     expect(res.status).toBe(401);
   });
 
@@ -769,9 +773,7 @@ describe("POST /api/safety/quiz-results — R-P1-10", () => {
     expect(res.status).toBe(400);
     expect(res.body.message).toBe("Validation failed");
     expect(res.body.details.fields).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ field: "quiz_id" }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ field: "quiz_id" })]),
     );
   });
 
@@ -812,7 +814,6 @@ describe("POST /api/safety/quiz-results — R-P1-10", () => {
       .send({ quiz_id: "quiz-001", score: 75, passed: true });
 
     expect(res.status).toBe(500);
-    const body = res.body as { error: string };
-    expect(body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });

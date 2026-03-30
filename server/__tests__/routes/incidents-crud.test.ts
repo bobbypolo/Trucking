@@ -255,7 +255,7 @@ describe("POST /api/incidents/:id/charges — tenant isolation", () => {
       .set("Authorization", AUTH_HEADER)
       .send({ category: "Tow", amount: 500 });
     expect(res.status).toBe(404);
-    expect(res.body.error).toBe("Incident not found");
+    expect(res.body.message).toBe("Incident not found");
   });
 
   it("returns 201 for same-tenant charge", async () => {

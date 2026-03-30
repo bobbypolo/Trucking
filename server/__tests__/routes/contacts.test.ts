@@ -160,10 +160,11 @@ describe("GET /api/contacts — success", () => {
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(200);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("LIMIT"),
-      ["company-aaa", 25, 50],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT"), [
+      "company-aaa",
+      25,
+      50,
+    ]);
   });
 
   it("defaults to page=1, limit=50 when not provided", async () => {
@@ -173,10 +174,11 @@ describe("GET /api/contacts — success", () => {
       .get("/api/contacts")
       .set("Authorization", "Bearer valid-token");
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("LIMIT"),
-      ["company-aaa", 50, 0],
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("LIMIT"), [
+      "company-aaa",
+      50,
+      0,
+    ]);
   });
 
   it("returns 500 on database error", async () => {
@@ -187,7 +189,7 @@ describe("GET /api/contacts — success", () => {
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -327,7 +329,7 @@ describe("POST /api/contacts — creation", () => {
       .send({ name: "Test Contact" });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -484,7 +486,7 @@ describe("PATCH /api/contacts/:id/archive — soft-delete", () => {
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 

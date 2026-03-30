@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
   requireAuth,
@@ -12,7 +12,7 @@ import {
   calculateDetentionSchema,
 } from "../schemas/geofence";
 import pool from "../db";
-import { createRequestLogger } from "../lib/logger";
+
 
 const router = Router();
 
@@ -22,7 +22,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createGeofenceEventSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const {
       loadId,
@@ -65,13 +65,8 @@ router.post(
       );
 
       res.status(201).json({ id, message: "Geofence event recorded" });
-    } catch (error) {
-      const log = createRequestLogger(req, "POST /api/geofence-events");
-      log.error(
-        { err: error, userId: user.uid },
-        "SERVER ERROR [POST /api/geofence-events]",
-      );
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -81,7 +76,7 @@ router.get(
   "/api/geofence-events",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const loadId = req.query.loadId as string;
 
@@ -95,13 +90,8 @@ router.get(
         [loadId, user.tenantId],
       );
       res.json(rows);
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/geofence-events");
-      log.error(
-        { err: error, userId: user.uid },
-        "SERVER ERROR [GET /api/geofence-events]",
-      );
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -112,7 +102,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(calculateDetentionSchema),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { user } = req as AuthenticatedRequest;
     const { loadId } = req.body;
 
@@ -197,13 +187,8 @@ router.post(
         totalCharge: Math.round(totalCharge * 100) / 100,
         rules: { freeHours, hourlyRate, maxBillableHours },
       });
-    } catch (error) {
-      const log = createRequestLogger(req, "POST /api/detention/calculate");
-      log.error(
-        { err: error, userId: user.uid },
-        "SERVER ERROR [POST /api/detention/calculate]",
-      );
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );

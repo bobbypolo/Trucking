@@ -116,7 +116,10 @@ describe("GlobalMapViewEnhanced provider error handling", () => {
       await vi.advanceTimersByTimeAsync(100);
     });
 
-    expect(mockApiGet).toHaveBeenCalledWith("/tracking/live");
+    expect(mockApiGet).toHaveBeenCalledWith(
+      "/tracking/live",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(
       screen.getByText(/tracking temporarily unavailable/i),
     ).toBeInTheDocument();

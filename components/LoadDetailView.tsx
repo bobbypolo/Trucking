@@ -107,9 +107,21 @@ export const LoadDetailView: React.FC<Props> = ({
   const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
+    const controller = new AbortController();
     setIsLoaded(true);
-    loadVault();
-  }, []);
+    const fetchVault = async () => {
+      try {
+        const docs = await getDocuments({ load_id: load.id });
+        if (controller.signal.aborted) return;
+        setVaultDocs(docs);
+      } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") return;
+        // Vault docs unavailable — non-blocking, UI shows empty state
+      }
+    };
+    fetchVault();
+    return () => controller.abort();
+  }, [load.id]);
 
   const loadVault = async () => {
     try {

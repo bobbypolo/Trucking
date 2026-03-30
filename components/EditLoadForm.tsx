@@ -102,15 +102,23 @@ export const EditLoadForm: React.FC<Props> = ({
   const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
+    const controller = new AbortController();
     const load = async () => {
-      const bList = await getBrokers();
-      setBrokers(bList);
-      if (propUsers.length === 0) {
-        const coUsers = await getCompanyUsers(currentUser.companyId);
-        setUsers(coUsers);
+      try {
+        const bList = await getBrokers();
+        if (controller.signal.aborted) return;
+        setBrokers(bList);
+        if (propUsers.length === 0) {
+          const coUsers = await getCompanyUsers(currentUser.companyId);
+          if (controller.signal.aborted) return;
+          setUsers(coUsers);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
       }
     };
     load();
+    return () => controller.abort();
   }, [currentUser]);
 
   const margins = useMemo(() => {
@@ -460,7 +468,7 @@ export const EditLoadForm: React.FC<Props> = ({
                 htmlFor="elfLoadStatus"
                 className="text-[11px] font-bold text-slate-500 uppercase"
               >
-                Load Status
+                Load Status <span className="text-red-400">*</span>
               </label>
               <select
                 id="elfLoadStatus"
@@ -867,7 +875,7 @@ export const EditLoadForm: React.FC<Props> = ({
           <div className="flex justify-between items-center">
             <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
               <Navigation className="w-4 h-4 text-blue-500" /> Stop Matrix
-              (Sequential)
+              (Sequential) <span className="text-red-400">*</span>
             </h2>
             <div className="flex gap-2">
               <button

@@ -8,7 +8,7 @@ import {
   updateKciRequestSchema,
 } from "../schemas/kci-request";
 import { kciRequestRepository } from "../repositories/kci-request.repository";
-import { createRequestLogger } from "../lib/logger";
+
 
 const router = Router();
 
@@ -19,7 +19,7 @@ router.get(
   "/api/kci-requests",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -30,10 +30,8 @@ router.get(
         limit,
       );
       res.json(requests);
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/kci-requests");
-      log.error({ err: error }, "Failed to fetch KCI requests");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -44,7 +42,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createKciRequestSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -54,10 +52,8 @@ router.post(
         userId,
       );
       res.status(201).json(kciRequest);
-    } catch (error) {
-      const log = createRequestLogger(req, "POST /api/kci-requests");
-      log.error({ err: error }, "Failed to create KCI request");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -68,7 +64,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateKciRequestSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -111,8 +107,8 @@ router.patch(
         userId,
       );
       res.json(updated);
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );

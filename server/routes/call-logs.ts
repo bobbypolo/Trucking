@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request } from "express";
+import type { Request, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
@@ -16,7 +16,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createCallLogSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     try {
       const { phoneNumber, context, contactName, direction } = req.body;
       const id = uuidv4();
@@ -39,7 +39,7 @@ router.post(
     } catch (err: unknown) {
       const log = createRequestLogger(req, "POST /api/call-logs");
       log.error({ err }, "Failed to log call");
-      res.status(500).json({ error: "Failed to log call" });
+      next(err);
     }
   },
 );
@@ -49,7 +49,7 @@ router.get(
   "/api/call-logs",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     try {
       const companyId = req.user!.tenantId;
       const [rows] = await pool.query(
@@ -60,7 +60,7 @@ router.get(
     } catch (err: unknown) {
       const log = createRequestLogger(req, "GET /api/call-logs");
       log.error({ err }, "Failed to fetch call logs");
-      res.status(500).json({ error: "Failed to fetch call logs" });
+      next(err);
     }
   },
 );

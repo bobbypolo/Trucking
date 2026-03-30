@@ -7,7 +7,11 @@ const { mockQuery, mockResolveSqlPrincipalByFirebaseUid, mockCheckExpiring } =
     const mockQuery = vi.fn();
     const mockResolveSqlPrincipalByFirebaseUid = vi.fn();
     const mockCheckExpiring = vi.fn();
-    return { mockQuery, mockResolveSqlPrincipalByFirebaseUid, mockCheckExpiring };
+    return {
+      mockQuery,
+      mockResolveSqlPrincipalByFirebaseUid,
+      mockCheckExpiring,
+    };
   });
 
 vi.mock("../../db", () => ({
@@ -153,6 +157,6 @@ describe("GET /api/safety/expiring-certs — R-W7-03c", () => {
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
+    expect(res.body).toHaveProperty("message");
   });
 });

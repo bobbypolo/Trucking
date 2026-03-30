@@ -203,7 +203,7 @@ describe("GET /api/bookings — success", () => {
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -271,7 +271,7 @@ describe("GET /api/bookings/:id — single booking", () => {
       .set("Authorization", "Bearer valid-token");
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -389,7 +389,7 @@ describe("POST /api/bookings — creation", () => {
       .send({ status: "Pending" });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -518,7 +518,7 @@ describe("PATCH /api/bookings/:id — update", () => {
       .send({ status: "Confirmed" });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -723,7 +723,7 @@ describe("POST /api/bookings/convert — atomic booking+load creation", () => {
       });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
 
     // Verify rollback was called, commit was not
     expect(mockConnection.rollback).toHaveBeenCalledOnce();

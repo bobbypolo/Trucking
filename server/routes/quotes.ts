@@ -5,8 +5,6 @@ import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createQuoteSchema, updateQuoteSchema } from "../schemas/quote";
 import { quoteRepository } from "../repositories/quote.repository";
-import { createRequestLogger } from "../lib/logger";
-import { NotFoundError } from "../errors/AppError";
 
 const router = Router();
 
@@ -15,7 +13,7 @@ router.get(
   "/api/quotes",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -27,9 +25,7 @@ router.get(
       );
       res.json(quotes);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/quotes");
-      log.error({ err: error }, "Failed to fetch quotes");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -39,7 +35,7 @@ router.get(
   "/api/quotes/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       const quote = await quoteRepository.findById(req.params.id);
@@ -49,7 +45,7 @@ router.get(
       }
       res.json(quote);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -60,16 +56,14 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createQuoteSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
       const quote = await quoteRepository.create(req.body, companyId, userId);
       res.status(201).json(quote);
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/quotes");
-      log.error({ err: error }, "Failed to create quote");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -80,7 +74,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateQuoteSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -96,7 +90,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -106,7 +100,7 @@ router.patch(
   "/api/quotes/:id/archive",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -118,7 +112,7 @@ router.patch(
       await quoteRepository.archive(req.params.id, userId);
       res.json({ message: "Quote archived" });
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

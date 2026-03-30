@@ -8,7 +8,7 @@ import {
   createEquipmentSchema,
   patchEquipmentSchema,
 } from "../schemas/equipment";
-import { createRequestLogger } from "../lib/logger";
+
 import { buildSafeUpdate } from "../lib/safe-update";
 import { equipmentRepository } from "../repositories/equipment.repository";
 
@@ -58,7 +58,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createEquipmentSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const {
       id,
       company_id,
@@ -86,10 +86,8 @@ router.post(
         ],
       );
       res.status(201).json({ message: "Equipment added" });
-    } catch (error) {
-      const log = createRequestLogger(req, "POST /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [POST /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -108,7 +106,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchEquipmentSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const { id } = req.params;
     const companyId: string = req.user.tenantId;
     const userRole: string = req.user.role;
@@ -142,10 +140,8 @@ router.patch(
 
       const updated = await equipmentRepository.findById(id, companyId);
       res.json(updated);
-    } catch (error) {
-      const log = createRequestLogger(req, "PATCH /api/equipment/:id");
-      log.error({ err: error }, "SERVER ERROR [PATCH /api/equipment/:id]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );

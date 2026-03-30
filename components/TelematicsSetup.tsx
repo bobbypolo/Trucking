@@ -175,18 +175,20 @@ export function TelematicsSetup(): React.ReactElement {
   // Data fetching
   // ---------------------------------------------------------------------------
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
+      const opts = signal ? { signal } : undefined;
       const [cfgs, maps, liveStatus] = await Promise.all([
-        api.get("/tracking/providers") as Promise<ProviderConfig[]>,
-        api.get("/tracking/vehicles/mapping") as Promise<VehicleMapping[]>,
-        api.get("/tracking/live").catch(() => null) as Promise<{
+        api.get("/tracking/providers", opts) as Promise<ProviderConfig[]>,
+        api.get("/tracking/vehicles/mapping", opts) as Promise<VehicleMapping[]>,
+        api.get("/tracking/live", opts).catch(() => null) as Promise<{
           trackingState?: string;
           providerDisplayName?: string;
         } | null>,
       ]);
+      if (signal?.aborted) return;
       setConfigs(cfgs ?? []);
       setMappings(maps ?? []);
       if (liveStatus) {
@@ -194,18 +196,23 @@ export function TelematicsSetup(): React.ReactElement {
         setTrackingProvider(liveStatus.providerDisplayName ?? null);
       }
     } catch (err: unknown) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to load telematics configuration.",
-      );
+      if (err instanceof Error && err.name === "AbortError") return;
+      if (!signal?.aborted) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to load telematics configuration.",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
+    return () => controller.abort();
   }, [fetchData]);
 
   // ---------------------------------------------------------------------------

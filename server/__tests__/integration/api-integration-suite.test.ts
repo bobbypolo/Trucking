@@ -863,7 +863,7 @@ describe("R-P12-04: Error Response Format", () => {
     const res = await request(app).get("/api/incidents");
 
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
-    expect(typeof res.body.error).toBe("string");
+    expect(res.body).toHaveProperty("message");
+    expect(typeof res.body.message).toBe("string");
   });
 });
