@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
@@ -19,7 +19,7 @@ router.get(
   "/api/equipment",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const companyId = req.user.tenantId;
       const [rows]: any = await pool.query(
@@ -28,10 +28,8 @@ router.get(
       );
       const settings = await getVisibilitySettings(companyId);
       res.json(redactData(rows, req.user.role, settings));
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -41,7 +39,7 @@ router.get(
   "/api/equipment/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM equipment WHERE company_id = ?",
@@ -49,10 +47,8 @@ router.get(
       );
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
