@@ -1,16 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
-  Gauge,
-  AlertCircle,
   PhoneCall,
-  Cpu,
   Brain,
   Zap,
-  Target,
   Search,
-  Plus,
-  CreditCard,
   AlertTriangle,
   ClipboardList,
   Phone,
@@ -18,8 +12,6 @@ import {
   Activity,
   ChevronRight,
   User as UserIcon,
-  Building2,
-  Anchor,
   X,
   MessageSquare,
   DollarSign,
@@ -27,57 +19,22 @@ import {
   RefreshCw,
   Wrench,
   Share2,
-  ShieldCheck,
-  Clock,
-  FileCheck,
   FileText,
   BarChart3,
-  Filter,
-  History,
-  Star,
-  Trophy,
-  Users,
-  Link2,
-  Home,
-  LogOut,
-  Workflow,
-  ChevronLeft,
   ShieldAlert,
-  Map,
-  MapPin,
-  Bell,
-  Navigation,
   Lock,
-  TrendingUp,
-  Globe,
-  Shield,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-} from "recharts";
 import { getExceptions, getDashboardCards } from "../services/exceptionService";
-import { Exception, DashboardCard, LOAD_STATUS } from "../types";
+import { Exception, DashboardCard } from "../types";
 import { OperationalMessaging } from "./OperationalMessaging";
 import { CommandCenterView } from "./CommandCenterView";
+import { LoadDetailView } from "./LoadDetailView";
 // mockDataService removed — all mock seeding eliminated per T5-09
 import {
   globalSearch,
   getRecord360Data,
   getIncidents,
-  getLoadSummary,
-  getDriverSummary,
-  getBrokerSummary,
-  getMessages,
   getRequests,
   getTriageQueues,
   initiateRepowerWorkflow,
@@ -88,31 +45,23 @@ import {
   saveIncident,
   getProviders,
   getContacts,
-  saveProvider,
-  saveContact,
   saveServiceTicket,
   saveNotificationJob,
-  createIncident as coreCreateIncident,
   saveTask,
   saveIncidentAction,
   saveIncidentCharge,
 } from "../services/storageService";
-import { getVendors, saveVendor } from "../services/safetyService";
+import { getVendors } from "../services/safetyService";
 import { NetworkPortal } from "./NetworkPortal";
 import { QuoteManager } from "./QuoteManager";
-import { LoadDetailView } from "./LoadDetailView";
 import {
   GlobalSearchResult,
   EntityType,
-  LoadSummary,
-  DriverSummary,
   Incident,
-  IncidentAction,
   KCIRequest,
   WorkspaceSession,
   ContextRecord,
   RequestType,
-  WorkflowStep,
   CallSession,
   CallSessionStatus,
   OperationalEvent,
@@ -121,19 +70,10 @@ import {
   Broker,
   Provider,
   Contact,
-  ServiceTicket,
-  NotificationJob,
-  OperationalTask,
   WorkItem,
+  Company as CompanyType,
 } from "../types";
-import {
-  DispatchIntelligence,
-  getRegion,
-} from "../services/dispatchIntelligence";
-import { FuelCardService } from "../services/fuelService";
-import { DetentionService } from "../services/detentionService";
-import { checkCapability } from "../services/authService";
-import { Company as CompanyType } from "../types";
+import { DispatchIntelligence } from "../services/dispatchIntelligence";
 import { features } from "../config/features";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -144,6 +84,9 @@ import { EmptyState } from "./EmptyState";
 import { OpsDashboardPanel } from "./operations/OpsDashboardPanel";
 import { OperationalFormsOverlay } from "./operations/OperationalFormsOverlay";
 import { RepowerSelectionPanel } from "./operations/RepowerSelectionPanel";
+import { TriageWorkspacePanel } from "./operations/TriageWorkspacePanel";
+import { ActionGroup } from "./operations/WorkspacePrimitives";
+import { useCrisisHandlers } from "./operations/useCrisisHandlers";
 
 interface Thread {
   id: string;
@@ -277,135 +220,6 @@ const IntelligenceHub: React.FC<{
   }, []);
 
   // Ops Dashboard computed stats
-  const opsStats = useMemo(() => {
-    const grossRevenue = loads.reduce(
-      (sum, l) => sum + (l.carrierRate || 0),
-      0,
-    );
-    const operatorPay = loads.reduce((sum, l) => sum + (l.driverPay || 0), 0);
-    const operatingMargin = grossRevenue - operatorPay;
-    const activeLoads = loads.filter(
-      (l) => l.status === LOAD_STATUS.Active,
-    ).length;
-    const inTransitLoads = loads.filter(
-      (l) => l.status === "in_transit",
-    ).length;
-    const deliveredToday = loads.filter((l) => {
-      if (l.status !== LOAD_STATUS.Delivered) return false;
-      const today = new Date().toISOString().split("T")[0];
-      return l.dropoffDate === today;
-    }).length;
-    const openExceptions = opsExceptions.length;
-    const criticalExceptions = opsExceptions.filter(
-      (ex) => ex.severity === 4,
-    ).length;
-    const slaBreaches = opsExceptions.filter((ex) => ex.severity === 4).length;
-    const docHoldRevenue = opsExceptions
-      .filter(
-        (ex) => ex.type === "POD_MISSING" || ex.type === "DOC_PENDING_48H",
-      )
-      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
-
-    const accruingDetention = opsExceptions
-      .filter((ex) => ex.type === "DETENTION_ELIGIBLE")
-      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
-
-    const totalMiles = loads.reduce((sum, l) => sum + (l.miles || 0), 0);
-    const avgRPM = totalMiles > 0 ? grossRevenue / totalMiles : 0;
-
-    const slaHealth =
-      loads.length > 0
-        ? Math.round(((loads.length - slaBreaches) / loads.length) * 100)
-        : 100;
-
-    return {
-      grossRevenue,
-      operatingMargin,
-      activeLoads,
-      inTransitLoads,
-      deliveredToday,
-      openExceptions,
-      criticalExceptions,
-      slaBreaches,
-      docHoldRevenue,
-      accruingDetention,
-      avgRPM,
-      slaHealth,
-    };
-  }, [loads, opsExceptions]);
-
-  // Ops Dashboard chart data: RPM by day (last 7 days)
-  const opsRpmByDay = useMemo(() => {
-    if (loads.length === 0) return [];
-    const now = new Date();
-    const days: { date: string; rpm: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      const dayLoads = loads.filter((l) => l.pickupDate === key);
-      const totalRevenue = dayLoads.reduce(
-        (s, l) => s + (l.carrierRate || 0),
-        0,
-      );
-      const totalMiles = dayLoads.reduce((s, l) => s + (l.miles || 0), 0);
-      const rpm = totalMiles > 0 ? totalRevenue / totalMiles : 0;
-      const label = d.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-      days.push({ date: label, rpm: parseFloat(rpm.toFixed(2)) });
-    }
-    return days;
-  }, [loads]);
-
-  // Ops Dashboard chart data: Exception count by day (last 7 days)
-  const opsExceptionsByDay = useMemo(() => {
-    if (opsExceptions.length === 0) return [];
-    const now = new Date();
-    const days: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      const count = opsExceptions.filter((ex) => {
-        const exDate = ex.createdAt ? ex.createdAt.split("T")[0] : "";
-        return exDate === key;
-      }).length;
-      const label = d.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-      days.push({ date: label, count });
-    }
-    return days;
-  }, [opsExceptions]);
-
-  // Ops Dashboard chart data: Revenue vs Cost by week (last 4 weeks)
-  const opsRevenueCostByWeek = useMemo(() => {
-    if (loads.length === 0) return [];
-    const now = new Date();
-    const weeks: { week: string; revenue: number; cost: number }[] = [];
-    for (let w = 3; w >= 0; w--) {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekEnd.getDate() - w * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekStart.getDate() - 6);
-      const startKey = weekStart.toISOString().split("T")[0];
-      const endKey = weekEnd.toISOString().split("T")[0];
-      const weekLoads = loads.filter(
-        (l) => l.pickupDate >= startKey && l.pickupDate <= endKey,
-      );
-      const revenue = weekLoads.reduce((s, l) => s + (l.carrierRate || 0), 0);
-      const cost = weekLoads.reduce((s, l) => s + (l.driverPay || 0), 0);
-      const label = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-      weeks.push({ week: label, revenue, cost });
-    }
-    return weeks;
-  }, [loads]);
-
   // Intelligent Space Detection
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [leftRailCollapsed, setLeftRailCollapsed] = useState(
@@ -1171,7 +985,10 @@ const IntelligenceHub: React.FC<{
       .then(setRoadsideVendors)
       .catch((err) => {
         if (!(err instanceof DOMException && err.name === "AbortError")) {
-          setToast({ message: "Failed to load roadside vendors", type: "error" });
+          setToast({
+            message: "Failed to load roadside vendors",
+            type: "error",
+          });
         }
       });
   }, []);
@@ -1191,121 +1008,48 @@ const IntelligenceHub: React.FC<{
     return () => clearTimeout(timer);
   }, [directorySearchQuery, directoryTab]);
 
-  const handleSafetyEscalate = async (load?: LoadData) => {
-    if (!load && !activeRecord) {
-      showSuccessMessage(
-        "SYSTEM: Protocol requires an active record context for safety escalation.",
-        3000,
-      );
-      return;
-    }
-
-    const targetLoadId =
-      load?.id || (activeRecord?.type === "LOAD" ? activeRecord.id : undefined);
-
-    const task: OperationalTask = {
-      id: `TASK-${uuidv4().slice(0, 8).toUpperCase()}`,
-      type: "GENERAL",
-      title: `CRITICAL: Safety Handoff - Load #${load?.loadNumber || activeRecord?.label}`,
-      description: `Manual safety escalation triggered by ${user.name}. Asset requires immediate compliance review or intervention.`,
-      status: "OPEN",
-      priority: "CRITICAL",
-      assignedTo: "SAFETY_COMPLIANCE",
-      dueDate: new Date(Date.now() + 900000).toISOString(), // 15 mins
-      links: [
-        {
-          id: uuidv4(),
-          entityType: "LOAD",
-          entityId: targetLoadId,
-          isPrimary: true,
-          createdAt: new Date().toISOString(),
-          createdBy: user.name,
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      createdBy: user.name,
-    };
-    await saveTask(task);
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: targetLoadId,
-      message: `Dispatcher ${user.name} escalated Load #${load?.loadNumber || activeRecord?.label} to Safety`,
-      payload: { category: "Escalation", action: "Safety Handoff" },
-    });
-    showSuccessMessage(
-      "SAFETY PROTOCOL TRIGGERED: Handoff Created for Safety & Compliance",
-    );
-    fetchQueues();
-  };
-
-  const handleAttachToRecord = async (
-    item: any,
-    type: EntityType | "PROVIDER" | "CONTACT",
-  ) => {
-    // 1. Priority: Link to active interaction if one exists
-    if (currentCallSession) {
-      await handleLinkSessionToRecord(
-        currentCallSession.id,
-        item.id,
-        type as EntityType,
-      );
-      showSuccessMessage(
-        `${type} ${item.name || item.label || item.id} linked to active call.`,
-      );
-      return;
-    }
-
-    // 2. Secondary: Attach to currently viewed record (Workspace)
-    if (!activeRecord) {
-      setToast({
-        message: "No active record or call to attach to",
-        type: "error",
-      });
-      return;
-    }
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: activeRecord.type === "LOAD" ? activeRecord.id : undefined,
-      message: `${type} attached to ${activeRecord.type}: ${item.name || item.label || item.id}`,
-      payload: {
-        category: "Attachment",
-        itemId: item.id,
-        itemType: type,
-        recordId: activeRecord.id,
-        recordType: activeRecord.type,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = {
-        ...active360Data.incident,
-        timeline: active360Data.incident.timeline ?? [],
-      };
-      updated.timeline.push({
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-        actorName: user.name,
-        action: `${type}_ATTACHED`,
-        notes: `${type} attached: ${item.name || item.label || item.id}`,
-      });
-      await saveIncident(updated);
-      const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(data);
-    }
-
-    showSuccessMessage(
-      `${item.name || item.label || item.id} attached to ${activeRecord.label}`,
-    );
-  };
+  const {
+    handleSafetyEscalate,
+    handleAttachToRecord,
+    handleLinkSessionToRecord,
+    handleNotifyPartners,
+    automatedStakeholderNotify,
+    sendNotificationJob,
+    handleRoadsideAssist,
+    submitRoadsideDispatch,
+    handleEscalate,
+    handleFullLockdown,
+    handleVerifyTrailerDrop,
+  } = useCrisisHandlers({
+    user,
+    activeRecord,
+    active360Data,
+    currentCallSession,
+    setCurrentCallSession,
+    allContacts,
+    selectedVendorForRoadside,
+    roadsideNotes,
+    selectedContacts,
+    notificationContacts,
+    notificationMessage,
+    showSuccessMessage,
+    setToast,
+    setShowRoadsideForm,
+    setShowNotifyPicker,
+    setNotificationContacts,
+    setActive360Data,
+    showConfirmDialog,
+    onRecordAction,
+    handleActionLogging,
+    fetchQueues,
+    getRecord360Data,
+    saveTask,
+    saveIncident,
+    saveIncidentCharge,
+    saveCallSession,
+    saveServiceTicket,
+    saveNotificationJob,
+  });
 
   // handleSystemSeed removed — mock seeding eliminated per T5-09
   const [callData, setCallData] = useState({
@@ -1325,35 +1069,6 @@ const IntelligenceHub: React.FC<{
   const [isSplitView, setIsSplitView] = useState(false);
   const [recentDropdownOpen, setRecentDropdownOpen] = useState(false);
 
-  const handleLinkSessionToRecord = async (
-    sessionId: string,
-    recordId: string,
-    recordType: EntityType,
-  ) => {
-    if (!currentCallSession || currentCallSession.id !== sessionId) return;
-
-    const updatedSession = {
-      ...currentCallSession,
-      loadId: recordId,
-      type: recordType,
-    };
-    await saveCallSession(updatedSession);
-    setCurrentCallSession(updatedSession);
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: recordId,
-      message: `Interaction Session ${sessionId} linked to ${recordType} Record`,
-      payload: { category: "Linking", sessionId, recordId, recordType },
-    });
-
-    showSuccessMessage(`Session Successfully Linked to Record`);
-  };
-
   // Auto-clear is now handled by useAutoFeedback hook
 
   const activeThread = useMemo(() => {
@@ -1361,386 +1076,7 @@ const IntelligenceHub: React.FC<{
     return threads.find((t) => t.id === selectedThreadId);
   }, [threads, selectedThreadId]);
 
-  const handleNotifyPartners = async () => {
-    // Fetch relevant contacts for the active load/incident
-    let contacts = [];
-
-    // 1. Contextual internal contacts
-    if (active360Data?.load) {
-      contacts.push({
-        id: "c-driver",
-        name: active360Data.driver?.name || "Driver",
-        role: "Driver",
-        phone: active360Data.driver?.phone || "",
-      });
-      contacts.push({
-        id: "c-safety",
-        name: "Safety Team",
-        role: "Internal",
-        phone: "",
-      });
-    }
-
-    // 2. Supplement with Enterprise Directory contacts
-    const directoryContacts = allContacts.map((c) => ({
-      id: c.id,
-      name: c.name,
-      role: c.type,
-      phone: c.phone,
-    }));
-
-    contacts = [...contacts, ...directoryContacts];
-
-    setNotificationContacts(contacts);
-    setShowNotifyPicker(true);
-  };
-
-  const automatedStakeholderNotify = async (
-    loadId: string,
-    emails: string[],
-    message: string,
-  ) => {
-    const jobId = `AUTO-JOB-${uuidv4().slice(0, 8).toUpperCase()}`;
-
-    // Log the system action
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: "SYSTEM-AI",
-      actorName: "Intelligence Engine",
-      message: `AUTOMATED ALERT: Stakeholders notified for Load #${loadId}: ${message}`,
-      payload: {
-        category: "Communications",
-        action: "AutoNotify",
-        loadId,
-        emails,
-      },
-    });
-
-    // Mirror the notification job in storage for audit
-    const job: NotificationJob = {
-      id: jobId,
-      loadId,
-      recipients: emails.map((e) => ({
-        id: e,
-        name: e,
-        role: "Stakeholder",
-        phone: "",
-      })),
-      message: message,
-      channel: "Email",
-      status: "SENT",
-      sentBy: "SYSTEM",
-      sentAt: new Date().toISOString(),
-    };
-    await saveNotificationJob(job);
-  };
-
-  const sendNotificationJob = async () => {
-    if (selectedContacts.length === 0) {
-      showSuccessMessage(
-        "PROTOCOL ERROR: Recipient selection required for broadcast.",
-        3000,
-      );
-      return;
-    }
-
-    const jobId = `JOB-${uuidv4().slice(0, 8).toUpperCase()}`;
-    const job: NotificationJob = {
-      id: jobId,
-      loadId: active360Data?.load?.id,
-      incidentId:
-        activeRecord.type === "INCIDENT" ? activeRecord.id : undefined,
-      recipients: selectedContacts.map((cId) => {
-        const contact = notificationContacts.find((nc) => nc.id === cId);
-        return {
-          id: cId,
-          name: contact?.name || "Unknown",
-          role: contact?.role || "Partner",
-          phone: contact?.phone || "",
-        };
-      }),
-      message: notificationMessage,
-      channel: "Multi",
-      status: "SENT",
-      sentBy: user.id,
-      sentAt: new Date().toISOString(),
-    };
-
-    await saveNotificationJob(job);
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Broadcasting emergency alerts to ${selectedContacts.length} partners via ${jobId}: ${notificationMessage}`,
-      payload: {
-        category: "Safety",
-        action: "NotificationJob",
-        jobId,
-        recipients: selectedContacts,
-        notes: notificationMessage,
-        loadId: active360Data?.load?.id,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT") {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "STAKEHOLDERS_NOTIFIED",
-          notes: `Notified ${selectedContacts.length} partners via job ${jobId}. Message: ${notificationMessage}`,
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-    }
-
-    setShowNotifyPicker(false);
-    showSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
-
-    const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-    setActive360Data(data);
-  };
-
-  const handleRoadsideAssist = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!loadId) return;
-
-    // KCI Enhancement: Use Modal instead of prompt
-    setShowRoadsideForm(true);
-  };
-
-  const submitRoadsideDispatch = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!selectedVendorForRoadside || !loadId) {
-      showSuccessMessage(
-        "SYSTEM ERROR: Valid vendor selection required for roadside dispatch.",
-        3000,
-      );
-      return;
-    }
-
-    const ticketId = `ST-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-    const ticket: ServiceTicket = {
-      id: ticketId,
-      unitId: active360Data?.load?.truckNumber || "UNKNOWN",
-      type: "Breakdown",
-      status: "Assigned",
-      priority:
-        activeRecord.type === "INCIDENT"
-          ? active360Data?.incident?.severity || "High"
-          : "Medium",
-      description:
-        roadsideNotes ||
-        (activeRecord.type === "INCIDENT"
-          ? active360Data?.incident?.description
-          : "Roadside assistance requested"),
-      estimatedCost: 0,
-      assignedVendorId: selectedVendorForRoadside.id,
-      eta: "TBD",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    try {
-      await saveServiceTicket(ticket);
-    } catch (e) {
-      setToast({
-        message: `Failed to save service ticket: ${e instanceof Error ? e.message : "Unknown error"}`,
-        type: "error",
-      });
-      return;
-    }
-
-    // Record Emergency Charge (Financial Audit)
-    if (activeRecord.type === "INCIDENT") {
-      try {
-        await saveIncidentCharge(activeRecord.id, {
-          category: "Tow",
-          amount: 0,
-          providerVendor: selectedVendorForRoadside.name,
-          status: "Approved",
-        });
-      } catch (e) {
-        console.warn(
-          "Failed to record emergency charge:",
-          e instanceof Error ? e.message : e,
-        );
-      }
-    }
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "TASK",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Dispatched ${selectedVendorForRoadside.name}: ${ticketId} for Unit ${ticket.unitId}`,
-      payload: {
-        category: "Safety",
-        action: "RoadsideAssist",
-        loadId,
-        ticketId,
-        vendor: selectedVendorForRoadside.name,
-        notes: roadsideNotes,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT") {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "ROADSIDE_DISPATCHED",
-          notes: `Vendor ${selectedVendorForRoadside.name} dispatched for roadside assistance. Ref: ${ticketId}. Contact: ${selectedVendorForRoadside.contacts?.[0]?.phone || "N/A"}`,
-        },
-      ];
-      await saveIncident(updated);
-    }
-
-    await fetchQueues();
-    setShowRoadsideForm(false);
-    showSuccessMessage(
-      `Roadside Assistance Dispatched: ${selectedVendorForRoadside.name}`,
-      4000,
-    );
-
-    const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-    setActive360Data(data);
-  };
-
-  const handleEscalate = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    showSuccessMessage("Escalating to Leadership...");
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `URGENT ESCALATION: ${activeRecord.type} ${activeRecord.id} escalated by ${user.name}`,
-      loadId: typeof loadId === "string" ? loadId : undefined,
-      payload: {
-        category: "Workflow",
-        action: "Escalate",
-        priority: "CRITICAL",
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = {
-        ...active360Data.incident,
-        severity: "Critical" as const,
-      };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "INCIDENT_ESCALATED",
-          notes: "Escalated to management via Command Center",
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-      const fresh = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(fresh);
-    }
-  };
-
-  const handleFullLockdown = async () => {
-    const confirmed = await showConfirmDialog(
-      "Full Operational Lockdown",
-      "CRITICAL: Initiating Full Operational Lockdown for this record. Confirm?",
-    );
-    if (!confirmed) return;
-
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    showSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `!!! LOCKDOWN !!! ${activeRecord.type} ${activeRecord.id} locked by security protocol`,
-      loadId: typeof loadId === "string" ? loadId : undefined,
-      payload: { category: "Security", action: "Lockdown", status: "LOCKED" },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident, status: "Closed" as const }; // Or some 'Locked' status if it existed
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "SECURITY_LOCKDOWN",
-          notes: "Full operational lockdown triggered",
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-      const fresh = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(fresh);
-    }
-  };
-
-  const handleVerifyTrailerDrop = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!loadId) {
-      showSuccessMessage("No related load found to verify drop");
-      return;
-    }
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "EQUIPMENT_EVENT",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Trailer Drop Verified for Load ${activeRecord.label}`,
-      payload: { event: "TRAILER_DROP_VERIFIED", status: "COMPLETED", loadId },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "EQUIPMENT_VERIFIED",
-          notes: `Trailer drop verified for linked Load ${loadId}`,
-        },
-      ];
-      await saveIncident(updated);
-    }
-
-    showSuccessMessage("Trailer Drop Verified", 3000);
-  };
+  // Crisis handlers extracted to useCrisisHandlers hook
 
   // Compute stats from active load data (no mock values)
   const stats = activeLoad
@@ -1879,60 +1215,6 @@ const IntelligenceHub: React.FC<{
     }
   };
 
-  const RecordPicker = ({ onSelect, selectedRecord }: any) => (
-    <div
-      className="bg-slate-950 border border-white/10 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-blue-500/50"
-      onClick={() =>
-        onSelect({ id: "LOAD-123", label: "LOAD-123", type: "LOAD" })
-      }
-    >
-      <span className="text-xs text-white">
-        {selectedRecord?.label || "Select Record..."}
-      </span>
-      <Search className="w-4 h-4 text-slate-500" />
-    </div>
-  );
-
-  const ActionGroup = ({
-    label,
-    color,
-    actions,
-    icon: Icon,
-  }: {
-    label: string;
-    color: string;
-    actions: any[];
-    icon?: any;
-  }) => (
-    <div
-      className={`px-2 rounded-2xl border border-white/5 flex items-center gap-1 bg-white/[0.03] backdrop-blur-md transition-all ${isHighObstruction ? "py-0.5" : "py-1.5"}`}
-    >
-      <div
-        className={`px-2.5 py-1.5 rounded-xl bg-${color}-500/10 text-${color}-400 text-[10px] font-black uppercase tracking-[0.1em] flex items-center gap-2 border border-${color}-500/10 ${isHighObstruction ? "scale-90 origin-left" : ""}`}
-      >
-        {Icon && <Icon className="w-3.5 h-3.5" />}
-        {label}
-      </div>
-      <div className="flex gap-0.5">
-        {actions.map((a) => (
-          <button
-            key={a.label}
-            onClick={a.action}
-            className={`hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all group flex items-center gap-2 ${isHighObstruction ? "p-1" : "p-1.5"}`}
-            title={a.label}
-          >
-            <a.icon
-              className={`${isHighObstruction ? "w-3 h-3" : "w-4 h-4"} opacity-70 group-hover:opacity-100 group-hover:text-blue-400`}
-            />
-            <span className="text-[10px] font-black uppercase hidden group-hover:inline-block whitespace-nowrap tracking-wide">
-              {a.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   // Context Management Logic
   const setPrimaryContext = async (type: EntityType, id: string) => {
     await openRecordWorkspace(type, id);
@@ -1949,45 +1231,6 @@ const IntelligenceHub: React.FC<{
       return { ...prev, pinnedContexts: [...prev.pinnedContexts, ctx] };
     });
   };
-
-  const ContextCard = ({
-    title,
-    icon: Icon,
-    color,
-    children,
-    onAction,
-  }: {
-    title: string;
-    icon: any;
-    color: string;
-    children: React.ReactNode;
-    onAction?: () => void;
-  }) => (
-    <div className="p-4 bg-white/[0.03] backdrop-blur-xl rounded-[1.75rem] border border-white/5 space-y-4 relative overflow-hidden group hover:border-white/10 transition-all shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-xl bg-${color}-500/10 text-${color}-400 border border-${color}-500/10 shadow-[0_0_15px_rgba(var(--${color}-500-rgb),0.1)]`}
-          >
-            <Icon className="w-4 h-4" />
-          </div>
-          <h4 className="text-[11px] font-black text-white uppercase tracking-[0.1em]">
-            {title}
-          </h4>
-        </div>
-        {onAction && (
-          <button
-            onClick={onAction}
-            aria-label={`Add ${title}`}
-            className="p-2 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-      <div className="space-y-1.5 px-0.5">{children}</div>
-    </div>
-  );
 
   const handleOpenWorkspace = async (
     type: EntityType,
@@ -2012,266 +1255,76 @@ const IntelligenceHub: React.FC<{
     await openRecordWorkspace(type, id, subTab);
   };
 
-  const TriageItem: React.FC<{
-    item: any;
-    type: string;
-    onClick: () => void | Promise<void>;
-  }> = ({ item, type, onClick }) => {
-    const isSnoozed = snoozedIds.has(item.id);
-    if (isSnoozed) return null;
+  const handleTriageAction = async (
+    action: "TAKE" | "ASSIGN" | "SNOOZE" | "ESCALATE",
+    item: any,
+    type: string,
+  ) => {
+    const timestamp = new Date().toISOString();
 
-    const getStatusColor = (status: string) => {
-      const s = status?.toUpperCase().replace("-", "_");
-      switch (s) {
-        case "CRITICAL":
-        case "BREACHED":
-        case "HIGH_RISK":
-          return "text-red-500 bg-red-500/10 border-red-500/20";
-        case "ACTIVE":
-        case "IN_PROGRESS":
-          return "text-blue-400 bg-blue-400/10 border-blue-400/20";
-        case "PENDING":
-          return "text-orange-400 bg-orange-400/10 border-orange-400/20";
-        case "RESOLVED":
-        case "CLOSED":
-          return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
-        default:
-          return "text-slate-500 bg-slate-500/10 border-white/5";
-      }
-    };
-
-    const handleAction = async (
-      action: "TAKE" | "ASSIGN" | "SNOOZE" | "ESCALATE",
-      e: React.MouseEvent,
-    ) => {
-      e.stopPropagation();
-      const timestamp = new Date().toISOString();
-
-      if (action === "SNOOZE") {
-        setSnoozedIds((prev) => new Set([...prev, item.id]));
-        showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
-      } else if (action === "TAKE") {
-        if (type === "INCIDENT") {
-          const incs = await getIncidents();
-          const inc = incs.find((i) => i.id === item.id);
-          if (inc) {
-            inc.status = "In_Progress";
-            inc.ownerUserId = user.id;
-            await saveIncident(inc);
-          }
-        } else if (type === "WORK_ITEM") {
-          const updatedItem = {
-            ...item,
-            status: "In-Progress" as WorkItem["status"],
-            assignedTo: [user.id],
-          };
-          await saveWorkItem(updatedItem);
+    if (action === "SNOOZE") {
+      setSnoozedIds((prev) => new Set([...prev, item.id]));
+      showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
+    } else if (action === "TAKE") {
+      if (type === "INCIDENT") {
+        const incs = await getIncidents();
+        const inc = incs.find((i) => i.id === item.id);
+        if (inc) {
+          inc.status = "In_Progress";
+          inc.ownerUserId = user.id;
+          await saveIncident(inc);
         }
-        showSuccessMessage(`Record ${item.id} Assigned to You`);
-      } else if (action === "ESCALATE") {
-        if (type === "INCIDENT") {
-          const incs = await getIncidents();
-          const inc = incs.find((i) => i.id === item.id);
-          if (inc) {
-            inc.status = "Critical";
-            inc.severity = "Critical";
-            await saveIncident(inc);
-          }
-        } else if (type === "WORK_ITEM") {
-          const wis = await getWorkItems();
-          const wi = wis.find((w) => w.id === item.id);
-          if (wi) {
-            wi.status = "Critical";
-            wi.priority = "Critical";
-            await saveWorkItem(wi);
-          }
+      } else if (type === "WORK_ITEM") {
+        const updatedItem = {
+          ...item,
+          status: "In-Progress" as WorkItem["status"],
+          assignedTo: [user.id],
+        };
+        await saveWorkItem(updatedItem);
+      }
+      showSuccessMessage(`Record ${item.id} Assigned to You`);
+    } else if (action === "ESCALATE") {
+      if (type === "INCIDENT") {
+        const incs = await getIncidents();
+        const inc = incs.find((i) => i.id === item.id);
+        if (inc) {
+          inc.status = "Critical";
+          inc.severity = "Critical";
+          await saveIncident(inc);
         }
-        showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+      } else if (type === "WORK_ITEM") {
+        const wis = await getWorkItems();
+        const wi = wis.find((w) => w.id === item.id);
+        if (wi) {
+          wi.status = "Critical";
+          wi.priority = "Critical";
+          await saveWorkItem(wi);
+        }
       }
+      showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+    }
 
-      await handleActionLogging({
-        id: uuidv4(),
-        type: "SYSTEM",
-        timestamp,
-        actorId: user.id,
-        actorName: user.name,
-        loadId: item.loadId || (type === "LOAD" ? item.id : undefined),
-        message: `Dispatcher ${user.name} handled ${type} ${item.id} with action: ${action}`,
-        payload: {
-          action,
-          recordId: item.id,
-          recordType: type,
-          category: "Triage",
-        },
-      });
+    await handleActionLogging({
+      id: uuidv4(),
+      type: "SYSTEM",
+      timestamp,
+      actorId: user.id,
+      actorName: user.name,
+      loadId: item.loadId || (type === "LOAD" ? item.id : undefined),
+      message: `Dispatcher ${user.name} handled ${type} ${item.id} with action: ${action}`,
+      payload: {
+        action,
+        recordId: item.id,
+        recordType: type,
+        category: "Triage",
+      },
+    });
 
-      if (action === "ASSIGN") {
-        setShowHandoffForm(true);
-      }
+    if (action === "ASSIGN") {
+      setShowHandoffForm(true);
+    }
 
-      await fetchQueues();
-      // auto-cleared by useAutoFeedback
-    };
-
-    const priority =
-      item.severity ||
-      item.priority ||
-      (type === "CALL" ? "Strategic" : "Medium");
-    const status = item.status || (type === "CALL" ? "Active" : "Pending");
-    const Icon =
-      type === "CALL"
-        ? Phone
-        : type === "INCIDENT"
-          ? AlertTriangle
-          : type === "WORK_ITEM"
-            ? Workflow
-            : type === "REQUEST"
-              ? CreditCard
-              : type === "TASK"
-                ? ClipboardList
-                : Activity;
-
-    return (
-      <div
-        onClick={() => {
-          onClick();
-          if (type === "CALL") {
-            setActiveCallSession?.(item);
-            setOverlayState?.("floating");
-            setSelectedTab?.("messaging");
-          }
-        }}
-        className={`${isHighObstruction ? "p-2.5 rounded-2xl" : "p-4 rounded-[1.75rem]"} border backdrop-blur-xl transition-all cursor-pointer group relative overflow-hidden ${currentCallSession?.id === item.id ? "bg-blue-600/10 border-blue-500/40 shadow-[0_0_30px_rgba(59,130,246,0.15)]" : "bg-white/[0.03] border-white/5 hover:border-blue-500/30 hover:bg-white/[0.07] hover:shadow-2xl shadow-xl"}`}
-      >
-        {item.isAtRisk && (
-          <div
-            className={`${isHighObstruction ? "w-12 h-12 -top-2 -right-2" : "w-20 h-20 -top-4 -right-4"} absolute bg-red-500/10 blur-2xl rounded-full animate-pulse`}
-          />
-        )}
-
-        <div
-          className={`flex justify-between items-start ${isHighObstruction ? "mb-1.5" : "mb-3"}`}
-        >
-          <div
-            className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border backdrop-blur-md ${getStatusColor(priority)} ${isHighObstruction ? "scale-90 origin-left" : ""}`}
-          >
-            {priority}
-          </div>
-          <div className="flex items-center gap-2">
-            {type === "CALL" && (
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-            )}
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest opacity-60">
-              {new Date(
-                item.timestamp ||
-                  item.reportedAt ||
-                  item.createdAt ||
-                  Date.now(),
-              ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          </div>
-        </div>
-
-        <div className={`${isHighObstruction ? "space-y-0.5" : "space-y-1.5"}`}>
-          <div
-            className={`${isHighObstruction ? "text-[14px]" : "text-[13px]"} font-black text-white uppercase tracking-tight flex items-center justify-between group-hover:text-blue-400 transition-colors`}
-          >
-            <div className="flex items-center gap-2.5 max-w-[85%]">
-              <Icon
-                className={`${isHighObstruction ? "w-3.5 h-3.5" : "w-4 h-4"} ${type === "INCIDENT" ? "text-red-500" : "text-blue-400"} opacity-80 group-hover:opacity-100`}
-              />
-              <span className="truncate">
-                {item.label ||
-                  item.title ||
-                  item.type ||
-                  item.message ||
-                  item.loadNumber ||
-                  item.id ||
-                  "Unknown"}
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-          </div>
-
-          {(item.description || item.notes) && (
-            <p
-              className={`${isHighObstruction ? "text-[12px] font-black" : "text-[11px] font-bold"} text-slate-400 leading-relaxed line-clamp-1 opacity-70 italic`}
-            >
-              {item.description || item.notes}
-            </p>
-          )}
-
-          {type === "CALL" && Array.isArray(item.participants) && (
-            <div
-              className={`flex -space-x-1 ${isHighObstruction ? "pt-1" : "pt-1.5"}`}
-            >
-              {item.participants.map((p: any, i: number) => (
-                <div
-                  key={i}
-                  className="w-5 h-5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-sm backdrop-blur-sm"
-                >
-                  {p.name?.charAt(0) || "?"}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`${isHighObstruction ? "mt-2 pt-2" : "mt-4 pt-3.5"} border-t border-white/5 flex items-center justify-between`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.1em]">
-              ID: {item.id ? String(item.id).slice(0, 8) : "---"}
-            </span>
-            {status && !isHighObstruction && (
-              <span
-                className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md ${getStatusColor(status)}`}
-              >
-                {status}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            {(type === "INCIDENT" || type === "WORK_ITEM") && (
-              <div className="flex gap-1 mr-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction("TAKE", e);
-                  }}
-                  className={`${isHighObstruction ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]"} bg-blue-600/90 hover:bg-blue-500 font-black text-white rounded-xl uppercase transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
-                >
-                  Take
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction("ESCALATE", e);
-                  }}
-                  className={`${isHighObstruction ? "p-1" : "p-1.5"} bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/10`}
-                  title="Escalate Critical"
-                >
-                  <ShieldAlert
-                    className={`${isHighObstruction ? "w-3 h-3" : "w-3.5 h-3.5"}`}
-                  />
-                </button>
-              </div>
-            )}
-            {!isHighObstruction && (
-              <button
-                onClick={(e) => handleAction("SNOOZE", e)}
-                className="p-1.5 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-all active:scale-90"
-                title="Snooze"
-              >
-                <Clock className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    await fetchQueues();
   };
 
   if (props.isLoading) {
@@ -2478,6 +1531,7 @@ const IntelligenceHub: React.FC<{
                   label="SIMULATE"
                   color="purple"
                   icon={Activity}
+                  isHighObstruction={isHighObstruction}
                   actions={[
                     {
                       label: "Inbound Call",
@@ -2515,6 +1569,7 @@ const IntelligenceHub: React.FC<{
                 label="Quick Actions"
                 color="orange"
                 icon={Zap}
+                isHighObstruction={isHighObstruction}
                 actions={[
                   {
                     label: "Create Request",
@@ -2613,13 +1668,9 @@ const IntelligenceHub: React.FC<{
                   opsLoading={opsLoading}
                   opsError={opsError}
                   loadOpsDashboardData={loadOpsDashboardData}
-                  opsStats={opsStats}
+                  loads={loads}
                   opsCards={opsCards}
                   opsExceptions={opsExceptions}
-                  opsRpmByDay={opsRpmByDay}
-                  opsExceptionsByDay={opsExceptionsByDay}
-                  opsRevenueCostByWeek={opsRevenueCostByWeek}
-                  loadsCount={loads.length}
                   onNavigate={onNavigate}
                 />
               )}
@@ -2791,365 +1842,29 @@ const IntelligenceHub: React.FC<{
       </div>
 
       {/* RIGHT RAIL: PERSISTENT TRIAGE QUEUES */}
-      <aside
-        className={`absolute right-0 top-0 bottom-0 z-[100] ${rightRailCollapsed ? "w-16" : "w-96"} border-l border-white/5 flex flex-col bg-[#05070a] transition-all duration-300 group/right shadow-2xl overflow-hidden`}
-      >
-        <button
-          onClick={() => setRightRailCollapsed(!rightRailCollapsed)}
-          className="absolute left-4 top-14 z-30 w-8 h-8 bg-slate-800 border border-white/10 rounded-full flex items-center justify-center text-white hover:bg-blue-600 transition-all shadow-xl"
-        >
-          {rightRailCollapsed ? (
-            <ChevronLeft className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </button>
-
-        <div
-          className={`flex-1 flex flex-col overflow-hidden ${rightRailCollapsed ? "items-center pt-20" : ""}`}
-        >
-          {!rightRailCollapsed ? (
-            <>
-              <div className="h-[42%] flex flex-col border-b border-white/5 overflow-hidden">
-                <div className="p-5 border-b border-white/5 bg-white/[0.03] backdrop-blur-lg space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex flex-col gap-0.5">
-                      <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 opacity-60">
-                        Strategic Voice Queue
-                      </h2>
-                      <div className="flex gap-2 items-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                          {triageQueues.calls.length +
-                            triageQueues.incidents.length}{" "}
-                          ACTIVE
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleInitiateGlobalInbound}
-                      aria-label="Initiate global inbound"
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[9px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                  {/* Consolidated search to header only */}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                  {triageQueues.calls
-                    .filter((c) => !snoozedIds.has(c.id))
-                    .filter(
-                      (c) =>
-                        !commSearchQuery ||
-                        c.id
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()) ||
-                        (c.participants ?? []).some((p) =>
-                          p.name
-                            .toLowerCase()
-                            .includes(commSearchQuery.toLowerCase()),
-                        ),
-                    )
-                    .map((call) => (
-                      <TriageItem
-                        key={call.id}
-                        item={call}
-                        type="CALL"
-                        onClick={() => {
-                          const primary = call.links?.find(
-                            (l: any) => l.isPrimary,
-                          );
-                          if (primary)
-                            handleOpenWorkspace(
-                              primary.entityType,
-                              primary.entityId,
-                              "TIMELINE",
-                            );
-                          else setInteractionState("ACTIVE");
-                        }}
-                      />
-                    ))}
-                  {triageQueues.incidents
-                    .filter((i) => !snoozedIds.has(i.id))
-                    .filter(
-                      (i) =>
-                        !commSearchQuery ||
-                        i.id
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()) ||
-                        i.type
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()),
-                    )
-                    .map((inc) => (
-                      <TriageItem
-                        key={inc.id}
-                        item={inc}
-                        type="INCIDENT"
-                        onClick={() => handleOpenWorkspace("INCIDENT", inc.id)}
-                      />
-                    ))}
-                  {triageQueues.calls.length === 0 &&
-                    triageQueues.incidents.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center opacity-10 grayscale">
-                        <Phone className="w-10 h-10 mb-2" />
-                        <span className="text-[10px] font-black uppercase">
-                          No Active Inbound
-                        </span>
-                      </div>
-                    )}
-                </div>
-              </div>
-
-              {/* PERSISTENT TRIAGE TABS */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-slate-950/20">
-                <div className="flex border-b border-white/5">
-                  {[
-                    {
-                      id: "CRISIS",
-                      label: "Strategic Triage",
-                      count:
-                        triageQueues.incidents.filter(
-                          (i) => !snoozedIds.has(i.id),
-                        ).length +
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority === "Critical",
-                        ).length,
-                    },
-                    {
-                      id: "SUPPORT",
-                      label: "Operational Support",
-                      count:
-                        triageQueues.requests.filter(
-                          (r) => !snoozedIds.has(r.id),
-                        ).length +
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority !== "Critical",
-                        ).length,
-                    },
-                    {
-                      id: "ASSETS",
-                      label: "Asset Intake",
-                      count:
-                        triageQueues.atRiskLoads.filter(
-                          (l) => !snoozedIds.has(l.id),
-                        ).length +
-                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id))
-                          .length,
-                    },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() =>
-                        setActiveTriageTab(tab.id as typeof activeTriageTab)
-                      }
-                      className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                  {activeTriageTab === "CRISIS" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      {triageQueues.incidents
-                        .filter((i) => !snoozedIds.has(i.id))
-                        .map((inc) => (
-                          <TriageItem
-                            key={inc.id}
-                            item={inc}
-                            type="INCIDENT"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "INCIDENT",
-                                inc.id,
-                                "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.workItems
-                        .filter((wi) => !snoozedIds.has(wi.id))
-                        .filter((wi) => wi.priority === "Critical")
-                        .map((wi) => (
-                          <TriageItem
-                            key={wi.id}
-                            item={wi}
-                            type="WORK_ITEM"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                wi.entityType as EntityType,
-                                wi.entityId,
-                                wi.type.includes("Detention")
-                                  ? "DETENTION"
-                                  : "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.incidents.filter(
-                        (i) => !snoozedIds.has(i.id),
-                      ).length === 0 &&
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority === "Critical",
-                        ).length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <CheckCircle className="w-10 h-10 text-emerald-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No crisis incidents to triage
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              Your operations are running smoothly
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  {activeTriageTab === "SUPPORT" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      {triageQueues.requests
-                        .filter((req) => !snoozedIds.has(req.id))
-                        .map((req) => (
-                          <TriageItem
-                            key={req.id}
-                            item={req}
-                            type="REQUEST"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "LOAD",
-                                req.loadId!,
-                                "FINANCE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.workItems
-                        .filter((wi) => !snoozedIds.has(wi.id))
-                        .filter((wi) => wi.priority !== "Critical")
-                        .map((wi) => (
-                          <TriageItem
-                            key={wi.id}
-                            item={wi}
-                            type="WORK_ITEM"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                wi.entityType as EntityType,
-                                wi.entityId,
-                                wi.type.includes("Detention")
-                                  ? "DETENTION"
-                                  : "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.requests.filter(
-                        (r) => !snoozedIds.has(r.id),
-                      ).length === 0 &&
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority !== "Critical",
-                        ).length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <ClipboardList className="w-10 h-10 text-slate-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No open work items
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              Pending requests and tasks will appear here
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  {activeTriageTab === "ASSETS" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      <div className="px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
-                        <p className="text-[9px] font-bold text-blue-400 uppercase leading-relaxed">
-                          Monitor asset intake for safety/compliance risks.
-                          Escalate at-risk loads to Strategic Triage.
-                        </p>
-                      </div>
-                      {triageQueues.atRiskLoads
-                        .filter((l) => !snoozedIds.has(l.id))
-                        .map((load) => (
-                          <div key={load.id} className="relative group">
-                            <TriageItem
-                              item={load}
-                              type="LOAD"
-                              onClick={() =>
-                                handleOpenWorkspace("LOAD", load.id, "TIMELINE")
-                              }
-                            />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSafetyEscalate(load);
-                              }}
-                              className="absolute top-4 right-4 p-2 bg-red-600/20 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white"
-                              title="Escalate to Safety"
-                            >
-                              <ShieldAlert className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      {triageQueues.tasks
-                        .filter((t) => !snoozedIds.has(t.id))
-                        .map((task) => (
-                          <TriageItem
-                            key={task.id}
-                            item={task}
-                            type="TASK"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "LOAD",
-                                task.loadId,
-                                "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.atRiskLoads.filter(
-                        (l) => !snoozedIds.has(l.id),
-                      ).length === 0 &&
-                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id))
-                          .length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <Truck className="w-10 h-10 text-slate-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No at-risk assets
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              All assets are operating within normal parameters
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-
-                  <div className="pt-10 pb-20 text-center opacity-20">
-                    <Clock className="w-8 h-8 mx-auto mb-2" />
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-8 opacity-40 pt-10">
-              <Activity className="w-5 h-5 text-white" />
-              <Phone className="w-5 h-5 text-white" />
-              <AlertTriangle className="w-5 h-5 text-white" />
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            </div>
-          )}
-        </div>
-      </aside>
+      <TriageWorkspacePanel
+        triageQueues={triageQueues}
+        activeTriageTab={activeTriageTab}
+        setActiveTriageTab={(tab) =>
+          setActiveTriageTab(tab as typeof activeTriageTab)
+        }
+        commSearchQuery={commSearchQuery}
+        snoozedIds={snoozedIds}
+        currentCallSession={currentCallSession}
+        isHighObstruction={isHighObstruction}
+        isCollapsed={rightRailCollapsed}
+        onToggleCollapse={() => setRightRailCollapsed(!rightRailCollapsed)}
+        onOpenWorkspace={handleOpenWorkspace}
+        onInitiateGlobalInbound={handleInitiateGlobalInbound}
+        onTriageAction={handleTriageAction}
+        onSafetyEscalate={handleSafetyEscalate}
+        setActiveCallSession={setActiveCallSession}
+        setOverlayState={setOverlayState}
+        setSelectedTab={setSelectedTab}
+        setInteractionState={(state) =>
+          setInteractionState(state as typeof interactionState)
+        }
+      />
 
       {/* MODALS */}
       <OperationalFormsOverlay

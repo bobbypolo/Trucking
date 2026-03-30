@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Truck,
   Globe,
@@ -24,35 +24,17 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { Exception, DashboardCard } from "../../types";
+import { Exception, DashboardCard, LoadData, LOAD_STATUS } from "../../types";
 import { LoadingSkeleton } from "../ui/LoadingSkeleton";
 import { ErrorState } from "../ui/ErrorState";
-
-interface OpsStats {
-  activeLoads: number;
-  inTransitLoads: number;
-  deliveredToday: number;
-  avgRPM: number;
-  openExceptions: number;
-  slaBreaches: number;
-  docHoldRevenue: number;
-  accruingDetention: number;
-  grossRevenue: number;
-  operatingMargin: number;
-  slaHealth: number;
-}
 
 interface OpsDashboardPanelProps {
   opsLoading: boolean;
   opsError: string | null;
   loadOpsDashboardData: () => void;
-  opsStats: OpsStats;
+  loads: LoadData[];
   opsCards: DashboardCard[];
   opsExceptions: Exception[];
-  opsRpmByDay: { date: string; rpm: number }[];
-  opsExceptionsByDay: { date: string; count: number }[];
-  opsRevenueCostByWeek: { week: string; revenue: number; cost: number }[];
-  loadsCount: number;
   onNavigate?: (tab: string, context?: string) => void;
 }
 
@@ -60,15 +42,138 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
   opsLoading,
   opsError,
   loadOpsDashboardData,
-  opsStats,
+  loads,
   opsCards,
   opsExceptions,
-  opsRpmByDay,
-  opsExceptionsByDay,
-  opsRevenueCostByWeek,
-  loadsCount,
   onNavigate,
 }) => {
+  const loadsCount = loads.length;
+
+  const opsStats = useMemo(() => {
+    const grossRevenue = loads.reduce(
+      (sum, l) => sum + (l.carrierRate || 0),
+      0,
+    );
+    const operatorPay = loads.reduce((sum, l) => sum + (l.driverPay || 0), 0);
+    const operatingMargin = grossRevenue - operatorPay;
+    const activeLoads = loads.filter(
+      (l) => l.status === LOAD_STATUS.Active,
+    ).length;
+    const inTransitLoads = loads.filter(
+      (l) => l.status === "in_transit",
+    ).length;
+    const deliveredToday = loads.filter((l) => {
+      if (l.status !== LOAD_STATUS.Delivered) return false;
+      const today = new Date().toISOString().split("T")[0];
+      return l.dropoffDate === today;
+    }).length;
+    const openExceptions = opsExceptions.length;
+    const criticalExceptions = opsExceptions.filter(
+      (ex) => ex.severity === 4,
+    ).length;
+    const slaBreaches = opsExceptions.filter((ex) => ex.severity === 4).length;
+    const docHoldRevenue = opsExceptions
+      .filter(
+        (ex) => ex.type === "POD_MISSING" || ex.type === "DOC_PENDING_48H",
+      )
+      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
+
+    const accruingDetention = opsExceptions
+      .filter((ex) => ex.type === "DETENTION_ELIGIBLE")
+      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
+
+    const totalMiles = loads.reduce((sum, l) => sum + (l.miles || 0), 0);
+    const avgRPM = totalMiles > 0 ? grossRevenue / totalMiles : 0;
+
+    const slaHealth =
+      loads.length > 0
+        ? Math.round(((loads.length - slaBreaches) / loads.length) * 100)
+        : 100;
+
+    return {
+      grossRevenue,
+      operatingMargin,
+      activeLoads,
+      inTransitLoads,
+      deliveredToday,
+      openExceptions,
+      criticalExceptions,
+      slaBreaches,
+      docHoldRevenue,
+      accruingDetention,
+      avgRPM,
+      slaHealth,
+    };
+  }, [loads, opsExceptions]);
+
+  const opsRpmByDay = useMemo(() => {
+    if (loads.length === 0) return [];
+    const now = new Date();
+    const days: { date: string; rpm: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const dayLoads = loads.filter((l) => l.pickupDate === key);
+      const totalRevenue = dayLoads.reduce(
+        (s, l) => s + (l.carrierRate || 0),
+        0,
+      );
+      const totalMiles = dayLoads.reduce((s, l) => s + (l.miles || 0), 0);
+      const rpm = totalMiles > 0 ? totalRevenue / totalMiles : 0;
+      const label = d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+      days.push({ date: label, rpm: parseFloat(rpm.toFixed(2)) });
+    }
+    return days;
+  }, [loads]);
+
+  const opsExceptionsByDay = useMemo(() => {
+    if (opsExceptions.length === 0) return [];
+    const now = new Date();
+    const days: { date: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split("T")[0];
+      const count = opsExceptions.filter((ex) => {
+        const exDate = ex.createdAt ? ex.createdAt.split("T")[0] : "";
+        return exDate === key;
+      }).length;
+      const label = d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+      days.push({ date: label, count });
+    }
+    return days;
+  }, [opsExceptions]);
+
+  const opsRevenueCostByWeek = useMemo(() => {
+    if (loads.length === 0) return [];
+    const now = new Date();
+    const weeks: { week: string; revenue: number; cost: number }[] = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekEnd = new Date(now);
+      weekEnd.setDate(weekEnd.getDate() - w * 7);
+      const weekStart = new Date(weekEnd);
+      weekStart.setDate(weekStart.getDate() - 6);
+      const startKey = weekStart.toISOString().split("T")[0];
+      const endKey = weekEnd.toISOString().split("T")[0];
+      const weekLoads = loads.filter(
+        (l) => l.pickupDate >= startKey && l.pickupDate <= endKey,
+      );
+      const revenue = weekLoads.reduce((s, l) => s + (l.carrierRate || 0), 0);
+      const cost = weekLoads.reduce((s, l) => s + (l.driverPay || 0), 0);
+      const label = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+      weeks.push({ week: label, revenue, cost });
+    }
+    return weeks;
+  }, [loads]);
   return (
     <div
       className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-8 bg-[#0a0f18]"
@@ -77,10 +182,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
       {opsLoading && <LoadingSkeleton variant="card" count={4} />}
 
       {!opsLoading && opsError && (
-        <ErrorState
-          message={opsError}
-          onRetry={loadOpsDashboardData}
-        />
+        <ErrorState message={opsError} onRetry={loadOpsDashboardData} />
       )}
 
       {!opsLoading && !opsError && (
@@ -235,9 +337,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             </div>
 
             <div
-              onClick={() =>
-                onNavigate?.("exceptions", "delay-entry")
-              }
+              onClick={() => onNavigate?.("exceptions", "delay-entry")}
               className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group cursor-pointer hover:border-orange-500/30 transition-all shadow-2xl"
             >
               <div className="flex justify-between items-start mb-4">
@@ -355,30 +455,20 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             {/* RPM by Day BarChart */}
             <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <BarChart3 className="w-3.5 h-3.5 text-blue-500" />{" "}
-                RPM by Day
+                <BarChart3 className="w-3.5 h-3.5 text-blue-500" /> RPM by Day
               </h3>
               {opsRpmByDay.length > 0 ? (
                 <div style={{ width: "100%", height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={opsRpmByDay}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#1e293b"
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: "#64748b", fontSize: 9 }}
                       />
-                      <YAxis
-                        tick={{ fill: "#64748b", fontSize: 9 }}
-                      />
+                      <YAxis tick={{ fill: "#64748b", fontSize: 9 }} />
                       <Tooltip />
-                      <Bar
-                        dataKey="rpm"
-                        fill="#3b82f6"
-                        radius={[4, 4, 0, 0]}
-                      />
+                      <Bar dataKey="rpm" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -392,17 +482,14 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             {/* Exception Trend LineChart */}
             <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-red-500" />{" "}
-                Exception Trend
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500" /> Exception
+                Trend
               </h3>
               {opsExceptionsByDay.length > 0 ? (
                 <div style={{ width: "100%", height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={opsExceptionsByDay}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#1e293b"
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: "#64748b", fontSize: 9 }}
@@ -432,24 +519,19 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             {/* Revenue vs Cost BarChart */}
             <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-500" />{" "}
-                Revenue vs Cost
+                <DollarSign className="w-3.5 h-3.5 text-emerald-500" /> Revenue
+                vs Cost
               </h3>
               {opsRevenueCostByWeek.length > 0 ? (
                 <div style={{ width: "100%", height: 200 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={opsRevenueCostByWeek}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#1e293b"
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                       <XAxis
                         dataKey="week"
                         tick={{ fill: "#64748b", fontSize: 8 }}
                       />
-                      <YAxis
-                        tick={{ fill: "#64748b", fontSize: 9 }}
-                      />
+                      <YAxis tick={{ fill: "#64748b", fontSize: 9 }} />
                       <Tooltip />
                       <Legend wrapperStyle={{ fontSize: 10 }} />
                       <Bar
@@ -479,8 +561,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-blue-500" />{" "}
-                  Action Items
+                  <Shield className="w-4 h-4 text-blue-500" /> Action Items
                 </h2>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -497,9 +578,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                           ? filter.type_in.includes(ex.type)
                           : true) &&
                         (filter.status_not_in
-                          ? !filter.status_not_in.includes(
-                              ex.status,
-                            )
+                          ? !filter.status_not_in.includes(ex.status)
                           : true),
                     ).length;
 
@@ -509,9 +588,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                         onClick={() =>
                           onNavigate?.(
                             "exceptions",
-                            card.cardCode
-                              ?.toLowerCase()
-                              .replace("_", "-"),
+                            card.cardCode?.toLowerCase().replace("_", "-"),
                           )
                         }
                         className="bg-slate-900/40 border border-white/5 p-6 rounded-[1.5rem] flex items-center justify-between hover:bg-slate-900 transition-all cursor-pointer group"
@@ -540,9 +617,8 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                       </div>
                     );
                   })}
-                {opsCards.filter(
-                  (c) => c.cardCode !== "ALL_EXCEPTIONS",
-                ).length === 0 && (
+                {opsCards.filter((c) => c.cardCode !== "ALL_EXCEPTIONS")
+                  .length === 0 && (
                   <div className="col-span-2 text-center py-8 text-slate-500 text-xs font-bold uppercase">
                     No action item categories configured
                   </div>
@@ -570,9 +646,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                 {opsExceptions.slice(0, 6).map((ex) => (
                   <div
                     key={ex.id}
-                    onClick={() =>
-                      onNavigate?.("exceptions", "all")
-                    }
+                    onClick={() => onNavigate?.("exceptions", "all")}
                     className="bg-slate-950/40 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-slate-900 transition-all cursor-pointer border-l-4 border-l-red-500"
                   >
                     <div className="space-y-1">
@@ -589,10 +663,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                         Sev {ex.severity || "\u2014"}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                        $
-                        {(
-                          ex.financialImpactEst || 0
-                        ).toLocaleString()}
+                        ${(ex.financialImpactEst || 0).toLocaleString()}
                       </div>
                     </div>
                   </div>
@@ -632,9 +703,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                   </div>
                   <div className="w-px h-8 bg-white/10" />
                   <div className="text-2xl font-black text-white">
-                    {loadsCount > 0
-                      ? `${opsStats.slaHealth}%`
-                      : "N/A"}{" "}
+                    {loadsCount > 0 ? `${opsStats.slaHealth}%` : "N/A"}{" "}
                     <span className="text-slate-600 text-[10px] font-bold">
                       SLA Health
                     </span>
