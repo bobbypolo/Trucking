@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:3103";
+import { makeAdminRequest } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 
 async function loginAsAdmin(page: import("@playwright/test").Page) {
   const email =
@@ -41,7 +41,7 @@ test.describe("Team 3 - Route Visibility Evidence", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -64,7 +64,7 @@ test.describe("Team 3 - Route Visibility Evidence", () => {
   test.describe("browser UI", () => {
     test.skip(
       !process.env.E2E_SERVER_RUNNING,
-      "Skipped — set E2E_SERVER_RUNNING=1 to run browser UI tests",
+      "SKIP:NO_UI_SERVER",
     );
 
     test("navigation exposes Telematics Setup but not Fleet Map", async ({
@@ -72,7 +72,7 @@ test.describe("Team 3 - Route Visibility Evidence", () => {
     }) => {
       const loggedIn = await loginAsAdmin(page);
       if (!loggedIn) {
-        test.skip(true, "Admin credentials unavailable");
+        test.skip(true, "SKIP:NO_TOKEN:admin");
         return;
       }
 

@@ -20,7 +20,7 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
  * Tests R-P4-01, R-P4-02, R-P4-03, R-P4-04, R-P4-05, R-P4-06, R-P4-07
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
 const E2E_EMAIL = process.env.E2E_TEST_EMAIL;
 const E2E_PASSWORD = process.env.E2E_TEST_PASSWORD;
@@ -283,7 +283,7 @@ test.describe("Functional Sweep — console error capture during API sweep", () 
     // Navigate to the app root to catch startup errors
     // If frontend is not running, gracefully skip page navigation
     try {
-      await page.goto("http://localhost:5173/", {
+      await page.goto(`${APP_BASE}/`, {
         waitUntil: "networkidle",
         timeout: 10_000,
       });
@@ -403,7 +403,7 @@ test.describe("status transition — authenticated load lifecycle (requires cred
   }) => {
     // Only run if a load was successfully created in previous test
     if (!createdLoadId) {
-      test.skip();
+      test.skip(true, "SKIP:NO_PRIOR_STATE");
       return;
     }
 
@@ -496,7 +496,7 @@ test.describe("Functional Sweep — API structural validation", () => {
     const res = await request.fetch(`${API_BASE}/api/loads`, {
       method: "OPTIONS",
       headers: {
-        Origin: "http://localhost:5173",
+        Origin: APP_BASE,
         "Access-Control-Request-Method": "GET",
         "Access-Control-Request-Headers": "Authorization",
       },

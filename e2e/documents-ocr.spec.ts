@@ -114,7 +114,7 @@ test.describe("DOC — AI Proxy Auth Enforcement", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip(); // No credentials available — skip gracefully
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     // With valid token, the AI proxy returns 400 (missing imageBase64) or

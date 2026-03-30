@@ -1,6 +1,5 @@
 import { test, expect } from "@playwright/test";
-
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 
 /**
  * E2E Scanner / AI Proxy Tests — Phase 6: R-P6-01
@@ -19,14 +18,14 @@ const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
  */
 
 test.describe("Scanner Component", () => {
-  test.skip(!!process.env.CI, "Skipped in CI — requires running dev server");
+  test.skip(!!process.env.CI, "SKIP:NO_UI_SERVER");
 
   test("app shell loads without errors", async ({ page }) => {
     // Skip if Vite dev server is not running
     try {
       await page.goto("/", { timeout: 5000 });
     } catch {
-      test.skip(true, "Frontend dev server not running — skipped");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // App should load without JS errors
@@ -40,7 +39,7 @@ test.describe("Scanner Component", () => {
     try {
       await page.goto("/", { timeout: 5000 });
     } catch {
-      test.skip(true, "Frontend dev server not running — skipped");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // App should not 404 or crash
@@ -50,7 +49,7 @@ test.describe("Scanner Component", () => {
 });
 
 test.describe("AI Proxy Endpoint", () => {
-  test.skip(!!process.env.CI, "Skipped in CI — requires running dev server");
+  test.skip(!!process.env.CI, "SKIP:NO_UI_SERVER");
 
   test("AI proxy endpoint requires authentication", async ({ request }) => {
     // Unauthenticated request to AI proxy should return 401/403
@@ -75,14 +74,14 @@ test.describe("AI Proxy Endpoint", () => {
 });
 
 test.describe("Scanner Document Upload", () => {
-  test.skip(!!process.env.CI, "Skipped in CI — requires running dev server");
+  test.skip(!!process.env.CI, "SKIP:NO_UI_SERVER");
 
   test("scanner accepts file input", async ({ page }) => {
     // Skip if Vite dev server is not running
     try {
       await page.goto("/", { timeout: 5000 });
     } catch {
-      test.skip(true, "Frontend dev server not running — skipped");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // Scanner may be behind auth — just verify app loads

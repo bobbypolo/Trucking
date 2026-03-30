@@ -78,13 +78,13 @@ test.describe("Dispatch Board — Authenticated Access", () => {
 
   test.skip(
     !process.env.FIREBASE_WEB_API_KEY,
-    "Skipped — FIREBASE_WEB_API_KEY not set",
+    "SKIP:NO_FIREBASE_KEY",
   );
 
   test("GET /api/loads returns 200 with array for authenticated user", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.get(`${API_BASE}/api/loads`, {
       headers: { Authorization: `Bearer ${idToken}` },
@@ -97,7 +97,7 @@ test.describe("Dispatch Board — Authenticated Access", () => {
   test("GET /api/loads/counts returns board-level status counts", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.get(`${API_BASE}/api/loads/counts`, {
       headers: { Authorization: `Bearer ${idToken}` },
@@ -116,7 +116,7 @@ test.describe("Dispatch Board — Authenticated Access", () => {
   test("authenticated load list scoped to tenant — no cross-tenant data", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.get(`${API_BASE}/api/loads`, {
       headers: { Authorization: `Bearer ${idToken}` },
@@ -133,7 +133,7 @@ test.describe("Dispatch Board — Authenticated Access", () => {
   test("load response shape includes required board fields", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.get(`${API_BASE}/api/loads`, {
       headers: { Authorization: `Bearer ${idToken}` },

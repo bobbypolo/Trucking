@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
  * Tests R-P2C-01
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 
 // ── User list retrieval ───────────────────────────────────────────────────────
 

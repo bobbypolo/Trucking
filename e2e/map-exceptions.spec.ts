@@ -56,7 +56,7 @@ test.describe("DOC — Exception Data Structure", () => {
   test("authenticated admin can list exceptions", async ({ request }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/exceptions`, request);
@@ -74,7 +74,7 @@ test.describe("DOC — Exception Data Structure", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/exception-types`, request);
@@ -86,7 +86,7 @@ test.describe("DOC — Exception Data Structure", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(
@@ -123,7 +123,7 @@ test.describe("DOC — Map / Tracking Endpoint Auth", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/loads/tracking`, request);
@@ -136,7 +136,7 @@ test.describe("DOC — Map / Tracking Endpoint Auth", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     // Non-existent load returns 404 or 500 but not 200

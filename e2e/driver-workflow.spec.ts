@@ -41,7 +41,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   test("Step 1: Admin creates a load and assigns a driver", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     loadId = uuidv4();
     const payload = makeLoadDraft({
@@ -74,7 +74,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   test("Step 2: Driver can retrieve load list (driver role sees assigned loads)", async ({
     request,
   }) => {
-    test.skip(!driver.hasToken, "No driver Firebase token available");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const res = await driver.get(`${API_BASE}/api/loads`, request);
     // Driver should be able to see loads (200) or may get filtered results
@@ -87,7 +87,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   });
 
   test("Step 3: Driver can view dispatch board", async ({ request }) => {
-    test.skip(!driver.hasToken, "No driver Firebase token available");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const res = await driver.get(`${API_BASE}/api/dispatch`, request);
     // Dispatch board may be role-restricted or available to drivers
@@ -97,7 +97,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   test("Step 4: Driver cannot create new loads (admin-only action)", async ({
     request,
   }) => {
-    test.skip(!driver.hasToken, "No driver Firebase token available");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const payload = makeLoadDraft({
       load_number: `DRIVER-UNAUTHORIZED-${Date.now()}`,
@@ -111,7 +111,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   test("Step 5: Driver cannot access user management (admin-only)", async ({
     request,
   }) => {
-    test.skip(!driver.hasToken, "No driver Firebase token available");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const res = await driver.get(
       `${API_BASE}/api/users/some-company-id`,
@@ -124,7 +124,7 @@ test.describe("Canonical Journey: Driver Role API Access", () => {
   test("Step 6: Driver cannot archive clients (admin-only action)", async ({
     request,
   }) => {
-    test.skip(!driver.hasToken, "No driver Firebase token available");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const res = await driver.patch(
       `${API_BASE}/api/clients/some-client-id/archive`,

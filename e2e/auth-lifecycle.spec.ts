@@ -183,7 +183,7 @@ test.describe("Auth Lifecycle E2E — S-7.1", () => {
     // ── Step 3: Verify session token ──────────────────────────────────────
     // After login, Firebase stores the token. Verify we got authenticated
     // by checking that we've moved past the login page.
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify session token exists in the page context (Firebase Auth state)
     const hasAuthState = await page.evaluate(() => {
@@ -201,7 +201,7 @@ test.describe("Auth Lifecycle E2E — S-7.1", () => {
     // ── Step 4: Navigate to a protected route ─────────────────────────────
     // The dashboard is a protected route that requires authentication
     await page.goto("/dashboard");
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify we're on a protected route (not redirected back to login)
     const currentUrl = page.url();
@@ -235,14 +235,11 @@ test.describe("Auth Lifecycle E2E — S-7.1", () => {
     await signInButton.click();
 
     // After clicking Sign In, the modal calls logout() and navigates to login
-    await page.waitForTimeout(1000);
-
-    // Verify we're back at the login form (re-login flow)
-    // The Auth component should render the login form again
-    const loginFormVisible = await page
-      .locator(
-        'input[type="email"], input[name="email"], input[placeholder*="email" i]',
-      )
+    // Wait for the login form to appear (re-login flow)
+    const loginEmailInput = page.locator(
+      'input[type="email"], input[name="email"], input[placeholder*="email" i]',
+    );
+    const loginFormVisible = await loginEmailInput
       .isVisible({ timeout: 5000 })
       .catch(() => false);
 
@@ -269,7 +266,7 @@ test.describe("Auth Lifecycle E2E — S-7.1", () => {
       await reLoginSubmit.click();
 
       // Wait for authentication to complete
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState("domcontentloaded");
 
       // Verify re-login succeeded: SessionExpiredModal should NOT be visible
       const modalGone = await sessionModal
@@ -315,7 +312,7 @@ test.describe("Auth Lifecycle E2E — S-7.1", () => {
 
     // Navigate to any page to get a page context
     await page.goto("/");
-    await page.waitForTimeout(500);
+    await page.waitForLoadState("domcontentloaded");
 
     // Inject a deliberate console.error
     await page.evaluate(() => {

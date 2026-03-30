@@ -38,7 +38,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
   );
 
   test("Step 1: Retrieve chart of accounts", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(
       `${API_BASE}/api/accounting/accounts`,
@@ -52,7 +52,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
   });
 
   test("Step 2: Create a draft invoice", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const invoicePayload = {
       id: uuidv4(),
@@ -75,7 +75,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
   });
 
   test("Step 3: Retrieve invoices list", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(
       `${API_BASE}/api/accounting/invoices`,
@@ -88,7 +88,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
   });
 
   test("Step 4: Create a draft bill (AP side)", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const billPayload = {
       id: uuidv4(),
@@ -116,7 +116,7 @@ test.describe("Canonical Journey: Invoice Lifecycle", () => {
   });
 
   test("Step 5: Retrieve bills list", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(`${API_BASE}/api/accounting/bills`, request);
     expect(res.status()).toBe(200);
@@ -139,7 +139,7 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
   );
 
   test("Step 1: Create a draft settlement", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     settlementId = uuidv4();
     const payload = {
@@ -163,7 +163,7 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
   });
 
   test("Step 2: Retrieve settlements list", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(
       `${API_BASE}/api/accounting/settlements`,
@@ -178,7 +178,7 @@ test.describe("Canonical Journey: Settlement Lifecycle", () => {
   test("Step 3: Load P&L endpoint returns financial data", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     // Test the load-level P&L endpoint
     const res = await admin.get(
@@ -204,7 +204,7 @@ test.describe("Canonical Journey: Journal Entry", () => {
   );
 
   test("Create a journal entry for GL reconciliation", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const entry = {
       ...makeFinAccountingEntry(),
@@ -237,7 +237,7 @@ test.describe("Canonical Journey: Journal Entry", () => {
   });
 
   test("IFTA summary endpoint returns tax data", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(
       `${API_BASE}/api/accounting/ifta-summary?quarter=1&year=2026`,

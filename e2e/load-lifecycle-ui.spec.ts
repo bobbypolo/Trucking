@@ -14,7 +14,7 @@ import { test, expect } from "@playwright/test";
  * against the API only (no browser required).
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 
 // ── API-only structural tests (always run) ───────────────────────────────────
 
@@ -52,7 +52,7 @@ test.describe("Load UI — API Structural Checks", () => {
 test.describe("Load Lifecycle UI — Browser Interaction", () => {
   test.skip(
     !process.env.E2E_SERVER_RUNNING,
-    "Skipped — set E2E_SERVER_RUNNING=1 to run browser UI tests",
+    "SKIP:NO_UI_SERVER",
   );
 
   // Login helper
@@ -60,7 +60,7 @@ test.describe("Load Lifecycle UI — Browser Interaction", () => {
     const email = process.env.E2E_TEST_EMAIL;
     const password = process.env.E2E_TEST_PASSWORD;
     if (!email || !password) {
-      test.skip(true, "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set");
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return false;
     }
     await page.goto("/");

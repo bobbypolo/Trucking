@@ -1,8 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { v4 as uuidv4 } from "uuid";
-import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { makeAdminRequest } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 const UI_EMAIL =
   process.env.E2E_TEST_EMAIL ||
@@ -78,7 +77,7 @@ test.describe("Team 2 - Load Board Truth", () => {
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const seeded = await createVisibleLoad(request, auth.idToken);
     const listRes = await request.get(`${API_BASE}/api/loads`, {
@@ -94,14 +93,14 @@ test.describe("Team 2 - Load Board Truth", () => {
     ).toBe(true);
   });
 
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("browser load board shows real backend loads and load detail is not placeholder-based", async ({
     page,
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const seeded = await createVisibleLoad(request, auth.idToken);
 

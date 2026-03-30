@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { API_BASE } from "./fixtures/urls";
 
 /**
  * E2E Accounting & Financials Domain Validation — STORY-006 (R-P2D-02)
@@ -16,8 +17,6 @@ import { test, expect } from "@playwright/test";
  *   - IFTA summary endpoint auth enforcement
  *   - Document vault endpoint auth enforcement
  */
-
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
 
 // ── Accounting endpoint auth enforcement ─────────────────────────────────────
 

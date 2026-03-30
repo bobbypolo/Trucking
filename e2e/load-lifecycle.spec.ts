@@ -102,7 +102,7 @@ test.describe("Load CRUD — Authenticated with Persistence Verification", () =>
   test("create load via API — verify load is created and persisted", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
     loadNumber = `LOAD-E2E-${Date.now()}`;
     createdLoadId = uuidv4();
 
@@ -134,7 +134,7 @@ test.describe("Load CRUD — Authenticated with Persistence Verification", () =>
   test("retrieve load list — verify created load persists after reload", async ({
     request,
   }) => {
-    test.skip(!idToken || !createdLoadId, "Requires prior create test to pass");
+    test.skip(!idToken || !createdLoadId, "SKIP:NO_PRIOR_STATE");
 
     // Reload the loads list and verify persistence of the created load
     const res = await request.get(`${API_BASE}/api/loads`, {
@@ -156,7 +156,7 @@ test.describe("Load CRUD — Authenticated with Persistence Verification", () =>
   test("update load status — verify updated status persists after re-GET", async ({
     request,
   }) => {
-    test.skip(!idToken || !createdLoadId, "Requires prior create test to pass");
+    test.skip(!idToken || !createdLoadId, "SKIP:NO_PRIOR_STATE");
 
     // Transition draft -> planned
     const patchRes = await request.patch(
@@ -185,7 +185,7 @@ test.describe("Load CRUD — Authenticated with Persistence Verification", () =>
   test("load counts endpoint returns status counts with total", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.get(`${API_BASE}/api/loads/counts`, {
       headers: { Authorization: `Bearer ${idToken}` },
@@ -222,7 +222,7 @@ test.describe("R-P9-01: Full 8-State Lifecycle Traversal", () => {
     request,
   }) => {
     // R-P9-01: Full 8-state lifecycle traversed in one test
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     // Create a draft load
     lifecycleLoadId = uuidv4();
@@ -299,14 +299,14 @@ test.describe("R-P9-02: Invalid Transition Rejection", () => {
 
   test.skip(
     !process.env.FIREBASE_WEB_API_KEY,
-    "Skipped — FIREBASE_WEB_API_KEY not set",
+    "SKIP:NO_FIREBASE_KEY",
   );
 
   test("invalid transition draft → delivered returns 400/422 with error message", async ({
     request,
   }) => {
     // R-P9-02: Invalid transition returns 400/422 with descriptive error
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     // Create a draft load
     const createRes = await request.post(`${API_BASE}/api/loads`, {
@@ -355,14 +355,14 @@ test.describe("R-P9-03: Dispatch Events Recorded", () => {
 
   test.skip(
     !process.env.FIREBASE_WEB_API_KEY,
-    "Skipped — FIREBASE_WEB_API_KEY not set",
+    "SKIP:NO_FIREBASE_KEY",
   );
 
   test("dispatch events endpoint returns records for load transitions", async ({
     request,
   }) => {
     // R-P9-03: dispatch_events table has one record per transition (verified via API)
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     // Create and transition a load
     const createRes = await request.post(`${API_BASE}/api/loads`, {
@@ -443,7 +443,7 @@ test.describe("Load Lifecycle UI Flow", () => {
     const email = process.env.E2E_TEST_EMAIL;
     const password = process.env.E2E_TEST_PASSWORD;
     if (!email || !password) {
-      test.skip(true, "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set");
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
     // Login before each test

@@ -54,7 +54,7 @@ test.describe("DOC — Safety Data Retrieval", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/incidents`, request);
@@ -72,7 +72,7 @@ test.describe("DOC — Safety Data Retrieval", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/incidents`, request);
@@ -91,7 +91,7 @@ test.describe("DOC — Safety Data Retrieval", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     // Admin can read own compliance records — test with a placeholder user id
