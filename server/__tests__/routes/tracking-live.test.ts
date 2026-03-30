@@ -186,6 +186,9 @@ describe("S-303: GPS Live Tracking Routes", () => {
   describe("R-P3-10: POST /api/tracking/webhook", () => {
     it("accepts valid GPS ping with correct API key", async () => {
       process.env.GPS_WEBHOOK_SECRET = "test-gps-secret-key";
+      // Company lookup succeeds
+      mockQuery.mockResolvedValueOnce([[{ id: "company-aaa" }], []]);
+      // INSERT succeeds
       mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
       const app = createApp();
@@ -198,6 +201,7 @@ describe("S-303: GPS Live Tracking Routes", () => {
           longitude: -74.006,
           speed: 55,
           heading: 180,
+          companyId: "company-aaa",
         });
 
       expect(res.status).toBe(201);
@@ -269,6 +273,9 @@ describe("S-303: GPS Live Tracking Routes", () => {
 
     it("stores webhook position in gps_positions table", async () => {
       process.env.GPS_WEBHOOK_SECRET = "test-gps-secret-key";
+      // Company lookup succeeds
+      mockQuery.mockResolvedValueOnce([[{ id: "company-aaa" }], []]);
+      // INSERT succeeds
       mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
 
       const app = createApp();
@@ -281,6 +288,7 @@ describe("S-303: GPS Live Tracking Routes", () => {
           longitude: -74.006,
           speed: 55,
           heading: 180,
+          companyId: "company-aaa",
         });
 
       expect(mockQuery).toHaveBeenCalledWith(

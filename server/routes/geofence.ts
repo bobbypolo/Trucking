@@ -7,7 +7,7 @@ import {
 } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -74,10 +74,7 @@ router.post(
 
       res.status(201).json({ id, message: "Geofence event recorded" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/geofence-events",
-      });
+      const log = createRequestLogger(req, "POST /api/geofence-events");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/geofence-events]",
@@ -107,10 +104,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/geofence-events",
-      });
+      const log = createRequestLogger(req, "GET /api/geofence-events");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/geofence-events]",
@@ -215,10 +209,7 @@ router.post(
         rules: { freeHours, hourlyRate, maxBillableHours },
       });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/detention/calculate",
-      });
+      const log = createRequestLogger(req, "POST /api/detention/calculate");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/detention/calculate]",

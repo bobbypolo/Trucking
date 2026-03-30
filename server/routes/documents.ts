@@ -17,7 +17,7 @@ import type { Request, Response } from "express";
 import multer from "multer";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { createDocumentService } from "../services/document.service";
 import type { StorageAdapter } from "../services/document.service";
 import { ValidationError } from "../errors/AppError";
@@ -28,21 +28,28 @@ import {
   documentPatchSchema,
 } from "../schemas/document.schema";
 import { createDiskStorageAdapter } from "../services/disk-storage-adapter";
+import { createStorageAdapter } from "../services/document.service";
 
 const router = Router();
 
 /**
- * Default storage adapter: DiskStorageAdapter.
- * Files are persisted to ./uploads on the local filesystem.
- * Suitable for development and single-server deployments.
+ * Storage adapter resolved via STORAGE_BACKEND env var.
+ * Defaults to disk; set STORAGE_BACKEND=firebase for cloud storage.
+ * Initialized lazily on first request to allow async factory.
  */
-const defaultStorageAdapter: StorageAdapter = createDiskStorageAdapter();
+let resolvedStorageAdapter: StorageAdapter | null = null;
+
+async function getStorageAdapter(): Promise<StorageAdapter> {
+  if (!resolvedStorageAdapter) {
+    resolvedStorageAdapter = await createStorageAdapter();
+  }
+  return resolvedStorageAdapter;
+}
 
 /** Factory so tests can inject a custom storage adapter. */
-export function createDocumentsRouteService(
-  storage: StorageAdapter = defaultStorageAdapter,
-) {
-  return createDocumentService(storage);
+export async function createDocumentsRouteService(storage?: StorageAdapter) {
+  const adapter = storage ?? (await getStorageAdapter());
+  return createDocumentService(adapter);
 }
 
 /**
@@ -111,17 +118,14 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents",
-    });
+    const log = createRequestLogger(req, "GET /api/documents");
     const companyId = req.user!.tenantId;
 
     const parsed = documentListQuerySchema.safeParse(req.query);
     const filters = parsed.success ? parsed.data : {};
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const documents = await svc.listDocuments(companyId, filters);
       res.json({ documents });
     } catch (error) {
@@ -140,10 +144,7 @@ router.post(
   upload.single("file"),
   multerErrorHandler,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/documents",
-    });
+    const log = createRequestLogger(req, "POST /api/documents");
     const companyId = req.user!.tenantId;
     const uploadedBy = req.user!.uid;
 
@@ -171,7 +172,7 @@ router.post(
     const loadId: string | undefined = req.body?.load_id;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const result = await svc.upload({
         companyId,
         originalFilename: originalname,
@@ -218,15 +219,12 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents/:id",
-    });
+    const log = createRequestLogger(req, "GET /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const document = await svc.findById(id, companyId);
       res.json({ document });
     } catch (error) {
@@ -251,10 +249,7 @@ router.patch(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/documents/:id",
-    });
+    const log = createRequestLogger(req, "PATCH /api/documents/:id");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
@@ -276,7 +271,7 @@ router.patch(
     }
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const updated = await svc.updateStatusAndLock(id, companyId, {
         status,
         is_locked,
@@ -304,15 +299,12 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/documents/:id/download",
-    });
+    const log = createRequestLogger(req, "GET /api/documents/:id/download");
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
     try {
-      const svc = createDocumentsRouteService();
+      const svc = await createDocumentsRouteService();
       const url = await svc.getDownloadUrl(id, companyId);
       // Disk storage returns disk:// URIs — serve the file directly
       if (url.startsWith("disk://")) {

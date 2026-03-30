@@ -8,7 +8,7 @@ import {
   updateProviderSchema,
 } from "../schemas/provider";
 import { providerRepository } from "../repositories/provider.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -29,10 +29,7 @@ router.get(
       );
       res.json(providers);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/providers",
-      });
+      const log = createRequestLogger(req, "GET /api/providers");
       log.error({ err: error }, "Failed to fetch providers");
       res.status(500).json({ error: "Database error" });
     }
@@ -56,10 +53,7 @@ router.post(
       );
       res.status(201).json(provider);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/providers",
-      });
+      const log = createRequestLogger(req, "POST /api/providers");
       log.error({ err: error }, "Failed to create provider");
       res.status(500).json({ error: "Database error" });
     }

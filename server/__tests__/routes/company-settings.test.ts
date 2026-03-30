@@ -41,6 +41,7 @@ vi.mock("../../lib/logger", () => ({
     child: vi.fn().mockReturnThis(),
   },
   createChildLogger: () => mockChildLogger,
+  createRequestLogger: () => mockChildLogger,
 }));
 
 vi.mock("../../helpers", () => ({

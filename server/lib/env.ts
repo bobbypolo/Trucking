@@ -20,6 +20,10 @@
  *   CLOUD_RUN_SERVICE_URL  — set automatically by Cloud Run, optional
  *   RATE_LIMIT_MAX         — defaults to 100 if not set
  *   GEMINI_API_KEY         — optional; AI endpoints unavailable if missing
+ *   ALLOW_AUTO_PROVISION   — "true" to allow auto-provisioning of new
+ *                            tenants on first Firebase login. Default "false"
+ *                            (production-safe). When false, login without an
+ *                            existing SQL profile returns 403.
  */
 
 import { logger } from "./logger";
@@ -153,4 +157,14 @@ export function validateEnv(): void {
       );
     }
   }
+}
+
+/**
+ * Returns true if auto-provisioning of new tenants on first Firebase login
+ * is enabled. Reads ALLOW_AUTO_PROVISION env var (case-insensitive "true").
+ * Default: false (production-safe — unknown Firebase identities get 403).
+ */
+export function isAutoProvisionEnabled(): boolean {
+  const raw = process.env.ALLOW_AUTO_PROVISION;
+  return raw !== undefined && raw.trim().toLowerCase() === "true";
 }

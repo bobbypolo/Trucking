@@ -107,8 +107,17 @@ vi.mock("../../lib/logger", () => {
   return {
     logger,
     createChildLogger: () => logger,
+    createRequestLogger: () => logger,
   };
 });
+
+// Auto-provision flag: always enabled in integration tests to preserve
+// pre-existing login behavior (S-4.1 added this flag, default false).
+vi.mock("../../lib/env", () => ({
+  isAutoProvisionEnabled: () => true,
+  validateEnv: vi.fn(),
+  getCorsOrigin: vi.fn().mockReturnValue("*"),
+}));
 
 // ---------------------------------------------------------------------------
 // Imports -- after mocks are declared

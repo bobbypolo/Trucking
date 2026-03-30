@@ -335,3 +335,28 @@ export function createDocumentService(storage: StorageAdapter) {
 }
 
 export type DocumentService = ReturnType<typeof createDocumentService>;
+
+/**
+ * Factory function that selects a StorageAdapter based on the
+ * STORAGE_BACKEND environment variable.
+ *
+ * - "firebase" -> FirebaseStorageAdapter (Firebase Cloud Storage)
+ * - "disk" (default) -> DiskStorageAdapter (local filesystem)
+ *
+ * This centralizes adapter selection so callers do not need to
+ * know which backend is configured.
+ */
+export async function createStorageAdapter(): Promise<StorageAdapter> {
+  const backend = (process.env.STORAGE_BACKEND ?? "disk").toLowerCase();
+
+  if (backend === "firebase") {
+    const { createFirebaseStorageAdapter } = await import(
+      "./firebase-storage-adapter"
+    );
+    return createFirebaseStorageAdapter();
+  }
+
+  // Default: disk storage
+  const { createDiskStorageAdapter } = await import("./disk-storage-adapter");
+  return createDiskStorageAdapter();
+}

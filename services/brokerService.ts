@@ -3,47 +3,39 @@ import { Broker, Contract } from "../types";
 import { getAuthHeaders } from "./authService";
 
 export const getBrokers = async (companyId?: string): Promise<Broker[]> => {
-  try {
-    const url = companyId
-      ? `${API_URL}/clients/${companyId}`
-      : `${API_URL}/clients`;
-    const response = await fetch(url, {
-      headers: await getAuthHeaders(),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data
-        .map((b: any) => ({
-          ...b,
-          approvedChassis:
-            typeof b.chassis_requirements === "string"
-              ? JSON.parse(b.chassis_requirements)
-              : b.chassis_requirements || [],
-          clientType: b.type,
-        }))
-        .sort((a: Broker, b: Broker) => a.name.localeCompare(b.name));
-    }
-  } catch (e) {
-    console.warn("[brokerService] API fetch brokers failed:", e);
+  const url = companyId
+    ? `${API_URL}/clients/${companyId}`
+    : `${API_URL}/clients`;
+  const response = await fetch(url, {
+    headers: await getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch brokers: ${response.status} ${response.statusText}`);
   }
-  return [];
+  const data = await response.json();
+  return data
+    .map((b: any) => ({
+      ...b,
+      approvedChassis:
+        typeof b.chassis_requirements === "string"
+          ? JSON.parse(b.chassis_requirements)
+          : b.chassis_requirements || [],
+      clientType: b.type,
+    }))
+    .sort((a: Broker, b: Broker) => a.name.localeCompare(b.name));
 };
 
 export const saveBroker = async (broker: Broker) => {
-  try {
-    const response = await fetch(`${API_URL}/clients`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify({
-        ...broker,
-        type: broker.clientType, // Map to SQL 'type'
-        chassis_requirements: broker.approvedChassis,
-      }),
-    });
-    if (!response.ok) throw new Error("Failed to save to backend");
-  } catch (e) {
-    console.warn("[brokerService] API save broker failed:", e);
-  }
+  const response = await fetch(`${API_URL}/clients`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify({
+      ...broker,
+      type: broker.clientType, // Map to SQL 'type'
+      chassis_requirements: broker.approvedChassis,
+    }),
+  });
+  if (!response.ok) throw new Error("Failed to save to backend");
 };
 
 export const getBrokerById = async (
@@ -55,37 +47,29 @@ export const getBrokerById = async (
 
 // Contracts
 export const getContracts = async (customerId: string): Promise<Contract[]> => {
-  try {
-    const response = await fetch(`${API_URL}/contracts/${customerId}`, {
-      headers: await getAuthHeaders(),
-    });
-    if (response.ok) {
-      const data = await response.json();
-      return data.map((c: any) => ({
-        ...c,
-        equipmentPreferences:
-          typeof c.equipment_preferences === "string"
-            ? JSON.parse(c.equipment_preferences)
-            : c.equipment_preferences || {},
-      }));
-    }
-  } catch (e) {
-    console.warn("[brokerService] API fetch contracts failed:", e);
+  const response = await fetch(`${API_URL}/contracts/${customerId}`, {
+    headers: await getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch contracts: ${response.status} ${response.statusText}`);
   }
-  return [];
+  const data = await response.json();
+  return data.map((c: any) => ({
+    ...c,
+    equipmentPreferences:
+      typeof c.equipment_preferences === "string"
+        ? JSON.parse(c.equipment_preferences)
+        : c.equipment_preferences || {},
+  }));
 };
 
 export const saveContract = async (contract: Contract) => {
-  try {
-    const response = await fetch(`${API_URL}/contracts`, {
-      method: "POST",
-      headers: await getAuthHeaders(),
-      body: JSON.stringify(contract),
-    });
-    if (!response.ok) throw new Error("Failed to save contract");
-  } catch (e) {
-    console.warn("[brokerService] API save contract failed:", e);
-  }
+  const response = await fetch(`${API_URL}/contracts`, {
+    method: "POST",
+    headers: await getAuthHeaders(),
+    body: JSON.stringify(contract),
+  });
+  if (!response.ok) throw new Error("Failed to save contract");
 };
 
 // FMCSA safety score lookup — returns null until real integration is built

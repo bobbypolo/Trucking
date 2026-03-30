@@ -1,10 +1,14 @@
 import { Request, Response, NextFunction } from "express";
+import { logger } from "../lib/logger";
 
 /**
  * In-memory metrics store for per-route request tracking.
  *
  * Tracks request count, error count, and latency samples per route key.
  * Designed for operational visibility — NOT a production APM replacement.
+ *
+ * PRODUCTION TODO: Export to Prometheus/Datadog/CloudWatch via prom-client
+ * or equivalent. In-memory store is single-node only.
  *
  * PRODUCTION NOTE: Consider disabling or restricting to internal network.
  * This endpoint should never be exposed publicly.
@@ -129,6 +133,23 @@ export function metricsMiddleware(
     if (res.statusCode >= 400) {
       metrics.errorCount++;
     }
+
+    // Structured request log — every response emits a log line
+    const logEntry: Record<string, unknown> = {
+      method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration_ms: Math.round(durationMs * 100) / 100,
+      correlationId: req.correlationId,
+    };
+
+    // Include companyId for authenticated requests
+    const user = (req as any).user;
+    if (user && user.companyId) {
+      logEntry.companyId = user.companyId;
+    }
+
+    logger.info(logEntry, "request completed");
   });
 
   next();

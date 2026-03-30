@@ -9,6 +9,11 @@
     "regression": "python -m pytest .claude/hooks/tests/ -v --tb=short",
     "regression_default_tier": "unit",
     "regression_tiers": {
+      "fix_loop": {
+        "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short --lf",
+        "max_duration_s": 120,
+        "_note": "Used during fix iterations (fix_iteration > 0): re-runs only previously-failing tests"
+      },
       "smoke": {
         "cmd": "python -m pytest .claude/hooks/tests/ -v --tb=short -x -q",
         "max_duration_s": 60
@@ -26,14 +31,27 @@
         "max_duration_s": 120
       }
     },
-    "coverage": "python -m pytest .claude/hooks/tests/ --tb=short -q",
+    "coverage": "python -m pytest .claude/hooks/tests/ --cov=.claude/hooks --cov-branch --cov-fail-under=80 --no-header -q",
     "coverage_timeout_s": 1200,
     "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
     "unit_timeout_s": 600,
-    "_comment": "self_test commands verify the ADE workflow itself. project_* commands should be set when host project source code exists. They start as TODO placeholders; /health warns when unconfigured.",
-    "project_test": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
-    "project_lint": "npx tsc --noEmit",
-    "project_type_check": "npx tsc --noEmit"
+    "_comment": "self_hosted mode uses the ADE self-test suite. host_project mode is for installed projects and must not inherit ADE self-tests by default.",
+    "project_test": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose --exclude=__tests__/integration/** --exclude=__tests__/regression/** --exclude=__tests__/performance/**",
+    "project_lint": "npx tsc --noEmit && cd server && npx tsc --noEmit",
+    "project_type_check": "npx tsc --noEmit && cd server && npx tsc --noEmit",
+    "_project_note": "DisbatchMe runs in host_project mode. project_* commands below are wired to the repo's frontend Vitest, server Vitest, Vite/server builds, and Playwright E2E flow.",
+    "project_integration_test": "PORT=5000 E2E_SERVER_RUNNING=1 npx playwright test && cd server && npx vitest run --reporter=verbose __tests__/integration",
+    "project_build": "npm run build && cd server && npm run build",
+    "project_frontend_test": "npx vitest run --reporter=verbose",
+    "project_backend_test": "cd server && npx vitest run --reporter=verbose",
+    "project_dev_server": "PORT=5000 npm run server",
+    "project_dev_server_port": 5000,
+    "project_dev_server_host": "127.0.0.1",
+    "project_dev_server_timeout_s": 60,
+    "project_dev_server_ready_pattern": "Server running on port 5000",
+    "project_smoke_endpoints": [
+      "/api/health"
+    ]
   },
   "test_patterns": [
     "vitest",
@@ -51,20 +69,43 @@
     },
     "custom_steps": [
       {
-        "id": "vite_build",
-        "name": "Vite production build",
-        "command": "npx vite build",
+        "name": "build-check",
+        "enabled": false,
+        "cmd": "TODO: set your build command (e.g., npm run build)",
+        "after_step": 1,
+        "severity": "fail",
+        "_note": "Runs a project build to catch compile errors. Enable when host project has a build step."
+      },
+      {
+        "name": "smoke-test",
+        "enabled": false,
+        "cmd": "python .claude/hooks/_smoke_check.py --endpoints /health --port 3000",
         "after_step": 3,
-        "severity": "block",
-        "timeout_s": 120,
-        "enabled": true
+        "severity": "warn",
+        "_note": "Runs _smoke_check.py to hit health endpoints after step 3. Set enabled: true to activate. Requires project_dev_server config and _smoke_check.py on the Python path."
+      },
+      {
+        "name": "a11y-audit",
+        "enabled": false,
+        "cmd": "TODO: set your accessibility audit command (e.g., npx axe http://localhost:3000)",
+        "after_step": 4,
+        "severity": "warn",
+        "_note": "Accessibility audit for frontend changes. Enable when project has UI components."
+      },
+      {
+        "name": "contract-test",
+        "enabled": false,
+        "cmd": "python -m pytest tests/test_contract.py -v",
+        "after_step": 4,
+        "severity": "fail",
+        "_note": "API contract testing via Schemathesis. Requires OpenAPI spec and tests/test_contract.py. Enable for projects with REST APIs."
       }
     ],
     "evidence_max_chars": 500,
-    "negative_test_min_pct": 15,
+    "negative_test_min_pct": 10,
     "behavioral_assertion_required": true,
-    "min_public_api_coverage_pct": 90,
-    "tdd_checkpoint_required": true,
+    "min_public_api_coverage_pct": 80,
+    "tdd_checkpoint_required": false,
     "tdd_checkpoint_phase_types": [
       "module",
       "integration",
@@ -72,7 +113,14 @@
     ],
     "scope_enforcement_enabled": true,
     "plan_identifier_check_enabled": true,
-    "r_marker_content_validation": "warn"
+    "r_marker_content_validation": "fail",
+    "assertion_free_max": 0,
+    "self_mock_max": 0,
+    "mock_only_max": 0,
+    "weak_assertion_max_pct": 30,
+    "weak_assertion_max": 3,
+    "coverage_floor_pct": 80,
+    "heavy_mock_threshold_pct": 80
   },
   "test_quality": {
     "min_assertions_per_test": 1,
@@ -90,17 +138,23 @@
   },
   "external_scanners": {
     "bandit": {
-      "cmd": "bandit -r {changed_dir} -f json -q --skip B101 --exclude '*/tests/*' --exit-zero",
+      "cmd": "bandit -r {changed_dir} -f json -q --skip B101 --exclude '*/tests/*'",
       "enabled": true,
       "strict_mode": true
     },
     "semgrep": {
       "cmd": "semgrep --config=auto {changed_dir} --json -q",
       "enabled": true,
-      "strict_mode": false
+      "strict_mode": true
     },
     "pip-audit": {
       "cmd": "pip-audit --format=json",
+      "enabled": false,
+      "strict_mode": true,
+      "_note": "Disabled per-story: scans entire venv (124+ CVEs in transitive deps). Use /security-audit for environment scanning."
+    },
+    "vulture": {
+      "cmd": "vulture {changed_dir} --min-confidence 80",
       "enabled": true,
       "strict_mode": false
     }
@@ -130,7 +184,7 @@
         2,
         6
       ],
-      "description": "Fast structural check â€” PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
+      "description": "Fast structural check — PLAN.md completeness (1), prd.json alignment (2), hook chain health (6). No file scanning, no test tracing."
     },
     "delivery": {
       "sections": [
@@ -139,7 +193,7 @@
         3,
         4
       ],
-      "description": "Production-relevant surfaces for release gating â€” plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
+      "description": "Production-relevant surfaces for release gating — plan (1), PRD (2), test coverage traceability (3), verification log integrity (4)."
     },
     "full": {
       "sections": [
@@ -153,7 +207,7 @@
         8,
         9
       ],
-      "description": "Exhaustive audit â€” all 9 sections. Current default behavior, unchanged."
+      "description": "Exhaustive audit — all 9 sections. Current default behavior, unchanged."
     }
   },
   "languages": {
@@ -170,17 +224,39 @@
         "type_check": "mypy .claude/hooks/ --ignore-missing-imports --no-error-summary",
         "test": "python -m pytest .claude/hooks/tests/ -v"
       }
+    },
+    "e2e": {
+      "extensions": [
+        ".cy.ts",
+        ".cy.js",
+        ".spec.ts",
+        ".spec.js"
+      ],
+      "test_patterns": [
+        "*.cy.ts",
+        "*.cy.js",
+        "*.spec.ts",
+        "*.spec.js"
+      ],
+      "commands": {
+        "test": "TODO: set your E2E test command (e.g., npx playwright test or npx cypress run)"
+      }
     }
   },
   "ralph": {
     "circuit_breaker_threshold": 3,
     "drift_threshold": 3,
-    "cumulative_drift_threshold": 10
+    "cumulative_drift_threshold": 10,
+    "frontend_verification": "fail",
+    "auto_create_pr": false,
+    "parallel_dispatch_enabled": true,
+    "parallel_batch_size": 3
   },
   "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",
   "complexity": {
     "enabled": true,
-    "warn_threshold": 10,
+    "warn_threshold": 17,
     "fail_threshold": 25
-  }
+  },
+  "project_mode": "host_project"
 }

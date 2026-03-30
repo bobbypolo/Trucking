@@ -8,7 +8,7 @@ import {
   createEquipmentSchema,
   patchEquipmentSchema,
 } from "../schemas/equipment";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { buildSafeUpdate } from "../lib/safe-update";
 import { equipmentRepository } from "../repositories/equipment.repository";
 
@@ -29,10 +29,7 @@ router.get(
       const settings = await getVisibilitySettings(companyId);
       res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/equipment",
-      });
+      const log = createRequestLogger(req, "GET /api/equipment");
       log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
       res.status(500).json({ error: "Database error" });
     }
@@ -53,10 +50,7 @@ router.get(
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/equipment",
-      });
+      const log = createRequestLogger(req, "GET /api/equipment");
       log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
       res.status(500).json({ error: "Database error" });
     }
@@ -97,10 +91,7 @@ router.post(
       );
       res.status(201).json({ message: "Equipment added" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/equipment",
-      });
+      const log = createRequestLogger(req, "POST /api/equipment");
       log.error({ err: error }, "SERVER ERROR [POST /api/equipment]");
       res.status(500).json({ error: "Database error" });
     }
@@ -156,10 +147,7 @@ router.patch(
       const updated = await equipmentRepository.findById(id, companyId);
       res.json(updated);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "PATCH /api/equipment/:id",
-      });
+      const log = createRequestLogger(req, "PATCH /api/equipment/:id");
       log.error({ err: error }, "SERVER ERROR [PATCH /api/equipment/:id]");
       res.status(500).json({ error: "Database error" });
     }

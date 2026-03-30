@@ -119,24 +119,20 @@ describe("incidents API-only migration (R-P1-27, R-P1-28, R-P1-29)", () => {
       expect(incidentWrites).toHaveLength(0);
     });
 
-    it("returns empty array when API returns non-ok response", async () => {
+    it("throws when API returns non-ok response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: false,
         status: 500,
         json: () => Promise.resolve([]),
       } as any);
 
-      const incidents = await getIncidents();
-      expect(Array.isArray(incidents)).toBe(true);
-      expect(incidents).toHaveLength(0);
+      await expect(getIncidents()).rejects.toThrow("500");
     });
 
-    it("returns empty array when API throws (network error)", async () => {
+    it("throws when API throws (network error)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
-      const incidents = await getIncidents();
-      expect(Array.isArray(incidents)).toBe(true);
-      expect(incidents).toHaveLength(0);
+      await expect(getIncidents()).rejects.toThrow("Network error");
     });
   });
 

@@ -12,7 +12,7 @@ import {
 import { validateBody } from "../middleware/validate";
 import { idempotencyMiddleware } from "../middleware/idempotency";
 import { createLoadSchema, updateLoadStatusSchema } from "../schemas/loads";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { loadService } from "../services/load.service";
 import { LoadStatus } from "../services/load-state-machine";
 import { geocodeStopAddress } from "../services/geocoding.service";
@@ -108,10 +108,7 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
 
     res.json(redactData(result, req.user.role, settings));
   } catch (error) {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/loads",
-    });
+    const log = createRequestLogger(req, "GET /api/loads");
     log.error({ err: error }, "SERVER ERROR [GET /api/loads]");
     res.status(500).json({ error: "Database error" });
   }
@@ -249,10 +246,7 @@ router.post(
       res.status(201).json({ message: "Load saved" });
     } catch (error) {
       await connection.rollback();
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/loads",
-      });
+      const log = createRequestLogger(req, "POST /api/loads");
       log.error({ err: error }, "SERVER ERROR [POST /api/loads]");
       res.status(500).json({ error: "Database error" });
     } finally {

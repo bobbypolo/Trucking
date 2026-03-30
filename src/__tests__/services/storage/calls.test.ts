@@ -98,14 +98,16 @@ describe("calls.ts", () => {
       expect(result[0].links).toEqual([]);
     });
 
-    it("returns empty array on API error", async () => {
+    it("throws on API error instead of returning empty array", async () => {
+      // Tests R-P2-21
       mockApi.get.mockRejectedValueOnce(new Error("401 Unauthorized"));
-      expect(await getRawCalls()).toEqual([]);
+      await expect(getRawCalls()).rejects.toThrow("401 Unauthorized");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error instead of returning empty array", async () => {
+      // Tests R-P2-21
       mockApi.get.mockRejectedValueOnce(new Error("offline"));
-      expect(await getRawCalls()).toEqual([]);
+      await expect(getRawCalls()).rejects.toThrow("offline");
     });
 
     it("handles empty sessions list", async () => {
@@ -228,12 +230,7 @@ describe("calls.ts", () => {
       });
       mockApiFetch.mockResolvedValueOnce({});
 
-      const result = await attachToRecord(
-        "sess-1",
-        "DRIVER",
-        "D-1",
-        "Jane",
-      );
+      const result = await attachToRecord("sess-1", "DRIVER", "D-1", "Jane");
 
       expect(result!.links).toHaveLength(2);
       expect(result!.links[1].isPrimary).toBe(false);
@@ -242,12 +239,7 @@ describe("calls.ts", () => {
     it("returns null when session is not found", async () => {
       mockApi.get.mockResolvedValueOnce({ sessions: [] });
 
-      const result = await attachToRecord(
-        "nonexistent",
-        "LOAD",
-        "L-1",
-        "User",
-      );
+      const result = await attachToRecord("nonexistent", "LOAD", "L-1", "User");
       expect(result).toBeNull();
     });
   });

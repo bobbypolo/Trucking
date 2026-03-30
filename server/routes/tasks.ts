@@ -13,7 +13,7 @@ import {
   taskRepository,
   workItemRepository,
 } from "../repositories/task.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -32,10 +32,7 @@ router.get(
       const tasks = await taskRepository.findByCompany(companyId, page, limit);
       res.json(tasks);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/tasks",
-      });
+      const log = createRequestLogger(req, "GET /api/tasks");
       log.error({ err: error }, "Failed to fetch tasks");
       res.status(500).json({ error: "Database error" });
     }
@@ -55,10 +52,7 @@ router.post(
       const task = await taskRepository.create(req.body, companyId, userId);
       res.status(201).json(task);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/tasks",
-      });
+      const log = createRequestLogger(req, "POST /api/tasks");
       log.error({ err: error }, "Failed to create task");
       res.status(500).json({ error: "Database error" });
     }
@@ -111,10 +105,7 @@ router.get(
       );
       res.json(items);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/work-items",
-      });
+      const log = createRequestLogger(req, "GET /api/work-items");
       log.error({ err: error }, "Failed to fetch work items");
       res.status(500).json({ error: "Database error" });
     }
@@ -134,10 +125,7 @@ router.post(
       const item = await workItemRepository.create(req.body, companyId, userId);
       res.status(201).json(item);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/work-items",
-      });
+      const log = createRequestLogger(req, "POST /api/work-items");
       log.error({ err: error }, "Failed to create work item");
       res.status(500).json({ error: "Database error" });
     }

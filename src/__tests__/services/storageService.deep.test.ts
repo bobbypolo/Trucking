@@ -292,16 +292,17 @@ describe("storageService deep coverage", () => {
   });
 
   describe("saveIncident API-only (localStorage removed)", () => {
-    it("returns false when API fails (no localStorage fallback)", async () => {
+    it("throws when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
-      const result = await saveIncident({
-        id: "inc-1",
-        description: "Updated",
-        timeline: [],
-        billingItems: [],
-      } as any);
-      // API is sole source of truth — returns false on failure, no localStorage write
-      expect(result).toBe(false);
+
+      await expect(
+        saveIncident({
+          id: "inc-1",
+          description: "Updated",
+          timeline: [],
+          billingItems: [],
+        } as any),
+      ).rejects.toThrow("offline");
     });
   });
 
@@ -343,15 +344,14 @@ describe("storageService deep coverage", () => {
   });
 
   describe("getIncidents non-ok response", () => {
-    it("returns empty array on non-ok API response (API-only, no localStorage)", async () => {
+    it("throws on non-ok API response (API-only, no localStorage)", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: false,
         status: 500,
+        json: () => Promise.resolve({}),
       } as any);
-      // API-only: non-ok response returns empty array (no localStorage fallback)
-      const incidents = await getIncidents();
-      expect(Array.isArray(incidents)).toBe(true);
-      expect(incidents).toHaveLength(0);
+
+      await expect(getIncidents()).rejects.toThrow("500");
     });
   });
 });

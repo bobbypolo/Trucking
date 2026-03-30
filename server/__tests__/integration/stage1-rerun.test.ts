@@ -98,10 +98,24 @@ vi.mock("../../lib/logger", () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   }),
+  createRequestLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+}));
+
+// Auto-provision flag: always enabled in integration tests to preserve
+// pre-existing login behavior (S-4.1 added this flag, default false).
+vi.mock("../../lib/env", () => ({
+  isAutoProvisionEnabled: () => true,
+  validateEnv: vi.fn(),
+  getCorsOrigin: vi.fn().mockReturnValue("*"),
 }));
 
 // ---------------------------------------------------------------------------
-// Imports — sql-auth and db are NOT mocked; real MySQL is used
+// Imports -- sql-auth and db are NOT mocked; real MySQL is used
 // ---------------------------------------------------------------------------
 import admin from "firebase-admin";
 import { closePool } from "../../db";

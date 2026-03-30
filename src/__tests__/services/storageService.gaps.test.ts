@@ -235,7 +235,7 @@ describe("storageService — gap coverage", () => {
 
   // ─── createIncident ──────────────────────────────────────────────────
   describe("createIncident", () => {
-    it("posts incident to API and saves to localStorage", async () => {
+    it("posts incident to API and resolves true", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const result = await createIncident({
@@ -253,36 +253,28 @@ describe("storageService — gap coverage", () => {
 
       await createIncident({ type: "Accident" });
 
-      // Check localStorage was populated
-      const keys = Object.keys(localStorageMock);
-      const incidentKey = keys.find((k) => k.includes("incidents"));
-      if (incidentKey) {
-        const incidents = JSON.parse(localStorageMock[incidentKey]);
-        expect(incidents[0].id).toBeTruthy();
-        expect(incidents[0].reportedAt).toBeTruthy();
-        expect(incidents[0].timeline).toEqual([]);
-        expect(incidents[0].billingItems).toEqual([]);
-      }
+      const [, options] = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
+        .calls[0] as [string, RequestInit];
+      const payload = JSON.parse(String(options.body));
+
+      expect(payload.id).toBeTruthy();
+      expect(payload.reportedAt).toBeTruthy();
+      expect(payload.timeline).toEqual([]);
+      expect(payload.billingItems).toEqual([]);
     });
 
-    it("returns false when API fails (no localStorage fallback)", async () => {
+    it("throws when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      // API is sole source of truth — no localStorage fallback, returns false on failure
-      const result = await createIncident({ type: "Weather Shutdown" });
-      expect(result).toBe(false);
+      await expect(
+        createIncident({ type: "Weather Shutdown" }),
+      ).rejects.toThrow("offline");
     });
   });
 
   // ─── saveIncidentAction ──────────────────────────────────────────────
   describe("saveIncidentAction", () => {
-    it("posts action to API and updates localStorage", async () => {
-      // Seed incident in localStorage
-      const key = "loadpilot_test-co_incidents_v1";
-      localStorageMock[key] = JSON.stringify([
-        { id: "inc-1", timeline: [], billingItems: [] },
-      ]);
-
+    it("posts action to API and resolves true", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: true, json: () => Promise.resolve({}) } as any);
 
       const result = await saveIncidentAction("inc-1", {
@@ -294,14 +286,14 @@ describe("storageService — gap coverage", () => {
       expect(result).toBe(true);
     });
 
-    it("returns false when API fails (no localStorage fallback)", async () => {
+    it("throws when API fails (no localStorage fallback)", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      // API is sole source of truth — no localStorage fallback, returns false on failure
-      const result = await saveIncidentAction("inc-1", {
-        action: "NOTE_ADDED",
-      });
-      expect(result).toBe(false);
+      await expect(
+        saveIncidentAction("inc-1", {
+          action: "NOTE_ADDED",
+        }),
+      ).rejects.toThrow("offline");
     });
   });
 
@@ -377,12 +369,11 @@ describe("storageService — gap coverage", () => {
       expect(callLog.notes).toBe("Called driver");
     });
 
-    it("handles API failure gracefully", async () => {
+    // R-P2-02: saveCallLog throws on sync failure
+    it("throws on API failure instead of returning synthetic record", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
 
-      const callLog = await saveCallLog({ notes: "Test" });
-      expect(callLog).toBeDefined();
-      expect(callLog.id).toBeTruthy();
+      await expect(saveCallLog({ notes: "Test" })).rejects.toThrow("offline");
     });
   });
 

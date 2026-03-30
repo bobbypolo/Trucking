@@ -6,26 +6,21 @@ import { OperationalTask, WorkItem } from "../../types";
 import { api } from "../api";
 
 export const getRawTasks = async (): Promise<OperationalTask[]> => {
-  try {
-    const data = await api.get("/tasks");
-    const items: any[] = Array.isArray(data) ? data : data.tasks || [];
-    return items.map((t: any) => ({
-      id: t.id,
-      type: t.type,
-      title: t.title,
-      description: t.description,
-      status: t.status,
-      priority: t.priority,
-      assignedTo: t.assigned_to || t.assignedTo,
-      dueDate: t.due_date || t.dueDate,
-      links: t.links || [],
-      createdAt: t.created_at || t.createdAt,
-      createdBy: t.created_by || t.createdBy,
-    }));
-  } catch (e) {
-    console.warn("[tasks] getRawTasks API error:", e);
-    return [];
-  }
+  const data = await api.get("/tasks");
+  const items: any[] = Array.isArray(data) ? data : data.tasks || [];
+  return items.map((t: any) => ({
+    id: t.id,
+    type: t.type,
+    title: t.title,
+    description: t.description,
+    status: t.status,
+    priority: t.priority,
+    assignedTo: t.assigned_to || t.assignedTo,
+    dueDate: t.due_date || t.dueDate,
+    links: t.links || [],
+    createdAt: t.created_at || t.createdAt,
+    createdBy: t.created_by || t.createdBy,
+  }));
 };
 
 export const saveTask = async (
@@ -51,27 +46,22 @@ export const saveTask = async (
 };
 
 export const getRawWorkItems = async (): Promise<WorkItem[]> => {
-  try {
-    const data = await api.get("/work-items");
-    const items: any[] = Array.isArray(data)
-      ? data
-      : data.workItems || data.items || [];
-    return items.map((wi: any) => ({
-      id: wi.id,
-      companyId: wi.company_id || wi.companyId,
-      type: wi.type,
-      label: wi.label,
-      description: wi.description,
-      priority: wi.priority,
-      status: wi.status,
-      entityType: wi.entity_type || wi.entityType,
-      entityId: wi.entity_id || wi.entityId,
-      createdAt: wi.created_at || wi.createdAt,
-    }));
-  } catch (e) {
-    console.warn("[tasks] getRawWorkItems API error:", e);
-    return [];
-  }
+  const data = await api.get("/work-items");
+  const items: any[] = Array.isArray(data)
+    ? data
+    : data.workItems || data.items || [];
+  return items.map((wi: any) => ({
+    id: wi.id,
+    companyId: wi.company_id || wi.companyId,
+    type: wi.type,
+    label: wi.label,
+    description: wi.description,
+    priority: wi.priority,
+    status: wi.status,
+    entityType: wi.entity_type || wi.entityType,
+    entityId: wi.entity_id || wi.entityId,
+    createdAt: wi.created_at || wi.createdAt,
+  }));
 };
 
 export const getWorkItems = async (companyId?: string): Promise<WorkItem[]> => {

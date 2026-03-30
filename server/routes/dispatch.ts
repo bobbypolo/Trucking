@@ -8,7 +8,7 @@ import {
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { calculateDistance } from "../geoUtils";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -71,10 +71,7 @@ router.post(
       }
       res.status(201).json({ message: "Time log recorded" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/time-logs",
-      });
+      const log = createRequestLogger(req, "POST /api/time-logs");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/time-logs]",
@@ -101,10 +98,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/time-logs",
-      });
+      const log = createRequestLogger(req, "GET /api/time-logs");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/time-logs]",
@@ -127,10 +121,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/time-logs-company",
-      });
+      const log = createRequestLogger(req, "GET /api/time-logs-company");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/time-logs-company]",
@@ -154,10 +145,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/dispatch-events",
-      });
+      const log = createRequestLogger(req, "GET /api/dispatch-events");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/dispatch-events]",
@@ -181,10 +169,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/dispatch/events",
-      });
+      const log = createRequestLogger(req, "GET /api/dispatch/events");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/dispatch/events]",
@@ -226,10 +211,7 @@ router.post(
       try {
         serializedPayload = JSON.stringify(payload);
       } catch (error) {
-        const log = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/dispatch-events",
-        });
+        const log = createRequestLogger(req, "POST /api/dispatch-events");
         log.error({ err: error }, "Invalid payload — JSON.stringify failed");
         return res.status(400).json({ error: "Invalid payload structure" });
       }
@@ -247,10 +229,7 @@ router.post(
       );
       res.status(201).json({ message: "Dispatch event logged" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/dispatch-events",
-      });
+      const log = createRequestLogger(req, "POST /api/dispatch-events");
       log.error(
         { err: error, userId: user.uid, loadId: load_id },
         "SERVER ERROR [POST /api/dispatch-events]",
@@ -324,10 +303,7 @@ router.get(
 
       res.json({ entries: rows, total });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/audit",
-      });
+      const log = createRequestLogger(req, "GET /api/audit");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [GET /api/audit]",
@@ -349,10 +325,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/dashboard/cards",
-      });
+      const log = createRequestLogger(req, "GET /api/dashboard/cards");
       log.error({ err: error }, "SERVER ERROR [GET /api/dashboard/cards]");
       res.status(500).json({ error: "Database error" });
     }
@@ -491,10 +464,7 @@ router.post(
 
       res.json(topCandidates);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/dispatch/best-matches",
-      });
+      const log = createRequestLogger(req, "POST /api/dispatch/best-matches");
       log.error(
         { err: error, userId: user.uid },
         "SERVER ERROR [POST /api/dispatch/best-matches]",

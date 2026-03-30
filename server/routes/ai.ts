@@ -17,7 +17,7 @@ import {
   generateTrainingFromImage,
   analyzeSafetyCompliance,
 } from "../services/gemini.service";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -80,10 +80,7 @@ router.post(
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/ai/extract-load",
-    });
+    const log = createRequestLogger(req, "POST /api/ai/extract-load");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
@@ -121,10 +118,7 @@ router.post(
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/ai/extract-broker",
-    });
+    const log = createRequestLogger(req, "POST /api/ai/extract-broker");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
@@ -162,10 +156,7 @@ router.post(
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/ai/extract-equipment",
-    });
+    const log = createRequestLogger(req, "POST /api/ai/extract-equipment");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
@@ -203,10 +194,7 @@ router.post(
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/ai/generate-training",
-    });
+    const log = createRequestLogger(req, "POST /api/ai/generate-training");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
       res.status(400).json({ error: validationError });
@@ -244,10 +232,7 @@ router.post(
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
   async (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/ai/analyze-safety",
-    });
+    const log = createRequestLogger(req, "POST /api/ai/analyze-safety");
 
     const body = req.body as Record<string, unknown>;
     if (!body || !body.data || typeof body.data !== "object") {

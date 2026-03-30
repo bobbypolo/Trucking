@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
 
@@ -73,6 +73,10 @@ vi.mock("../../services/gps", () => ({
 
 import trackingRouter from "../../routes/tracking";
 import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
+import { encryptSecret } from "../../services/secret-encryption";
+
+// Encryption key required for tracking provider credential encryption (S-5.2)
+const TEST_ENCRYPTION_KEY = "a".repeat(64);
 
 mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
 
@@ -94,8 +98,9 @@ const PROVIDER_CONFIG_ROW = {
   provider_name: "samsara",
   is_active: 1,
   created_at: "2026-03-24T00:00:00.000Z",
-  has_api_token: 1,
-  has_webhook_url: 0,
+  api_token: null as string | null,
+  webhook_secret: null as string | null,
+  webhook_url: null as string | null,
 };
 
 const MAPPING_ROW = {
@@ -112,9 +117,14 @@ const MAPPING_ROW = {
 describe("R-P3-WP1-01: POST /api/tracking/providers — create provider config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("creates a provider config and returns safe fields (no secret)", async () => {
@@ -184,13 +194,23 @@ describe("R-P3-WP1-01: POST /api/tracking/providers — create provider config",
 describe("R-P3-WP1-02: GET /api/tracking/providers — list configs, no secrets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
   });
 
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
+  });
+
   it("returns list of provider configs with hasApiToken boolean (not the token itself)", async () => {
-    mockQuery.mockResolvedValueOnce([[PROVIDER_CONFIG_ROW], []]);
+    const encToken = encryptSecret("samsara-test-token-abcd");
+    const rowWithToken = {
+      ...PROVIDER_CONFIG_ROW,
+      api_token: encToken,
+    };
+    mockQuery.mockResolvedValueOnce([[rowWithToken], []]);
 
     const app = createApp();
     const res = await request(app)
@@ -207,10 +227,10 @@ describe("R-P3-WP1-02: GET /api/tracking/providers — list configs, no secrets"
     expect(cfg.hasApiToken).toBe(true);
     expect(cfg.hasWebhookUrl).toBe(false);
 
-    // Secrets must never appear
-    expect(cfg.apiToken).toBeUndefined();
+    // apiToken is now returned as masked (****XXXX), never plaintext
+    expect(cfg.apiToken).toBe("****abcd");
     expect(cfg.api_token).toBeUndefined();
-    expect(cfg.webhookSecret).toBeUndefined();
+    expect(cfg.webhookSecret).toBeNull();
   });
 
   it("returns empty array when tenant has no configs", async () => {
@@ -238,9 +258,14 @@ describe("R-P3-WP1-02: GET /api/tracking/providers — list configs, no secrets"
 describe("R-P3-WP1-03: DELETE /api/tracking/providers/:id — delete config", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("deletes a config that belongs to the tenant", async () => {
@@ -291,14 +316,19 @@ describe("R-P3-WP1-03: DELETE /api/tracking/providers/:id — delete config", ()
 describe("R-P3-WP1-04: POST /api/tracking/providers/:id/test — connection test", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
   });
 
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
+  });
+
   it("returns no_credentials when provider has no API token", async () => {
     mockQuery.mockResolvedValueOnce([
-      [{ id: "cfg-001", provider_name: "samsara", api_token: null }],
+      [{ id: "cfg-001", provider_name: "samsara", api_token: null, webhook_url: null, webhook_secret: null }],
       [],
     ]);
 
@@ -337,8 +367,9 @@ describe("R-P3-WP1-04: POST /api/tracking/providers/:id/test — connection test
   });
 
   it("returns success when provider API responds 200", async () => {
+    const encToken = encryptSecret("valid-tok");
     mockQuery.mockResolvedValueOnce([
-      [{ id: "cfg-001", provider_name: "samsara", api_token: "valid-tok" }],
+      [{ id: "cfg-001", provider_name: "samsara", api_token: encToken, webhook_url: null, webhook_secret: null }],
       [],
     ]);
 
@@ -363,8 +394,9 @@ describe("R-P3-WP1-04: POST /api/tracking/providers/:id/test — connection test
   });
 
   it("returns failed when provider API responds 401", async () => {
+    const encToken = encryptSecret("bad-tok");
     mockQuery.mockResolvedValueOnce([
-      [{ id: "cfg-001", provider_name: "samsara", api_token: "bad-tok" }],
+      [{ id: "cfg-001", provider_name: "samsara", api_token: encToken, webhook_url: null, webhook_secret: null }],
       [],
     ]);
 
@@ -393,9 +425,14 @@ describe("R-P3-WP1-04: POST /api/tracking/providers/:id/test — connection test
 describe("R-P3-WP1-05: POST /api/tracking/vehicles/mapping — create mapping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("creates a vehicle mapping and returns it", async () => {
@@ -487,9 +524,14 @@ describe("R-P3-WP1-05: POST /api/tracking/vehicles/mapping — create mapping", 
 describe("R-P3-WP1-06: GET /api/tracking/vehicles/mapping — list mappings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("returns list of vehicle mappings with providerName", async () => {
@@ -536,9 +578,14 @@ describe("R-P3-WP1-06: GET /api/tracking/vehicles/mapping — list mappings", ()
 describe("R-P3-WP1-07: DELETE /api/tracking/vehicles/mapping/:id — delete mapping", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("deletes a mapping that belongs to the tenant", async () => {
@@ -588,9 +635,14 @@ describe("R-P3-WP1-07: DELETE /api/tracking/vehicles/mapping/:id — delete mapp
 describe("R-P3-WP1-08: Tenant isolation — configs scoped to company", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.SECRET_ENCRYPTION_KEY = TEST_ENCRYPTION_KEY;
     mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
       DEFAULT_SQL_PRINCIPAL,
     );
+  });
+
+  afterEach(() => {
+    delete process.env.SECRET_ENCRYPTION_KEY;
   });
 
   it("GET /api/tracking/providers only returns configs for the authenticated tenant", async () => {

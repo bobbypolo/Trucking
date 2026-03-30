@@ -2,7 +2,7 @@ import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -19,10 +19,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/contracts",
-      });
+      const log = createRequestLogger(req, "GET /api/contracts");
       log.error({ err: error }, "SERVER ERROR [GET /api/contracts]");
       res.status(500).json({ error: "Database error" });
     }
@@ -68,10 +65,7 @@ router.post(
       );
       res.status(201).json({ message: "Contract saved" });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/contracts",
-      });
+      const log = createRequestLogger(req, "POST /api/contracts");
       log.error({ err: error }, "SERVER ERROR [POST /api/contracts]");
       res.status(500).json({ error: "Database error" });
     }

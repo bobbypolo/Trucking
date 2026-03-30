@@ -14,7 +14,8 @@ import {
   resetPasswordSchema,
   syncUserSchema,
 } from "../schemas/users";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
+import { isAutoProvisionEnabled } from "../lib/env";
 import {
   ensureMySqlCompany,
   findSqlUserById,
@@ -107,10 +108,7 @@ router.post(
   validateBody(registerUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/register",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/register");
 
     const registerAdminRoles = [
       "admin",
@@ -162,10 +160,7 @@ router.post(
   validateBody(syncUserSchema),
   async (req, res) => {
     const authReq = req as AuthenticatedRequest;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/users",
-    });
+    const log = createRequestLogger(req, "POST /api/users");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
     const isAdmin = adminRoles.includes(authReq.user.role);
@@ -243,10 +238,7 @@ router.post(
   loginLimiter,
   validateBody(loginUserSchema),
   async (req, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/login",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/login");
 
     if (!firebaseAdminReady()) {
       return res.status(500).json({
@@ -280,6 +272,20 @@ router.post(
       }
 
       if (!principal) {
+        // Feature flag: ALLOW_AUTO_PROVISION (default false)
+        // When false: return 403 — unknown Firebase identities must be
+        // pre-created by an admin before they can log in.
+        if (!isAutoProvisionEnabled()) {
+          log.warn(
+            { firebaseUid: decodedToken.uid, email: decodedToken.email },
+            "Login rejected — no SQL profile and auto-provision disabled",
+          );
+          return res.status(403).json({
+            error:
+              "Account not found. Please sign up or contact your administrator.",
+          });
+        }
+
         // Auto-provision: create a default company + admin user for verified
         // Firebase users who have no SQL record yet (e.g. created via console).
         const email = decodedToken.email;
@@ -293,10 +299,8 @@ router.post(
           });
         }
 
-        log.info(
-          { firebaseUid: decodedToken.uid, email },
-          "Auto-provisioning SQL user for verified Firebase identity",
-        );
+        const sourceIp =
+          req.ip || (req.headers["x-forwarded-for"] as string) || "unknown";
 
         const newCompanyId = uuidv4();
         const newUserId = uuidv4();
@@ -350,6 +354,25 @@ router.post(
             error: "Auto-provisioning failed. Please contact support.",
           });
         }
+
+        // Structured audit log for auto-provision event
+        // Use "provisionedEmail" instead of "email" to avoid pino redaction
+        // (top-level "email" is in the redact paths for PII safety)
+        log.info(
+          {
+            event: "auto_provision",
+            firebaseUid: decodedToken.uid,
+            provisionedEmail: email,
+            sourceIp:
+              typeof sourceIp === "string" && sourceIp.includes(",")
+                ? sourceIp.split(",")[0].trim()
+                : sourceIp,
+            timestamp: new Date().toISOString(),
+            newCompanyId,
+            newUserId,
+          },
+          "Auto-provisioned new tenant from Firebase login",
+        );
       }
 
       const [userRow, company] = await Promise.all([
@@ -381,10 +404,7 @@ router.post(
   resetPasswordLimiter,
   validateBody(resetPasswordSchema),
   async (req, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/auth/reset-password",
-    });
+    const log = createRequestLogger(req, "POST /api/auth/reset-password");
 
     const { email } = req.body as { email: string };
 
@@ -418,10 +438,7 @@ router.get("/api/users/me", requireAuth, async (req: any, res) => {
 
     res.json(mapUserRowToApiUser(user));
   } catch (error) {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/users/me",
-    });
+    const log = createRequestLogger(req, "GET /api/users/me");
     log.error({ err: error }, "SERVER ERROR [GET /api/users/me]");
     res.status(500).json({ error: "Server error" });
   }
@@ -436,10 +453,7 @@ router.get(
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/users",
-      });
+      const log = createRequestLogger(req, "GET /api/users");
       log.error({ err: error }, "SERVER ERROR [GET /api/users]");
       res.status(500).json({ error: "Database error" });
     }
