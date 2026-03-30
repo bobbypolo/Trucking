@@ -23,7 +23,7 @@ import {
 } from "../services/stripe.service";
 import { requireAuth, AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
-import { createChildLogger } from "../lib/logger";
+import { createChildLogger, createRequestLogger } from "../lib/logger";
 import pool from "../db";
 
 const log = createChildLogger({ route: "stripe" });

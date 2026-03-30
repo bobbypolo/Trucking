@@ -52,7 +52,7 @@
 
 **Severity:** Critical
 **Domain:** Document / Security
-**Component:** `geminiService.ts`, `vite.config.ts`
+**Component:** `geminiService.ts` (deleted — moved to `server/services/gemini.service.ts`), `vite.config.ts`
 
 **Description:**
 The Gemini API key (`VITE_GEMINI_API_KEY`) is defined in the Vite `define` block, which embeds it
@@ -61,12 +61,12 @@ bundle can extract the key.
 
 **Impact:** Unauthorized API usage billed to the account; potential key revocation and service outage.
 
-**Evidence:** `vite.config.ts` — `define: { VITE_GEMINI_API_KEY: ... }`. `geminiService.ts` — calls
-Gemini API directly from the browser using this key.
+**Evidence:** `vite.config.ts` — `define: { VITE_GEMINI_API_KEY: ... }`. `geminiService.ts` (now deleted; was moved to
+`server/services/gemini.service.ts`) — previously called Gemini API directly from the browser using this key.
 
 **Remediation:** The Gemini API proxy endpoint (`POST /api/ai/analyze-safety`) already exists on the
-server. Route all `geminiService.ts` calls through the server proxy. Remove `VITE_GEMINI_API_KEY`
-from `vite.config.ts` define block entirely.
+server. The frontend `geminiService.ts` was deleted and all AI calls now route through the server proxy
+(`server/services/gemini.service.ts`). Remove `VITE_GEMINI_API_KEY` from `vite.config.ts` define block entirely.
 
 ---
 
@@ -233,18 +233,18 @@ Long-term: migrate entity storage to the Express/MySQL backend.
 
 **Severity:** Major
 **Domain:** Document / Security
-**Component:** `Scanner.tsx`, `geminiService.ts`
+**Component:** `Scanner.tsx`, `geminiService.ts` (deleted — moved to `server/services/gemini.service.ts`)
 
 **Description:**
-The `Scanner` component triggers AI-based document parsing (BOL/Rate-Con extraction) via
-`geminiService.ts`, which calls the Gemini API directly from the browser. This is the same
+The `Scanner` component previously triggered AI-based document parsing (BOL/Rate-Con extraction) via
+the frontend `geminiService.ts`, which called the Gemini API directly from the browser. This was the same
 key exposure issue as F-001 but specifically on the document ingestion path.
 
-**Impact:** Gemini API key exposed during document scanning. If key is rotated, scanning breaks
+**Impact:** Gemini API key was exposed during document scanning. If key was rotated, scanning would break
 immediately with a client-side error and no user-visible message.
 
-**Evidence:** `Scanner.tsx` imports from `geminiService.ts`. Server route `POST /api/ai/parse-bol`
-exists but `Scanner.tsx` does not call it.
+**Evidence:** `Scanner.tsx` previously imported from `geminiService.ts` (now deleted). Server route `POST /api/ai/parse-bol`
+exists and `Scanner.tsx` now routes through the server proxy.
 
 **Remediation:** Update `Scanner.tsx` to call `POST /api/ai/parse-bol` instead of calling Gemini
 directly. Remove all browser-side Gemini imports from Scanner.

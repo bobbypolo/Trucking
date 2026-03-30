@@ -22,7 +22,13 @@ const { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() =>
 vi.mock("../../db", () => ({ default: { query: mockPoolQuery } }));
 
 vi.mock("../../lib/logger", () => ({
-  createChildLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
+  createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+  createRequestLogger: () => ({ error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
 }));
 
 vi.mock("firebase-admin", () => {

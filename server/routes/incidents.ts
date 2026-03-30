@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
 import { NotFoundError } from "../errors/AppError";
 import { syncDomainToException } from "../lib/exception-sync";
@@ -79,10 +79,7 @@ router.get(
       const incidents = await incidentRepository.findByCompany(companyId);
       res.json({ incidents });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/incidents",
-      });
+      const log = createRequestLogger(req, "GET /api/incidents");
       log.error({ err: error }, "SERVER ERROR [GET /api/incidents]");
       res.status(500).json({ error: "Failed to process incident" });
     }
@@ -114,10 +111,7 @@ router.post(
         [load_id],
       );
       if (loadRows.length === 0) {
-        const log = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/incidents",
-        });
+        const log = createRequestLogger(req, "POST /api/incidents");
         log.warn({ load_id }, "Incident creation failed: Load not found");
         return res.status(400).json({
           error: "FK Violation",
@@ -148,27 +142,18 @@ router.post(
           req.user!.uid || "System",
         );
       } catch (linkErr) {
-        const linkLog = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/incidents",
-        });
+        const linkLog = createRequestLogger(req, "POST /api/incidents");
         linkLog.warn(
           { err: linkErr, incidentId: incident.id },
           "Failed to create linked exception for incident (non-blocking)",
         );
       }
 
-      const incLog = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/incidents",
-      });
+      const incLog = createRequestLogger(req, "POST /api/incidents");
       incLog.info({ incidentId: incident.id }, "Incident created successfully");
       res.status(201).json({ message: "Incident created", id: incident.id });
     } catch (error) {
-      const errLog = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/incidents",
-      });
+      const errLog = createRequestLogger(req, "POST /api/incidents");
       errLog.error({ err: error }, "SERVER ERROR [POST /api/incidents]");
       res.status(500).json({ error: "Failed to process incident" });
     }
@@ -187,10 +172,7 @@ router.post(
       // Validation: check if incident exists and belongs to this tenant
       const incident = await incidentRepository.findById(incidentId, companyId);
       if (!incident) {
-        const warnLog = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/incidents/actions",
-        });
+        const warnLog = createRequestLogger(req, "POST /api/incidents/actions");
         warnLog.warn({ incidentId }, "Action log failed: Incident not found");
         return res.status(404).json({
           error: "Not Found",
@@ -209,17 +191,11 @@ router.post(
           JSON.stringify(attachments),
         ],
       );
-      const actionLog = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/incidents/actions",
-      });
+      const actionLog = createRequestLogger(req, "POST /api/incidents/actions");
       actionLog.info({ incidentId }, "Action logged for incident");
       res.status(201).json({ message: "Action logged" });
     } catch (error) {
-      const errLog = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/incidents/actions",
-      });
+      const errLog = createRequestLogger(req, "POST /api/incidents/actions");
       errLog.error(
         { err: error },
         "SERVER ERROR [POST /api/incidents/actions]",
@@ -237,10 +213,7 @@ router.patch(
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const incidentId = req.params.id;
-    const patchLog = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/incidents/:id",
-    });
+    const patchLog = createRequestLogger(req, "PATCH /api/incidents/:id");
 
     try {
       const existing = await incidentRepository.findById(
@@ -299,10 +272,7 @@ router.post(
     } = req.body;
     const incidentId = req.params.id;
     const tenantId = req.user!.tenantId;
-    const chargeLog = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/incidents/charges",
-    });
+    const chargeLog = createRequestLogger(req, "POST /api/incidents/charges");
     try {
       // Verify incident belongs to the requesting tenant
       const [rows] = await pool.query(

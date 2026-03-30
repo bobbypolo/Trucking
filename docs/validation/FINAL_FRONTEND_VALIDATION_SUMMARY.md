@@ -193,7 +193,7 @@ tests have explicit test.skip() guards with documented env-gate reasons.
 | ----- | ------------------------------------------------------------------------- | ------ | -------------------------------------------------------------------------------- |
 | F-012 | api-tester tab visible to all authenticated roles with no permission gate | FIXED  | permission: ORG_SETTINGS_VIEW added to api-tester NavItem in App.tsx (STORY-003). Tab hidden for non-admin roles. |
 | F-014 | Driver and Customer role UIs have no visible logout path                  | FIXED  | Logout button added to DriverMobileHome.tsx and CustomerPortalView.tsx headers (STORY-003). |
-| F-015 | Scanner overlay cancel button destroys partial load creation context      | FIXED  | onDismiss prop added to ScannerOverlay.tsx (STORY-003). Scanner cancel calls onDismiss(); load cancel calls onCancel(). |
+| F-015 | Scanner overlay cancel button destroys partial load creation context      | FIXED  | onDismiss prop added to Scanner.tsx (STORY-003). Scanner cancel calls onDismiss(); load cancel calls onCancel(). The former scanner overlay component was removed; functionality merged into Scanner.tsx. |
 
 ### Resolved in Sprint (FIXED)
 

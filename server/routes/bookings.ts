@@ -9,7 +9,7 @@ import {
   convertBookingSchema,
 } from "../schemas/booking";
 import { bookingRepository } from "../repositories/booking.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -30,10 +30,7 @@ router.get(
       );
       res.json(bookings);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/bookings",
-      });
+      const log = createRequestLogger(req, "GET /api/bookings");
       log.error({ err: error }, "Failed to fetch bookings");
       res.status(500).json({ error: "Database error" });
     }
@@ -77,10 +74,7 @@ router.post(
       );
       res.status(201).json(booking);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/bookings",
-      });
+      const log = createRequestLogger(req, "POST /api/bookings");
       log.error({ err: error }, "Failed to create booking");
       res.status(500).json({ error: "Database error" });
     }
@@ -169,10 +163,7 @@ router.post(
       );
       res.status(201).json(booking);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/bookings/convert",
-      });
+      const log = createRequestLogger(req, "POST /api/bookings/convert");
       log.error({ err: error }, "Failed to convert booking to load");
       res.status(500).json({ error: "Database error" });
     }

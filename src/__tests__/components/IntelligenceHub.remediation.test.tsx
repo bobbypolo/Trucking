@@ -46,6 +46,8 @@ vi.mock("../../../services/storageService", () => ({
   saveNotificationJob: vi.fn(),
   createIncident: vi.fn(),
   saveTask: vi.fn(),
+  saveIncidentAction: vi.fn(),
+  saveIncidentCharge: vi.fn(),
   getAuthHeaders: vi.fn().mockResolvedValue({}),
   saveLoad: vi.fn().mockResolvedValue(undefined),
 }));

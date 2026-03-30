@@ -1,8 +1,8 @@
 # E2E Test Results — LoadPilot RC1
 
 **Story**: R-FS-08 — RC1 Evidence Pack and Go/No-Go
-**Date**: 2026-03-09 (originally); updated 2026-03-16
-**Sprint**: Production Readiness Sprint
+**Date**: 2026-03-09 (originally); updated 2026-03-29
+**Sprint**: Production Hardening Sprint
 **Playwright Version**: 1.58.2
 
 ---
@@ -11,11 +11,9 @@
 
 | Metric                               | Value                                                   |
 | ------------------------------------ | ------------------------------------------------------- |
-| Spec files discovered                | 5                                                       |
-| Total tests discovered               | 47                                                      |
-| API-level tests (always run)         | ~30                                                     |
-| UI-level tests (require live server) | ~17                                                     |
-| Critical paths covered               | 5 of 5                                                  |
+| Spec files discovered                | 46                                                      |
+| Critical paths covered               | Auth lifecycle, Quote-to-Load, Load lifecycle, Document lifecycle, Settlement lifecycle |
+| New specs (this sprint)              | auth-lifecycle.spec.ts, quote-to-load.spec.ts (strengthened), load-lifecycle.spec.ts (strengthened), settlement.spec.ts (strengthened) |
 | Server blocking E2E run              | **Resolved** (2026-03-16) — ts-node startup issue fixed |
 
 ---

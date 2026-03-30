@@ -7,25 +7,20 @@ import { v4 as uuidv4 } from "uuid";
 import { api, apiFetch } from "../api";
 
 export const getRawCalls = async (): Promise<CallSession[]> => {
-  try {
-    const data = await api.get("/call-sessions");
-    return ((data?.sessions as any[]) || []).map((s: any) => ({
-      id: s.id,
-      startTime: s.start_time,
-      endTime: s.end_time,
-      durationSeconds: s.duration_seconds,
-      status: s.status,
-      assignedTo: s.assigned_to,
-      team: s.team,
-      notes: s.notes,
-      participants: s.participants || [],
-      links: s.links || [],
-      lastActivityAt: s.last_activity_at || s.start_time,
-    }));
-  } catch (e) {
-    console.warn("[calls] getRawCalls API error:", e);
-    return [];
-  }
+  const data = await api.get("/call-sessions");
+  return ((data?.sessions as any[]) || []).map((s: any) => ({
+    id: s.id,
+    startTime: s.start_time,
+    endTime: s.end_time,
+    durationSeconds: s.duration_seconds,
+    status: s.status,
+    assignedTo: s.assigned_to,
+    team: s.team,
+    notes: s.notes,
+    participants: s.participants || [],
+    links: s.links || [],
+    lastActivityAt: s.last_activity_at || s.start_time,
+  }));
 };
 
 export const saveCallSession = async (session: CallSession): Promise<void> => {

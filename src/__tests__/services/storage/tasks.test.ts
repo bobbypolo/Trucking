@@ -104,14 +104,16 @@ describe("tasks.ts — Tasks", () => {
       expect(result[0].id).toBe("task-3");
     });
 
-    it("returns empty array on API error", async () => {
+    it("throws on API error instead of returning empty array", async () => {
+      // Tests R-P2-22
       mockApi.get.mockRejectedValueOnce(new Error("500"));
-      expect(await getRawTasks()).toEqual([]);
+      await expect(getRawTasks()).rejects.toThrow("500");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error instead of returning empty array", async () => {
+      // Tests R-P2-22
       mockApi.get.mockRejectedValueOnce(new Error("offline"));
-      expect(await getRawTasks()).toEqual([]);
+      await expect(getRawTasks()).rejects.toThrow("offline");
     });
   });
 
@@ -157,13 +159,9 @@ describe("tasks.ts — Tasks", () => {
 
     it("throws when both PATCH and POST fail", async () => {
       mockApi.patch.mockRejectedValueOnce(new Error("404"));
-      mockApi.post.mockRejectedValueOnce(
-        new Error("Failed to save task: 500"),
-      );
+      mockApi.post.mockRejectedValueOnce(new Error("Failed to save task: 500"));
 
-      await expect(saveTask(task)).rejects.toThrow(
-        "Failed to save task: 500",
-      );
+      await expect(saveTask(task)).rejects.toThrow("Failed to save task: 500");
     });
 
     it("returns original task object on success", async () => {
@@ -235,14 +233,16 @@ describe("tasks.ts — Work Items", () => {
       expect(result).toHaveLength(1);
     });
 
-    it("returns empty array on API error", async () => {
+    it("throws on API error instead of returning empty array", async () => {
+      // Tests R-P2-23
       mockApi.get.mockRejectedValueOnce(new Error("fail"));
-      expect(await getRawWorkItems()).toEqual([]);
+      await expect(getRawWorkItems()).rejects.toThrow("fail");
     });
 
-    it("returns empty array on network error", async () => {
+    it("throws on network error instead of returning empty array", async () => {
+      // Tests R-P2-23
       mockApi.get.mockRejectedValueOnce(new Error("offline"));
-      expect(await getRawWorkItems()).toEqual([]);
+      await expect(getRawWorkItems()).rejects.toThrow("offline");
     });
   });
 

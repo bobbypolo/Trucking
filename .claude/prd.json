@@ -46,8 +46,8 @@
         "unit": "npx vitest run --reporter=verbose && cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "config",
       "dependsOn": []
     },
@@ -91,8 +91,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "config",
       "dependsOn": []
     },
@@ -151,8 +151,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-data-truth",
       "dependsOn": []
     },
@@ -191,8 +191,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-data-truth-auth-reads",
       "dependsOn": []
     },
@@ -231,8 +231,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-data-truth-auth-writes",
       "dependsOn": [
         "S-2.2"
@@ -273,8 +273,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-data-truth",
       "dependsOn": []
     },
@@ -309,8 +309,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-data-truth",
       "dependsOn": []
     },
@@ -338,7 +338,7 @@
         },
         {
           "id": "R-P3-03",
-          "criterion": "5+ negative integration tests: wrong companyId → 0 rows or 403",
+          "criterion": "5+ negative integration tests: wrong companyId \u00e2\u2020\u2019 0 rows or 403",
           "testType": "unit"
         },
         {
@@ -351,8 +351,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit && cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-tenant",
       "dependsOn": []
     },
@@ -396,8 +396,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-tracking-webhook",
       "dependsOn": []
     },
@@ -414,12 +414,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "ALLOW_AUTO_PROVISION=false (default) → login without SQL profile returns 403",
+          "criterion": "ALLOW_AUTO_PROVISION=false (default) \u00e2\u2020\u2019 login without SQL profile returns 403",
           "testType": "unit"
         },
         {
           "id": "R-P4-02",
-          "criterion": "ALLOW_AUTO_PROVISION=true → auto-provision works as before",
+          "criterion": "ALLOW_AUTO_PROVISION=true \u00e2\u2020\u2019 auto-provision works as before",
           "testType": "unit"
         },
         {
@@ -442,8 +442,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-identity",
       "dependsOn": []
     },
@@ -472,7 +472,7 @@
         },
         {
           "id": "R-P4-08",
-          "criterion": "DEMO_MODE production guard tested (import.meta.env.PROD + no API key → throws)",
+          "criterion": "DEMO_MODE production guard tested (import.meta.env.PROD + no API key \u00e2\u2020\u2019 throws)",
           "testType": "unit"
         },
         {
@@ -490,8 +490,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-dev-surfaces",
       "dependsOn": [
         "S-2.2",
@@ -526,7 +526,7 @@
         },
         {
           "id": "R-P5-04",
-          "criterion": "Unit tests verify encrypt→decrypt roundtrip, invalid key → throw, tampered ciphertext → throw",
+          "criterion": "Unit tests verify encrypt\u00e2\u2020\u2019decrypt roundtrip, invalid key \u00e2\u2020\u2019 throw, tampered ciphertext \u00e2\u2020\u2019 throw",
           "testType": "unit"
         }
       ],
@@ -534,8 +534,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-security",
       "dependsOn": []
     },
@@ -581,8 +581,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-tracking-secrets",
       "dependsOn": [
         "S-5.1",
@@ -635,8 +635,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-storage",
       "dependsOn": []
     },
@@ -670,8 +670,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-storage",
       "dependsOn": [
         "S-6.1"
@@ -679,7 +679,7 @@
     },
     {
       "id": "S-7.1",
-      "description": "E2E test for login → session → expiry → re-login flow",
+      "description": "E2E test for login \u00e2\u2020\u2019 session \u00e2\u2020\u2019 expiry \u00e2\u2020\u2019 re-login flow",
       "phase": 7,
       "phase_type": "integration",
       "scope": [
@@ -689,7 +689,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P7-01",
-          "criterion": "Test covers: login → verify session token → navigate protected route → force token expiry → SessionExpiredModal appears → re-login succeeds",
+          "criterion": "Test covers: login \u00e2\u2020\u2019 verify session token \u00e2\u2020\u2019 navigate protected route \u00e2\u2020\u2019 force token expiry \u00e2\u2020\u2019 SessionExpiredModal appears \u00e2\u2020\u2019 re-login succeeds",
           "testType": "unit"
         },
         {
@@ -707,8 +707,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -724,17 +724,17 @@
       "acceptanceCriteria": [
         {
           "id": "R-P8-01",
-          "criterion": "Quote creation → status \"quoted\" verified",
+          "criterion": "Quote creation \u00e2\u2020\u2019 status \"quoted\" verified",
           "testType": "unit"
         },
         {
           "id": "R-P8-02",
-          "criterion": "Booking conversion → booking.quoteId matches original quote",
+          "criterion": "Booking conversion \u00e2\u2020\u2019 booking.quoteId matches original quote",
           "testType": "unit"
         },
         {
           "id": "R-P8-03",
-          "criterion": "Load conversion → load appears on board with correct status and booking link",
+          "criterion": "Load conversion \u00e2\u2020\u2019 load appears on board with correct status and booking link",
           "testType": "unit"
         },
         {
@@ -747,8 +747,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -787,8 +787,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -804,12 +804,12 @@
       "acceptanceCriteria": [
         {
           "id": "R-P10-01",
-          "criterion": "Upload document via API → verify stored (response includes document ID + URL)",
+          "criterion": "Upload document via API \u00e2\u2020\u2019 verify stored (response includes document ID + URL)",
           "testType": "unit"
         },
         {
           "id": "R-P10-02",
-          "criterion": "Download document → content matches original upload (byte comparison)",
+          "criterion": "Download document \u00e2\u2020\u2019 content matches original upload (byte comparison)",
           "testType": "unit"
         },
         {
@@ -827,8 +827,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -844,7 +844,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P11-01",
-          "criterion": "Create settlement for completed load → GL journal entries created (verified via accounting API)",
+          "criterion": "Create settlement for completed load \u00e2\u2020\u2019 GL journal entries created (verified via accounting API)",
           "testType": "unit"
         },
         {
@@ -862,8 +862,8 @@
         "unit": "npx playwright test --reporter=list",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "e2e-specs",
       "dependsOn": []
     },
@@ -897,8 +897,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-cleanup",
       "dependsOn": []
     },
@@ -933,8 +933,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-cleanup",
       "dependsOn": []
     },
@@ -958,8 +958,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "docs-cleanup",
       "dependsOn": []
     },
@@ -998,8 +998,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-observability",
       "dependsOn": []
     },
@@ -1038,8 +1038,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-observability",
       "dependsOn": []
     },
@@ -1083,8 +1083,8 @@
         "unit": "cd server && npx vitest run --reporter=verbose",
         "lint": "cd server && npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "backend-perf",
       "dependsOn": []
     },
@@ -1111,7 +1111,7 @@
         },
         {
           "id": "R-P15-03",
-          "criterion": "No functionality changes — pure extraction refactor",
+          "criterion": "No functionality changes \u00e2\u20ac\u201d pure extraction refactor",
           "testType": "unit"
         },
         {
@@ -1124,8 +1124,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-decomp",
       "dependsOn": []
     },
@@ -1160,8 +1160,8 @@
         "unit": "npx vitest run --reporter=verbose",
         "lint": "npx tsc --noEmit"
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "frontend-decomp",
       "dependsOn": [
         "S-12.1"
@@ -1208,8 +1208,8 @@
       "gateCmds": {
         "unit": "echo \"docs-only story\""
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "docs-cleanup",
       "dependsOn": []
     },
@@ -1241,15 +1241,15 @@
         },
         {
           "id": "R-P17-04",
-          "criterion": "All commands are copy-pasteable (no placeholders requiring interpretation — use $VARIABLE syntax for env-specific values)",
+          "criterion": "All commands are copy-pasteable (no placeholders requiring interpretation \u00e2\u20ac\u201d use $VARIABLE syntax for env-specific values)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
         "unit": "echo \"docs-only story\""
       },
-      "passed": false,
-      "verificationRef": "",
+      "passed": true,
+      "verificationRef": "verification-log.jsonl",
       "parallelGroup": "docs-cleanup",
       "dependsOn": []
     }

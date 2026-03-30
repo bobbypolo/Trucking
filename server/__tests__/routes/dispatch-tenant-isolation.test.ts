@@ -35,6 +35,12 @@ vi.mock("../../db", () => ({
 
 vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+  createRequestLogger: () => ({
     error: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),

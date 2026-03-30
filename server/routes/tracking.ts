@@ -4,9 +4,14 @@ import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
 import type { GpsPosition, TrackingState } from "../services/gps";
+import {
+  encryptSecret,
+  decryptSecret,
+  maskSecret,
+} from "../services/secret-encryption";
 
 const router = Router();
 
@@ -39,11 +44,47 @@ interface TrackingLoad {
 
 type SupportedProviderName = "samsara" | "webhook";
 
-function normalizeSupportedProviderName(name: unknown): SupportedProviderName | null {
+/**
+ * Simple in-memory metrics counter for webhook rejection tracking.
+ * Keyed by rejection reason (e.g., "missing_company_id", "unknown_company_id").
+ */
+const webhookRejectionMetrics = new Map<string, number>();
+
+/** Increment a webhook rejection counter by reason. */
+function incrementWebhookRejection(reason: string): void {
+  webhookRejectionMetrics.set(
+    reason,
+    (webhookRejectionMetrics.get(reason) ?? 0) + 1,
+  );
+}
+
+/** Get the current rejection count for a given reason (exposed for testing). */
+export function getWebhookRejectionCount(reason: string): number {
+  return webhookRejectionMetrics.get(reason) ?? 0;
+}
+
+/** Reset all rejection counters (exposed for testing). */
+export function resetWebhookRejectionMetrics(): void {
+  webhookRejectionMetrics.clear();
+}
+
+/**
+ * Truncate a GPS coordinate to 2 decimal places for privacy.
+ * Full precision (~1m) is never logged; 2 decimals (~1km) is sufficient for debugging.
+ */
+function redactCoordinate(coord: number | null | undefined): string {
+  if (coord == null) return "null";
+  return Number(coord).toFixed(2);
+}
+
+function normalizeSupportedProviderName(
+  name: unknown,
+): SupportedProviderName | null {
   if (typeof name !== "string") return null;
   const normalized = name.toLowerCase().replace(/\s+/g, "_").trim();
   if (normalized === "samsara") return "samsara";
-  if (normalized === "webhook" || normalized === "generic_webhook") return "webhook";
+  if (normalized === "webhook" || normalized === "generic_webhook")
+    return "webhook";
   return null;
 }
 
@@ -146,10 +187,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/loads/tracking",
-      });
+      const log = createRequestLogger(req, "GET /api/loads/tracking");
       log.error({ err: error }, "SERVER ERROR [GET /api/loads/tracking]");
       res.status(500).json({ error: "Database error" });
     }
@@ -198,10 +236,10 @@ router.get(
         currentPosition: deriveCurrentPosition(legs),
       });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: `GET /api/loads/${req.params.id}/tracking`,
-      });
+      const log = createRequestLogger(
+        req,
+        `GET /api/loads/${req.params.id}/tracking`,
+      );
       log.error(
         { err: error },
         `SERVER ERROR [GET /api/loads/${req.params.id}/tracking]`,
@@ -218,7 +256,7 @@ router.get(
 async function storePositions(
   companyId: string,
   positions: GpsPosition[],
-  log: ReturnType<typeof createChildLogger>,
+  log: ReturnType<typeof createRequestLogger>,
 ): Promise<void> {
   // Filter out mock positions — never persist simulated data
   const realPositions = positions.filter((p) => !p.isMock);
@@ -270,10 +308,7 @@ router.get(
   requireTier("Fleet Core", "Fleet Command"),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/live",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/live");
 
     try {
       // Try DB-backed provider config first
@@ -305,10 +340,7 @@ router.get(
           trackingState = result.state;
         }
       } catch (providerErr) {
-        log.error(
-          { err: providerErr },
-          "GPS provider lookup failed",
-        );
+        log.error({ err: providerErr }, "GPS provider lookup failed");
         trackingState = "provider-error";
       }
 
@@ -352,10 +384,7 @@ setInterval(() => {
  * Not Firebase auth — ELD providers can't do Firebase.
  */
 router.post("/api/tracking/webhook", async (req: any, res) => {
-  const log = createChildLogger({
-    correlationId: req.correlationId,
-    route: "POST /api/tracking/webhook",
-  });
+  const log = createRequestLogger(req, "POST /api/tracking/webhook");
 
   // Validate X-GPS-API-Key header
   const apiKey = req.headers["x-gps-api-key"];
@@ -407,34 +436,55 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
       .json({ error: `Missing required fields: ${missing.join(", ")}` });
   }
 
-  // Resolve and validate company ID
-  let resolvedCompanyId = "unresolved";
-  if (companyId) {
-    // Validate that companyId is a known tenant to prevent cross-tenant data injection
-    try {
-      const [companies]: any = await pool.query(
-        `SELECT id FROM companies WHERE id = ? LIMIT 1`,
-        [companyId],
-      );
-      if (companies.length > 0) {
-        resolvedCompanyId = companyId;
-      } else {
-        log.warn(
-          { vehicleId, companyId },
-          "GPS webhook companyId does not match any known tenant — stored as 'unresolved'",
-        );
-      }
-    } catch {
-      log.warn(
-        { vehicleId, companyId },
-        "GPS webhook companyId validation failed — stored as 'unresolved'",
-      );
-    }
-  } else {
+  // Validate company ID — reject if missing or unknown (never store "unresolved")
+  if (!companyId) {
+    incrementWebhookRejection("missing_company_id");
     log.warn(
-      { vehicleId },
-      "GPS webhook missing companyId — stored as 'unresolved'",
+      {
+        vehicleId,
+        lat: redactCoordinate(latitude),
+        lng: redactCoordinate(longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: missing company_id",
     );
+    return res.status(400).json({ error: "company_id required" });
+  }
+
+  let resolvedCompanyId: string;
+  try {
+    const [companies]: any = await pool.query(
+      `SELECT id FROM companies WHERE id = ? LIMIT 1`,
+      [companyId],
+    );
+    if (companies.length === 0) {
+      incrementWebhookRejection("unknown_company_id");
+      log.warn(
+        {
+          vehicleId,
+          companyId,
+          lat: redactCoordinate(latitude),
+          lng: redactCoordinate(longitude),
+          provider: "webhook",
+        },
+        "GPS webhook rejected: unknown company_id",
+      );
+      return res.status(400).json({ error: "unknown company_id" });
+    }
+    resolvedCompanyId = companyId;
+  } catch {
+    incrementWebhookRejection("unknown_company_id");
+    log.warn(
+      {
+        vehicleId,
+        companyId,
+        lat: redactCoordinate(latitude),
+        lng: redactCoordinate(longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: company_id validation failed",
+    );
+    return res.status(400).json({ error: "unknown company_id" });
   }
 
   try {
@@ -506,17 +556,21 @@ router.post(
 
     if (!providerName) {
       return res.status(400).json({
-        error: "Unsupported providerName. Supported values are Samsara and Generic Webhook.",
+        error:
+          "Unsupported providerName. Supported values are Samsara and Generic Webhook.",
       });
     }
 
     const id = randomUUID();
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/providers",
-    });
+    const log = createRequestLogger(req, "POST /api/tracking/providers");
 
     try {
+      // Encrypt secrets before storage — never store plaintext credentials
+      const encryptedApiToken = apiToken ? encryptSecret(apiToken) : null;
+      const encryptedWebhookSecret = webhookSecret
+        ? encryptSecret(webhookSecret)
+        : null;
+
       // Upsert: insert or replace existing config for this company+provider
       await pool.query(
         `INSERT INTO tracking_provider_configs
@@ -532,9 +586,9 @@ router.post(
           id,
           companyId,
           providerName,
-          apiToken || null,
+          encryptedApiToken,
           webhookUrl || null,
-          webhookSecret || null,
+          encryptedWebhookSecret,
           isActive !== undefined ? (isActive ? 1 : 0) : 1,
         ],
       );
@@ -573,16 +627,11 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/providers",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/providers");
 
     try {
       const [rows]: any = await pool.query(
-        `SELECT id, provider_name, is_active, created_at,
-                (api_token IS NOT NULL AND api_token != '') AS has_api_token,
-                (webhook_url IS NOT NULL AND webhook_url != '') AS has_webhook_url
+        `SELECT id, provider_name, api_token, webhook_secret, webhook_url, is_active, created_at
          FROM tracking_provider_configs
          WHERE company_id = ?
          ORDER BY created_at DESC`,
@@ -590,15 +639,42 @@ router.get(
       );
 
       res.json(
-        rows.map((r: any) => ({
-          id: r.id,
-          providerName: r.provider_name,
-          providerDisplayName: formatProviderDisplayName(r.provider_name),
-          isActive: Boolean(r.is_active),
-          createdAt: r.created_at,
-          hasApiToken: Boolean(r.has_api_token),
-          hasWebhookUrl: Boolean(r.has_webhook_url),
-        })),
+        rows.map((r: any) => {
+          // Mask secrets for display — decrypt first to get last 4 chars of original
+          let maskedApiToken: string | null = null;
+          let maskedWebhookSecret: string | null = null;
+
+          if (r.api_token) {
+            try {
+              const plainToken = decryptSecret(r.api_token);
+              maskedApiToken = maskSecret(plainToken);
+            } catch {
+              // If decryption fails (e.g., legacy plaintext), mask the raw value
+              maskedApiToken = maskSecret(r.api_token);
+            }
+          }
+
+          if (r.webhook_secret) {
+            try {
+              const plainSecret = decryptSecret(r.webhook_secret);
+              maskedWebhookSecret = maskSecret(plainSecret);
+            } catch {
+              maskedWebhookSecret = maskSecret(r.webhook_secret);
+            }
+          }
+
+          return {
+            id: r.id,
+            providerName: r.provider_name,
+            providerDisplayName: formatProviderDisplayName(r.provider_name),
+            isActive: Boolean(r.is_active),
+            createdAt: r.created_at,
+            hasApiToken: Boolean(r.api_token),
+            hasWebhookUrl: Boolean(r.webhook_url),
+            apiToken: maskedApiToken,
+            webhookSecret: maskedWebhookSecret,
+          };
+        }),
       );
     } catch (error) {
       if (isMissingTableError(error, "tracking_provider_configs")) {
@@ -632,10 +708,7 @@ router.delete(
     }
 
     const configId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "DELETE /api/tracking/providers/:id",
-    });
+    const log = createRequestLogger(req, "DELETE /api/tracking/providers/:id");
 
     try {
       // Verify ownership before delete
@@ -683,10 +756,10 @@ router.post(
     }
 
     const configId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/providers/:id/test",
-    });
+    const log = createRequestLogger(
+      req,
+      "POST /api/tracking/providers/:id/test",
+    );
 
     try {
       const [rows]: any = await pool.query(
@@ -703,9 +776,30 @@ router.post(
       const config = rows[0];
       const startMs = Date.now();
 
+      // Decrypt secrets at point of use — never hold plaintext longer than needed
+      let plainApiToken: string | null = null;
+      let plainWebhookSecret: string | null = null;
+
+      if (config.api_token) {
+        try {
+          plainApiToken = decryptSecret(config.api_token);
+        } catch {
+          // Legacy plaintext value — use as-is during migration transition
+          plainApiToken = config.api_token;
+        }
+      }
+
+      if (config.webhook_secret) {
+        try {
+          plainWebhookSecret = decryptSecret(config.webhook_secret);
+        } catch {
+          plainWebhookSecret = config.webhook_secret;
+        }
+      }
+
       // Test Samsara provider — call the real API with stored token
       if (config.provider_name === "samsara") {
-        if (!config.api_token) {
+        if (!plainApiToken) {
           return res.json({
             status: "no_credentials",
             message: "No API token configured for this provider",
@@ -717,7 +811,7 @@ router.post(
             "https://api.samsara.com/fleet/vehicles/locations",
             {
               headers: {
-                Authorization: `Bearer ${config.api_token}`,
+                Authorization: `Bearer ${plainApiToken}`,
                 "Content-Type": "application/json",
               },
               signal: AbortSignal.timeout(8000),
@@ -774,15 +868,17 @@ router.post(
         if (!config.webhook_url) {
           return res.json({
             status: "no_credentials",
-            message: "No webhook URL configured. Set a webhook URL to enable GPS data ingestion.",
+            message:
+              "No webhook URL configured. Set a webhook URL to enable GPS data ingestion.",
             latencyMs: Date.now() - startMs,
           });
         }
 
-        if (!config.webhook_secret) {
+        if (!plainWebhookSecret) {
           return res.json({
             status: "no_credentials",
-            message: "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
+            message:
+              "No webhook secret configured. Set a secret to authenticate inbound GPS data.",
             latencyMs: Date.now() - startMs,
           });
         }
@@ -799,7 +895,7 @@ router.post(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "X-GPS-API-Key": config.webhook_secret,
+              "X-GPS-API-Key": plainWebhookSecret,
             },
             body: JSON.stringify(testPayload),
             signal: AbortSignal.timeout(8000),
@@ -894,10 +990,7 @@ router.post(
       });
     }
 
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/tracking/vehicles/mapping",
-    });
+    const log = createRequestLogger(req, "POST /api/tracking/vehicles/mapping");
 
     try {
       // Verify the provider config belongs to this tenant
@@ -961,10 +1054,7 @@ router.get(
   requireTenant,
   async (req: any, res) => {
     const companyId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/tracking/vehicles/mapping",
-    });
+    const log = createRequestLogger(req, "GET /api/tracking/vehicles/mapping");
 
     try {
       const [rows]: any = await pool.query(
@@ -1021,10 +1111,10 @@ router.delete(
     }
 
     const mappingId = req.params.id;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "DELETE /api/tracking/vehicles/mapping/:id",
-    });
+    const log = createRequestLogger(
+      req,
+      "DELETE /api/tracking/vehicles/mapping/:id",
+    );
 
     try {
       const [rows]: any = await pool.query(

@@ -135,35 +135,39 @@ import { getRawVaultDocs as _getRawVaultDocs } from "./storage/vault";
 import { saveTask as _saveTask } from "./storage/tasks";
 // STORAGE_KEY for loads and incidents removed — both come from backend API only
 
-// In-memory cache for API-fetched data (browser storage removed)
+// Internal in-memory snapshot used by load-derived helpers after successful reads.
+// This cache must never be returned to callers as a substitute for failed API requests.
 let _cachedLoads: LoadData[] = [];
 
 const getRawLoads = (): LoadData[] => {
-  // Returns cached results from last API fetch
   return _cachedLoads;
 };
 
-export const getLoads = async (user: User): Promise<LoadData[]> => {
-  try {
-    const loads = await apiFetchLoads();
-    // Update in-memory cache for functions that use getRawLoads()
-    _cachedLoads = loads;
+const requireApiData = <T>(
+  data: T | undefined,
+  operation: string,
+): T => {
+  if (data !== undefined) return data;
 
-    if (
-      ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
-        user.role,
-      )
-    ) {
-      return loads.filter((l) => l.companyId === user.companyId);
-    } else {
-      return loads.filter((l) => l.driverId === user.id);
-    }
-  } catch {
-    // Auth errors (401/403) are handled centrally by api.ts:
-    // 401 fires auth:session-expired event before throwing; 403 throws ForbiddenError.
-    // No duplicate auth checks needed — return cached data for all failures.
-    return _cachedLoads;
+  throw new DOMException(
+    `[storageService] ${operation} aborted`,
+    "AbortError",
+  );
+};
+
+export const getLoads = async (user: User): Promise<LoadData[]> => {
+  const loads = await apiFetchLoads();
+  _cachedLoads = loads;
+
+  if (
+    ["admin", "dispatcher", "safety_manager", "payroll_manager"].includes(
+      user.role,
+    )
+  ) {
+    return loads.filter((l) => l.companyId === user.companyId);
   }
+
+  return loads.filter((l) => l.driverId === user.id);
 };
 
 export const saveLoad = async (load: LoadData, user: User) => {
@@ -247,20 +251,18 @@ export const getDispatchEvents = async (
   companyId: string,
   signal?: AbortSignal,
 ): Promise<DispatchEvent[]> => {
-  try {
-    const data = await api.get(`/dispatch-events/${companyId}`, { signal });
-    if (!data) return []; // request was aborted
-    return data.map((e: any) => ({
-      ...e,
-      loadId: e.load_id,
-      dispatcherId: e.dispatcher_id,
-      eventType: e.event_type,
-      createdAt: e.created_at,
-    }));
-  } catch (e) {
-    console.warn("[storageService] getDispatchEvents failed:", e);
-    return [];
-  }
+  const data = requireApiData(
+    await api.get(`/dispatch-events/${companyId}`, { signal }),
+    "getDispatchEvents",
+  );
+
+  return data.map((e: any) => ({
+    ...e,
+    loadId: e.load_id,
+    dispatcherId: e.dispatcher_id,
+    eventType: e.event_type,
+    createdAt: e.created_at,
+  }));
 };
 
 export const getTimeLogs = async (
@@ -271,25 +273,20 @@ export const getTimeLogs = async (
   const endpoint = isCompany
     ? `/time-logs/company/${userIdOrCompanyId}`
     : `/time-logs/${userIdOrCompanyId}`;
-  try {
-    const data = await api.get(endpoint, { signal });
-    if (!data) return []; // request was aborted
-    return data.map((t: any) => ({
-      ...t,
-      userId: t.user_id,
-      loadId: t.load_id,
-      activityType: t.activity_type,
-      clockIn: t.clock_in,
-      clockOut: t.clock_out,
-      location: {
-        lat: t.location_lat,
-        lng: t.location_lng,
-      },
-    }));
-  } catch (e) {
-    console.warn("[storageService] getTimeLogs failed:", e);
-    return [];
-  }
+  const data = await api.get(endpoint, { signal });
+  if (!data) return []; // request was aborted
+  return data.map((t: any) => ({
+    ...t,
+    userId: t.user_id,
+    loadId: t.load_id,
+    activityType: t.activity_type,
+    clockIn: t.clock_in,
+    clockOut: t.clock_out,
+    location: {
+      lat: t.location_lat,
+      lng: t.location_lng,
+    },
+  }));
 };
 
 // Consolidated Work Item logic at the end of the file
@@ -550,36 +547,34 @@ export const generateMaintenanceLogPDF = (eq: FleetEquipment, name: string) => {
 export const getIncidents = async (
   signal?: AbortSignal,
 ): Promise<Incident[]> => {
-  try {
-    const data = await api.get("/incidents", { signal });
-    if (!data) return []; // request was aborted
-    return data.map((inc: any) => ({
-      ...inc,
-      loadId: inc.load_id,
-      reportedAt: inc.reported_at,
-      slaDeadline: inc.sla_deadline,
-      location: {
-        lat: Number(inc.location_lat),
-        lng: Number(inc.location_lng),
-      },
-      timeline:
-        inc.timeline?.map((t: any) => ({
-          ...t,
-          actorName: t.actor_name,
-          timestamp: t.timestamp,
-        })) || [],
-      billingItems:
-        inc.billingItems?.map((b: any) => ({
-          ...b,
-          providerVendor: b.provider_vendor,
-          approvedBy: b.approved_by,
-          receiptUrl: b.receipt_url,
-        })) || [],
-    }));
-  } catch (e) {
-    console.warn("[storageService] getIncidents API unavailable:", e);
-    return [];
-  }
+  const data = requireApiData(
+    await api.get("/incidents", { signal }),
+    "getIncidents",
+  );
+
+  return data.map((inc: any) => ({
+    ...inc,
+    loadId: inc.load_id,
+    reportedAt: inc.reported_at,
+    slaDeadline: inc.sla_deadline,
+    location: {
+      lat: Number(inc.location_lat),
+      lng: Number(inc.location_lng),
+    },
+    timeline:
+      inc.timeline?.map((t: any) => ({
+        ...t,
+        actorName: t.actor_name,
+        timestamp: t.timestamp,
+      })) || [],
+    billingItems:
+      inc.billingItems?.map((b: any) => ({
+        ...b,
+        providerVendor: b.provider_vendor,
+        approvedBy: b.approved_by,
+        receiptUrl: b.receipt_url,
+      })) || [],
+  }));
 };
 
 // seedIncidents: kept as no-op for backward compatibility (STORY-019)
@@ -595,63 +590,41 @@ export const createIncident = async (incident: Partial<Incident>) => {
     billingItems: incident.billingItems || [],
   };
 
-  try {
-    await api.post("/incidents", {
-      ...incToSave,
-      load_id: incToSave.loadId,
-      sla_deadline: incToSave.slaDeadline,
-      location_lat: incToSave.location?.lat,
-      location_lng: incToSave.location?.lng,
-    });
-    return true;
-  } catch (e) {
-    console.error("[storageService] createIncident API call failed:", e);
-  }
-
-  // API is sole source of truth — no fallback
-  return false;
+  await api.post("/incidents", {
+    ...incToSave,
+    load_id: incToSave.loadId,
+    sla_deadline: incToSave.slaDeadline,
+    location_lat: incToSave.location?.lat,
+    location_lng: incToSave.location?.lng,
+  });
+  return true;
 };
 
 export const saveIncident = async (incident: Incident) => {
-  try {
-    // API is sole source of truth for incidents
-    await api.post("/incidents", {
-      id: incident.id,
-      load_id: incident.loadId,
-      type: incident.type,
-      severity: incident.severity,
-      status: incident.status,
-      sla_deadline: incident.slaDeadline,
-      description: incident.description,
-      location_lat: incident.location?.lat,
-      location_lng: incident.location?.lng,
-      recovery_plan: incident.recoveryPlan,
-    });
-    return true;
-  } catch (e) {
-    console.warn("[storageService] saveIncident API call failed:", e);
-  }
-
-  // API is sole source of truth — no fallback
-  return false;
+  await api.post("/incidents", {
+    id: incident.id,
+    load_id: incident.loadId,
+    type: incident.type,
+    severity: incident.severity,
+    status: incident.status,
+    sla_deadline: incident.slaDeadline,
+    description: incident.description,
+    location_lat: incident.location?.lat,
+    location_lng: incident.location?.lng,
+    recovery_plan: incident.recoveryPlan,
+  });
+  return true;
 };
 
 export const saveIncidentAction = async (
   incidentId: string,
   action: Partial<IncidentAction>,
 ) => {
-  try {
-    await api.post(`/incidents/${incidentId}/actions`, {
-      ...action,
-      actor_name: action.actorName,
-    });
-    return true;
-  } catch (e) {
-    console.error("[storageService] saveIncidentAction API call failed:", e);
-  }
-
-  // API is sole source of truth — no fallback
-  return false;
+  await api.post(`/incidents/${incidentId}/actions`, {
+    ...action,
+    actor_name: action.actorName,
+  });
+  return true;
 };
 
 /**
@@ -713,11 +686,7 @@ export const saveCallLog = async (callLog: Partial<CallLog>) => {
     ...callLog,
   };
 
-  try {
-    await api.post("/call-logs", newCall);
-  } catch (e) {
-    console.error("[storageService] saveCallLog sync failed:", e);
-  }
+  await api.post("/call-logs", newCall);
 
   // Update related shipment in-memory cache if applicable
   if (newCall.entityId && newCall.entityId !== "global") {

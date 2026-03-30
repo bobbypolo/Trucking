@@ -2,7 +2,7 @@ import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { messageRepository } from "../repositories/message.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -22,10 +22,7 @@ router.get(
       const messages = await messageRepository.findByCompany(companyId, loadId);
       res.json({ messages });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/messages",
-      });
+      const log = createRequestLogger(req, "GET /api/messages");
       log.error({ err: error }, "SERVER ERROR [GET /api/messages]");
       res.status(500).json({ error: "Database error" });
     }
@@ -58,10 +55,7 @@ router.post(
       );
       res.status(201).json({ message });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/messages",
-      });
+      const log = createRequestLogger(req, "POST /api/messages");
       log.error({ err: error }, "SERVER ERROR [POST /api/messages]");
       res.status(500).json({ error: "Database error" });
     }
@@ -87,10 +81,7 @@ router.delete(
       }
       res.status(204).send();
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "DELETE /api/messages/:id",
-      });
+      const log = createRequestLogger(req, "DELETE /api/messages/:id");
       log.error({ err: error }, "SERVER ERROR [DELETE /api/messages/:id]");
       res.status(500).json({ error: "Database error" });
     }

@@ -23,6 +23,11 @@ vi.mock("../../services/document.service", () => ({
     getDownloadUrl: mockGetDownloadUrl,
     validateFile: vi.fn(),
   }),
+  createStorageAdapter: vi.fn().mockResolvedValue({
+    uploadBlob: vi.fn(),
+    deleteBlob: vi.fn(),
+    getSignedUrl: vi.fn(),
+  }),
 }));
 
 // Mock the document repository (used by getDownloadUrl for cross-tenant check)
@@ -112,6 +117,12 @@ vi.mock("firebase-admin", () => {
 // Mock logger
 vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+  createRequestLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),

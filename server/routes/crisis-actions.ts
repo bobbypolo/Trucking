@@ -8,7 +8,7 @@ import {
   updateCrisisActionSchema,
 } from "../schemas/crisis-action";
 import { crisisActionRepository } from "../repositories/crisis-action.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -31,10 +31,7 @@ router.get(
       );
       res.json(actions);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/crisis-actions",
-      });
+      const log = createRequestLogger(req, "GET /api/crisis-actions");
       log.error({ err: error }, "Failed to fetch crisis actions");
       res.status(500).json({ error: "Database error" });
     }
@@ -58,10 +55,7 @@ router.post(
       );
       res.status(201).json(action);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/crisis-actions",
-      });
+      const log = createRequestLogger(req, "POST /api/crisis-actions");
       log.error({ err: error }, "Failed to create crisis action");
       res.status(500).json({ error: "Database error" });
     }

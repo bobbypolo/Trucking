@@ -135,6 +135,12 @@ export function MOCK_LOGGER_FACTORY() {
       },
     },
     createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
+  createRequestLogger: () => ({
       info: () => {},
       error: () => {},
       warn: () => {},

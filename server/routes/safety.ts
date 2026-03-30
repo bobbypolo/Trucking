@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { getSafetyScore } from "../services/fmcsa.service";
 import { checkExpiring } from "../services/cert-expiry-checker";
 import { syncDomainToException } from "../lib/exception-sync";
@@ -27,10 +27,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/quizzes",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/quizzes");
       log.error({ err: error }, "Failed to fetch safety quizzes");
       res.status(500).json({ error: "Database error" });
     }
@@ -56,10 +53,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/quizzes/:id",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/quizzes/:id");
       log.error({ err: error }, "Failed to fetch safety quiz");
       res.status(500).json({ error: "Database error" });
     }
@@ -85,17 +79,11 @@ router.post(
         "INSERT INTO safety_quizzes (id, company_id, title, description, status) VALUES (?, ?, ?, ?, ?)",
         [id, companyId, title, description ?? null, status ?? "draft"],
       );
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/quizzes",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/quizzes");
       log.info({ quizId: id }, "Safety quiz created");
       res.status(201).json({ message: "Quiz created", id });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/quizzes",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/quizzes");
       log.error({ err: error }, "Failed to create safety quiz");
       res.status(500).json({ error: "Database error" });
     }
@@ -118,10 +106,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/quiz-results",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/quiz-results");
       log.error({ err: error }, "Failed to fetch safety quiz results");
       res.status(500).json({ error: "Database error" });
     }
@@ -157,20 +142,14 @@ router.post(
           passed ? 1 : 0,
         ],
       );
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/quiz-results",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/quiz-results");
       log.info(
         { resultId: id, quizId: quiz_id },
         "Safety quiz result recorded",
       );
       res.status(201).json({ message: "Quiz result recorded", id });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/quiz-results",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/quiz-results");
       log.error({ err: error }, "Failed to record safety quiz result");
       res.status(500).json({ error: "Database error" });
     }
@@ -193,10 +172,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/maintenance",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/maintenance");
       log.error({ err: error }, "Failed to fetch maintenance records");
       res.status(500).json({ error: "Database error" });
     }
@@ -222,10 +198,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/maintenance/:id",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/maintenance/:id");
       log.error({ err: error }, "Failed to fetch maintenance record");
       res.status(500).json({ error: "Database error" });
     }
@@ -306,27 +279,18 @@ router.post(
           [uuidv4(), exceptionId, req.user!.uid || "System"],
         );
       } catch (linkErr) {
-        const linkLog = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/safety/maintenance",
-        });
+        const linkLog = createRequestLogger(req, "POST /api/safety/maintenance");
         linkLog.warn(
           { err: linkErr, maintenanceId: id },
           "Failed to create linked exception for maintenance (non-blocking)",
         );
       }
 
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/maintenance",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/maintenance");
       log.info({ maintenanceId: id }, "Maintenance record created");
       res.status(201).json({ message: "Maintenance record created", id });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/maintenance",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/maintenance");
       log.error({ err: error }, "Failed to create maintenance record");
       res.status(500).json({ error: "Database error" });
     }
@@ -341,10 +305,7 @@ router.patch(
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
-    const patchLog = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/safety/maintenance/:id",
-    });
+    const patchLog = createRequestLogger(req, "PATCH /api/safety/maintenance/:id");
 
     try {
       // Verify record exists and belongs to tenant
@@ -441,10 +402,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/vendors",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/vendors");
       log.error({ err: error }, "Failed to fetch safety vendors");
       res.status(500).json({ error: "Database error" });
     }
@@ -470,10 +428,7 @@ router.get(
       }
       res.json(records[0]);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/vendors/:id",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/vendors/:id");
       log.error({ err: error }, "Failed to fetch safety vendor");
       res.status(500).json({ error: "Database error" });
     }
@@ -521,17 +476,11 @@ router.post(
           notes ?? null,
         ],
       );
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/vendors",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/vendors");
       log.info({ vendorId: id }, "Safety vendor created");
       res.status(201).json({ message: "Vendor created", id });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/vendors",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/vendors");
       log.error({ err: error }, "Failed to create safety vendor");
       res.status(500).json({ error: "Database error" });
     }
@@ -554,10 +503,7 @@ router.get(
       );
       res.json(rows);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/activity",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/activity");
       log.error({ err: error }, "Failed to fetch safety activity log");
       res.status(500).json({ error: "Database error" });
     }
@@ -595,10 +541,7 @@ router.post(
       );
       res.status(201).json({ message: "Activity logged", id });
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/safety/activity",
-      });
+      const log = createRequestLogger(req, "POST /api/safety/activity");
       log.error({ err: error }, "Failed to log safety activity");
       res.status(500).json({ error: "Database error" });
     }
@@ -621,10 +564,7 @@ router.get(
       const certs = await checkExpiring(companyId, daysAhead);
       res.json(certs);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/expiring-certs",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/expiring-certs");
       log.error({ err: error }, "Failed to check expiring certificates");
       res.status(500).json({ error: "Failed to check expiring certificates" });
     }
@@ -644,10 +584,7 @@ router.get(
       const result = await getSafetyScore(dotNumber);
       res.json(result);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/safety/fmcsa/:dotNumber",
-      });
+      const log = createRequestLogger(req, "GET /api/safety/fmcsa/:dotNumber");
       log.error(
         { err: error, dotNumber },
         "Failed to fetch FMCSA safety score",

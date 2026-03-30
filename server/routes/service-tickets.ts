@@ -9,7 +9,7 @@ import {
   updateServiceTicketSchema,
 } from "../schemas/service-ticket";
 import { serviceTicketRepository } from "../repositories/service-ticket.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { syncDomainToException } from "../lib/exception-sync";
 import pool from "../db";
 
@@ -32,10 +32,7 @@ router.get(
       );
       res.json(tickets);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/service-tickets",
-      });
+      const log = createRequestLogger(req, "GET /api/service-tickets");
       log.error({ err: error }, "Failed to fetch service tickets");
       res.status(500).json({ error: "Database error" });
     }
@@ -82,10 +79,7 @@ router.post(
           [uuidv4(), exceptionId, userId],
         );
       } catch (linkErr) {
-        const linkLog = createChildLogger({
-          correlationId: req.correlationId,
-          route: "POST /api/service-tickets",
-        });
+        const linkLog = createRequestLogger(req, "POST /api/service-tickets");
         linkLog.warn(
           { err: linkErr, ticketId: ticket.id },
           "Failed to create linked exception for service ticket (non-blocking)",
@@ -94,10 +88,7 @@ router.post(
 
       res.status(201).json(ticket);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/service-tickets",
-      });
+      const log = createRequestLogger(req, "POST /api/service-tickets");
       log.error({ err: error }, "Failed to create service ticket");
       res.status(500).json({ error: "Database error" });
     }
@@ -143,10 +134,7 @@ router.patch(
             req.correlationId,
           );
         } catch (syncErr) {
-          const syncLog = createChildLogger({
-            correlationId: req.correlationId,
-            route: "PATCH /api/service-tickets/:id",
-          });
+          const syncLog = createRequestLogger(req, "PATCH /api/service-tickets/:id");
           syncLog.warn(
             { err: syncErr, ticketId: req.params.id },
             "Failed to sync service ticket status to exception (non-blocking)",

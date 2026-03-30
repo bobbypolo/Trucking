@@ -75,6 +75,12 @@ vi.mock("../../lib/logger", () => ({
     warn: vi.fn(),
     debug: vi.fn(),
   }),
+  createRequestLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
 }));
 
 // ---- Mock validate middleware ----

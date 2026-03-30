@@ -12,7 +12,7 @@ import { createClientSchema } from "../schemas/client";
 import pool from "../db";
 import db from "../firestore";
 import { redactData, getVisibilitySettings } from "../helpers";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 import { ForbiddenError } from "../errors/AppError";
 import {
   ensureMySqlCompany,
@@ -47,10 +47,7 @@ router.get(
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/clients",
-      });
+      const log = createRequestLogger(req, "GET /api/clients");
       if (
         isMissingTableError(error, "customers") ||
         isMissingTableError(error, "archived_at")
@@ -83,10 +80,7 @@ router.patch(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/clients/:id/archive",
-    });
+    const log = createRequestLogger(req, "PATCH /api/clients/:id/archive");
 
     if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -125,10 +119,7 @@ router.patch(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/clients/:id/unarchive",
-    });
+    const log = createRequestLogger(req, "PATCH /api/clients/:id/unarchive");
 
     if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -168,10 +159,7 @@ router.post(
   validateBody(createClientSchema),
   async (req: any, res) => {
     const tenantId = req.user!.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/clients",
-    });
+    const log = createRequestLogger(req, "POST /api/clients");
 
     // Security: reject body with foreign company_id
     if (req.body.company_id && req.body.company_id !== tenantId) {
@@ -233,10 +221,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/companies",
-    });
+    const log = createRequestLogger(req, "GET /api/companies");
 
     // Explicit tenant isolation: :id must match authenticated user's tenant
     const tenantId = req.user?.tenantId || req.user?.companyId;
@@ -302,10 +287,7 @@ router.post(
   requireAuth,
   requireTenant,
   async (req: any, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/companies",
-    });
+    const log = createRequestLogger(req, "POST /api/companies");
 
     // Enforce admin-only access for company settings changes
     const callerRole = req.user?.role;
@@ -641,10 +623,7 @@ router.get(
       );
       res.json(enrichedParties);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/parties",
-      });
+      const log = createRequestLogger(req, "GET /api/parties");
       if (isMissingTableError(error, "parties")) {
         log.error(
           { err: error },
@@ -671,10 +650,7 @@ router.patch(
   async (req: any, res) => {
     const { status } = req.body;
     const tenantId = req.user.tenantId;
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "PATCH /api/parties/:id/status",
-    });
+    const log = createRequestLogger(req, "PATCH /api/parties/:id/status");
 
     if (!status) {
       res.status(400).json({ error: "status is required" });
@@ -707,10 +683,7 @@ router.post(
   requireTenant,
   validateBody(createPartySchema),
   async (req: any, res) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "POST /api/parties",
-    });
+    const log = createRequestLogger(req, "POST /api/parties");
 
     const {
       id,
@@ -1039,10 +1012,7 @@ router.get(
 
       res.json(results.slice(0, 20));
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/global-search",
-      });
+      const log = createRequestLogger(req, "GET /api/global-search");
       log.error({ err: error }, "Search failed");
       res.status(500).json({ error: "Search failed" });
     }

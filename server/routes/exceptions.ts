@@ -8,7 +8,7 @@ import {
   patchExceptionSchema,
 } from "../schemas/exceptions";
 import pool from "../db";
-import { createChildLogger } from "../lib/logger";
+import { createChildLogger, createRequestLogger } from "../lib/logger";
 
 /**
  * Maps an exception status to the corresponding domain-record status.

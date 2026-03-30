@@ -1,16 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
-  Gauge,
-  AlertCircle,
   PhoneCall,
-  Cpu,
   Brain,
   Zap,
-  Target,
   Search,
-  Plus,
-  CreditCard,
   AlertTriangle,
   ClipboardList,
   Phone,
@@ -18,8 +12,6 @@ import {
   Activity,
   ChevronRight,
   User as UserIcon,
-  Building2,
-  Anchor,
   X,
   MessageSquare,
   DollarSign,
@@ -27,57 +19,22 @@ import {
   RefreshCw,
   Wrench,
   Share2,
-  ShieldCheck,
-  Clock,
-  FileCheck,
   FileText,
   BarChart3,
-  Filter,
-  History,
-  Star,
-  Trophy,
-  Users,
-  Link2,
-  Home,
-  LogOut,
-  Workflow,
-  ChevronLeft,
   ShieldAlert,
-  Map,
-  MapPin,
-  Bell,
-  Navigation,
   Lock,
-  TrendingUp,
-  Globe,
-  Shield,
 } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-  Legend,
-} from "recharts";
 import { getExceptions, getDashboardCards } from "../services/exceptionService";
-import { Exception, DashboardCard, LOAD_STATUS } from "../types";
+import { Exception, DashboardCard } from "../types";
 import { OperationalMessaging } from "./OperationalMessaging";
 import { CommandCenterView } from "./CommandCenterView";
+import { LoadDetailView } from "./LoadDetailView";
 // mockDataService removed — all mock seeding eliminated per T5-09
 import {
   globalSearch,
   getRecord360Data,
   getIncidents,
-  getLoadSummary,
-  getDriverSummary,
-  getBrokerSummary,
-  getMessages,
   getRequests,
   getTriageQueues,
   initiateRepowerWorkflow,
@@ -88,31 +45,23 @@ import {
   saveIncident,
   getProviders,
   getContacts,
-  saveProvider,
-  saveContact,
   saveServiceTicket,
   saveNotificationJob,
-  createIncident as coreCreateIncident,
   saveTask,
   saveIncidentAction,
   saveIncidentCharge,
 } from "../services/storageService";
-import { getVendors, saveVendor } from "../services/safetyService";
+import { getVendors } from "../services/safetyService";
 import { NetworkPortal } from "./NetworkPortal";
 import { QuoteManager } from "./QuoteManager";
-import { LoadDetailView } from "./LoadDetailView";
 import {
   GlobalSearchResult,
   EntityType,
-  LoadSummary,
-  DriverSummary,
   Incident,
-  IncidentAction,
   KCIRequest,
   WorkspaceSession,
   ContextRecord,
   RequestType,
-  WorkflowStep,
   CallSession,
   CallSessionStatus,
   OperationalEvent,
@@ -121,19 +70,10 @@ import {
   Broker,
   Provider,
   Contact,
-  ServiceTicket,
-  NotificationJob,
-  OperationalTask,
   WorkItem,
+  Company as CompanyType,
 } from "../types";
-import {
-  DispatchIntelligence,
-  getRegion,
-} from "../services/dispatchIntelligence";
-import { FuelCardService } from "../services/fuelService";
-import { DetentionService } from "../services/detentionService";
-import { checkCapability } from "../services/authService";
-import { Company as CompanyType } from "../types";
+import { DispatchIntelligence } from "../services/dispatchIntelligence";
 import { features } from "../config/features";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -141,6 +81,12 @@ import { InputDialog } from "./ui/InputDialog";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./EmptyState";
+import { OpsDashboardPanel } from "./operations/OpsDashboardPanel";
+import { OperationalFormsOverlay } from "./operations/OperationalFormsOverlay";
+import { RepowerSelectionPanel } from "./operations/RepowerSelectionPanel";
+import { TriageWorkspacePanel } from "./operations/TriageWorkspacePanel";
+import { ActionGroup } from "./operations/WorkspacePrimitives";
+import { useCrisisHandlers } from "./operations/useCrisisHandlers";
 
 interface Thread {
   id: string;
@@ -274,135 +220,6 @@ const IntelligenceHub: React.FC<{
   }, []);
 
   // Ops Dashboard computed stats
-  const opsStats = useMemo(() => {
-    const grossRevenue = loads.reduce(
-      (sum, l) => sum + (l.carrierRate || 0),
-      0,
-    );
-    const operatorPay = loads.reduce((sum, l) => sum + (l.driverPay || 0), 0);
-    const operatingMargin = grossRevenue - operatorPay;
-    const activeLoads = loads.filter(
-      (l) => l.status === LOAD_STATUS.Active,
-    ).length;
-    const inTransitLoads = loads.filter(
-      (l) => l.status === "in_transit",
-    ).length;
-    const deliveredToday = loads.filter((l) => {
-      if (l.status !== LOAD_STATUS.Delivered) return false;
-      const today = new Date().toISOString().split("T")[0];
-      return l.dropoffDate === today;
-    }).length;
-    const openExceptions = opsExceptions.length;
-    const criticalExceptions = opsExceptions.filter(
-      (ex) => ex.severity === 4,
-    ).length;
-    const slaBreaches = opsExceptions.filter((ex) => ex.severity === 4).length;
-    const docHoldRevenue = opsExceptions
-      .filter(
-        (ex) => ex.type === "POD_MISSING" || ex.type === "DOC_PENDING_48H",
-      )
-      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
-
-    const accruingDetention = opsExceptions
-      .filter((ex) => ex.type === "DETENTION_ELIGIBLE")
-      .reduce((sum, ex) => sum + (ex.financialImpactEst || 0), 0);
-
-    const totalMiles = loads.reduce((sum, l) => sum + (l.miles || 0), 0);
-    const avgRPM = totalMiles > 0 ? grossRevenue / totalMiles : 0;
-
-    const slaHealth =
-      loads.length > 0
-        ? Math.round(((loads.length - slaBreaches) / loads.length) * 100)
-        : 100;
-
-    return {
-      grossRevenue,
-      operatingMargin,
-      activeLoads,
-      inTransitLoads,
-      deliveredToday,
-      openExceptions,
-      criticalExceptions,
-      slaBreaches,
-      docHoldRevenue,
-      accruingDetention,
-      avgRPM,
-      slaHealth,
-    };
-  }, [loads, opsExceptions]);
-
-  // Ops Dashboard chart data: RPM by day (last 7 days)
-  const opsRpmByDay = useMemo(() => {
-    if (loads.length === 0) return [];
-    const now = new Date();
-    const days: { date: string; rpm: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      const dayLoads = loads.filter((l) => l.pickupDate === key);
-      const totalRevenue = dayLoads.reduce(
-        (s, l) => s + (l.carrierRate || 0),
-        0,
-      );
-      const totalMiles = dayLoads.reduce((s, l) => s + (l.miles || 0), 0);
-      const rpm = totalMiles > 0 ? totalRevenue / totalMiles : 0;
-      const label = d.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-      days.push({ date: label, rpm: parseFloat(rpm.toFixed(2)) });
-    }
-    return days;
-  }, [loads]);
-
-  // Ops Dashboard chart data: Exception count by day (last 7 days)
-  const opsExceptionsByDay = useMemo(() => {
-    if (opsExceptions.length === 0) return [];
-    const now = new Date();
-    const days: { date: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split("T")[0];
-      const count = opsExceptions.filter((ex) => {
-        const exDate = ex.createdAt ? ex.createdAt.split("T")[0] : "";
-        return exDate === key;
-      }).length;
-      const label = d.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-      days.push({ date: label, count });
-    }
-    return days;
-  }, [opsExceptions]);
-
-  // Ops Dashboard chart data: Revenue vs Cost by week (last 4 weeks)
-  const opsRevenueCostByWeek = useMemo(() => {
-    if (loads.length === 0) return [];
-    const now = new Date();
-    const weeks: { week: string; revenue: number; cost: number }[] = [];
-    for (let w = 3; w >= 0; w--) {
-      const weekEnd = new Date(now);
-      weekEnd.setDate(weekEnd.getDate() - w * 7);
-      const weekStart = new Date(weekEnd);
-      weekStart.setDate(weekStart.getDate() - 6);
-      const startKey = weekStart.toISOString().split("T")[0];
-      const endKey = weekEnd.toISOString().split("T")[0];
-      const weekLoads = loads.filter(
-        (l) => l.pickupDate >= startKey && l.pickupDate <= endKey,
-      );
-      const revenue = weekLoads.reduce((s, l) => s + (l.carrierRate || 0), 0);
-      const cost = weekLoads.reduce((s, l) => s + (l.driverPay || 0), 0);
-      const label = `${weekStart.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
-      weeks.push({ week: label, revenue, cost });
-    }
-    return weeks;
-  }, [loads]);
-
   // Intelligent Space Detection
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const [leftRailCollapsed, setLeftRailCollapsed] = useState(
@@ -1164,7 +981,16 @@ const IntelligenceHub: React.FC<{
   }, [showDirectoryDrawer]);
 
   useEffect(() => {
-    getVendors().then(setRoadsideVendors);
+    getVendors()
+      .then(setRoadsideVendors)
+      .catch((err) => {
+        if (!(err instanceof DOMException && err.name === "AbortError")) {
+          setToast({
+            message: "Failed to load roadside vendors",
+            type: "error",
+          });
+        }
+      });
   }, []);
 
   useEffect(() => {
@@ -1182,121 +1008,48 @@ const IntelligenceHub: React.FC<{
     return () => clearTimeout(timer);
   }, [directorySearchQuery, directoryTab]);
 
-  const handleSafetyEscalate = async (load?: LoadData) => {
-    if (!load && !activeRecord) {
-      showSuccessMessage(
-        "SYSTEM: Protocol requires an active record context for safety escalation.",
-        3000,
-      );
-      return;
-    }
-
-    const targetLoadId =
-      load?.id || (activeRecord?.type === "LOAD" ? activeRecord.id : undefined);
-
-    const task: OperationalTask = {
-      id: `TASK-${uuidv4().slice(0, 8).toUpperCase()}`,
-      type: "GENERAL",
-      title: `CRITICAL: Safety Handoff - Load #${load?.loadNumber || activeRecord?.label}`,
-      description: `Manual safety escalation triggered by ${user.name}. Asset requires immediate compliance review or intervention.`,
-      status: "OPEN",
-      priority: "CRITICAL",
-      assignedTo: "SAFETY_COMPLIANCE",
-      dueDate: new Date(Date.now() + 900000).toISOString(), // 15 mins
-      links: [
-        {
-          id: uuidv4(),
-          entityType: "LOAD",
-          entityId: targetLoadId,
-          isPrimary: true,
-          createdAt: new Date().toISOString(),
-          createdBy: user.name,
-        },
-      ],
-      createdAt: new Date().toISOString(),
-      createdBy: user.name,
-    };
-    await saveTask(task);
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: targetLoadId,
-      message: `Dispatcher ${user.name} escalated Load #${load?.loadNumber || activeRecord?.label} to Safety`,
-      payload: { category: "Escalation", action: "Safety Handoff" },
-    });
-    showSuccessMessage(
-      "SAFETY PROTOCOL TRIGGERED: Handoff Created for Safety & Compliance",
-    );
-    fetchQueues();
-  };
-
-  const handleAttachToRecord = async (
-    item: any,
-    type: EntityType | "PROVIDER" | "CONTACT",
-  ) => {
-    // 1. Priority: Link to active interaction if one exists
-    if (currentCallSession) {
-      await handleLinkSessionToRecord(
-        currentCallSession.id,
-        item.id,
-        type as EntityType,
-      );
-      showSuccessMessage(
-        `${type} ${item.name || item.label || item.id} linked to active call.`,
-      );
-      return;
-    }
-
-    // 2. Secondary: Attach to currently viewed record (Workspace)
-    if (!activeRecord) {
-      setToast({
-        message: "No active record or call to attach to",
-        type: "error",
-      });
-      return;
-    }
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: activeRecord.type === "LOAD" ? activeRecord.id : undefined,
-      message: `${type} attached to ${activeRecord.type}: ${item.name || item.label || item.id}`,
-      payload: {
-        category: "Attachment",
-        itemId: item.id,
-        itemType: type,
-        recordId: activeRecord.id,
-        recordType: activeRecord.type,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = {
-        ...active360Data.incident,
-        timeline: active360Data.incident.timeline ?? [],
-      };
-      updated.timeline.push({
-        id: uuidv4(),
-        timestamp: new Date().toISOString(),
-        actorName: user.name,
-        action: `${type}_ATTACHED`,
-        notes: `${type} attached: ${item.name || item.label || item.id}`,
-      });
-      await saveIncident(updated);
-      const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(data);
-    }
-
-    showSuccessMessage(
-      `${item.name || item.label || item.id} attached to ${activeRecord.label}`,
-    );
-  };
+  const {
+    handleSafetyEscalate,
+    handleAttachToRecord,
+    handleLinkSessionToRecord,
+    handleNotifyPartners,
+    automatedStakeholderNotify,
+    sendNotificationJob,
+    handleRoadsideAssist,
+    submitRoadsideDispatch,
+    handleEscalate,
+    handleFullLockdown,
+    handleVerifyTrailerDrop,
+  } = useCrisisHandlers({
+    user,
+    activeRecord,
+    active360Data,
+    currentCallSession,
+    setCurrentCallSession,
+    allContacts,
+    selectedVendorForRoadside,
+    roadsideNotes,
+    selectedContacts,
+    notificationContacts,
+    notificationMessage,
+    showSuccessMessage,
+    setToast,
+    setShowRoadsideForm,
+    setShowNotifyPicker,
+    setNotificationContacts,
+    setActive360Data,
+    showConfirmDialog,
+    onRecordAction,
+    handleActionLogging,
+    fetchQueues,
+    getRecord360Data,
+    saveTask,
+    saveIncident,
+    saveIncidentCharge,
+    saveCallSession,
+    saveServiceTicket,
+    saveNotificationJob,
+  });
 
   // handleSystemSeed removed — mock seeding eliminated per T5-09
   const [callData, setCallData] = useState({
@@ -1316,35 +1069,6 @@ const IntelligenceHub: React.FC<{
   const [isSplitView, setIsSplitView] = useState(false);
   const [recentDropdownOpen, setRecentDropdownOpen] = useState(false);
 
-  const handleLinkSessionToRecord = async (
-    sessionId: string,
-    recordId: string,
-    recordType: EntityType,
-  ) => {
-    if (!currentCallSession || currentCallSession.id !== sessionId) return;
-
-    const updatedSession = {
-      ...currentCallSession,
-      loadId: recordId,
-      type: recordType,
-    };
-    await saveCallSession(updatedSession);
-    setCurrentCallSession(updatedSession);
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      loadId: recordId,
-      message: `Interaction Session ${sessionId} linked to ${recordType} Record`,
-      payload: { category: "Linking", sessionId, recordId, recordType },
-    });
-
-    showSuccessMessage(`Session Successfully Linked to Record`);
-  };
-
   // Auto-clear is now handled by useAutoFeedback hook
 
   const activeThread = useMemo(() => {
@@ -1352,378 +1076,7 @@ const IntelligenceHub: React.FC<{
     return threads.find((t) => t.id === selectedThreadId);
   }, [threads, selectedThreadId]);
 
-  const handleNotifyPartners = async () => {
-    // Fetch relevant contacts for the active load/incident
-    let contacts = [];
-
-    // 1. Contextual internal contacts
-    if (active360Data?.load) {
-      contacts.push({
-        id: "c-driver",
-        name: active360Data.driver?.name || "Driver",
-        role: "Driver",
-        phone: active360Data.driver?.phone || "",
-      });
-      contacts.push({
-        id: "c-safety",
-        name: "Safety Team",
-        role: "Internal",
-        phone: "",
-      });
-    }
-
-    // 2. Supplement with Enterprise Directory contacts
-    const directoryContacts = allContacts.map((c) => ({
-      id: c.id,
-      name: c.name,
-      role: c.type,
-      phone: c.phone,
-    }));
-
-    contacts = [...contacts, ...directoryContacts];
-
-    setNotificationContacts(contacts);
-    setShowNotifyPicker(true);
-  };
-
-  const automatedStakeholderNotify = async (
-    loadId: string,
-    emails: string[],
-    message: string,
-  ) => {
-    const jobId = `AUTO-JOB-${uuidv4().slice(0, 8).toUpperCase()}`;
-
-    // Log the system action
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: "SYSTEM-AI",
-      actorName: "Intelligence Engine",
-      message: `AUTOMATED ALERT: Stakeholders notified for Load #${loadId}: ${message}`,
-      payload: {
-        category: "Communications",
-        action: "AutoNotify",
-        loadId,
-        emails,
-      },
-    });
-
-    // Mirror the notification job in storage for audit
-    const job: NotificationJob = {
-      id: jobId,
-      loadId,
-      recipients: emails.map((e) => ({
-        id: e,
-        name: e,
-        role: "Stakeholder",
-        phone: "",
-      })),
-      message: message,
-      channel: "Email",
-      status: "SENT",
-      sentBy: "SYSTEM",
-      sentAt: new Date().toISOString(),
-    };
-    await saveNotificationJob(job);
-  };
-
-  const sendNotificationJob = async () => {
-    if (selectedContacts.length === 0) {
-      showSuccessMessage(
-        "PROTOCOL ERROR: Recipient selection required for broadcast.",
-        3000,
-      );
-      return;
-    }
-
-    const jobId = `JOB-${uuidv4().slice(0, 8).toUpperCase()}`;
-    const job: NotificationJob = {
-      id: jobId,
-      loadId: active360Data?.load?.id,
-      incidentId:
-        activeRecord.type === "INCIDENT" ? activeRecord.id : undefined,
-      recipients: selectedContacts.map((cId) => {
-        const contact = notificationContacts.find((nc) => nc.id === cId);
-        return {
-          id: cId,
-          name: contact?.name || "Unknown",
-          role: contact?.role || "Partner",
-          phone: contact?.phone || "",
-        };
-      }),
-      message: notificationMessage,
-      channel: "Multi",
-      status: "SENT",
-      sentBy: user.id,
-      sentAt: new Date().toISOString(),
-    };
-
-    await saveNotificationJob(job);
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Broadcasting emergency alerts to ${selectedContacts.length} partners via ${jobId}: ${notificationMessage}`,
-      payload: {
-        category: "Safety",
-        action: "NotificationJob",
-        jobId,
-        recipients: selectedContacts,
-        notes: notificationMessage,
-        loadId: active360Data?.load?.id,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT") {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "STAKEHOLDERS_NOTIFIED",
-          notes: `Notified ${selectedContacts.length} partners via job ${jobId}. Message: ${notificationMessage}`,
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-    }
-
-    setShowNotifyPicker(false);
-    showSuccessMessage("Stakeholders Notified via Multi-Channel Protocol");
-
-    const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-    setActive360Data(data);
-  };
-
-  const handleRoadsideAssist = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!loadId) return;
-
-    // KCI Enhancement: Use Modal instead of prompt
-    setShowRoadsideForm(true);
-  };
-
-  const submitRoadsideDispatch = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!selectedVendorForRoadside || !loadId) {
-      showSuccessMessage(
-        "SYSTEM ERROR: Valid vendor selection required for roadside dispatch.",
-        3000,
-      );
-      return;
-    }
-
-    const ticketId = `ST-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-
-    const ticket: ServiceTicket = {
-      id: ticketId,
-      unitId: active360Data?.load?.truckNumber || "UNKNOWN",
-      type: "Breakdown",
-      status: "Assigned",
-      priority:
-        activeRecord.type === "INCIDENT"
-          ? active360Data?.incident?.severity || "High"
-          : "Medium",
-      description:
-        roadsideNotes ||
-        (activeRecord.type === "INCIDENT"
-          ? active360Data?.incident?.description
-          : "Roadside assistance requested"),
-      estimatedCost: 0,
-      assignedVendorId: selectedVendorForRoadside.id,
-      eta: "TBD",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await saveServiceTicket(ticket);
-
-    // Record Emergency Charge (Financial Audit)
-    if (activeRecord.type === "INCIDENT") {
-      try {
-        await saveIncidentCharge(activeRecord.id, {
-          category: "Tow",
-          amount: 0,
-          providerVendor: selectedVendorForRoadside.name,
-          status: "Approved",
-        });
-      } catch (e) {
-        console.warn(
-          "Failed to record emergency charge:",
-          e instanceof Error ? e.message : e,
-        );
-      }
-    }
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "TASK",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Dispatched ${selectedVendorForRoadside.name}: ${ticketId} for Unit ${ticket.unitId}`,
-      payload: {
-        category: "Safety",
-        action: "RoadsideAssist",
-        loadId,
-        ticketId,
-        vendor: selectedVendorForRoadside.name,
-        notes: roadsideNotes,
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT") {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "ROADSIDE_DISPATCHED",
-          notes: `Vendor ${selectedVendorForRoadside.name} dispatched for roadside assistance. Ref: ${ticketId}. Contact: ${selectedVendorForRoadside.contacts?.[0]?.phone || "N/A"}`,
-        },
-      ];
-      await saveIncident(updated);
-    }
-
-    await fetchQueues();
-    setShowRoadsideForm(false);
-    showSuccessMessage(
-      `Roadside Assistance Dispatched: ${selectedVendorForRoadside.name}`,
-      4000,
-    );
-
-    const data = await getRecord360Data(activeRecord.type, activeRecord.id);
-    setActive360Data(data);
-  };
-
-  const handleEscalate = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    showSuccessMessage("Escalating to Leadership...");
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `URGENT ESCALATION: ${activeRecord.type} ${activeRecord.id} escalated by ${user.name}`,
-      loadId: typeof loadId === "string" ? loadId : undefined,
-      payload: {
-        category: "Workflow",
-        action: "Escalate",
-        priority: "CRITICAL",
-      },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = {
-        ...active360Data.incident,
-        severity: "Critical" as const,
-      };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "INCIDENT_ESCALATED",
-          notes: "Escalated to management via Command Center",
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-      const fresh = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(fresh);
-    }
-  };
-
-  const handleFullLockdown = async () => {
-    const confirmed = await showConfirmDialog(
-      "Full Operational Lockdown",
-      "CRITICAL: Initiating Full Operational Lockdown for this record. Confirm?",
-    );
-    if (!confirmed) return;
-
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    showSuccessMessage("PROTOCOL: FULL LOCKDOWN INITIATED");
-
-    await handleActionLogging({
-      id: uuidv4(),
-      type: "SYSTEM",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `!!! LOCKDOWN !!! ${activeRecord.type} ${activeRecord.id} locked by security protocol`,
-      loadId: typeof loadId === "string" ? loadId : undefined,
-      payload: { category: "Security", action: "Lockdown", status: "LOCKED" },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident, status: "Closed" as const }; // Or some 'Locked' status if it existed
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "SECURITY_LOCKDOWN",
-          notes: "Full operational lockdown triggered",
-        },
-      ];
-      await saveIncident(updated);
-      await fetchQueues();
-      const fresh = await getRecord360Data(activeRecord.type, activeRecord.id);
-      setActive360Data(fresh);
-    }
-  };
-
-  const handleVerifyTrailerDrop = async () => {
-    const loadId =
-      activeRecord?.type === "LOAD" ? activeRecord.id : active360Data?.load?.id;
-    if (!loadId) {
-      showSuccessMessage("No related load found to verify drop");
-      return;
-    }
-
-    await onRecordAction({
-      id: uuidv4(),
-      type: "EQUIPMENT_EVENT",
-      timestamp: new Date().toISOString(),
-      actorId: user.id,
-      actorName: user.name,
-      message: `Trailer Drop Verified for Load ${activeRecord.label}`,
-      payload: { event: "TRAILER_DROP_VERIFIED", status: "COMPLETED", loadId },
-    });
-
-    if (activeRecord.type === "INCIDENT" && active360Data?.incident) {
-      const updated = { ...active360Data.incident };
-      updated.timeline = [
-        ...(updated.timeline || []),
-        {
-          id: uuidv4(),
-          timestamp: new Date().toISOString(),
-          actorName: user.name,
-          action: "EQUIPMENT_VERIFIED",
-          notes: `Trailer drop verified for linked Load ${loadId}`,
-        },
-      ];
-      await saveIncident(updated);
-    }
-
-    showSuccessMessage("Trailer Drop Verified", 3000);
-  };
+  // Crisis handlers extracted to useCrisisHandlers hook
 
   // Compute stats from active load data (no mock values)
   const stats = activeLoad
@@ -1862,60 +1215,6 @@ const IntelligenceHub: React.FC<{
     }
   };
 
-  const RecordPicker = ({ onSelect, selectedRecord }: any) => (
-    <div
-      className="bg-slate-950 border border-white/10 rounded-xl p-3 flex items-center justify-between cursor-pointer hover:border-blue-500/50"
-      onClick={() =>
-        onSelect({ id: "LOAD-123", label: "LOAD-123", type: "LOAD" })
-      }
-    >
-      <span className="text-xs text-white">
-        {selectedRecord?.label || "Select Record..."}
-      </span>
-      <Search className="w-4 h-4 text-slate-500" />
-    </div>
-  );
-
-  const ActionGroup = ({
-    label,
-    color,
-    actions,
-    icon: Icon,
-  }: {
-    label: string;
-    color: string;
-    actions: any[];
-    icon?: any;
-  }) => (
-    <div
-      className={`px-2 rounded-2xl border border-white/5 flex items-center gap-1 bg-white/[0.03] backdrop-blur-md transition-all ${isHighObstruction ? "py-0.5" : "py-1.5"}`}
-    >
-      <div
-        className={`px-2.5 py-1.5 rounded-xl bg-${color}-500/10 text-${color}-400 text-[10px] font-black uppercase tracking-[0.1em] flex items-center gap-2 border border-${color}-500/10 ${isHighObstruction ? "scale-90 origin-left" : ""}`}
-      >
-        {Icon && <Icon className="w-3.5 h-3.5" />}
-        {label}
-      </div>
-      <div className="flex gap-0.5">
-        {actions.map((a) => (
-          <button
-            key={a.label}
-            onClick={a.action}
-            className={`hover:bg-white/10 rounded-lg text-slate-500 hover:text-white transition-all group flex items-center gap-2 ${isHighObstruction ? "p-1" : "p-1.5"}`}
-            title={a.label}
-          >
-            <a.icon
-              className={`${isHighObstruction ? "w-3 h-3" : "w-4 h-4"} opacity-70 group-hover:opacity-100 group-hover:text-blue-400`}
-            />
-            <span className="text-[10px] font-black uppercase hidden group-hover:inline-block whitespace-nowrap tracking-wide">
-              {a.label}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
   // Context Management Logic
   const setPrimaryContext = async (type: EntityType, id: string) => {
     await openRecordWorkspace(type, id);
@@ -1932,45 +1231,6 @@ const IntelligenceHub: React.FC<{
       return { ...prev, pinnedContexts: [...prev.pinnedContexts, ctx] };
     });
   };
-
-  const ContextCard = ({
-    title,
-    icon: Icon,
-    color,
-    children,
-    onAction,
-  }: {
-    title: string;
-    icon: any;
-    color: string;
-    children: React.ReactNode;
-    onAction?: () => void;
-  }) => (
-    <div className="p-4 bg-white/[0.03] backdrop-blur-xl rounded-[1.75rem] border border-white/5 space-y-4 relative overflow-hidden group hover:border-white/10 transition-all shadow-xl">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div
-            className={`p-2 rounded-xl bg-${color}-500/10 text-${color}-400 border border-${color}-500/10 shadow-[0_0_15px_rgba(var(--${color}-500-rgb),0.1)]`}
-          >
-            <Icon className="w-4 h-4" />
-          </div>
-          <h4 className="text-[11px] font-black text-white uppercase tracking-[0.1em]">
-            {title}
-          </h4>
-        </div>
-        {onAction && (
-          <button
-            onClick={onAction}
-            aria-label={`Add ${title}`}
-            className="p-2 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-      <div className="space-y-1.5 px-0.5">{children}</div>
-    </div>
-  );
 
   const handleOpenWorkspace = async (
     type: EntityType,
@@ -1995,266 +1255,76 @@ const IntelligenceHub: React.FC<{
     await openRecordWorkspace(type, id, subTab);
   };
 
-  const TriageItem: React.FC<{
-    item: any;
-    type: string;
-    onClick: () => void | Promise<void>;
-  }> = ({ item, type, onClick }) => {
-    const isSnoozed = snoozedIds.has(item.id);
-    if (isSnoozed) return null;
+  const handleTriageAction = async (
+    action: "TAKE" | "ASSIGN" | "SNOOZE" | "ESCALATE",
+    item: any,
+    type: string,
+  ) => {
+    const timestamp = new Date().toISOString();
 
-    const getStatusColor = (status: string) => {
-      const s = status?.toUpperCase().replace("-", "_");
-      switch (s) {
-        case "CRITICAL":
-        case "BREACHED":
-        case "HIGH_RISK":
-          return "text-red-500 bg-red-500/10 border-red-500/20";
-        case "ACTIVE":
-        case "IN_PROGRESS":
-          return "text-blue-400 bg-blue-400/10 border-blue-400/20";
-        case "PENDING":
-          return "text-orange-400 bg-orange-400/10 border-orange-400/20";
-        case "RESOLVED":
-        case "CLOSED":
-          return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
-        default:
-          return "text-slate-500 bg-slate-500/10 border-white/5";
-      }
-    };
-
-    const handleAction = async (
-      action: "TAKE" | "ASSIGN" | "SNOOZE" | "ESCALATE",
-      e: React.MouseEvent,
-    ) => {
-      e.stopPropagation();
-      const timestamp = new Date().toISOString();
-
-      if (action === "SNOOZE") {
-        setSnoozedIds((prev) => new Set([...prev, item.id]));
-        showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
-      } else if (action === "TAKE") {
-        if (type === "INCIDENT") {
-          const incs = await getIncidents();
-          const inc = incs.find((i) => i.id === item.id);
-          if (inc) {
-            inc.status = "In_Progress";
-            inc.ownerUserId = user.id;
-            await saveIncident(inc);
-          }
-        } else if (type === "WORK_ITEM") {
-          const updatedItem = {
-            ...item,
-            status: "In-Progress" as WorkItem["status"],
-            assignedTo: [user.id],
-          };
-          await saveWorkItem(updatedItem);
+    if (action === "SNOOZE") {
+      setSnoozedIds((prev) => new Set([...prev, item.id]));
+      showSuccessMessage(`Record ${item.id} Snoozed for 1 hour`);
+    } else if (action === "TAKE") {
+      if (type === "INCIDENT") {
+        const incs = await getIncidents();
+        const inc = incs.find((i) => i.id === item.id);
+        if (inc) {
+          inc.status = "In_Progress";
+          inc.ownerUserId = user.id;
+          await saveIncident(inc);
         }
-        showSuccessMessage(`Record ${item.id} Assigned to You`);
-      } else if (action === "ESCALATE") {
-        if (type === "INCIDENT") {
-          const incs = await getIncidents();
-          const inc = incs.find((i) => i.id === item.id);
-          if (inc) {
-            inc.status = "Critical";
-            inc.severity = "Critical";
-            await saveIncident(inc);
-          }
-        } else if (type === "WORK_ITEM") {
-          const wis = await getWorkItems();
-          const wi = wis.find((w) => w.id === item.id);
-          if (wi) {
-            wi.status = "Critical";
-            wi.priority = "Critical";
-            await saveWorkItem(wi);
-          }
+      } else if (type === "WORK_ITEM") {
+        const updatedItem = {
+          ...item,
+          status: "In-Progress" as WorkItem["status"],
+          assignedTo: [user.id],
+        };
+        await saveWorkItem(updatedItem);
+      }
+      showSuccessMessage(`Record ${item.id} Assigned to You`);
+    } else if (action === "ESCALATE") {
+      if (type === "INCIDENT") {
+        const incs = await getIncidents();
+        const inc = incs.find((i) => i.id === item.id);
+        if (inc) {
+          inc.status = "Critical";
+          inc.severity = "Critical";
+          await saveIncident(inc);
         }
-        showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+      } else if (type === "WORK_ITEM") {
+        const wis = await getWorkItems();
+        const wi = wis.find((w) => w.id === item.id);
+        if (wi) {
+          wi.status = "Critical";
+          wi.priority = "Critical";
+          await saveWorkItem(wi);
+        }
       }
+      showSuccessMessage(`Record ${item.id} ESCALATED TO LEADERSHIP`);
+    }
 
-      await handleActionLogging({
-        id: uuidv4(),
-        type: "SYSTEM",
-        timestamp,
-        actorId: user.id,
-        actorName: user.name,
-        loadId: item.loadId || (type === "LOAD" ? item.id : undefined),
-        message: `Dispatcher ${user.name} handled ${type} ${item.id} with action: ${action}`,
-        payload: {
-          action,
-          recordId: item.id,
-          recordType: type,
-          category: "Triage",
-        },
-      });
+    await handleActionLogging({
+      id: uuidv4(),
+      type: "SYSTEM",
+      timestamp,
+      actorId: user.id,
+      actorName: user.name,
+      loadId: item.loadId || (type === "LOAD" ? item.id : undefined),
+      message: `Dispatcher ${user.name} handled ${type} ${item.id} with action: ${action}`,
+      payload: {
+        action,
+        recordId: item.id,
+        recordType: type,
+        category: "Triage",
+      },
+    });
 
-      if (action === "ASSIGN") {
-        setShowHandoffForm(true);
-      }
+    if (action === "ASSIGN") {
+      setShowHandoffForm(true);
+    }
 
-      await fetchQueues();
-      // auto-cleared by useAutoFeedback
-    };
-
-    const priority =
-      item.severity ||
-      item.priority ||
-      (type === "CALL" ? "Strategic" : "Medium");
-    const status = item.status || (type === "CALL" ? "Active" : "Pending");
-    const Icon =
-      type === "CALL"
-        ? Phone
-        : type === "INCIDENT"
-          ? AlertTriangle
-          : type === "WORK_ITEM"
-            ? Workflow
-            : type === "REQUEST"
-              ? CreditCard
-              : type === "TASK"
-                ? ClipboardList
-                : Activity;
-
-    return (
-      <div
-        onClick={() => {
-          onClick();
-          if (type === "CALL") {
-            setActiveCallSession?.(item);
-            setOverlayState?.("floating");
-            setSelectedTab?.("messaging");
-          }
-        }}
-        className={`${isHighObstruction ? "p-2.5 rounded-2xl" : "p-4 rounded-[1.75rem]"} border backdrop-blur-xl transition-all cursor-pointer group relative overflow-hidden ${currentCallSession?.id === item.id ? "bg-blue-600/10 border-blue-500/40 shadow-[0_0_30px_rgba(59,130,246,0.15)]" : "bg-white/[0.03] border-white/5 hover:border-blue-500/30 hover:bg-white/[0.07] hover:shadow-2xl shadow-xl"}`}
-      >
-        {item.isAtRisk && (
-          <div
-            className={`${isHighObstruction ? "w-12 h-12 -top-2 -right-2" : "w-20 h-20 -top-4 -right-4"} absolute bg-red-500/10 blur-2xl rounded-full animate-pulse`}
-          />
-        )}
-
-        <div
-          className={`flex justify-between items-start ${isHighObstruction ? "mb-1.5" : "mb-3"}`}
-        >
-          <div
-            className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border backdrop-blur-md ${getStatusColor(priority)} ${isHighObstruction ? "scale-90 origin-left" : ""}`}
-          >
-            {priority}
-          </div>
-          <div className="flex items-center gap-2">
-            {type === "CALL" && (
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-            )}
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest opacity-60">
-              {new Date(
-                item.timestamp ||
-                  item.reportedAt ||
-                  item.createdAt ||
-                  Date.now(),
-              ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
-          </div>
-        </div>
-
-        <div className={`${isHighObstruction ? "space-y-0.5" : "space-y-1.5"}`}>
-          <div
-            className={`${isHighObstruction ? "text-[14px]" : "text-[13px]"} font-black text-white uppercase tracking-tight flex items-center justify-between group-hover:text-blue-400 transition-colors`}
-          >
-            <div className="flex items-center gap-2.5 max-w-[85%]">
-              <Icon
-                className={`${isHighObstruction ? "w-3.5 h-3.5" : "w-4 h-4"} ${type === "INCIDENT" ? "text-red-500" : "text-blue-400"} opacity-80 group-hover:opacity-100`}
-              />
-              <span className="truncate">
-                {item.label ||
-                  item.title ||
-                  item.type ||
-                  item.message ||
-                  item.loadNumber ||
-                  item.id ||
-                  "Unknown"}
-              </span>
-            </div>
-            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
-          </div>
-
-          {(item.description || item.notes) && (
-            <p
-              className={`${isHighObstruction ? "text-[12px] font-black" : "text-[11px] font-bold"} text-slate-400 leading-relaxed line-clamp-1 opacity-70 italic`}
-            >
-              {item.description || item.notes}
-            </p>
-          )}
-
-          {type === "CALL" && Array.isArray(item.participants) && (
-            <div
-              className={`flex -space-x-1 ${isHighObstruction ? "pt-1" : "pt-1.5"}`}
-            >
-              {item.participants.map((p: any, i: number) => (
-                <div
-                  key={i}
-                  className="w-5 h-5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-sm backdrop-blur-sm"
-                >
-                  {p.name?.charAt(0) || "?"}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div
-          className={`${isHighObstruction ? "mt-2 pt-2" : "mt-4 pt-3.5"} border-t border-white/5 flex items-center justify-between`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.1em]">
-              ID: {item.id ? String(item.id).slice(0, 8) : "---"}
-            </span>
-            {status && !isHighObstruction && (
-              <span
-                className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md ${getStatusColor(status)}`}
-              >
-                {status}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1">
-            {(type === "INCIDENT" || type === "WORK_ITEM") && (
-              <div className="flex gap-1 mr-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction("TAKE", e);
-                  }}
-                  className={`${isHighObstruction ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]"} bg-blue-600/90 hover:bg-blue-500 font-black text-white rounded-xl uppercase transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
-                >
-                  Take
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAction("ESCALATE", e);
-                  }}
-                  className={`${isHighObstruction ? "p-1" : "p-1.5"} bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all border border-red-500/10`}
-                  title="Escalate Critical"
-                >
-                  <ShieldAlert
-                    className={`${isHighObstruction ? "w-3 h-3" : "w-3.5 h-3.5"}`}
-                  />
-                </button>
-              </div>
-            )}
-            {!isHighObstruction && (
-              <button
-                onClick={(e) => handleAction("SNOOZE", e)}
-                className="p-1.5 hover:bg-white/10 rounded-xl text-slate-600 hover:text-white transition-all active:scale-90"
-                title="Snooze"
-              >
-                <Clock className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
+    await fetchQueues();
   };
 
   if (props.isLoading) {
@@ -2461,6 +1531,7 @@ const IntelligenceHub: React.FC<{
                   label="SIMULATE"
                   color="purple"
                   icon={Activity}
+                  isHighObstruction={isHighObstruction}
                   actions={[
                     {
                       label: "Inbound Call",
@@ -2498,6 +1569,7 @@ const IntelligenceHub: React.FC<{
                 label="Quick Actions"
                 color="orange"
                 icon={Zap}
+                isHighObstruction={isHighObstruction}
                 actions={[
                   {
                     label: "Create Request",
@@ -2590,631 +1662,17 @@ const IntelligenceHub: React.FC<{
 
           <div className="flex-1 flex flex-col bg-slate-950/10 border-r border-white/5 overflow-hidden">
             <div className="flex-1 overflow-hidden flex flex-col">
-              {/* === OPS DASHBOARD VIEW (migrated from Dashboard.tsx, T5-08/T5-09) === */}
+              {/* === OPS DASHBOARD VIEW === */}
               {selectedTab === "ops" && (
-                <div
-                  className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-8 bg-[#0a0f18]"
-                  data-testid="operations-dashboard"
-                >
-                  {opsLoading && <LoadingSkeleton variant="card" count={4} />}
-
-                  {!opsLoading && opsError && (
-                    <ErrorState
-                      message={opsError}
-                      onRetry={loadOpsDashboardData}
-                    />
-                  )}
-
-                  {!opsLoading && !opsError && (
-                    <>
-                      {/* HEADER */}
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h1 className="text-xl font-black text-white tracking-widest uppercase">
-                            Operations Dashboard
-                          </h1>
-                          <p className="text-slate-600 text-[10px] font-bold uppercase tracking-widest mt-1">
-                            Real-Time Operational Summary
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* TOP ROW: LOAD SUMMARY */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div
-                          className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-blue-500/30 transition-all shadow-2xl"
-                          data-testid="ops-kpi-active-loads"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              Active Loads
-                            </div>
-                            <Truck className="w-4 h-4 text-blue-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white">
-                            {opsStats.activeLoads}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.activeLoads === 0
-                              ? "No active loads"
-                              : "Currently Active"}
-                          </div>
-                        </div>
-
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-emerald-500/30 transition-all shadow-2xl">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              In Transit
-                            </div>
-                            <Globe className="w-4 h-4 text-emerald-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white">
-                            {opsStats.inTransitLoads}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.inTransitLoads === 0
-                              ? "No loads in transit"
-                              : "On the Road"}
-                          </div>
-                        </div>
-
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-indigo-500/30 transition-all shadow-2xl">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              Delivered Today
-                            </div>
-                            <CheckCircle className="w-4 h-4 text-indigo-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white">
-                            {opsStats.deliveredToday}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.deliveredToday === 0
-                              ? "No deliveries today"
-                              : "Completed Today"}
-                          </div>
-                        </div>
-
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group hover:border-orange-500/30 transition-all shadow-2xl">
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              Avg RPM
-                            </div>
-                            <TrendingUp className="w-4 h-4 text-orange-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white">
-                            ${opsStats.avgRPM.toFixed(2)}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {loads.length === 0
-                              ? "No load data available"
-                              : "Revenue per Mile"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ISSUES & EXCEPTIONS ROW */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div
-                          onClick={() => onNavigate?.("exceptions", "all")}
-                          className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group cursor-pointer hover:border-blue-500/30 transition-all shadow-2xl"
-                          data-testid="ops-kpi-open-exceptions"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              Open Exceptions
-                            </div>
-                            <AlertCircle className="w-4 h-4 text-blue-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white group-hover:scale-105 transition-transform">
-                            {opsStats.openExceptions}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.openExceptions === 0
-                              ? "No open exceptions"
-                              : "Active Work Items"}
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() => onNavigate?.("exceptions", "critical")}
-                          className="bg-red-500/5 p-6 rounded-[2rem] border border-red-500/20 group cursor-pointer hover:bg-red-500/10 transition-all shadow-2xl"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-red-500 uppercase tracking-widest">
-                              SLA Breaches
-                            </div>
-                            <Clock className="w-4 h-4 text-red-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white group-hover:scale-105 transition-transform">
-                            {opsStats.slaBreaches}
-                          </div>
-                          <div className="text-[10px] text-red-700 font-bold uppercase mt-2">
-                            {opsStats.slaBreaches === 0
-                              ? "No SLA breaches"
-                              : "Critical Attention"}
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() => onNavigate?.("exceptions", "docs")}
-                          className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group cursor-pointer hover:border-emerald-500/30 transition-all shadow-2xl"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              $ On Hold (Docs)
-                            </div>
-                            <DollarSign className="w-4 h-4 text-emerald-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white group-hover:scale-105 transition-transform">
-                            ${opsStats.docHoldRevenue.toLocaleString()}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.docHoldRevenue === 0
-                              ? "No revenue on hold"
-                              : "Revenue at Risk"}
-                          </div>
-                        </div>
-
-                        <div
-                          onClick={() =>
-                            onNavigate?.("exceptions", "delay-entry")
-                          }
-                          className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 group cursor-pointer hover:border-orange-500/30 transition-all shadow-2xl"
-                        >
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                              $ Accruing (Detention)
-                            </div>
-                            <TrendingUp className="w-4 h-4 text-orange-500" />
-                          </div>
-                          <div className="text-4xl font-black text-white group-hover:scale-105 transition-transform">
-                            ${opsStats.accruingDetention.toLocaleString()}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-2">
-                            {opsStats.accruingDetention === 0
-                              ? "No accruing detention"
-                              : "Estimated Layover/Stop"}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* FINANCIAL SUMMARY */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-[#0f172a] p-6 rounded-[2rem] border border-blue-500/20 shadow-2xl">
-                          <h2 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                            <DollarSign className="w-3 h-3" /> Revenue Summary
-                          </h2>
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                              <div className="text-[10px] font-bold text-slate-500 uppercase">
-                                Gross Revenue
-                              </div>
-                              <div className="text-xl font-black text-white">
-                                {loads.length > 0
-                                  ? `$${opsStats.grossRevenue.toLocaleString()}`
-                                  : "No data available"}
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                              <div className="text-[10px] font-bold text-slate-500 uppercase">
-                                Operating Margin
-                              </div>
-                              <div className="text-xl font-black text-emerald-400">
-                                {loads.length > 0
-                                  ? `$${opsStats.operatingMargin.toLocaleString()}`
-                                  : "No data available"}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-[#0f172a] p-6 rounded-[2rem] border border-emerald-500/20 shadow-2xl">
-                          <h2 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                            <Shield className="w-3 h-3" /> SLA Health
-                          </h2>
-                          <div className="space-y-4">
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                              <div className="text-[10px] font-bold text-slate-500 uppercase">
-                                On-Time Rate
-                              </div>
-                              <div className="text-xl font-black text-white">
-                                {loads.length > 0
-                                  ? `${opsStats.slaHealth}%`
-                                  : "No data available"}
-                              </div>
-                            </div>
-                            <div className="flex justify-between items-end border-b border-white/5 pb-3">
-                              <div className="text-[10px] font-bold text-slate-500 uppercase">
-                                Active Loads
-                              </div>
-                              <div className="text-xl font-black text-white">
-                                {opsStats.activeLoads > 0
-                                  ? `${opsStats.activeLoads} In Progress`
-                                  : "No active loads"}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-[#0f172a] p-6 rounded-[2rem] border border-purple-500/20 shadow-2xl">
-                          <h2 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                            <Activity className="w-3 h-3" /> Tracking Status
-                          </h2>
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-white/5">
-                              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500">
-                                <Globe className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <div className="text-[9px] font-black text-slate-400 uppercase">
-                                  Vehicle Tracking
-                                </div>
-                                <div className="text-[8px] text-slate-600 font-bold uppercase">
-                                  Not configured — enable GPS/ELD integration
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-3 p-3 bg-slate-950 rounded-xl border border-white/5">
-                              <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-500">
-                                <Activity className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <div className="text-[9px] font-black text-slate-400 uppercase">
-                                  Last Sync
-                                </div>
-                                <div className="text-[8px] text-slate-600 font-bold uppercase">
-                                  No telemetry data available
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* CHARTS SECTION */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* RPM by Day BarChart */}
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
-                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <BarChart3 className="w-3.5 h-3.5 text-blue-500" />{" "}
-                            RPM by Day
-                          </h3>
-                          {opsRpmByDay.length > 0 ? (
-                            <div style={{ width: "100%", height: 200 }}>
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={opsRpmByDay}>
-                                  <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    stroke="#1e293b"
-                                  />
-                                  <XAxis
-                                    dataKey="date"
-                                    tick={{ fill: "#64748b", fontSize: 9 }}
-                                  />
-                                  <YAxis
-                                    tick={{ fill: "#64748b", fontSize: 9 }}
-                                  />
-                                  <Tooltip />
-                                  <Bar
-                                    dataKey="rpm"
-                                    fill="#3b82f6"
-                                    radius={[4, 4, 0, 0]}
-                                  />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
-                              No load data for this period
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Exception Trend LineChart */}
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
-                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <AlertTriangle className="w-3.5 h-3.5 text-red-500" />{" "}
-                            Exception Trend
-                          </h3>
-                          {opsExceptionsByDay.length > 0 ? (
-                            <div style={{ width: "100%", height: 200 }}>
-                              <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={opsExceptionsByDay}>
-                                  <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    stroke="#1e293b"
-                                  />
-                                  <XAxis
-                                    dataKey="date"
-                                    tick={{ fill: "#64748b", fontSize: 9 }}
-                                  />
-                                  <YAxis
-                                    tick={{ fill: "#64748b", fontSize: 9 }}
-                                    allowDecimals={false}
-                                  />
-                                  <Tooltip />
-                                  <Line
-                                    type="monotone"
-                                    dataKey="count"
-                                    stroke="#ef4444"
-                                    strokeWidth={2}
-                                    dot={{ fill: "#ef4444" }}
-                                  />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
-                              No exception data for this period
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Revenue vs Cost BarChart */}
-                        <div className="bg-[#1a2235] p-6 rounded-[2rem] border border-white/5 shadow-2xl">
-                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                            <DollarSign className="w-3.5 h-3.5 text-emerald-500" />{" "}
-                            Revenue vs Cost
-                          </h3>
-                          {opsRevenueCostByWeek.length > 0 ? (
-                            <div style={{ width: "100%", height: 200 }}>
-                              <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={opsRevenueCostByWeek}>
-                                  <CartesianGrid
-                                    strokeDasharray="3 3"
-                                    stroke="#1e293b"
-                                  />
-                                  <XAxis
-                                    dataKey="week"
-                                    tick={{ fill: "#64748b", fontSize: 8 }}
-                                  />
-                                  <YAxis
-                                    tick={{ fill: "#64748b", fontSize: 9 }}
-                                  />
-                                  <Tooltip />
-                                  <Legend wrapperStyle={{ fontSize: 10 }} />
-                                  <Bar
-                                    dataKey="revenue"
-                                    fill="#10b981"
-                                    radius={[4, 4, 0, 0]}
-                                  />
-                                  <Bar
-                                    dataKey="cost"
-                                    fill="#f59e0b"
-                                    radius={[4, 4, 0, 0]}
-                                  />
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center h-[200px] text-slate-500 text-xs font-bold uppercase">
-                              No load data for this period
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* ACTION QUEUES */}
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Action Items Grid */}
-                        <div className="lg:col-span-2 space-y-6">
-                          <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                              <Shield className="w-4 h-4 text-blue-500" />{" "}
-                              Action Items
-                            </h2>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            {opsCards
-                              .filter((c) => c.cardCode !== "ALL_EXCEPTIONS")
-                              .map((card) => {
-                                const filter =
-                                  typeof card.filterJson === "string"
-                                    ? JSON.parse(card.filterJson)
-                                    : card.filterJson || {};
-                                const count = opsExceptions.filter(
-                                  (ex) =>
-                                    (filter.type_in
-                                      ? filter.type_in.includes(ex.type)
-                                      : true) &&
-                                    (filter.status_not_in
-                                      ? !filter.status_not_in.includes(
-                                          ex.status,
-                                        )
-                                      : true),
-                                ).length;
-
-                                return (
-                                  <div
-                                    key={card.cardCode}
-                                    onClick={() =>
-                                      onNavigate?.(
-                                        "exceptions",
-                                        card.cardCode
-                                          ?.toLowerCase()
-                                          .replace("_", "-"),
-                                      )
-                                    }
-                                    className="bg-slate-900/40 border border-white/5 p-6 rounded-[1.5rem] flex items-center justify-between hover:bg-slate-900 transition-all cursor-pointer group"
-                                  >
-                                    <div className="flex items-center gap-4">
-                                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-blue-600 transition-all group-hover:shadow-lg group-hover:shadow-blue-500/20">
-                                        <Activity className="w-5 h-5" />
-                                      </div>
-                                      <div>
-                                        <div className="text-xs font-black text-white uppercase tracking-tight">
-                                          {card.displayName}
-                                        </div>
-                                        <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
-                                          Click to View
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="text-xl font-black text-white">
-                                        {count}
-                                      </div>
-                                      <div className="text-[8px] font-bold text-slate-600 uppercase">
-                                        Items
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            {opsCards.filter(
-                              (c) => c.cardCode !== "ALL_EXCEPTIONS",
-                            ).length === 0 && (
-                              <div className="col-span-2 text-center py-8 text-slate-500 text-xs font-bold uppercase">
-                                No action item categories configured
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Active Issues Feed */}
-                        <div className="bg-[#0a0f1e] rounded-[2rem] border border-white/10 p-8 flex flex-col min-h-[400px] shadow-2xl relative overflow-hidden">
-                          <div className="flex items-center gap-4 mb-8 relative z-10">
-                            <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center border border-red-500/20">
-                              <AlertTriangle className="w-5 h-5 text-red-500" />
-                            </div>
-                            <div>
-                              <h2 className="text-sm font-black text-white uppercase tracking-widest">
-                                Active Issues
-                              </h2>
-                              <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest mt-0.5">
-                                High Severity Actions
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex-1 space-y-4 overflow-y-auto no-scrollbar relative z-10">
-                            {opsExceptions.slice(0, 6).map((ex) => (
-                              <div
-                                key={ex.id}
-                                onClick={() =>
-                                  onNavigate?.("exceptions", "all")
-                                }
-                                className="bg-slate-950/40 border border-white/5 p-4 rounded-2xl flex items-center justify-between hover:bg-slate-900 transition-all cursor-pointer border-l-4 border-l-red-500"
-                              >
-                                <div className="space-y-1">
-                                  <div className="text-xs font-bold text-white uppercase">
-                                    {(ex.type || "EXC").replace("_", " ")}
-                                  </div>
-                                  <div className="text-[9px] text-slate-600 font-black uppercase">
-                                    Load #{ex.entityId} {"\u2022"}{" "}
-                                    {ex.ownerUserId || "Dispatch"}
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-[9px] font-black text-red-500 uppercase">
-                                    Sev {ex.severity || "\u2014"}
-                                  </div>
-                                  <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                                    $
-                                    {(
-                                      ex.financialImpactEst || 0
-                                    ).toLocaleString()}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                            {opsExceptions.length === 0 && (
-                              <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2 py-10">
-                                <CheckCircle className="w-10 h-10 text-emerald-500/20" />
-                                <p className="text-[10px] font-black uppercase tracking-widest">
-                                  No Open Exceptions
-                                </p>
-                              </div>
-                            )}
-                          </div>
-
-                          <button
-                            onClick={() => onNavigate?.("exceptions")}
-                            className="w-full mt-8 py-4 bg-slate-900/50 hover:bg-slate-900 text-slate-500 hover:text-blue-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-white/5 transition-all relative z-10"
-                          >
-                            View All Exceptions
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* BOTTOM ROW: QUICK INSIGHTS */}
-                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                        <div className="lg:col-span-2 bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex items-center justify-between">
-                          <div>
-                            <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                              Fleet Overview
-                            </h2>
-                            <div className="flex items-center gap-4 mt-4">
-                              <div className="text-2xl font-black text-white">
-                                {opsStats.inTransitLoads}{" "}
-                                <span className="text-slate-600 text-[10px] font-bold">
-                                  In-Transit
-                                </span>
-                              </div>
-                              <div className="w-px h-8 bg-white/10" />
-                              <div className="text-2xl font-black text-white">
-                                {loads.length > 0
-                                  ? `${opsStats.slaHealth}%`
-                                  : "N/A"}{" "}
-                                <span className="text-slate-600 text-[10px] font-bold">
-                                  SLA Health
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => onNavigate?.("map")}
-                            className="p-4 bg-blue-600/10 border border-blue-500/20 rounded-2xl text-blue-500 hover:bg-blue-600 hover:text-white transition-all"
-                          >
-                            <Globe className="w-6 h-6" />
-                          </button>
-                        </div>
-
-                        <div className="bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex flex-col justify-between">
-                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                            Open Doc Exceptions
-                          </div>
-                          <div className="mt-2">
-                            <div className="text-sm font-black text-red-500 uppercase">
-                              {
-                                opsExceptions.filter(
-                                  (ex) =>
-                                    ex.type === "POD_MISSING" ||
-                                    ex.type === "DOC_PENDING_48H",
-                                ).length
-                              }{" "}
-                              Pending
-                            </div>
-                            <div className="text-[10px] text-slate-600 font-bold uppercase mt-1">
-                              {opsExceptions.filter(
-                                (ex) =>
-                                  ex.type === "POD_MISSING" ||
-                                  ex.type === "DOC_PENDING_48H",
-                              ).length === 0
-                                ? "No documents on hold"
-                                : "Revenue on hold"}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex flex-col justify-between">
-                          <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                            Accruing Detention
-                          </div>
-                          <div className="mt-2 text-2xl font-black text-emerald-500 font-mono">
-                            ${opsStats.accruingDetention.toLocaleString()}
-                          </div>
-                          <div className="text-[10px] text-slate-600 font-bold uppercase mt-1">
-                            {opsStats.accruingDetention === 0
-                              ? "No accruing detention"
-                              : "Today's Revenue Capture"}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <OpsDashboardPanel
+                  opsLoading={opsLoading}
+                  opsError={opsError}
+                  loadOpsDashboardData={loadOpsDashboardData}
+                  loads={loads}
+                  opsCards={opsCards}
+                  opsExceptions={opsExceptions}
+                  onNavigate={onNavigate}
+                />
               )}
 
               {selectedTab === "command" && (
@@ -3384,1814 +1842,118 @@ const IntelligenceHub: React.FC<{
       </div>
 
       {/* RIGHT RAIL: PERSISTENT TRIAGE QUEUES */}
-      <aside
-        className={`absolute right-0 top-0 bottom-0 z-[100] ${rightRailCollapsed ? "w-16" : "w-96"} border-l border-white/5 flex flex-col bg-[#05070a] transition-all duration-300 group/right shadow-2xl overflow-hidden`}
-      >
-        <button
-          onClick={() => setRightRailCollapsed(!rightRailCollapsed)}
-          className="absolute left-4 top-14 z-30 w-8 h-8 bg-slate-800 border border-white/10 rounded-full flex items-center justify-center text-white hover:bg-blue-600 transition-all shadow-xl"
-        >
-          {rightRailCollapsed ? (
-            <ChevronLeft className="w-4 h-4" />
-          ) : (
-            <ChevronRight className="w-4 h-4" />
-          )}
-        </button>
-
-        <div
-          className={`flex-1 flex flex-col overflow-hidden ${rightRailCollapsed ? "items-center pt-20" : ""}`}
-        >
-          {!rightRailCollapsed ? (
-            <>
-              <div className="h-[42%] flex flex-col border-b border-white/5 overflow-hidden">
-                <div className="p-5 border-b border-white/5 bg-white/[0.03] backdrop-blur-lg space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div className="flex flex-col gap-0.5">
-                      <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 opacity-60">
-                        Strategic Voice Queue
-                      </h2>
-                      <div className="flex gap-2 items-center">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                        <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
-                          {triageQueues.calls.length +
-                            triageQueues.incidents.length}{" "}
-                          ACTIVE
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleInitiateGlobalInbound}
-                      aria-label="Initiate global inbound"
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[9px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                  {/* Consolidated search to header only */}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                  {triageQueues.calls
-                    .filter((c) => !snoozedIds.has(c.id))
-                    .filter(
-                      (c) =>
-                        !commSearchQuery ||
-                        c.id
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()) ||
-                        (c.participants ?? []).some((p) =>
-                          p.name
-                            .toLowerCase()
-                            .includes(commSearchQuery.toLowerCase()),
-                        ),
-                    )
-                    .map((call) => (
-                      <TriageItem
-                        key={call.id}
-                        item={call}
-                        type="CALL"
-                        onClick={() => {
-                          const primary = call.links?.find(
-                            (l: any) => l.isPrimary,
-                          );
-                          if (primary)
-                            handleOpenWorkspace(
-                              primary.entityType,
-                              primary.entityId,
-                              "TIMELINE",
-                            );
-                          else setInteractionState("ACTIVE");
-                        }}
-                      />
-                    ))}
-                  {triageQueues.incidents
-                    .filter((i) => !snoozedIds.has(i.id))
-                    .filter(
-                      (i) =>
-                        !commSearchQuery ||
-                        i.id
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()) ||
-                        i.type
-                          .toLowerCase()
-                          .includes(commSearchQuery.toLowerCase()),
-                    )
-                    .map((inc) => (
-                      <TriageItem
-                        key={inc.id}
-                        item={inc}
-                        type="INCIDENT"
-                        onClick={() => handleOpenWorkspace("INCIDENT", inc.id)}
-                      />
-                    ))}
-                  {triageQueues.calls.length === 0 &&
-                    triageQueues.incidents.length === 0 && (
-                      <div className="h-full flex flex-col items-center justify-center opacity-10 grayscale">
-                        <Phone className="w-10 h-10 mb-2" />
-                        <span className="text-[10px] font-black uppercase">
-                          No Active Inbound
-                        </span>
-                      </div>
-                    )}
-                </div>
-              </div>
-
-              {/* PERSISTENT TRIAGE TABS */}
-              <div className="flex-1 flex flex-col overflow-hidden bg-slate-950/20">
-                <div className="flex border-b border-white/5">
-                  {[
-                    {
-                      id: "CRISIS",
-                      label: "Strategic Triage",
-                      count:
-                        triageQueues.incidents.filter(
-                          (i) => !snoozedIds.has(i.id),
-                        ).length +
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority === "Critical",
-                        ).length,
-                    },
-                    {
-                      id: "SUPPORT",
-                      label: "Operational Support",
-                      count:
-                        triageQueues.requests.filter(
-                          (r) => !snoozedIds.has(r.id),
-                        ).length +
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority !== "Critical",
-                        ).length,
-                    },
-                    {
-                      id: "ASSETS",
-                      label: "Asset Intake",
-                      count:
-                        triageQueues.atRiskLoads.filter(
-                          (l) => !snoozedIds.has(l.id),
-                        ).length +
-                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id))
-                          .length,
-                    },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() =>
-                        setActiveTriageTab(tab.id as typeof activeTriageTab)
-                      }
-                      className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
-                  {activeTriageTab === "CRISIS" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      {triageQueues.incidents
-                        .filter((i) => !snoozedIds.has(i.id))
-                        .map((inc) => (
-                          <TriageItem
-                            key={inc.id}
-                            item={inc}
-                            type="INCIDENT"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "INCIDENT",
-                                inc.id,
-                                "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.workItems
-                        .filter((wi) => !snoozedIds.has(wi.id))
-                        .filter((wi) => wi.priority === "Critical")
-                        .map((wi) => (
-                          <TriageItem
-                            key={wi.id}
-                            item={wi}
-                            type="WORK_ITEM"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                wi.entityType as EntityType,
-                                wi.entityId,
-                                wi.type.includes("Detention")
-                                  ? "DETENTION"
-                                  : "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.incidents.filter(
-                        (i) => !snoozedIds.has(i.id),
-                      ).length === 0 &&
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority === "Critical",
-                        ).length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <CheckCircle className="w-10 h-10 text-emerald-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No crisis incidents to triage
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              Your operations are running smoothly
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  {activeTriageTab === "SUPPORT" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      {triageQueues.requests
-                        .filter((req) => !snoozedIds.has(req.id))
-                        .map((req) => (
-                          <TriageItem
-                            key={req.id}
-                            item={req}
-                            type="REQUEST"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "LOAD",
-                                req.loadId!,
-                                "FINANCE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.workItems
-                        .filter((wi) => !snoozedIds.has(wi.id))
-                        .filter((wi) => wi.priority !== "Critical")
-                        .map((wi) => (
-                          <TriageItem
-                            key={wi.id}
-                            item={wi}
-                            type="WORK_ITEM"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                wi.entityType as EntityType,
-                                wi.entityId,
-                                wi.type.includes("Detention")
-                                  ? "DETENTION"
-                                  : "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.requests.filter(
-                        (r) => !snoozedIds.has(r.id),
-                      ).length === 0 &&
-                        triageQueues.workItems.filter(
-                          (wi) =>
-                            !snoozedIds.has(wi.id) &&
-                            wi.priority !== "Critical",
-                        ).length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <ClipboardList className="w-10 h-10 text-slate-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No open work items
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              Pending requests and tasks will appear here
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-                  {activeTriageTab === "ASSETS" && (
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
-                      <div className="px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
-                        <p className="text-[9px] font-bold text-blue-400 uppercase leading-relaxed">
-                          Monitor asset intake for safety/compliance risks.
-                          Escalate at-risk loads to Strategic Triage.
-                        </p>
-                      </div>
-                      {triageQueues.atRiskLoads
-                        .filter((l) => !snoozedIds.has(l.id))
-                        .map((load) => (
-                          <div key={load.id} className="relative group">
-                            <TriageItem
-                              item={load}
-                              type="LOAD"
-                              onClick={() =>
-                                handleOpenWorkspace("LOAD", load.id, "TIMELINE")
-                              }
-                            />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleSafetyEscalate(load);
-                              }}
-                              className="absolute top-4 right-4 p-2 bg-red-600/20 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white"
-                              title="Escalate to Safety"
-                            >
-                              <ShieldAlert className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
-                      {triageQueues.tasks
-                        .filter((t) => !snoozedIds.has(t.id))
-                        .map((task) => (
-                          <TriageItem
-                            key={task.id}
-                            item={task}
-                            type="TASK"
-                            onClick={() =>
-                              handleOpenWorkspace(
-                                "LOAD",
-                                task.loadId,
-                                "TIMELINE",
-                              )
-                            }
-                          />
-                        ))}
-                      {triageQueues.atRiskLoads.filter(
-                        (l) => !snoozedIds.has(l.id),
-                      ).length === 0 &&
-                        triageQueues.tasks.filter((t) => !snoozedIds.has(t.id))
-                          .length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-10 space-y-3 text-center">
-                            <Truck className="w-10 h-10 text-slate-500/30" />
-                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              No at-risk assets
-                            </p>
-                            <p className="text-[9px] text-slate-600 font-bold uppercase">
-                              All assets are operating within normal parameters
-                            </p>
-                          </div>
-                        )}
-                    </div>
-                  )}
-
-                  <div className="pt-10 pb-20 text-center opacity-20">
-                    <Clock className="w-8 h-8 mx-auto mb-2" />
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center gap-8 opacity-40 pt-10">
-              <Activity className="w-5 h-5 text-white" />
-              <Phone className="w-5 h-5 text-white" />
-              <AlertTriangle className="w-5 h-5 text-white" />
-              <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            </div>
-          )}
-        </div>
-      </aside>
+      <TriageWorkspacePanel
+        triageQueues={triageQueues}
+        activeTriageTab={activeTriageTab}
+        setActiveTriageTab={(tab) =>
+          setActiveTriageTab(tab as typeof activeTriageTab)
+        }
+        commSearchQuery={commSearchQuery}
+        snoozedIds={snoozedIds}
+        currentCallSession={currentCallSession}
+        isHighObstruction={isHighObstruction}
+        isCollapsed={rightRailCollapsed}
+        onToggleCollapse={() => setRightRailCollapsed(!rightRailCollapsed)}
+        onOpenWorkspace={handleOpenWorkspace}
+        onInitiateGlobalInbound={handleInitiateGlobalInbound}
+        onTriageAction={handleTriageAction}
+        onSafetyEscalate={handleSafetyEscalate}
+        setActiveCallSession={setActiveCallSession}
+        setOverlayState={setOverlayState}
+        setSelectedTab={setSelectedTab}
+        setInteractionState={(state) =>
+          setInteractionState(state as typeof interactionState)
+        }
+      />
 
       {/* MODALS */}
-      {showHandoffForm && (
-        <div className="absolute inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-xl flex items-center justify-center p-20">
-          <div className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-[3rem] p-12 shadow-[0_0_100px_rgba(0,0,0,0.8)]">
-            <div className="flex items-center justify-between mb-10">
-              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
-                Initiate Handoff
-              </h3>
-              <button
-                onClick={() => setShowHandoffForm(false)}
-                className="text-slate-400"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="space-y-8">
-              <select
-                aria-label="Select operator for handoff"
-                className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white outline-none focus:border-blue-500/50"
-                value={handoffData.assignedTo}
-                onChange={(e) =>
-                  setHandoffData({ ...handoffData, assignedTo: e.target.value })
-                }
-              >
-                <option value="">Select Operator...</option>
-                {propUsers.length > 0 ? (
-                  propUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))
-                ) : (
-                  <>
-                    <option value="user-1">John Dispatcher (Primary)</option>
-                    <option value="user-2">Sarah Nightshift</option>
-                    <option value="user-3">Mike Logistics</option>
-                  </>
-                )}
-              </select>
-              <textarea
-                className="w-full bg-slate-950 border border-white/10 rounded-[2rem] p-6 text-sm text-white h-40 resize-none outline-none focus:border-blue-500/50"
-                placeholder="Strategic briefing for the next operator..."
-                aria-label="Strategic briefing for handoff"
-                value={handoffData.notes}
-                onChange={(e) =>
-                  setHandoffData({ ...handoffData, notes: e.target.value })
-                }
-              ></textarea>
-              <button
-                onClick={async () => {
-                  if (!handoffData.assignedTo) {
-                    setToast({
-                      message: "Select an operator for handoff",
-                      type: "error",
-                    });
-                    return;
-                  }
-                  const assignedUser = propUsers.find(
-                    (u) => u.id === handoffData.assignedTo,
-                  ) || { name: handoffData.assignedTo };
-
-                  // Persistent Ownership Transition
-                  if (activeRecord?.type === "INCIDENT") {
-                    const incs = await getIncidents();
-                    const idx = incs.findIndex((i) => i.id === activeRecord.id);
-                    if (idx >= 0) {
-                      incs[idx].ownerUserId = handoffData.assignedTo;
-                      incs[idx].status = "Handoff_Pending";
-                      localStorage.setItem(
-                        "loadpilot_crisis_v1",
-                        JSON.stringify(incs),
-                      );
-                    }
-                  } else if (activeRecord?.type === "WORK_ITEM") {
-                    const wisString = localStorage.getItem(
-                      "loadpilot_work_items_v1",
-                    );
-                    if (wisString) {
-                      const wis: WorkItem[] = JSON.parse(wisString);
-                      const idx = wis.findIndex(
-                        (wi) => wi.id === activeRecord.id,
-                      );
-                      if (idx >= 0) {
-                        wis[idx].status = "Handoff_Pending";
-                        localStorage.setItem(
-                          "loadpilot_work_items_v1",
-                          JSON.stringify(wis),
-                        );
-                      }
-                    }
-                  }
-
-                  onRecordAction({
-                    id: uuidv4(),
-                    type: "SYSTEM",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    loadId: active360Data?.load?.id,
-                    message: `Operational Handoff: Transtioned to ${assignedUser.name}. Note: ${handoffData.notes}`,
-                    payload: handoffData,
-                  });
-
-                  await fetchQueues();
-                  setShowHandoffForm(false);
-                  showSuccessMessage(
-                    `Operational Handoff Committed to ${assignedUser.name}`,
-                  );
-                }}
-                className="w-full py-4 bg-blue-600 rounded-2xl text-[11px] font-black text-white uppercase shadow-xl shadow-blue-900/40 hover:bg-blue-500 transition-all flex items-center justify-center gap-2"
-              >
-                <Share2 className="w-4 h-4" /> Commit Handoff
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showCallLogForm && (
-        <div className="absolute inset-0 z-[300] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="h-16 px-8 flex items-center justify-between border-b border-white/5 bg-white/5">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-sm font-black text-white uppercase tracking-tighter">
-                  Manual Operational Log
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowCallLogForm(false)}
-                className="text-slate-500 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label
-                    htmlFor="call-entity-type"
-                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                  >
-                    Entity Type
-                  </label>
-                  <select
-                    id="call-entity-type"
-                    className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
-                    value={callData.type}
-                    onChange={(e) =>
-                      setCallData({ ...callData, type: e.target.value })
-                    }
-                  >
-                    <option>Driver</option>
-                    <option>Broker</option>
-                    <option>Carrier</option>
-                    <option>Facility</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor="call-category"
-                    className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                  >
-                    Category
-                  </label>
-                  <select
-                    id="call-category"
-                    className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
-                    value={callData.category}
-                    onChange={(e) =>
-                      setCallData({ ...callData, category: e.target.value })
-                    }
-                  >
-                    <option>Update</option>
-                    <option>Emergency</option>
-                    <option>Financial</option>
-                    <option>Document</option>
-                  </select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="call-notes"
-                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                >
-                  Notes
-                </label>
-                <textarea
-                  id="call-notes"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-blue-500/50"
-                  placeholder="Enter operational notes here..."
-                  value={callData.notes}
-                  onChange={(e) =>
-                    setCallData({ ...callData, notes: e.target.value })
-                  }
-                ></textarea>
-              </div>
-              <button
-                onClick={async () => {
-                  await onRecordAction({
-                    id: uuidv4(),
-                    type: "CALL_LOG",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    message: callData.notes,
-                    loadId:
-                      session.primaryContext?.type === "LOAD"
-                        ? session.primaryContext.id
-                        : undefined,
-                    payload: { ...callData },
-                  });
-                  setShowCallLogForm(false);
-                  showSuccessMessage("Operational Log Saved", 3000);
-                }}
-                className="w-full py-4 bg-teal-600 shadow-xl shadow-teal-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-teal-500 transition-all"
-              >
-                Save Log Entry
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showTaskForm && (
-        <div className="absolute inset-0 z-[1000] bg-[#050810]/98 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="h-16 px-8 flex items-center justify-between border-b border-white/5 bg-white/5">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-sm font-black text-white uppercase tracking-tighter">
-                  New Task
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowTaskForm(false)}
-                className="text-slate-500 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label
-                  htmlFor="task-title"
-                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                >
-                  Task Title
-                </label>
-                <input
-                  id="task-title"
-                  type="text"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none focus:border-orange-500/50"
-                  placeholder="What needs to be done?"
-                  value={taskData.title}
-                  onChange={(e) =>
-                    setTaskData({ ...taskData, title: e.target.value })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="task-assignee"
-                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                >
-                  Assignee
-                </label>
-                <select
-                  id="task-assignee"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
-                  value={taskData.assignedTo}
-                  onChange={(e) =>
-                    setTaskData({ ...taskData, assignedTo: e.target.value })
-                  }
-                >
-                  <option value="">Select Assignee...</option>
-                  {propUsers.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {u.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                onClick={async () => {
-                  if (!taskData.title) {
-                    setToast({ message: "Title required", type: "error" });
-                    return;
-                  }
-                  await onRecordAction({
-                    id: uuidv4(),
-                    type: "TASK",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    message: `New Task: ${taskData.title}`,
-                    payload: { ...taskData, status: "PENDING" },
-                  });
-                  setShowTaskForm(false);
-                  showSuccessMessage("Task Created", 3000);
-                }}
-                className="w-full py-4 bg-orange-600 shadow-xl shadow-orange-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-orange-500 transition-all"
-              >
-                Dispatch Task
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showIssueForm && (
-        <div className="absolute inset-0 z-[1000] bg-[#050810]/98 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-slate-900 border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden">
-            <div className="h-16 px-8 flex items-center justify-between border-b border-white/5 bg-white/5">
-              <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center">
-                  <AlertTriangle className="w-4 h-4 text-white" />
-                </div>
-                <h3 className="text-sm font-black text-white uppercase tracking-tighter">
-                  Report Issue
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowIssueForm(false)}
-                className="text-slate-500 hover:text-white transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label
-                  htmlFor="issue-category"
-                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                >
-                  Category
-                </label>
-                <select
-                  id="issue-category"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl px-6 py-4 text-xs text-white outline-none"
-                  value={issueData.category}
-                  onChange={(e) =>
-                    setIssueData({ ...issueData, category: e.target.value })
-                  }
-                >
-                  <option>Safety</option>
-                  <option>Mechanical</option>
-                  <option>Financial</option>
-                  <option>Dispatch</option>
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label
-                  htmlFor="issue-description"
-                  className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1"
-                >
-                  Description
-                </label>
-                <textarea
-                  id="issue-description"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-sm text-slate-300 h-32 resize-none outline-none focus:border-red-500/50"
-                  placeholder="Describe the issue in detail..."
-                  value={issueData.description}
-                  onChange={(e) =>
-                    setIssueData({ ...issueData, description: e.target.value })
-                  }
-                ></textarea>
-              </div>
-              <button
-                onClick={async () => {
-                  if (!issueData.description) {
-                    setToast({
-                      message: "Description required",
-                      type: "error",
-                    });
-                    return;
-                  }
-                  await onRecordAction({
-                    id: uuidv4(),
-                    type: "ISSUE",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    message: `New Issue: ${issueData.category} - ${issueData.description}`,
-                    loadId:
-                      session.primaryContext?.type === "LOAD"
-                        ? session.primaryContext.id
-                        : undefined,
-                    payload: { ...issueData, status: "OPEN" },
-                  });
-                  setShowIssueForm(false);
-                  showSuccessMessage("Issue Logged", 3000);
-                }}
-                className="w-full py-4 bg-red-600 shadow-xl shadow-red-900/40 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-red-500 transition-all"
-              >
-                Commmit Issue
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRequestForm && (
-        <div className="absolute inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-3xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-[#0a0f18] border border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col">
-            {/* Header Section */}
-            <div className="bg-slate-900 border-b border-slate-800 px-8 py-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center">
-                  <DollarSign className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] italic">
-                    Strategic Financial Request
-                  </h3>
-                  <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">
-                    Ref Identity: {requestData.id.split("-")[0]}
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowRequestForm(false)}
-                className="p-2 hover:bg-white/5 rounded-xl transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-500 hover:text-white" />
-              </button>
-            </div>
-
-            <div className="p-10 space-y-8 overflow-y-auto no-scrollbar">
-              {/* Context Grid */}
-              <div className="space-y-3">
-                <label
-                  htmlFor="request-asset-context"
-                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
-                >
-                  Asset Context (Required)
-                </label>
-                <div className="relative group">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700 group-focus-within:text-blue-500 transition-colors" />
-                  <input
-                    type="text"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-[13px] text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner placeholder:text-slate-800"
-                    placeholder="SEARCH LOAD, CUSTOMER, OR DRIVER..."
-                    id="request-asset-context"
-                    value={
-                      requestData.attachedRecord
-                        ? requestData.attachedRecord.label
-                        : attachmentSearchQuery
-                    }
-                    onChange={(e) => {
-                      if (requestData.attachedRecord) {
-                        setRequestData({
-                          ...requestData,
-                          attachedRecord: null,
-                        });
-                        setAttachmentSearchQuery(e.target.value);
-                      } else {
-                        setAttachmentSearchQuery(e.target.value);
-                      }
-                    }}
-                  />
-                  {attachmentResults.length > 0 &&
-                    !requestData.attachedRecord && (
-                      <div className="absolute top-full left-0 right-0 mt-3 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden z-[1100] shadow-[0_20px_60px_rgba(0,0,0,0.8)] max-h-64 overflow-y-auto no-scrollbar">
-                        {attachmentResults.map((res) => (
-                          <button
-                            key={res.id}
-                            onClick={() => {
-                              setRequestData({
-                                ...requestData,
-                                attachedRecord: {
-                                  id: res.id,
-                                  label: res.label,
-                                  type: res.type,
-                                },
-                              });
-                              setAttachmentResults([]);
-                              setAttachmentSearchQuery("");
-                            }}
-                            className="w-full text-left px-6 py-4 hover:bg-blue-600/20 flex items-center justify-between border-b border-white/5 last:border-0 transition-colors"
-                          >
-                            <div className="space-y-0.5">
-                              <div className="text-[11px] font-black text-white uppercase tracking-tight">
-                                {res.label}
-                              </div>
-                              <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">
-                                {res.type}{" "}
-                                {res.subLabel ? `• ${res.subLabel}` : ""}
-                              </div>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-slate-800" />
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-8">
-                <div className="space-y-3">
-                  <label
-                    htmlFor="request-type"
-                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
-                  >
-                    Type Designation
-                  </label>
-                  <select
-                    id="request-type"
-                    value={requestData.type}
-                    onChange={(e) =>
-                      setRequestData({
-                        ...requestData,
-                        type: e.target.value as RequestType,
-                      })
-                    }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-6 py-4 text-[11px] font-black text-white outline-none focus:border-blue-500 transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="DETENTION">DETENTION (ACCESSORIAL)</option>
-                    <option value="LAYOVER">LAYOVER (STRATEGIC)</option>
-                    <option value="LUMPER">LUMPER (SERVICE)</option>
-                    <option value="TOW">TOWING (CRITICAL)</option>
-                    <option value="DOWNTIME">DOWNTIME (IDLE)</option>
-                    <option value="REPOWER">REPOWER (LOGISTICS)</option>
-                    <option value="TONU">TONU (CANCELLATION)</option>
-                    <option value="EXPENSE">EXPENSE (GENERAL)</option>
-                  </select>
-                </div>
-                <div className="space-y-3">
-                  <label
-                    htmlFor="request-amount"
-                    className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
-                  >
-                    Quantum (USD)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700 text-xs font-black font-mono">
-                      $
-                    </span>
-                    <input
-                      id="request-amount"
-                      type="number"
-                      className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-sm font-black text-white font-mono outline-none focus:border-blue-500 transition-all shadow-inner"
-                      placeholder="0.00"
-                      value={requestData.amount}
-                      onChange={(e) =>
-                        setRequestData({
-                          ...requestData,
-                          amount: Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label
-                  htmlFor="request-justification"
-                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
-                >
-                  Mission Justification
-                </label>
-                <textarea
-                  id="request-justification"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
-                  placeholder="PROVIDE OPERATIONAL RATIONALE FOR THIS EXCEPTION..."
-                  value={requestData.notes}
-                  onChange={(e) =>
-                    setRequestData({ ...requestData, notes: e.target.value })
-                  }
-                ></textarea>
-              </div>
-            </div>
-
-            {/* Footer Section */}
-            <div className="p-8 bg-slate-900 border-t border-slate-800 flex justify-end items-center gap-6 shrink-0">
-              <button
-                onClick={() => setShowRequestForm(false)}
-                className="px-8 py-4 text-[11px] font-black text-slate-500 hover:text-white uppercase tracking-[0.2em] transition-colors"
-              >
-                Discard
-              </button>
-              <button
-                onClick={handleCreateRequest}
-                className="px-12 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-lg shadow-blue-900/40 active:scale-95 transition-all outline-none"
-              >
-                Authorize Request
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ENTERPRISE DIRECTORY DRAWER */}
-      {showDirectoryDrawer && (
-        <div className="fixed inset-0 z-[1200] flex justify-end">
-          <div
-            className="absolute inset-0 bg-[#050810]/80 backdrop-blur-md"
-            onClick={() => setShowDirectoryDrawer(false)}
-          />
-          <div className="relative w-[480px] h-full bg-[#0a0c10]/90 backdrop-blur-3xl border-l border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.9)] flex flex-col animate-in slide-in-from-right-full duration-500">
-            {/* Drawer Header */}
-            <div className="h-24 shrink-0 px-8 flex items-center justify-between border-b border-white/10 bg-white/[0.03]">
-              <div className="flex items-center gap-5">
-                <div className="w-12 h-12 rounded-[1.25rem] bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-white uppercase tracking-widest italic">
-                    Enterprise Directory
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      Network Live
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDirectoryDrawer(false)}
-                className="p-3 hover:bg-white/10 rounded-2xl transition-all group"
-              >
-                <X className="w-6 h-6 text-slate-500 group-hover:text-white" />
-              </button>
-            </div>
-
-            {/* Drawer Tabs */}
-            <div className="flex border-b border-white/5 bg-slate-950/20 px-6">
-              {["PROVIDERS", "CONTACTS", "RECORDS", "PREFERRED", "IMPORT"].map(
-                (tab: any) => (
-                  <button
-                    key={tab}
-                    onClick={() => setDirectoryTab(tab)}
-                    className={`px-4 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${directoryTab === tab ? "text-blue-400" : "text-slate-500 hover:text-white"}`}
-                  >
-                    {tab}
-                    {directoryTab === tab && (
-                      <div className="absolute bottom-0 left-4 right-4 h-0.5 bg-blue-500" />
-                    )}
-                  </button>
-                ),
-              )}
-            </div>
-
-            {/* Search Bar */}
-            <div className="p-6 shrink-0">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder={`SEARCH ${directoryTab}...`}
-                  aria-label={`Search ${directoryTab.toLowerCase()}`}
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl pl-12 pr-6 py-4 text-xs text-white outline-none focus:border-blue-500/50"
-                  value={directorySearchQuery}
-                  onChange={(e) => setDirectorySearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {directoryTab === "PROVIDERS" &&
-                allProviders.filter(
-                  (p) =>
-                    !directorySearchQuery ||
-                    p.name
-                      .toLowerCase()
-                      .includes(directorySearchQuery.toLowerCase()),
-                ).length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
-                    <Building2 className="w-12 h-12 text-slate-500/30" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {directorySearchQuery
-                        ? "No providers match your search"
-                        : "No providers in directory"}
-                    </p>
-                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
-                      {directorySearchQuery
-                        ? "Try a different search term"
-                        : "Add providers from the Network portal"}
-                    </p>
-                  </div>
-                )}
-
-              {directoryTab === "PROVIDERS" &&
-                allProviders
-                  .filter(
-                    (p) =>
-                      !directorySearchQuery ||
-                      p.name
-                        .toLowerCase()
-                        .includes(directorySearchQuery.toLowerCase()),
-                  )
-                  .map((provider) => (
-                    <div
-                      key={provider.id}
-                      className="p-5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2rem] hover:bg-white/10 transition-all group relative overflow-hidden"
-                    >
-                      <div className="flex justify-between items-start mb-4 relative z-10">
-                        <div>
-                          <h4 className="text-[15px] font-black text-white uppercase tracking-tight group-hover:text-blue-400 transition-colors">
-                            {provider.name}
-                          </h4>
-                          <div className="flex gap-2 mt-1.5">
-                            <span className="text-[9px] font-black uppercase px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/10 rounded-lg">
-                              PRO: {provider.type}
-                            </span>
-                            {provider.is247 && (
-                              <span className="text-[9px] font-black uppercase px-2.5 py-1 bg-green-500/20 text-green-400 border border-green-500/10 rounded-lg">
-                                24/7 ACTIVE
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleAttachToRecord(provider, "PROVIDER")
-                          }
-                          className="p-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-2xl transition-all shadow-lg shadow-blue-900/10"
-                          title="Attach to Case"
-                        >
-                          <Link2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="space-y-2 mb-5 text-[11px] text-slate-400 relative z-10 opacity-80">
-                        <div className="flex gap-2 flex-wrap">
-                          {(provider.capabilities ?? []).map((c) => (
-                            <span
-                              key={c}
-                              className="px-2.5 py-1 bg-white/[0.05] rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest"
-                            >
-                              {c}
-                            </span>
-                          ))}
-                        </div>
-                        <p className="flex items-center gap-1.5 font-bold uppercase tracking-tight">
-                          <MapPin className="w-4 h-4 text-slate-600" />{" "}
-                          {provider.coverage?.regions?.join(", ") ||
-                            "Global Network"}
-                        </p>
-                      </div>
-                      <div className="flex gap-2 relative z-10">
-                        <button
-                          onClick={() => {
-                            setInteractionState("ACTIVE");
-                            setSelectedTab("messaging");
-                            showSuccessMessage(
-                              `Directing Link to ${provider.name}...`,
-                            );
-                          }}
-                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
-                        >
-                          <Phone className="w-3 h-3 text-blue-400" /> Call
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTab("messaging");
-                            showSuccessMessage(
-                              `Opening Liaison Thread for ${provider.name}...`,
-                            );
-                          }}
-                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
-                        >
-                          <MessageSquare className="w-3 h-3 text-blue-400" />{" "}
-                          Chat
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-              {directoryTab === "RECORDS" && (
-                <div className="space-y-4">
-                  {recordResults.length > 0 ? (
-                    recordResults.map((res) => (
-                      <div
-                        key={`${res.type}-${res.id}`}
-                        className="p-5 bg-white/[0.03] backdrop-blur-xl border border-white/10 rounded-[2rem] hover:bg-white/10 transition-all group relative overflow-hidden flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center border border-white/5 text-blue-500">
-                            {res.type === "LOAD" ? (
-                              <Truck className="w-5 h-5" />
-                            ) : res.type === "DRIVER" ? (
-                              <UserIcon className="w-5 h-5" />
-                            ) : (
-                              <Activity className="w-5 h-5" />
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="text-[13px] font-black text-white uppercase tracking-tight">
-                              {res.label}
-                            </h4>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase">
-                              {res.subLabel}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleAttachToRecord(res, res.type as EntityType)
-                          }
-                          className="p-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-2xl transition-all shadow-lg"
-                          title="Attach to Context"
-                        >
-                          <Link2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50 pt-10">
-                      <Search className="w-12 h-12 text-slate-500" />
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 text-center">
-                        Search for Loads, Drivers, or Incidents <br /> to Link
-                        to the Current Flow
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {directoryTab === "PREFERRED" && (
-                <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50 grayscale pt-10">
-                  <Star className="w-12 h-12 text-yellow-500" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                    No Preferred Vendors Flagged
-                  </p>
-                </div>
-              )}
-
-              {directoryTab === "CONTACTS" &&
-                allContacts.filter(
-                  (c) =>
-                    !directorySearchQuery ||
-                    (c.name ?? "")
-                      .toLowerCase()
-                      .includes(directorySearchQuery.toLowerCase()),
-                ).length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 space-y-3 text-center">
-                    <Users className="w-12 h-12 text-slate-500/30" />
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      {directorySearchQuery
-                        ? "No contacts match your search"
-                        : "No contacts in directory"}
-                    </p>
-                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
-                      {directorySearchQuery
-                        ? "Try a different search term"
-                        : "Add contacts from the Network portal"}
-                    </p>
-                  </div>
-                )}
-
-              {directoryTab === "CONTACTS" &&
-                allContacts
-                  .filter(
-                    (c) =>
-                      !directorySearchQuery ||
-                      (c.name ?? "")
-                        .toLowerCase()
-                        .includes(directorySearchQuery.toLowerCase()),
-                  )
-                  .map((contact) => (
-                    <div
-                      key={contact.id}
-                      className="p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all"
-                    >
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-xs font-black text-slate-500">
-                            {(contact.name ?? "?").charAt(0)}
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-white uppercase">
-                              {contact.name}
-                            </h4>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase">
-                              {contact.type} • {contact.title || "No Title"}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            handleAttachToRecord(contact, "CONTACT")
-                          }
-                          className="p-2 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-xl transition-all"
-                        >
-                          <Link2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setInteractionState("ACTIVE");
-                            setSelectedTab("messaging");
-                            showSuccessMessage(
-                              `Directing Link to ${contact.name}...`,
-                            );
-                          }}
-                          className="flex-1 py-3 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
-                        >
-                          Call
-                        </button>
-                        <button
-                          onClick={() => {
-                            setSelectedTab("messaging");
-                            showSuccessMessage(
-                              `Opening SMS Channel for ${contact.name}...`,
-                            );
-                          }}
-                          className="flex-1 py-3 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
-                        >
-                          SMS
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-              {directoryTab === "IMPORT" && (
-                <div className="flex flex-col items-center justify-center h-full space-y-8 p-10 text-center">
-                  <div className="w-20 h-20 bg-blue-600/10 rounded-full flex items-center justify-center">
-                    <Workflow className="w-10 h-10 text-blue-500" />
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-black text-white uppercase mb-2">
-                      Bulk Import Directory
-                    </h4>
-                    <p className="text-xs text-slate-500 leading-relaxed">
-                      Standardize your operational network by importing
-                      Providers and Contacts via CSV payload.
-                    </p>
-                  </div>
-                  <label className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest cursor-pointer hover:bg-blue-500 transition-all flex items-center justify-center gap-3">
-                    <FileText className="w-5 h-5" /> Select CSV Data
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept=".csv"
-                      onChange={() =>
-                        showSuccessMessage(
-                          "Import Simulated: 42 Contacts created",
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <OperationalFormsOverlay
+        showHandoffForm={showHandoffForm}
+        setShowHandoffForm={setShowHandoffForm}
+        showCallLogForm={showCallLogForm}
+        setShowCallLogForm={setShowCallLogForm}
+        showTaskForm={showTaskForm}
+        setShowTaskForm={setShowTaskForm}
+        showIssueForm={showIssueForm}
+        setShowIssueForm={setShowIssueForm}
+        showRequestForm={showRequestForm}
+        setShowRequestForm={setShowRequestForm}
+        showDirectoryDrawer={showDirectoryDrawer}
+        setShowDirectoryDrawer={setShowDirectoryDrawer}
+        handoffData={handoffData}
+        setHandoffData={setHandoffData}
+        callData={callData}
+        setCallData={setCallData}
+        taskData={taskData}
+        setTaskData={setTaskData}
+        issueData={issueData}
+        setIssueData={setIssueData}
+        requestData={requestData}
+        setRequestData={setRequestData}
+        propUsers={propUsers}
+        user={user}
+        activeRecord={activeRecord}
+        active360Data={active360Data}
+        onRecordAction={onRecordAction}
+        fetchQueues={fetchQueues}
+        showSuccessMessage={showSuccessMessage}
+        setToast={setToast}
+        setInteractionState={setInteractionState}
+        setSelectedTab={setSelectedTab}
+        directoryTab={directoryTab}
+        setDirectoryTab={setDirectoryTab}
+        directorySearchQuery={directorySearchQuery}
+        setDirectorySearchQuery={setDirectorySearchQuery}
+        attachmentSearchQuery={attachmentSearchQuery}
+        setAttachmentSearchQuery={setAttachmentSearchQuery}
+        attachmentResults={attachmentResults}
+        setAttachmentResults={setAttachmentResults}
+        handleAttachToRecord={handleAttachToRecord}
+        handleCreateRequest={handleCreateRequest}
+        notificationContacts={notificationContacts}
+        selectedContacts={selectedContacts}
+        setSelectedContacts={setSelectedContacts}
+        session={session}
+        allProviders={allProviders}
+        allContacts={allContacts}
+        recordResults={recordResults}
+      />
       {/* REPOWER SELECTION PANEL */}
-      {showRepowerPanel && (
-        <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-[#050810]/90 backdrop-blur-xl"
-            onClick={() => setShowRepowerPanel(false)}
-          />
-          <div className="relative w-full max-w-4xl bg-[#0a0c10] border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
-            {/* Header */}
-            <div className="h-24 shrink-0 px-10 flex items-center justify-between border-b border-white/5 bg-slate-950/50">
-              <div className="flex items-center gap-6">
-                <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <RefreshCw className="w-6 h-6 text-white animate-spin-slow" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-white uppercase tracking-tighter italic">
-                    Strategic Repower Handoff
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">
-                      Load Context:
-                    </span>
-                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest px-2 py-0.5 bg-blue-500/10 rounded">
-                      #
-                      {loads.find((l) => l.id === repowerLoadId)?.loadNumber ||
-                        "PENDING"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowRepowerPanel(false)}
-                className="p-3 hover:bg-white/5 rounded-2xl transition-all group"
-              >
-                <X className="w-6 h-6 text-slate-500 group-hover:text-white transition-colors" />
-              </button>
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 flex overflow-hidden">
-              {/* Left: Target Load Summary */}
-              <div className="w-80 border-r border-white/5 bg-slate-950/20 p-8 space-y-8">
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                    Active Incident
-                  </h4>
-                  <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-2xl">
-                    <div className="flex items-center gap-3 mb-2 text-red-500">
-                      <AlertTriangle className="w-4 h-4" />
-                      <span className="text-[11px] font-black uppercase">
-                        Mechanical Breakdown
-                      </span>
-                    </div>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed">
-                      Vehicle stationary on I-90 EB. Asset rescue required for
-                      hot delivery.
-                    </p>
-                  </div>
-                </section>
-
-                <section className="space-y-4">
-                  <h4 className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
-                    Current Location
-                  </h4>
-                  <div className="flex items-center gap-3 text-white">
-                    <MapPin className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs font-bold uppercase tracking-tight">
-                      Chicago, IL (I-90 Shoulder)
-                    </span>
-                  </div>
-                </section>
-              </div>
-
-              {/* Right: Driver Availability & Scoreboard */}
-              <div className="flex-1 flex flex-col bg-slate-950/40">
-                <div className="h-14 px-8 border-b border-white/5 flex items-center justify-between">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                    Available Capacity Near Exception Site
-                  </span>
-                  <div className="flex items-center gap-4 text-[9px] font-black uppercase text-slate-600">
-                    <span className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500" />{" "}
-                      High Match
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />{" "}
-                      Caution
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-8 no-scrollbar space-y-4">
-                  {isSearchingMatches ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-6">
-                      <RefreshCw className="w-10 h-10 text-blue-500 animate-spin" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400">
-                        Querying Fleet Intelligence...
-                      </span>
-                    </div>
-                  ) : (
-                    repowerMatches.slice(0, 10).map((match: any) => (
-                      <div
-                        key={match.driverId}
-                        className="p-6 bg-[#111827]/40 border border-white/5 rounded-[2rem] hover:border-blue-500/40 transition-all group flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-6">
-                          <div className="flex flex-col items-center gap-2">
-                            <div
-                              className={`p-4 rounded-2xl bg-slate-900 border border-white/5 group-hover:border-blue-500/20 text-white font-black text-lg transition-all ${match.recommendation === "STRONG_MATCH" ? "shadow-[0_0_20px_rgba(59,130,246,0.15)] text-blue-400" : ""}`}
-                            >
-                              {match.matchScore}%
-                            </div>
-                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
-                              Match
-                            </span>
-                          </div>
-                          <div className="space-y-1.5">
-                            <h4 className="text-sm font-black text-white uppercase tracking-tight">
-                              {match.driverName}
-                            </h4>
-                            <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-1.5">
-                                <MapPin className="w-3 h-3 text-slate-600" />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                  {match.distanceToPickup} Mi away
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Clock className="w-3 h-3 text-slate-600" />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">
-                                  {match.hosAvailable}h HOS
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1.5">
-                                <Zap className="w-3 h-3 text-orange-500" />
-                                <span className="text-[9px] font-bold text-orange-500 uppercase">
-                                  ETA:{" "}
-                                  {new Date(
-                                    match.estimatedArrival,
-                                  ).toLocaleTimeString([], {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            executeRepowerHandoff(
-                              match.driverId,
-                              match.driverName,
-                            )
-                          }
-                          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 transition-all opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0"
-                        >
-                          Assign Handoff
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Status */}
-            <div className="h-12 bg-slate-950/60 border-t border-white/5 px-10 flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">
-                Authorized Operation: Dispatch Integrity Override
-              </span>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[9px] font-black text-blue-500/80 uppercase">
-                    Telemetry Link: Active
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {showDocForm && (
-        <div className="absolute inset-0 z-[1000] bg-[#050810]/98 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-[#0a0f18] border border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col">
-            {/* Header Section */}
-            <div className="bg-slate-900 border-b border-slate-800 px-8 py-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-indigo-600/10 border border-indigo-500/20 flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div>
-                  <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] italic">
-                    Electronic Record Injection
-                  </h3>
-                  <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">
-                    Status: Pending Verification
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowDocForm(false)}
-                className="p-2 hover:bg-white/5 rounded-xl transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-500 hover:text-white" />
-              </button>
-            </div>
-
-            <div className="p-10 space-y-8 overflow-y-auto no-scrollbar">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1">
-                  Subspace Target
-                </label>
-                <div className="p-5 bg-slate-950 border border-slate-800 rounded-2xl flex items-center justify-between shadow-inner">
-                  <div className="flex items-center gap-4">
-                    <Truck className="w-4 h-4 text-blue-500" />
-                    <span className="text-[11px] font-black text-white uppercase tracking-widest font-mono">
-                      {session.primaryContext?.type === "LOAD"
-                        ? `MANIFEST #${activeRecord?.data?.load?.loadNumber}`
-                        : "Select Operational Target..."}
-                    </span>
-                  </div>
-                  <span className="text-[7px] font-black px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 uppercase tracking-tighter">
-                    LINKED
-                  </span>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="p-12 border-2 border-dashed border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center gap-5 hover:border-blue-500 transition-all cursor-pointer group bg-slate-950/20 hover:bg-blue-600/5 shadow-inner">
-                  <div className="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xl">
-                    <Plus className="w-8 h-8 text-slate-700 group-hover:text-blue-500" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-2 group-hover:text-blue-500 transition-colors">
-                      Inject Image/PDF Artifact
-                    </p>
-                    <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest leading-loose">
-                      BOL, POD, RATE CON, INVOICE SOURCE
-                      <br />
-                      (Max 25MB Multi-Layer)
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <label
-                  htmlFor="doc-discrepancy-log"
-                  className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] ml-1"
-                >
-                  Discrepancy Log (Optional)
-                </label>
-                <textarea
-                  id="doc-discrepancy-log"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 text-[11px] font-bold text-slate-400 h-28 resize-none outline-none focus:border-blue-500 transition-all shadow-inner no-scrollbar"
-                  placeholder="SPECIFY ANY OSD OR CARGO DISCREPANCIES DETECTED DURING INTAKE..."
-                ></textarea>
-              </div>
-            </div>
-
-            {/* Footer Section */}
-            <div className="p-8 bg-slate-900 border-t border-slate-800 flex justify-end items-center gap-6 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-              <button
-                onClick={() => setShowDocForm(false)}
-                className="px-8 py-4 text-[11px] font-black text-slate-500 hover:text-white uppercase tracking-[0.2em] transition-colors"
-              >
-                Discard View
-              </button>
-              <button
-                onClick={async () => {
-                  await onRecordAction({
-                    id: uuidv4(),
-                    type: "DOCUMENT",
-                    timestamp: new Date().toISOString(),
-                    actorId: user.id,
-                    actorName: user.name,
-                    message:
-                      "Bill of Lading (BOL) Submitted via Driver Interface",
-                    loadId:
-                      session.primaryContext?.type === "LOAD"
-                        ? session.primaryContext.id
-                        : undefined,
-                    payload: {
-                      docType: "BOL",
-                      status: "SUBMITTED",
-                      source: "MOBILE_INTAKE",
-                    },
-                  });
-                  setShowDocForm(false);
-                  showSuccessMessage(
-                    "BOL Successfully Uploaded to Depository",
-                    3000,
-                  );
-                }}
-                className="px-12 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.3em] shadow-lg shadow-indigo-900/40 active:scale-95 transition-all outline-none"
-              >
-                Authorize Depository Push
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showNotifyPicker && (
-        <div className="absolute inset-0 z-[1200] bg-[#050810]/98 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-2xl bg-[#0a0f1e] border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-            <div className="h-20 px-10 flex items-center justify-between border-b border-white/5 bg-slate-900/50">
-              <div className="flex items-center gap-5">
-                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <Bell className="w-5 h-5 text-white animate-pulse" />
-                </div>
-                <div>
-                  <h3 className="text-[13px] font-black text-white uppercase tracking-widest italic">
-                    Multi-Channel Stakeholder Alert
-                  </h3>
-                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                    Select recipients for emergency broadcast
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowNotifyPicker(false)}
-                className="p-2.5 hover:bg-white/5 rounded-xl transition-all group"
-              >
-                <X className="w-5 h-5 text-slate-500 group-hover:text-white" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-10 space-y-8 no-scrollbar">
-              <div className="grid grid-cols-2 gap-4">
-                {notificationContacts.map((contact) => (
-                  <button
-                    key={contact.id}
-                    onClick={() => {
-                      if (selectedContacts.includes(contact.id)) {
-                        setSelectedContacts((prev) =>
-                          prev.filter((id) => id !== contact.id),
-                        );
-                      } else {
-                        setSelectedContacts((prev) => [...prev, contact.id]);
-                      }
-                    }}
-                    className={`p-4 border rounded-2xl flex items-center gap-4 transition-all text-left ${selectedContacts.includes(contact.id) ? "bg-blue-600/10 border-blue-500/50 shadow-lg" : "bg-white/5 border-white/5 hover:border-white/10"}`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${selectedContacts.includes(contact.id) ? "bg-blue-500 text-white" : "bg-slate-800 text-slate-500"}`}
-                    >
-                      {(contact.name ?? "?").charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[11px] font-black text-white uppercase truncate">
-                        {contact.name}
-                      </div>
-                      <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                        {contact.role}
-                      </div>
-                    </div>
-                    {selectedContacts.includes(contact.id) && (
-                      <CheckCircle className="w-4 h-4 text-blue-500" />
-                    )}
-                  </button>
-                ))}
-              </div>
-              <div className="space-y-3">
-                <label
-                  htmlFor="notify-briefing"
-                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
-                >
-                  Emergency Briefing
-                </label>
-                <textarea
-                  id="notify-briefing"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-32 resize-none outline-none focus:border-blue-500 transition-all shadow-inner"
-                  placeholder="Enter the message for broadcast..."
-                  value={notificationMessage}
-                  onChange={(e) => setNotificationMessage(e.target.value)}
-                ></textarea>
-              </div>
-            </div>
-            <div className="p-8 bg-slate-900 border-t border-white/5 flex justify-end items-center gap-6">
-              <button
-                onClick={() => setShowNotifyPicker(false)}
-                className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={sendNotificationJob}
-                className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all flex items-center gap-3"
-              >
-                <Zap className="w-4 h-4" /> Trigger Alert Job
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showRoadsideForm && (
-        <div className="absolute inset-0 z-[1200] bg-[#050810]/98 backdrop-blur-2xl flex items-center justify-center p-6">
-          <div className="w-full max-w-xl bg-[#0a0f1e] border border-white/10 rounded-[2.5rem] shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 duration-500">
-            <div className="h-20 px-10 flex items-center justify-between border-b border-white/5 bg-slate-900/50">
-              <div className="flex items-center gap-5">
-                <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
-                  <Wrench className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-[13px] font-black text-white uppercase tracking-widest italic">
-                    Roadside Recovery Dispatch
-                  </h3>
-                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">
-                    Select vendor for mission-critical repair
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowRoadsideForm(false)}
-                className="p-2.5 hover:bg-white/5 rounded-xl transition-all group"
-              >
-                <X className="w-5 h-5 text-slate-500 group-hover:text-white" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-10 space-y-8 no-scrollbar">
-              <div className="space-y-4">
-                <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1">
-                  Verified Vendor Network
-                </label>
-                <div className="space-y-3">
-                  {roadsideVendors.map((vendor) => (
-                    <button
-                      key={vendor.id}
-                      onClick={() => setSelectedVendorForRoadside(vendor)}
-                      className={`w-full p-5 border rounded-2xl flex items-center justify-between transition-all ${selectedVendorForRoadside?.id === vendor.id ? "bg-orange-600/10 border-orange-500/50 shadow-lg" : "bg-white/5 border-white/5 hover:border-white/10"}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={`w-8 h-8 rounded-xl flex items-center justify-center ${selectedVendorForRoadside?.id === vendor.id ? "bg-orange-500 text-white" : "bg-slate-800 text-slate-500"}`}
-                        >
-                          <Truck className="w-4 h-4" />
-                        </div>
-                        <div className="text-left">
-                          <div className="text-[11px] font-black text-white uppercase">
-                            {vendor.name}
-                          </div>
-                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
-                            {vendor.type} • {vendor.status}
-                          </div>
-                        </div>
-                      </div>
-                      {selectedVendorForRoadside?.id === vendor.id && (
-                        <CheckCircle className="w-4 h-4 text-orange-500" />
-                      )}
-                    </button>
-                  ))}
-                  <div className="w-full p-5 bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-[10px] font-black text-slate-600 uppercase tracking-widest flex items-center justify-center gap-3">
-                    <Plus className="w-4 h-4" /> Temporary vendors must be
-                    onboarded as entities first
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-3">
-                <label
-                  htmlFor="roadside-damage-report"
-                  className="text-[10px] font-black text-slate-600 uppercase tracking-widest ml-1"
-                >
-                  Tactical Damage Report
-                </label>
-                <textarea
-                  id="roadside-damage-report"
-                  className="w-full bg-slate-950 border border-white/5 rounded-2xl p-6 text-[11px] font-medium text-slate-300 h-24 resize-none outline-none focus:border-orange-500 transition-all shadow-inner"
-                  placeholder="Specify repair requirements..."
-                  value={roadsideNotes}
-                  onChange={(e) => setRoadsideNotes(e.target.value)}
-                ></textarea>
-              </div>
-            </div>
-            <div className="p-8 bg-slate-900 border-t border-white/5 flex justify-end items-center gap-6">
-              <button
-                onClick={() => setShowRoadsideForm(false)}
-                className="text-[10px] font-black text-slate-500 hover:text-white uppercase tracking-widest transition-colors"
-              >
-                Abort Dispatch
-              </button>
-              <button
-                onClick={submitRoadsideDispatch}
-                className="px-10 py-4 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-orange-500/20 active:scale-95 transition-all flex items-center gap-3"
-              >
-                <Navigation className="w-4 h-4" /> Authorize & Dispatch
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RepowerSelectionPanel
+        showRepowerPanel={showRepowerPanel}
+        setShowRepowerPanel={setShowRepowerPanel}
+        repowerLoadId={repowerLoadId}
+        repowerMatches={repowerMatches}
+        isSearchingMatches={isSearchingMatches}
+        executeRepower={executeRepowerHandoff}
+        executeRepowerHandoff={executeRepowerHandoff}
+        loads={loads}
+        user={user}
+        session={session}
+        activeRecord={activeRecord}
+        onRecordAction={onRecordAction}
+        showSuccessMessage={showSuccessMessage}
+        showRoadsideForm={showRoadsideForm}
+        setShowRoadsideForm={setShowRoadsideForm}
+        roadsideNotes={roadsideNotes}
+        setRoadsideNotes={setRoadsideNotes}
+        roadsideVendors={roadsideVendors}
+        selectedVendorForRoadside={selectedVendorForRoadside}
+        setSelectedVendorForRoadside={setSelectedVendorForRoadside}
+        submitRoadsideAssist={submitRoadsideDispatch}
+        submitRoadsideDispatch={submitRoadsideDispatch}
+        showNotifyPicker={showNotifyPicker}
+        setShowNotifyPicker={setShowNotifyPicker}
+        notificationContacts={notificationContacts}
+        selectedContacts={selectedContacts}
+        setSelectedContacts={setSelectedContacts}
+        notificationMessage={notificationMessage}
+        setNotificationMessage={setNotificationMessage}
+        handleNotifyPartners={handleNotifyPartners}
+        sendNotificationJob={sendNotificationJob}
+        showDocForm={showDocForm}
+        setShowDocForm={setShowDocForm}
+      />
 
       {showLoadDetail && selectedLoadForDetail && (
         <LoadDetailView

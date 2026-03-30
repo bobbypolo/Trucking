@@ -8,7 +8,7 @@ import {
   updateKciRequestSchema,
 } from "../schemas/kci-request";
 import { kciRequestRepository } from "../repositories/kci-request.repository";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -31,10 +31,7 @@ router.get(
       );
       res.json(requests);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "GET /api/kci-requests",
-      });
+      const log = createRequestLogger(req, "GET /api/kci-requests");
       log.error({ err: error }, "Failed to fetch KCI requests");
       res.status(500).json({ error: "Database error" });
     }
@@ -58,10 +55,7 @@ router.post(
       );
       res.status(201).json(kciRequest);
     } catch (error) {
-      const log = createChildLogger({
-        correlationId: req.correlationId,
-        route: "POST /api/kci-requests",
-      });
+      const log = createRequestLogger(req, "POST /api/kci-requests");
       log.error({ err: error }, "Failed to create KCI request");
       res.status(500).json({ error: "Database error" });
     }

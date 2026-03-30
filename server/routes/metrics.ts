@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { ForbiddenError } from "../errors/AppError";
 import { getMetricsSnapshot } from "../middleware/metrics";
-import { createChildLogger } from "../lib/logger";
+import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -59,10 +59,7 @@ router.get(
   requireAuth,
   requireAdmin,
   (req: Request, res: Response) => {
-    const log = createChildLogger({
-      correlationId: req.correlationId,
-      route: "GET /api/metrics",
-    });
+    const log = createRequestLogger(req, "GET /api/metrics");
     log.info({ data: { userId: req.user!.uid } }, "Metrics endpoint accessed");
 
     const snapshot = getMetricsSnapshot();
