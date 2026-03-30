@@ -54,7 +54,7 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
     }, [loads, filter, sortDirection, viewScope, isDispatcher, currentUser]);
 
     const StatusBadge = ({ status }: { status: string }) => {
-        const baseStyle = "text-[7px] px-2 py-0.5 rounded uppercase tracking-[0.2em] font-black border";
+        const baseStyle = "text-[10px] px-2 py-0.5 rounded uppercase tracking-[0.2em] font-black border";
         const colors: Record<string, string> = {
             'draft': 'bg-slate-800 text-slate-500 border-slate-700',
             'planned': 'bg-indigo-600/20 text-indigo-400 border-indigo-500/30',
@@ -81,14 +81,14 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                         aria-label="Search loads by manifest, container, or chassis"
                         value={filter}
                         onChange={(e) => setFilter(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-[10px] text-white font-black uppercase tracking-[0.2em] focus:border-blue-500 outline-none shadow-inner placeholder:text-slate-700"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-3 text-[10px] text-white font-black uppercase tracking-[0.2em] focus:border-blue-500 outline-none shadow-inner placeholder:text-slate-500"
                     />
                 </div>
                 <div className="flex gap-3">
                     {isDispatcher && (
                         <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 shadow-inner">
-                            <button onClick={() => setViewScope('my')} className={`px-5 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewScope === 'my' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Assigned Deck</button>
-                            <button onClick={() => setViewScope('all')} className={`px-5 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${viewScope === 'all' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Fleet Network</button>
+                            <button onClick={() => setViewScope('my')} className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${viewScope === 'my' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Assigned Deck</button>
+                            <button onClick={() => setViewScope('all')} className={`px-5 py-2 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${viewScope === 'all' ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-600 hover:text-slate-300'}`}>Fleet Network</button>
                         </div>
                     )}
                     <button onClick={() => setSortDirection(s => s === 'asc' ? 'desc' : 'asc')} aria-label="Toggle sort direction" className="bg-slate-900 border border-slate-800 p-3 rounded-xl hover:bg-slate-800 transition-all text-slate-400">
@@ -123,12 +123,12 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                                         <span className="font-black text-sm text-white tracking-widest uppercase">Manifest {load.loadNumber}</span>
                                         <StatusBadge status={load.status} />
                                         {load.isActionRequired && (
-                                            <span className="bg-yellow-500/10 text-yellow-500 text-[7px] font-black px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase tracking-[0.2em] flex items-center gap-1">
+                                            <span className="bg-yellow-500/10 text-yellow-500 text-[10px] font-black px-1.5 py-0.5 rounded border border-yellow-500/30 uppercase tracking-[0.2em] flex items-center gap-1">
                                                 <AlertTriangle className="w-2.5 h-2.5" /> Action Required
                                             </span>
                                         )}
                                     </div>
-                                    <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+                                    <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
                                         <span className={load.isActionRequired ? 'text-yellow-500/70' : 'text-blue-500/70'}>{load.freightType}</span>
                                         <div className="w-1 h-1 rounded-full bg-slate-800"></div>
                                         <span className="flex items-center gap-1"><UserIcon className="w-2.5 h-2.5 text-slate-800" /> {users.find(u => u.id === load.driverId)?.name || 'UNASSIGNED'}</span>
@@ -139,20 +139,20 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                                 <div className="text-sm font-black text-white font-mono tracking-tighter">
                                     {canViewRates ? `$${(load.carrierRate || 0).toLocaleString()}` : 'CONFIDENTIAL'}
                                 </div>
-                                <span className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em]">Gross Yield</span>
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em]">Gross Yield</span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-slate-800/50 group-hover:border-slate-700/50 transition-all relative overflow-hidden">
                             <div className="space-y-1.5 border-r border-slate-800 pr-4 relative z-10">
-                                <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Origin</div>
+                                <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Origin</div>
                                 <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.pickup?.city ?? ""}, {load.pickup?.state ?? ""}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || load.pickup?.city || 'Pickup TBD'}</div>
+                                <div className="text-[10px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.pickup?.facilityName || load.pickup?.city || 'Pickup TBD'}</div>
                             </div>
                             <div className="space-y-1.5 pl-4 relative z-10">
-                                <div className="text-[7px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Destination</div>
+                                <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] flex items-center gap-1.5">Destination</div>
                                 <div className="text-[11px] font-black text-slate-200 uppercase truncate tracking-wider">{load.dropoff?.city ?? ""}, {load.dropoff?.state ?? ""}</div>
-                                <div className="text-[8px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || load.dropoff?.city || 'Dropoff TBD'}</div>
+                                <div className="text-[10px] font-bold text-slate-600 truncate uppercase mt-0.5">{load.dropoff?.facilityName || load.dropoff?.city || 'Dropoff TBD'}</div>
                             </div>
                         </div>
 
@@ -160,23 +160,23 @@ export const LoadList: React.FC<Props> = ({ loads, onView, onEdit, onDelete, sel
                             <div className="flex gap-3 items-center">
                                 <div className="flex items-center gap-1.5 bg-slate-800/30 px-2 py-1 rounded border border-slate-800">
                                     <Calendar className="w-2.5 h-2.5 text-slate-600" />
-                                    <span className="text-[8px] font-black uppercase text-slate-500 tracking-wider font-mono">{load.pickupDate}</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider font-mono">{load.pickupDate}</span>
                                 </div>
                                 {load.freightType === 'Intermodal' && (
-                                    <div className="flex gap-2 text-[8px] font-black uppercase tracking-wider">
-                                        <span className="text-slate-700">CTR <span className="text-slate-400 font-mono">{load.containerNumber || '---'}</span></span>
-                                        <span className="text-slate-700">CHS <span className="text-slate-400 font-mono">{load.chassisNumber || '---'}</span></span>
+                                    <div className="flex gap-2 text-[10px] font-black uppercase tracking-wider">
+                                        <span className="text-slate-500">CTR <span className="text-slate-400 font-mono">{load.containerNumber || '---'}</span></span>
+                                        <span className="text-slate-500">CHS <span className="text-slate-400 font-mono">{load.chassisNumber || '---'}</span></span>
                                     </div>
                                 )}
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onOpenHub?.('messaging', true); }}
-                                    className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest transition-all border border-blue-500/20"
+                                    className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-blue-500/20"
                                 >
                                     <Phone className="w-3 h-3 inline mr-1.5" /> Call
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); onEdit(load); }} className="px-3 py-1.5 bg-slate-800 hover:bg-blue-600 text-slate-500 hover:text-white rounded-lg text-[8px] font-black uppercase tracking-widest transition-all"><Edit2 className="w-3 h-3 inline mr-1.5" /> Modify</button>
+                                <button onClick={(e) => { e.stopPropagation(); onEdit(load); }} className="px-3 py-1.5 bg-slate-800 hover:bg-blue-600 text-slate-500 hover:text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all"><Edit2 className="w-3 h-3 inline mr-1.5" /> Modify</button>
                             </div>
                         </div>
                     </div>

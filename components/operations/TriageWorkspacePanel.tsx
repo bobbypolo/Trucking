@@ -138,7 +138,7 @@ const TriageItem: React.FC<{
         className={`flex justify-between items-start ${isHighObstruction ? "mb-1.5" : "mb-3"}`}
       >
         <div
-          className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase tracking-[0.1em] border backdrop-blur-md ${getStatusColor(priority)} ${isHighObstruction ? "scale-90 origin-left" : ""}`}
+          className={`px-2.5 py-1 rounded-xl text-[11px] font-black uppercase tracking-[0.1em] border backdrop-blur-md ${getStatusColor(priority)} ${isHighObstruction ? "scale-90 origin-left" : ""}`}
         >
           {priority}
         </div>
@@ -190,7 +190,7 @@ const TriageItem: React.FC<{
             {item.participants.map((p: any, i: number) => (
               <div
                 key={i}
-                className="w-5 h-5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[9px] font-black text-slate-400 shadow-sm backdrop-blur-sm"
+                className="w-5 h-5 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[11px] font-black text-slate-400 shadow-sm backdrop-blur-sm"
               >
                 {p.name?.charAt(0) || "?"}
               </div>
@@ -203,12 +203,12 @@ const TriageItem: React.FC<{
         className={`${isHighObstruction ? "mt-2 pt-2" : "mt-4 pt-3.5"} border-t border-white/5 flex items-center justify-between`}
       >
         <div className="flex items-center gap-3">
-          <span className="text-[9px] font-black text-slate-600 uppercase tracking-[0.1em]">
+          <span className="text-[11px] font-black text-slate-600 uppercase tracking-[0.1em]">
             ID: {item.id ? String(item.id).slice(0, 8) : "---"}
           </span>
           {status && !isHighObstruction && (
             <span
-              className={`px-2 py-0.5 rounded-lg text-[8px] font-black uppercase tracking-wider backdrop-blur-md ${getStatusColor(status)}`}
+              className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider backdrop-blur-md ${getStatusColor(status)}`}
             >
               {status}
             </span>
@@ -223,7 +223,7 @@ const TriageItem: React.FC<{
                   e.stopPropagation();
                   onTriageAction("TAKE", item, type);
                 }}
-                className={`${isHighObstruction ? "px-2 py-1 text-[8px]" : "px-2.5 py-1.5 text-[9px]"} bg-blue-600/90 hover:bg-blue-500 font-black text-white rounded-xl uppercase transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
+                className={`${isHighObstruction ? "px-2 py-1 text-[10px]" : "px-2.5 py-1.5 text-[11px]"} bg-blue-600/90 hover:bg-blue-500 font-black text-white rounded-xl uppercase transition-all shadow-lg shadow-blue-900/20 active:scale-95`}
               >
                 Take
               </button>
@@ -317,7 +317,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                   <button
                     onClick={onInitiateGlobalInbound}
                     aria-label="Initiate global inbound"
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[9px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-[11px] font-black text-white uppercase rounded-lg shadow-lg shadow-blue-900/40 flex items-center gap-2 transition-all"
                   >
                     <Plus className="w-3 h-3" />
                   </button>
@@ -445,7 +445,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTriageTab(tab.id)}
-                    className={`flex-1 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
+                    className={`flex-1 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
                   >
                     {tab.label}
                   </button>
@@ -510,7 +510,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                             No crisis incidents to triage
                           </p>
-                          <p className="text-[9px] text-slate-600 font-bold uppercase">
+                          <p className="text-[11px] text-slate-600 font-bold uppercase">
                             Your operations are running smoothly
                           </p>
                         </div>
@@ -575,7 +575,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                             No open work items
                           </p>
-                          <p className="text-[9px] text-slate-600 font-bold uppercase">
+                          <p className="text-[11px] text-slate-600 font-bold uppercase">
                             Pending requests and tasks will appear here
                           </p>
                         </div>
@@ -585,7 +585,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                 {activeTriageTab === "ASSETS" && (
                   <div className="flex-1 overflow-y-auto p-4 space-y-3 no-scrollbar">
                     <div className="px-4 py-3 bg-blue-500/5 border border-blue-500/10 rounded-2xl mb-4">
-                      <p className="text-[9px] font-bold text-blue-400 uppercase leading-relaxed">
+                      <p className="text-[11px] font-bold text-blue-400 uppercase leading-relaxed">
                         Monitor asset intake for safety/compliance risks.
                         Escalate at-risk loads to Strategic Triage.
                       </p>
@@ -649,7 +649,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                             No at-risk assets
                           </p>
-                          <p className="text-[9px] text-slate-600 font-bold uppercase">
+                          <p className="text-[11px] text-slate-600 font-bold uppercase">
                             All assets are operating within normal parameters
                           </p>
                         </div>

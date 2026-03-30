@@ -285,14 +285,14 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
             <section className="space-y-4 pt-4 border-t border-white/5">
               <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest pl-1 flex items-center justify-between">
                 IFTA Summary
-                <span className="text-blue-500 text-[8px] bg-blue-500/10 px-1.5 py-0.5 rounded">
+                <span className="text-blue-500 text-[10px] bg-blue-500/10 px-1.5 py-0.5 rounded">
                   {iftaMode}
                 </span>
               </h4>
               <div className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800 shadow-xl">
                 <div className="p-4 grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <div className="text-[8px] font-black text-slate-600 uppercase">
+                    <div className="text-[10px] font-black text-slate-600 uppercase">
                       Total Miles
                     </div>
                     <div className="text-sm font-black text-white">
@@ -307,7 +307,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                     </div>
                   </div>
                   <div className="space-y-1 text-right">
-                    <div className="text-[8px] font-black text-slate-600 uppercase">
+                    <div className="text-[10px] font-black text-slate-600 uppercase">
                       Total Fuel
                     </div>
                     <div className="text-sm font-black text-white">
@@ -338,10 +338,10 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         {state}
                       </span>
                       <div className="flex gap-4">
-                        <span className="text-[9px] font-mono text-slate-500">
+                        <span className="text-[11px] font-mono text-slate-500">
                           {data.miles} mi
                         </span>
-                        <span className="text-[9px] font-mono text-blue-500/70">
+                        <span className="text-[11px] font-mono text-blue-500/70">
                           {data.fuel} gal
                         </span>
                       </div>
@@ -350,7 +350,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                 </div>
                 <button
                   onClick={handleExportIFTA}
-                  className="w-full py-3 text-[8px] font-black text-blue-500 hover:bg-blue-600 hover:text-white uppercase tracking-widest transition-all"
+                  className="w-full py-3 text-[10px] font-black text-blue-500 hover:bg-blue-600 hover:text-white uppercase tracking-widest transition-all"
                 >
                   Export IFTA Filing (CSV)
                 </button>
@@ -413,14 +413,14 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                 <div className="flex gap-2 ml-8 border-l border-slate-800 pl-8">
                   <button
                     onClick={handleExportLoadBoard}
-                    className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
+                    className="text-[10px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
                   >
                     <Download className="w-3 h-3" /> Export CSV
                   </button>
                   <div className="relative ml-4">
                     <button
                       onClick={() => setShowColumnPicker(!showColumnPicker)}
-                      className="text-[8px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
+                      className="text-[10px] font-black text-slate-500 hover:text-white uppercase flex items-center gap-1.5"
                     >
                       <Columns className="w-3 h-3" /> Select Columns
                     </button>
@@ -429,7 +429,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         {columnOptions.map((col) => (
                           <label
                             key={col.id}
-                            className="flex items-center gap-2 py-1.5 text-[9px] text-slate-300 cursor-pointer hover:text-white"
+                            className="flex items-center gap-2 py-1.5 text-[11px] text-slate-300 cursor-pointer hover:text-white"
                           >
                             <input
                               type="checkbox"
@@ -465,7 +465,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
               <div className="h-full overflow-auto no-scrollbar">
                 <table className="w-full text-left border-collapse">
                   <thead className="sticky top-0 bg-slate-950 border-b border-slate-800 z-10">
-                    <tr className="text-[8px] font-black text-slate-600 uppercase tracking-widest bg-slate-950/80 backdrop-blur-md">
+                    <tr className="text-[10px] font-black text-slate-600 uppercase tracking-widest bg-slate-950/80 backdrop-blur-md">
                       {visibleColumns.includes("loadNumber") && (
                         <th className="p-4 border-r border-slate-800">
                           Manifest
@@ -520,7 +520,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         {visibleColumns.includes("status") && (
                           <td className="p-4 border-r border-slate-800/50">
                             <span
-                              className={`text-[7px] px-2 py-0.5 rounded font-black uppercase tracking-widest border ${
+                              className={`text-[10px] px-2 py-0.5 rounded font-black uppercase tracking-widest border ${
                                 load.status === "delivered" ||
                                 load.status === "completed"
                                   ? "bg-green-500/10 text-green-400 border-green-500/20"
@@ -535,19 +535,19 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                           </td>
                         )}
                         {visibleColumns.includes("pickup") && (
-                          <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
+                          <td className="p-4 text-[11px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
                             {load.pickup?.city ?? ""},{" "}
                             {load.pickup?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("dropoff") && (
-                          <td className="p-4 text-[9px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
+                          <td className="p-4 text-[11px] font-bold text-slate-300 uppercase border-r border-slate-800/50">
                             {load.dropoff?.city ?? ""},{" "}
                             {load.dropoff?.state ?? ""}
                           </td>
                         )}
                         {visibleColumns.includes("driver") && (
-                          <td className="p-4 text-[9px] font-black text-slate-500 uppercase border-r border-slate-800/50">
+                          <td className="p-4 text-[11px] font-black text-slate-500 uppercase border-r border-slate-800/50">
                             {users.find((u) => u.id === load.driverId)?.name ||
                               "UNASSIGNED"}
                           </td>

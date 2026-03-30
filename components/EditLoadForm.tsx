@@ -393,7 +393,7 @@ export const EditLoadForm: React.FC<Props> = ({
               <div className="space-y-1">
                 <label
                   htmlFor="elfProNo"
-                  className="text-[9px] font-bold text-slate-500 uppercase"
+                  className="text-[11px] font-bold text-slate-500 uppercase"
                 >
                   Pro No
                 </label>
@@ -415,7 +415,7 @@ export const EditLoadForm: React.FC<Props> = ({
               <div className="space-y-1">
                 <label
                   htmlFor="elfSpecial"
-                  className="text-[9px] font-bold text-slate-500 uppercase"
+                  className="text-[11px] font-bold text-slate-500 uppercase"
                 >
                   Special
                 </label>
@@ -438,7 +438,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfCommodity"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Commodity <span className="text-red-500">*</span>
               </label>
@@ -458,7 +458,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfLoadStatus"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Load Status
               </label>
@@ -484,7 +484,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfEquipment"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Equipment
               </label>
@@ -519,7 +519,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfCustomerBroker"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Customer / Broker <span className="text-red-500">*</span>
               </label>
@@ -547,7 +547,7 @@ export const EditLoadForm: React.FC<Props> = ({
               <div className="space-y-1">
                 <label
                   htmlFor="elfDispatcher"
-                  className="text-[9px] font-bold text-slate-500 uppercase"
+                  className="text-[11px] font-bold text-slate-500 uppercase"
                 >
                   Dispatcher
                 </label>
@@ -578,7 +578,7 @@ export const EditLoadForm: React.FC<Props> = ({
               <div className="space-y-1">
                 <label
                   htmlFor="elfSalesman"
-                  className="text-[9px] font-bold text-slate-500 uppercase"
+                  className="text-[11px] font-bold text-slate-500 uppercase"
                 >
                   Salesman
                 </label>
@@ -598,7 +598,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfDispatchNotesInternal"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Dispatch Notes (Internal)
               </label>
@@ -629,7 +629,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfGrossPayRevenue"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Gross Pay (Revenue)
               </label>
@@ -658,7 +658,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="space-y-1">
               <label
                 htmlFor="elfCarrierPayExp"
-                className="text-[9px] font-bold text-slate-500 uppercase"
+                className="text-[11px] font-bold text-slate-500 uppercase"
               >
                 Carrier Pay (Exp)
               </label>
@@ -686,7 +686,7 @@ export const EditLoadForm: React.FC<Props> = ({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-[#0a0f18] border border-slate-800 rounded-xl p-3">
-                <div className="text-[8px] font-black text-slate-600 uppercase">
+                <div className="text-[10px] font-black text-slate-600 uppercase">
                   Profit Margin
                 </div>
                 <div
@@ -696,7 +696,7 @@ export const EditLoadForm: React.FC<Props> = ({
                 </div>
               </div>
               <div className="bg-[#0a0f18] border border-slate-800 rounded-xl p-3">
-                <div className="text-[8px] font-black text-slate-600 uppercase">
+                <div className="text-[10px] font-black text-slate-600 uppercase">
                   Margin %
                 </div>
                 <div
@@ -709,7 +709,7 @@ export const EditLoadForm: React.FC<Props> = ({
             {/* Rate Card (toggled from Carrier Rates utility) */}
             {showRateCard && (
               <div className="bg-[#0a0f18] border border-blue-500/20 rounded-xl p-3 space-y-2">
-                <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                <div className="text-[11px] font-black text-blue-400 uppercase tracking-widest">
                   Rate Card Summary
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
@@ -758,7 +758,7 @@ export const EditLoadForm: React.FC<Props> = ({
           <div className="space-y-1 shrink-0">
             <label
               htmlFor="elfTruck"
-              className="text-[8px] font-black text-slate-600 uppercase"
+              className="text-[10px] font-black text-slate-600 uppercase"
             >
               Truck #
             </label>
@@ -779,7 +779,7 @@ export const EditLoadForm: React.FC<Props> = ({
           <div className="space-y-1 shrink-0">
             <label
               htmlFor="elfTrailer"
-              className="text-[8px] font-black text-slate-600 uppercase"
+              className="text-[10px] font-black text-slate-600 uppercase"
             >
               Trailer #
             </label>
@@ -800,7 +800,7 @@ export const EditLoadForm: React.FC<Props> = ({
           <div className="space-y-1 shrink-0">
             <label
               htmlFor="elfChassis"
-              className="text-[8px] font-black text-slate-600 uppercase"
+              className="text-[10px] font-black text-slate-600 uppercase"
             >
               Chassis
             </label>
@@ -820,7 +820,7 @@ export const EditLoadForm: React.FC<Props> = ({
           <div className="space-y-1 flex-1 min-w-[150px]">
             <label
               htmlFor="elfAssignedDriver"
-              className="text-[8px] font-black text-slate-600 uppercase"
+              className="text-[10px] font-black text-slate-600 uppercase"
             >
               Assigned Driver
             </label>
@@ -849,7 +849,7 @@ export const EditLoadForm: React.FC<Props> = ({
             </select>
           </div>
           <div className="space-y-1 shrink-0">
-            <label className="text-[8px] font-black text-slate-600 uppercase">
+            <label className="text-[10px] font-black text-slate-600 uppercase">
               Contact Cell
             </label>
             <button
@@ -872,13 +872,13 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="flex gap-2">
               <button
                 onClick={() => addLeg("Pickup")}
-                className="px-3 py-1 bg-slate-800 border border-slate-700 text-[9px] font-black uppercase rounded text-slate-400 hover:text-white transition-all"
+                className="px-3 py-1 bg-slate-800 border border-slate-700 text-[11px] font-black uppercase rounded text-slate-400 hover:text-white transition-all"
               >
                 + Add Pickup
               </button>
               <button
                 onClick={() => addLeg("Dropoff")}
-                className="px-3 py-1 bg-blue-600 text-[9px] font-black uppercase rounded text-white"
+                className="px-3 py-1 bg-blue-600 text-[11px] font-black uppercase rounded text-white"
               >
                 + Add Drop
               </button>
@@ -889,25 +889,25 @@ export const EditLoadForm: React.FC<Props> = ({
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-900 border-b border-slate-800">
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Type
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Facility / Address
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     City / ST / Zip
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Seal #
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Pallets
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Weight
                   </th>
-                  <th className="px-4 py-3 text-left text-[8px] font-black text-slate-500 uppercase">
+                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-500 uppercase">
                     Date/Time
                   </th>
                   <th className="px-4 py-1"></th>
@@ -921,7 +921,7 @@ export const EditLoadForm: React.FC<Props> = ({
                   >
                     <td className="px-4 py-3">
                       <span
-                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${leg.type === "Pickup" ? "bg-green-600/10 text-green-500" : "bg-blue-600/10 text-blue-500"}`}
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${leg.type === "Pickup" ? "bg-green-600/10 text-green-500" : "bg-blue-600/10 text-blue-500"}`}
                       >
                         {leg.type.charAt(0)}
                       </span>
@@ -929,7 +929,7 @@ export const EditLoadForm: React.FC<Props> = ({
                     <td className="px-4 py-3 space-y-1">
                       <input
                         aria-label="Facility Name"
-                        className="w-full bg-transparent border-none p-0 text-[10px] text-white font-bold focus:ring-0 placeholder:text-slate-700"
+                        className="w-full bg-transparent border-none p-0 text-[10px] text-white font-bold focus:ring-0 placeholder:text-slate-500"
                         placeholder="Facility Name"
                         value={leg.location.facilityName}
                         onChange={(e) =>
@@ -949,7 +949,7 @@ export const EditLoadForm: React.FC<Props> = ({
                       />
                       <input
                         aria-label="123 Street Ave"
-                        className="w-full bg-transparent border-none p-0 text-[9px] text-slate-500 focus:ring-0 placeholder:text-slate-800"
+                        className="w-full bg-transparent border-none p-0 text-[11px] text-slate-500 focus:ring-0 placeholder:text-slate-800"
                         placeholder="123 Street Ave"
                         value={leg.location.address}
                         onChange={(e) =>
@@ -1080,7 +1080,7 @@ export const EditLoadForm: React.FC<Props> = ({
                       />
                       <input
                         aria-label="Appointment time"
-                        className="w-24 bg-transparent border-none p-0 text-[9px] text-slate-500 focus:ring-0"
+                        className="w-24 bg-transparent border-none p-0 text-[11px] text-slate-500 focus:ring-0"
                         type="time"
                         value={leg.appointmentTime}
                         onChange={(e) =>
@@ -1111,7 +1111,7 @@ export const EditLoadForm: React.FC<Props> = ({
               </tbody>
             </table>
             {(!formData.legs || formData.legs.length === 0) && (
-              <div className="p-8 text-center text-slate-700 text-[10px] font-bold uppercase tracking-widest italic">
+              <div className="p-8 text-center text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">
                 No stops defined. Use buttons above to sequence.
               </div>
             )}
@@ -1131,7 +1131,7 @@ export const EditLoadForm: React.FC<Props> = ({
             <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] group-hover:text-blue-500">
               Inject Electronic Records
             </div>
-            <p className="text-[8px] text-slate-700 uppercase mt-2">
+            <p className="text-[10px] text-slate-500 uppercase mt-2">
               BOL, POD, RATE CON, HAZMAT DOCUMENTS
             </p>
           </div>

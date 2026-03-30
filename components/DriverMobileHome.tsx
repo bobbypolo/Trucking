@@ -1267,7 +1267,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <div className="text-sm font-black text-slate-600 uppercase tracking-widest">
                   No settlements yet
                 </div>
-                <p className="text-xs text-slate-700 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   Your pay settlements will appear here once processed.
                 </p>
               </div>

@@ -280,7 +280,7 @@ export const OperationalMessaging: React.FC<Props> = ({
             </button>
           </div>
           <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 mb-2">
-            <p className="text-[8px] font-bold text-blue-400 uppercase leading-relaxed">
+            <p className="text-[10px] font-bold text-blue-400 uppercase leading-relaxed">
               These are record-linked liaison streams. For live inbound calls,
               use the <span className="underline">Live Comm Queue</span>.
             </p>
@@ -301,12 +301,12 @@ export const OperationalMessaging: React.FC<Props> = ({
           {filteredThreads.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full px-6 py-12 text-center">
               <div className="w-16 h-16 bg-slate-900 rounded-2xl flex items-center justify-center border border-white/5 mb-4">
-                <MessageSquare className="w-8 h-8 text-slate-700" />
+                <MessageSquare className="w-8 h-8 text-slate-500" />
               </div>
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">
                 No message streams yet
               </p>
-              <p className="text-[9px] text-slate-600 leading-relaxed max-w-[200px]">
+              <p className="text-[11px] text-slate-600 leading-relaxed max-w-[200px]">
                 {searchQuery
                   ? "No streams match your search. Try a different term."
                   : "Start a conversation from a load or entity to create an operational stream."}
@@ -339,10 +339,10 @@ export const OperationalMessaging: React.FC<Props> = ({
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                   )}
                 </div>
-                <p className="text-[8px] font-bold text-slate-500 uppercase truncate">
+                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">
                   {thread.summary}
                 </p>
-                <div className="mt-2 text-[9px] text-slate-400 truncate opacity-60">
+                <div className="mt-2 text-[11px] text-slate-400 truncate opacity-60">
                   {messages.findLast(
                     (m) =>
                       m.loadId === thread.id || `inc-${m.loadId}` === thread.id,
@@ -375,7 +375,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                       <div
                         className={`w-1.5 h-1.5 rounded-full ${interactionState === "ACTIVE" ? "bg-green-500 animate-pulse" : "bg-slate-500"}`}
                       />
-                      <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
                         {interactionState}{" "}
                         {callSession?.id ? `(${callSession.id})` : ""}
                       </span>
@@ -384,7 +384,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                           onClick={() =>
                             onNoteCreated?.("Interaction Ended via Liaison")
                           }
-                          className="px-2 py-0.5 bg-red-600 text-white text-[7px] font-black uppercase rounded hover:bg-red-500 transition-colors ml-2"
+                          className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-black uppercase rounded hover:bg-red-500 transition-colors ml-2"
                         >
                           End Session
                         </button>
@@ -396,7 +396,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                 <nav className="flex items-center h-full ml-10 border-l border-white/5 pl-10 gap-8">
                   <button
                     onClick={() => setActiveViewTab("MESSAGES")}
-                    className={`text-[9px] font-black uppercase tracking-widest transition-all ${activeViewTab === "MESSAGES" ? "text-blue-500 border-b-2 border-blue-500 pb-1" : "text-slate-500 hover:text-white"}`}
+                    className={`text-[11px] font-black uppercase tracking-widest transition-all ${activeViewTab === "MESSAGES" ? "text-blue-500 border-b-2 border-blue-500 pb-1" : "text-slate-500 hover:text-white"}`}
                   >
                     Tactical Stream
                   </button>
@@ -412,13 +412,13 @@ export const OperationalMessaging: React.FC<Props> = ({
 
                 {interactionState === "ACTIVE" && (
                   <div className="flex items-center gap-1.5 ml-2 border-l border-white/5 pl-4">
-                    <button className="px-3 py-1.5 bg-green-600 text-white text-[9px] font-black uppercase rounded-lg hover:bg-green-500 transition-all flex items-center gap-2">
+                    <button className="px-3 py-1.5 bg-green-600 text-white text-[11px] font-black uppercase rounded-lg hover:bg-green-500 transition-all flex items-center gap-2">
                       <CheckSquare className="w-3 h-3" /> Resolve
                     </button>
-                    <button className="px-3 py-1.5 bg-slate-800 text-slate-400 text-[9px] font-black uppercase rounded-lg hover:bg-slate-700 hover:text-white transition-all">
+                    <button className="px-3 py-1.5 bg-slate-800 text-slate-400 text-[11px] font-black uppercase rounded-lg hover:bg-slate-700 hover:text-white transition-all">
                       Snooze
                     </button>
-                    <button className="px-3 py-1.5 bg-blue-600 text-white text-[9px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all">
+                    <button className="px-3 py-1.5 bg-blue-600 text-white text-[11px] font-black uppercase rounded-lg hover:bg-blue-500 transition-all">
                       Assign
                     </button>
                   </div>
@@ -444,13 +444,13 @@ export const OperationalMessaging: React.FC<Props> = ({
                         <h4 className="text-[10px] font-black text-white uppercase tracking-widest">
                           Live Voice Interaction
                         </h4>
-                        <p className="text-[8px] font-bold text-blue-500 uppercase tracking-tighter mt-0.5">
+                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-tighter mt-0.5">
                           Session ID: {callSession?.id || "PENDING"}
                         </p>
                       </div>
                     </div>
                     <div className="bg-slate-900/50 px-3 py-1 rounded-lg border border-white/10">
-                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
                         Active Partner:{" "}
                         {callSession?.participants?.[0]?.name || "Unknown"}
                       </span>
@@ -470,7 +470,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                         if (onNoteCreated) onNoteCreated(noteText);
                         setNoteText("");
                       }}
-                      className="absolute bottom-3 right-3 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black uppercase rounded-lg shadow-lg shadow-blue-900/40 transition-all active:scale-95"
+                      className="absolute bottom-3 right-3 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black uppercase rounded-lg shadow-lg shadow-blue-900/40 transition-all active:scale-95"
                     >
                       Commit Note
                     </button>
@@ -479,7 +479,7 @@ export const OperationalMessaging: React.FC<Props> = ({
               )}
 
               <div className="flex flex-col items-center">
-                <span className="bg-slate-900 border border-white/5 px-4 py-1.5 rounded-full text-[8px] font-black text-slate-500 uppercase tracking-widest mb-8">
+                <span className="bg-slate-900 border border-white/5 px-4 py-1.5 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest mb-8">
                   Tactical Evidence Stream
                 </span>
               </div>
@@ -507,7 +507,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   >
                     {item.streamType === "MESSAGE" ? (
                       <>
-                        <div className="flex items-center gap-2 mb-1.5 px-2 text-[8px] font-black text-slate-500 uppercase">
+                        <div className="flex items-center gap-2 mb-1.5 px-2 text-[10px] font-black text-slate-500 uppercase">
                           <span>{item.senderName}</span>
                           <span>
                             {new Date(item.timestamp).toLocaleTimeString([], {
@@ -539,7 +539,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                             <span className="text-[10px] font-black text-white uppercase tracking-tight">
                               {item.message}
                             </span>
-                            <span className="text-[7px] font-bold text-slate-600 uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                               {item.actorName} •{" "}
                               {new Date(item.timestamp).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -567,7 +567,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   </button>
                   <textarea
                     aria-label="Message text"
-                    className="flex-1 bg-transparent border-none outline-none py-3 px-2 text-xs font-medium text-white placeholder:text-slate-700 resize-none min-h-[44px]"
+                    className="flex-1 bg-transparent border-none outline-none py-3 px-2 text-xs font-medium text-white placeholder:text-slate-500 resize-none min-h-[44px]"
                     placeholder={`Message participants for Load #${selectedLoad.loadNumber}...`}
                     rows={1}
                     value={messageText}
@@ -641,11 +641,11 @@ export const OperationalMessaging: React.FC<Props> = ({
                             <span className="text-[11px] font-black text-white uppercase group-hover:text-blue-400">
                               {res.label}
                             </span>
-                            <span className="text-[8px] font-bold text-slate-500 uppercase">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">
                               {res.type} • {res.subLabel}
                             </span>
                           </div>
-                          <div className="px-3 py-1 bg-blue-600/10 text-blue-500 text-[8px] font-black uppercase rounded opacity-0 group-hover:opacity-100">
+                          <div className="px-3 py-1 bg-blue-600/10 text-blue-500 text-[10px] font-black uppercase rounded opacity-0 group-hover:opacity-100">
                             Link Session
                           </div>
                         </button>
@@ -654,7 +654,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   )}
                 </div>
 
-                <div className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] border-t border-white/5 pt-8 mt-8">
+                <div className="text-[11px] font-black text-blue-500 uppercase tracking-[0.2em] border-t border-white/5 pt-8 mt-8">
                   Protocol: Link Record to Proceed
                 </div>
               </div>
@@ -696,7 +696,7 @@ export const OperationalMessaging: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-slate-950 rounded-2xl border border-white/5">
-                  <div className="text-[8px] font-black text-slate-500 uppercase mb-1">
+                  <div className="text-[10px] font-black text-slate-500 uppercase mb-1">
                     Pickup
                   </div>
                   <div className="text-[10px] font-bold text-white truncate">
@@ -704,7 +704,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="p-4 bg-slate-950 rounded-2xl border border-white/5">
-                  <div className="text-[8px] font-black text-slate-500 uppercase mb-1">
+                  <div className="text-[10px] font-black text-slate-500 uppercase mb-1">
                     Dropoff
                   </div>
                   <div className="text-[10px] font-bold text-white truncate">
@@ -736,7 +736,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   <span className="text-slate-500 font-bold uppercase tracking-widest">
                     Status
                   </span>
-                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-black text-[8px] uppercase">
+                  <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-black text-[10px] uppercase">
                     {selectedLoad.status}
                   </span>
                 </div>
@@ -795,7 +795,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                       }}
                     />
                     <div className="flex justify-between items-center">
-                      <span className="text-[7px] font-black text-slate-600 uppercase">
+                      <span className="text-[10px] font-black text-slate-600 uppercase">
                         Press Enter to Commit
                       </span>
                       <button
@@ -803,7 +803,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                           setIsAddingTask(false);
                           setNewTaskText("");
                         }}
-                        className="text-[7px] font-black text-red-500 uppercase"
+                        className="text-[10px] font-black text-red-500 uppercase"
                       >
                         Cancel
                       </button>
@@ -812,7 +812,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                 ) : (
                   <button
                     onClick={() => setIsAddingTask(true)}
-                    className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-[8px] font-black text-slate-500 uppercase hover:text-blue-400 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-2 bg-white/5 border border-dashed border-white/10 rounded-xl text-[10px] font-black text-slate-500 uppercase hover:text-blue-400 hover:border-blue-500/30 transition-all flex items-center justify-center gap-2"
                   >
                     <PlusSquare className="w-3 h-3" /> Add Micro-Task
                   </button>
@@ -834,7 +834,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   <button
                     key={type}
                     onClick={() => handleQuickRequest(type)}
-                    className="p-3 bg-slate-950 border border-white/5 rounded-xl text-[8px] font-black text-slate-400 uppercase hover:bg-blue-600/10 hover:text-blue-400 hover:border-blue-500/30 transition-all flex flex-col items-center gap-1 group"
+                    className="p-3 bg-slate-950 border border-white/5 rounded-xl text-[10px] font-black text-slate-400 uppercase hover:bg-blue-600/10 hover:text-blue-400 hover:border-blue-500/30 transition-all flex flex-col items-center gap-1 group"
                   >
                     <CreditCard className="w-3 h-3 group-hover:text-blue-400 transition-colors" />
                     {type}
@@ -861,7 +861,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                     aria-label="Add participant (360 search)..."
                     type="text"
                     placeholder="Add participant (360 search)..."
-                    className="w-full bg-slate-950 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[9px] outline-none focus:border-blue-500/50 transition-all text-white"
+                    className="w-full bg-slate-950 border border-white/5 rounded-xl pl-9 pr-4 py-2 text-[11px] outline-none focus:border-blue-500/50 transition-all text-white"
                     value={participantSearch}
                     onChange={(e) => setParticipantSearch(e.target.value)}
                   />
@@ -874,10 +874,10 @@ export const OperationalMessaging: React.FC<Props> = ({
                           className="w-full p-3 text-left hover:bg-white/5 border-b border-white/5 flex items-center justify-between group"
                         >
                           <div>
-                            <div className="text-[9px] font-black text-white uppercase">
+                            <div className="text-[11px] font-black text-white uppercase">
                               {res.label}
                             </div>
-                            <div className="text-[7px] font-bold text-slate-500 uppercase">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase">
                               {res.type}{" "}
                               {res.subLabel ? `• ${res.subLabel}` : ""}
                             </div>
@@ -886,7 +886,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                             {res.type === "DRIVER" && (
                               <Phone className="w-3 h-3 text-emerald-500" />
                             )}
-                            <Link className="w-3 h-3 text-slate-700 group-hover:text-blue-500" />
+                            <Link className="w-3 h-3 text-slate-500 group-hover:text-blue-500" />
                           </div>
                         </button>
                       ))}
@@ -895,7 +895,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                 </div>
                 <div className="flex -space-x-2">
                   <div
-                    className="w-6 h-6 rounded-full bg-blue-600 border-2 border-[#10141d] flex items-center justify-center text-[8px] font-black text-white"
+                    className="w-6 h-6 rounded-full bg-blue-600 border-2 border-[#10141d] flex items-center justify-center text-[10px] font-black text-white"
                     title={user.name}
                   >
                     {user.name.charAt(0)}
@@ -903,7 +903,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                   {[1, 2].map((i) => (
                     <div
                       key={i}
-                      className="w-6 h-6 rounded-full bg-slate-800 border-2 border-[#10141d] flex items-center justify-center text-[8px] font-black text-slate-500"
+                      className="w-6 h-6 rounded-full bg-slate-800 border-2 border-[#10141d] flex items-center justify-center text-[10px] font-black text-slate-500"
                     >
                       ?
                     </div>

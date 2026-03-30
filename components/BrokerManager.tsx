@@ -393,7 +393,7 @@ export const BrokerManager: React.FC<Props> = ({
                             {broker.name}
                           </h3>
                           <span
-                            className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
+                            className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${
                               ec === "Broker"
                                 ? "bg-blue-600/10 text-blue-500 border border-blue-500/20"
                                 : ec === "Customer"
@@ -439,7 +439,7 @@ export const BrokerManager: React.FC<Props> = ({
                           {[1, 2].map((i) => (
                             <div
                               key={i}
-                              className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[8px] font-bold text-slate-600"
+                              className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-600"
                             >
                               U{i}
                             </div>
@@ -454,13 +454,13 @@ export const BrokerManager: React.FC<Props> = ({
                           {broker.approvedChassis.slice(0, 2).map((c, idx) => (
                             <span
                               key={idx}
-                              className="bg-slate-950 text-[8px] font-black px-2 py-1 rounded-md border border-white/5 uppercase text-slate-400"
+                              className="bg-slate-950 text-[10px] font-black px-2 py-1 rounded-md border border-white/5 uppercase text-slate-400"
                             >
                               {c.provider} {c.type}
                             </span>
                           ))}
                           {broker.approvedChassis.length > 2 && (
-                            <span className="text-[8px] font-black text-blue-500 self-center">
+                            <span className="text-[10px] font-black text-blue-500 self-center">
                               +{broker.approvedChassis.length - 2} MORE
                             </span>
                           )}
@@ -568,7 +568,7 @@ export const BrokerManager: React.FC<Props> = ({
                 </label>
                 <input
                   id="bmLegalEntityName"
-                  className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all"
+                  className="w-full bg-[#020617] border border-white/5 rounded-2xl px-6 py-4 text-sm text-white font-bold placeholder:text-slate-500 outline-none focus:border-blue-500 transition-all"
                   placeholder="ENTER FULL REGISTERED COMPANY NAME"
                   value={editingBroker.name}
                   onChange={(e) =>
@@ -706,7 +706,7 @@ export const BrokerManager: React.FC<Props> = ({
                       <div className="space-y-2">
                         <input
                           aria-label="Chassis provider"
-                          className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
+                          className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition-all font-bold"
                           placeholder="PROVIDER (e.g. TRAC, FLEXI)"
                           value={chassisForm.provider}
                           onChange={(e) =>
@@ -746,7 +746,7 @@ export const BrokerManager: React.FC<Props> = ({
 
                     <input
                       aria-label="Chassis prefixes, comma separated"
-                      className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-700 outline-none focus:border-blue-500 transition-all font-bold"
+                      className="w-full bg-[#0a0f1e] border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-slate-500 outline-none focus:border-blue-500 transition-all font-bold"
                       placeholder="PREFIXES (e.g. TRAC, TXZZ, TRLU) - COMMA SEPARATED"
                       value={prefixInput}
                       onChange={(e) => setPrefixInput(e.target.value)}
@@ -790,7 +790,7 @@ export const BrokerManager: React.FC<Props> = ({
                                 {rule.prefixes.map((px, i) => (
                                   <span
                                     key={i}
-                                    className="bg-blue-600/10 text-blue-400 text-[8px] font-black px-1.5 py-0.5 rounded border border-blue-600/20"
+                                    className="bg-blue-600/10 text-blue-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-600/20"
                                   >
                                     {px}
                                   </span>
@@ -800,7 +800,7 @@ export const BrokerManager: React.FC<Props> = ({
                             <button
                               onClick={() => handleRemoveChassis(rule.id)}
                               aria-label="Remove chassis rule"
-                              className="text-slate-700 hover:text-red-500 p-1 transition-colors"
+                              className="text-slate-500 hover:text-red-500 p-1 transition-colors"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

@@ -247,7 +247,7 @@ export const AuditLogs: React.FC<AuditLogsProps> = () => {
                           </>
                         )}
                       </div>
-                      <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                      <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                         {new Date(event.created_at).toLocaleString()}
                       </span>
                     </div>

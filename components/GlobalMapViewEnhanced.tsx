@@ -665,7 +665,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   <div className="text-lg font-black text-blue-400">
                     {activeVehicles.filter((v) => v.isOnline).length}
                   </div>
-                  <div className="text-[8px] font-bold text-slate-500 uppercase">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase">
                     Online
                   </div>
                 </div>
@@ -673,7 +673,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   <div className="text-lg font-black text-slate-400">
                     {activeVehicles.filter((v) => v.activeLoad).length}
                   </div>
-                  <div className="text-[8px] font-bold text-slate-500 uppercase">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase">
                     En Route
                   </div>
                 </div>
@@ -695,7 +695,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               Live
             </span>
             {hasMockPositions && showMockIndicators && (
-              <span className="text-[9px] text-amber-400 font-semibold">
+              <span className="text-[11px] text-amber-400 font-semibold">
                 (simulated)
               </span>
             )}
@@ -825,20 +825,20 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   </div>
                   {selectedVehicle.activeLoad && (
                     <div className="bg-slate-100 rounded-lg p-2 mb-3 border border-slate-200">
-                      <div className="text-[8px] font-black text-slate-500 uppercase mb-1">
+                      <div className="text-[10px] font-black text-slate-500 uppercase mb-1">
                         Active Load
                       </div>
                       <div className="text-[10px] font-bold text-blue-600">
                         #{selectedVehicle.activeLoad.loadNumber}
                       </div>
-                      <div className="text-[9px] text-slate-600 italic">
+                      <div className="text-[11px] text-slate-600 italic">
                         {formatRouteSummary(selectedVehicle.activeLoad)}
                       </div>
                     </div>
                   )}
                   <button
                     onClick={() => setSelectedDriverOverlay(selectedVehicle)}
-                    className="w-full py-2 bg-blue-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
+                    className="w-full py-2 bg-blue-600 text-white rounded-lg text-[11px] font-black uppercase tracking-widest hover:bg-blue-500 transition-all"
                   >
                     Contact Driver
                   </button>
@@ -863,7 +863,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
             Live
           </span>
           {hasMockPositions && showMockIndicators && (
-            <span className="text-[9px] text-amber-400 font-semibold">
+            <span className="text-[11px] text-amber-400 font-semibold">
               (simulated)
             </span>
           )}
@@ -897,7 +897,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <Wind className="w-3 h-3 text-slate-500" />
-                <span className="text-[9px] text-slate-500">
+                <span className="text-[11px] text-slate-500">
                   {weather.windSpeed} mph
                 </span>
               </div>
@@ -920,7 +920,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   Active Incidents
                 </span>
               </div>
-              <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded-lg text-[8px] font-black">
+              <span className="bg-red-500/10 text-red-500 px-2 py-0.5 rounded-lg text-[10px] font-black">
                 {incidents.filter((i) => i.status !== "Closed").length}
               </span>
             </div>
@@ -933,10 +933,10 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                     onClick={() => onSelectIncident?.(inc.id)}
                     className="p-3 bg-slate-950/40 border border-white/5 rounded-xl hover:border-red-500/30 cursor-pointer transition-all"
                   >
-                    <div className="text-[9px] font-black text-white uppercase mb-1">
+                    <div className="text-[11px] font-black text-white uppercase mb-1">
                       {inc.type}
                     </div>
-                    <div className="text-[8px] text-slate-500 truncate">
+                    <div className="text-[10px] text-slate-500 truncate">
                       {inc.description}
                     </div>
                   </div>
@@ -962,7 +962,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               ).map(({ value, label }) => (
                 <button
                   key={value}
-                  className={`py-2 px-3 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all ${loadFilter === value ? "bg-blue-600 text-white shadow-lg" : "bg-slate-950/50 text-slate-500 border border-white/5 hover:text-white"}`}
+                  className={`py-2 px-3 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${loadFilter === value ? "bg-blue-600 text-white shadow-lg" : "bg-slate-950/50 text-slate-500 border border-white/5 hover:text-white"}`}
                   onClick={() => setLoadFilter(value)}
                 >
                   {label}
@@ -993,7 +993,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                 aria-label="Search drivers"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-[9px] text-white outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-slate-700"
+                className="w-full bg-slate-950 border border-white/5 rounded-lg pl-8 pr-3 py-1.5 text-[11px] text-white outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-slate-500"
               />
             </div>
             <div className="space-y-2 max-h-[500px] overflow-y-auto no-scrollbar">
@@ -1025,7 +1025,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                       <AlertCircle className="w-3 h-3 text-red-500 animate-pulse" />
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                     <span>
                       {vehicle.activeLoad
                         ? `Load #${vehicle.activeLoad.loadNumber}`
@@ -1077,7 +1077,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5">
-              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                 Safety Score
               </div>
               <div className="text-[11px] font-black text-emerald-500 uppercase">
@@ -1085,7 +1085,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
               </div>
             </div>
             <div className="bg-slate-950/60 p-4 rounded-2xl border border-white/5">
-              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                 Last Ping
               </div>
               <div className="text-[11px] font-black text-white uppercase">

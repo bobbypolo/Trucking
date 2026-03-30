@@ -29,7 +29,7 @@ export const QuotePipelineView: React.FC<QuotePipelineViewProps> = ({
                 className={`w-2 h-2 rounded-full ${getQuoteColor(status)}`}
               />
               {status}
-              <span className="text-slate-500 ml-1 text-[9px] font-bold">
+              <span className="text-slate-500 ml-1 text-[11px] font-bold">
                 ({quotes.filter((q) => q.status === status).length})
               </span>
             </h3>
@@ -74,7 +74,7 @@ export const QuotePipelineView: React.FC<QuotePipelineViewProps> = ({
                         ${(quote.totalRate ?? 0).toLocaleString()}
                       </div>
                       {quote.margin && (
-                        <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
                           Est. Margin: ${quote.margin}
                         </div>
                       )}
@@ -83,16 +83,16 @@ export const QuotePipelineView: React.FC<QuotePipelineViewProps> = ({
 
                   <div className="flex items-center justify-between pt-4 border-t border-white/5">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-slate-950 border border-white/5 flex items-center justify-center text-[8px] font-black text-slate-500">
+                      <div className="w-6 h-6 rounded-lg bg-slate-950 border border-white/5 flex items-center justify-center text-[10px] font-black text-slate-500">
                         {quote.ownerId?.charAt(0) || "A"}
                       </div>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase">
                         Last Contact: 2m ago
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Clock className="w-3 h-3 text-slate-600" />
-                      <span className="text-[8px] font-bold text-slate-600 uppercase">
+                      <span className="text-[10px] font-bold text-slate-600 uppercase">
                         v{quote.version}
                       </span>
                     </div>
@@ -101,7 +101,7 @@ export const QuotePipelineView: React.FC<QuotePipelineViewProps> = ({
               ))}
             {quotes.filter((q) => q.status === status).length === 0 && (
               <div className="h-32 border-2 border-dashed border-white/5 rounded-2xl flex items-center justify-center">
-                <span className="text-[9px] font-black text-slate-700 uppercase tracking-[0.2em]">
+                <span className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">
                   No quotes
                 </span>
               </div>

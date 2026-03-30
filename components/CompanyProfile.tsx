@@ -226,7 +226,7 @@ class TabErrorBoundary extends React.Component<
             </p>
             <button
               onClick={() => this.setState({ hasError: false, error: "" })}
-              className="bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
+              className="bg-red-600/20 text-red-400 border border-red-500/30 px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all"
             >
               Retry
             </button>
@@ -267,7 +267,7 @@ function SettingsLoadingSkeleton() {
       </div>
       {/* Content skeleton */}
       <div className="flex-1 p-10 space-y-8">
-        <p className="text-center text-slate-700 font-black uppercase tracking-[0.3em] animate-pulse text-[10px]">
+        <p className="text-center text-slate-500 font-black uppercase tracking-[0.3em] animate-pulse text-[10px]">
           Loading company settings...
         </p>
         <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -702,7 +702,7 @@ export const CompanyProfile: React.FC<Props> = ({
           {!isDriver && (
             <div className="flex items-center gap-4">
               {isDirty && (
-                <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest animate-pulse">
+                <span className="text-[11px] font-black text-amber-400 uppercase tracking-widest animate-pulse">
                   Unsaved changes
                 </span>
               )}
@@ -863,13 +863,13 @@ export const CompanyProfile: React.FC<Props> = ({
                                   ? "Began Duty"
                                   : "Duty Cycle Exit"}
                               </div>
-                              <div className="text-[9px] text-slate-500 font-bold uppercase">
+                              <div className="text-[11px] text-slate-500 font-bold uppercase">
                                 {log.date} @ {log.time}
                               </div>
                             </div>
                           </div>
                           <span
-                            className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${log.status === "Active" ? "bg-green-600/20 text-green-400" : "text-slate-600"}`}
+                            className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${log.status === "Active" ? "bg-green-600/20 text-green-400" : "text-slate-600"}`}
                           >
                             {log.status}
                           </span>
@@ -896,7 +896,7 @@ export const CompanyProfile: React.FC<Props> = ({
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                      <label className="text-[11px] text-slate-500 uppercase font-black px-1">
                         MC #
                       </label>
                       <div
@@ -906,12 +906,12 @@ export const CompanyProfile: React.FC<Props> = ({
                       >
                         {company.mcNumber || "Not provided"}
                       </div>
-                      <p className="text-[8px] text-slate-600 font-bold px-1">
+                      <p className="text-[10px] text-slate-600 font-bold px-1">
                         e.g., MC-123456
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                      <label className="text-[11px] text-slate-500 uppercase font-black px-1">
                         DOT #
                       </label>
                       <div
@@ -921,7 +921,7 @@ export const CompanyProfile: React.FC<Props> = ({
                       >
                         {company.dotNumber || "Not provided"}
                       </div>
-                      <p className="text-[8px] text-slate-600 font-bold px-1">
+                      <p className="text-[10px] text-slate-600 font-bold px-1">
                         e.g., DOT-123456
                       </p>
                     </div>
@@ -929,7 +929,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpLegalName"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Legal Name
                     </label>
@@ -943,7 +943,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpPhone"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Phone
                     </label>
@@ -964,7 +964,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpEmail"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Email
                     </label>
@@ -992,7 +992,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpMainTerminalAddress"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Main Terminal Address
                     </label>
@@ -1014,7 +1014,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpCity"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         City
                       </label>
@@ -1036,7 +1036,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpState"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         State
                       </label>
@@ -1058,7 +1058,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpZip"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         ZIP
                       </label>
@@ -1094,7 +1094,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        <div className="text-[11px] text-slate-500 uppercase font-black mb-2">
                           Current Plan
                         </div>
                         <div className="text-lg font-black text-white uppercase tracking-tight">
@@ -1102,7 +1102,7 @@ export const CompanyProfile: React.FC<Props> = ({
                         </div>
                       </div>
                       <span
-                        className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        className={`text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
                           company.subscriptionStatus === "active"
                             ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
                             : company.subscriptionStatus === "trial"
@@ -1115,7 +1115,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     </div>
                     {company.subscriptionPeriodEnd && (
                       <div data-testid="billing-period-end">
-                        <div className="text-[9px] text-slate-500 uppercase font-black mb-1">
+                        <div className="text-[11px] text-slate-500 uppercase font-black mb-1">
                           Period Ends
                         </div>
                         <div className="text-xs text-slate-300 font-bold">
@@ -1157,7 +1157,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                        <div className="text-[11px] text-slate-500 uppercase font-black mb-2">
                           Connection Status
                         </div>
                         <div className="text-sm font-bold text-white">
@@ -1167,7 +1167,7 @@ export const CompanyProfile: React.FC<Props> = ({
                         </div>
                       </div>
                       <span
-                        className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
+                        className={`text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full ${
                           qbStatus.connected
                             ? "bg-emerald-600/20 text-emerald-400 border border-emerald-500/30"
                             : "bg-slate-700/30 text-slate-400 border border-slate-600/30"
@@ -1205,7 +1205,7 @@ export const CompanyProfile: React.FC<Props> = ({
                 </h3>
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1">
+                    <label className="text-[11px] text-slate-500 uppercase font-black px-1">
                       Authorized Freight Types
                     </label>
                     <div className="grid grid-cols-2 gap-3">
@@ -1230,7 +1230,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpCompanyStructure"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Company Structure
                     </label>
@@ -1255,7 +1255,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     </select>
                   </div>
                   <div className="space-y-4 pt-4 border-t border-slate-800">
-                    <label className="text-[9px] text-slate-500 uppercase font-black px-1 flex items-center gap-2">
+                    <label className="text-[11px] text-slate-500 uppercase font-black px-1 flex items-center gap-2">
                       <ShieldCheck className="w-3 h-3 text-blue-500" /> System
                       Operating Mode (Owner Switch)
                     </label>
@@ -1280,7 +1280,7 @@ export const CompanyProfile: React.FC<Props> = ({
                                 {mode}
                               </div>
                               <div
-                                className={`text-[8px] font-bold uppercase mt-1 ${(company.operatingMode ?? "Small Team") === mode ? "text-blue-100" : "text-slate-500"}`}
+                                className={`text-[10px] font-bold uppercase mt-1 ${(company.operatingMode ?? "Small Team") === mode ? "text-blue-100" : "text-slate-500"}`}
                               >
                                 {mode === "Small Team" &&
                                   "Everyone helps: Dispatch can quote + convert"}
@@ -1309,7 +1309,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpPrefix"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         Prefix
                       </label>
@@ -1331,7 +1331,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpAutoSequence"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         Auto-Sequence
                       </label>
@@ -1355,7 +1355,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpSeparator"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Separator
                     </label>
@@ -1375,7 +1375,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     />
                   </div>
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800/50">
-                    <div className="text-[9px] text-slate-500 uppercase font-black mb-2">
+                    <div className="text-[11px] text-slate-500 uppercase font-black mb-2">
                       Preview
                     </div>
                     <div className="text-sm font-mono font-black text-blue-400">
@@ -1400,23 +1400,23 @@ export const CompanyProfile: React.FC<Props> = ({
                 <div className="flex justify-between items-center mb-10">
                   <h3 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-3">
                     <Users className="w-5 h-5 text-indigo-500" /> Team Members
-                    <span className="text-[9px] font-bold text-slate-600 ml-2">
+                    <span className="text-[11px] font-bold text-slate-600 ml-2">
                       ({users.length}{" "}
                       {users.length === 1 ? "member" : "members"})
                     </span>
                   </h3>
-                  <button className="bg-blue-600/10 text-blue-500 border border-blue-500/20 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
+                  <button className="bg-blue-600/10 text-blue-500 border border-blue-500/20 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all">
                     Export CSV
                   </button>
                 </div>
                 <div className="space-y-4">
                   {users.length === 0 ? (
                     <div className="text-center py-12 space-y-4">
-                      <Users className="w-10 h-10 text-slate-700 mx-auto" />
+                      <Users className="w-10 h-10 text-slate-500 mx-auto" />
                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                         No team members found
                       </p>
-                      <p className="text-[9px] text-slate-700 font-bold">
+                      <p className="text-[11px] text-slate-500 font-bold">
                         Team members will appear here once added to your company
                       </p>
                     </div>
@@ -1434,7 +1434,7 @@ export const CompanyProfile: React.FC<Props> = ({
                             <div className="text-xs font-black text-white uppercase">
                               {u.name || "Unnamed User"}
                             </div>
-                            <div className="text-[9px] text-slate-500 font-bold uppercase">
+                            <div className="text-[11px] text-slate-500 font-bold uppercase">
                               {(u.role || "member").replace("_", " ")}{" "}
                               {u.email ? `\u2022 ${u.email}` : ""}
                             </div>
@@ -1469,10 +1469,10 @@ export const CompanyProfile: React.FC<Props> = ({
                 <div className="space-y-6">
                   <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl border border-slate-800">
                     <div className="space-y-1">
-                      <div className="text-[9px] font-black text-white uppercase tracking-tight">
+                      <div className="text-[11px] font-black text-white uppercase tracking-tight">
                         Auto-Lock Compliance
                       </div>
-                      <div className="text-[8px] text-slate-500 font-bold uppercase">
+                      <div className="text-[10px] text-slate-500 font-bold uppercase">
                         Restricts dispatch for non-compliant drivers
                       </div>
                     </div>
@@ -1499,10 +1499,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl border border-slate-800">
                     <div className="space-y-1">
-                      <div className="text-[9px] font-black text-white uppercase tracking-tight">
+                      <div className="text-[11px] font-black text-white uppercase tracking-tight">
                         Require Quiz Pass
                       </div>
-                      <div className="text-[8px] text-slate-500 font-bold uppercase">
+                      <div className="text-[10px] text-slate-500 font-bold uppercase">
                         Drivers must pass safety quiz before dispatch
                       </div>
                     </div>
@@ -1529,10 +1529,10 @@ export const CompanyProfile: React.FC<Props> = ({
                   </div>
                   <div className="flex justify-between items-center p-4 bg-slate-900 rounded-2xl border border-slate-800">
                     <div className="space-y-1">
-                      <div className="text-[9px] font-black text-white uppercase tracking-tight">
+                      <div className="text-[11px] font-black text-white uppercase tracking-tight">
                         Require Maintenance Pass
                       </div>
-                      <div className="text-[8px] text-slate-500 font-bold uppercase">
+                      <div className="text-[10px] text-slate-500 font-bold uppercase">
                         Vehicle must pass inspection before dispatch
                       </div>
                     </div>
@@ -1560,7 +1560,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="cpMinSafetyScoreForDispatch"
-                      className="text-[9px] text-slate-500 uppercase font-black px-1"
+                      className="text-[11px] text-slate-500 uppercase font-black px-1"
                     >
                       Min. Safety Score for Dispatch
                     </label>
@@ -1602,7 +1602,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpPreferredCurrency"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         Preferred Currency
                       </label>
@@ -1627,7 +1627,7 @@ export const CompanyProfile: React.FC<Props> = ({
                     <div className="space-y-2">
                       <label
                         htmlFor="cpMaxLoadsWeek"
-                        className="text-[9px] text-slate-500 uppercase font-black px-1"
+                        className="text-[11px] text-slate-500 uppercase font-black px-1"
                       >
                         Max Loads/Week
                       </label>
@@ -1762,7 +1762,7 @@ export const CompanyProfile: React.FC<Props> = ({
                   <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                     End Shift
                   </h2>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mt-1">
+                  <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest mt-1">
                     Saving shift notes
                   </p>
                 </div>
@@ -1793,7 +1793,7 @@ export const CompanyProfile: React.FC<Props> = ({
               <div className="flex gap-4">
                 <button
                   onClick={() => setShowClockOutModal(false)}
-                  className="px-10 py-5 bg-slate-800 text-slate-400 rounded-[2rem] font-black uppercase tracking-widest text-[9px]"
+                  className="px-10 py-5 bg-slate-800 text-slate-400 rounded-[2rem] font-black uppercase tracking-widest text-[11px]"
                 >
                   Cancel
                 </button>

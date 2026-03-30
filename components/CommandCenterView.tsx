@@ -527,7 +527,7 @@ export const CommandCenterView: React.FC<Props> = ({
                     <button
                       key={filter.id}
                       onClick={() => setFilterSeverity(filter.id)}
-                      className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filterSeverity === filter.id ? "bg-blue-600 border-blue-500 text-white shadow-lg" : "bg-slate-950/50 border-white/5 text-slate-500 hover:text-white"}`}
+                      className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap border ${filterSeverity === filter.id ? "bg-blue-600 border-blue-500 text-white shadow-lg" : "bg-slate-950/50 border-white/5 text-slate-500 hover:text-white"}`}
                     >
                       {filter.label}{" "}
                       <span className="ml-1.5 opacity-50 px-1.5 py-0.5 bg-black/40 rounded-md">
@@ -690,13 +690,13 @@ export const CommandCenterView: React.FC<Props> = ({
                               <div className="text-[11px] font-black text-white uppercase tracking-tighter truncate max-w-[180px]">
                                 {displayLabel}
                               </div>
-                              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                 {item.category} • {item.id.slice(0, 8)}
                               </div>
                             </div>
                           </div>
                           <div
-                            className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg border ${severityOrPriority === "Critical" ? "border-red-500/30 text-red-500 bg-red-500/10" : "border-blue-500/30 text-blue-500 bg-blue-500/10"}`}
+                            className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg border ${severityOrPriority === "Critical" ? "border-red-500/30 text-red-500 bg-red-500/10" : "border-blue-500/30 text-blue-500 bg-blue-500/10"}`}
                           >
                             {severityOrPriority}
                           </div>
@@ -710,17 +710,17 @@ export const CommandCenterView: React.FC<Props> = ({
                               {[1, 2].map((i) => (
                                 <div
                                   key={i}
-                                  className="w-6 h-6 rounded-full bg-slate-800 border-2 border-[#0a0f1e] flex items-center justify-center text-[8px] font-black text-slate-500"
+                                  className="w-6 h-6 rounded-full bg-slate-800 border-2 border-[#0a0f1e] flex items-center justify-center text-[10px] font-black text-slate-500"
                                 >
                                   <UserIcon className="w-3 h-3" />
                                 </div>
                               ))}
                             </div>
-                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">
+                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                               Linked Response Team
                             </span>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-700 group-hover:text-blue-500 transition-colors" />
+                          <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-blue-500 transition-colors" />
                         </div>
                       </div>
                     );
@@ -728,7 +728,7 @@ export const CommandCenterView: React.FC<Props> = ({
                 {incidents.length === 0 && safeWorkItems.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 opacity-20 text-center">
                     <Activity className="w-12 h-12 mx-auto mb-4 text-slate-500" />
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
+                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest leading-relaxed">
                       Operational Workspace Resting
                       <br />
                       No Triage Items Detected
@@ -807,7 +807,7 @@ export const CommandCenterView: React.FC<Props> = ({
                   <div
                     className={`${isHighObstruction ? "p-2.5" : "p-4"} bg-slate-950/60 rounded-2xl border border-white/5 backdrop-blur-md`}
                   >
-                    <div className="text-[8px] font-black text-slate-600 uppercase mb-1 tracking-widest">
+                    <div className="text-[10px] font-black text-slate-600 uppercase mb-1 tracking-widest">
                       Status
                     </div>
                     <div className="flex items-center gap-2">
@@ -822,7 +822,7 @@ export const CommandCenterView: React.FC<Props> = ({
                   <div
                     className={`${isHighObstruction ? "p-2.5" : "p-4"} bg-slate-950/60 rounded-2xl border border-white/5 backdrop-blur-md`}
                   >
-                    <div className="text-[8px] font-black text-slate-600 uppercase mb-1 tracking-widest">
+                    <div className="text-[10px] font-black text-slate-600 uppercase mb-1 tracking-widest">
                       Alert
                     </div>
                     <div
@@ -880,7 +880,7 @@ export const CommandCenterView: React.FC<Props> = ({
                             | "fuel",
                         )
                       }
-                      className={`pb-4 text-[9px] font-black uppercase tracking-[0.2em] border-b-2 transition-all flex items-center gap-2 shrink-0 ${activeDetailTab === tab.id ? "border-blue-500 text-white shadow-[0_4px_12px_rgba(59,130,246,0.2)]" : "border-transparent text-slate-600 hover:text-slate-400"}`}
+                      className={`pb-4 text-[11px] font-black uppercase tracking-[0.2em] border-b-2 transition-all flex items-center gap-2 shrink-0 ${activeDetailTab === tab.id ? "border-blue-500 text-white shadow-[0_4px_12px_rgba(59,130,246,0.2)]" : "border-transparent text-slate-600 hover:text-slate-400"}`}
                     >
                       <tab.icon className="w-3.5 h-3.5" />{" "}
                       {!isHighObstruction && tab.label}
@@ -978,7 +978,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                         />
                                       </button>
                                       <span
-                                        className={`text-[8px] font-black uppercase tracking-widest ${isActive ? `text-${step.color}-500` : "text-slate-600"}`}
+                                        className={`text-[10px] font-black uppercase tracking-widest ${isActive ? `text-${step.color}-500` : "text-slate-600"}`}
                                       >
                                         {step.id}
                                       </span>
@@ -1005,7 +1005,7 @@ export const CommandCenterView: React.FC<Props> = ({
                               Manifest Integrity Overview
                             </h3>
                             <div
-                              className={`px-2 py-0.5 rounded-lg text-[8px] font-black border ${DispatchIntelligence.predictExceptionRisk(active360Data?.load).risk === "LOW" ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-red-500/30 text-red-500 bg-red-500/10"}`}
+                              className={`px-2 py-0.5 rounded-lg text-[10px] font-black border ${DispatchIntelligence.predictExceptionRisk(active360Data?.load).risk === "LOW" ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-red-500/30 text-red-500 bg-red-500/10"}`}
                             >
                               AI RISK:{" "}
                               {
@@ -1021,7 +1021,7 @@ export const CommandCenterView: React.FC<Props> = ({
                             <div
                               className={`${isHighObstruction ? "p-3" : "p-4"} bg-slate-900 border border-white/5 rounded-2xl`}
                             >
-                              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+                              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                                 Status
                               </div>
                               <div
@@ -1033,7 +1033,7 @@ export const CommandCenterView: React.FC<Props> = ({
                             <div
                               className={`${isHighObstruction ? "p-3" : "p-4"} bg-slate-900 border border-white/5 rounded-2xl`}
                             >
-                              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+                              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                                 Rate
                               </div>
                               <div
@@ -1048,7 +1048,7 @@ export const CommandCenterView: React.FC<Props> = ({
                             <div
                               className={`${isHighObstruction ? "p-3" : "p-4"} bg-slate-900 border border-white/5 rounded-2xl`}
                             >
-                              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+                              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                                 Commodity
                               </div>
                               <div
@@ -1061,7 +1061,7 @@ export const CommandCenterView: React.FC<Props> = ({
                             <div
                               className={`${isHighObstruction ? "p-3" : "p-4"} bg-slate-900 border border-white/5 rounded-2xl`}
                             >
-                              <div className="text-[8px] font-black text-slate-600 uppercase mb-1">
+                              <div className="text-[10px] font-black text-slate-600 uppercase mb-1">
                                 Weight
                               </div>
                               <div
@@ -1098,18 +1098,18 @@ export const CommandCenterView: React.FC<Props> = ({
                           </h3>
                           <div className="p-4 bg-slate-900 border border-white/5 rounded-2xl space-y-3">
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-slate-500 uppercase">
+                              <span className="text-[11px] font-bold text-slate-500 uppercase">
                                 Compliance
                               </span>
-                              <span className="text-[9px] font-black text-emerald-500 uppercase">
+                              <span className="text-[11px] font-black text-emerald-500 uppercase">
                                 VERIFIED
                               </span>
                             </div>
                             <div className="flex justify-between items-center">
-                              <span className="text-[9px] font-bold text-slate-500 uppercase">
+                              <span className="text-[11px] font-bold text-slate-500 uppercase">
                                 Safety Score
                               </span>
-                              <span className="text-[9px] font-black text-white uppercase">
+                              <span className="text-[11px] font-black text-white uppercase">
                                 98/100
                               </span>
                             </div>
@@ -1199,7 +1199,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   className={`${isHighObstruction ? "w-4 h-4" : "w-6 h-6"} group-hover:rotate-180 transition-transform duration-700`}
                                 />
                                 <span
-                                  className={`${isHighObstruction ? "text-[8px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
+                                  className={`${isHighObstruction ? "text-[10px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
                                 >
                                   Initiate Repower
                                 </span>
@@ -1212,7 +1212,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   className={`${isHighObstruction ? "w-4 h-4" : "w-6 h-6"} group-hover:scale-110 transition-transform`}
                                 />
                                 <span
-                                  className={`${isHighObstruction ? "text-[8px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
+                                  className={`${isHighObstruction ? "text-[10px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
                                 >
                                   Service Ticket
                                 </span>
@@ -1225,7 +1225,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   className={`${isHighObstruction ? "w-4 h-4" : "w-6 h-6"} group-hover:scale-110 transition-transform`}
                                 />
                                 <span
-                                  className={`${isHighObstruction ? "text-[8px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
+                                  className={`${isHighObstruction ? "text-[10px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
                                 >
                                   Asset Recovery
                                 </span>
@@ -1238,7 +1238,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   className={`${isHighObstruction ? "w-4 h-4" : "w-6 h-6"} group-hover:animate-bounce`}
                                 />
                                 <span
-                                  className={`${isHighObstruction ? "text-[8px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
+                                  className={`${isHighObstruction ? "text-[10px]" : "text-[10px]"} font-black uppercase tracking-[0.2em]`}
                                 >
                                   Stakeholders
                                 </span>
@@ -1264,7 +1264,7 @@ export const CommandCenterView: React.FC<Props> = ({
                           </h3>
                           <button
                             onClick={() => setActiveDetailTab("timeline")}
-                            className="text-[8px] font-black text-blue-500 uppercase hover:underline"
+                            className="text-[10px] font-black text-blue-500 uppercase hover:underline"
                           >
                             View History
                           </button>
@@ -1276,10 +1276,10 @@ export const CommandCenterView: React.FC<Props> = ({
                               <div key={idx} className="relative">
                                 <div className="absolute -left-[23px] top-1 w-2.5 h-2.5 rounded-full bg-slate-900 border-2 border-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
                                 <div className="flex justify-between items-center mb-0.5">
-                                  <span className="text-[9px] font-black text-white uppercase">
+                                  <span className="text-[11px] font-black text-white uppercase">
                                     {event.type}
                                   </span>
-                                  <span className="text-[8px] font-bold text-slate-600">
+                                  <span className="text-[10px] font-bold text-slate-600">
                                     {new Date(
                                       event.timestamp,
                                     ).toLocaleTimeString([], {
@@ -1294,7 +1294,7 @@ export const CommandCenterView: React.FC<Props> = ({
                               </div>
                             ))}
                           {unifiedEvents.length === 0 && (
-                            <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest py-2">
+                            <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest py-2">
                               No tactical activity recorded
                             </div>
                           )}
@@ -1341,13 +1341,13 @@ export const CommandCenterView: React.FC<Props> = ({
                                           {entry.action}
                                         </span>
                                       </div>
-                                      <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
+                                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
                                         {new Date(entry.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                       </span>
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-1">
                                       <UserIcon className="w-2.5 h-2.5 text-slate-600" />
-                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                                         {entry.actorName || entry.actor_name || "Unknown"}
                                       </span>
                                     </div>
@@ -1453,11 +1453,11 @@ export const CommandCenterView: React.FC<Props> = ({
                                     {event.type}
                                   </span>
                                   <span className="w-1 h-1 rounded-full bg-white/20" />
-                                  <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                  <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                     {event.actorName}
                                   </div>
                                 </div>
-                                <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
+                                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest bg-white/[0.03] px-1.5 py-0.5 rounded border border-white/5">
                                   {new Date(event.timestamp).toLocaleTimeString(
                                     [],
                                     { hour: "2-digit", minute: "2-digit" },
@@ -1470,18 +1470,18 @@ export const CommandCenterView: React.FC<Props> = ({
                                   <div className="mt-3 flex items-center justify-between opacity-0 group-hover/ev:opacity-100 transition-all">
                                     <div className="flex gap-1.5">
                                       {event.loadId && (
-                                        <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-[7px] font-black text-blue-400 rounded uppercase">
+                                        <span className="px-1.5 py-0.5 bg-blue-500/10 border border-blue-500/20 text-[10px] font-black text-blue-400 rounded uppercase">
                                           Load context
                                         </span>
                                       )}
                                       {event.isActionRequired && (
-                                        <span className="px-1.5 py-0.5 bg-red-500/10 border border-red-500/20 text-[7px] font-black text-red-500 rounded uppercase">
+                                        <span className="px-1.5 py-0.5 bg-red-500/10 border border-red-500/20 text-[10px] font-black text-red-500 rounded uppercase">
                                           Action required
                                         </span>
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
+                                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
                                         Explore Context
                                       </span>
                                       <ArrowUpRight className="w-3 h-3 text-blue-500" />
@@ -1548,7 +1548,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                 <div className="text-[12px] font-black text-white uppercase">
                                   {item.category || item.type}
                                 </div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase">
+                                <div className="text-[11px] font-bold text-slate-500 uppercase">
                                   {item.providerVendor || item.requestedAt
                                     ? "Request"
                                     : "Internal Ledger"}
@@ -1564,7 +1564,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                   0
                                 ).toLocaleString()}
                               </div>
-                              <div className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                              <div className="text-[11px] font-black text-blue-500 uppercase tracking-widest">
                                 {item.status}
                               </div>
                             </div>
@@ -1603,7 +1603,7 @@ export const CommandCenterView: React.FC<Props> = ({
                                 <div className="text-[11px] font-black text-white uppercase mb-1 truncate max-w-[140px]">
                                   {doc.fileName || doc.name}
                                 </div>
-                                <div className="text-[9px] font-bold text-slate-600 uppercase">
+                                <div className="text-[11px] font-bold text-slate-600 uppercase">
                                   {doc.type} •{" "}
                                   {doc.size
                                     ? (doc.size / 1024).toFixed(0) + " KB"
@@ -1650,7 +1650,7 @@ export const CommandCenterView: React.FC<Props> = ({
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-6 bg-white/5 border border-white/5 rounded-3xl group hover:border-blue-500/30 transition-all shadow-xl">
-                          <div className="text-[9px] font-black text-slate-600 uppercase mb-2">
+                          <div className="text-[11px] font-black text-slate-600 uppercase mb-2">
                             Total Fuel Burn
                           </div>
                           <div className="text-2xl font-black text-white font-mono">
@@ -1658,7 +1658,7 @@ export const CommandCenterView: React.FC<Props> = ({
                           </div>
                         </div>
                         <div className="p-6 bg-white/5 border border-white/5 rounded-3xl group hover:border-emerald-500/30 transition-all shadow-xl">
-                          <div className="text-[9px] font-black text-slate-600 uppercase mb-2">
+                          <div className="text-[11px] font-black text-slate-600 uppercase mb-2">
                             Avg Gal Price
                           </div>
                           <div className="text-2xl font-black text-emerald-400 font-mono">

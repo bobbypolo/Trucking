@@ -46,7 +46,7 @@ export const DispatcherTimeline: React.FC<Props> = ({ events, timeLogs, loads })
         <div className="space-y-6">
             {mergedTimeline.length === 0 && (
                 <div className="text-center py-12 bg-slate-950/50 rounded-2xl border border-dashed border-slate-800">
-                    <History className="w-8 h-8 text-slate-700 mx-auto mb-3" />
+                    <History className="w-8 h-8 text-slate-500 mx-auto mb-3" />
                     <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">No activity sequences recorded</p>
                 </div>
             )}
@@ -71,7 +71,7 @@ export const DispatcherTimeline: React.FC<Props> = ({ events, timeLogs, loads })
                                 {new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                             </span>
                             {item.load && (
-                                <div className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-2 py-0.5 rounded text-[9px] font-black text-blue-400">
+                                <div className="flex items-center gap-2 bg-blue-600/10 border border-blue-500/20 px-2 py-0.5 rounded text-[11px] font-black text-blue-400">
                                     <Truck className="w-3 h-3" /> #{item.load.loadNumber}
                                 </div>
                             )}

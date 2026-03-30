@@ -287,10 +287,10 @@ export const Intelligence: React.FC<Props> = ({
                 Business Insights
               </h2>
               <div className="flex gap-2 mt-1.5">
-                <span className="text-slate-500 text-[8px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
                   Operational DNA
                 </span>
-                <span className="text-slate-500 text-[8px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                <span className="text-slate-500 text-[10px] font-black uppercase tracking-widest bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
                   Market IQ Active
                 </span>
               </div>
@@ -307,7 +307,7 @@ export const Intelligence: React.FC<Props> = ({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`pb-2 text-[9px] font-black uppercase tracking-[0.2em] border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? "border-blue-500 text-blue-400" : "border-transparent text-slate-600 hover:text-slate-300"}`}
+              className={`pb-2 text-[11px] font-black uppercase tracking-[0.2em] border-b-2 transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? "border-blue-500 text-blue-400" : "border-transparent text-slate-600 hover:text-slate-300"}`}
             >
               <tab.icon className="w-3 h-3" /> {tab.label}
             </button>
@@ -416,7 +416,7 @@ export const Intelligence: React.FC<Props> = ({
                           <h4 className="font-black text-white text-xs uppercase tracking-tight truncate">
                             {item.name}
                           </h4>
-                          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-widest">
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
                             {activeTab === "facilities"
                               ? `${item.city}, ${item.state}`
                               : `MC: ${item.mcNumber}`}
@@ -429,14 +429,14 @@ export const Intelligence: React.FC<Props> = ({
                             ? `${item.visits}`
                             : `$${item.avgRate.toFixed(0)}`}
                         </div>
-                        <span className="text-[7px] text-slate-600 font-black uppercase tracking-widest">
+                        <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest">
                           {activeTab === "facilities" ? "Visits" : "Avg Rate"}
                         </span>
                       </div>
                     </div>
                     <div className="pt-4 border-t border-slate-800 flex justify-between items-end">
                       <div>
-                        <span className="text-[7px] text-slate-600 font-black uppercase tracking-[0.2em] block mb-1">
+                        <span className="text-[10px] text-slate-600 font-black uppercase tracking-[0.2em] block mb-1">
                           Health Score
                         </span>
                         <div
@@ -489,7 +489,7 @@ export const Intelligence: React.FC<Props> = ({
                     <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
                       {selectedEntity.data.name}
                     </h2>
-                    <p className="text-[9px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">
+                    <p className="text-[11px] text-slate-500 font-black uppercase tracking-[0.3em] mt-1">
                       {selectedEntity.type === "facility"
                         ? `${selectedEntity.data.city}, ${selectedEntity.data.state}`
                         : `MC#: ${selectedEntity.data.mcNumber}`}
@@ -522,7 +522,7 @@ export const Intelligence: React.FC<Props> = ({
                           {cause}
                         </p>
                         <div
-                          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${
+                          className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                             status === "High"
                               ? "bg-green-900/20 text-green-400 border border-green-800"
                               : status === "Medium"

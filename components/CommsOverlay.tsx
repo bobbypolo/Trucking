@@ -197,7 +197,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                             </h2>
                             <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${activeCallSession ? 'bg-red-500' : 'bg-slate-600'}`} />
-                                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest leading-none">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest leading-none">
                                     {activeCallSession ? activeCallSession.id : 'Idle'}
                                 </span>
                             </div>
@@ -220,10 +220,10 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                             {session.primaryContext?.type === 'LOAD' ? <Truck className="w-3.5 h-3.5" /> : <Anchor className="w-3.5 h-3.5" />}
                         </div>
                         <div className="truncate">
-                            <span className="text-[9px] font-black text-white uppercase block truncate leading-none">
+                            <span className="text-[11px] font-black text-white uppercase block truncate leading-none">
                                 {session.primaryContext?.label || 'UNLINKED INTERACTION'}
                             </span>
-                            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none mt-1">
+                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest leading-none mt-1">
                                 Primary Evidence
                             </span>
                         </div>
@@ -267,7 +267,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                             }}
                                         >
                                             <div className="text-[10px] font-black text-white uppercase">Load #{l.loadNumber}</div>
-                                            <div className="text-[8px] font-bold text-slate-500 group-hover:text-blue-100 uppercase">{l.driverName} • {l.status}</div>
+                                            <div className="text-[10px] font-bold text-slate-500 group-hover:text-blue-100 uppercase">{l.driverName} • {l.status}</div>
                                         </div>
                                         {onLinkSessionToRecord && (
                                             <button
@@ -306,7 +306,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                         className={`flex-1 flex flex-col items-center py-3 gap-1 relative ${activeTab === tab.id ? 'text-blue-400' : 'text-slate-600 hover:text-slate-400'}`}
                     >
                         <tab.icon className="w-4 h-4" />
-                        <span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
                         {activeTab === tab.id && <div className="absolute bottom-0 left-2 right-2 h-0.5 bg-blue-500 rounded-full" />}
                     </button>
                 ))}
@@ -338,7 +338,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                         <div className="flex-1 space-y-4 mb-4">
                             {/* Previous session events would go here - for now just show current draft */}
                             <div className="text-center py-4 border-b border-white/5 mb-6">
-                                <span className="text-[8px] font-black text-slate-700 uppercase tracking-[0.3em]">Session Started At {new Date(activeCallSession.startTime).toLocaleTimeString()}</span>
+                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Session Started At {new Date(activeCallSession.startTime).toLocaleTimeString()}</span>
                             </div>
                         </div>
                         <div className="relative bg-slate-900/60 border border-white/5 rounded-[1.5rem] p-4 group focus-within:border-blue-500/50 transition-all shadow-2xl">
@@ -379,7 +379,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                         <div className="max-w-[80%] p-3 rounded-xl text-[11px] leading-relaxed bg-slate-900 border border-white/5 text-slate-300">
                                             {msg.text}
                                         </div>
-                                        <span className="text-[7px] font-bold text-slate-600 uppercase mt-1 px-1">{msg.senderName} • {new Date(msg.timestamp).toLocaleTimeString()}</span>
+                                        <span className="text-[10px] font-bold text-slate-600 uppercase mt-1 px-1">{msg.senderName} • {new Date(msg.timestamp).toLocaleTimeString()}</span>
                                     </div>
                                 ))
                             )}
@@ -431,7 +431,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                                     className="p-4 bg-white/5 hover:bg-blue-600/10 border border-white/5 hover:border-blue-500/30 rounded-[1.25rem] text-left group transition-all"
                                 >
                                     <div className="text-[11px] font-black text-white uppercase mb-1 group-hover:text-blue-400">{req.label}</div>
-                                    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">Execute Action</div>
+                                    <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Execute Action</div>
                                 </button>
                             ))}
                         </div>
@@ -451,7 +451,7 @@ export const CommsOverlay: React.FC<CommsOverlayProps> = ({
                         <button
                             key={jump.label}
                             onClick={() => onNavigate(jump.tab)}
-                            className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-white hover:border-blue-500/30 transition-all whitespace-nowrap"
+                            className="px-4 py-2 bg-slate-900 border border-white/5 rounded-xl text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-white hover:border-blue-500/30 transition-all whitespace-nowrap"
                         >
                             {jump.label}
                         </button>

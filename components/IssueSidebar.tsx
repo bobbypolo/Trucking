@@ -162,7 +162,7 @@ export const IssueSidebar: React.FC<Props> = ({
           <h2 className="text-xs font-black text-white flex items-center gap-2 uppercase tracking-widest">
             <AlertTriangle className="w-4 h-4 text-orange-500" /> Issues &
             Alerts
-            <span className="bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+            <span className="bg-red-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
               {totalIssueCount}
             </span>
           </h2>
@@ -178,13 +178,13 @@ export const IssueSidebar: React.FC<Props> = ({
         <div className="flex bg-slate-950 p-1 rounded-lg border border-slate-800">
           <button
             onClick={() => setActiveTab("Issues")}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === "Issues" ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:text-slate-400"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === "Issues" ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:text-slate-400"}`}
           >
             <AlertTriangle className="w-3 h-3" /> All Issues
           </button>
           <button
             onClick={() => setActiveTab("Calls")}
-            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === "Calls" ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:text-slate-400"}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-[11px] font-black uppercase tracking-widest rounded-md transition-all ${activeTab === "Calls" ? "bg-blue-600 text-white shadow-lg" : "text-slate-600 hover:text-slate-400"}`}
           >
             <History className="w-3 h-3" /> Call Matrix
           </button>
@@ -200,7 +200,7 @@ export const IssueSidebar: React.FC<Props> = ({
                 role="status"
               >
                 <Info className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-[9px] font-bold text-blue-400 uppercase tracking-widest">
+                <p className="text-[11px] font-bold text-blue-400 uppercase tracking-widest">
                   Viewing as {currentUser.role.replace("_", " ")} — Some actions
                   require administrator privileges
                 </p>
@@ -210,7 +210,7 @@ export const IssueSidebar: React.FC<Props> = ({
             {/* Unified Exceptions from API */}
             {openExceptions.length > 0 && (
               <div className="space-y-2 mb-4">
-                <h3 className="text-[8px] font-black text-blue-500 uppercase tracking-[0.25em] flex items-center gap-2 mb-2">
+                <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.25em] flex items-center gap-2 mb-2">
                   <AlertCircle className="w-3 h-3" /> Unified Issues (
                   {openExceptions.length})
                 </h3>
@@ -220,12 +220,12 @@ export const IssueSidebar: React.FC<Props> = ({
                     className={`p-3 rounded-xl border ${getExceptionColor(ex.type)} relative group shadow-sm`}
                   >
                     <div className="flex justify-between items-start mb-1.5">
-                      <span className="flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest">
+                      <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
                         {getExceptionIcon(ex.type)}{" "}
                         {ex.type?.replace(/_/g, " ")}
                       </span>
                       <span
-                        className={`text-[7px] font-black px-1.5 py-0.5 rounded border uppercase ${ex.severity >= 4 ? "text-red-400 bg-red-900/20 border-red-500/30" : ex.severity >= 3 ? "text-orange-400 bg-orange-900/20 border-orange-500/30" : "text-blue-400 bg-blue-900/20 border-blue-500/30"}`}
+                        className={`text-[10px] font-black px-1.5 py-0.5 rounded border uppercase ${ex.severity >= 4 ? "text-red-400 bg-red-900/20 border-red-500/30" : ex.severity >= 3 ? "text-orange-400 bg-orange-900/20 border-orange-500/30" : "text-blue-400 bg-blue-900/20 border-blue-500/30"}`}
                       >
                         {ex.severity >= 4
                           ? "CRIT"
@@ -239,11 +239,11 @@ export const IssueSidebar: React.FC<Props> = ({
                     </p>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                           {ex.entityType} #{ex.entityId}
                         </span>
                         {ex.slaDueAt && (
-                          <span className="text-[7px] font-black text-red-500 uppercase flex items-center gap-1">
+                          <span className="text-[10px] font-black text-red-500 uppercase flex items-center gap-1">
                             <Clock className="w-2.5 h-2.5" /> SLA
                           </span>
                         )}
@@ -264,7 +264,7 @@ export const IssueSidebar: React.FC<Props> = ({
             )}
 
             {totalIssueCount === 0 && !exceptionsLoading && (
-              <div className="text-center text-slate-700 py-10">
+              <div className="text-center text-slate-500 py-10">
                 <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-10" />
                 <p className="text-[10px] font-black uppercase tracking-widest">
                   {isRoleMapped
@@ -272,7 +272,7 @@ export const IssueSidebar: React.FC<Props> = ({
                     : "No actions available for your role"}
                 </p>
                 {!isRoleMapped && (
-                  <p className="text-[8px] text-slate-600 uppercase tracking-widest mt-2">
+                  <p className="text-[10px] text-slate-600 uppercase tracking-widest mt-2">
                     Contact an administrator for access
                   </p>
                 )}
@@ -280,7 +280,7 @@ export const IssueSidebar: React.FC<Props> = ({
             )}
 
             {exceptionsLoading && openExceptions.length === 0 && (
-              <div className="text-center text-slate-700 py-10 animate-pulse">
+              <div className="text-center text-slate-500 py-10 animate-pulse">
                 <Clock className="w-12 h-12 mx-auto mb-2 opacity-10" />
                 <p className="text-[10px] font-black uppercase tracking-widest">
                   Loading issues...
@@ -291,7 +291,7 @@ export const IssueSidebar: React.FC<Props> = ({
             {/* Handoff/Action Required Section */}
             {loads.filter((l) => l.isActionRequired).length > 0 && (
               <div className="mt-8 space-y-3">
-                <h3 className="text-[8px] font-black text-yellow-600 uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
+                <h3 className="text-[10px] font-black text-yellow-600 uppercase tracking-[0.25em] mb-4 flex items-center gap-2">
                   <AlertCircle className="w-3 h-3" /> Required Approvals /
                   Handoffs
                 </h3>
@@ -303,10 +303,10 @@ export const IssueSidebar: React.FC<Props> = ({
                       className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5 space-y-3"
                     >
                       <div className="flex justify-between items-center">
-                        <span className="text-[8px] font-black text-white uppercase tracking-widest bg-yellow-600/20 px-2 py-0.5 rounded">
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest bg-yellow-600/20 px-2 py-0.5 rounded">
                           Action REQ: {load.loadNumber}
                         </span>
-                        <span className="text-[8px] text-slate-600 font-bold uppercase">
+                        <span className="text-[10px] text-slate-600 font-bold uppercase">
                           {load.status}
                         </span>
                       </div>
@@ -326,7 +326,7 @@ export const IssueSidebar: React.FC<Props> = ({
                               ? "Only administrators can approve actions"
                               : undefined
                           }
-                          className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isAdmin ? "bg-green-600 hover:bg-green-500 text-white" : "bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50"}`}
+                          className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${isAdmin ? "bg-green-600 hover:bg-green-500 text-white" : "bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50"}`}
                         >
                           <CheckCircle2 className="w-3 h-3" /> Approve
                         </button>
@@ -342,7 +342,7 @@ export const IssueSidebar: React.FC<Props> = ({
                               ? "Only administrators can reject actions"
                               : undefined
                           }
-                          className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${isAdmin ? "bg-red-950/40 hover:bg-red-900 text-red-500 border border-red-900/30" : "bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50 border border-slate-700/30"}`}
+                          className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${isAdmin ? "bg-red-950/40 hover:bg-red-900 text-red-500 border border-red-900/30" : "bg-slate-800/30 text-slate-600 cursor-not-allowed opacity-50 border border-slate-700/30"}`}
                         >
                           <XCircle className="w-3 h-3" /> Reject
                         </button>
@@ -357,7 +357,7 @@ export const IssueSidebar: React.FC<Props> = ({
         {activeTab === "Calls" && (
           <div className="space-y-3">
             {allCallLogs.length === 0 && (
-              <div className="text-center text-slate-700 py-10">
+              <div className="text-center text-slate-500 py-10">
                 <Headset className="w-12 h-12 mx-auto mb-2 opacity-10" />
                 <p className="text-[10px] font-black uppercase tracking-widest">
                   No Comm Records
@@ -371,14 +371,14 @@ export const IssueSidebar: React.FC<Props> = ({
               >
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col gap-1">
-                    <span className="text-[7px] font-black text-blue-500 uppercase tracking-widest border border-blue-500/20 px-1.5 py-0.5 rounded w-fit">
+                    <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest border border-blue-500/20 px-1.5 py-0.5 rounded w-fit">
                       {log.type}
                     </span>
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">
                       {log.recordedBy}
                     </span>
                   </div>
-                  <span className="text-[8px] text-slate-600 font-bold">
+                  <span className="text-[10px] text-slate-600 font-bold">
                     {new Date(log.timestamp).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -389,12 +389,12 @@ export const IssueSidebar: React.FC<Props> = ({
                   "{log.notes}"
                 </p>
                 <div className="flex justify-between items-center pt-1">
-                  <span className="text-[8px] font-black text-slate-600 uppercase">
+                  <span className="text-[10px] font-black text-slate-600 uppercase">
                     MNF: {load.loadNumber}
                   </span>
                   <button
                     onClick={() => onViewLoad(load)}
-                    className="text-[8px] font-black text-blue-500 uppercase flex items-center gap-1 hover:text-blue-400 transition-colors"
+                    className="text-[10px] font-black text-blue-500 uppercase flex items-center gap-1 hover:text-blue-400 transition-colors"
                   >
                     View <ArrowRight className="w-2.5 h-2.5" />
                   </button>

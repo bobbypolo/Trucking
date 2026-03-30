@@ -230,12 +230,12 @@ export const DataImportWizard: React.FC<Props> = ({
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center gap-4">
               <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${step >= s ? "bg-blue-600 text-white shadow-lg" : "bg-slate-900 text-slate-700"}`}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black ${step >= s ? "bg-blue-600 text-white shadow-lg" : "bg-slate-900 text-slate-500"}`}
               >
                 {s}
               </div>
               <span
-                className={`text-[10px] font-black uppercase tracking-widest ${step === s ? "text-white" : "text-slate-700"}`}
+                className={`text-[10px] font-black uppercase tracking-widest ${step === s ? "text-white" : "text-slate-500"}`}
               >
                 {s === 1 ? "Upload" : s === 2 ? "Mapping" : "Dry Run"}
               </span>
@@ -285,12 +285,12 @@ export const DataImportWizard: React.FC<Props> = ({
                     <div className="text-[10px] font-black text-white uppercase tracking-widest">
                       Saved Layouts
                     </div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase">
+                    <div className="text-[11px] text-slate-500 font-bold uppercase">
                       Auto-detected MHC-Kenworth_v2
                     </div>
                   </div>
                 </div>
-                <button className="px-4 py-2 bg-white/5 text-slate-400 rounded-xl text-[9px] font-black uppercase tracking-widest">
+                <button className="px-4 py-2 bg-white/5 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-widest">
                   Apply Template
                 </button>
               </div>
@@ -299,13 +299,13 @@ export const DataImportWizard: React.FC<Props> = ({
                 <table className="w-full text-left">
                   <thead className="bg-black/20 border-b border-white/5">
                     <tr>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase w-1/3">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase w-1/3">
                         Target Logical Field
                       </th>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase w-1/2">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase w-1/2">
                         Source Column Link
                       </th>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                         Sample
                       </th>
                     </tr>
@@ -404,7 +404,7 @@ export const DataImportWizard: React.FC<Props> = ({
                         {targetFields.slice(0, 5).map((f) => (
                           <th
                             key={f}
-                            className="px-6 py-4 text-[8px] font-black text-slate-600 uppercase"
+                            className="px-6 py-4 text-[10px] font-black text-slate-600 uppercase"
                           >
                             {f}
                           </th>

@@ -555,10 +555,10 @@ export const SafetyView: React.FC<Props> = ({
                             >
                               <div className="flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[9px] font-black text-blue-500 uppercase">
+                                  <span className="text-[11px] font-black text-blue-500 uppercase">
                                     {action.actorName || action.actor_name}
                                   </span>
-                                  <span className="text-[9px] font-bold text-slate-600 tracking-tighter">
+                                  <span className="text-[11px] font-bold text-slate-600 tracking-tighter">
                                     —{" "}
                                     {new Date(
                                       action.timestamp,
@@ -573,7 +573,7 @@ export const SafetyView: React.FC<Props> = ({
                                 </div>
                               </div>
                               <span
-                                className={`text-[8px] font-bold px-2 py-0.5 rounded-full border uppercase ${inc.severity === "Critical" ? "text-red-400 bg-red-900/20 border-red-900/50" : "text-orange-400 bg-orange-900/20 border-orange-900/50"}`}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase ${inc.severity === "Critical" ? "text-red-400 bg-red-900/20 border-red-900/50" : "text-orange-400 bg-orange-900/20 border-orange-900/50"}`}
                               >
                                 {inc.severity}
                               </span>
@@ -666,7 +666,7 @@ export const SafetyView: React.FC<Props> = ({
                 <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-3">
                   <Activity className="w-5 h-5 text-blue-500" />
                   Recent Notifications
-                  <span className="text-[9px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-900/50">
+                  <span className="text-[11px] font-bold text-blue-400 bg-blue-900/20 px-2 py-0.5 rounded-full border border-blue-900/50">
                     {notificationJobs.length}
                   </span>
                 </h4>
@@ -734,7 +734,7 @@ export const SafetyView: React.FC<Props> = ({
                           {op.performance.totalScore}
                         </span>
                         <span
-                          className={`text-[8px] font-bold ${op.performance.totalScore >= 90 ? "text-green-600" : "text-blue-600"} uppercase`}
+                          className={`text-[10px] font-bold ${op.performance.totalScore >= 90 ? "text-green-600" : "text-blue-600"} uppercase`}
                         >
                           Score
                         </span>
@@ -865,7 +865,7 @@ export const SafetyView: React.FC<Props> = ({
                         )}
                       </div>
                       <span
-                        className={`text-[9px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest ${asset.status === "Active" ? "text-green-400 bg-green-900/20 border-green-500/20" : "text-orange-400 bg-orange-900/20 border-orange-500/20"}`}
+                        className={`text-[11px] font-black px-2.5 py-1 rounded-full border uppercase tracking-widest ${asset.status === "Active" ? "text-green-400 bg-green-900/20 border-green-500/20" : "text-orange-400 bg-orange-900/20 border-orange-500/20"}`}
                       >
                         {asset.status}
                       </span>
@@ -880,7 +880,7 @@ export const SafetyView: React.FC<Props> = ({
                       </p>
                     </div>
                     <div className="pt-4 border-t border-white/5 flex justify-between items-center opacity-70">
-                      <div className="text-[9px] text-slate-500 font-black uppercase tracking-widest">
+                      <div className="text-[11px] text-slate-500 font-black uppercase tracking-widest">
                         Op Cost
                       </div>
                       <div className="text-[11px] text-white font-black">
@@ -894,7 +894,7 @@ export const SafetyView: React.FC<Props> = ({
                             `Service request initiated for ${asset.unit_number || asset.id}`,
                           )
                         }
-                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
+                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
                       >
                         Service
                       </button>
@@ -904,7 +904,7 @@ export const SafetyView: React.FC<Props> = ({
                             `Viewing maintenance history for ${asset.unit_number || asset.id}`,
                           )
                         }
-                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
+                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-400 transition-all border border-white/5"
                       >
                         History
                       </button>
@@ -972,7 +972,7 @@ export const SafetyView: React.FC<Props> = ({
                       {vendor.capabilities.slice(0, 2).map((cap) => (
                         <span
                           key={cap}
-                          className="px-2 py-1 bg-white/5 rounded text-[8px] font-black uppercase text-slate-400 border border-white/5"
+                          className="px-2 py-1 bg-white/5 rounded text-[10px] font-black uppercase text-slate-400 border border-white/5"
                         >
                           {cap}
                         </span>
@@ -1005,7 +1005,7 @@ export const SafetyView: React.FC<Props> = ({
                           />
                         ))}
                       </div>
-                      <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                         {serviceTickets.length} Recent Jobs
                       </span>
                     </div>
@@ -1084,7 +1084,7 @@ export const SafetyView: React.FC<Props> = ({
                   key={idx}
                   className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl flex flex-col items-center"
                 >
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">
+                  <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest mb-1">
                     {stat.label}
                   </span>
                   <span className={`text-2xl font-black ${stat.color}`}>
@@ -1126,7 +1126,7 @@ export const SafetyView: React.FC<Props> = ({
                           <div className="text-[11px] font-black text-white uppercase">
                             #{ticket.id.slice(0, 8)}
                           </div>
-                          <div className="text-[9px] font-bold text-slate-500 uppercase">
+                          <div className="text-[11px] font-bold text-slate-500 uppercase">
                             {new Date(ticket.createdAt).toLocaleDateString()}
                           </div>
                         </td>
@@ -1139,7 +1139,7 @@ export const SafetyView: React.FC<Props> = ({
                               <div className="text-[11px] font-black text-white uppercase">
                                 {ticket.unitId}
                               </div>
-                              <div className="text-[9px] font-bold text-slate-500 uppercase">
+                              <div className="text-[11px] font-bold text-slate-500 uppercase">
                                 {ticket.type.replace("_", " ")}
                               </div>
                             </div>
@@ -1147,7 +1147,7 @@ export const SafetyView: React.FC<Props> = ({
                         </td>
                         <td className="px-8 py-6">
                           <div
-                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[9px] font-black uppercase tracking-widest ${ticket.status === "Closed" ? "border-green-500/30 bg-green-500/10 text-green-500" : "border-blue-500/30 bg-blue-500/10 text-blue-500"}`}
+                            className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border text-[11px] font-black uppercase tracking-widest ${ticket.status === "Closed" ? "border-green-500/30 bg-green-500/10 text-green-500" : "border-blue-500/30 bg-blue-500/10 text-blue-500"}`}
                           >
                             <div
                               className={`w-1.5 h-1.5 rounded-full ${ticket.status === "Closed" ? "bg-green-500" : "bg-blue-500 animate-pulse"}`}
@@ -1167,7 +1167,7 @@ export const SafetyView: React.FC<Props> = ({
                           <div className="text-[12px] font-black text-white italic">
                             ${ticket.estimatedCost?.toLocaleString()}
                           </div>
-                          <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                          <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                             Auth Required
                           </div>
                         </td>
@@ -1240,7 +1240,7 @@ export const SafetyView: React.FC<Props> = ({
                         />
                       </div>
                       <div className="pt-4 flex justify-between items-center">
-                        <div className="text-[8px] font-black text-slate-600 uppercase">
+                        <div className="text-[10px] font-black text-slate-600 uppercase">
                           {course.certifiedCount} Certified Units
                         </div>
                         <button
@@ -1594,7 +1594,7 @@ export const SafetyView: React.FC<Props> = ({
                       </label>
                       <textarea
                         id="svDescriptionOfEvent"
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-4 text-sm text-white h-32 outline-none resize-none placeholder:text-slate-700"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-4 text-sm text-white h-32 outline-none resize-none placeholder:text-slate-500"
                         placeholder="DESCRIBE THE INCIDENT IN DETAIL FOR AUDIT CONTROL..."
                         onChange={(e) =>
                           setFormData({
@@ -1765,12 +1765,12 @@ export const SafetyView: React.FC<Props> = ({
                           {record.description}
                         </p>
                         <div className="flex gap-4 pt-2">
-                          <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                          <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
                             <Clock className="w-3 h-3" /> Expires:{" "}
                             {new Date(record.expires_at).toLocaleDateString()}
                           </span>
                           {record.reference_number && (
-                            <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                            <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
                               <FileText className="w-3 h-3" /> Ref:{" "}
                               {record.reference_number}
                             </span>

@@ -351,22 +351,22 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
         <table className="w-full text-left">
           <thead className="bg-black/20 border-b border-white/5">
             <tr>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Document
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Linked Reference
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Meta / Amount
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Auditor / Date
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Status
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 Actions
               </th>
             </tr>
@@ -387,7 +387,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                         <div className="text-[11px] font-black text-white uppercase tracking-tighter truncate max-w-[200px]">
                           {doc.filename}
                         </div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase">
+                        <div className="text-[11px] text-slate-500 font-bold uppercase">
                           {doc.type} • v{doc.version}
                         </div>
                       </div>
@@ -411,7 +411,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                     <div className="text-[11px] font-black text-emerald-500">
                       {doc.amount ? `$${doc.amount.toLocaleString()}` : "--"}
                     </div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase">
+                    <div className="text-[11px] text-slate-500 font-bold uppercase">
                       {doc.vendorName || "Not Specified"}
                     </div>
                   </td>
@@ -419,14 +419,14 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                     <div className="text-[10px] font-black text-white">
                       {new Date(doc.createdAt).toLocaleDateString()}
                     </div>
-                    <div className="text-[9px] text-slate-500 font-bold uppercase flex items-center gap-1">
+                    <div className="text-[11px] text-slate-500 font-bold uppercase flex items-center gap-1">
                       <User className="w-2 h-2" /> {doc.createdBy}
                     </div>
                   </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-3">
                       <span
-                        className={`px-3 py-1 rounded-lg text-[8px] font-black uppercase border ${getStatusStyle(doc.status)}`}
+                        className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase border ${getStatusStyle(doc.status)}`}
                       >
                         {doc.status}
                       </span>
@@ -486,7 +486,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
               <div className="text-[12px] font-black text-white uppercase tracking-tighter">
                 {docs.filter((d) => d.isLocked).length} Locked
               </div>
-              <div className="text-[8px] text-slate-500 font-black uppercase tracking-widest">
+              <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                 Post-Approval Secure
               </div>
             </div>
@@ -498,7 +498,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
               <div className="text-[12px] font-black text-white uppercase tracking-tighter">
                 {docs.filter((d) => d.status === "Submitted").length} Pending
               </div>
-              <div className="text-[8px] text-slate-500 font-black uppercase tracking-widest">
+              <div className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
                 Awaiting Review
               </div>
             </div>
@@ -506,7 +506,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
         </div>
 
         <div className="text-right">
-          <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-2 justify-end">
+          <div className="text-[11px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-2 justify-end">
             <Shield className="w-3 h-3" /> SOC2 Compliance Verified
           </div>
           <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-1">
@@ -582,7 +582,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                 className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-[11px] font-bold text-white outline-none focus:border-blue-500/50 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white file:cursor-pointer"
                 data-testid="file-input"
               />
-              <p className="text-[9px] text-slate-500 mt-1 font-bold uppercase tracking-widest">
+              <p className="text-[11px] text-slate-500 mt-1 font-bold uppercase tracking-widest">
                 Accepted: PDF, JPEG, PNG, TIFF (max 10 MB)
               </p>
             </div>
@@ -658,7 +658,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
                 <div className="text-[11px] font-bold text-white truncate">
                   {selectedFile.name}
                 </div>
-                <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                <div className="text-[11px] text-slate-500 font-bold uppercase mt-1">
                   {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                 </div>
               </div>

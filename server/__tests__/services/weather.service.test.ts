@@ -12,9 +12,9 @@ const mockWarn = vi.fn();
 const mockError = vi.fn();
 vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
@@ -131,12 +131,12 @@ describe("S-205: Weather Service (feature flag removed)", () => {
 
       vi.doMock("../../lib/logger", () => ({
         createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  }),
-  createRequestLogger: () => ({
+          info: mockInfo,
+          error: mockError,
+          warn: mockWarn,
+          debug: vi.fn(),
+        }),
+        createRequestLogger: () => ({
           info: mockInfo,
           warn: mockWarn,
           error: mockError,
@@ -160,12 +160,12 @@ describe("S-205: Weather Service (feature flag removed)", () => {
 
       vi.doMock("../../lib/logger", () => ({
         createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  }),
-  createRequestLogger: () => ({
+          info: mockInfo,
+          error: mockError,
+          warn: mockWarn,
+          debug: vi.fn(),
+        }),
+        createRequestLogger: () => ({
           info: mockInfo,
           warn: mockWarn,
           error: mockError,

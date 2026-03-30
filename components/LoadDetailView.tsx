@@ -327,7 +327,7 @@ export const LoadDetailView: React.FC<Props> = ({
               Manifest Workspace: {load.loadNumber}
             </span>
             <div
-              className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+              className={`px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-widest border ${
                 load.status === "delivered"
                   ? "bg-green-500/10 text-green-500 border-green-500/20"
                   : "bg-blue-600/10 text-blue-400 border-blue-500/20"
@@ -357,7 +357,7 @@ export const LoadDetailView: React.FC<Props> = ({
                     <button
                       key={util}
                       onClick={() => handleUtilityClick(util)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-blue-600 rounded-xl text-[9px] font-black uppercase tracking-wider transition-colors text-slate-300 hover:text-white"
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-600 rounded-xl text-[11px] font-black uppercase tracking-wider transition-colors text-slate-300 hover:text-white"
                     >
                       {util}
                     </button>
@@ -403,7 +403,7 @@ export const LoadDetailView: React.FC<Props> = ({
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                     Pro No
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white font-mono uppercase shadow-inner">
@@ -411,7 +411,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                     Load Type
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner">
@@ -420,7 +420,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                   Commodity
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner truncate">
@@ -428,7 +428,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                   Equipment
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-blue-400 uppercase font-black shadow-inner">
@@ -443,7 +443,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 <MapPin className="w-4 h-4 text-purple-500" /> Relationships
               </h3>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                   Customer / Broker
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner truncate font-black">
@@ -452,7 +452,7 @@ export const LoadDetailView: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                     Dispatcher
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner truncate">
@@ -460,7 +460,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                     Sales Contact
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-slate-500 uppercase shadow-inner">
@@ -469,7 +469,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                   Dispatch Notes (Internal)
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-slate-400 italic shadow-inner h-16 overflow-y-auto no-scrollbar">
@@ -506,7 +506,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   Carrier Pay (Exp)
                 </label>
                 <div className="relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 font-bold">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-bold">
                     $
                   </div>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-xl font-black text-slate-400 font-mono shadow-inner">
@@ -516,7 +516,7 @@ export const LoadDetailView: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-[#0a0f18] border border-slate-800 rounded-2xl p-4 shadow-inner">
-                  <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                     Profit Margin
                   </div>
                   <div
@@ -526,7 +526,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
                 <div className="bg-[#0a0f18] border border-slate-800 rounded-2xl p-4 shadow-inner text-right">
-                  <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                  <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                     Margin %
                   </div>
                   <div
@@ -539,7 +539,7 @@ export const LoadDetailView: React.FC<Props> = ({
               {/* Rate Card (toggled from Carrier Rates utility) */}
               {showRateCard && (
                 <div className="bg-[#0a0f18] border border-blue-500/20 rounded-2xl p-4 space-y-3 shadow-inner">
-                  <div className="text-[9px] font-black text-blue-400 uppercase tracking-widest">
+                  <div className="text-[11px] font-black text-blue-400 uppercase tracking-widest">
                     Rate Card Summary
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -601,7 +601,7 @@ export const LoadDetailView: React.FC<Props> = ({
           {/* Asset Sub-Header Row */}
           <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex items-center justify-between gap-8 overflow-x-auto no-scrollbar shadow-2xl">
             <div className="space-y-1 shrink-0">
-              <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 Truck #
               </label>
               <div className="min-w-[80px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px] font-black text-white uppercase">
@@ -609,7 +609,7 @@ export const LoadDetailView: React.FC<Props> = ({
               </div>
             </div>
             <div className="space-y-1 shrink-0">
-              <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 Trailer #
               </label>
               <div className="min-w-[80px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px] font-black text-white uppercase">
@@ -617,15 +617,15 @@ export const LoadDetailView: React.FC<Props> = ({
               </div>
             </div>
             <div className="space-y-1 shrink-0">
-              <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 Chassis
               </label>
-              <div className="min-w-[100px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px] font-black text-slate-700 uppercase">
+              <div className="min-w-[100px] bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px] font-black text-slate-500 uppercase">
                 ---
               </div>
             </div>
             <div className="space-y-1 flex-1 min-w-[200px]">
-              <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 Assigned Driver
               </label>
               <div className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-[11px] font-black text-white uppercase truncate flex items-center gap-3">
@@ -634,7 +634,7 @@ export const LoadDetailView: React.FC<Props> = ({
               </div>
             </div>
             <div className="space-y-1 shrink-0">
-              <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+              <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 Contact Cell
               </label>
               <button
@@ -661,7 +661,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   load.bookingNumber ||
                   load.containerNumber) && (
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Reference Numbers
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -685,7 +685,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 )}
                 {load.specialInstructions && (
                   <div className="space-y-2">
-                    <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Special Instructions
                     </label>
                     <div className="w-full bg-[#0a0f18] border border-amber-500/20 rounded-xl p-3 text-xs text-amber-200 italic shadow-inner">
@@ -707,13 +707,13 @@ export const LoadDetailView: React.FC<Props> = ({
               <div className="flex gap-4">
                 <button
                   onClick={() => setAddingStopType("pickup")}
-                  className="px-5 py-2 bg-slate-800 border border-slate-700 text-[9px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-white transition-all"
+                  className="px-5 py-2 bg-slate-800 border border-slate-700 text-[11px] font-black uppercase tracking-widest rounded-xl text-slate-400 hover:text-white transition-all"
                 >
                   + Add Pickup
                 </button>
                 <button
                   onClick={() => setAddingStopType("dropoff")}
-                  className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg shadow-blue-900/40 active:scale-95 transition-all"
+                  className="px-5 py-2 bg-blue-600 text-[11px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg shadow-blue-900/40 active:scale-95 transition-all"
                 >
                   + Add Drop
                 </button>
@@ -737,7 +737,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       Facility Name
                     </label>
                     <input
@@ -754,7 +754,7 @@ export const LoadDetailView: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       Address
                     </label>
                     <input
@@ -771,7 +771,7 @@ export const LoadDetailView: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       City
                     </label>
                     <input
@@ -785,7 +785,7 @@ export const LoadDetailView: React.FC<Props> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest">
+                    <label className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                       Appointment Date/Time
                     </label>
                     <input
@@ -812,7 +812,7 @@ export const LoadDetailView: React.FC<Props> = ({
                         appointmentDate: "",
                       });
                     }}
-                    className="px-5 py-2 text-[9px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
+                    className="px-5 py-2 text-[11px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
                   >
                     Cancel
                   </button>
@@ -858,7 +858,7 @@ export const LoadDetailView: React.FC<Props> = ({
                         appointmentDate: "",
                       });
                     }}
-                    className="px-5 py-2 bg-blue-600 text-[9px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
+                    className="px-5 py-2 bg-blue-600 text-[11px] font-black uppercase tracking-widest rounded-xl text-white shadow-lg active:scale-95 transition-all"
                   >
                     Add Stop
                   </button>
@@ -870,25 +870,25 @@ export const LoadDetailView: React.FC<Props> = ({
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="bg-slate-900/80 border-b border-slate-800">
-                    <th className="px-6 py-5 text-left text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-left text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Type
                     </th>
-                    <th className="px-6 py-5 text-left text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-left text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Facility / Address
                     </th>
-                    <th className="px-6 py-5 text-left text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-left text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       City / ST / Zip
                     </th>
-                    <th className="px-6 py-5 text-left text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-left text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Seal #
                     </th>
-                    <th className="px-6 py-5 text-center text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-center text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Pallets
                     </th>
-                    <th className="px-6 py-5 text-center text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-center text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Weight
                     </th>
-                    <th className="px-6 py-5 text-left text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <th className="px-6 py-5 text-left text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       Date/Time
                     </th>
                     <th className="px-4 py-1"></th>
@@ -930,7 +930,7 @@ export const LoadDetailView: React.FC<Props> = ({
                     >
                       <td className="px-6 py-8 align-top">
                         <div
-                          className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest shadow-inner border inline-block ${leg.type === "Pickup" ? "bg-green-600/10 text-green-500 border-green-500/10" : "bg-blue-600/10 text-blue-500 border-blue-500/10"}`}
+                          className={`px-4 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-inner border inline-block ${leg.type === "Pickup" ? "bg-green-600/10 text-green-500 border-green-500/10" : "bg-blue-600/10 text-blue-500 border-blue-500/10"}`}
                         >
                           {leg.type}
                         </div>
@@ -940,12 +940,12 @@ export const LoadDetailView: React.FC<Props> = ({
                           <div className="text-[13px] font-black text-white uppercase tracking-tight group-hover:text-blue-400 transition-colors mb-1">
                             {leg.location?.facilityName || "LOGISTICS NODE"}
                           </div>
-                          <div className="text-[9px] text-slate-500 font-bold uppercase tracking-widest">
+                          <div className="text-[11px] text-slate-500 font-bold uppercase tracking-widest">
                             {leg.location?.address || "Address Restricted"}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <div className="px-2 py-1 bg-black/40 border border-white/5 rounded text-[8px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          <div className="px-2 py-1 bg-black/40 border border-white/5 rounded text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                             <Activity className="w-3 h-3 text-blue-500" />{" "}
                             {leg.stats || "No historical data"}
                           </div>
@@ -958,7 +958,7 @@ export const LoadDetailView: React.FC<Props> = ({
                               ? `${leg.location.city}, ${leg.location.state}`
                               : "---"}
                           </div>
-                          <div className="text-[9px] text-slate-600 font-bold uppercase tracking-widest">
+                          <div className="text-[11px] text-slate-600 font-bold uppercase tracking-widest">
                             {leg.location?.zip || "---"}
                           </div>
                         </div>
@@ -972,7 +972,7 @@ export const LoadDetailView: React.FC<Props> = ({
                         <div className="text-[11px] font-black text-white">
                           {leg.pallets || 0}
                         </div>
-                        <div className="text-[8px] font-black text-slate-600 uppercase mt-1">
+                        <div className="text-[10px] font-black text-slate-600 uppercase mt-1">
                           Units
                         </div>
                       </td>
@@ -980,7 +980,7 @@ export const LoadDetailView: React.FC<Props> = ({
                         <div className="text-[11px] font-black text-white">
                           {leg.weight?.toLocaleString() || 0}
                         </div>
-                        <div className="text-[8px] font-black text-slate-600 uppercase mt-1">
+                        <div className="text-[10px] font-black text-slate-600 uppercase mt-1">
                           LBS
                         </div>
                       </td>
@@ -988,16 +988,16 @@ export const LoadDetailView: React.FC<Props> = ({
                         <div className="text-xs font-black text-white font-mono">
                           {leg.date}
                         </div>
-                        <div className="text-[9px] text-amber-500 font-black uppercase tracking-widest">
+                        <div className="text-[11px] text-amber-500 font-black uppercase tracking-widest">
                           {leg.appointmentTime || "00:00"} APPT
                         </div>
                       </td>
                       <td className="px-6 py-8 align-top">
                         <div className="max-w-[180px]">
-                          <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1.5">
+                          <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1.5">
                             TACTICAL REQS
                           </div>
-                          <p className="text-[9px] text-slate-400 italic leading-relaxed">
+                          <p className="text-[11px] text-slate-400 italic leading-relaxed">
                             {leg.requirements ||
                               "No specific site requirements logged."}
                           </p>
@@ -1023,7 +1023,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                     No documents uploaded
                   </div>
-                  <p className="text-[9px] text-slate-700 mt-1">
+                  <p className="text-[11px] text-slate-500 mt-1">
                     BOL, POD, Rate Confirmations, and other documents will
                     appear here once uploaded.
                   </p>
@@ -1045,11 +1045,11 @@ export const LoadDetailView: React.FC<Props> = ({
                       {doc.filename}
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                      <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                         {doc.type}
                       </span>
                       <span
-                        className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${doc.status === "Approved" ? "text-green-500" : "text-orange-500"}`}
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${doc.status === "Approved" ? "text-green-500" : "text-orange-500"}`}
                       >
                         {doc.status}
                       </span>
@@ -1063,12 +1063,12 @@ export const LoadDetailView: React.FC<Props> = ({
                 className="bg-slate-900/10 border-2 border-dashed border-slate-800/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-500/30 transition-all hover:bg-blue-600/5"
               >
                 <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
-                  <Plus className="w-6 h-6 text-slate-700 group-hover:text-blue-400" />
+                  <Plus className="w-6 h-6 text-slate-500 group-hover:text-blue-400" />
                 </div>
                 <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] group-hover:text-blue-500">
                   Open Documents
                 </div>
-                <p className="text-[8px] text-slate-800 uppercase mt-2 font-bold tracking-widest">
+                <p className="text-[10px] text-slate-800 uppercase mt-2 font-bold tracking-widest">
                   BOL, POD, RATE CON, HAZMAT
                 </p>
               </button>
@@ -1106,10 +1106,10 @@ export const LoadDetailView: React.FC<Props> = ({
                         {doc.filename}
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                        <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                           {doc.type}
                         </span>
-                        <span className="text-[9px] text-slate-400">
+                        <span className="text-[11px] text-slate-400">
                           {doc.status}
                         </span>
                       </div>

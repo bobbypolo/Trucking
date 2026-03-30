@@ -371,7 +371,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                         <label className="text-[10px] text-yellow-500 font-black uppercase tracking-[0.3em] ml-1">
                           Linehaul & Revenue
                         </label>
-                        <div className="text-[9px] font-bold text-slate-500 uppercase">
+                        <div className="text-[11px] font-bold text-slate-500 uppercase">
                           Gross: $
                           {(
                             selectedQuote.linehaul + selectedQuote.fuelSurcharge
@@ -416,7 +416,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                               });
                             }}
                           />
-                          <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[8px] font-bold text-slate-500">
+                          <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[10px] font-bold text-slate-500">
                             BASE
                           </span>
                           {quoteErrors.rate && (
@@ -453,7 +453,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                               });
                             }}
                           />
-                          <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[8px] font-bold text-slate-500">
+                          <span className="absolute right-3 top-[-8px] bg-slate-900 px-1 text-[10px] font-bold text-slate-500">
                             FUEL
                           </span>
                         </div>
@@ -487,7 +487,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                             });
                           }}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-red-500/50 uppercase">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-red-500/50 uppercase">
                           Discount
                         </span>
                       </div>
@@ -499,7 +499,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                     <div className="space-y-3">
                       <label
                         htmlFor="qmCostStructure"
-                        className="text-[9px] text-slate-500 font-black uppercase tracking-widest ml-1"
+                        className="text-[11px] text-slate-500 font-black uppercase tracking-widest ml-1"
                       >
                         Cost Structure
                       </label>
@@ -626,7 +626,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                           <div className="text-[11px] font-black text-white uppercase truncate">
                             {item.label}
                           </div>
-                          <div className="text-[9px] text-slate-600 font-bold uppercase mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                          <div className="text-[11px] text-slate-600 font-bold uppercase mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
                             {item.description}
                           </div>
                         </div>
@@ -647,7 +647,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                   {workItems.filter((i) => i.entityId === selectedQuote.id)
                     .length === 0 && (
                     <div className="py-4 text-center">
-                      <span className="text-[9px] font-black text-slate-700 uppercase tracking-widest">
+                      <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                         No Active Work Items
                       </span>
                     </div>
@@ -672,7 +672,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                       await saveWorkItem(newItem);
                       onLoadData();
                     }}
-                    className="w-full py-3 border border-dashed border-white/10 hover:border-blue-500/40 rounded-xl text-[9px] font-black text-slate-500 hover:text-blue-400 uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 border border-dashed border-white/10 hover:border-blue-500/40 rounded-xl text-[11px] font-black text-slate-500 hover:text-blue-400 uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                   >
                     <Clock className="w-3 h-3" /> Schedule Callback (+2h)
                   </button>
@@ -697,7 +697,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">
                   Incoming Call
                 </span>
-                <span className="text-[8px] font-bold text-slate-600">
+                <span className="text-[10px] font-bold text-slate-600">
                   Today, 2:45 PM
                 </span>
               </div>
@@ -710,7 +710,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                 <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
                   Email Sent
                 </span>
-                <span className="text-[8px] font-bold text-slate-600">
+                <span className="text-[10px] font-bold text-slate-600">
                   Jan 22, 10:15 AM
                 </span>
               </div>
@@ -747,7 +747,7 @@ export const QuoteDetailView: React.FC<QuoteDetailViewProps> = ({
                   ? "No phone on file"
                   : undefined
               }
-              className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 text-[9px] font-black uppercase rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600/10 disabled:hover:text-blue-500"
+              className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white border border-blue-500/20 text-[11px] font-black uppercase rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600/10 disabled:hover:text-blue-500"
             >
               Log Contact
             </button>

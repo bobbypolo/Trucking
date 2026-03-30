@@ -56,7 +56,7 @@ export const NotificationStatusBadge: React.FC<
   return (
     <span
       data-testid={`notification-badge-${status}`}
-      className={`inline-flex items-center gap-1.5 text-[9px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${colorClass} ${bgClass} ${borderClass}`}
+      className={`inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${colorClass} ${bgClass} ${borderClass}`}
       title={
         status === "FAILED" && syncError
           ? `Delivery failed: ${syncError}`
@@ -66,7 +66,7 @@ export const NotificationStatusBadge: React.FC<
       <Icon className="w-3 h-3" />
       {label}
       {status === "FAILED" && syncError && (
-        <span className="ml-1 text-[8px] opacity-75 normal-case tracking-normal">
+        <span className="ml-1 text-[10px] opacity-75 normal-case tracking-normal">
           ({syncError})
         </span>
       )}

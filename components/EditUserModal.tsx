@@ -298,7 +298,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                       : "Base Rate Policy"}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-4 font-black text-slate-700 text-xl">
+                    <span className="absolute left-4 top-4 font-black text-slate-500 text-xl">
                       {formData.payModel === "percent" ? "%" : "$"}
                     </span>
                     <input
