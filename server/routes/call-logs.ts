@@ -2,6 +2,8 @@ import { Router } from "express";
 import type { Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createCallLogSchema } from "../schemas/call-log";
 import pool from "../db";
 import { v4 as uuidv4 } from "uuid";
 import { createRequestLogger } from "../lib/logger";
@@ -13,13 +15,10 @@ router.post(
   "/api/call-logs",
   requireAuth,
   requireTenant,
+  validateBody(createCallLogSchema),
   async (req: Request, res) => {
     try {
-      const { phoneNumber, context, contactName, direction = "outbound" } =
-        req.body;
-      if (!phoneNumber) {
-        return res.status(400).json({ error: "phoneNumber is required" });
-      }
+      const { phoneNumber, context, contactName, direction } = req.body;
       const id = uuidv4();
       const companyId = req.user!.tenantId;
       const userId = req.user!.uid;

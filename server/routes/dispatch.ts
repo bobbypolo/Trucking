@@ -6,6 +6,12 @@ import {
   type AuthenticatedRequest,
 } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import {
+  createTimeLogSchema,
+  createDispatchEventSchema,
+  bestMatchesSchema,
+} from "../schemas/dispatch";
 import pool from "../db";
 import { calculateDistance } from "../geoUtils";
 import { createRequestLogger } from "../lib/logger";
@@ -17,6 +23,7 @@ router.post(
   "/api/time-logs",
   requireAuth,
   requireTenant,
+  validateBody(createTimeLogSchema),
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
     const {
@@ -183,6 +190,7 @@ router.post(
   "/api/dispatch-events",
   requireAuth,
   requireTenant,
+  validateBody(createDispatchEventSchema),
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
     const { id, load_id, dispatcher_id, event_type, message, payload } =
@@ -337,13 +345,10 @@ router.post(
   "/api/dispatch/best-matches",
   requireAuth,
   requireTenant,
+  validateBody(bestMatchesSchema),
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
     const { loadId, maxCandidates } = req.body;
-
-    if (!loadId) {
-      return res.status(400).json({ error: "loadId is required" });
-    }
 
     const limit = maxCandidates && maxCandidates > 0 ? maxCandidates : 10;
 

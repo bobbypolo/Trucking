@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createContractSchema } from "../schemas/contract";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 
@@ -30,6 +32,7 @@ router.post(
   "/api/contracts",
   requireAuth,
   requireTenant,
+  validateBody(createContractSchema),
   async (req: any, res) => {
     const {
       id,

@@ -2,6 +2,8 @@ import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createComplianceAlertSchema } from "../schemas/compliance";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 
@@ -40,15 +42,10 @@ router.post(
   "/api/compliance/alert",
   requireAuth,
   requireTenant,
+  validateBody(createComplianceAlertSchema),
   async (req: any, res) => {
     const { entityType, entityId, description, severity, alertType } = req.body;
     const companyId = req.user.tenantId;
-
-    if (!entityType || !entityId) {
-      return res
-        .status(400)
-        .json({ error: "entityType and entityId are required" });
-    }
 
     const exceptionId = uuidv4();
     const numericSeverity = severity || 3;

@@ -84,7 +84,8 @@ describe("POST /api/dispatch/best-matches", () => {
       .set(AUTH_HEADER)
       .send({});
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe("loadId is required");
+    // Zod validation returns structured error via errorHandler
+    expect(res.body.message).toBe("Validation failed");
   });
 
   it("returns 400 when load has no pickup coordinates", async () => {
@@ -130,12 +131,13 @@ describe("POST /api/dispatch/best-matches", () => {
         },
       ],
     ]);
-    // 3. GPS for driver 1 — recent, nearby
+    // 3. Per-driver GPS queries (one per driver in the for loop)
     const recentGps = new Date(Date.now() - 2 * 3600000).toISOString();
+    // drv-1: recent GPS position
     mockQuery.mockResolvedValueOnce([
       [{ latitude: 32.78, longitude: -96.8, recorded_at: recentGps }],
     ]);
-    // 4. GPS for driver 2 — no recent GPS
+    // drv-2: no GPS data (falls back to home terminal)
     mockQuery.mockResolvedValueOnce([[]]);
 
     const app = buildApp();
@@ -175,7 +177,7 @@ describe("POST /api/dispatch/best-matches", () => {
         },
       ],
     ]);
-    // GPS query returns empty
+    // Per-driver GPS query: drv-3 has no GPS data
     mockQuery.mockResolvedValueOnce([[]]);
 
     const app = buildApp();
@@ -208,7 +210,7 @@ describe("POST /api/dispatch/best-matches", () => {
         },
       ],
     ]);
-    // No GPS
+    // Per-driver GPS query: drv-ghost has no GPS data
     mockQuery.mockResolvedValueOnce([[]]);
 
     const app = buildApp();
@@ -255,10 +257,10 @@ describe("POST /api/dispatch/best-matches", () => {
         },
       ],
     ]);
-    // GPS for each driver — none
-    mockQuery.mockResolvedValueOnce([[]]);
-    mockQuery.mockResolvedValueOnce([[]]);
-    mockQuery.mockResolvedValueOnce([[]]);
+    // Per-driver GPS queries — no GPS for any driver (all fall back to home terminal)
+    mockQuery.mockResolvedValueOnce([[]]); // d1
+    mockQuery.mockResolvedValueOnce([[]]); // d2
+    mockQuery.mockResolvedValueOnce([[]]); // d3
 
     const app = buildApp();
     const res = await request(app)
@@ -304,8 +306,9 @@ describe("POST /api/dispatch/best-matches", () => {
         },
       ],
     ]);
-    mockQuery.mockResolvedValueOnce([[]]);
-    mockQuery.mockResolvedValueOnce([[]]);
+    // Per-driver GPS queries — no GPS data for either driver
+    mockQuery.mockResolvedValueOnce([[]]); // safe
+    mockQuery.mockResolvedValueOnce([[]]); // avg
 
     const app = buildApp();
     const res = await request(app)

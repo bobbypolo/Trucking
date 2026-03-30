@@ -3,6 +3,14 @@ import { randomUUID } from "crypto";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
+import { validateBody } from "../middleware/validate";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
+import {
+  trackingWebhookSchema,
+  createProviderConfigSchema,
+  createVehicleMappingSchema,
+} from "../schemas/tracking";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
@@ -414,7 +422,36 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
     });
   }
 
-  // Validate required fields
+  // Validate body shape via Zod (API key auth is header-based, handled above)
+  const parseResult = trackingWebhookSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const failedFields = parseResult.error.issues.map((i: any) =>
+      i.path.join(".") || "(root)",
+    );
+
+    // Non-companyId field failures reported first (matches original validation order)
+    const nonCompanyFailures = failedFields.filter((f: string) => f !== "companyId");
+    if (nonCompanyFailures.length > 0) {
+      return res
+        .status(400)
+        .json({ error: `Missing required fields: ${nonCompanyFailures.join(", ")}` });
+    }
+
+    // Only companyId failed — preserve missing_company_id metric and logging
+    incrementWebhookRejection("missing_company_id");
+    log.warn(
+      {
+        vehicleId: req.body.vehicleId,
+        lat: redactCoordinate(req.body.latitude),
+        lng: redactCoordinate(req.body.longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: missing company_id",
+    );
+    return res.status(400).json({ error: "company_id required" });
+  }
+  req.body = parseResult.data;
+
   const {
     vehicleId,
     latitude,
@@ -424,32 +461,6 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
     driverId,
     companyId,
   } = req.body;
-
-  const missing: string[] = [];
-  if (!vehicleId) missing.push("vehicleId");
-  if (latitude == null) missing.push("latitude");
-  if (longitude == null) missing.push("longitude");
-
-  if (missing.length > 0) {
-    return res
-      .status(400)
-      .json({ error: `Missing required fields: ${missing.join(", ")}` });
-  }
-
-  // Validate company ID — reject if missing or unknown (never store "unresolved")
-  if (!companyId) {
-    incrementWebhookRejection("missing_company_id");
-    log.warn(
-      {
-        vehicleId,
-        lat: redactCoordinate(latitude),
-        lng: redactCoordinate(longitude),
-        provider: "webhook",
-      },
-      "GPS webhook rejected: missing company_id",
-    );
-    return res.status(400).json({ error: "company_id required" });
-  }
 
   let resolvedCompanyId: string;
   try {
@@ -532,6 +543,7 @@ router.post(
   "/api/tracking/providers",
   requireAuth,
   requireTenant,
+  validateBody(createProviderConfigSchema),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
@@ -547,10 +559,6 @@ router.post(
       webhookSecret,
       isActive,
     } = req.body;
-
-    if (!rawName) {
-      return res.status(400).json({ error: "providerName is required" });
-    }
 
     const providerName = normalizeSupportedProviderName(rawName);
 
@@ -699,6 +707,7 @@ router.delete(
   "/api/tracking/providers/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
@@ -747,6 +756,7 @@ router.post(
   "/api/tracking/providers/:id/test",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
@@ -973,6 +983,7 @@ router.post(
   "/api/tracking/vehicles/mapping",
   requireAuth,
   requireTenant,
+  validateBody(createVehicleMappingSchema),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
@@ -982,13 +993,6 @@ router.post(
     }
 
     const { vehicleId, providerConfigId, providerVehicleId } = req.body;
-
-    if (!vehicleId || !providerConfigId || !providerVehicleId) {
-      return res.status(400).json({
-        error:
-          "vehicleId, providerConfigId, and providerVehicleId are required",
-      });
-    }
 
     const log = createRequestLogger(req, "POST /api/tracking/vehicles/mapping");
 
@@ -1102,6 +1106,7 @@ router.delete(
   "/api/tracking/vehicles/mapping/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: any, res) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;

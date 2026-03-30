@@ -767,8 +767,12 @@ describe("POST /api/safety/quiz-results — R-P1-10", () => {
       .send({ driver_id: "driver-001", score: 80, passed: true });
 
     expect(res.status).toBe(400);
-    const body = res.body as { error: string };
-    expect(body.error).toBe("quiz_id is required");
+    expect(res.body.message).toBe("Validation failed");
+    expect(res.body.details.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "quiz_id" }),
+      ]),
+    );
   });
 
   it("accepts result without optional fields and returns 201", async () => {

@@ -3,6 +3,15 @@ import type { Request } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import {
+  createSafetyQuizSchema,
+  createQuizResultSchema,
+  createMaintenanceSchema,
+  patchMaintenanceSchema,
+  createSafetyVendorSchema,
+  createSafetyActivitySchema,
+} from "../schemas/safety";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getSafetyScore } from "../services/fmcsa.service";
@@ -65,13 +74,10 @@ router.post(
   "/api/safety/quizzes",
   requireAuth,
   requireTenant,
+  validateBody(createSafetyQuizSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { title, description, status } = req.body;
-
-    if (!title) {
-      return res.status(400).json({ error: "title is required" });
-    }
 
     const id = uuidv4();
     try {
@@ -118,13 +124,10 @@ router.post(
   "/api/safety/quiz-results",
   requireAuth,
   requireTenant,
+  validateBody(createQuizResultSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { quiz_id, driver_id, driver_name, score, passed } = req.body;
-
-    if (!quiz_id) {
-      return res.status(400).json({ error: "quiz_id is required" });
-    }
 
     const id = uuidv4();
     try {
@@ -210,6 +213,7 @@ router.post(
   "/api/safety/maintenance",
   requireAuth,
   requireTenant,
+  validateBody(createMaintenanceSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const {
@@ -224,13 +228,6 @@ router.post(
       vendor_id,
       notes,
     } = req.body;
-
-    if (!vehicle_id) {
-      return res.status(400).json({ error: "vehicle_id is required" });
-    }
-    if (!type) {
-      return res.status(400).json({ error: "type is required" });
-    }
 
     const id = uuidv4();
     try {
@@ -302,6 +299,7 @@ router.patch(
   "/api/safety/maintenance/:id",
   requireAuth,
   requireTenant,
+  validateBody(patchMaintenanceSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
@@ -440,6 +438,7 @@ router.post(
   "/api/safety/vendors",
   requireAuth,
   requireTenant,
+  validateBody(createSafetyVendorSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const {
@@ -452,10 +451,6 @@ router.post(
       status,
       notes,
     } = req.body;
-
-    if (!name) {
-      return res.status(400).json({ error: "name is required" });
-    }
 
     const id = uuidv4();
     try {
@@ -515,13 +510,10 @@ router.post(
   "/api/safety/activity",
   requireAuth,
   requireTenant,
+  validateBody(createSafetyActivitySchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { action, entity_type, entity_id, actor, details } = req.body;
-
-    if (!action) {
-      return res.status(400).json({ error: "action is required" });
-    }
 
     const id = uuidv4();
     try {

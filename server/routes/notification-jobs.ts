@@ -3,6 +3,8 @@ import type { Request } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { deliverNotification } from "../services/notification-delivery.service";
@@ -42,6 +44,7 @@ router.get(
   "/api/notification-jobs/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
@@ -174,6 +177,7 @@ router.patch(
   "/api/notification-jobs/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;

@@ -487,140 +487,208 @@ router.get(
         "SELECT * FROM parties WHERE company_id = ?",
         [req.user!.tenantId],
       );
-      const enrichedParties = await Promise.all(
-        parties.map(async (p: any) => {
-          const [contacts] = await pool.query(
-            "SELECT * FROM party_contacts WHERE party_id = ?",
-            [p.id],
-          );
-          const [docs] = await pool.query(
-            "SELECT * FROM party_documents WHERE party_id = ?",
-            [p.id],
-          );
 
-          // Unified Engine Fetching
-          const [rates]: any = await pool.query(
-            `
-                SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end, t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
-                FROM rate_rows r
-                LEFT JOIN rate_tiers t ON r.id = t.rate_row_id
-                WHERE r.party_id = ?
-            `,
-            [p.id],
-          );
+      if (parties.length === 0) {
+        res.json([]);
+        return;
+      }
 
-          const groupedRates = rates.reduce((acc: any, row: any) => {
-            let r = acc.find((item: any) => item.id === row.id);
-            if (!r) {
-              r = {
-                id: row.id,
-                catalogItemId: row.catalog_item_id,
-                variantId: row.variant_id,
-                direction: row.direction,
-                currency: row.currency,
-                priceType: row.price_type,
-                unitType: row.unit_type,
-                baseAmount: row.base_amount,
-                unitAmount: row.unit_amount,
-                minCharge: row.min_charge,
-                maxCharge: row.max_charge,
-                freeUnits: row.free_units,
-                effectiveStart: row.effective_start,
-                effectiveEnd: row.effective_end,
-                taxableFlag: !!row.taxable_flag,
-                roundingRule: row.rounding_rule,
-                notes: row.notes_internal,
-                approvalRequired: !!row.approval_required,
-                tiers: [],
-              };
-              acc.push(r);
-            }
-            if (row.tier_id) {
-              r.tiers.push({
-                id: row.tier_id,
-                rateRowId: row.id,
-                tierStart: row.tier_start,
-                tierEnd: row.tier_end,
-                unitAmount: row.tier_unit_amount,
-                baseAmount: row.tier_base_amount,
-              });
-            }
-            return acc;
-          }, []);
+      const partyIds = parties.map((p: any) => p.id);
 
-          const [constraintSets]: any = await pool.query(
-            "SELECT * FROM constraint_sets WHERE party_id = ?",
-            [p.id],
-          );
-          const enrichedConstraints = await Promise.all(
-            constraintSets.map(async (cs: any) => {
-              const [rules]: any = await pool.query(
-                "SELECT * FROM constraint_rules WHERE constraint_set_id = ?",
-                [cs.id],
-              );
-              return {
-                id: cs.id,
-                appliesTo: cs.applies_to,
-                priority: cs.priority,
-                status: cs.status,
-                effectiveStart: cs.effective_start,
-                rules: rules.map((r: any) => ({
-                  id: r.id,
-                  type: r.rule_type,
-                  field: r.field_key,
-                  operator: r.operator,
-                  value: r.value_text,
-                  enforcement: r.enforcement,
-                  message: r.message,
-                })),
-              };
-            }),
-          );
+      // Batch-fetch all related data in parallel (6 queries instead of 5N+1)
+      const [
+        [allContacts],
+        [allDocs],
+        [allRates],
+        [allConstraintSets],
+        [allConstraintRules],
+        [allCatalogLinks],
+      ]: any = await Promise.all([
+        pool.query(
+          "SELECT * FROM party_contacts WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query(
+          "SELECT * FROM party_documents WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query(
+          `SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end,
+                  t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
+           FROM rate_rows r
+           LEFT JOIN rate_tiers t ON r.id = t.rate_row_id
+           WHERE r.party_id IN (?)`,
+          [partyIds],
+        ),
+        pool.query(
+          "SELECT * FROM constraint_sets WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query(
+          `SELECT cr.*, cs.party_id
+           FROM constraint_rules cr
+           JOIN constraint_sets cs ON cr.constraint_set_id = cs.id
+           WHERE cs.party_id IN (?)`,
+          [partyIds],
+        ),
+        pool.query(
+          "SELECT * FROM party_catalog_links WHERE party_id IN (?)",
+          [partyIds],
+        ),
+      ]);
 
-          const [catalogLinks]: any = await pool.query(
-            "SELECT catalog_item_id FROM party_catalog_links WHERE party_id = ?",
-            [p.id],
-          );
+      // Group results by party_id into Maps for O(1) lookup
+      const contactsByParty = new Map<string, any[]>();
+      for (const c of allContacts) {
+        const list = contactsByParty.get(c.party_id) || [];
+        list.push(c);
+        contactsByParty.set(c.party_id, list);
+      }
 
-          // Normalize entity class via alias map (handles any legacy data)
-          const rawClass = p.entity_class || p.type;
-          const entityClass =
-            normalizeEntityClass(rawClass) || rawClass || "Customer";
-          const tags = p.tags
-            ? typeof p.tags === "string"
-              ? JSON.parse(p.tags)
-              : p.tags
-            : [];
-          const vendorProfileData = p.vendor_profile
-            ? typeof p.vendor_profile === "string"
-              ? JSON.parse(p.vendor_profile)
-              : p.vendor_profile
-            : null;
+      const docsByParty = new Map<string, any[]>();
+      for (const d of allDocs) {
+        const list = docsByParty.get(d.party_id) || [];
+        list.push(d);
+        docsByParty.set(d.party_id, list);
+      }
 
+      const ratesByParty = new Map<string, any[]>();
+      for (const row of allRates) {
+        const list = ratesByParty.get(row.party_id) || [];
+        list.push(row);
+        ratesByParty.set(row.party_id, list);
+      }
+
+      const constraintSetsByParty = new Map<string, any[]>();
+      for (const cs of allConstraintSets) {
+        const list = constraintSetsByParty.get(cs.party_id) || [];
+        list.push(cs);
+        constraintSetsByParty.set(cs.party_id, list);
+      }
+
+      const constraintRulesBySetId = new Map<string, any[]>();
+      for (const cr of allConstraintRules) {
+        const list = constraintRulesBySetId.get(cr.constraint_set_id) || [];
+        list.push(cr);
+        constraintRulesBySetId.set(cr.constraint_set_id, list);
+      }
+
+      const catalogLinksByParty = new Map<string, any[]>();
+      for (const cl of allCatalogLinks) {
+        const list = catalogLinksByParty.get(cl.party_id) || [];
+        list.push(cl);
+        catalogLinksByParty.set(cl.party_id, list);
+      }
+
+      // Assemble enriched parties from the maps
+      const enrichedParties = parties.map((p: any) => {
+        const contacts = contactsByParty.get(p.id) || [];
+        const docs = docsByParty.get(p.id) || [];
+        const rawRates = ratesByParty.get(p.id) || [];
+
+        // Group rate rows with their tiers (same logic as before)
+        const groupedRates = rawRates.reduce((acc: any, row: any) => {
+          let r = acc.find((item: any) => item.id === row.id);
+          if (!r) {
+            r = {
+              id: row.id,
+              catalogItemId: row.catalog_item_id,
+              variantId: row.variant_id,
+              direction: row.direction,
+              currency: row.currency,
+              priceType: row.price_type,
+              unitType: row.unit_type,
+              baseAmount: row.base_amount,
+              unitAmount: row.unit_amount,
+              minCharge: row.min_charge,
+              maxCharge: row.max_charge,
+              freeUnits: row.free_units,
+              effectiveStart: row.effective_start,
+              effectiveEnd: row.effective_end,
+              taxableFlag: !!row.taxable_flag,
+              roundingRule: row.rounding_rule,
+              notes: row.notes_internal,
+              approvalRequired: !!row.approval_required,
+              tiers: [],
+            };
+            acc.push(r);
+          }
+          if (row.tier_id) {
+            r.tiers.push({
+              id: row.tier_id,
+              rateRowId: row.id,
+              tierStart: row.tier_start,
+              tierEnd: row.tier_end,
+              unitAmount: row.tier_unit_amount,
+              baseAmount: row.tier_base_amount,
+            });
+          }
+          return acc;
+        }, []);
+
+        // Build constraint sets with their rules from the maps
+        const constraintSets = constraintSetsByParty.get(p.id) || [];
+        const enrichedConstraints = constraintSets.map((cs: any) => {
+          const rules = constraintRulesBySetId.get(cs.id) || [];
           return {
-            id: p.id,
-            companyId: p.company_id,
-            name: p.name,
-            type: entityClass,
-            entityClass,
-            tags,
-            isCustomer: !!p.is_customer,
-            isVendor: !!p.is_vendor,
-            status: p.status,
-            mcNumber: p.mc_number,
-            dotNumber: p.dot_number,
-            rating: p.rating,
-            vendorProfile: vendorProfileData,
-            contacts,
-            documents: docs,
-            rates: groupedRates,
-            constraintSets: enrichedConstraints,
-            catalogLinks: catalogLinks.map((cl: any) => cl.catalog_item_id),
-            createdAt: p.created_at,
-            updatedAt: p.updated_at,
+            id: cs.id,
+            appliesTo: cs.applies_to,
+            priority: cs.priority,
+            status: cs.status,
+            effectiveStart: cs.effective_start,
+            rules: rules.map((r: any) => ({
+              id: r.id,
+              type: r.rule_type,
+              field: r.field_key,
+              operator: r.operator,
+              value: r.value_text,
+              enforcement: r.enforcement,
+              message: r.message,
+            })),
           };
-        }),
-      );
+        });
+
+        const catalogLinks = catalogLinksByParty.get(p.id) || [];
+
+        // Normalize entity class via alias map (handles any legacy data)
+        const rawClass = p.entity_class || p.type;
+        const entityClass =
+          normalizeEntityClass(rawClass) || rawClass || "Customer";
+        const tags = p.tags
+          ? typeof p.tags === "string"
+            ? JSON.parse(p.tags)
+            : p.tags
+          : [];
+        const vendorProfileData = p.vendor_profile
+          ? typeof p.vendor_profile === "string"
+            ? JSON.parse(p.vendor_profile)
+            : p.vendor_profile
+          : null;
+
+        return {
+          id: p.id,
+          companyId: p.company_id,
+          name: p.name,
+          type: entityClass,
+          entityClass,
+          tags,
+          isCustomer: !!p.is_customer,
+          isVendor: !!p.is_vendor,
+          status: p.status,
+          mcNumber: p.mc_number,
+          dotNumber: p.dot_number,
+          rating: p.rating,
+          vendorProfile: vendorProfileData,
+          contacts,
+          documents: docs,
+          rates: groupedRates,
+          constraintSets: enrichedConstraints,
+          catalogLinks: catalogLinks.map((cl: any) => cl.catalog_item_id),
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        };
+      });
+
       res.json(enrichedParties);
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/parties");

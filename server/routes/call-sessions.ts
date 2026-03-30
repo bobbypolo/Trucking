@@ -1,6 +1,8 @@
 import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
 import { callSessionRepository } from "../repositories/call-session.repository";
 import { createRequestLogger } from "../lib/logger";
 
@@ -89,6 +91,7 @@ router.put(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
@@ -119,6 +122,7 @@ router.delete(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;

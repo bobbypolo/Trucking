@@ -1,6 +1,10 @@
 import { Router, Request } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { validateParams } from "../middleware/validateParams";
+import { createMessageSchema } from "../schemas/message";
+import { idParam } from "../schemas/params";
 import { messageRepository } from "../repositories/message.repository";
 import { createRequestLogger } from "../lib/logger";
 
@@ -37,16 +41,10 @@ router.post(
   "/api/messages",
   requireAuth,
   requireTenant,
+  validateBody(createMessageSchema),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { load_id, sender_id, sender_name, text, attachments } = req.body;
-
-    if (!load_id || !sender_id) {
-      return res.status(400).json({
-        error: "Validation error",
-        details: "load_id and sender_id are required",
-      });
-    }
 
     try {
       const message = await messageRepository.create(
@@ -70,6 +68,7 @@ router.delete(
   "/api/messages/:id",
   requireAuth,
   requireTenant,
+  validateParams(idParam),
   async (req: Request, res) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;

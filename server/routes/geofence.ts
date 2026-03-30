@@ -6,6 +6,11 @@ import {
   type AuthenticatedRequest,
 } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import {
+  createGeofenceEventSchema,
+  calculateDetentionSchema,
+} from "../schemas/geofence";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 
@@ -16,6 +21,7 @@ router.post(
   "/api/geofence-events",
   requireAuth,
   requireTenant,
+  validateBody(createGeofenceEventSchema),
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
     const {
@@ -28,20 +34,6 @@ router.post(
       eventType,
       eventTimestamp,
     } = req.body;
-
-    if (!loadId) {
-      return res.status(400).json({ error: "loadId is required" });
-    }
-    if (!eventType || !["ENTRY", "EXIT"].includes(eventType)) {
-      return res
-        .status(400)
-        .json({ error: "eventType must be ENTRY or EXIT" });
-    }
-    if (facilityLat == null || facilityLng == null) {
-      return res
-        .status(400)
-        .json({ error: "facilityLat and facilityLng are required" });
-    }
 
     try {
       // Verify load belongs to user's tenant
@@ -119,13 +111,10 @@ router.post(
   "/api/detention/calculate",
   requireAuth,
   requireTenant,
+  validateBody(calculateDetentionSchema),
   async (req: Request, res: Response) => {
     const { user } = req as AuthenticatedRequest;
     const { loadId } = req.body;
-
-    if (!loadId) {
-      return res.status(400).json({ error: "loadId is required" });
-    }
 
     try {
       // Get all geofence events for this load, ordered by timestamp
