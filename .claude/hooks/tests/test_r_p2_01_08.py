@@ -261,16 +261,23 @@ class TestRP208:
 
     def test_handoff_modal_has_error_handling(self):
         """Handoff modal must show error toast on persistence failure."""
+        # Check parent, crisis handlers, and operational forms overlay
         src = _read("components/IntelligenceHub.tsx")
-        has_handoff_error = "Handoff failed:" in src
+        crisis = _read("components/operations/useCrisisHandlers.ts")
+        overlay = _read("components/operations/OperationalFormsOverlay.tsx")
+        combined = src + crisis + overlay
+        has_handoff_error = "Handoff failed:" in combined
         assert has_handoff_error is True, (
             "Handoff modal must show error toast on failure"
         )
 
     def test_roadside_dispatch_has_error_handling(self):
         """Roadside dispatch must show error toast on saveServiceTicket failure."""
+        # Check both parent and extracted crisis handlers
         src = _read("components/IntelligenceHub.tsx")
-        has_ticket_error = "Failed to save service ticket:" in src
+        crisis = _read("components/operations/useCrisisHandlers.ts")
+        combined = src + crisis
+        has_ticket_error = "Failed to save service ticket:" in combined
         assert has_ticket_error is True, (
             "Roadside dispatch must show error toast on saveServiceTicket failure"
         )

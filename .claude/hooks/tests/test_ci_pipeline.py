@@ -67,11 +67,11 @@ def test_all_eight_jobs_present():
     for job in required_jobs:
         assert job in content, f"Missing job: {job}"
 
-    # Verify exactly 8 top-level job keys
+    # Verify exactly 9 top-level job keys (4 original + 4 S-1.2 + tenant-scope-check)
     job_pattern = re.compile(r"^  [\w-]+:$", re.MULTILINE)
     jobs_section = content[content.index("jobs:") :]
     matches = job_pattern.findall(jobs_section)
-    assert len(matches) == 8, f"Expected 8 jobs, found {len(matches)}: {matches}"
+    assert len(matches) == 9, f"Expected 9 jobs, found {len(matches)}: {matches}"
 
 
 # --- Negative / error-path tests ---
