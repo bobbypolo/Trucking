@@ -29,7 +29,7 @@ interface Props {
   onCancel: () => void;
 }
 
-export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
+export const UserProfilePanel: React.FC<Props> = ({ user, onSave, onCancel }) => {
   const [formData, setFormData] = useState<User>(user);
   const [activeTab, setActiveTab] = useState<"info" | "financials" | "access">(
     "info",
@@ -90,11 +90,16 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
   ].includes(formData.role);
 
   return (
+    <>
+    <div
+      className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm"
+      onClick={onCancel}
+      aria-hidden="true"
+    />
     <div
       ref={panelRef}
-      className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4"
+      className="fixed inset-y-0 right-0 z-[100] w-full md:max-w-2xl flex flex-col bg-slate-900 border-l border-slate-800 shadow-2xl animate-slide-in-right overflow-hidden"
     >
-      <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
         {/* Modal Header */}
         <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-800/30 shrink-0">
           <div className="flex items-center gap-6">
@@ -387,6 +392,9 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
+
+/** Backward-compatible re-export so existing imports continue to work. */
+export { UserProfilePanel as EditUserModal };

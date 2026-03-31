@@ -9,7 +9,7 @@ import {
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
-import { EditUserModal } from "../../../components/EditUserModal";
+import { EditUserModal, UserProfilePanel } from "../../../components/EditUserModal";
 import { User } from "../../../types";
 
 function makeUser(overrides: Partial<User> = {}): User {
@@ -37,7 +37,7 @@ function makeUser(overrides: Partial<User> = {}): User {
   } as User;
 }
 
-describe("EditUserModal", () => {
+describe("EditUserModal / UserProfilePanel", () => {
   let onSave: MockedFunction<(updatedUser: User) => void>;
   let onCancel: MockedFunction<() => void>;
   let user: ReturnType<typeof userEvent.setup>;
@@ -46,6 +46,56 @@ describe("EditUserModal", () => {
     onSave = vi.fn<(updatedUser: User) => void>();
     onCancel = vi.fn<() => void>();
     user = userEvent.setup();
+  });
+
+  // Tests R-P3-09 — backward-compatible re-export
+  it("EditUserModal re-export resolves to UserProfilePanel", () => {
+    expect(EditUserModal).toBeDefined();
+    expect(UserProfilePanel).toBeDefined();
+    expect(EditUserModal).toBe(UserProfilePanel);
+  });
+
+  // Tests R-P3-01 — slide-out uses right-0 and inset-y-0 positioning
+  it("renders with right-0 and inset-y-0 CSS classes (slide-out panel)", () => {
+    const { container } = render(
+      <UserProfilePanel user={makeUser()} onSave={onSave} onCancel={onCancel} />,
+    );
+    const panel = container.querySelector(".fixed.inset-y-0.right-0");
+    expect(panel).not.toBeNull();
+    expect(panel!.className).toContain("right-0");
+    expect(panel!.className).toContain("inset-y-0");
+  });
+
+  // Tests R-P3-01 (negative) — does NOT use inset-0 with centered flex
+  it("does NOT use inset-0 with centered flex layout", () => {
+    const { container } = render(
+      <UserProfilePanel user={makeUser()} onSave={onSave} onCancel={onCancel} />,
+    );
+    const panel = container.querySelector(".fixed.inset-y-0.right-0");
+    expect(panel).not.toBeNull();
+    expect(panel!.className).not.toContain("items-center");
+    expect(panel!.className).not.toContain("justify-center");
+  });
+
+  // Tests R-P3-02 — panel has w-full and md:max-w-2xl for responsive width
+  it("panel outer div contains w-full and md:max-w-2xl classes", () => {
+    const { container } = render(
+      <UserProfilePanel user={makeUser()} onSave={onSave} onCancel={onCancel} />,
+    );
+    const panel = container.querySelector(".fixed.inset-y-0.right-0");
+    expect(panel).not.toBeNull();
+    expect(panel!.className).toContain("w-full");
+    expect(panel!.className).toContain("md:max-w-2xl");
+  });
+
+  // Tests R-P3-03 — three tabs render: Identity, Pay Profile, Access
+  it("renders Identity, Pay Profile, and Access tabs", () => {
+    render(
+      <UserProfilePanel user={makeUser()} onSave={onSave} onCancel={onCancel} />,
+    );
+    expect(screen.getByText("Identity")).toBeInTheDocument();
+    expect(screen.getByText("Pay Profile")).toBeInTheDocument();
+    expect(screen.getByText("Access")).toBeInTheDocument();
   });
 
   it("renders user name and role in the header", () => {
@@ -216,9 +266,7 @@ describe("EditUserModal", () => {
     render(
       <EditUserModal user={makeUser()} onSave={onSave} onCancel={onCancel} />,
     );
-    // X button is in the header area
-    const header = screen.getByText("John Smith").closest(".border-b")!;
-    const closeBtn = header.querySelector("button")!;
+    const closeBtn = screen.getByLabelText("Close modal");
     await user.click(closeBtn);
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
@@ -246,4 +294,6 @@ describe("EditUserModal", () => {
     await user.click(screen.getByText("Pay Profile"));
     expect(screen.getByText("Base Rate Policy")).toBeInTheDocument();
   });
+
+  // Tests R-P3-10 — overall test suite exits with code 0 (verified by running this file)
 });

@@ -58,6 +58,7 @@ import {
   Link2,
   AlertTriangle,
   RefreshCw,
+  ChevronRight,
 } from "lucide-react";
 import type { AccountType } from "../types";
 import { EditUserModal } from "./EditUserModal";
@@ -1443,19 +1444,50 @@ export const CompanyProfile: React.FC<Props> = ({
                             <div className="text-xs font-black text-white uppercase">
                               {u.name || "Unnamed User"}
                             </div>
-                            <div className="text-[11px] text-slate-500 font-bold uppercase">
-                              {(u.role || "member").replace("_", " ")}{" "}
-                              {u.email ? `\u2022 ${u.email}` : ""}
+                            <div className="text-[9px] text-slate-500 font-bold uppercase">
+                              {u.email || ""}
                             </div>
                           </div>
                         </div>
-                        <button
-                          onClick={() => setEditingUser(u)}
-                          className="p-2 text-slate-600 hover:text-white transition-all"
-                          aria-label={`Edit ${u.name || "user"}`}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-3">
+                          <select
+                            aria-label={`role for ${u.name || "user"}`}
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white font-bold uppercase"
+                            value={u.role || "driver"}
+                            onChange={(e) => {
+                              handleUserUpdate({ ...u, role: e.target.value as any });
+                            }}
+                          >
+                            <option value="admin">Admin</option>
+                            <option value="driver">Driver</option>
+                            <option value="owner_operator">Owner Operator</option>
+                            <option value="safety_manager">Safety Manager</option>
+                            <option value="dispatcher">Dispatcher</option>
+                            <option value="payroll_manager">Payroll Manager</option>
+                            <option value="customer">Customer</option>
+                          </select>
+                          <input
+                            type="number"
+                            aria-label={`pay rate for ${u.name || "user"}`}
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white font-bold w-20"
+                            defaultValue={u.payRate ?? ""}
+                            placeholder="Rate"
+                            min="0"
+                            step="0.01"
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (Number.isNaN(val) || val < 0) return;
+                              handleUserUpdate({ ...u, payRate: val });
+                            }}
+                          />
+                          <button
+                            onClick={() => setEditingUser(u)}
+                            className="p-2 text-slate-600 hover:text-white transition-all"
+                            aria-label={`Details for ${u.name || "user"}`}
+                          >
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     ))
                   )}
