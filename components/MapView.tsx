@@ -153,10 +153,10 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
                   {pos.load.commodity || "General Freight"}
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-[8px] text-slate-400 font-bold uppercase">
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase">
                     <Clock className="w-2.5 h-2.5" /> Status: {pos.load.status}
                   </div>
-                  <div className="flex items-center gap-2 text-[8px] text-blue-400 font-bold uppercase">
+                  <div className="flex items-center gap-2 text-[10px] text-blue-400 font-bold uppercase">
                     <Truck className="w-2.5 h-2.5" /> Mode: {pos.load.status}
                   </div>
                 </div>
@@ -203,7 +203,7 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${item.color}`} />
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">
+            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">
               {item.label}
             </span>
           </div>
@@ -214,7 +214,7 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
       {showLiveTelemetry ? (
         <div className="absolute bottom-4 right-4 w-64 bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-xl p-3 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[8px] font-black text-blue-400 uppercase tracking-tighter flex items-center gap-1">
+            <span className="text-[10px] font-black text-blue-400 uppercase tracking-tighter flex items-center gap-1">
               <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />{" "}
               Live Telemetry
             </span>
@@ -230,7 +230,7 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
                   className="p-3 bg-slate-900/50 rounded-xl border border-slate-800 flex items-center justify-between"
                 >
                   <div className="flex flex-col">
-                    <span className="text-[8px] font-black text-slate-500 uppercase">
+                    <span className="text-[10px] font-black text-slate-500 uppercase">
                       Load #{l.loadNumber}
                     </span>
                     <span className="text-xs font-bold text-white">
@@ -238,7 +238,7 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
                     </span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className="text-[8px] font-bold text-slate-400">
+                    <span className="text-[10px] font-bold text-slate-400">
                       Status: {l.status}
                     </span>
                   </div>
@@ -252,12 +252,12 @@ export const MapView: React.FC<Props> = ({ loads, trackingState }) => {
           data-testid="route-info-overlay"
         >
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter flex items-center gap-1">
               <Info className="w-3 h-3 text-slate-600" />
               Route Information
             </span>
           </div>
-          <p className="text-[9px] text-slate-500">
+          <p className="text-[11px] text-slate-500">
             Route information based on scheduled stops.
           </p>
         </div>

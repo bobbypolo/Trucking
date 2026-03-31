@@ -87,7 +87,12 @@ describe("Geofence Routes", () => {
         .set(AUTH_HEADER)
         .send({ eventType: "ENTRY", facilityLat: 33.0, facilityLng: -97.0 });
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe("loadId is required");
+      expect(res.body.message).toBe("Validation failed");
+      expect(res.body.details.fields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: "loadId" }),
+        ]),
+      );
     });
 
     it("returns 400 when eventType is invalid", async () => {
@@ -102,7 +107,12 @@ describe("Geofence Routes", () => {
           facilityLng: -97.0,
         });
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe("eventType must be ENTRY or EXIT");
+      expect(res.body.message).toBe("Validation failed");
+      expect(res.body.details.fields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: "eventType" }),
+        ]),
+      );
     });
 
     it("returns 400 when facilityLat/Lng missing", async () => {
@@ -112,8 +122,12 @@ describe("Geofence Routes", () => {
         .set(AUTH_HEADER)
         .send({ loadId: "load-1", eventType: "ENTRY" });
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe(
-        "facilityLat and facilityLng are required",
+      expect(res.body.message).toBe("Validation failed");
+      expect(res.body.details.fields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: "facilityLat" }),
+          expect.objectContaining({ field: "facilityLng" }),
+        ]),
       );
     });
 
@@ -216,7 +230,12 @@ describe("Geofence Routes", () => {
         .set(AUTH_HEADER)
         .send({});
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe("loadId is required");
+      expect(res.body.message).toBe("Validation failed");
+      expect(res.body.details.fields).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ field: "loadId" }),
+        ]),
+      );
     });
 
     it("calculates zero detention for 0h dwell (no events)", async () => {

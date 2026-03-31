@@ -60,7 +60,33 @@ export const QuoteManager: React.FC<Props> = ({
   } | null>(null);
 
   useEffect(() => {
-    loadData();
+    const controller = new AbortController();
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [q, l, b, w] = await Promise.all([
+          getQuotes(),
+          getLeads(user.companyId),
+          getBookings(user.companyId),
+          getWorkItems(user.companyId),
+        ]);
+        if (controller.signal.aborted) return;
+        setQuotes(q);
+        setLeads(l);
+        setBookings(b);
+        setWorkItems(w);
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        if (!controller.signal.aborted) {
+          setError("Unable to load pipeline data. Please retry.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    };
+    fetchData();
+    return () => controller.abort();
   }, [user.companyId]);
 
   const loadData = async () => {

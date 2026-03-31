@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request } from "express";
+import type { Request, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
@@ -19,7 +19,7 @@ router.get(
   "/api/crisis-actions",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -33,7 +33,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/crisis-actions");
       log.error({ err: error }, "Failed to fetch crisis actions");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -44,7 +44,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createCrisisActionSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -57,7 +57,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/crisis-actions");
       log.error({ err: error }, "Failed to create crisis action");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -68,7 +68,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateCrisisActionSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
 
@@ -109,7 +109,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

@@ -16,8 +16,8 @@ import { test, expect } from "@playwright/test";
  * Tests R-P2-01, R-P2-02, R-P2-03, R-P2-04, R-P2-05
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
-const HARNESS_URL = "http://localhost:5173/minor-defects-harness";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
+const HARNESS_URL = `${APP_BASE}/minor-defects-harness`;
 
 // ── F-012: api-tester permission gate ─────────────────────────────────────────
 
@@ -54,7 +54,7 @@ test.describe("F-012: api-tester NavItem permission gate", () => {
       res = await request.get(`${API_BASE}/api/loads`);
     } catch {
       // Server not running — skip gracefully
-      test.skip(true, "API server not running");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // 401 or 403 confirm auth middleware is working — meaning permission gates matter
@@ -71,7 +71,7 @@ test.describe("F-012: api-tester NavItem permission gate", () => {
       res = await request.get(`${API_BASE}/api/users`);
     } catch {
       // Server not running — skip
-      test.skip(true, "API server not running");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // 401/403 = auth enforced, 404 = route not at this path, 500 = server error
@@ -116,7 +116,7 @@ test.describe("F-014: DriverMobileHome logout capability", () => {
       res = await page.request.get(`${API_BASE}/api/users/me`);
     } catch {
       // Server not running — skip gracefully
-      test.skip(true, "API server not running");
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // Without auth, the endpoint returns 401 — confirming auth state is enforced
@@ -280,7 +280,7 @@ test.describe("Minor defects integrity — all fixes present", () => {
         res = await request.get(endpoint);
       } catch {
         // Server not running — skip gracefully
-        test.skip(true, "API server not running");
+        test.skip(true, "SKIP:NO_UI_SERVER");
         return;
       }
       // Any of these should reject unauthenticated requests

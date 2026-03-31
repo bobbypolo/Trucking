@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
 import {
-  API_BASE as AUTH_API_BASE,
   makeAdminRequest,
   type AuthContext,
 } from "./fixtures/auth.fixture";
+import { API_BASE } from "./fixtures/urls";
 
 /**
  * E2E Settlement Workflow Tests — R-P11-01, R-P11-02, R-P11-03
@@ -16,8 +16,6 @@ import {
  * API-level assertions cover auth enforcement and response shape.
  * UI-level assertions require E2E_SERVER_RUNNING=1.
  */
-
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
 
 // ── API-level settlement enforcement (always runs) ───────────────────────────
 
@@ -201,7 +199,7 @@ test.describe("R-P11-01: Settlement Creation with GL Journal Entries", () => {
     request,
   }) => {
     // R-P11-01: Create settlement for completed load -> GL journal entries created
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const settlementPayload = {
       driverId: "fin-e2e-driver-gl",
@@ -258,7 +256,7 @@ test.describe("R-P11-02: Posted Settlement Immutability", () => {
     request,
   }) => {
     // R-P11-02: Posted settlement PUT/PATCH returns 400/409 (immutability enforced)
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     // Attempt to modify a posted settlement — must be rejected
     const res = await admin.patch(
@@ -275,7 +273,7 @@ test.describe("R-P11-02: Posted Settlement Immutability", () => {
     request,
   }) => {
     // R-P11-02: PUT also blocked on posted settlements
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const listRes = await admin.get(
       `${API_BASE}/api/accounting/settlements`,
@@ -322,7 +320,7 @@ test.describe("R-P11-03: Settlement Total Verification", () => {
     request,
   }) => {
     // R-P11-03: Settlement total_amount matches load rate_amount + sum(expenses)
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const totalEarnings = 5000.0;
     const totalDeductions = 200.0;
@@ -365,7 +363,7 @@ test.describe("R-P11-03: Settlement Total Verification", () => {
   test("settlement list includes earnings and deductions for total verification", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(
       `${API_BASE}/api/accounting/settlements`,
@@ -430,7 +428,7 @@ test.describe("Settlement UI Workflow", () => {
     const email = process.env.E2E_TEST_EMAIL;
     const password = process.env.E2E_TEST_PASSWORD;
     if (!email || !password) {
-      test.skip(true, "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set");
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
     await page.goto("/");

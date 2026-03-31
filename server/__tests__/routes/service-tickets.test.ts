@@ -9,18 +9,31 @@ const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => {
 vi.mock("../../db", () => ({ default: { query: mockQuery } }));
 
 vi.mock("../../lib/logger", () => ({
-  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(), child: vi.fn().mockReturnThis() },
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
   }),
-  createRequestLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
+  createRequestLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
 }));
 
 vi.mock("firebase-admin", () => {
-  const mockAuth = { verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }) };
+  const mockAuth = {
+    verifyIdToken: vi.fn().mockResolvedValue({ uid: "firebase-uid-1" }),
+  };
   return { default: { app: vi.fn(), auth: () => mockAuth } };
 });
 
@@ -45,16 +58,30 @@ function buildApp() {
 }
 
 const makeTicket = (overrides: Record<string, unknown> = {}) => ({
-  id: "st-001", company_id: "company-aaa", type: "Oil Change", status: "Open",
-  vendor: "Acme Fleet Services", cost: 150.0, equipment_id: "truck-001",
-  description: "Routine oil change", created_by: "user-1", updated_by: "user-1",
-  archived_at: null, locked_at: null, ...overrides,
+  id: "st-001",
+  company_id: "company-aaa",
+  type: "Oil Change",
+  status: "Open",
+  vendor: "Acme Fleet Services",
+  cost: 150.0,
+  equipment_id: "truck-001",
+  description: "Routine oil change",
+  created_by: "user-1",
+  updated_by: "user-1",
+  archived_at: null,
+  locked_at: null,
+  ...overrides,
 });
 
 // ── Auth enforcement ────────────────────────────────────────────────
 
 describe("Service tickets routes — auth enforcement", () => {
-  beforeEach(() => { vi.clearAllMocks(); mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+  });
 
   it("GET /api/service-tickets returns 401 without auth", async () => {
     const app = buildApp();
@@ -64,13 +91,17 @@ describe("Service tickets routes — auth enforcement", () => {
 
   it("POST /api/service-tickets returns 401 without auth", async () => {
     const app = buildApp();
-    const res = await request(app).post("/api/service-tickets").send({ type: "Oil Change" });
+    const res = await request(app)
+      .post("/api/service-tickets")
+      .send({ type: "Oil Change" });
     expect(res.status).toBe(401);
   });
 
   it("PATCH /api/service-tickets/:id returns 401 without auth", async () => {
     const app = buildApp();
-    const res = await request(app).patch("/api/service-tickets/st-001").send({ status: "Closed" });
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .send({ status: "Closed" });
     expect(res.status).toBe(401);
   });
 });
@@ -79,12 +110,23 @@ describe("Service tickets routes — auth enforcement", () => {
 
 describe("GET /api/service-tickets — success", () => {
   let app: ReturnType<typeof buildApp>;
-  beforeEach(() => { vi.clearAllMocks(); mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL); app = buildApp(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+  });
 
   it("returns tickets list with 200", async () => {
-    const tickets = [makeTicket(), makeTicket({ id: "st-002", type: "Brake Inspection" })];
+    const tickets = [
+      makeTicket(),
+      makeTicket({ id: "st-002", type: "Brake Inspection" }),
+    ];
     mockQuery.mockResolvedValueOnce([tickets, []]);
-    const res = await request(app).get("/api/service-tickets").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body).toHaveLength(2);
@@ -92,14 +134,18 @@ describe("GET /api/service-tickets — success", () => {
 
   it("returns empty array when no tickets exist", async () => {
     mockQuery.mockResolvedValueOnce([[], []]);
-    const res = await request(app).get("/api/service-tickets").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(200);
     expect(res.body).toHaveLength(0);
   });
 
   it("supports pagination via page and limit query params", async () => {
     mockQuery.mockResolvedValueOnce([[], []]);
-    await request(app).get("/api/service-tickets?page=2&limit=20").set("Authorization", "Bearer valid-token");
+    await request(app)
+      .get("/api/service-tickets?page=2&limit=20")
+      .set("Authorization", "Bearer valid-token");
     const queryCall = mockQuery.mock.calls[0];
     expect(queryCall[1]).toContain(20);
     expect(queryCall[1]).toContain(20);
@@ -107,9 +153,11 @@ describe("GET /api/service-tickets — success", () => {
 
   it("returns 500 on database error", async () => {
     mockQuery.mockRejectedValueOnce(new Error("DB connection error"));
-    const res = await request(app).get("/api/service-tickets").set("Authorization", "Bearer valid-token");
+    const res = await request(app)
+      .get("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -117,13 +165,29 @@ describe("GET /api/service-tickets — success", () => {
 
 describe("POST /api/service-tickets — creation", () => {
   let app: ReturnType<typeof buildApp>;
-  beforeEach(() => { vi.clearAllMocks(); mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL); app = buildApp(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+  });
 
   it("creates ticket and returns 201", async () => {
     const created = makeTicket();
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     mockQuery.mockResolvedValueOnce([[created], []]);
-    const res = await request(app).post("/api/service-tickets").set("Authorization", "Bearer valid-token").send({ type: "Oil Change", status: "Open", vendor: "Acme Fleet Services", cost: 150.0, equipment_id: "truck-001", description: "Routine oil change" });
+    const res = await request(app)
+      .post("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        type: "Oil Change",
+        status: "Open",
+        vendor: "Acme Fleet Services",
+        cost: 150.0,
+        equipment_id: "truck-001",
+        description: "Routine oil change",
+      });
     expect(res.status).toBe(201);
     expect(res.body.id).toBe("st-001");
   });
@@ -132,7 +196,10 @@ describe("POST /api/service-tickets — creation", () => {
     const created = makeTicket({ type: undefined, status: undefined });
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     mockQuery.mockResolvedValueOnce([[created], []]);
-    const res = await request(app).post("/api/service-tickets").set("Authorization", "Bearer valid-token").send({});
+    const res = await request(app)
+      .post("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token")
+      .send({});
     expect(res.status).toBe(201);
   });
 
@@ -147,9 +214,12 @@ describe("POST /api/service-tickets — creation", () => {
 
   it("returns 500 on database error during creation", async () => {
     mockQuery.mockRejectedValueOnce(new Error("DB insert failed"));
-    const res = await request(app).post("/api/service-tickets").set("Authorization", "Bearer valid-token").send({ type: "Tire Rotation" });
+    const res = await request(app)
+      .post("/api/service-tickets")
+      .set("Authorization", "Bearer valid-token")
+      .send({ type: "Tire Rotation" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -157,7 +227,13 @@ describe("POST /api/service-tickets — creation", () => {
 
 describe("PATCH /api/service-tickets/:id — update", () => {
   let app: ReturnType<typeof buildApp>;
-  beforeEach(() => { vi.clearAllMocks(); mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL); app = buildApp(); });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
+    app = buildApp();
+  });
 
   it("updates ticket and returns 200", async () => {
     const existing = makeTicket();
@@ -165,49 +241,79 @@ describe("PATCH /api/service-tickets/:id — update", () => {
     mockQuery.mockResolvedValueOnce([[existing], []]);
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     mockQuery.mockResolvedValueOnce([[updated], []]);
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ status: "In Progress" });
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "In Progress" });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("In Progress");
   });
 
   it("returns 404 when ticket does not exist", async () => {
     mockQuery.mockResolvedValueOnce([[], []]);
-    const res = await request(app).patch("/api/service-tickets/nonexistent").set("Authorization", "Bearer valid-token").send({ status: "Closed" });
+    const res = await request(app)
+      .patch("/api/service-tickets/nonexistent")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "Closed" });
     expect(res.status).toBe(404);
     expect(res.body.error).toBe("Service ticket not found");
   });
 
   it("returns 404 for cross-tenant ticket update (conceals existence)", async () => {
-    mockQuery.mockResolvedValueOnce([[makeTicket({ company_id: "company-zzz" })], []]);
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ status: "Closed" });
+    mockQuery.mockResolvedValueOnce([
+      [makeTicket({ company_id: "company-zzz" })],
+      [],
+    ]);
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "Closed" });
     expect(res.status).toBe(404);
     expect(res.body.error).toBe("Service ticket not found");
   });
 
   it("returns 403 when editing a locked closed ticket", async () => {
-    mockQuery.mockResolvedValueOnce([[makeTicket({ status: "Closed", locked_at: "2026-03-15T12:00:00Z" })], []]);
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ description: "Trying to edit locked ticket" });
+    mockQuery.mockResolvedValueOnce([
+      [makeTicket({ status: "Closed", locked_at: "2026-03-15T12:00:00Z" })],
+      [],
+    ]);
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ description: "Trying to edit locked ticket" });
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("locked");
   });
 
   it("allows editing a closed ticket that is NOT locked", async () => {
     const existing = makeTicket({ status: "Closed", locked_at: null });
-    const updated = makeTicket({ status: "Closed", description: "Updated description" });
+    const updated = makeTicket({
+      status: "Closed",
+      description: "Updated description",
+    });
     mockQuery.mockResolvedValueOnce([[existing], []]);
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     mockQuery.mockResolvedValueOnce([[updated], []]);
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ description: "Updated description" });
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ description: "Updated description" });
     expect(res.status).toBe(200);
   });
 
   it("allows editing a locked ticket that is NOT closed", async () => {
-    const existing = makeTicket({ status: "Open", locked_at: "2026-03-15T12:00:00Z" });
+    const existing = makeTicket({
+      status: "Open",
+      locked_at: "2026-03-15T12:00:00Z",
+    });
     const updated = makeTicket({ status: "In Progress" });
     mockQuery.mockResolvedValueOnce([[existing], []]);
     mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
     mockQuery.mockResolvedValueOnce([[updated], []]);
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ status: "In Progress" });
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ status: "In Progress" });
     expect(res.status).toBe(200);
   });
 
@@ -215,7 +321,10 @@ describe("PATCH /api/service-tickets/:id — update", () => {
     const existing = makeTicket();
     mockQuery.mockResolvedValueOnce([[existing], []]);
     mockQuery.mockRejectedValueOnce(new Error("DB update failed"));
-    const res = await request(app).patch("/api/service-tickets/st-001").set("Authorization", "Bearer valid-token").send({ vendor: "New Vendor" });
+    const res = await request(app)
+      .patch("/api/service-tickets/st-001")
+      .set("Authorization", "Bearer valid-token")
+      .send({ vendor: "New Vendor" });
     expect(res.status).toBe(500);
   });
 });

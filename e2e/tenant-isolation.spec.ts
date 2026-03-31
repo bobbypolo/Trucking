@@ -7,7 +7,7 @@ import { test, expect } from "@playwright/test";
  * Tests cover API-level isolation enforcement and cross-tenant rejection.
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 
 // ── API-level tenant isolation (always runs) ─────────────────────────────────
 
@@ -179,7 +179,7 @@ test.describe("Tenant Isolation UI", () => {
 
     test.skip(
       !email || !password,
-      "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set",
+      "SKIP:NO_TOKEN:credentials",
     );
 
     await page.goto("/");

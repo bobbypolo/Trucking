@@ -140,7 +140,7 @@ test.describe("Navigation Guards — Role-Based Access Denial", () => {
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     // Admin should reach loads (200/404) — not denied

@@ -27,7 +27,9 @@ export async function geocodeAddress(
 
   try {
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${apiKey}`;
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(5000),
+    });
 
     if (!response.ok) {
       return null;

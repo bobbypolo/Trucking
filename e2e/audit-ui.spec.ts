@@ -41,7 +41,7 @@ test.describe("Audit Endpoint — Authenticated Access", () => {
   test("returns structured response with valid auth", async ({ request }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -60,7 +60,7 @@ test.describe("Audit Endpoint — Authenticated Access", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -83,7 +83,7 @@ test.describe("Audit Endpoint — Authenticated Access", () => {
   test("supports limit/offset pagination query params", async ({ request }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 

@@ -44,7 +44,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
   );
 
   test("Step 1: Create a new quote", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     quoteId = uuidv4();
     const quotePayload = {
@@ -81,7 +81,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
   });
 
   test("Step 2: Retrieve quotes list", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(`${API_BASE}/api/quotes`, request);
     expect(res.status()).toBe(200);
@@ -94,7 +94,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
     request,
   }) => {
     // R-P8-01: Quote creation -> status "quoted" verified
-    test.skip(!admin.hasToken || !quoteId, "Requires prior step");
+    test.skip(!admin.hasToken || !quoteId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/quotes/${quoteId}`,
@@ -118,7 +118,7 @@ test.describe("Canonical Journey: Quote Creation and Retrieval", () => {
   });
 
   test("Step 4: Approve quote for booking conversion", async ({ request }) => {
-    test.skip(!admin.hasToken || !quoteId, "Requires prior step");
+    test.skip(!admin.hasToken || !quoteId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/quotes/${quoteId}`,
@@ -148,7 +148,7 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
     request,
   }) => {
     // R-P8-02: Booking conversion -> booking.quoteId matches original quote
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     bookingId = uuidv4();
     const sourceQuoteId = `quote-journey-${Date.now()}`;
@@ -186,7 +186,7 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
   });
 
   test("Step 2: Retrieve bookings list", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(`${API_BASE}/api/bookings`, request);
     expect(res.status()).toBe(200);
@@ -198,7 +198,7 @@ test.describe("Canonical Journey: Quote to Booking Conversion", () => {
   test("Step 3: Update booking status to Ready_for_Dispatch", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !bookingId, "Requires prior step");
+    test.skip(!admin.hasToken || !bookingId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/bookings/${bookingId}`,
@@ -228,7 +228,7 @@ test.describe("Canonical Journey: Booking to Load to Dispatch", () => {
     request,
   }) => {
     // R-P8-03: Load conversion -> load appears with correct status and booking link
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     loadId = uuidv4();
     const loadPayload = makeLoadDraft({
@@ -259,7 +259,7 @@ test.describe("Canonical Journey: Booking to Load to Dispatch", () => {
   test("Step 2: Transition load through planned -> dispatched", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     // Plan the load
     const planRes = await admin.patch(
@@ -281,7 +281,7 @@ test.describe("Canonical Journey: Booking to Load to Dispatch", () => {
   test("Step 3: Verify dispatched load persists with correct status", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.get(`${API_BASE}/api/loads`, request);
     expect(res.status()).toBe(200);
@@ -346,7 +346,7 @@ test.describe("Canonical Journey: Quote-to-Load UI Flow", () => {
     const email = process.env.E2E_TEST_EMAIL;
     const password = process.env.E2E_TEST_PASSWORD;
 
-    test.skip(!email || !password, "Test credentials not configured");
+    test.skip(!email || !password, "SKIP:NO_TOKEN:credentials");
 
     await page.goto("/");
     await page.locator('input[type="email"]').first().fill(email!);

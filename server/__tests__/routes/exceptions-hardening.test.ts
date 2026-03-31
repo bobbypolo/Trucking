@@ -264,7 +264,7 @@ describe("POST /api/exceptions — validation and edge cases", () => {
       .set("Authorization", "Bearer valid-token")
       .send({ type: "DELAY", entityType: "LOAD", entityId: "load-001" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -482,7 +482,7 @@ describe("GET /api/exceptions/:id/events — hardening", () => {
       .get("/api/exceptions/ex-001/events")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("tenant-scopes the events query via INNER JOIN", async () => {
@@ -540,6 +540,6 @@ describe("GET /api/exception-types — success and error", () => {
       .get("/api/exception-types")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });

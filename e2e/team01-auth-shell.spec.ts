@@ -48,7 +48,7 @@ import {
  * ============================================================================
  */
 
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:3101";
+import { APP_BASE } from "./fixtures/urls";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 const E2E_EMAIL = process.env.E2E_TEST_EMAIL || process.env.E2E_ADMIN_EMAIL;
 const E2E_PASSWORD =
@@ -99,7 +99,7 @@ test.describe("T1-03 / CORE-02: Valid login — admin token acquisition (API)", 
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/loads`, request);
@@ -114,7 +114,7 @@ test.describe("T1-03 / CORE-02: Valid login — admin token acquisition (API)", 
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/users/me`, request);
@@ -147,7 +147,7 @@ test.describe("T1-03 — Multi-role login verification (API)", () => {
   }) => {
     const ctx = await makeDispatcherRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Dispatcher credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:dispatcher");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/loads`, request);
@@ -162,7 +162,7 @@ test.describe("T1-03 — Multi-role login verification (API)", () => {
   }) => {
     const ctx = await makeDispatcherRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Dispatcher credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:dispatcher");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/users/me`, request);
@@ -193,7 +193,7 @@ test.describe("T1-03 — Multi-role login verification (API)", () => {
   }) => {
     const ctx = await makeDriverRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Driver credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:driver");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/users/me`, request);
@@ -208,7 +208,7 @@ test.describe("T1-03 — Multi-role login verification (API)", () => {
   }) => {
     const ctx = await makeDriverRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Driver credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:driver");
       return;
     }
     // Drivers should NOT have access to admin-level accounting settlements
@@ -235,7 +235,7 @@ test.describe("T1-03 — Multi-role login verification (API)", () => {
       (ctx) => ctx.hasToken,
     );
     if (availableRoles.length === 0) {
-      test.skip(true, "No role credentials available");
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
 
@@ -292,7 +292,7 @@ test.describe("CORE-03: Invalid login — bad credentials are cleanly rejected (
   test("signInFirebase helper throws for invalid credentials (no token leaks)", async () => {
     const FIREBASE_API_KEY = process.env.FIREBASE_WEB_API_KEY;
     if (!FIREBASE_API_KEY) {
-      test.skip(true, "FIREBASE_WEB_API_KEY not set");
+      test.skip(true, "SKIP:NO_FIREBASE_KEY");
       return;
     }
 
@@ -339,7 +339,7 @@ test.describe("T1-04: Session persistence — token works across sequential requ
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -357,7 +357,7 @@ test.describe("T1-04: Session persistence — token works across sequential requ
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -573,7 +573,7 @@ test.describe("T1-04: Session restore — reload preserves authentication (brows
     !SERVER_RUNNING,
     "Requires E2E_SERVER_RUNNING=1 with Vite + Express",
   );
-  test.skip(!E2E_EMAIL || !E2E_PASSWORD, "Requires E2E credentials");
+  test.skip(!E2E_EMAIL || !E2E_PASSWORD, "SKIP:NO_TOKEN:credentials");
 
   test("after login, page reload restores authenticated session (user stays logged in)", async ({
     page,
@@ -627,7 +627,7 @@ test.describe("Logout flow — app returns to login with no session data leaks (
     !SERVER_RUNNING,
     "Requires E2E_SERVER_RUNNING=1 with Vite + Express",
   );
-  test.skip(!E2E_EMAIL || !E2E_PASSWORD, "Requires E2E credentials");
+  test.skip(!E2E_EMAIL || !E2E_PASSWORD, "SKIP:NO_TOKEN:credentials");
 
   test("clicking Sign Out returns to login screen", async ({ page }) => {
     // Login first

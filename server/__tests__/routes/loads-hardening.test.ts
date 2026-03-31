@@ -253,7 +253,7 @@ describe("Loads Route Hardening", () => {
         .set("Authorization", AUTH_HEADER);
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe("Database error");
+      expect(res.body.message).toBeDefined();
     });
   });
 
@@ -463,9 +463,7 @@ describe("Loads Route Hardening", () => {
     });
 
     it("returns 500 when DB error occurs during DELETE", async () => {
-      mockQuery.mockResolvedValueOnce([
-        [{ id: "load-001", status: "draft" }],
-      ]);
+      mockQuery.mockResolvedValueOnce([[{ id: "load-001", status: "draft" }]]);
       mockQuery.mockRejectedValueOnce(new Error("DB error"));
 
       const app = createApp();

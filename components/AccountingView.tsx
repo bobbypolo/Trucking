@@ -108,7 +108,7 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
             <span className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
               Fleet Financial Operations
             </span>
-            <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded text-[8px] font-black text-emerald-500 tracking-widest border border-emerald-500/20">
+            <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded text-[10px] font-black text-emerald-500 tracking-widest border border-emerald-500/20">
               <Activity className="w-2.5 h-2.5" /> LIVE
             </div>
           </div>
@@ -169,7 +169,7 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
             <div className="text-2xl font-black text-white mb-2">
               {formatCurrency(card.value)}
             </div>
-            <div className="text-[9px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
+            <div className="text-[11px] font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2">
               {card.sub}
             </div>
           </div>
@@ -184,7 +184,7 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
               <h3 className="text-xs font-black text-white uppercase tracking-widest">
                 Performance Intelligence
               </h3>
-              <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+              <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                 7-Day Revenue & Profit Logic
               </p>
             </div>
@@ -286,7 +286,7 @@ export const AccountingView: React.FC<AccountingViewProps> = ({
                 <span className="text-3xl font-black text-white">
                   {stats.marginPercent.toFixed(0)}%
                 </span>
-                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest mt-1">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">
                   Net Yield
                 </span>
               </div>

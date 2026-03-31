@@ -15,9 +15,7 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { API_BASE } from "./fixtures/auth.fixture";
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const HAS_FRONTEND = !!process.env.E2E_SERVER_RUNNING;
 
 // ---------------------------------------------------------------------------
@@ -142,12 +140,12 @@ test.describe("DOC UI — Schedule Page Rendering", () => {
 
   test("schedule frontend renders when Vite is running", async ({ page }) => {
     if (!HAS_FRONTEND) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const loaded = await tryLoadApp(page);
     if (!loaded) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const body = await page.locator("body").textContent();
@@ -182,12 +180,12 @@ test.describe("DOC UI — API Tester Page Access", () => {
   }) => {
     // ApiTester (GoogleMapsAPITester) component test — requires full frontend
     if (!HAS_FRONTEND) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const loaded = await tryLoadApp(page);
     if (!loaded) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const html = await page.content();
@@ -224,12 +222,12 @@ test.describe("DOC UI — Map Graceful Degradation", () => {
     page,
   }) => {
     if (!HAS_FRONTEND) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const loaded = await tryLoadApp(page);
     if (!loaded) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const bodyText = await page.locator("body").textContent();

@@ -257,7 +257,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                 </ResponsiveContainer>
               </div>
               {/* Broker list with drill-down */}
-              <div className="grid grid-cols-3 px-4 text-[9px] font-black text-slate-600 uppercase tracking-widest border-b border-white/5 pb-2">
+              <div className="grid grid-cols-3 px-4 text-[11px] font-black text-slate-600 uppercase tracking-widest border-b border-white/5 pb-2">
                 <div className="col-span-2">Partner</div>
                 <div>RPM</div>
               </div>
@@ -361,7 +361,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                       <div className="text-xs font-bold text-white uppercase">
                         {l.lane}
                       </div>
-                      <div className="text-[9px] text-slate-600 font-black uppercase mt-1">
+                      <div className="text-[11px] text-slate-600 font-black uppercase mt-1">
                         {l.vol} Load{l.vol !== 1 ? "s" : ""}
                       </div>
                     </div>
@@ -369,7 +369,7 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                   <div className="text-right">
                     <div className="text-xs font-mono font-bold text-white leading-none">
                       ${l.avgProfit.toFixed(0)}{" "}
-                      <span className="text-[8px] text-slate-600 ml-1">
+                      <span className="text-[10px] text-slate-600 ml-1">
                         Avg Profit
                       </span>
                     </div>

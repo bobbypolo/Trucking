@@ -18,8 +18,7 @@ import { test, expect } from "@playwright/test";
  *   - Finance endpoint auth enforcement verified without browser
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 
 // ── API-level finance boundary checks (always run) ───────────────────────────
 
@@ -76,7 +75,7 @@ test.describe("Finance Page — Browser UI Rendering (R-P2D-03)", () => {
     const password =
       process.env.E2E_ADMIN_PASSWORD || process.env.E2E_TEST_PASSWORD;
     if (!email || !password) {
-      test.skip(true, "E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD not set");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     await page.goto(APP_BASE);
@@ -93,8 +92,7 @@ test.describe("Finance Page — Browser UI Rendering (R-P2D-03)", () => {
     // The app uses tab-based navigation — finance is accessible via sidebar
     // Navigate to the finance tab by URL fragment or sidebar click
     await page.goto(`${APP_BASE}#finance`);
-    // Allow time for the tab to activate
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("domcontentloaded");
 
     // Verify the page has not crashed (no error boundary or blank page)
     const bodyText = await page.locator("body").textContent({ timeout: 5000 });
@@ -122,7 +120,6 @@ test.describe("Finance Page — Browser UI Rendering (R-P2D-03)", () => {
 
     if (tabCount > 0) {
       await financeTab.first().click();
-      await page.waitForTimeout(1500);
       // After clicking finance tab, some content should be visible
       const mainContent = page.locator(
         "main, #main-content, .main-content, [role='main']",
@@ -147,7 +144,6 @@ test.describe("Finance Page — Browser UI Rendering (R-P2D-03)", () => {
 
     if (tabCount > 0) {
       await accountingTab.first().click();
-      await page.waitForTimeout(1500);
       // After navigation, the page should not have crashed
       const hasError = await page
         .locator(':has-text("Something went wrong")')
@@ -167,7 +163,7 @@ test.describe("Finance Page — Browser UI Rendering (R-P2D-03)", () => {
 
     // Navigate to finance/settlements area
     await page.goto(`${APP_BASE}#finance`);
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("domcontentloaded");
 
     // If posted settlements are visible, verify they have no edit/delete buttons
     const postedBadges = page.locator(

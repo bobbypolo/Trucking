@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { APP_BASE } from "./fixtures/urls";
 
 /**
  * E2E Tenant Isolation Tests for localStorage (F-008 fix).
@@ -12,7 +13,7 @@ import { test, expect } from "@playwright/test";
  * Tests R-P4-06
  */
 
-const STORAGE_TEST_URL = "http://localhost:5173/storage-test-harness";
+const STORAGE_TEST_URL = `${APP_BASE}/storage-test-harness`;
 
 test.describe("localStorage Tenant Isolation — Key Namespacing", () => {
   test.beforeEach(async ({ page }) => {

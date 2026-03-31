@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:3103";
+import { makeAdminRequest } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 
 /* Global timeout — prevent Firebase token acquisition from hanging in CI */
 test.setTimeout(60_000);
@@ -43,7 +43,7 @@ test.describe("Team 3 - Provider Setup Evidence", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -64,7 +64,7 @@ test.describe("Team 3 - Provider Setup Evidence", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 
@@ -89,7 +89,7 @@ test.describe("Team 3 - Provider Setup Evidence", () => {
   test.describe("browser UI", () => {
     test.skip(
       !process.env.E2E_SERVER_RUNNING,
-      "Skipped — set E2E_SERVER_RUNNING=1 to run browser UI tests",
+      "SKIP:NO_UI_SERVER",
     );
 
     test("Telematics Setup only exposes supported providers", async ({
@@ -97,7 +97,7 @@ test.describe("Team 3 - Provider Setup Evidence", () => {
     }) => {
       const loggedIn = await loginAsAdmin(page);
       if (!loggedIn) {
-        test.skip(true, "Admin credentials unavailable");
+        test.skip(true, "SKIP:NO_TOKEN:admin");
         return;
       }
 
@@ -114,7 +114,7 @@ test.describe("Team 3 - Provider Setup Evidence", () => {
     }) => {
       const loggedIn = await loginAsAdmin(page);
       if (!loggedIn) {
-        test.skip(true, "Admin credentials unavailable");
+        test.skip(true, "SKIP:NO_TOKEN:admin");
         return;
       }
 

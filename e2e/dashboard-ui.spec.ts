@@ -12,9 +12,8 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { makeAdminRequest } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 
 // ---------------------------------------------------------------------------
@@ -52,7 +51,7 @@ test.describe("Dashboard Error Visibility -- authenticated data access", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/exceptions`, request);
@@ -64,7 +63,7 @@ test.describe("Dashboard Error Visibility -- authenticated data access", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/exceptions`, request);
@@ -96,7 +95,7 @@ test.describe("Dashboard Error Visibility -- authenticated data access", () => {
 test.describe("Dashboard Error Visibility -- browser UI error banner", () => {
   test("dashboard page loads in browser without crashing", async ({ page }) => {
     if (!SERVER_RUNNING) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     const response = await page.goto(APP_BASE, { timeout: 15000 });
@@ -111,7 +110,7 @@ test.describe("Dashboard Error Visibility -- browser UI error banner", () => {
     page,
   }) => {
     if (!SERVER_RUNNING) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     // Intercept API calls to simulate network failure
@@ -122,14 +121,14 @@ test.describe("Dashboard Error Visibility -- browser UI error banner", () => {
       route.abort("failed");
     });
     await page.goto(APP_BASE, { timeout: 15000 });
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState("domcontentloaded");
 
     const isOnDashboard = await page
       .locator("text=Operations Dashboard")
       .count();
     if (isOnDashboard === 0) {
       // Not authenticated in this environment -- skip browser assertion
-      test.skip();
+      test.skip(true, "SKIP:NO_PRIOR_STATE");
       return;
     }
     const errorBanner = page.getByRole("alert");
@@ -140,16 +139,16 @@ test.describe("Dashboard Error Visibility -- browser UI error banner", () => {
 
   test("dashboard shows normal content when API succeeds", async ({ page }) => {
     if (!SERVER_RUNNING) {
-      test.skip();
+      test.skip(true, "SKIP:NO_UI_SERVER");
       return;
     }
     await page.goto(APP_BASE, { timeout: 15000 });
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("domcontentloaded");
     const isOnDashboard = await page
       .locator("text=Operations Dashboard")
       .count();
     if (isOnDashboard === 0) {
-      test.skip();
+      test.skip(true, "SKIP:NO_PRIOR_STATE");
       return;
     }
     const errorBanner = page.getByRole("alert");

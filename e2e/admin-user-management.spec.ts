@@ -38,7 +38,7 @@ test.describe("Canonical Journey: Admin User Management CRUD", () => {
   test("Step 1: Admin retrieves user list for their company", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     // Admin needs to know their company ID -- use /api/users/me first
     const meRes = await admin.get(`${API_BASE}/api/users/me`, request);
@@ -69,7 +69,7 @@ test.describe("Canonical Journey: Admin User Management CRUD", () => {
   test("Step 2: Admin retrieves their own profile via /api/users/me", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(`${API_BASE}/api/users/me`, request);
     expect(res.status()).toBe(200);
@@ -82,7 +82,7 @@ test.describe("Canonical Journey: Admin User Management CRUD", () => {
   });
 
   test("Step 3: Admin creates a new user invitation", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const invitation = makeAdminUserInvitation({
       email: `admin-journey-${Date.now()}@loadpilot-e2e.dev`,
@@ -95,7 +95,7 @@ test.describe("Canonical Journey: Admin User Management CRUD", () => {
   });
 
   test("Step 4: Admin retrieves company profile", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     // Company profile endpoint
     const meRes = await admin.get(`${API_BASE}/api/users/me`, request);
@@ -133,28 +133,28 @@ test.describe("Canonical Journey: Role Enforcement Across Roles", () => {
   );
 
   test("Admin can access user management endpoints", async ({ request }) => {
-    test.skip(!admin.hasToken, "No admin token");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const res = await admin.get(`${API_BASE}/api/users/me`, request);
     expect(res.status()).toBe(200);
   });
 
   test("Dispatcher can access their own profile", async ({ request }) => {
-    test.skip(!dispatcher.hasToken, "No dispatcher token");
+    test.skip(!dispatcher.hasToken, "SKIP:NO_TOKEN:dispatcher");
 
     const res = await dispatcher.get(`${API_BASE}/api/users/me`, request);
     expect([200, 403]).toContain(res.status());
   });
 
   test("Driver can access their own profile", async ({ request }) => {
-    test.skip(!driver.hasToken, "No driver token");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const res = await driver.get(`${API_BASE}/api/users/me`, request);
     expect([200, 403]).toContain(res.status());
   });
 
   test("Driver cannot create users (admin-only)", async ({ request }) => {
-    test.skip(!driver.hasToken, "No driver token");
+    test.skip(!driver.hasToken, "SKIP:NO_TOKEN:driver");
 
     const invitation = makeAdminUserInvitation({
       email: `driver-create-attempt-${Date.now()}@loadpilot-e2e.dev`,
@@ -169,7 +169,7 @@ test.describe("Canonical Journey: Role Enforcement Across Roles", () => {
   test("Dispatcher cannot create admin users (privilege escalation prevention)", async ({
     request,
   }) => {
-    test.skip(!dispatcher.hasToken, "No dispatcher token");
+    test.skip(!dispatcher.hasToken, "SKIP:NO_TOKEN:dispatcher");
 
     const invitation = makeAdminUserInvitation({
       email: `dispatcher-escalation-${Date.now()}@loadpilot-e2e.dev`,
@@ -203,7 +203,7 @@ test.describe("Canonical Journey: Admin Tenant Isolation", () => {
   test("Admin cannot access users from a different company", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin token");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const foreignCompanyId = "foreign-company-tenant-isolation-test";
     const res = await admin.get(
@@ -224,7 +224,7 @@ test.describe("Canonical Journey: Admin Tenant Isolation", () => {
   test("Admin cannot create users in a foreign company", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken, "No admin token");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     const invitation = makeAdminUserInvitation({
       email: `cross-tenant-${Date.now()}@loadpilot-e2e.dev`,

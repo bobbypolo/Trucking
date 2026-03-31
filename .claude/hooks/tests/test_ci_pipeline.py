@@ -63,15 +63,17 @@ def test_all_eight_jobs_present():
         "migration-validation:",
         "deployment-readiness:",
         "smoke-test:",
+        "python-hooks:",
+        "e2e-api-smoke:",
     ]
     for job in required_jobs:
         assert job in content, f"Missing job: {job}"
 
-    # Verify exactly 9 top-level job keys (4 original + 4 S-1.2 + tenant-scope-check)
+    # Verify exactly 11 top-level job keys (4 original + 4 S-1.2 + tenant-scope-check + python-hooks + e2e-api-smoke)
     job_pattern = re.compile(r"^  [\w-]+:$", re.MULTILINE)
     jobs_section = content[content.index("jobs:") :]
     matches = job_pattern.findall(jobs_section)
-    assert len(matches) == 9, f"Expected 9 jobs, found {len(matches)}: {matches}"
+    assert len(matches) == 11, f"Expected 11 jobs, found {len(matches)}: {matches}"
 
 
 # --- Negative / error-path tests ---

@@ -193,7 +193,7 @@ describe("POST /api/messages", () => {
       .send({ sender_id: "user-001" });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/Validation/i);
+    expect(res.body.message).toBe("Validation failed");
   });
 
   it("returns 400 when sender_id is missing", async () => {

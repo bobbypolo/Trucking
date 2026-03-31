@@ -71,17 +71,15 @@ router.get(
   "/api/incidents",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
       // NOTE: timeline/billingItems enrichment via batch queries deferred.
       // Tracked: loadpilot-backend#issue-enrichment — N+1 avoidance, not blocking for production.
       const incidents = await incidentRepository.findByCompany(companyId);
       res.json({ incidents });
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/incidents");
-      log.error({ err: error }, "SERVER ERROR [GET /api/incidents]");
-      res.status(500).json({ error: "Failed to process incident" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -90,7 +88,7 @@ router.post(
   "/api/incidents",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const {
       load_id,
       type,
@@ -152,10 +150,8 @@ router.post(
       const incLog = createRequestLogger(req, "POST /api/incidents");
       incLog.info({ incidentId: incident.id }, "Incident created successfully");
       res.status(201).json({ message: "Incident created", id: incident.id });
-    } catch (error) {
-      const errLog = createRequestLogger(req, "POST /api/incidents");
-      errLog.error({ err: error }, "SERVER ERROR [POST /api/incidents]");
-      res.status(500).json({ error: "Failed to process incident" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -164,7 +160,7 @@ router.post(
   "/api/incidents/:id/actions",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const { actor_name, action, notes, attachments } = req.body;
     const incidentId = req.params.id;
     const companyId = req.user!.tenantId;
@@ -194,13 +190,8 @@ router.post(
       const actionLog = createRequestLogger(req, "POST /api/incidents/actions");
       actionLog.info({ incidentId }, "Action logged for incident");
       res.status(201).json({ message: "Action logged" });
-    } catch (error) {
-      const errLog = createRequestLogger(req, "POST /api/incidents/actions");
-      errLog.error(
-        { err: error },
-        "SERVER ERROR [POST /api/incidents/actions]",
-      );
-      res.status(500).json({ error: "Failed to process incident" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -210,7 +201,7 @@ router.patch(
   "/api/incidents/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const incidentId = req.params.id;
     const patchLog = createRequestLogger(req, "PATCH /api/incidents/:id");
@@ -250,9 +241,8 @@ router.patch(
 
       patchLog.info({ incidentId }, "Incident updated");
       res.json({ message: "Incident updated", incident: updated });
-    } catch (error) {
-      patchLog.error({ err: error }, "SERVER ERROR [PATCH /api/incidents/:id]");
-      res.status(500).json({ error: "Failed to update incident" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -261,7 +251,7 @@ router.post(
   "/api/incidents/:id/charges",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const {
       category,
       amount,
@@ -304,12 +294,8 @@ router.post(
         ],
       );
       res.status(201).json({ message: "Charge recorded" });
-    } catch (error) {
-      if (error instanceof NotFoundError) {
-        res.status(404).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: "Failed to process incident" });
+    } catch (err) {
+      next(err);
     }
   },
 );

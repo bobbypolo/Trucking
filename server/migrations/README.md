@@ -33,6 +33,7 @@ execution order is deterministic and correct:
 | 41  | `041_tracking_provider_configs.sql`       | Tracking provider configs (renumbered from duplicate 039)                 |
 | 42  | `042_add_documents_is_locked.sql`         | Add is_locked column to documents table                                   |
 | 43  | `043_encrypt_tracking_secrets.sql`        | Widen webhook_secret to TEXT for encrypted ciphertext (S-5.2)             |
+| 44  | `044_loads_composite_index.sql`           | Composite index on loads table for performance                            |
 
 The duplicate prefixes (two `002_*`, two `003_*`, two `038_*`, and two `039_*`) are harmless because:
 
@@ -86,7 +87,7 @@ seeds the supported dev tenants used by Team 1 and Team 3 validation.
 
 ## Adding New Migrations
 
-1. Use the next available 3-digit prefix (currently `044`)
+1. Use the next available 3-digit prefix (currently `045`)
 2. Include both `-- UP` and `-- DOWN` sections
 3. Use `company_id` (not `tenant_id`) for multi-tenant columns
 4. Keep `companies.subscription_tier` present for tier-gated features

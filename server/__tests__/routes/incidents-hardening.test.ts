@@ -145,7 +145,7 @@ describe("POST /api/incidents — error paths", () => {
       });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to process incident");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 500 when incident INSERT throws DB error", async () => {
@@ -165,7 +165,7 @@ describe("POST /api/incidents — error paths", () => {
       });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to process incident");
+    expect(res.body.message).toBeDefined();
   });
 
   it("creates incident with optional fields", async () => {
@@ -307,7 +307,7 @@ describe("POST /api/incidents/:id/actions — full coverage", () => {
       });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to process incident");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -341,7 +341,7 @@ describe("POST /api/incidents/:id/charges — hardening", () => {
       });
 
     expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Failed to process incident");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 500 on DB error during ownership check", async () => {

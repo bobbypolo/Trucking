@@ -148,7 +148,7 @@ export const CertExpiryWarnings: React.FC<CertExpiryWarningsProps> = ({
           <h4 className="text-sm font-bold text-white uppercase tracking-wider">
             Certificate Expiry Warnings
           </h4>
-          <span className="text-[9px] font-bold text-orange-400 bg-orange-900/20 px-2 py-0.5 rounded-full border border-orange-900/50">
+          <span className="text-[11px] font-bold text-orange-400 bg-orange-900/20 px-2 py-0.5 rounded-full border border-orange-900/50">
             {certs.length} alert{certs.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -177,7 +177,7 @@ export const CertExpiryWarnings: React.FC<CertExpiryWarningsProps> = ({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <span
-                    className={`text-[9px] font-bold px-2 py-0.5 rounded-full border uppercase ${urgency.badgeColor}`}
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full border uppercase ${urgency.badgeColor}`}
                   >
                     {urgency.level}
                   </span>
@@ -195,7 +195,7 @@ export const CertExpiryWarnings: React.FC<CertExpiryWarningsProps> = ({
                     ? "0"
                     : cert.daysRemaining}
                 </div>
-                <div className="text-[8px] font-bold uppercase">
+                <div className="text-[10px] font-bold uppercase">
                   {cert.daysRemaining <= 0 ? "Expired" : "Days Left"}
                 </div>
               </div>

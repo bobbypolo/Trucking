@@ -99,13 +99,13 @@ export const CustomerPortalView: React.FC<Props> = ({
           </nav>
 
           <div className="mt-auto p-4 bg-slate-950/50 rounded-2xl border border-white/5">
-            <div className="text-[8px] font-black text-slate-600 uppercase mb-2">
+            <div className="text-[10px] font-black text-slate-600 uppercase mb-2">
               Logged in as
             </div>
             <div className="text-[10px] font-black text-white truncate uppercase">
               {user.name}
             </div>
-            <div className="text-[8px] font-bold text-slate-500 uppercase mt-0.5">
+            <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">
               {user.company}
             </div>
           </div>
@@ -181,7 +181,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                     >
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
-                          <div className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
+                          <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
                             Load #{load.loadNumber}
                           </div>
                           <div className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">
@@ -189,7 +189,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                           </div>
                         </div>
                         <div className="bg-slate-950 px-2 py-1 rounded-lg border border-white/5">
-                          <span className="text-[8px] font-black text-blue-400 uppercase">
+                          <span className="text-[10px] font-black text-blue-400 uppercase">
                             {load.status}
                           </span>
                         </div>
@@ -205,7 +205,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                             }}
                           />
                         </div>
-                        <div className="flex justify-between items-center text-[8px] font-black text-slate-600 uppercase">
+                        <div className="flex justify-between items-center text-[10px] font-black text-slate-600 uppercase">
                           <span>En Route</span>
                           <span>
                             {load.dropoffDate
@@ -362,7 +362,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                         <p className="text-xs font-black text-slate-600 uppercase tracking-[0.2em]">
                           No invoices
                         </p>
-                        <p className="text-[10px] text-slate-700 font-bold uppercase mt-2">
+                        <p className="text-[10px] text-slate-500 font-bold uppercase mt-2">
                           Invoices will appear once loads are delivered
                         </p>
                       </div>
@@ -371,19 +371,19 @@ export const CustomerPortalView: React.FC<Props> = ({
                         <table className="w-full text-left">
                           <thead>
                             <tr className="border-b border-white/5 bg-slate-950/50">
-                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                              <th className="px-8 py-5 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                 Load #
                               </th>
-                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                              <th className="px-8 py-5 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                 Route
                               </th>
-                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                              <th className="px-8 py-5 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                 Date
                               </th>
-                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                              <th className="px-8 py-5 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                 Amount
                               </th>
-                              <th className="px-8 py-5 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                              <th className="px-8 py-5 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                 Status
                               </th>
                             </tr>
@@ -407,7 +407,7 @@ export const CustomerPortalView: React.FC<Props> = ({
                                   ${(l.carrierRate || 0).toLocaleString()}
                                 </td>
                                 <td className="px-8 py-5">
-                                  <span className="px-2 py-0.5 bg-green-500/20 text-green-500 rounded-lg text-[8px] font-black uppercase border border-green-500/20">
+                                  <span className="px-2 py-0.5 bg-green-500/20 text-green-500 rounded-lg text-[10px] font-black uppercase border border-green-500/20">
                                     {l.isInvoiced ? "Invoiced" : "Delivered"}
                                   </span>
                                 </td>

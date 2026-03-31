@@ -146,7 +146,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                     htmlFor="eumFullLegalName"
                     className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
                   >
-                    Full Legal Name *
+                    Full Legal Name <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="eumFullLegalName"
@@ -165,7 +165,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                     htmlFor="eumEmail"
                     className="text-[10px] text-slate-600 uppercase font-black mb-2 block"
                   >
-                    Email *
+                    Email <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="eumEmail"
@@ -298,7 +298,7 @@ export const EditUserModal: React.FC<Props> = ({ user, onSave, onCancel }) => {
                       : "Base Rate Policy"}
                   </label>
                   <div className="relative">
-                    <span className="absolute left-4 top-4 font-black text-slate-700 text-xl">
+                    <span className="absolute left-4 top-4 font-black text-slate-500 text-xl">
                       {formData.payModel === "percent" ? "%" : "$"}
                     </span>
                     <input

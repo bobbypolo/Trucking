@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { API_BASE } from "./fixtures/urls";
 
 /**
  * E2E Auth Flow Tests — R-RV-03-01
@@ -8,8 +9,6 @@ import { test, expect } from "@playwright/test";
  * API-level tests (no browser required) run unconditionally.
  * UI-level tests require a running dev server: set E2E_SERVER_RUNNING=1.
  */
-
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
 
 // ── API-level auth enforcement (always runs — no server skip needed) ──────────
 
@@ -120,7 +119,7 @@ test.describe("Authentication UI Flow", () => {
     const url = page.url();
     expect(url).not.toMatch(/\/dashboard$/);
     // Should be back at root or login path
-    expect(url).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+    expect(url).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
   });
 
   test("invalid credentials show error message", async ({ page }) => {
@@ -147,7 +146,7 @@ test.describe("Authentication UI Flow", () => {
     const password = process.env.E2E_TEST_PASSWORD;
     test.skip(
       !email || !password,
-      "E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set",
+      "SKIP:NO_TOKEN:credentials",
     );
 
     await page.goto("/");

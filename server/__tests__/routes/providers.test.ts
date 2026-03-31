@@ -167,7 +167,7 @@ describe("GET /api/providers — success", () => {
       .get("/api/providers")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -295,7 +295,7 @@ describe("POST /api/providers — creation", () => {
       .set("Authorization", "Bearer valid-token")
       .send({ name: "Test Provider" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 
   it("returns 401 when not authenticated", async () => {
@@ -485,7 +485,7 @@ describe("PATCH /api/providers/:id/archive — soft-delete", () => {
       .patch("/api/providers/pv-001/archive")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 

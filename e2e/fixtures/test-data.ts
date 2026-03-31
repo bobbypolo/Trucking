@@ -111,4 +111,4 @@ export const testDocumentData = {
 };
 
 export const apiBase = process.env.E2E_API_URL || "http://localhost:5000";
-export const appBase = process.env.E2E_APP_URL || "http://localhost:5173";
+export const appBase = process.env.E2E_APP_URL || "http://localhost:3101";

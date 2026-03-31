@@ -21,7 +21,7 @@ const __dirname = path.dirname(__filename);
  * (Firebase Admin SDK not initialized). Token-acquisition tests still pass.
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
 const E2E_EMAIL = process.env.E2E_TEST_EMAIL;
 const E2E_PASSWORD = process.env.E2E_TEST_PASSWORD;
@@ -63,7 +63,7 @@ async function signInFirebaseUser(
 // ── Firebase REST Token Acquisition ──────────────────────────────────────────
 
 test.describe("Firebase REST Auth — Token Acquisition", () => {
-  test.skip(!FIREBASE_WEB_API_KEY, "Skipped — FIREBASE_WEB_API_KEY not set");
+  test.skip(!FIREBASE_WEB_API_KEY, "SKIP:NO_FIREBASE_KEY");
   test.skip(
     !E2E_EMAIL || !E2E_PASSWORD,
     "Skipped — E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set",
@@ -100,7 +100,7 @@ test.describe("Authenticated CRUD — Real Server (serviceAccount required)", ()
     !hasServiceAccount,
     "Skipped — serviceAccount.json not present (Firebase Admin SDK not initialized)",
   );
-  test.skip(!FIREBASE_WEB_API_KEY, "Skipped — FIREBASE_WEB_API_KEY not set");
+  test.skip(!FIREBASE_WEB_API_KEY, "SKIP:NO_FIREBASE_KEY");
   test.skip(
     !E2E_EMAIL || !E2E_PASSWORD,
     "Skipped — E2E_TEST_EMAIL / E2E_TEST_PASSWORD not set",

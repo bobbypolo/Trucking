@@ -475,7 +475,7 @@ export const NetworkPortal: React.FC<Props> = ({
                     key={key}
                     className="px-5 py-2 border-r last:border-0 border-white/5"
                   >
-                    <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                    <div className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                       {key.replace(/([A-Z])/g, " $1")}
                     </div>
                     <div className="text-xl font-black text-white">
@@ -515,7 +515,7 @@ export const NetworkPortal: React.FC<Props> = ({
                 <button
                   key={t}
                   onClick={() => setFilterType(t as any)}
-                  className={`px-5 py-2.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filterType === t ? "bg-blue-600 text-white border-blue-500 shadow-lg" : "bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/20"}`}
+                  className={`px-5 py-2.5 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filterType === t ? "bg-blue-600 text-white border-blue-500 shadow-lg" : "bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/20"}`}
                 >
                   {t}
                 </button>
@@ -566,7 +566,7 @@ export const NetworkPortal: React.FC<Props> = ({
                     >
                       {/* Status Indicator */}
                       <div
-                        className={`absolute top-0 right-0 px-6 py-2 rounded-bl-2xl text-[8px] font-black uppercase tracking-widest ${
+                        className={`absolute top-0 right-0 px-6 py-2 rounded-bl-2xl text-[10px] font-black uppercase tracking-widest ${
                           party.status === "Approved"
                             ? "bg-green-500/10 text-green-500"
                             : party.status === "On_Hold"
@@ -605,13 +605,13 @@ export const NetworkPortal: React.FC<Props> = ({
                                   .map((tag: string) => (
                                     <span
                                       key={tag}
-                                      className="px-2 py-0.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded text-[7px] font-black uppercase"
+                                      className="px-2 py-0.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded text-[10px] font-black uppercase"
                                     >
                                       {tag}
                                     </span>
                                   ))}
                                 {(party as any).tags.length > 3 && (
-                                  <span className="text-[7px] font-black text-slate-500">
+                                  <span className="text-[10px] font-black text-slate-500">
                                     +{(party as any).tags.length - 3}
                                   </span>
                                 )}
@@ -622,7 +622,7 @@ export const NetworkPortal: React.FC<Props> = ({
 
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-4 bg-slate-950/50 rounded-2xl border border-white/5">
-                            <div className="text-[8px] font-black text-slate-600 uppercase mb-2">
+                            <div className="text-[10px] font-black text-slate-600 uppercase mb-2">
                               Compliance Rating
                             </div>
                             <div className="flex items-center gap-2">
@@ -633,7 +633,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             </div>
                           </div>
                           <div className="p-4 bg-slate-950/50 rounded-2xl border border-white/5">
-                            <div className="text-[8px] font-black text-slate-600 uppercase mb-2">
+                            <div className="text-[10px] font-black text-slate-600 uppercase mb-2">
                               Billing Status
                             </div>
                             <div className="flex items-center gap-2">
@@ -658,7 +658,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               </div>
                             ))}
                             {(party.contacts?.length || 0) > 3 && (
-                              <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#020617] flex items-center justify-center text-[8px] font-black text-white">
+                              <div className="w-8 h-8 rounded-full bg-slate-800 border-2 border-[#020617] flex items-center justify-center text-[10px] font-black text-white">
                                 +{(party.contacts?.length || 0) - 3}
                               </div>
                             )}
@@ -708,7 +708,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           step
                         )}
                       </div>
-                      <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest whitespace-nowrap">
+                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest whitespace-nowrap">
                         {label}
                       </span>
                     </div>
@@ -813,7 +813,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     : [...prev, tag],
                                 );
                               }}
-                              className={`px-5 py-2.5 rounded-xl border text-[9px] font-black uppercase tracking-widest transition-all ${
+                              className={`px-5 py-2.5 rounded-xl border text-[11px] font-black uppercase tracking-widest transition-all ${
                                 selectedTags.includes(tag)
                                   ? "bg-blue-600 text-white border-blue-500 shadow-lg"
                                   : "bg-slate-950 border-white/5 text-slate-500 hover:text-slate-300"
@@ -973,7 +973,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               </h3>
                             </div>
                             <div className="space-y-3">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                 Equipment Ownership
                               </label>
                               <select
@@ -1002,7 +1002,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                   CDL Number
                                 </label>
                                 <input
@@ -1019,7 +1019,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                   CDL State
                                 </label>
                                 <input
@@ -1037,7 +1037,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                              <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                 CDL Expiry
                               </label>
                               <input
@@ -1055,7 +1055,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                   Insurance Provider
                                 </label>
                                 <input
@@ -1072,7 +1072,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 />
                               </div>
                               <div className="space-y-2">
-                                <label className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-1">
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest ml-1">
                                   Policy Number
                                 </label>
                                 <input
@@ -1207,7 +1207,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             contacts: [...(formData.contacts || []), newC],
                           });
                         }}
-                        className="text-[9px] font-black text-blue-500 uppercase tracking-[0.2em] hover:text-white transition-all"
+                        className="text-[11px] font-black text-blue-500 uppercase tracking-[0.2em] hover:text-white transition-all"
                       >
                         + Add Contact
                       </button>
@@ -1217,16 +1217,16 @@ export const NetworkPortal: React.FC<Props> = ({
                       <table className="w-full text-left">
                         <thead className="bg-[#020617] border-b border-white/5">
                           <tr>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                               Name
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                               Email
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                               Phone
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                               Role
                             </th>
                             <th className="px-6 py-4 w-12 text-center">P</th>
@@ -1293,7 +1293,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               <td className="px-6 py-4">
                                 <select
                                   aria-label="Contact role"
-                                  className="bg-transparent border-0 text-[9px] font-black text-blue-500 uppercase outline-none"
+                                  className="bg-transparent border-0 text-[11px] font-black text-blue-500 uppercase outline-none"
                                   value={c.role}
                                   onChange={(e) => {
                                     const newContacts = [
@@ -1357,7 +1357,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             <tr>
                               <td
                                 colSpan={6}
-                                className="px-6 py-12 text-center text-slate-700 font-black uppercase tracking-widest italic"
+                                className="px-6 py-12 text-center text-slate-500 font-black uppercase tracking-widest italic"
                               >
                                 No contacts added yet. Click "+ Add Contact"
                                 above.
@@ -1439,22 +1439,22 @@ export const NetworkPortal: React.FC<Props> = ({
                       <table className="w-full text-left">
                         <thead className="bg-black/20 border-b border-white/5">
                           <tr>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Item
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Dir
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Model
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                               Base $
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                               Unit $
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Units
                             </th>
                             <th className="px-6 py-4 w-12"></th>
@@ -1607,7 +1607,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             <tr>
                               <td
                                 colSpan={7}
-                                className="px-6 py-12 text-center text-slate-700 font-black uppercase tracking-widest italic"
+                                className="px-6 py-12 text-center text-slate-500 font-black uppercase tracking-widest italic"
                               >
                                 No rate rows added. This step is optional.
                               </td>
@@ -1645,7 +1645,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                     });
                                   }}
                                   aria-label="Delete constraint"
-                                  className="text-slate-700 hover:text-red-500 transition-all"
+                                  className="text-slate-500 hover:text-red-500 transition-all"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
@@ -1727,7 +1727,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 {selectedTags.map((tag) => (
                                   <span
                                     key={tag}
-                                    className="px-2 py-0.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded text-[8px] font-black uppercase"
+                                    className="px-2 py-0.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded text-[10px] font-black uppercase"
                                   >
                                     {tag}
                                   </span>
@@ -1840,7 +1840,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           <div className="p-4 bg-blue-600/10 rounded-2xl">
                             <ShieldCheck className="w-8 h-8 text-blue-500" />
                           </div>
-                          <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-loose">
+                          <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest leading-loose">
                             Compliance verification queued automatically upon
                             save.
                           </p>
@@ -1904,7 +1904,7 @@ export const NetworkPortal: React.FC<Props> = ({
                     <h2 className="text-xl font-black text-white uppercase tracking-tighter">
                       {selectedParty.name}
                     </h2>
-                    <span className="px-3 py-1 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                    <span className="px-3 py-1 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[11px] font-black uppercase tracking-widest">
                       {getEntityClass(selectedParty)}
                     </span>
                   </div>
@@ -1926,7 +1926,7 @@ export const NetworkPortal: React.FC<Props> = ({
             <div className="flex flex-1 overflow-hidden">
               {/* Left Navigation */}
               <div className="w-64 bg-[#0a0f1e]/50 border-r border-white/5 flex flex-col p-4 space-y-2">
-                <label className="text-[9px] font-black text-slate-600 uppercase tracking-[0.2em] mb-2 px-4">
+                <label className="text-[11px] font-black text-slate-600 uppercase tracking-[0.2em] mb-2 px-4">
                   Entity Details
                 </label>
                 {[
@@ -1965,7 +1965,7 @@ export const NetworkPortal: React.FC<Props> = ({
                       </h3>
                       <div className="grid grid-cols-2 gap-8">
                         <div className="space-y-4">
-                          <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                             Entity Name
                           </label>
                           <div className="p-4 bg-[#0a0f1e] border border-white/5 rounded-2xl text-xs font-bold text-white">
@@ -1973,7 +1973,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                             Entity Class
                           </label>
                           <div className="p-4 bg-[#0a0f1e] border border-white/5 rounded-2xl text-xs font-bold text-white uppercase">
@@ -1981,7 +1981,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                             A/R Customer Flag
                           </label>
                           <div
@@ -1998,7 +1998,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                             A/P Vendor Flag
                           </label>
                           <div
@@ -2016,7 +2016,7 @@ export const NetworkPortal: React.FC<Props> = ({
                       {/* Tags display */}
                       {(selectedParty as any).tags?.length > 0 && (
                         <div className="space-y-3">
-                          <label className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+                          <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                             Tags / Capabilities
                           </label>
                           <div className="flex flex-wrap gap-2">
@@ -2024,7 +2024,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               (tag: string) => (
                                 <span
                                   key={tag}
-                                  className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[9px] font-black uppercase"
+                                  className="px-3 py-1.5 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-lg text-[11px] font-black uppercase"
                                 >
                                   {tag}
                                 </span>
@@ -2044,11 +2044,11 @@ export const NetworkPortal: React.FC<Props> = ({
                         <h3 className="text-sm font-black text-white uppercase tracking-tighter">
                           Unified Rate Table
                         </h3>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                           Pricing Engine
                         </p>
                       </div>
-                      <button className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all">
+                      <button className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all">
                         + Add Rate Row
                       </button>
                     </div>
@@ -2056,19 +2056,19 @@ export const NetworkPortal: React.FC<Props> = ({
                       <table className="w-full text-left">
                         <thead className="bg-black/20 border-b border-white/5">
                           <tr>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Item ID
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Direction
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Model
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                               Unit Rate
                             </th>
-                            <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                            <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                               Units
                             </th>
                             <th className="px-6 py-4 text-center w-12"></th>
@@ -2085,7 +2085,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               </td>
                               <td className="px-6 py-4">
                                 <span
-                                  className={`px-2 py-1 rounded text-[8px] font-black ${rate.direction === "AR" ? "bg-green-600/10 text-green-500" : "bg-purple-600/10 text-purple-500"}`}
+                                  className={`px-2 py-1 rounded text-[10px] font-black ${rate.direction === "AR" ? "bg-green-600/10 text-green-500" : "bg-purple-600/10 text-purple-500"}`}
                                 >
                                   {rate.direction}
                                 </span>
@@ -2114,7 +2114,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             <tr>
                               <td
                                 colSpan={6}
-                                className="px-6 py-20 text-center text-[10px] text-slate-700 font-black uppercase italic tracking-widest"
+                                className="px-6 py-20 text-center text-[10px] text-slate-500 font-black uppercase italic tracking-widest"
                               >
                                 No rates mapped for this entity.
                               </td>
@@ -2133,13 +2133,13 @@ export const NetworkPortal: React.FC<Props> = ({
                         <h3 className="text-sm font-black text-white uppercase tracking-tighter">
                           Service Catalog
                         </h3>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                           Mapped Offerings
                         </p>
                       </div>
                       <button
                         onClick={addCatalogItem}
-                        className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all"
+                        className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all"
                       >
                         + Add Item
                       </button>
@@ -2158,7 +2158,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               <div className="text-sm font-black text-white uppercase">
                                 {item.itemName}
                               </div>
-                              <div className="text-[9px] text-slate-600 font-bold mt-1">
+                              <div className="text-[11px] text-slate-600 font-bold mt-1">
                                 CODE: {item.itemCode}
                               </div>
                             </div>
@@ -2185,7 +2185,7 @@ export const NetworkPortal: React.FC<Props> = ({
                       <h3 className="text-sm font-black text-white uppercase tracking-tighter">
                         Operational Constraints
                       </h3>
-                      <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                      <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                         Rule-Based Validation
                       </p>
                     </div>
@@ -2197,7 +2197,7 @@ export const NetworkPortal: React.FC<Props> = ({
                         >
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-3">
-                              <div className="px-3 py-1 bg-orange-600/10 text-orange-500 border border-orange-500/20 rounded-lg text-[8px] font-black uppercase tracking-widest">
+                              <div className="px-3 py-1 bg-orange-600/10 text-orange-500 border border-orange-500/20 rounded-lg text-[10px] font-black uppercase tracking-widest">
                                 SET {idx + 1}
                               </div>
                               <span className="text-[10px] font-black text-white uppercase">
@@ -2205,7 +2205,7 @@ export const NetworkPortal: React.FC<Props> = ({
                               </span>
                             </div>
                             <span
-                              className={`px-3 py-1 rounded-full text-[8px] font-black uppercase border ${set.status === "Active" ? "text-green-400 border-green-400/20 bg-green-400/5" : "text-slate-500 border-white/10 bg-white/5"}`}
+                              className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${set.status === "Active" ? "text-green-400 border-green-400/20 bg-green-400/5" : "text-slate-500 border-white/10 bg-white/5"}`}
                             >
                               {set.status}
                             </span>
@@ -2221,19 +2221,19 @@ export const NetworkPortal: React.FC<Props> = ({
                                     <div className="w-8 h-8 rounded-lg bg-orange-600/10 flex items-center justify-center">
                                       <ShieldCheck className="w-4 h-4 text-orange-500" />
                                     </div>
-                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                    <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
                                       {rule.type} {rule.operator} {rule.value}
                                     </span>
                                   </div>
                                   <span
-                                    className={`text-[8px] font-black uppercase ${rule.action === "Allow" ? "text-green-500" : "text-red-500"}`}
+                                    className={`text-[10px] font-black uppercase ${rule.action === "Allow" ? "text-green-500" : "text-red-500"}`}
                                   >
                                     {rule.action}
                                   </span>
                                 </div>
                               ))
                             ) : (
-                              <div className="col-span-2 text-center py-6 text-[10px] text-slate-700 font-black uppercase italic">
+                              <div className="col-span-2 text-center py-6 text-[10px] text-slate-500 font-black uppercase italic">
                                 No rules defined.
                               </div>
                             )}
@@ -2260,11 +2260,11 @@ export const NetworkPortal: React.FC<Props> = ({
                         <h3 className="text-sm font-black text-white uppercase tracking-tighter">
                           Documents
                         </h3>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                           Compliance & Legal
                         </p>
                       </div>
-                      <span className="px-4 py-2 bg-slate-800 text-slate-500 rounded-lg text-[9px] font-black uppercase tracking-widest">
+                      <span className="px-4 py-2 bg-slate-800 text-slate-500 rounded-lg text-[11px] font-black uppercase tracking-widest">
                         Documents managed via File Vault
                       </span>
                     </div>
@@ -2279,10 +2279,10 @@ export const NetworkPortal: React.FC<Props> = ({
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                              <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">
                                 {doc.type}
                               </span>
-                              <span className="text-[8px] font-bold text-slate-600 uppercase">
+                              <span className="text-[10px] font-bold text-slate-600 uppercase">
                                 EXP:{" "}
                                 {new Date(doc.expiryDate).toLocaleDateString()}
                               </span>
@@ -2292,7 +2292,7 @@ export const NetworkPortal: React.FC<Props> = ({
                             </div>
                             <div className="flex items-center justify-between mt-2">
                               <span
-                                className={`text-[8px] font-black px-2 py-0.5 rounded border uppercase ${doc.status === "Verified" ? "text-green-400 bg-green-900/20 border-green-500/20" : "text-orange-400 bg-orange-900/20 border-orange-500/20"}`}
+                                className={`text-[10px] font-black px-2 py-0.5 rounded border uppercase ${doc.status === "Verified" ? "text-green-400 bg-green-900/20 border-green-500/20" : "text-orange-400 bg-orange-900/20 border-orange-500/20"}`}
                               >
                                 {doc.status}
                               </span>
@@ -2320,13 +2320,13 @@ export const NetworkPortal: React.FC<Props> = ({
                         <h3 className="text-sm font-black text-white uppercase tracking-tighter">
                           Contacts
                         </h3>
-                        <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-1">
+                        <p className="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">
                           Personnel & Communications
                         </p>
                       </div>
                       <button
                         onClick={() => setShowAddContact(!showAddContact)}
-                        className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all"
+                        className="px-4 py-2 bg-slate-900 border border-white/5 rounded-lg text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-white transition-all"
                       >
                         + Add Contact
                       </button>
@@ -2389,7 +2389,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           <button
                             onClick={handleSaveContact}
                             disabled={savingContact}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-black uppercase tracking-widest disabled:opacity-50"
                           >
                             {savingContact ? "Saving..." : "Save"}
                           </button>
@@ -2403,7 +2403,7 @@ export const NetworkPortal: React.FC<Props> = ({
                                 role: "General",
                               });
                             }}
-                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest"
+                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-[11px] font-black uppercase tracking-widest"
                           >
                             Cancel
                           </button>
@@ -2447,10 +2447,10 @@ export const NetworkPortal: React.FC<Props> = ({
                             </div>
                           </div>
                           <div className="pt-6 flex gap-3">
-                            <button className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                            <button className="flex-1 py-3 bg-blue-600/10 hover:bg-blue-600 text-blue-500 hover:text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">
                               Dial
                             </button>
-                            <button className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all">
+                            <button className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all">
                               Email
                             </button>
                           </div>
@@ -2485,7 +2485,7 @@ export const NetworkPortal: React.FC<Props> = ({
                         <div className="text-[10px] font-black text-white uppercase">
                           Identity Verified
                         </div>
-                        <div className="text-[9px] font-bold text-slate-600 uppercase">
+                        <div className="text-[11px] font-bold text-slate-600 uppercase">
                           Registry Active
                         </div>
                       </div>
@@ -2499,7 +2499,7 @@ export const NetworkPortal: React.FC<Props> = ({
                           <div className="text-[10px] font-black text-white uppercase">
                             AP Workflow Active
                           </div>
-                          <div className="text-[9px] font-bold text-slate-600 uppercase">
+                          <div className="text-[11px] font-bold text-slate-600 uppercase">
                             Automated Settlement
                           </div>
                         </div>
@@ -2514,7 +2514,7 @@ export const NetworkPortal: React.FC<Props> = ({
                   </h4>
                   <div className="grid grid-cols-1 gap-3">
                     <button className="w-full text-left p-4 bg-slate-900 hover:bg-slate-800 border border-white/5 rounded-2xl transition-all group">
-                      <div className="text-[9px] font-black text-blue-500 uppercase mb-1">
+                      <div className="text-[11px] font-black text-blue-500 uppercase mb-1">
                         Safety Log
                       </div>
                       <div className="text-[10px] font-bold text-slate-300 group-hover:text-white">
@@ -2522,7 +2522,7 @@ export const NetworkPortal: React.FC<Props> = ({
                       </div>
                     </button>
                     <button className="w-full text-left p-4 bg-slate-900 hover:bg-slate-800 border border-white/5 rounded-2xl transition-all group">
-                      <div className="text-[9px] font-black text-purple-500 uppercase mb-1">
+                      <div className="text-[11px] font-black text-purple-500 uppercase mb-1">
                         Financial
                       </div>
                       <div className="text-[10px] font-bold text-slate-300 group-hover:text-white">
@@ -2546,7 +2546,7 @@ export const NetworkPortal: React.FC<Props> = ({
                 <h3 className="text-lg font-black text-white uppercase tracking-tighter">
                   {activeModal.replace("_", " ")}
                 </h3>
-                <p className="text-[9px] text-slate-500 font-black uppercase mt-1">
+                <p className="text-[11px] text-slate-500 font-black uppercase mt-1">
                   Quick Entity Creation
                 </p>
               </div>

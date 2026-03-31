@@ -41,7 +41,7 @@ test.describe("Map UI — API Structural Checks", () => {
   }) => {
     const auth = await makeAdminRequest();
     if (!auth.hasToken) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await auth.get(`${API_BASE}/api/loads/tracking`, request);
@@ -57,7 +57,7 @@ test.describe("Map UI — API Structural Checks", () => {
 test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
   test.skip(
     !process.env.E2E_SERVER_RUNNING,
-    "Skipped — set E2E_SERVER_RUNNING=1 to run browser UI tests",
+    "SKIP:NO_UI_SERVER",
   );
 
   /**
@@ -81,7 +81,7 @@ test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
     );
     await passwordInput.fill(password);
     await page.locator('button[type="submit"]').first().click();
-    await page.waitForTimeout(2000);
+    await page.waitForLoadState("domcontentloaded");
     return true;
   }
 
@@ -90,7 +90,7 @@ test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
   }) => {
     const loggedIn = await loginUser(page);
     if (!loggedIn) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
 
@@ -106,7 +106,7 @@ test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
     for (const link of mapNavLinks) {
       if (await link.isVisible()) {
         await link.click();
-        await page.waitForTimeout(1000);
+        await page.waitForLoadState("domcontentloaded");
         navigated = true;
         break;
       }
@@ -128,7 +128,7 @@ test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
   }) => {
     const loggedIn = await loginUser(page);
     if (!loggedIn) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
 
@@ -174,7 +174,7 @@ test.describe("Map UI — Browser Error Banner (F-002 Fix)", () => {
 
     const loggedIn = await loginUser(page);
     if (!loggedIn) {
-      test.skip();
+      test.skip(true, "SKIP:NO_TOKEN:credentials");
       return;
     }
 

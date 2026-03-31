@@ -7,12 +7,10 @@ import {
 } from "@playwright/test";
 import { v4 as uuidv4 } from "uuid";
 import {
-  API_BASE,
   makeAdminRequest,
   makeDriverRequest,
 } from "./fixtures/auth.fixture";
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 const UI_EMAIL =
   process.env.E2E_DRIVER_EMAIL ||
@@ -129,7 +127,7 @@ test.describe("Team 2 - Driver Intake Upload Flow", () => {
     ).toBe(true);
   });
 
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("browser New Intake uploads a real document and creates a load", async ({
     page,
@@ -184,7 +182,7 @@ test.describe("Team 2 - Driver Intake Upload Flow", () => {
     });
 
     const adminAuth = await makeAdminRequest();
-    test.skip(!adminAuth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!adminAuth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const loadsRes = await request.get(`${API_BASE}/api/loads`, {
       headers: { Authorization: `Bearer ${adminAuth.idToken}` },

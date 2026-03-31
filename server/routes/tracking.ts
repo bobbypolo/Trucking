@@ -3,6 +3,14 @@ import { randomUUID } from "crypto";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
+import { validateBody } from "../middleware/validate";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
+import {
+  trackingWebhookSchema,
+  createProviderConfigSchema,
+  createVehicleMappingSchema,
+} from "../schemas/tracking";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
@@ -138,7 +146,7 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     try {
       const [loads]: any = await pool.query(
@@ -187,9 +195,7 @@ router.get(
 
       res.json(result);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/loads/tracking");
-      log.error({ err: error }, "SERVER ERROR [GET /api/loads/tracking]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -203,7 +209,7 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const loadId = req.params.id;
 
@@ -236,15 +242,7 @@ router.get(
         currentPosition: deriveCurrentPosition(legs),
       });
     } catch (error) {
-      const log = createRequestLogger(
-        req,
-        `GET /api/loads/${req.params.id}/tracking`,
-      );
-      log.error(
-        { err: error },
-        `SERVER ERROR [GET /api/loads/${req.params.id}/tracking]`,
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -306,7 +304,7 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/live");
 
@@ -354,8 +352,7 @@ router.get(
         providerDisplayName: formatProviderDisplayName(providerName),
       });
     } catch (error) {
-      log.error({ err: error }, "SERVER ERROR [GET /api/tracking/live]");
-      res.status(500).json({ error: "GPS tracking error" });
+      next(error);
     }
   },
 );
@@ -383,7 +380,7 @@ setInterval(() => {
  * Auth: X-GPS-API-Key header validated against GPS_WEBHOOK_SECRET env var.
  * Not Firebase auth — ELD providers can't do Firebase.
  */
-router.post("/api/tracking/webhook", async (req: any, res) => {
+router.post("/api/tracking/webhook", async (req: any, res, next) => {
   const log = createRequestLogger(req, "POST /api/tracking/webhook");
 
   // Validate X-GPS-API-Key header
@@ -414,7 +411,36 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
     });
   }
 
-  // Validate required fields
+  // Validate body shape via Zod (API key auth is header-based, handled above)
+  const parseResult = trackingWebhookSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    const failedFields = parseResult.error.issues.map((i: any) =>
+      i.path.join(".") || "(root)",
+    );
+
+    // Non-companyId field failures reported first (matches original validation order)
+    const nonCompanyFailures = failedFields.filter((f: string) => f !== "companyId");
+    if (nonCompanyFailures.length > 0) {
+      return res
+        .status(400)
+        .json({ error: `Missing required fields: ${nonCompanyFailures.join(", ")}` });
+    }
+
+    // Only companyId failed — preserve missing_company_id metric and logging
+    incrementWebhookRejection("missing_company_id");
+    log.warn(
+      {
+        vehicleId: req.body.vehicleId,
+        lat: redactCoordinate(req.body.latitude),
+        lng: redactCoordinate(req.body.longitude),
+        provider: "webhook",
+      },
+      "GPS webhook rejected: missing company_id",
+    );
+    return res.status(400).json({ error: "company_id required" });
+  }
+  req.body = parseResult.data;
+
   const {
     vehicleId,
     latitude,
@@ -424,32 +450,6 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
     driverId,
     companyId,
   } = req.body;
-
-  const missing: string[] = [];
-  if (!vehicleId) missing.push("vehicleId");
-  if (latitude == null) missing.push("latitude");
-  if (longitude == null) missing.push("longitude");
-
-  if (missing.length > 0) {
-    return res
-      .status(400)
-      .json({ error: `Missing required fields: ${missing.join(", ")}` });
-  }
-
-  // Validate company ID — reject if missing or unknown (never store "unresolved")
-  if (!companyId) {
-    incrementWebhookRejection("missing_company_id");
-    log.warn(
-      {
-        vehicleId,
-        lat: redactCoordinate(latitude),
-        lng: redactCoordinate(longitude),
-        provider: "webhook",
-      },
-      "GPS webhook rejected: missing company_id",
-    );
-    return res.status(400).json({ error: "company_id required" });
-  }
 
   let resolvedCompanyId: string;
   try {
@@ -511,8 +511,7 @@ router.post("/api/tracking/webhook", async (req: any, res) => {
 
     res.status(201).json({ stored: true, id });
   } catch (error) {
-    log.error({ err: error }, "SERVER ERROR [POST /api/tracking/webhook]");
-    res.status(500).json({ error: "Failed to store position" });
+    next(error);
   }
 });
 
@@ -532,7 +531,8 @@ router.post(
   "/api/tracking/providers",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateBody(createProviderConfigSchema),
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
 
@@ -547,10 +547,6 @@ router.post(
       webhookSecret,
       isActive,
     } = req.body;
-
-    if (!rawName) {
-      return res.status(400).json({ error: "providerName is required" });
-    }
 
     const providerName = normalizeSupportedProviderName(rawName);
 
@@ -611,8 +607,7 @@ router.post(
         createdAt: rows[0].created_at,
       });
     } catch (error) {
-      log.error({ err: error }, "SERVER ERROR [POST /api/tracking/providers]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -625,7 +620,7 @@ router.get(
   "/api/tracking/providers",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/providers");
 
@@ -684,8 +679,7 @@ router.get(
         );
         return res.json([]);
       }
-      log.error({ err: error }, "SERVER ERROR [GET /api/tracking/providers]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -699,7 +693,8 @@ router.delete(
   "/api/tracking/providers/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateParams(idParam),
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
 
@@ -729,11 +724,7 @@ router.delete(
       log.info({ companyId, configId }, "Provider config deleted");
       res.json({ message: "Provider config deleted" });
     } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [DELETE /api/tracking/providers/:id]",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -747,7 +738,8 @@ router.post(
   "/api/tracking/providers/:id/test",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateParams(idParam),
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
 
@@ -952,11 +944,7 @@ router.post(
         message: `Provider "${config.provider_name}" is not yet supported`,
       });
     } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [POST /api/tracking/providers/:id/test]",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -973,7 +961,8 @@ router.post(
   "/api/tracking/vehicles/mapping",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateBody(createVehicleMappingSchema),
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
 
@@ -982,13 +971,6 @@ router.post(
     }
 
     const { vehicleId, providerConfigId, providerVehicleId } = req.body;
-
-    if (!vehicleId || !providerConfigId || !providerVehicleId) {
-      return res.status(400).json({
-        error:
-          "vehicleId, providerConfigId, and providerVehicleId are required",
-      });
-    }
 
     const log = createRequestLogger(req, "POST /api/tracking/vehicles/mapping");
 
@@ -1035,11 +1017,7 @@ router.post(
         providerVehicleId: rows[0].provider_vehicle_id,
       });
     } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [POST /api/tracking/vehicles/mapping]",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -1052,7 +1030,7 @@ router.get(
   "/api/tracking/vehicles/mapping",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/vehicles/mapping");
 
@@ -1085,11 +1063,7 @@ router.get(
         );
         return res.json([]);
       }
-      log.error(
-        { err: error },
-        "SERVER ERROR [GET /api/tracking/vehicles/mapping]",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -1102,7 +1076,8 @@ router.delete(
   "/api/tracking/vehicles/mapping/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateParams(idParam),
+  async (req: any, res, next) => {
     const companyId = req.user.tenantId;
     const userRole = req.user.role;
 
@@ -1134,11 +1109,7 @@ router.delete(
       log.info({ companyId, mappingId }, "Vehicle mapping deleted");
       res.json({ message: "Vehicle mapping deleted" });
     } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [DELETE /api/tracking/vehicles/mapping/:id]",
-      );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

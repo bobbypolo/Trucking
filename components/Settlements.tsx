@@ -440,7 +440,7 @@ export const Settlements: React.FC<Props> = ({
             {users.length > 0 && filteredPersonnel.length === 0 && (
               <div className="flex flex-col items-center justify-center py-24 bg-slate-900/50 rounded-[3rem] border border-slate-800 border-dashed text-center">
                 <Users className="w-16 h-16 text-slate-800 mb-6" />
-                <h3 className="text-xl font-black text-slate-700 uppercase tracking-tighter">
+                <h3 className="text-xl font-black text-slate-500 uppercase tracking-tighter">
                   No eligible personnel found
                 </h3>
                 <p className="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-2 text-center max-w-xs">
@@ -489,7 +489,7 @@ export const Settlements: React.FC<Props> = ({
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           {u.payModel && (
-                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
                               {u.payModel}
                             </span>
                           )}
@@ -511,7 +511,7 @@ export const Settlements: React.FC<Props> = ({
 
                     <div className="flex items-center gap-8">
                       <div className="text-right">
-                        <div className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">
+                        <div className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-1">
                           TOTAL PAYABLE
                         </div>
                         <div className="text-2xl font-bold text-white font-mono">
@@ -605,10 +605,10 @@ export const Settlements: React.FC<Props> = ({
                             <table className="w-full text-left">
                               <thead>
                                 <tr className="bg-slate-900/50 border-b border-slate-800">
-                                  <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                  <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                     Load #
                                   </th>
-                                  <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">
+                                  <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">
                                     Pay
                                   </th>
                                 </tr>
@@ -662,10 +662,10 @@ export const Settlements: React.FC<Props> = ({
                             <table className="w-full text-left">
                               <thead>
                                 <tr className="bg-slate-900/50 border-b border-slate-800">
-                                  <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                  <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest">
                                     Description
                                   </th>
-                                  <th className="px-6 py-4 text-[9px] font-black text-slate-500 uppercase tracking-widest text-right">
+                                  <th className="px-6 py-4 text-[11px] font-black text-slate-500 uppercase tracking-widest text-right">
                                     Amount
                                   </th>
                                 </tr>
@@ -687,7 +687,7 @@ export const Settlements: React.FC<Props> = ({
                               </tbody>
                               <tfoot>
                                 <tr className="bg-slate-900/20 border-t border-slate-800">
-                                  <td className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                  <td className="px-6 py-4 text-[11px] font-black text-slate-400 uppercase tracking-widest">
                                     Total Offset
                                   </td>
                                   <td className="px-6 py-4 text-right font-mono font-bold text-red-500">

@@ -13,7 +13,6 @@ import {
   taskRepository,
   workItemRepository,
 } from "../repositories/task.repository";
-import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -24,7 +23,7 @@ router.get(
   "/api/tasks",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -32,9 +31,7 @@ router.get(
       const tasks = await taskRepository.findByCompany(companyId, page, limit);
       res.json(tasks);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/tasks");
-      log.error({ err: error }, "Failed to fetch tasks");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -45,16 +42,14 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createTaskSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
       const task = await taskRepository.create(req.body, companyId, userId);
       res.status(201).json(task);
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/tasks");
-      log.error({ err: error }, "Failed to create task");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -65,7 +60,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateTaskSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -81,7 +76,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -93,7 +88,7 @@ router.get(
   "/api/work-items",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -105,9 +100,7 @@ router.get(
       );
       res.json(items);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/work-items");
-      log.error({ err: error }, "Failed to fetch work items");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -118,16 +111,14 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createWorkItemSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
       const item = await workItemRepository.create(req.body, companyId, userId);
       res.status(201).json(item);
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/work-items");
-      log.error({ err: error }, "Failed to create work item");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -138,7 +129,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateWorkItemSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -154,7 +145,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

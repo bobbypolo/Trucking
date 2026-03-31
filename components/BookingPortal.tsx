@@ -564,7 +564,7 @@ export const BookingPortal: React.FC<Props> = ({
                       >
                         <label
                           htmlFor="bpOriginCityST"
-                          className="text-[9px] text-slate-600 font-black uppercase mb-2 block"
+                          className="text-[11px] text-slate-600 font-black uppercase mb-2 block"
                         >
                           Origin (City, ST) *
                         </label>
@@ -603,7 +603,7 @@ export const BookingPortal: React.FC<Props> = ({
                       >
                         <label
                           htmlFor="bpDestinationCityST"
-                          className="text-[9px] text-slate-600 font-black uppercase mb-2 block"
+                          className="text-[11px] text-slate-600 font-black uppercase mb-2 block"
                         >
                           Destination (City, ST) *
                         </label>
@@ -709,7 +709,7 @@ export const BookingPortal: React.FC<Props> = ({
                           Linehaul Rate *
                         </label>
                         <div className="relative">
-                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-700" />
+                          <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                           <input
                             id="bpLinehaulRate"
                             type="number"
@@ -803,7 +803,7 @@ export const BookingPortal: React.FC<Props> = ({
                           </span>
                         </div>
                       ))}
-                      <div className="text-[9px] text-slate-600 font-bold uppercase text-center italic">
+                      <div className="text-[11px] text-slate-600 font-bold uppercase text-center italic">
                         No standard accessorials applied to this quote loop.
                       </div>
                     </div>
@@ -941,7 +941,7 @@ export const BookingPortal: React.FC<Props> = ({
                     <div className="w-full py-6 bg-slate-900 border border-slate-800 rounded-3xl text-slate-500 font-black uppercase tracking-[0.2em] text-xs flex flex-col items-center gap-2 opacity-60">
                       <Lock className="w-4 h-4" />
                       Capability Required: QUOTE_CONVERT
-                      <span className="text-[8px] text-slate-700">
+                      <span className="text-[10px] text-slate-500">
                         Contact Owner to elevate Operational DNA
                       </span>
                     </div>

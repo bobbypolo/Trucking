@@ -3,6 +3,8 @@ import type { Request } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { deliverNotification } from "../services/notification-delivery.service";
@@ -14,9 +16,8 @@ router.get(
   "/api/notification-jobs",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
-    const log = createRequestLogger(req, "GET /api/notification-jobs");
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM notification_jobs WHERE company_id = ? ORDER BY sent_at DESC",
@@ -30,9 +31,8 @@ router.get(
             : row.recipients,
       }));
       res.json(jobs);
-    } catch (error) {
-      log.error({ err: error }, "SERVER ERROR [GET /api/notification-jobs]");
-      res.status(500).json({ error: "Failed to fetch notification jobs" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -42,10 +42,10 @@ router.get(
   "/api/notification-jobs/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  validateParams(idParam),
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
-    const log = createRequestLogger(req, "GET /api/notification-jobs/:id");
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM notification_jobs WHERE id = ?",
@@ -63,12 +63,8 @@ router.get(
             : row.recipients,
       };
       res.json(job);
-    } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [GET /api/notification-jobs/:id]",
-      );
-      res.status(500).json({ error: "Failed to fetch notification job" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -78,7 +74,7 @@ router.post(
   "/api/notification-jobs",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "POST /api/notification-jobs");
     const {
@@ -162,9 +158,8 @@ router.post(
         recipients: jobRecipients,
         sync_error: finalSyncError || false,
       });
-    } catch (error) {
-      log.error({ err: error }, "SERVER ERROR [POST /api/notification-jobs]");
-      res.status(500).json({ error: "Failed to create notification job" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -174,7 +169,8 @@ router.patch(
   "/api/notification-jobs/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  validateParams(idParam),
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
     const log = createRequestLogger(req, "PATCH /api/notification-jobs/:id");
@@ -217,12 +213,8 @@ router.patch(
             ? JSON.parse(row.recipients)
             : row.recipients,
       });
-    } catch (error) {
-      log.error(
-        { err: error },
-        "SERVER ERROR [PATCH /api/notification-jobs/:id]",
-      );
-      res.status(500).json({ error: "Failed to update notification job" });
+    } catch (err) {
+      next(err);
     }
   },
 );

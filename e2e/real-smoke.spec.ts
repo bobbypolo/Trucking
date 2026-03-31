@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
  * Requires: Docker MySQL running, Express server started by playwright webServer config.
  */
 
-const API_BASE = process.env.E2E_API_URL || "http://localhost:5000";
+import { API_BASE } from "./fixtures/urls";
 
 test.describe("Real Server — Health Endpoint", () => {
   test("GET /api/health returns 200 with ok status", async ({ request }) => {

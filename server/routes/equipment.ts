@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
@@ -8,7 +8,7 @@ import {
   createEquipmentSchema,
   patchEquipmentSchema,
 } from "../schemas/equipment";
-import { createRequestLogger } from "../lib/logger";
+
 import { buildSafeUpdate } from "../lib/safe-update";
 import { equipmentRepository } from "../repositories/equipment.repository";
 
@@ -19,7 +19,7 @@ router.get(
   "/api/equipment",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const companyId = req.user.tenantId;
       const [rows]: any = await pool.query(
@@ -28,10 +28,8 @@ router.get(
       );
       const settings = await getVisibilitySettings(companyId);
       res.json(redactData(rows, req.user.role, settings));
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -41,7 +39,7 @@ router.get(
   "/api/equipment/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const [rows]: any = await pool.query(
         "SELECT * FROM equipment WHERE company_id = ?",
@@ -49,10 +47,8 @@ router.get(
       );
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user.role, settings));
-    } catch (error) {
-      const log = createRequestLogger(req, "GET /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [GET /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -62,7 +58,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createEquipmentSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const {
       id,
       company_id,
@@ -90,10 +86,8 @@ router.post(
         ],
       );
       res.status(201).json({ message: "Equipment added" });
-    } catch (error) {
-      const log = createRequestLogger(req, "POST /api/equipment");
-      log.error({ err: error }, "SERVER ERROR [POST /api/equipment]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -112,7 +106,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchEquipmentSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const { id } = req.params;
     const companyId: string = req.user.tenantId;
     const userRole: string = req.user.role;
@@ -146,10 +140,8 @@ router.patch(
 
       const updated = await equipmentRepository.findById(id, companyId);
       res.json(updated);
-    } catch (error) {
-      const log = createRequestLogger(req, "PATCH /api/equipment/:id");
-      log.error({ err: error }, "SERVER ERROR [PATCH /api/equipment/:id]");
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );

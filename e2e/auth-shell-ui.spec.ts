@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { API_BASE } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 
 /**
  * Auth Shell UI Spec — R-P2A-03, R-P2A-06
@@ -15,8 +15,6 @@ import { API_BASE } from "./fixtures/auth.fixture";
  * Browser navigation resilience tests use refresh, reload, back, forward,
  * and history keywords to satisfy R-P2A-06.
  */
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
 const E2E_EMAIL = process.env.E2E_TEST_EMAIL || process.env.E2E_ADMIN_EMAIL;
 const E2E_PASSWORD =
   process.env.E2E_TEST_PASSWORD || process.env.E2E_ADMIN_PASSWORD;
@@ -87,7 +85,7 @@ test.describe("Auth Shell UI — Login API Validation (always runs)", () => {
 // ── Browser login page rendering ─────────────────────────────────────────────
 
 test.describe("Auth Shell UI — Login Page Rendering", () => {
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("login page renders email and password fields", async ({ page }) => {
     await page.goto(APP_BASE);
@@ -137,7 +135,7 @@ test.describe("Auth Shell UI — Login Page Rendering", () => {
 // ── Protected route redirect (unauthenticated browser navigation) ─────────────
 
 test.describe("Auth Shell UI — Protected Route Redirect", () => {
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("direct navigation to /dashboard without auth redirects to login", async ({
     page,
@@ -147,7 +145,7 @@ test.describe("Auth Shell UI — Protected Route Redirect", () => {
     const url = page.url();
     expect(url).not.toMatch(/\/dashboard($|\?)/);
     // Should land on login-related route or root
-    expect(url).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+    expect(url).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
   });
 
   test("direct navigation to /loads without auth redirects to login", async ({
@@ -156,7 +154,7 @@ test.describe("Auth Shell UI — Protected Route Redirect", () => {
     await page.goto(`${APP_BASE}/loads`);
     const url = page.url();
     expect(url).not.toMatch(/\/loads($|\?)/);
-    expect(url).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+    expect(url).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
   });
 
   test("direct navigation to /admin without auth redirects to login", async ({
@@ -165,7 +163,7 @@ test.describe("Auth Shell UI — Protected Route Redirect", () => {
     await page.goto(`${APP_BASE}/admin`);
     const url = page.url();
     expect(url).not.toMatch(/\/admin($|\?)/);
-    expect(url).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+    expect(url).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
   });
 });
 
@@ -174,7 +172,7 @@ test.describe("Auth Shell UI — Protected Route Redirect", () => {
 test.describe("Auth Shell UI — Shell Rendering After Login", () => {
   test.skip(
     !SERVER_RUNNING || !E2E_EMAIL || !E2E_PASSWORD,
-    "Requires E2E_SERVER_RUNNING=1 and E2E credentials",
+    "SKIP:NO_UI_SERVER",
   );
 
   test("successful login renders authenticated shell (sidebar/header visible)", async ({
@@ -218,7 +216,7 @@ test.describe("Auth Shell UI — Shell Rendering After Login", () => {
 // ── Browser navigation resilience: refresh, reload, back, forward, history ───
 
 test.describe("Auth Shell UI — Navigation Resilience", () => {
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("login page reload/refresh preserves form state approach", async ({
     page,
@@ -239,7 +237,7 @@ test.describe("Auth Shell UI — Navigation Resilience", () => {
     await page.goBack();
     // Should be back at the login/root page without JS error
     const url = page.url();
-    expect(url).toMatch(/localhost:5173/);
+    expect(url).toMatch(/localhost:3101/);
   });
 
   test("browser forward navigation after back does not break routing", async ({
@@ -251,7 +249,7 @@ test.describe("Auth Shell UI — Navigation Resilience", () => {
     await page.goForward();
     // Should return to redirect target without crashing
     const url = page.url();
-    expect(url).toMatch(/localhost:5173/);
+    expect(url).toMatch(/localhost:3101/);
   });
 
   test("browser history navigation (pushState routes) does not produce white screen", async ({
@@ -278,7 +276,7 @@ test.describe("Auth Shell UI — Navigation Resilience", () => {
     await page.goto(`${APP_BASE}/loads`);
     const urlAfterRedirect = page.url();
     // Should be on login after redirect
-    expect(urlAfterRedirect).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+    expect(urlAfterRedirect).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
 
     // Now reload the current page (which is the login page)
     await page.reload();
@@ -293,7 +291,7 @@ test.describe("Auth Shell UI — Navigation Resilience", () => {
 // sessionStorage so that browser Back navigation restores the user's progress.
 
 test.describe("Auth Shell UI — Signup Wizard State Persistence", () => {
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("wizard state persists: sessionStorage wizard key is set after entering signup step", async ({
     page,
@@ -460,7 +458,7 @@ test.describe("Auth Shell UI — Signup Wizard State Persistence", () => {
 test.describe("Auth Shell UI — Logout Flow", () => {
   test.skip(
     !SERVER_RUNNING || !E2E_EMAIL || !E2E_PASSWORD,
-    "Requires E2E_SERVER_RUNNING=1 and E2E credentials",
+    "SKIP:NO_UI_SERVER",
   );
 
   test("logout button navigates back to login page", async ({ page }) => {
@@ -489,7 +487,7 @@ test.describe("Auth Shell UI — Logout Flow", () => {
       // After logout, should be back on login
       await page.waitForURL(/\/(login|auth|signin|$)/i, { timeout: 10_000 });
       const url = page.url();
-      expect(url).toMatch(/localhost:5173\/(login|auth|signin|$)/i);
+      expect(url).toMatch(/localhost:3101\/(login|auth|signin|$)/i);
     } else {
       // Logout button not visible in current UI state — log but don't fail
       // This is a discovery finding (PARTIAL) documented in the domain report

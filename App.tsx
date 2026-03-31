@@ -806,12 +806,14 @@ export default function App() {
             </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label="Toggle sidebar"
               className={`hidden md:flex p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 transition-all ${sidebarCollapsed ? "mx-auto rotate-180" : ""}`}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close menu"
               className="md:hidden text-slate-400"
             >
               <X className="w-5 h-5" />
@@ -820,7 +822,7 @@ export default function App() {
           <nav className="p-3 space-y-8 flex-1 overflow-y-auto no-scrollbar py-8">
             {filteredCategories.map((cat) => (
               <div key={cat.title} className="space-y-2">
-                <h4 className="px-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3 opacity-80">
+                <h4 className="px-4 text-[11px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3 opacity-80">
                   {cat.title}
                 </h4>
                 <div className="space-y-1">
@@ -853,7 +855,7 @@ export default function App() {
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isActive ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"} ${sidebarCollapsed ? "justify-center px-0" : ""}`}
                       >
                         <Icon
-                          className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-500" : "text-slate-700"}`}
+                          className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-500" : "text-slate-500"}`}
                         />
                         {!sidebarCollapsed && <span>{item.label}</span>}
                       </button>
@@ -875,7 +877,7 @@ export default function App() {
                   <div className="text-[10px] font-black text-white truncate tracking-wider uppercase">
                     {user.name}
                   </div>
-                  <div className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
+                  <div className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
                     {user.role?.replace("_", " ") || "USER"}
                   </div>
                 </div>
@@ -883,7 +885,7 @@ export default function App() {
             </div>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all ${sidebarCollapsed ? "justify-center px-0" : ""}`}
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all ${sidebarCollapsed ? "justify-center px-0" : ""}`}
             >
               <LogOut className="w-3 h-3 shrink-0" />
               {!sidebarCollapsed && <span>Sign Out</span>}
@@ -896,6 +898,7 @@ export default function App() {
             <div className="flex items-center gap-10">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Open menu"
                 className="md:hidden text-slate-400 p-2 hover:bg-slate-800 rounded-xl"
               >
                 <Menu className="w-5 h-5" />
@@ -906,7 +909,7 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="Search Loads, Teams, or Data (Ctrl+K)"
-                  className="w-full bg-[#020617] border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-[12px] text-white outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-700"
+                  className="w-full bg-[#020617] border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-[12px] text-white outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-500"
                   onFocus={(e) => {
                     e.target.blur();
                     handleNavigate("operations-hub");

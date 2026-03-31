@@ -206,7 +206,7 @@ describe("GET /api/tasks — success", () => {
       .get("/api/tasks")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -278,7 +278,7 @@ describe("POST /api/tasks — creation", () => {
       .set("Authorization", "Bearer valid-token")
       .send({ type: "DISPATCH", title: "Test task" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -405,7 +405,7 @@ describe("GET /api/work-items — success", () => {
       .get("/api/work-items")
       .set("Authorization", "Bearer valid-token");
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 
@@ -469,7 +469,7 @@ describe("POST /api/work-items — creation", () => {
       .set("Authorization", "Bearer valid-token")
       .send({ type: "SAFETY_ALARM" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Database error");
+    expect(res.body.message).toBeDefined();
   });
 });
 

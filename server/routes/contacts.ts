@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request } from "express";
+import type { Request, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
@@ -14,7 +14,7 @@ router.get(
   "/api/contacts",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -28,7 +28,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/contacts");
       log.error({ err: error }, "Failed to fetch contacts");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -39,7 +39,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createContactSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -52,7 +52,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/contacts");
       log.error({ err: error }, "Failed to create contact");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -63,7 +63,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateContactSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -79,7 +79,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -89,7 +89,7 @@ router.patch(
   "/api/contacts/:id/archive",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -101,7 +101,7 @@ router.patch(
       await contactRepository.archive(req.params.id, userId);
       res.json({ message: "Contact archived" });
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

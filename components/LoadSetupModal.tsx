@@ -328,7 +328,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                 htmlFor="lsmSelectBroker"
                 className="text-xs font-bold text-slate-400"
               >
-                Select Broker / Customer *
+                Select Broker / Customer <span className="text-red-400">*</span>
               </label>
               {!preSelectedBrokerId && (
                 <button
@@ -410,7 +410,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                     htmlFor="qabroker-name"
                     className="text-[10px] text-slate-400 font-semibold mb-1 block"
                   >
-                    Name *
+                    Name <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="qabroker-name"
@@ -499,7 +499,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                 htmlFor="lsmAssignDriver"
                 className="text-xs font-bold text-slate-400"
               >
-                Assign Driver *
+                Assign Driver <span className="text-red-400">*</span>
               </label>
               <button
                 type="button"
@@ -555,7 +555,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                     htmlFor="qadriver-name"
                     className="text-[10px] text-slate-400 font-semibold mb-1 block"
                   >
-                    Name *
+                    Name <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="qadriver-name"
@@ -655,9 +655,9 @@ export const LoadSetupModal: React.FC<Props> = ({
                 }}
                 maxLength={500}
                 placeholder="e.g. Appointment required for pickup, strict delivery window..."
-                className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-white h-24 focus:border-blue-500 outline-none placeholder:text-slate-700"
+                className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-white h-24 focus:border-blue-500 outline-none placeholder:text-slate-500"
               />
-              <p className="text-[9px] text-slate-600 mt-1 text-right">
+              <p className="text-[11px] text-slate-600 mt-1 text-right">
                 {callNotes.length}/500
               </p>
               {formErrors.callNotes && (

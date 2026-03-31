@@ -5,9 +5,8 @@ import {
   type Page,
 } from "@playwright/test";
 import { v4 as uuidv4 } from "uuid";
-import { API_BASE, makeAdminRequest } from "./fixtures/auth.fixture";
-
-const APP_BASE = process.env.E2E_APP_URL || "http://localhost:5173";
+import { makeAdminRequest } from "./fixtures/auth.fixture";
+import { API_BASE, APP_BASE } from "./fixtures/urls";
 const SERVER_RUNNING = !!process.env.E2E_SERVER_RUNNING;
 const UI_EMAIL =
   process.env.E2E_TEST_EMAIL ||
@@ -80,7 +79,7 @@ test.describe("Team 2 - Load Board Create Flow", () => {
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const seeded = await createTrackedLoad(request, auth.idToken);
     const listRes = await request.get(`${API_BASE}/api/loads`, {
@@ -97,14 +96,14 @@ test.describe("Team 2 - Load Board Create Flow", () => {
     ).toBe(true);
   });
 
-  test.skip(!SERVER_RUNNING, "Requires E2E_SERVER_RUNNING=1");
+  test.skip(!SERVER_RUNNING, "SKIP:NO_UI_SERVER");
 
   test("browser Create Load opens the setup modal and the board shows backend data", async ({
     page,
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const seeded = await createTrackedLoad(request, auth.idToken);
 
@@ -129,7 +128,7 @@ test.describe("Team 2 - Load Board Create Flow", () => {
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     await loginAsUser(page);
     await page.getByTestId("nav-loads").click();
@@ -185,7 +184,7 @@ test.describe("Team 2 - Load Board Create Flow", () => {
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     // Create a uniquely identifiable load via API
     const uniqueTag = Date.now().toString(36).toUpperCase();
@@ -294,7 +293,7 @@ test.describe("Team 2 - Load Board Create Flow", () => {
     request,
   }) => {
     const auth = await makeAdminRequest();
-    test.skip(!auth.hasToken, "Firebase token unavailable for admin auth");
+    test.skip(!auth.hasToken, "SKIP:NO_TOKEN:admin");
 
     const seeded = await createTrackedLoad(request, auth.idToken);
 

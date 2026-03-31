@@ -292,3 +292,50 @@ jobs:
 
           echo "Smoke test PASSED: status=ok, mysql=connected"
           kill $SERVER_PID 2>/dev/null || true
+
+  python-hooks:
+    name: Python Hook Tests
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependencies
+        shell: cmd
+        run: pip install pytest pyyaml
+      - name: Run hook tests
+        shell: cmd
+        run: python -m pytest .claude/hooks/tests/ -v
+
+  e2e-api-smoke:
+    name: E2E API Smoke
+    runs-on: self-hosted
+    needs: [server-tests, frontend-tests]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install root dependencies
+        shell: cmd
+        run: npm ci
+      - name: Install server dependencies
+        shell: cmd
+        run: cd server && npm ci
+      - name: Create test fixtures
+        shell: cmd
+        run: |
+          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
+      - name: Install Playwright browsers
+        shell: cmd
+        run: npx playwright install chromium
+      - name: Run Playwright API smoke tests
+        shell: cmd
+        env:
+          PORT: "5000"
+          NODE_ENV: test
+          JWT_SECRET: ci-test-secret
+          FIREBASE_SERVICE_ACCOUNT: "{}"
+        run: npx playwright test

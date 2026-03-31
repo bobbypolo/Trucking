@@ -267,19 +267,19 @@ export const DriverMobileHome: React.FC<Props> = ({
   useEffect(() => {
     if (activeTab !== "changes") return;
     if (!driverLoadIds) return;
-    let cancelled = false;
+    const controller = new AbortController();
     const ids = driverLoadIds.split(",");
 
     Promise.all(
       ids.map((loadId) =>
         api
-          .get(`/loads/${loadId}/change-requests`)
+          .get(`/loads/${loadId}/change-requests`, { signal: controller.signal })
           .then((data: any) => data?.changeRequests || [])
           .catch(() => []),
       ),
     )
       .then((results) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         const allRequests = results.flat();
         allRequests.sort(
           (a: any, b: any) =>
@@ -292,38 +292,38 @@ export const DriverMobileHome: React.FC<Props> = ({
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [driverLoadIds, activeTab]);
 
   // Fetch driver's own settlements when on "pay" tab
   useEffect(() => {
     if (activeTab !== "pay") return;
-    let cancelled = false;
+    const controller = new AbortController();
     setSettlementsLoading(true);
-    getSettlements(user.id)
+    getSettlements(user.id, controller.signal)
       .then((data) => {
-        if (!cancelled) setMySettlements(data || []);
+        if (!controller.signal.aborted) setMySettlements(data || []);
       })
       .catch(() => {
-        if (!cancelled) setMySettlements([]);
+        if (!controller.signal.aborted) setMySettlements([]);
       })
       .finally(() => {
-        if (!cancelled) setSettlementsLoading(false);
+        if (!controller.signal.aborted) setSettlementsLoading(false);
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [activeTab, user.id]);
 
   // Fetch documents for the selected load
   useEffect(() => {
     if (!selectedLoadId) return;
-    let cancelled = false;
+    const controller = new AbortController();
     api
-      .get(`/documents?load_id=${selectedLoadId}`)
+      .get(`/documents?load_id=${selectedLoadId}`, { signal: controller.signal })
       .then((data: any) => {
-        if (!cancelled && data?.documents) {
+        if (!controller.signal.aborted && data?.documents) {
           setLoadDocuments(data.documents);
         }
       })
@@ -331,7 +331,7 @@ export const DriverMobileHome: React.FC<Props> = ({
         /* ignore fetch errors silently */
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [selectedLoadId]);
 
@@ -1267,7 +1267,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <div className="text-sm font-black text-slate-600 uppercase tracking-widest">
                   No settlements yet
                 </div>
-                <p className="text-xs text-slate-700 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   Your pay settlements will appear here once processed.
                 </p>
               </div>

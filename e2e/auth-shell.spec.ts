@@ -21,7 +21,7 @@ test.describe("Auth Shell — Login Success & Token Acquisition", () => {
   test("admin credentials produce a valid Firebase JWT token", async () => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available — skipping token test");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     expect(ctx.idToken).toBeTruthy();
@@ -37,7 +37,7 @@ test.describe("Auth Shell — Login Success & Token Acquisition", () => {
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/loads`, request);
@@ -53,7 +53,7 @@ test.describe("Auth Shell — Login Success & Token Acquisition", () => {
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
     const res = await ctx.get(`${API_BASE}/api/users/me`, request);
@@ -191,7 +191,7 @@ test.describe("Auth Shell — Session Persistence", () => {
   }) => {
     const ctx = await makeAdminRequest();
     if (!ctx.hasToken) {
-      test.skip(true, "Admin credentials not available");
+      test.skip(true, "SKIP:NO_TOKEN:admin");
       return;
     }
 

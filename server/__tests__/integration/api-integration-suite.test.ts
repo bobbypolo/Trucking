@@ -820,8 +820,8 @@ describe("R-P12-04: Error Response Format", () => {
     const res = await request(app).get("/api/equipment");
 
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
-    expect(res.body.error).toBe("Database error");
+    expect(res.body).toHaveProperty("message");
+    expect(res.body.error_code).toBe("INTERNAL_001");
   });
 
   it("404 for undefined route returns proper status", async () => {
@@ -863,7 +863,7 @@ describe("R-P12-04: Error Response Format", () => {
     const res = await request(app).get("/api/incidents");
 
     expect(res.status).toBe(500);
-    expect(res.body).toHaveProperty("error");
-    expect(typeof res.body.error).toBe("string");
+    expect(res.body).toHaveProperty("message");
+    expect(typeof res.body.message).toBe("string");
   });
 });

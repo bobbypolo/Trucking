@@ -113,11 +113,11 @@ test.describe("Status Transitions — Authenticated API Enforcement", () => {
 
   test.skip(
     !process.env.FIREBASE_WEB_API_KEY,
-    "Skipped — FIREBASE_WEB_API_KEY not set",
+    "SKIP:NO_FIREBASE_KEY",
   );
 
   test("create a draft load for transition testing", async ({ request }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
     transitionLoadId = uuidv4();
     const loadNumber = `LOAD-TRANS-${Date.now()}`;
 
@@ -142,7 +142,7 @@ test.describe("Status Transitions — Authenticated API Enforcement", () => {
   });
 
   test("valid transition draft -> planned is accepted", async ({ request }) => {
-    test.skip(!idToken || !transitionLoadId, "Requires prior test to pass");
+    test.skip(!idToken || !transitionLoadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await request.patch(
       `${API_BASE}/api/loads/${transitionLoadId}/status`,
@@ -160,7 +160,7 @@ test.describe("Status Transitions — Authenticated API Enforcement", () => {
   test("invalid transition from terminal state is rejected with 4xx", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     // Attempt to transition a nonexistent load (will 404) or
     // use a known impossible transition on a real load
@@ -181,7 +181,7 @@ test.describe("Status Transitions — Authenticated API Enforcement", () => {
   test("status transition with invalid target value returns 4xx", async ({
     request,
   }) => {
-    test.skip(!idToken, "No Firebase token available");
+    test.skip(!idToken, "SKIP:NO_TOKEN:admin");
 
     const res = await request.patch(
       `${API_BASE}/api/loads/any-load-id/status`,

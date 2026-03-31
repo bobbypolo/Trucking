@@ -357,7 +357,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             className="bg-slate-950/50 border border-white/5 rounded-3xl p-8 backdrop-blur-md"
           >
             <div className="flex justify-between items-start mb-4">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                 {kpi.label}
               </span>
               <kpi.icon className={`w-5 h-5 ${kpi.color} opacity-20`} />
@@ -366,7 +366,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               {kpi.val}
             </div>
             <div
-              className={`text-[8px] font-black uppercase tracking-widest ${kpi.color}`}
+              className={`text-[10px] font-black uppercase tracking-widest ${kpi.color}`}
             >
               {kpi.unit}
             </div>
@@ -381,7 +381,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               Trips Pending Audit
             </h4>
-            <p className="text-slate-700 text-[8px] font-bold uppercase mt-1">
+            <p className="text-slate-500 text-[10px] font-bold uppercase mt-1">
               Review raw evidence and attest miles-by-state
             </p>
           </div>
@@ -397,21 +397,21 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                 onClick={() => setReviewLoad(load)}
               >
                 <div className="flex justify-between items-start mb-4">
-                  <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                  <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">
                     #{load.loadNumber || load.id.slice(0, 5)}
                   </span>
-                  <div className="p-2 bg-white/5 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all text-slate-700">
+                  <div className="p-2 bg-white/5 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-all text-slate-500">
                     <Shield className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="text-lg font-black text-white uppercase tracking-tighter mb-1 truncate">
                   {load.pickup?.facilityName || "En route"}
                 </div>
-                <div className="text-[9px] text-slate-500 font-bold uppercase mb-4">
+                <div className="text-[11px] text-slate-500 font-bold uppercase mb-4">
                   {load.pickup?.city || "TX"} → {load.delivery?.city || "OK"}
                 </div>
                 <div className="flex justify-between items-center pt-4 border-t border-white/5">
-                  <span className="text-[8px] font-black text-slate-600 uppercase">
+                  <span className="text-[10px] font-black text-slate-600 uppercase">
                     Evidence Ready
                   </span>
                   <ArrowRight className="w-3 h-3 text-slate-800" />
@@ -421,7 +421,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
           {(loads || []).filter((l) => l.status === "delivered").length ===
             0 && (
             <div className="col-span-3 text-center py-10">
-              <p className="text-[10px] font-black text-slate-700 uppercase italic">
+              <p className="text-[10px] font-black text-slate-500 uppercase italic">
                 No trips currently pending audit attestation
               </p>
             </div>
@@ -489,22 +489,22 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
         <table className="w-full text-left">
           <thead className="bg-black/20 border-b border-white/5 sticky top-0 backdrop-blur-lg">
             <tr>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                 Jurisdiction
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 Total Miles
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 Gallons
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 MPG
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 Tax Paid @ Pump
               </th>
-              <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+              <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                 Net Tax Due
               </th>
             </tr>
@@ -547,7 +547,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
           </h4>
           <button
             onClick={() => setShowAddMileage(true)}
-            className="px-4 py-2 text-[9px] font-black text-blue-500 uppercase flex items-center gap-2 hover:bg-blue-500/10 rounded-xl transition-all"
+            className="px-4 py-2 text-[11px] font-black text-blue-500 uppercase flex items-center gap-2 hover:bg-blue-500/10 rounded-xl transition-all"
           >
             <Plus className="w-4 h-4" /> Add Manual Entry
           </button>
@@ -574,11 +574,11 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                   <div className="text-[11px] font-black text-white">
                     {m.miles} MI
                   </div>
-                  <div className="text-[8px] font-black text-blue-500/50 uppercase italic">
+                  <div className="text-[10px] font-black text-blue-500/50 uppercase italic">
                     {m.type}
                   </div>
                 </div>
-                <button className="text-slate-700 hover:text-red-500 transition-colors" aria-label="Delete entry">
+                <button className="text-slate-500 hover:text-red-500 transition-colors" aria-label="Delete entry">
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -595,7 +595,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
                 Log Manual Mileage
               </h3>
-              <p className="text-slate-500 text-[9px] font-black uppercase tracking-widest mt-1">
+              <p className="text-slate-500 text-[11px] font-black uppercase tracking-widest mt-1">
                 Submit corrections or non-ELD trips
               </p>
             </div>
@@ -603,7 +603,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               <div className="space-y-2">
                 <label
                   htmlFor="iftaTruckID"
-                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                  className="text-[10px] font-black text-slate-600 uppercase ml-1"
                 >
                   Truck ID *
                 </label>
@@ -625,7 +625,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               <div className="space-y-2">
                 <label
                   htmlFor="iftaDate"
-                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                  className="text-[10px] font-black text-slate-600 uppercase ml-1"
                 >
                   Date *
                 </label>
@@ -647,7 +647,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               <div className="space-y-2">
                 <label
                   htmlFor="iftaStateCode"
-                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                  className="text-[10px] font-black text-slate-600 uppercase ml-1"
                 >
                   State Code *
                 </label>
@@ -672,7 +672,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
               <div className="space-y-2">
                 <label
                   htmlFor="iftaMiles"
-                  className="text-[8px] font-black text-slate-600 uppercase ml-1"
+                  className="text-[10px] font-black text-slate-600 uppercase ml-1"
                 >
                   Miles *
                 </label>

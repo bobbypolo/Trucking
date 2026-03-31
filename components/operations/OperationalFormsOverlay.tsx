@@ -570,7 +570,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                   <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] italic">
                     Strategic Financial Request
                   </h3>
-                  <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+                  <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">
                     Ref Identity: {requestData.id.split("-")[0]}
                   </div>
                 </div>
@@ -593,7 +593,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                   Asset Context (Required)
                 </label>
                 <div className="relative group">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-700 group-focus-within:text-blue-500 transition-colors" />
+                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-blue-500 transition-colors" />
                   <input
                     type="text"
                     className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-6 py-4 text-[13px] text-white font-bold outline-none focus:border-blue-500 transition-all shadow-inner placeholder:text-slate-800"
@@ -640,7 +640,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                               <div className="text-[11px] font-black text-white uppercase tracking-tight">
                                 {res.label}
                               </div>
-                              <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest">
+                              <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
                                 {res.type}{" "}
                                 {res.subLabel ? `• ${res.subLabel}` : ""}
                               </div>
@@ -690,7 +690,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                     Quantum (USD)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700 text-xs font-black font-mono">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-black font-mono">
                       $
                     </span>
                     <input
@@ -789,7 +789,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                   <button
                     key={tab}
                     onClick={() => setDirectoryTab(tab)}
-                    className={`px-4 py-4 text-[9px] font-black uppercase tracking-widest transition-all relative ${directoryTab === tab ? "text-blue-400" : "text-slate-500 hover:text-white"}`}
+                    className={`px-4 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${directoryTab === tab ? "text-blue-400" : "text-slate-500 hover:text-white"}`}
                   >
                     {tab}
                     {directoryTab === tab && (
@@ -832,7 +832,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                         ? "No providers match your search"
                         : "No providers in directory"}
                     </p>
-                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
+                    <p className="text-[11px] text-slate-600 font-bold uppercase leading-relaxed">
                       {directorySearchQuery
                         ? "Try a different search term"
                         : "Add providers from the Network portal"}
@@ -860,11 +860,11 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                             {provider.name}
                           </h4>
                           <div className="flex gap-2 mt-1.5">
-                            <span className="text-[9px] font-black uppercase px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/10 rounded-lg">
+                            <span className="text-[11px] font-black uppercase px-2.5 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/10 rounded-lg">
                               PRO: {provider.type}
                             </span>
                             {provider.is247 && (
-                              <span className="text-[9px] font-black uppercase px-2.5 py-1 bg-green-500/20 text-green-400 border border-green-500/10 rounded-lg">
+                              <span className="text-[11px] font-black uppercase px-2.5 py-1 bg-green-500/20 text-green-400 border border-green-500/10 rounded-lg">
                                 24/7 ACTIVE
                               </span>
                             )}
@@ -885,7 +885,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                           {(provider.capabilities ?? []).map((c) => (
                             <span
                               key={c}
-                              className="px-2.5 py-1 bg-white/[0.05] rounded-xl border border-white/5 text-[9px] font-black uppercase tracking-widest"
+                              className="px-2.5 py-1 bg-white/[0.05] rounded-xl border border-white/5 text-[11px] font-black uppercase tracking-widest"
                             >
                               {c}
                             </span>
@@ -906,7 +906,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                               `Directing Link to ${provider.name}...`,
                             );
                           }}
-                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
+                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
                         >
                           <Phone className="w-3 h-3 text-blue-400" /> Call
                         </button>
@@ -917,7 +917,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                               `Opening Liaison Thread for ${provider.name}...`,
                             );
                           }}
-                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
+                          className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all flex items-center justify-center gap-2"
                         >
                           <MessageSquare className="w-3 h-3 text-blue-400" />{" "}
                           Chat
@@ -948,7 +948,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                             <h4 className="text-[13px] font-black text-white uppercase tracking-tight">
                               {res.label}
                             </h4>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase">
+                            <p className="text-[11px] font-bold text-slate-500 uppercase">
                               {res.subLabel}
                             </p>
                           </div>
@@ -1000,7 +1000,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                         ? "No contacts match your search"
                         : "No contacts in directory"}
                     </p>
-                    <p className="text-[9px] text-slate-600 font-bold uppercase leading-relaxed">
+                    <p className="text-[11px] text-slate-600 font-bold uppercase leading-relaxed">
                       {directorySearchQuery
                         ? "Try a different search term"
                         : "Add contacts from the Network portal"}
@@ -1031,7 +1031,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                             <h4 className="text-xs font-black text-white uppercase">
                               {contact.name}
                             </h4>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase">
+                            <p className="text-[11px] font-bold text-slate-500 uppercase">
                               {contact.type} • {contact.title || "No Title"}
                             </p>
                           </div>
@@ -1054,7 +1054,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                               `Directing Link to ${contact.name}...`,
                             );
                           }}
-                          className="flex-1 py-3 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
+                          className="flex-1 py-3 bg-white/5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
                         >
                           Call
                         </button>
@@ -1065,7 +1065,7 @@ export const OperationalFormsOverlay: React.FC<OperationalFormsOverlayProps> = (
                               `Opening SMS Channel for ${contact.name}...`,
                             );
                           }}
-                          className="flex-1 py-3 bg-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
+                          className="flex-1 py-3 bg-white/5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-white transition-all border border-white/5"
                         >
                           SMS
                         </button>

@@ -36,7 +36,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   );
 
   test("Step 1: Create a draft load", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     loadId = uuidv4();
     loadNumber = `JOURNEY-LIFECYCLE-${Date.now()}`;
@@ -61,7 +61,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 2: Verify draft load persists", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.get(`${API_BASE}/api/loads`, request);
     expect(res.status()).toBe(200);
@@ -76,7 +76,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 3: Transition draft -> planned", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -87,7 +87,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 4: Transition planned -> dispatched", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -98,7 +98,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 5: Transition dispatched -> in_transit", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -109,7 +109,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 6: Transition in_transit -> arrived", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -120,7 +120,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   });
 
   test("Step 7: Transition arrived -> delivered", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -133,7 +133,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   test("Step 8: Transition delivered -> completed (terminal state)", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -146,7 +146,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   test("Step 9: Verify completed load is in terminal state", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.get(`${API_BASE}/api/loads`, request);
     expect(res.status()).toBe(200);
@@ -162,7 +162,7 @@ test.describe("Canonical Journey: Full Load Lifecycle", () => {
   test("Step 10: Completed load rejects further transitions", async ({
     request,
   }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,
@@ -190,7 +190,7 @@ test.describe("Canonical Journey: Load Cancellation Path", () => {
   );
 
   test("Create and cancel a draft load", async ({ request }) => {
-    test.skip(!admin.hasToken, "No Firebase token available");
+    test.skip(!admin.hasToken, "SKIP:NO_TOKEN:admin");
 
     loadId = uuidv4();
     const payload = makeLoadDraft({
@@ -217,7 +217,7 @@ test.describe("Canonical Journey: Load Cancellation Path", () => {
   });
 
   test("Cancelled load rejects all transitions", async ({ request }) => {
-    test.skip(!admin.hasToken || !loadId, "Requires prior step");
+    test.skip(!admin.hasToken || !loadId, "SKIP:NO_PRIOR_STATE");
 
     const res = await admin.patch(
       `${API_BASE}/api/loads/${loadId}/status`,

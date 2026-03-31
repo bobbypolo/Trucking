@@ -425,10 +425,10 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                     <Globe className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase">
+                    <div className="text-[11px] font-black text-slate-400 uppercase">
                       Vehicle Tracking
                     </div>
-                    <div className="text-[8px] text-slate-600 font-bold uppercase">
+                    <div className="text-[10px] text-slate-600 font-bold uppercase">
                       Not configured — enable GPS/ELD integration
                     </div>
                   </div>
@@ -438,10 +438,10 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                     <Activity className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase">
+                    <div className="text-[11px] font-black text-slate-400 uppercase">
                       Last Sync
                     </div>
-                    <div className="text-[8px] text-slate-600 font-bold uppercase">
+                    <div className="text-[10px] text-slate-600 font-bold uppercase">
                       No telemetry data available
                     </div>
                   </div>
@@ -601,7 +601,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                             <div className="text-xs font-black text-white uppercase tracking-tight">
                               {card.displayName}
                             </div>
-                            <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                            <div className="text-[11px] text-slate-500 font-bold uppercase mt-1">
                               Click to View
                             </div>
                           </div>
@@ -610,7 +610,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                           <div className="text-xl font-black text-white">
                             {count}
                           </div>
-                          <div className="text-[8px] font-bold text-slate-600 uppercase">
+                          <div className="text-[10px] font-bold text-slate-600 uppercase">
                             Items
                           </div>
                         </div>
@@ -653,13 +653,13 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
                       <div className="text-xs font-bold text-white uppercase">
                         {(ex.type || "EXC").replace("_", " ")}
                       </div>
-                      <div className="text-[9px] text-slate-600 font-black uppercase">
+                      <div className="text-[11px] text-slate-600 font-black uppercase">
                         Load #{ex.entityId} {"\u2022"}{" "}
                         {ex.ownerUserId || "Dispatch"}
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[9px] font-black text-red-500 uppercase">
+                      <div className="text-[11px] font-black text-red-500 uppercase">
                         Sev {ex.severity || "\u2014"}
                       </div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">
@@ -719,7 +719,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             </div>
 
             <div className="bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex flex-col justify-between">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                 Open Doc Exceptions
               </div>
               <div className="mt-2">
@@ -746,7 +746,7 @@ export const OpsDashboardPanel: React.FC<OpsDashboardPanelProps> = ({
             </div>
 
             <div className="bg-slate-900/20 border border-white/5 p-6 rounded-[2rem] flex flex-col justify-between">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                 Accruing Detention
               </div>
               <div className="mt-2 text-2xl font-black text-emerald-500 font-mono">

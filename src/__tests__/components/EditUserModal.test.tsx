@@ -1,4 +1,11 @@
-import { describe, it, expect, vi, beforeEach, type MockedFunction } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeEach,
+  type MockedFunction,
+} from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
@@ -69,9 +76,9 @@ describe("EditUserModal", () => {
     render(
       <EditUserModal user={makeUser()} onSave={onSave} onCancel={onCancel} />,
     );
-    // Labels include asterisk for required fields: "Full Legal Name *", "Email *"
-    expect(screen.getByText("Full Legal Name *")).toBeInTheDocument();
-    expect(screen.getByText("Email *")).toBeInTheDocument();
+    // Labels include asterisk for required fields — the "*" is in a child <span>
+    expect(screen.getByText(/Full Legal Name/)).toBeInTheDocument();
+    expect(screen.getByText(/Email/)).toBeInTheDocument();
     expect(screen.getByDisplayValue("John Smith")).toBeInTheDocument();
     expect(screen.getByDisplayValue("john@example.com")).toBeInTheDocument();
   });

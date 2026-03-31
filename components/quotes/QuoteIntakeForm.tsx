@@ -178,7 +178,7 @@ export const QuoteIntakeForm: React.FC<QuoteIntakeFormProps> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="qmCityHub"
-                      className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                      className="text-[11px] font-black text-slate-600 uppercase tracking-widest ml-1"
                     >
                       City Hub
                     </label>
@@ -202,7 +202,7 @@ export const QuoteIntakeForm: React.FC<QuoteIntakeFormProps> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="qmStateProv"
-                      className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                      className="text-[11px] font-black text-slate-600 uppercase tracking-widest ml-1"
                     >
                       State / Prov
                     </label>
@@ -238,7 +238,7 @@ export const QuoteIntakeForm: React.FC<QuoteIntakeFormProps> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="qmCityHub2"
-                      className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                      className="text-[11px] font-black text-slate-600 uppercase tracking-widest ml-1"
                     >
                       City Hub
                     </label>
@@ -262,7 +262,7 @@ export const QuoteIntakeForm: React.FC<QuoteIntakeFormProps> = ({
                   <div className="space-y-2">
                     <label
                       htmlFor="qmStateProv2"
-                      className="text-[9px] font-black text-slate-600 uppercase tracking-widest ml-1"
+                      className="text-[11px] font-black text-slate-600 uppercase tracking-widest ml-1"
                     >
                       State / Prov
                     </label>

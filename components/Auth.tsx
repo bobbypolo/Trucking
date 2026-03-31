@@ -895,7 +895,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   className={`p-6 rounded-3xl border text-left transition-all relative overflow-hidden ${tier === "Automation Pro" ? "bg-blue-900/20 border-blue-500 shadow-xl" : "bg-slate-800 border-slate-700"}`}
                 >
                   {tier === "Automation Pro" && (
-                    <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-bl-xl">
+                    <div className="absolute top-0 right-0 bg-blue-500 text-white px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded-bl-xl">
                       Selected
                     </div>
                   )}
@@ -977,7 +977,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     htmlFor="authTaxIDEIN"
                     className="text-[10px] text-slate-600 font-black uppercase ml-1"
                   >
-                    Tax ID / EIN *
+                    Tax ID / EIN <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="authTaxIDEIN"
@@ -994,7 +994,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   htmlFor="authBillingStreetAddress"
                   className="text-[10px] text-slate-600 font-black uppercase ml-1"
                 >
-                  Billing Street Address *
+                  Billing Street Address <span className="text-red-400">*</span>
                 </label>
                 <input
                   id="authBillingStreetAddress"
@@ -1342,7 +1342,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     onChange={(e) => setDocNamingRules(e.target.value)}
                     className="w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-white font-mono text-xs"
                   />
-                  <p className="text-[8px] text-slate-600 font-bold ml-1">
+                  <p className="text-[10px] text-slate-600 font-bold ml-1">
                     Current: {new Date().toISOString().split("T")[0]}
                     _FuelReceipt_1234.pdf
                   </p>
@@ -1354,7 +1354,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                       Automation Active
                     </span>
                   </div>
-                  <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed">
+                  <p className="text-[11px] text-slate-400 font-bold uppercase leading-relaxed">
                     95% automation mode enabled. PDF parsing and OCR will
                     auto-create loads and link expenses to IFTA.
                   </p>
@@ -1428,7 +1428,7 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                     <div className="text-[10px] font-black text-white uppercase">
                       Audit Mode
                     </div>
-                    <div className="text-[8px] text-slate-600 font-bold uppercase">
+                    <div className="text-[10px] text-slate-600 font-bold uppercase">
                       Keep immutable trails for 7 years
                     </div>
                   </div>
