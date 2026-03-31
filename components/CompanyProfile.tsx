@@ -445,7 +445,9 @@ export const CompanyProfile: React.FC<Props> = ({
     const controller = new AbortController();
     const checkQb = async () => {
       try {
-        const data = await api.get("/quickbooks/status", { signal: controller.signal });
+        const data = await api.get("/quickbooks/status", {
+          signal: controller.signal,
+        });
         if (data === undefined) return; // aborted
         setQbStatus({
           available: true,
@@ -1455,15 +1457,24 @@ export const CompanyProfile: React.FC<Props> = ({
                             className="bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-[10px] text-white font-bold uppercase"
                             value={u.role || "driver"}
                             onChange={(e) => {
-                              handleUserUpdate({ ...u, role: e.target.value as any });
+                              handleUserUpdate({
+                                ...u,
+                                role: e.target.value as any,
+                              });
                             }}
                           >
                             <option value="admin">Admin</option>
                             <option value="driver">Driver</option>
-                            <option value="owner_operator">Owner Operator</option>
-                            <option value="safety_manager">Safety Manager</option>
+                            <option value="owner_operator">
+                              Owner Operator
+                            </option>
+                            <option value="safety_manager">
+                              Safety Manager
+                            </option>
                             <option value="dispatcher">Dispatcher</option>
-                            <option value="payroll_manager">Payroll Manager</option>
+                            <option value="payroll_manager">
+                              Payroll Manager
+                            </option>
                             <option value="customer">Customer</option>
                           </select>
                           <input
