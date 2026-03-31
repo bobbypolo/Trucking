@@ -39,6 +39,11 @@ try {
     logger.error({ err: error }, 'Firebase Admin initialization failed. Protected routes will remain blocked.');
 }
 
+// Firebase Auth Emulator detection
+if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    logger.info('Firebase Auth Emulator active');
+}
+
 export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
     if (!authReady) {
         logger.error('CRITICAL: Firebase Admin credentials unavailable. Rejecting request to enforce security.');

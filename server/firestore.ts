@@ -33,4 +33,9 @@ try {
   });
 }
 
+// Firestore Emulator detection
+if (process.env.FIRESTORE_EMULATOR_HOST) {
+  logger.info('Firestore Emulator active');
+}
+
 export default db;
