@@ -16,6 +16,7 @@ import {
 } from "../schemas/users";
 import { createRequestLogger } from "../lib/logger";
 import { isAutoProvisionEnabled } from "../lib/env";
+import { revokeUserTokens } from "../lib/token-revocation";
 import {
   ensureMySqlCompany,
   findSqlUserById,
@@ -442,6 +443,56 @@ router.get(
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+router.post(
+  "/api/users/:id/revoke",
+  requireAuth,
+  requireTenant,
+  async (req, res, next) => {
+    const authReq = req as AuthenticatedRequest;
+    const log = createRequestLogger(req, "POST /api/users/:id/revoke");
+
+    const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
+    if (!adminRoles.includes(authReq.user.role)) {
+      return res.status(403).json({ error: "Admin role required." });
+    }
+
+    const targetUserId = req.params.id;
+    const { reason } = req.body as { reason?: string };
+
+    if (!reason || typeof reason !== "string" || !reason.trim()) {
+      return res.status(400).json({ error: "Reason is required." });
+    }
+
+    try {
+      const targetUser = await findSqlUserById(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found." });
+      }
+
+      if (!targetUser.firebase_uid) {
+        return res
+          .status(422)
+          .json({ error: "User has no linked Firebase account." });
+      }
+
+      await revokeUserTokens(
+        targetUserId,
+        targetUser.firebase_uid,
+        reason.trim(),
+      );
+
+      log.info(
+        { targetUserId, revokedBy: authReq.user.id },
+        "User tokens revoked",
+      );
+
+      res.status(204).send();
     } catch (error) {
       next(error);
     }
