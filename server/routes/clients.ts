@@ -1034,10 +1034,11 @@ router.get(
         });
       });
 
-      // 3. Search Users (Firestore)
+      // 3. Search Users (Firestore) — limit applied for cost-saving (R-P0-07)
       const userSnapshot = await db
         .collection("users")
         .where("company_id", "==", companyId)
+        .limit(100)
         .get();
 
       userSnapshot.docs.forEach((doc) => {

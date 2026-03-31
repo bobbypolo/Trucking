@@ -1,9 +1,12 @@
-// Tests R-P6-01, R-P6-02, R-P6-03, R-P6-04
+// Tests R-P6-01, R-P6-02, R-P6-03, R-P6-04, R-P2-01, R-P2-02, R-P2-03, R-P2-04
 // SafetyView KPI wiring: real API data, no hardcoded compliance, loading/error states
+// SafetyView KPI Verification: empty-state N/A, positive case, no hardcoded counts
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
 
 // Mock services at network boundary
 vi.mock("../../../services/safetyService", () => ({
@@ -332,5 +335,192 @@ describe("SafetyView KPI Wiring (R-P6-01 through R-P6-04)", () => {
     });
 
     expect(screen.getByText("Safety & Compliance")).toBeInTheDocument();
+  });
+});
+
+describe("SafetyView KPI Verification (R-P2-01 through R-P2-04)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Mock fetch for /api/safety/* endpoints
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.includes("/api/safety/fmcsa/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              available: false,
+              data: null,
+            }),
+        });
+      }
+      if (url.includes("/api/safety/quizzes")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes("/api/safety/quiz-results")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      if (url.includes("/api/safety/settings")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              minSafetyScore: 70,
+              autoLockCompliance: false,
+              maintenanceIntervalDays: 90,
+            }),
+        });
+      }
+      if (url.includes("/api/notification-jobs")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve([]),
+        });
+      }
+      return Promise.resolve({ ok: false, status: 404 });
+    });
+  });
+
+  // Tests R-P2-01
+  it("R-P2-01: Non-Compliant KPI shows N/A when getCompanyUsers returns []", async () => { // Tests R-P2-01
+    // Override getCompanyUsers to return empty array (no operators)
+    const { getCompanyUsers } = await import("../../../services/authService");
+    (getCompanyUsers as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    render(<SafetyView user={mockUser} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Non-Compliant")).toBeInTheDocument();
+    });
+
+    // Find the Non-Compliant KPI card and verify its value is "N/A"
+    const nonCompliantLabel = screen.getByText("Non-Compliant");
+    const kpiCard = nonCompliantLabel.closest("div[class*='bg-slate-900']");
+    expect(kpiCard).not.toBeNull();
+
+    // The value element is the sibling with text-4xl class
+    const valueEl = kpiCard!.querySelector("div[class*='text-4xl']");
+    expect(valueEl).not.toBeNull();
+    expect(valueEl!.textContent).toBe("N/A");
+
+    // Verify it is NOT a hardcoded number like "13"
+    expect(valueEl!.textContent).not.toBe("13");
+  });
+
+  // Tests R-P2-02
+  it("R-P2-02: Out of Service KPI shows N/A when getEquipment returns []", async () => {
+    // Override getEquipment to return empty array (no fleet equipment)
+    const { getEquipment } = await import("../../../services/safetyService");
+    (getEquipment as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    // Keep getCompanyUsers returning a user so we isolate the equipment test
+    const { getCompanyUsers } = await import("../../../services/authService");
+    (getCompanyUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "user-1",
+        name: "Test Driver",
+        email: "driver@test.com",
+        role: "driver",
+        companyId: "company-1",
+        onboardingStatus: "Completed",
+        safetyScore: 90,
+      },
+    ]);
+
+    render(<SafetyView user={mockUser} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Out of Service")).toBeInTheDocument();
+    });
+
+    // Find the Out of Service KPI card and verify its value is "N/A"
+    const oosLabel = screen.getByText("Out of Service");
+    const kpiCard = oosLabel.closest("div[class*='bg-slate-900']");
+    expect(kpiCard).not.toBeNull();
+
+    const valueEl = kpiCard!.querySelector("div[class*='text-4xl']");
+    expect(valueEl).not.toBeNull();
+    expect(valueEl!.textContent).toBe("N/A");
+  });
+
+  // Tests R-P2-03
+  it("R-P2-03: Non-Compliant KPI shows 1 when 1 operator has totalScore < 70", async () => {
+    // getCompanyUsers returns 1 driver, calculateDriverPerformance returns low score
+    const { getCompanyUsers } = await import("../../../services/authService");
+    (getCompanyUsers as ReturnType<typeof vi.fn>).mockResolvedValue([
+      {
+        id: "user-1",
+        name: "Test Driver",
+        email: "driver@test.com",
+        role: "driver",
+        companyId: "company-1",
+        onboardingStatus: "Completed",
+        safetyScore: 40,
+      },
+    ]);
+
+    const { calculateDriverPerformance } = await import(
+      "../../../services/safetyService"
+    );
+    (calculateDriverPerformance as ReturnType<typeof vi.fn>).mockResolvedValue({
+      driverId: "user-1",
+      totalScore: 45,
+      grade: "At Risk",
+      status: "Active",
+      metrics: {
+        safetyScore: 40,
+        onTimeRate: 50,
+        paperworkScore: 45,
+        loadCount: 3,
+      },
+    });
+
+    render(<SafetyView user={mockUser} />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Non-Compliant")).toBeInTheDocument();
+    });
+
+    // Find the Non-Compliant KPI card and verify its value is "1"
+    const nonCompliantLabel = screen.getByText("Non-Compliant");
+    const kpiCard = nonCompliantLabel.closest("div[class*='bg-slate-900']");
+    expect(kpiCard).not.toBeNull();
+
+    const valueEl = kpiCard!.querySelector("div[class*='text-4xl']");
+    expect(valueEl).not.toBeNull();
+    expect(valueEl!.textContent).toBe("1");
+
+    // Verify it is NOT "N/A" (positive case)
+    expect(valueEl!.textContent).not.toBe("N/A");
+  });
+
+  // Tests R-P2-04
+  it("R-P2-04: SafetyView.tsx has no hardcoded 13 in KPI rendering", () => {
+    // Read the SafetyView source file and check for hardcoded "13"
+    const safetyViewPath = path.resolve(
+      __dirname,
+      "../../../components/SafetyView.tsx",
+    );
+    const source = fs.readFileSync(safetyViewPath, "utf-8");
+
+    // Extract the KPI rendering section (between "Compute real KPI values" and the map call)
+    const kpiSectionMatch = source.match(
+      /Compute real KPI values[\s\S]*?\.map\(\(kpi/,
+    );
+    expect(kpiSectionMatch).not.toBeNull();
+
+    const kpiSection = kpiSectionMatch![0];
+
+    // There must be zero matches of hardcoded "13" in the KPI section
+    // This catches patterns like: value: "13", `"13"`, '13'
+    const hardcoded13Matches = kpiSection.match(
+      /["']13["']|:\s*13\b/g,
+    );
+    expect(hardcoded13Matches).toBeNull();
   });
 });

@@ -40,6 +40,7 @@ import {
   FreightType,
   PermissionCode,
   Capability,
+  UserRole,
   Company,
   DispatchEvent,
   TimeLog,
@@ -105,7 +106,6 @@ import {
   Globe,
   ChevronLeft,
   Radio,
-  Wallet,
 } from "lucide-react";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
@@ -122,11 +122,6 @@ const CustomerPortalView = React.lazy(() =>
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
-const Settlements = React.lazy(() =>
-  import("./components/Settlements").then((m) => ({
-    default: m.Settlements,
-  })),
-);
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -154,13 +149,14 @@ const TelematicsSetup = React.lazy(
 import { getRecord360Data } from "./services/storageService";
 import { features } from "./config/features";
 
-/** Navigation item with optional permission/capability gates. */
+/** Navigation item with optional permission/capability/role gates. */
 interface NavItem {
   id: string;
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   permission?: PermissionCode;
   capability?: Capability;
+  roles?: UserRole[];
 }
 
 /** Navigation category grouping NavItems. */
@@ -180,8 +176,6 @@ const LEGACY_TAB_ALIASES: Record<string, string> = {
   finance: "accounting",
   map: "operations-hub",
   safety: "exceptions",
-  settlements: "driver-pay",
-  payroll: "driver-pay",
 };
 
 export default function App() {
@@ -546,6 +540,7 @@ export default function App() {
           label: "Operations Center",
           icon: Zap,
           permission: "LOAD_DISPATCH",
+          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
         },
         {
           id: "loads",
@@ -561,12 +556,13 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
-        { id: "network", label: "Onboarding", icon: Globe },
+        { id: "network", label: "Onboarding", icon: Globe, roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"] },
         {
           id: "telematics-setup",
           label: "Telematics",
           icon: Radio,
           permission: "ORG_SETTINGS_VIEW",
+          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
         },
       ],
     },
@@ -578,11 +574,6 @@ export default function App() {
           label: "Financials",
           icon: Building2,
           permission: "INVOICE_CREATE",
-        },
-        {
-          id: "driver-pay",
-          label: "Driver Pay",
-          icon: Wallet,
         },
       ],
     },
@@ -600,12 +591,16 @@ export default function App() {
     },
   ];
 
-  // Filter categories and items based on permissions (Legacy + Agile)
+  // Filter categories and items based on roles, permissions, and capabilities
   const filteredCategories = categories
     .map((cat) => ({
       ...cat,
       items: cat.items.filter((item) => {
         if (user?.role === "admin") return true;
+
+        // Check role-based visibility
+        if (item.roles && !item.roles.includes(user?.role as UserRole))
+          return false;
 
         // Check Agile Capability
         if (
@@ -1080,18 +1075,6 @@ export default function App() {
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "driver-pay" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Settlements
-                    loads={loads}
-                    users={companyUsers}
-                    onUserUpdate={() => refreshData(user!)}
                     onNavigate={handleNavigate}
                   />
                 </Suspense>
