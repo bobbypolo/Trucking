@@ -134,7 +134,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                         Mechanical Breakdown
                       </span>
                     </div>
-                    <p className="text-[9px] text-slate-400 font-bold uppercase leading-relaxed">
+                    <p className="text-[11px] text-slate-400 font-bold uppercase leading-relaxed">
                       Vehicle stationary on I-90 EB. Asset rescue required for
                       hot delivery.
                     </p>
@@ -160,7 +160,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                     Available Capacity Near Exception Site
                   </span>
-                  <div className="flex items-center gap-4 text-[9px] font-black uppercase text-slate-600">
+                  <div className="flex items-center gap-4 text-[11px] font-black uppercase text-slate-600">
                     <span className="flex items-center gap-1.5">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500" />{" "}
                       High Match
@@ -193,7 +193,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                             >
                               {match.matchScore}%
                             </div>
-                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-tighter">
+                            <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter">
                               Match
                             </span>
                           </div>
@@ -204,19 +204,19 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                             <div className="flex items-center gap-4">
                               <div className="flex items-center gap-1.5">
                                 <MapPin className="w-3 h-3 text-slate-600" />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase">
                                   {match.distanceToPickup} Mi away
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Clock className="w-3 h-3 text-slate-600" />
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                <span className="text-[11px] font-bold text-slate-400 uppercase">
                                   {match.hosAvailable}h HOS
                                 </span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <Zap className="w-3 h-3 text-orange-500" />
-                                <span className="text-[9px] font-bold text-orange-500 uppercase">
+                                <span className="text-[11px] font-bold text-orange-500 uppercase">
                                   ETA:{" "}
                                   {new Date(
                                     match.estimatedArrival,
@@ -249,13 +249,13 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
 
             {/* Footer Status */}
             <div className="h-12 bg-slate-950/60 border-t border-white/5 px-10 flex items-center justify-between">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">
+              <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest italic">
                 Authorized Operation: Dispatch Integrity Override
               </span>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-[9px] font-black text-blue-500/80 uppercase">
+                  <span className="text-[11px] font-black text-blue-500/80 uppercase">
                     Telemetry Link: Active
                   </span>
                 </div>
@@ -277,7 +277,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                   <h3 className="text-[11px] font-black text-white uppercase tracking-[0.2em] italic">
                     Electronic Record Injection
                   </h3>
-                  <div className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+                  <div className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">
                     Status: Pending Verification
                   </div>
                 </div>
@@ -304,7 +304,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                         : "Select Operational Target..."}
                     </span>
                   </div>
-                  <span className="text-[7px] font-black px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 uppercase tracking-tighter">
+                  <span className="text-[10px] font-black px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded-lg border border-blue-500/20 uppercase tracking-tighter">
                     LINKED
                   </span>
                 </div>
@@ -313,13 +313,13 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
               <div className="space-y-4">
                 <div className="p-12 border-2 border-dashed border-slate-800 rounded-[2.5rem] flex flex-col items-center justify-center gap-5 hover:border-blue-500 transition-all cursor-pointer group bg-slate-950/20 hover:bg-blue-600/5 shadow-inner">
                   <div className="w-20 h-20 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform shadow-xl">
-                    <Plus className="w-8 h-8 text-slate-700 group-hover:text-blue-500" />
+                    <Plus className="w-8 h-8 text-slate-500 group-hover:text-blue-500" />
                   </div>
                   <div className="text-center">
                     <p className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-2 group-hover:text-blue-500 transition-colors">
                       Inject Image/PDF Artifact
                     </p>
-                    <p className="text-[8px] font-bold text-slate-700 uppercase tracking-widest leading-loose">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-loose">
                       BOL, POD, RATE CON, INVOICE SOURCE
                       <br />
                       (Max 25MB Multi-Layer)
@@ -398,7 +398,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                   <h3 className="text-[13px] font-black text-white uppercase tracking-widest italic">
                     Multi-Channel Stakeholder Alert
                   </h3>
-                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                     Select recipients for emergency broadcast
                   </p>
                 </div>
@@ -435,7 +435,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                       <div className="text-[11px] font-black text-white uppercase truncate">
                         {contact.name}
                       </div>
-                      <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                         {(contact as any).role}
                       </div>
                     </div>
@@ -491,7 +491,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                   <h3 className="text-[13px] font-black text-white uppercase tracking-widest italic">
                     Roadside Recovery Dispatch
                   </h3>
-                  <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
                     Select vendor for mission-critical repair
                   </p>
                 </div>
@@ -525,7 +525,7 @@ export const RepowerSelectionPanel: React.FC<RepowerSelectionPanelProps> = (prop
                           <div className="text-[11px] font-black text-white uppercase">
                             {vendor.name}
                           </div>
-                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                          <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                             {vendor.type} • {vendor.status}
                           </div>
                         </div>

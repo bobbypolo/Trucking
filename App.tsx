@@ -40,6 +40,7 @@ import {
   FreightType,
   PermissionCode,
   Capability,
+  UserRole,
   Company,
   DispatchEvent,
   TimeLog,
@@ -105,7 +106,6 @@ import {
   Globe,
   ChevronLeft,
   Radio,
-  Wallet,
 } from "lucide-react";
 const Scanner = React.lazy(() =>
   import("./components/Scanner").then((m) => ({ default: m.Scanner })),
@@ -122,11 +122,6 @@ const CustomerPortalView = React.lazy(() =>
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
-const Settlements = React.lazy(() =>
-  import("./components/Settlements").then((m) => ({
-    default: m.Settlements,
-  })),
-);
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -154,13 +149,14 @@ const TelematicsSetup = React.lazy(
 import { getRecord360Data } from "./services/storageService";
 import { features } from "./config/features";
 
-/** Navigation item with optional permission/capability gates. */
+/** Navigation item with optional permission/capability/role gates. */
 interface NavItem {
   id: string;
   label: string;
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   permission?: PermissionCode;
   capability?: Capability;
+  roles?: UserRole[];
 }
 
 /** Navigation category grouping NavItems. */
@@ -180,8 +176,6 @@ const LEGACY_TAB_ALIASES: Record<string, string> = {
   finance: "accounting",
   map: "operations-hub",
   safety: "exceptions",
-  settlements: "driver-pay",
-  payroll: "driver-pay",
 };
 
 export default function App() {
@@ -546,6 +540,7 @@ export default function App() {
           label: "Operations Center",
           icon: Zap,
           permission: "LOAD_DISPATCH",
+          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
         },
         {
           id: "loads",
@@ -561,12 +556,13 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
-        { id: "network", label: "Onboarding", icon: Globe },
+        { id: "network", label: "Onboarding", icon: Globe, roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"] },
         {
           id: "telematics-setup",
           label: "Telematics",
           icon: Radio,
           permission: "ORG_SETTINGS_VIEW",
+          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
         },
       ],
     },
@@ -578,11 +574,6 @@ export default function App() {
           label: "Financials",
           icon: Building2,
           permission: "INVOICE_CREATE",
-        },
-        {
-          id: "driver-pay",
-          label: "Driver Pay",
-          icon: Wallet,
         },
       ],
     },
@@ -600,12 +591,16 @@ export default function App() {
     },
   ];
 
-  // Filter categories and items based on permissions (Legacy + Agile)
+  // Filter categories and items based on roles, permissions, and capabilities
   const filteredCategories = categories
     .map((cat) => ({
       ...cat,
       items: cat.items.filter((item) => {
         if (user?.role === "admin") return true;
+
+        // Check role-based visibility
+        if (item.roles && !item.roles.includes(user?.role as UserRole))
+          return false;
 
         // Check Agile Capability
         if (
@@ -806,12 +801,14 @@ export default function App() {
             </div>
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              aria-label="Toggle sidebar"
               className={`hidden md:flex p-1.5 hover:bg-slate-800 rounded-lg text-slate-500 transition-all ${sidebarCollapsed ? "mx-auto rotate-180" : ""}`}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Close menu"
               className="md:hidden text-slate-400"
             >
               <X className="w-5 h-5" />
@@ -820,7 +817,7 @@ export default function App() {
           <nav className="p-3 space-y-8 flex-1 overflow-y-auto no-scrollbar py-8">
             {filteredCategories.map((cat) => (
               <div key={cat.title} className="space-y-2">
-                <h4 className="px-4 text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3 opacity-80">
+                <h4 className="px-4 text-[11px] font-black text-slate-600 uppercase tracking-[0.3em] mb-3 opacity-80">
                   {cat.title}
                 </h4>
                 <div className="space-y-1">
@@ -853,7 +850,7 @@ export default function App() {
                         className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isActive ? "bg-blue-600/10 text-blue-400 border border-blue-500/20 shadow-inner" : "text-slate-500 hover:bg-slate-800/40 hover:text-slate-300"} ${sidebarCollapsed ? "justify-center px-0" : ""}`}
                       >
                         <Icon
-                          className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-500" : "text-slate-700"}`}
+                          className={`w-4 h-4 shrink-0 ${isActive ? "text-blue-500" : "text-slate-500"}`}
                         />
                         {!sidebarCollapsed && <span>{item.label}</span>}
                       </button>
@@ -875,7 +872,7 @@ export default function App() {
                   <div className="text-[10px] font-black text-white truncate tracking-wider uppercase">
                     {user.name}
                   </div>
-                  <div className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
+                  <div className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
                     {user.role?.replace("_", " ") || "USER"}
                   </div>
                 </div>
@@ -883,7 +880,7 @@ export default function App() {
             </div>
             <button
               onClick={handleLogout}
-              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all ${sidebarCollapsed ? "justify-center px-0" : ""}`}
+              className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:text-red-400 hover:bg-red-950/20 rounded-md transition-all ${sidebarCollapsed ? "justify-center px-0" : ""}`}
             >
               <LogOut className="w-3 h-3 shrink-0" />
               {!sidebarCollapsed && <span>Sign Out</span>}
@@ -896,6 +893,7 @@ export default function App() {
             <div className="flex items-center gap-10">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
+                aria-label="Open menu"
                 className="md:hidden text-slate-400 p-2 hover:bg-slate-800 rounded-xl"
               >
                 <Menu className="w-5 h-5" />
@@ -906,7 +904,7 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="Search Loads, Teams, or Data (Ctrl+K)"
-                  className="w-full bg-[#020617] border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-[12px] text-white outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-700"
+                  className="w-full bg-[#020617] border border-white/5 rounded-2xl pl-12 pr-6 py-3.5 text-[12px] text-white outline-none focus:border-blue-500/50 focus:ring-8 focus:ring-blue-500/5 transition-all placeholder:text-slate-500"
                   onFocus={(e) => {
                     e.target.blur();
                     handleNavigate("operations-hub");
@@ -1077,18 +1075,6 @@ export default function App() {
                     currentUser={user!}
                     onUserUpdate={() => refreshData(user!)}
                     initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
-              )}
-              {activeTab === "driver-pay" && (
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <Settlements
-                    loads={loads}
-                    users={companyUsers}
-                    onUserUpdate={() => refreshData(user!)}
                     onNavigate={handleNavigate}
                   />
                 </Suspense>

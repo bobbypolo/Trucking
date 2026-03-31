@@ -217,6 +217,7 @@ describe("DriverMobileHome - Documents (R-P6-12)", () => {
     await waitFor(() => {
       expect(apiModule.api.get).toHaveBeenCalledWith(
         expect.stringContaining("/documents?load_id=load-001"),
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
   });

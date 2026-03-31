@@ -583,8 +583,12 @@ describe("CompanyProfile component", () => {
       await switchToPersonnel();
 
       await waitFor(() => {
-        expect(screen.getByText(/admin.*admin@test\.com/i)).toBeInTheDocument();
+        // Role is now in an inline <select> dropdown (STORY-003 refactor)
+        expect(screen.getByText(/admin@test\.com/i)).toBeInTheDocument();
       });
+      // Role displayed via <select> element with aria-label containing "role"
+      const roleSelects = screen.getAllByLabelText(/role/i);
+      expect(roleSelects.length).toBeGreaterThan(0);
     });
 
     it("shows first initial avatar for each user", async () => {
@@ -1126,7 +1130,11 @@ describe("CompanyProfile component", () => {
       );
 
       await waitFor(() => {
-        expect(mockGetTimeLogs).toHaveBeenCalledWith("user-driver");
+        expect(mockGetTimeLogs).toHaveBeenCalledWith(
+          "user-driver",
+          false,
+          expect.any(AbortSignal),
+        );
       });
     });
 

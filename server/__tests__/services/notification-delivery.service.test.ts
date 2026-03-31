@@ -21,9 +21,9 @@ const mockWarn = vi.fn();
 const mockError = vi.fn();
 vi.mock("../../lib/logger", () => ({
   createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
@@ -58,9 +58,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
         messageId: "<test-message-id@ethereal.email>",
       });
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       const result = await sendEmail({
         to: "driver@example.com",
@@ -83,9 +82,7 @@ describe("R-W7-01: Notification Delivery Service", () => {
     it("exports sendEmail as a named export", async () => {
       process.env.SMTP_HOST = "smtp.ethereal.email";
 
-      const mod = await import(
-        "../../services/notification-delivery.service"
-      );
+      const mod = await import("../../services/notification-delivery.service");
 
       expect(typeof mod.sendEmail).toBe("function");
     });
@@ -99,9 +96,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
 
       mockSendMail.mockResolvedValueOnce({ messageId: "<id>" });
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       await sendEmail({
         to: "recipient@test.com",
@@ -130,9 +126,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
       delete process.env.SMTP_PASS;
       delete process.env.SMTP_FROM;
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       const result = await sendEmail({
         to: "driver@example.com",
@@ -150,9 +145,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
     it("logs the email details when falling back", async () => {
       delete process.env.SMTP_HOST;
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       await sendEmail({
         to: "test@example.com",
@@ -183,9 +177,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
         messageId: "<success-id@ethereal.email>",
       });
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       const result = await sendEmail({
         to: "admin@trucking.com",
@@ -210,9 +203,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
 
       mockSendMail.mockRejectedValueOnce(new Error("Connection refused"));
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       const result = await sendEmail({
         to: "driver@example.com",
@@ -234,9 +226,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
 
       mockSendMail.mockRejectedValueOnce(new Error("Auth failed"));
 
-      const { sendEmail } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { sendEmail } =
+        await import("../../services/notification-delivery.service");
 
       await sendEmail({
         to: "driver@example.com",
@@ -261,9 +252,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
 
       mockSendMail.mockResolvedValueOnce({ messageId: "<id>" });
 
-      const { deliverNotification } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { deliverNotification } =
+        await import("../../services/notification-delivery.service");
 
       const result = await deliverNotification({
         channel: "email",
@@ -282,9 +272,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
       delete process.env.TWILIO_AUTH_TOKEN;
       delete process.env.TWILIO_FROM_NUMBER;
 
-      const { deliverNotification } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { deliverNotification } =
+        await import("../../services/notification-delivery.service");
 
       const result = await deliverNotification({
         channel: "SMS",
@@ -311,9 +300,8 @@ describe("R-W7-01: Notification Delivery Service", () => {
         rejected: [],
       });
 
-      const { deliverNotification } = await import(
-        "../../services/notification-delivery.service"
-      );
+      const { deliverNotification } =
+        await import("../../services/notification-delivery.service");
 
       const result = await deliverNotification({
         channel: "email",

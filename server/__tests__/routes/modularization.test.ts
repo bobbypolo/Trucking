@@ -50,13 +50,13 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
   it("AC1: each route module exports an Express Router via default export", () => {
     for (const mod of ROUTE_MODULES) {
       const filePath = path.join(ROUTES_DIR, `${mod}.ts`);
-      const content = fs.readFileSync(filePath, "utf-8");
+      const content = fs.readFileSync(filePath, "utf-8").replace(/\r\n/g, "\n");
 
       // Must import Router from express (may be alongside other imports)
       expect(
         content.includes("import { Router }") ||
           content.includes("import {Router}") ||
-          /import\s*\{[^}]*Router[^}]*\}\s*from\s*["']express["']/.test(
+          /import\s*\{[^}]*Router[^}]*\}\s*from\s*["']express["']/.test(
             content,
           ),
         `${mod}.ts must import Router from express`,
@@ -81,7 +81,7 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
   it("AC2: route modules have valid TypeScript syntax (import/export structure)", () => {
     for (const mod of ROUTE_MODULES) {
       const filePath = path.join(ROUTES_DIR, `${mod}.ts`);
-      const content = fs.readFileSync(filePath, "utf-8");
+      const content = fs.readFileSync(filePath, "utf-8").replace(/\r\n/g, "\n");
 
       // Verify the file is non-empty and has route definitions
       expect(content.length).toBeGreaterThan(100);
@@ -116,7 +116,7 @@ describe("R-P1-02: Backend Modularization — Domain Routing", () => {
     // Scan each route module
     for (const mod of ROUTE_MODULES) {
       const filePath = path.join(ROUTES_DIR, `${mod}.ts`);
-      const content = fs.readFileSync(filePath, "utf-8");
+      const content = fs.readFileSync(filePath, "utf-8").replace(/\r\n/g, "\n");
       const routerRouteRegex =
         /router\.(get|post|put|patch|delete)\s*\(\s*['"`]([^'"`]+)['"`]/g;
       while ((match = routerRouteRegex.exec(content)) !== null) {

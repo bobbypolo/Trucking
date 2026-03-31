@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import express from "express";
 import request from "supertest";
+import { errorHandler } from "../../middleware/errorHandler";
 
 // Tests R-P3-WP1-01 through R-P3-WP1-08
 
@@ -86,6 +87,7 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.use(trackingRouter);
+  app.use(errorHandler);
   return app;
 }
 
@@ -160,7 +162,12 @@ describe("R-P3-WP1-01: POST /api/tracking/providers — create provider config",
       .send({ isActive: true });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/providerName/);
+    expect(res.body.message).toBe("Validation failed");
+    expect(res.body.details.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "providerName" }),
+      ]),
+    );
   });
 
   it("returns 401 without auth", async () => {
@@ -478,7 +485,13 @@ describe("R-P3-WP1-05: POST /api/tracking/vehicles/mapping — create mapping", 
       .send({ vehicleId: "truck-1" }); // missing providerConfigId + providerVehicleId
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/providerConfigId/);
+    expect(res.body.message).toBe("Validation failed");
+    expect(res.body.details.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "providerConfigId" }),
+        expect.objectContaining({ field: "providerVehicleId" }),
+      ]),
+    );
   });
 
   it("returns 404 when provider config does not belong to tenant", async () => {

@@ -498,7 +498,7 @@ describe("POST /api/auth/register — error sanitization (SERVER-06a)", () => {
         password: "securepass123",
       });
     expect(res.status).toBe(500);
-    expect(res.body.details).toBe("Internal error");
+    expect(res.body.message).toBeDefined();
     expect(JSON.stringify(res.body)).not.toContain("ECONNREFUSED");
   });
 });
@@ -673,7 +673,7 @@ describe("POST /api/users — error sanitization (SERVER-06a)", () => {
         company_id: COMPANY_ID,
       });
     expect(res.status).toBe(500);
-    expect(res.body.details).toBe("Internal error");
+    expect(res.body.message).toBeDefined();
     expect(JSON.stringify(res.body)).not.toContain("Duplicate entry");
   });
 });

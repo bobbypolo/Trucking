@@ -26,7 +26,7 @@ import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
 import express from "express";
 import request from "supertest";
-import { isDockerRunning, getPool } from "../helpers/test-env.js";
+import { isDockerRunning } from "../helpers/test-env.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../../");
@@ -212,7 +212,15 @@ describe("Single-Node Load Test Baseline", () => {
       return;
     }
 
-    pool = getPool();
+    pool = mysql.createPool({
+      host: process.env.DB_HOST || "127.0.0.1",
+      user: process.env.DB_USER || "root",
+      password: process.env.DB_PASSWORD || "root",
+      database: process.env.DB_NAME || "trucklogix",
+      waitForConnections: true,
+      connectionLimit: 25,
+      queueLimit: 0,
+    });
 
     // Verify real MySQL connectivity
     try {
@@ -224,6 +232,16 @@ describe("Single-Node Load Test Baseline", () => {
     } catch {
       skip = true;
       return;
+    }
+
+    // Ensure test company exists for FK constraints
+    try {
+      await pool.query(
+        `INSERT IGNORE INTO companies (id, name) VALUES (?, ?)`,
+        [TEST_COMPANY_ID, "Load Test Baseline Company"],
+      );
+    } catch {
+      // Company may already exist
     }
 
     // R-P14-01: Create Express app backed by real MySQL
@@ -246,6 +264,13 @@ describe("Single-Node Load Test Baseline", () => {
         ]);
       } catch {
         // Table might not have test data
+      }
+      try {
+        await pool.query("DELETE FROM companies WHERE id = ?", [
+          TEST_COMPANY_ID,
+        ]);
+      } catch {
+        // Company might not exist
       }
       await pool.end();
     }

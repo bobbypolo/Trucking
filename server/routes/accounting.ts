@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
@@ -24,7 +24,7 @@ router.get(
   "/api/accounting/accounts",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
@@ -35,7 +35,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/accounts");
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/accounts]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -45,7 +45,7 @@ router.get(
   "/api/accounting/load-pl/:loadId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const loadId = req.params.loadId;
@@ -95,7 +95,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/load-pl");
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/load-pl]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -106,7 +106,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createJournalEntrySchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const {
       id,
@@ -160,7 +160,7 @@ router.post(
       await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/journal");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/journal]");
-      res.status(500).json({ error: "Failed to post journal entry" });
+      next(error);
     } finally {
       connection.release();
     }
@@ -173,7 +173,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createInvoiceSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const invoice = req.body;
     const connection = await pool.getConnection();
@@ -283,7 +283,7 @@ router.post(
       await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/invoices");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/invoices]");
-      res.status(500).json({ error: "Failed to create invoice" });
+      next(error);
     } finally {
       connection.release();
     }
@@ -296,7 +296,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createBillSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const bill = req.body;
     const connection = await pool.getConnection();
@@ -389,7 +389,7 @@ router.post(
       await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/bills");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/bills]");
-      res.status(500).json({ error: "Failed to create bill" });
+      next(error);
     } finally {
       connection.release();
     }
@@ -403,7 +403,7 @@ router.get(
   "/api/accounting/invoices",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const [rows]: any = await pool.query(
@@ -423,7 +423,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/invoices");
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/invoices]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -433,7 +433,7 @@ router.get(
   "/api/accounting/bills",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const [rows]: any = await pool.query(
@@ -453,7 +453,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/bills");
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/bills]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -499,7 +499,7 @@ router.get(
   "/api/accounting/settlements",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const userRole = req.user.role;
@@ -549,7 +549,7 @@ router.get(
         { err: error },
         "SERVER ERROR [GET /api/accounting/settlements]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -559,7 +559,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createSettlementSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     // Role guard: only payroll/admin roles can create settlements
     const userRole = req.user.role;
     if (!SETTLEMENT_EDIT_ROLES.includes(userRole)) {
@@ -675,7 +675,7 @@ router.post(
         { err: error },
         "SERVER ERROR [POST /api/accounting/settlements]",
       );
-      res.status(500).json({ error: "Failed to create settlement" });
+      next(error);
     } finally {
       connection.release();
     }
@@ -688,7 +688,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(batchUpdateSettlementsSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     // Role guard: only payroll/admin roles can approve/finalize settlements
     const userRole = req.user.role;
     if (!SETTLEMENT_APPROVE_ROLES.includes(userRole)) {
@@ -752,7 +752,7 @@ router.patch(
         { err: error },
         "SERVER ERROR [PATCH /api/accounting/settlements/batch]",
       );
-      res.status(500).json({ error: "Failed to batch update settlements" });
+      next(error);
     }
   },
 );
@@ -762,7 +762,7 @@ router.get(
   "/api/accounting/ifta-evidence/:loadId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
@@ -773,7 +773,7 @@ router.get(
     } catch (e) {
       const log = createRequestLogger(req, "GET /api/accounting/ifta-evidence");
       log.error({ err: e }, "SERVER ERROR [GET /api/accounting/ifta-evidence]");
-      res.status(500).json({ error: "Failed to fetch evidence" });
+      next(e);
     }
   },
 );
@@ -821,7 +821,7 @@ router.post(
   "/api/accounting/ifta-audit-lock",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const audit = req.body;
     try {
@@ -868,7 +868,7 @@ router.post(
         { err: e },
         "SERVER ERROR [POST /api/accounting/ifta-audit-lock]",
       );
-      res.status(500).json({ error: "Locking failed" });
+      next(e);
     }
   },
 );
@@ -878,7 +878,7 @@ router.get(
   "/api/accounting/ifta-summary",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const { quarter, year } = req.query;
@@ -979,7 +979,7 @@ router.get(
         { err: error },
         "SERVER ERROR [GET /api/accounting/ifta-summary]",
       );
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -988,7 +988,7 @@ router.get(
   "/api/accounting/mileage",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const tenantId = req.user.tenantId;
       const [rows] = await pool.query(
@@ -999,7 +999,7 @@ router.get(
     } catch (e) {
       const log = createRequestLogger(req, "GET /api/accounting/mileage");
       log.error({ err: e }, "SERVER ERROR [GET /api/accounting/mileage]");
-      res.status(500).json({ error: "Failed to fetch mileage" });
+      next(e);
     }
   },
 );
@@ -1008,7 +1008,7 @@ router.post(
   "/api/accounting/mileage",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const { truckId, loadId, date, stateCode, miles, source } = req.body;
     try {
@@ -1029,7 +1029,7 @@ router.post(
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/mileage");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/mileage]");
-      res.status(500).json({ error: "Failed to log mileage" });
+      next(e);
     }
   },
 );
@@ -1038,7 +1038,7 @@ router.post(
   "/api/accounting/ifta-post",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const { quarter, year, netTaxDue } = req.body;
     const connection = await pool.getConnection();
@@ -1070,7 +1070,7 @@ router.post(
       await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/ifta-post");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/ifta-post]");
-      res.status(500).json({ error: "Posting failed" });
+      next(e);
     } finally {
       connection.release();
     }
@@ -1082,7 +1082,7 @@ router.post(
   "/api/accounting/adjustments",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const adj = req.body;
     try {
@@ -1103,7 +1103,7 @@ router.post(
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/adjustments");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/adjustments]");
-      res.status(500).json({ error: "Failed to record adjustment" });
+      next(e);
     }
   },
 );
@@ -1114,7 +1114,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(batchImportSchema),
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     const tenantId = req.user.tenantId;
     const { type, data } = req.body;
     const connection = await pool.getConnection();
@@ -1181,7 +1181,7 @@ router.post(
       await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/batch-import");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/batch-import]");
-      res.status(500).json({ error: "Import failed" });
+      next(e);
     } finally {
       connection.release();
     }

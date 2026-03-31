@@ -111,7 +111,7 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
                 </span>
               </h2>
               <span
-                className={`px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${analysis?.confidence === "HIGH" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border border-orange-500/20"}`}
+                className={`px-4 py-1 rounded-full text-[11px] font-black uppercase tracking-widest ${analysis?.confidence === "HIGH" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border border-orange-500/20"}`}
               >
                 {analysis?.confidence || "Pending"} Confidence
               </span>
@@ -147,22 +147,22 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
                       <span className="text-[10px] font-black text-white uppercase">
                         {ev.eventType.replace("_", " ")}
                       </span>
-                      <span className="text-[9px] font-bold text-slate-600">
+                      <span className="text-[11px] font-bold text-slate-600">
                         {new Date(ev.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
-                    <div className="text-[9px] text-slate-500 font-mono">
+                    <div className="text-[11px] text-slate-500 font-mono">
                       {ev.lat.toFixed(4)}, {ev.lng.toFixed(4)}
                       {ev.stateCode && ` • ${ev.stateCode}`}
                     </div>
-                    <div className="text-[8px] text-slate-700 uppercase font-black">
+                    <div className="text-[10px] text-slate-500 uppercase font-black">
                       {ev.source}
                     </div>
                   </div>
                 </div>
               ))}
               {evidence.length === 0 && (
-                <div className="text-slate-700 text-center py-10 uppercase font-black text-[10px] italic">
+                <div className="text-slate-500 text-center py-10 uppercase font-black text-[10px] italic">
                   No raw evidence found for this trip
                 </div>
               )}
@@ -174,7 +174,7 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
             {/* GPS ANALYSIS METHOD */}
             <div className="p-6 rounded-3xl border bg-blue-600/10 border-blue-500/50 ring-1 ring-blue-500/50">
               <div className="flex justify-between items-start mb-2">
-                <div className="text-[9px] font-black uppercase tracking-widest text-blue-500">
+                <div className="text-[11px] font-black uppercase tracking-widest text-blue-500">
                   Analysis Method
                 </div>
                 <Map className="w-5 h-5 text-blue-500" />
@@ -182,7 +182,7 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
               <div className="text-lg font-black text-white uppercase tracking-tighter">
                 Actual GPS Breadcrumb Summation
               </div>
-              <div className="text-[9px] text-slate-500 font-black uppercase mt-1">
+              <div className="text-[11px] text-slate-500 font-black uppercase mt-1">
                 {evidence.length} pings collected
               </div>
             </div>
@@ -196,13 +196,13 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
                 <table className="w-full text-left">
                   <thead className="bg-black/20 border-b border-white/5">
                     <tr>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase">
                         State
                       </th>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                         Miles
                       </th>
-                      <th className="px-8 py-5 text-[9px] font-black text-slate-600 uppercase text-right">
+                      <th className="px-8 py-5 text-[11px] font-black text-slate-600 uppercase text-right">
                         Percentage
                       </th>
                     </tr>
@@ -285,7 +285,7 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
           <button
             disabled={!attested || loading}
             onClick={handleLock}
-            className={`px-12 py-5 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 font-inter ${attested ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20" : "bg-slate-900 text-slate-700 cursor-not-allowed"}`}
+            className={`px-12 py-5 rounded-3xl text-[10px] font-black uppercase tracking-widest transition-all shadow-xl flex items-center gap-3 font-inter ${attested ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/20" : "bg-slate-900 text-slate-500 cursor-not-allowed"}`}
           >
             Lock Trip for Audit <Lock className="w-4 h-4" />
           </button>

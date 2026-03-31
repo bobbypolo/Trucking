@@ -89,15 +89,15 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
             Operational Sequence
           </h3>
           <div className="flex gap-2">
-            <span className="bg-blue-600/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter">
+            <span className="bg-blue-600/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter">
               Active: {activeCount}
             </span>
-            <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter">
+            <span className="bg-slate-800 text-slate-400 border border-slate-700 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-tighter">
               Total: {loads.length}
             </span>
           </div>
         </div>
-        <div className="flex gap-8 text-[9px] font-black text-slate-500 uppercase tracking-widest">
+        <div className="flex gap-8 text-[11px] font-black text-slate-500 uppercase tracking-widest">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-slate-800" /> Planned
           </div>
@@ -140,11 +140,11 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                   <div className="text-[10px] font-black text-white group-hover:text-blue-400 transition-colors">
                     #{load.loadNumber}
                   </div>
-                  <div className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter mt-1 truncate">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter mt-1 truncate">
                     {load.commodity || load.freightType || "Unspecified"}
                   </div>
                   {load.pickupDate && (
-                    <div className="text-[7px] text-slate-600 mt-0.5">
+                    <div className="text-[10px] text-slate-600 mt-0.5">
                       {formatDate(load.pickupDate)}
                     </div>
                   )}
@@ -163,7 +163,7 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                           width: `${Math.max(pickupComplete ? 15 : 5, Math.min(transitPct * 0.3, 30))}%`,
                         }}
                       >
-                        <div className="absolute -top-6 left-0 text-[7px] font-black text-slate-500 whitespace-nowrap">
+                        <div className="absolute -top-6 left-0 text-[10px] font-black text-slate-500 whitespace-nowrap">
                           PICKUP
                         </div>
                         {pickupComplete && (
@@ -186,7 +186,7 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                           width: `${Math.max(isActive || isDelivered ? 20 : 5, transitPct * 0.5)}%`,
                         }}
                       >
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[7px] font-black text-slate-500 whitespace-nowrap">
+                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-black text-slate-500 whitespace-nowrap">
                           TRANSIT
                         </div>
                         {isActive && (
@@ -202,7 +202,7 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                       <div
                         className={`h-1.5 rounded-r-full relative transition-all duration-700 flex-1 ${isDelivered ? "bg-green-600" : "bg-slate-800"}`}
                       >
-                        <div className="absolute -top-6 right-0 text-[7px] font-black text-slate-500 whitespace-nowrap text-right">
+                        <div className="absolute -top-6 right-0 text-[10px] font-black text-slate-500 whitespace-nowrap text-right">
                           DELIVERY
                         </div>
                         {isDelivered && (
@@ -215,10 +215,10 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
                   </div>
 
                   {/* Milestone Times from real load dates */}
-                  <div className="absolute bottom-1 left-8 flex items-center gap-1 text-[7px] font-black text-slate-600">
+                  <div className="absolute bottom-1 left-8 flex items-center gap-1 text-[10px] font-black text-slate-600">
                     <Clock className="w-2 h-2" /> {formatTime(load.pickupDate)}
                   </div>
-                  <div className="absolute bottom-1 right-8 flex items-center gap-1 text-[7px] font-black text-slate-600">
+                  <div className="absolute bottom-1 right-8 flex items-center gap-1 text-[10px] font-black text-slate-600">
                     ETA: {formatTime(load.dropoffDate)}
                   </div>
                 </div>
@@ -229,7 +229,7 @@ export const LoadGantt: React.FC<Props> = ({ loads }) => {
       </div>
 
       {/* Footer */}
-      <div className="bg-slate-950 px-6 py-2 border-t border-slate-800 flex justify-between items-center text-[8px] font-black text-slate-500 uppercase tracking-widest shrink-0">
+      <div className="bg-slate-950 px-6 py-2 border-t border-slate-800 flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest shrink-0">
         <div>
           {sortedLoads.length > 0
             ? "SCROLL TO VIEW ALL ACTIVE MANIFESTS"

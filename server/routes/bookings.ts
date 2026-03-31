@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Request } from "express";
+import type { Request, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
@@ -18,7 +18,7 @@ router.get(
   "/api/bookings",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -32,7 +32,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/bookings");
       log.error({ err: error }, "Failed to fetch bookings");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -42,7 +42,7 @@ router.get(
   "/api/bookings/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     try {
       const booking = await bookingRepository.findById(req.params.id);
@@ -52,7 +52,7 @@ router.get(
       }
       res.json(booking);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -63,7 +63,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createBookingSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -76,7 +76,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/bookings");
       log.error({ err: error }, "Failed to create booking");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -87,7 +87,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateBookingSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -103,7 +103,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -119,7 +119,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(convertBookingSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -165,7 +165,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/bookings/convert");
       log.error({ err: error }, "Failed to convert booking to load");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

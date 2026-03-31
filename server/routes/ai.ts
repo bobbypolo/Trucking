@@ -6,7 +6,7 @@
  * Clients must be authenticated (requireAuth) to access any endpoint.
  */
 
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
@@ -79,7 +79,7 @@ router.post(
   requireAuth,
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/ai/extract-load");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
@@ -102,7 +102,7 @@ router.post(
       res.json({ loadInfo: result });
     } catch (error) {
       log.error({ err: error }, "Gemini extractLoadInfo failed");
-      res.status(500).json({ error: "AI extraction failed" });
+      next(error);
     }
   },
 );
@@ -117,7 +117,7 @@ router.post(
   requireAuth,
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/ai/extract-broker");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
@@ -140,7 +140,7 @@ router.post(
       res.json({ brokerInfo: result });
     } catch (error) {
       log.error({ err: error }, "Gemini extractBrokerFromImage failed");
-      res.status(500).json({ error: "AI extraction failed" });
+      next(error);
     }
   },
 );
@@ -155,7 +155,7 @@ router.post(
   requireAuth,
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/ai/extract-equipment");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
@@ -178,7 +178,7 @@ router.post(
       res.json({ equipmentInfo: result });
     } catch (error) {
       log.error({ err: error }, "Gemini extractEquipmentFromImage failed");
-      res.status(500).json({ error: "AI extraction failed" });
+      next(error);
     }
   },
 );
@@ -193,7 +193,7 @@ router.post(
   requireAuth,
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/ai/generate-training");
     const validationError = validateImagePayload(req.body);
     if (validationError) {
@@ -216,7 +216,7 @@ router.post(
       res.json({ training: result });
     } catch (error) {
       log.error({ err: error }, "Gemini generateTrainingFromImage failed");
-      res.status(500).json({ error: "AI generation failed" });
+      next(error);
     }
   },
 );
@@ -231,7 +231,7 @@ router.post(
   requireAuth,
   requireTenant,
   requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/ai/analyze-safety");
 
     const body = req.body as Record<string, unknown>;
@@ -253,7 +253,7 @@ router.post(
       res.json({ analysis: result });
     } catch (error) {
       log.error({ err: error }, "Gemini analyzeSafetyCompliance failed");
-      res.status(500).json({ error: "AI analysis failed" });
+      next(error);
     }
   },
 );

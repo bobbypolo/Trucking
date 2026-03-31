@@ -659,7 +659,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-[8px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
+                          className={`px-2 py-0.5 rounded text-[10px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
                         >
                           {ex.severity === 4
                             ? "Crit"
@@ -671,13 +671,13 @@ export const ExceptionConsole: React.FC<Props> = ({
                           <div className="text-[11px] font-bold text-white">
                             {ex.description || ex.type}
                           </div>
-                          <div className="text-[9px] text-slate-500">
+                          <div className="text-[11px] text-slate-500">
                             {ex.entityType} #{ex.entityId}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="text-[9px] font-black text-red-500 uppercase">
+                        <div className="text-[11px] font-black text-red-500 uppercase">
                           SLA: <SLACell dueAt={ex.slaDueAt} />
                         </div>
                         <button
@@ -755,7 +755,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                       >
                         <td className="px-6 py-5">
                           <span
-                            className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
                           >
                             {ex.severity === 4
                               ? "Critical"
@@ -813,7 +813,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                                       onNavigate?.(info.navTarget);
                                       onViewDetail?.(info.navTarget, value);
                                     }}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all"
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all"
                                   >
                                     <ExternalLink className="w-2.5 h-2.5" />
                                     {info.label}
@@ -832,7 +832,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                               <div className="text-xs font-bold text-slate-300 uppercase">
                                 {ex.ownerUserId || "Unassigned"}
                               </div>
-                              <div className="text-[9px] text-slate-600 font-black uppercase">
+                              <div className="text-[11px] text-slate-600 font-black uppercase">
                                 {ex.team || "PENDING"}
                               </div>
                             </div>
@@ -848,7 +848,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                             </div>
                             <div className="flex items-center gap-1.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                              <div className="text-[9px] font-black text-red-500 uppercase">
+                              <div className="text-[11px] font-black text-red-500 uppercase">
                                 SLA: <SLACell dueAt={ex.slaDueAt} />
                               </div>
                             </div>
@@ -892,7 +892,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                   >
                     <div className="flex items-center justify-between">
                       <span
-                        className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-black uppercase border ${getSeverityColor(ex.severity)}`}
                       >
                         {ex.severity === 4
                           ? "Critical"
@@ -927,7 +927,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="p-3 bg-slate-900/30 rounded-xl border border-white/5">
-                        <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">
+                        <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">
                           Impact
                         </div>
                         <div className="text-xs font-mono font-bold text-emerald-500">
@@ -935,7 +935,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                         </div>
                       </div>
                       <div className="p-3 bg-slate-900/30 rounded-xl border border-white/5">
-                        <div className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">
+                        <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">
                           Time Lapsed
                         </div>
                         <div className="text-xs font-mono font-bold text-slate-300">
@@ -968,7 +968,7 @@ export const ExceptionConsole: React.FC<Props> = ({
                                   onNavigate?.(info.navTarget);
                                   onViewDetail?.(info.navTarget, value);
                                 }}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 border border-blue-500/20 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all"
                               >
                                 <ExternalLink className="w-2.5 h-2.5" />
                                 {info.label}
@@ -1035,7 +1035,7 @@ export const ExceptionConsole: React.FC<Props> = ({
             </span>
           </div>
         </div>
-        <div className="text-[10px] font-black text-slate-700 uppercase tracking-[0.2em]">
+        <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
           Average Resolution:{" "}
           {(() => {
             const resolved = exceptions.filter(

@@ -22,7 +22,7 @@ const router = Router();
 // Loads — companyId derived from auth context (req.user.tenantId), NOT URL param
 // Supports ?for=schedule to return only loads with valid dates (for CalendarView)
 // Supports ?start=YYYY-MM-DD&end=YYYY-MM-DD for date-range filtering
-router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
+router.get("/api/loads", requireAuth, requireTenant, async (req: any, res, next) => {
   const companyId = req.user.tenantId;
   const isScheduleQuery = req.query.for === "schedule";
   const startDate = req.query.start as string | undefined;
@@ -107,10 +107,8 @@ router.get("/api/loads", requireAuth, requireTenant, async (req: any, res) => {
     }
 
     res.json(redactData(result, req.user.role, settings));
-  } catch (error) {
-    const log = createRequestLogger(req, "GET /api/loads");
-    log.error({ err: error }, "SERVER ERROR [GET /api/loads]");
-    res.status(500).json({ error: "Database error" });
+  } catch (err) {
+    next(err);
   }
 });
 
@@ -119,7 +117,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createLoadSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const {
       id,
       customer_id,
@@ -244,11 +242,9 @@ router.post(
       }
 
       res.status(201).json({ message: "Load saved" });
-    } catch (error) {
+    } catch (err) {
       await connection.rollback();
-      const log = createRequestLogger(req, "POST /api/loads");
-      log.error({ err: error }, "SERVER ERROR [POST /api/loads]");
-      res.status(500).json({ error: "Database error" });
+      next(err);
     } finally {
       connection.release();
     }

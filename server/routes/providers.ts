@@ -8,7 +8,6 @@ import {
   updateProviderSchema,
 } from "../schemas/provider";
 import { providerRepository } from "../repositories/provider.repository";
-import { createRequestLogger } from "../lib/logger";
 
 const router = Router();
 
@@ -17,7 +16,7 @@ router.get(
   "/api/providers",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -29,9 +28,7 @@ router.get(
       );
       res.json(providers);
     } catch (error) {
-      const log = createRequestLogger(req, "GET /api/providers");
-      log.error({ err: error }, "Failed to fetch providers");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -42,7 +39,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createProviderSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -53,9 +50,7 @@ router.post(
       );
       res.status(201).json(provider);
     } catch (error) {
-      const log = createRequestLogger(req, "POST /api/providers");
-      log.error({ err: error }, "Failed to create provider");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -66,7 +61,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(updateProviderSchema),
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -82,7 +77,7 @@ router.patch(
       );
       res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -92,7 +87,7 @@ router.patch(
   "/api/providers/:id/archive",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
@@ -104,7 +99,7 @@ router.patch(
       await providerRepository.archive(req.params.id, userId);
       res.json({ message: "Provider archived" });
     } catch (error) {
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

@@ -1,7 +1,9 @@
-import { Router } from "express";
+import { Router, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createComplianceAlertSchema } from "../schemas/compliance";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 
@@ -12,7 +14,7 @@ router.get(
   "/api/compliance/:userId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     if (
       req.user.id !== req.params.userId &&
       req.user.role !== "admin" &&
@@ -30,7 +32,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/compliance");
       log.error({ err: error }, "SERVER ERROR [GET /api/compliance]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -40,15 +42,10 @@ router.post(
   "/api/compliance/alert",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateBody(createComplianceAlertSchema),
+  async (req: any, res: any, next: NextFunction) => {
     const { entityType, entityId, description, severity, alertType } = req.body;
     const companyId = req.user.tenantId;
-
-    if (!entityType || !entityId) {
-      return res
-        .status(400)
-        .json({ error: "entityType and entityId are required" });
-    }
 
     const exceptionId = uuidv4();
     const numericSeverity = severity || 3;
@@ -85,7 +82,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/compliance/alert");
       log.error({ err: error }, "Failed to create compliance alert");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

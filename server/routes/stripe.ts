@@ -50,7 +50,7 @@ function isAllowedRedirectUrl(url: string, req: Request): boolean {
 router.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
-  async (req: Request, res: Response, _next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const signature = req.headers["stripe-signature"] as string | undefined;
 
     if (!signature) {
@@ -68,9 +68,7 @@ router.post(
         res.status(400).json({ error: result.error });
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "Webhook handler threw unexpected error");
-      res.status(500).json({ error: "Internal webhook processing error" });
+      next(err);
     }
   },
 );

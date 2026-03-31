@@ -511,11 +511,12 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
       };
       mockQuery
         .mockResolvedValueOnce([[partyRow]]) // parties
-        .mockResolvedValueOnce([[]]) // contacts
-        .mockResolvedValueOnce([[]]) // documents
-        .mockResolvedValueOnce([[]]) // rates
-        .mockResolvedValueOnce([[]]) // constraint_sets
-        .mockResolvedValueOnce([[]]); // catalog_links
+        .mockResolvedValueOnce([[]]) // contacts (batch IN)
+        .mockResolvedValueOnce([[]]) // documents (batch IN)
+        .mockResolvedValueOnce([[]]) // rates (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_sets (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_rules (batch IN via JOIN)
+        .mockResolvedValueOnce([[]]); // catalog_links (batch IN)
 
       const app = createApp();
       const res = await request(app)
@@ -567,11 +568,12 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
       };
       mockQuery
         .mockResolvedValueOnce([[legacyRow]])
-        .mockResolvedValueOnce([[]]) // contacts
-        .mockResolvedValueOnce([[]]) // documents
-        .mockResolvedValueOnce([[]]) // rates
-        .mockResolvedValueOnce([[]]) // constraint_sets
-        .mockResolvedValueOnce([[]]); // catalog_links
+        .mockResolvedValueOnce([[]]) // contacts (batch IN)
+        .mockResolvedValueOnce([[]]) // documents (batch IN)
+        .mockResolvedValueOnce([[]]) // rates (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_sets (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_rules (batch IN via JOIN)
+        .mockResolvedValueOnce([[]]); // catalog_links (batch IN)
 
       const app = createApp();
       const res = await request(app)
@@ -612,11 +614,12 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
       };
       mockQuery
         .mockResolvedValueOnce([[contractorRow]])
-        .mockResolvedValueOnce([[]]) // contacts
-        .mockResolvedValueOnce([[]]) // documents
-        .mockResolvedValueOnce([[]]) // rates
-        .mockResolvedValueOnce([[]]) // constraint_sets
-        .mockResolvedValueOnce([[]]); // catalog_links
+        .mockResolvedValueOnce([[]]) // contacts (batch IN)
+        .mockResolvedValueOnce([[]]) // documents (batch IN)
+        .mockResolvedValueOnce([[]]) // rates (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_sets (batch IN)
+        .mockResolvedValueOnce([[]]) // constraint_rules (batch IN via JOIN)
+        .mockResolvedValueOnce([[]]); // catalog_links (batch IN)
 
       const app = createApp();
       const res = await request(app)
@@ -748,7 +751,7 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
         .send(makePartyBody({ type: "Customer", name: "Failing Party" }));
 
       expect(res.status).toBe(500);
-      expect(res.body.error).toBe("Database error");
+      expect(res.body.message).toBeDefined();
       expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
       expect(mockConnection.release).toHaveBeenCalledTimes(1);
     });

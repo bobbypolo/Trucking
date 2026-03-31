@@ -98,6 +98,7 @@ vi.mock("../../schemas/settlements", () => ({
 import accountingRouter from "../../routes/accounting";
 import express from "express";
 import request from "supertest";
+import { errorHandler } from "../../middleware/errorHandler";
 import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
 mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue({
@@ -110,6 +111,7 @@ function buildApp() {
   const app = express();
   app.use(express.json());
   app.use(accountingRouter);
+  app.use(errorHandler);
   return app;
 }
 
@@ -219,6 +221,6 @@ describe("R-P5-03: PATCH /api/accounting/settlements/batch", () => {
       .set("Authorization", AUTH_HEADER)
       .send({ ids: ["s1"], status: "Finalized" });
     expect(res.status).toBe(500);
-    expect(res.body.error).toBe("Failed to batch update settlements");
+    expect(res.body.message).toBeDefined();
   });
 });

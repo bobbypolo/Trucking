@@ -1,6 +1,8 @@
-import { Router } from "express";
+import { Router, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { createContractSchema } from "../schemas/contract";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 
@@ -11,7 +13,7 @@ router.get(
   "/api/contracts/:customerId",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res: any, next: NextFunction) => {
     try {
       const [rows] = await pool.query(
         "SELECT cc.* FROM customer_contracts cc INNER JOIN customers c ON cc.customer_id = c.id WHERE cc.customer_id = ? AND c.company_id = ?",
@@ -21,7 +23,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/contracts");
       log.error({ err: error }, "SERVER ERROR [GET /api/contracts]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -30,7 +32,8 @@ router.post(
   "/api/contracts",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  validateBody(createContractSchema),
+  async (req: any, res: any, next: NextFunction) => {
     const {
       id,
       customer_id,
@@ -67,7 +70,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/contracts");
       log.error({ err: error }, "SERVER ERROR [POST /api/contracts]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

@@ -8,7 +8,7 @@ import {
   patchExceptionSchema,
 } from "../schemas/exceptions";
 import pool from "../db";
-import { createChildLogger, createRequestLogger } from "../lib/logger";
+import { createChildLogger } from "../lib/logger";
 
 /**
  * Maps an exception status to the corresponding domain-record status.
@@ -132,7 +132,7 @@ router.get(
   "/api/exceptions",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     try {
       const {
         status,
@@ -215,8 +215,8 @@ router.get(
       query += " ORDER BY severity DESC, sla_due_at ASC";
       const [rows] = await pool.query(query, params);
       res.json(rows);
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -226,7 +226,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createExceptionSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const ex = req.body;
     const id = uuidv4();
     try {
@@ -261,8 +261,8 @@ router.post(
         ],
       );
       res.status(201).json({ message: "Exception recorded", id });
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -272,7 +272,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchExceptionSchema),
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     const { id } = req.params;
     const { status, ownerUserId, workflowStep, severity, notes, actorName } =
       req.body;
@@ -335,8 +335,8 @@ router.patch(
       );
 
       res.json({ message: "Exception updated" });
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -345,15 +345,15 @@ router.get(
   "/api/exceptions/:id/events",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     try {
       const [rows] = await pool.query(
         "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.tenant_id = ? ORDER BY ee.timestamp DESC",
         [req.params.id, req.user!.tenantId],
       );
       res.json(rows);
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );
@@ -362,14 +362,14 @@ router.get(
   "/api/exception-types",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
+  async (req: any, res, next) => {
     try {
       const [rows] = await pool.query(
         "SELECT * FROM exception_type ORDER BY display_name ASC",
       );
       res.json(rows);
-    } catch (error) {
-      res.status(500).json({ error: "Database error" });
+    } catch (err) {
+      next(err);
     }
   },
 );

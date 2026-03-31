@@ -267,13 +267,13 @@ export const GlobalMapView: React.FC<Props> = ({
                     ) : (
                       <WifiOff className="w-2.5 h-2.5 text-red-500" />
                     )}
-                    <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                       {vehicle.isOnline ? "Active" : "Offline"} •{" "}
                       {vehicle.speed} MPH
                     </span>
                   </div>
                 </div>
-                <div className="text-[8px] font-black text-slate-600 uppercase bg-slate-950 px-1.5 py-0.5 rounded border border-white/5">
+                <div className="text-[10px] font-black text-slate-600 uppercase bg-slate-950 px-1.5 py-0.5 rounded border border-white/5">
                   {vehicle.driver.safetyScore != null
                     ? `${vehicle.driver.safetyScore}%`
                     : "N/A"}
@@ -282,17 +282,17 @@ export const GlobalMapView: React.FC<Props> = ({
 
               {vehicle.activeLoad && (
                 <div className="bg-slate-950/50 border border-white/5 rounded-xl p-2.5 space-y-2">
-                  <div className="flex justify-between items-center text-[8px] font-black uppercase text-blue-500">
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase text-blue-500">
                     <span>Load #{vehicle.activeLoad.loadNumber}</span>
                     <span>Scheduled {vehicle.activeLoad.pickupDate}</span>
                   </div>
-                  <div className="text-[9px] font-bold text-slate-300">
+                  <div className="text-[11px] font-bold text-slate-300">
                     {formatRouteSummary(vehicle.activeLoad)}
                   </div>
                 </div>
               )}
 
-              <div className="mt-3 flex items-center justify-between text-[7px] font-black text-slate-600 uppercase tracking-widest">
+              <div className="mt-3 flex items-center justify-between text-[10px] font-black text-slate-600 uppercase tracking-widest">
                 <span>
                   LP:{" "}
                   {new Date(vehicle.lastPing).toLocaleTimeString([], {
@@ -340,7 +340,7 @@ export const GlobalMapView: React.FC<Props> = ({
               {trackingState === "configured-live" && (
                 <>
                   <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-[9px] font-bold text-green-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-green-400 uppercase tracking-widest">
                     Live Tracking
                   </span>
                 </>
@@ -348,7 +348,7 @@ export const GlobalMapView: React.FC<Props> = ({
               {trackingState === "configured-idle" && (
                 <>
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span className="text-[9px] font-bold text-amber-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-widest">
                     Tracking Idle
                   </span>
                 </>
@@ -356,7 +356,7 @@ export const GlobalMapView: React.FC<Props> = ({
               {trackingState === "not-configured" && (
                 <>
                   <AlertCircle className="w-3 h-3 text-slate-500" />
-                  <span className="text-[9px] font-semibold text-slate-400 normal-case">
+                  <span className="text-[11px] font-semibold text-slate-400 normal-case">
                     GPS not configured — contact admin to set up tracking
                   </span>
                 </>
@@ -364,7 +364,7 @@ export const GlobalMapView: React.FC<Props> = ({
               {trackingState === "provider-error" && (
                 <>
                   <AlertCircle className="w-3 h-3 text-red-500" />
-                  <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-red-400 uppercase tracking-widest">
                     Tracking Unavailable
                   </span>
                 </>
@@ -374,7 +374,7 @@ export const GlobalMapView: React.FC<Props> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5">
-              <div className="text-[8px] font-black text-blue-500 uppercase tracking-widest">
+              <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">
                 En Route
               </div>
               <div className="text-lg font-black text-white mt-0.5">
@@ -382,7 +382,7 @@ export const GlobalMapView: React.FC<Props> = ({
               </div>
             </div>
             <div className="bg-slate-950/50 p-3 rounded-xl border border-white/5">
-              <div className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
                 Available
               </div>
               <div className="text-lg font-black text-white mt-0.5">

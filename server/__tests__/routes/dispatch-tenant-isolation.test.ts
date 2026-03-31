@@ -423,6 +423,7 @@ describe("4b: POST /api/time-logs — tenant-scoped clock-out UPDATE", () => {
       .send({
         id: "log-001",
         user_id: "user-001", // matches uid — skips cross-tenant lookup
+        activity_type: "driving", // required by Zod schema
         clock_out: "2026-03-16T18:00:00.000Z",
       });
 
@@ -446,6 +447,7 @@ describe("4b: POST /api/time-logs — tenant-scoped clock-out UPDATE", () => {
       .send({
         id: "log-other-tenant",
         user_id: "user-001",
+        activity_type: "driving", // required by Zod schema
         clock_out: "2026-03-16T18:00:00.000Z",
       });
 

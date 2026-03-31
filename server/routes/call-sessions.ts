@@ -1,6 +1,8 @@
-import { Router, Request } from "express";
+import { Router, Request, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateParams } from "../middleware/validateParams";
+import { idParam } from "../schemas/params";
 import { callSessionRepository } from "../repositories/call-session.repository";
 import { createRequestLogger } from "../lib/logger";
 
@@ -14,7 +16,7 @@ router.get(
   "/api/call-sessions",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
 
     try {
@@ -23,7 +25,7 @@ router.get(
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/call-sessions");
       log.error({ err: error }, "SERVER ERROR [GET /api/call-sessions]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -36,7 +38,7 @@ router.post(
   "/api/call-sessions",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const {
       start_time,
@@ -76,7 +78,7 @@ router.post(
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/call-sessions");
       log.error({ err: error }, "SERVER ERROR [POST /api/call-sessions]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -89,7 +91,8 @@ router.put(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  validateParams(idParam),
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
@@ -106,7 +109,7 @@ router.put(
     } catch (error) {
       const log = createRequestLogger(req, "PUT /api/call-sessions/:id");
       log.error({ err: error }, "SERVER ERROR [PUT /api/call-sessions/:id]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );
@@ -119,7 +122,8 @@ router.delete(
   "/api/call-sessions/:id",
   requireAuth,
   requireTenant,
-  async (req: Request, res) => {
+  validateParams(idParam),
+  async (req: Request, res, next: NextFunction) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
 
@@ -132,7 +136,7 @@ router.delete(
     } catch (error) {
       const log = createRequestLogger(req, "DELETE /api/call-sessions/:id");
       log.error({ err: error }, "SERVER ERROR [DELETE /api/call-sessions/:id]");
-      res.status(500).json({ error: "Database error" });
+      next(error);
     }
   },
 );

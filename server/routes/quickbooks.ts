@@ -14,7 +14,7 @@
  */
 
 import { Router } from "express";
-import type { Request, Response } from "express";
+import type { Request, Response, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import {
@@ -24,10 +24,7 @@ import {
   syncBillToQBO,
   getConnectionStatus,
 } from "../services/quickbooks.service";
-import { createChildLogger, createRequestLogger } from "../lib/logger";
-
 const router = Router();
-const log = createChildLogger({ route: "quickbooks" });
 
 // ── GET /api/quickbooks/auth-url ──────────────────────────────────────────────
 
@@ -35,7 +32,7 @@ router.get(
   "/api/quickbooks/auth-url",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;
       const result = await getAuthorizationUrl(companyId);
@@ -49,9 +46,7 @@ router.get(
 
       return res.json({ url: (result as { url: string }).url });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "Failed to generate QuickBooks auth URL");
-      return res.status(500).json({ error: "Internal server error" });
+      next(err);
     }
   },
 );
@@ -62,7 +57,7 @@ router.get(
   "/api/quickbooks/callback",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { code, realmId } = req.query;
 
@@ -88,9 +83,7 @@ router.get(
       // Redirect to settings page on successful token exchange
       return res.redirect(302, "/settings?qb=connected");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "QuickBooks callback failed");
-      return res.status(500).json({ error: "Internal server error" });
+      next(err);
     }
   },
 );
@@ -101,7 +94,7 @@ router.post(
   "/api/quickbooks/sync-invoice",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;
       const result = await syncInvoiceToQBO(companyId, req.body);
@@ -121,9 +114,7 @@ router.post(
         qboInvoiceId: result.invoiceId,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "Failed to sync invoice to QuickBooks");
-      return res.status(500).json({ error: "Internal server error" });
+      next(err);
     }
   },
 );
@@ -134,7 +125,7 @@ router.post(
   "/api/quickbooks/sync-bill",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;
       const result = await syncBillToQBO(companyId, req.body);
@@ -154,9 +145,7 @@ router.post(
         qboBillId: result.billId,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "Failed to sync bill to QuickBooks");
-      return res.status(500).json({ error: "Internal server error" });
+      next(err);
     }
   },
 );
@@ -167,7 +156,7 @@ router.get(
   "/api/quickbooks/status",
   requireAuth,
   requireTenant,
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;
       const result = await getConnectionStatus(companyId);
@@ -181,9 +170,7 @@ router.get(
 
       return res.json(result);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      log.error({ err: message }, "Failed to check QuickBooks status");
-      return res.status(500).json({ error: "Internal server error" });
+      next(err);
     }
   },
 );

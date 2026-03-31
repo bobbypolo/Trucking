@@ -192,7 +192,7 @@ const AccountingPortal: React.FC<Props> = ({
           <div className="flex bg-slate-900 border border-white/5 rounded-2xl p-1 gap-1">
             <button
               onClick={() => setImportType("Fuel")}
-              className="px-4 py-2 bg-white/5 text-[9px] font-black uppercase text-slate-500 hover:text-white rounded-xl transition-all"
+              className="px-4 py-2 bg-white/5 text-[11px] font-black uppercase text-slate-500 hover:text-white rounded-xl transition-all"
             >
               Batch Import Engine
             </button>
@@ -278,11 +278,11 @@ const AccountingPortal: React.FC<Props> = ({
                   </div>
                   <div className="flex items-center gap-2 mt-4">
                     {kpi.trend !== null && (
-                      <span className="text-[9px] font-black text-white px-2 py-1 bg-white/5 rounded-lg">
+                      <span className="text-[11px] font-black text-white px-2 py-1 bg-white/5 rounded-lg">
                         {kpi.trend}
                       </span>
                     )}
-                    <span className="text-[9px] font-bold text-slate-500 uppercase">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase">
                       {kpi.sub}
                     </span>
                   </div>
@@ -308,19 +308,19 @@ const AccountingPortal: React.FC<Props> = ({
                   <table className="w-full text-left">
                     <thead className="bg-black/20 border-b border-white/5">
                       <tr>
-                        <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                        <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                           Load Details
                         </th>
-                        <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                        <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                           Revenue
                         </th>
-                        <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                        <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                           Costs
                         </th>
-                        <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase text-right">
+                        <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase text-right">
                           Margin
                         </th>
-                        <th className="px-6 py-4 text-[9px] font-black text-slate-600 uppercase">
+                        <th className="px-6 py-4 text-[11px] font-black text-slate-600 uppercase">
                           Status
                         </th>
                       </tr>
@@ -352,7 +352,7 @@ const AccountingPortal: React.FC<Props> = ({
                                 (load.carrierRate || 0) - (load.driverPay || 0)
                               ).toLocaleString()}
                             </div>
-                            <div className="text-[9px] text-emerald-500/50 font-black">
+                            <div className="text-[11px] text-emerald-500/50 font-black">
                               {load.carrierRate
                                 ? Math.round(
                                     ((load.carrierRate -
@@ -365,7 +365,7 @@ const AccountingPortal: React.FC<Props> = ({
                             </div>
                           </td>
                           <td className="px-6 py-5">
-                            <span className="px-3 py-1 bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[8px] font-black uppercase">
+                            <span className="px-3 py-1 bg-emerald-600/10 text-emerald-500 border border-emerald-500/20 rounded-lg text-[10px] font-black uppercase">
                               {load.financialStatus || "Unbilled"}
                             </span>
                           </td>
@@ -457,7 +457,7 @@ const AccountingPortal: React.FC<Props> = ({
                             {users.find((u) => u.id === inv.customerId)?.name ||
                               "Unknown Customer"}
                           </div>
-                          <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                          <div className="text-[11px] text-slate-500 font-bold uppercase mt-1">
                             Ref: INV-{inv.invoiceNumber}
                           </div>
                         </td>
@@ -477,7 +477,7 @@ const AccountingPortal: React.FC<Props> = ({
                                     ? "61-90 Days"
                                     : "90+ Days Overdue"}
                             </div>
-                            <div className="text-[8px] text-slate-600 font-bold uppercase">
+                            <div className="text-[10px] text-slate-600 font-bold uppercase">
                               Issued {inv.invoiceDate}
                             </div>
                           </div>
@@ -487,7 +487,7 @@ const AccountingPortal: React.FC<Props> = ({
                         </td>
                         <td className="px-8 py-6">
                           <span
-                            className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase border ${inv.status === "Paid" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : inv.status === "Disputed" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"}`}
+                            className={`px-4 py-1.5 rounded-xl text-[11px] font-black uppercase border ${inv.status === "Paid" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : inv.status === "Disputed" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-blue-500/10 text-blue-500 border-blue-500/20"}`}
                           >
                             {inv.status}
                           </span>
@@ -499,7 +499,7 @@ const AccountingPortal: React.FC<Props> = ({
                     <tr>
                       <td
                         colSpan={6}
-                        className="px-8 py-20 text-center text-slate-700 font-black uppercase tracking-widest italic opacity-50"
+                        className="px-8 py-20 text-center text-slate-500 font-black uppercase tracking-widest italic opacity-50"
                       >
                         No outstanding invoices found.
                       </td>
@@ -527,7 +527,7 @@ const AccountingPortal: React.FC<Props> = ({
                   onClick={() =>
                     exportToExcel(bills, "Accounts_Payable_Report")
                   }
-                  className="px-4 py-3 bg-white/5 text-slate-400 rounded-xl text-[9px] font-black uppercase flex items-center gap-2"
+                  className="px-4 py-3 bg-white/5 text-slate-400 rounded-xl text-[11px] font-black uppercase flex items-center gap-2"
                 >
                   <FileSpreadsheet className="w-4 h-4" /> Excel
                 </button>
@@ -571,7 +571,7 @@ const AccountingPortal: React.FC<Props> = ({
                         <div className="font-black text-white uppercase">
                           {bill.vendorId || "Carrier/Vendor"}
                         </div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                        <div className="text-[11px] text-slate-500 font-bold uppercase mt-1">
                           ID: {bill.id.slice(0, 8)}
                         </div>
                       </td>
@@ -579,7 +579,7 @@ const AccountingPortal: React.FC<Props> = ({
                         <div className="text-[11px] font-black text-slate-300 uppercase">
                           {bill.description || "Service/Fuel Charge"}
                         </div>
-                        <div className="text-[9px] text-slate-500 font-bold uppercase mt-1">
+                        <div className="text-[11px] text-slate-500 font-bold uppercase mt-1">
                           Due {bill.dueDate}
                         </div>
                       </td>
@@ -589,14 +589,14 @@ const AccountingPortal: React.FC<Props> = ({
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
                           <Clock className="w-3.5 h-3.5 text-slate-600" />
-                          <span className="text-[9px] text-slate-500 font-bold uppercase">
+                          <span className="text-[11px] text-slate-500 font-bold uppercase">
                             Due {bill.dueDate}
                           </span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
                         <span
-                          className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase border ${bill.status === "Approved" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"}`}
+                          className={`px-4 py-1.5 rounded-xl text-[11px] font-black uppercase border ${bill.status === "Approved" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-orange-500/10 text-orange-500 border-orange-500/20"}`}
                         >
                           {bill.status}
                         </span>
@@ -607,7 +607,7 @@ const AccountingPortal: React.FC<Props> = ({
                     <tr>
                       <td
                         colSpan={5}
-                        className="px-8 py-20 text-center text-slate-700 font-black uppercase tracking-widest italic opacity-50"
+                        className="px-8 py-20 text-center text-slate-500 font-black uppercase tracking-widest italic opacity-50"
                       >
                         No pending bills found.
                       </td>
@@ -650,7 +650,7 @@ const AccountingPortal: React.FC<Props> = ({
                   <div className="text-[10px] font-black text-slate-600 uppercase tracking-widest">
                     No audit events recorded yet
                   </div>
-                  <p className="text-[9px] text-slate-700 mt-2">
+                  <p className="text-[11px] text-slate-500 mt-2">
                     Audit entries will appear here as financial operations are
                     performed.
                   </p>

@@ -18,7 +18,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
 }) => {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-      <div className="text-slate-700" aria-hidden="true">
+      <div className="text-slate-500" aria-hidden="true">
         {icon}
       </div>
       <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest">

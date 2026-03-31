@@ -1415,7 +1415,7 @@ const IntelligenceHub: React.FC<{
             </div>
             <div className="h-8 w-px bg-white/5" />
             <div className="flex flex-col">
-              <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+              <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
                 Workspace
               </span>
               <span className="text-sm font-black text-white uppercase">
@@ -1439,7 +1439,7 @@ const IntelligenceHub: React.FC<{
                 {searchResults.length > 0 && (
                   <div className="absolute top-full left-0 right-0 mt-2 bg-[#0f172a] border border-white/10 rounded-2xl shadow-2xl z-[500] overflow-hidden animate-in fade-in slide-in-from-top-2">
                     <div className="p-3 border-b border-white/5 bg-slate-900/50">
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                      <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
                         Global Intelligence Results
                       </span>
                     </div>
@@ -1466,7 +1466,7 @@ const IntelligenceHub: React.FC<{
                               <div className="text-[11px] font-black text-white uppercase tracking-tight">
                                 {res.label}
                               </div>
-                              <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                 {res.subLabel}
                               </div>
                             </div>
@@ -1475,12 +1475,12 @@ const IntelligenceHub: React.FC<{
                             {res.chips?.map((chip) => (
                               <span
                                 key={chip.label}
-                                className="px-2 py-0.5 bg-slate-900 border border-white/5 text-[7px] font-black text-slate-400 uppercase rounded"
+                                className="px-2 py-0.5 bg-slate-900 border border-white/5 text-[10px] font-black text-slate-400 uppercase rounded"
                               >
                                 {chip.label}
                               </span>
                             ))}
-                            <ChevronRight className="w-3.5 h-3.5 text-slate-700 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
                           </div>
                         </button>
                       ))}
