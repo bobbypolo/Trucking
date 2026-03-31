@@ -17,6 +17,8 @@ import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import { syncInvoiceSchema, syncBillSchema } from "../schemas/quickbooks";
 import {
   getAuthorizationUrl,
   handleCallback,
@@ -94,6 +96,7 @@ router.post(
   "/api/quickbooks/sync-invoice",
   requireAuth,
   requireTenant,
+  validateBody(syncInvoiceSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;
@@ -125,6 +128,7 @@ router.post(
   "/api/quickbooks/sync-bill",
   requireAuth,
   requireTenant,
+  validateBody(syncBillSchema),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const companyId = (req as any).user?.companyId;

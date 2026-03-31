@@ -3,6 +3,13 @@ import type { Request } from "express";
 import { v4 as uuidv4 } from "uuid";
 import { requireAuth } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
+import { validateBody } from "../middleware/validate";
+import {
+  createIncidentSchema,
+  createIncidentActionSchema,
+  patchIncidentSchema,
+  createIncidentChargeSchema,
+} from "../schemas/incident";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
@@ -88,6 +95,7 @@ router.post(
   "/api/incidents",
   requireAuth,
   requireTenant,
+  validateBody(createIncidentSchema),
   async (req: Request, res, next) => {
     const {
       load_id,
@@ -160,6 +168,7 @@ router.post(
   "/api/incidents/:id/actions",
   requireAuth,
   requireTenant,
+  validateBody(createIncidentActionSchema),
   async (req: Request, res, next) => {
     const { actor_name, action, notes, attachments } = req.body;
     const incidentId = req.params.id;
@@ -201,6 +210,7 @@ router.patch(
   "/api/incidents/:id",
   requireAuth,
   requireTenant,
+  validateBody(patchIncidentSchema),
   async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const incidentId = req.params.id;
@@ -251,6 +261,7 @@ router.post(
   "/api/incidents/:id/charges",
   requireAuth,
   requireTenant,
+  validateBody(createIncidentChargeSchema),
   async (req: Request, res, next) => {
     const {
       category,
