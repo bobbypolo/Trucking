@@ -69,10 +69,7 @@ interface ProviderFormState {
 // Constants
 // ---------------------------------------------------------------------------
 
-const SUPPORTED_PROVIDERS: ProviderName[] = [
-  "Samsara",
-  "Generic Webhook",
-];
+const SUPPORTED_PROVIDERS: ProviderName[] = ["Samsara", "Generic Webhook"];
 
 const DEFAULT_FORM: ProviderFormState = {
   apiToken: "",
@@ -97,10 +94,15 @@ function ProviderIcon({ name }: { name: ProviderName }) {
   );
 }
 
-function formatProviderDisplayName(name: string | undefined): ProviderName | string {
+function formatProviderDisplayName(
+  name: string | undefined,
+): ProviderName | string {
   if (!name) return "";
 
-  const normalized = name.toLowerCase().replace(/[_\s]+/g, " ").trim();
+  const normalized = name
+    .toLowerCase()
+    .replace(/[_\s]+/g, " ")
+    .trim();
   if (normalized === "samsara") return "Samsara";
   if (normalized === "webhook" || normalized === "generic webhook") {
     return "Generic Webhook";
@@ -108,9 +110,7 @@ function formatProviderDisplayName(name: string | undefined): ProviderName | str
   return name;
 }
 
-function isSupportedProviderDisplayName(
-  name: string,
-): name is ProviderName {
+function isSupportedProviderDisplayName(name: string): name is ProviderName {
   return name === "Samsara" || name === "Generic Webhook";
 }
 
@@ -182,7 +182,9 @@ export function TelematicsSetup(): React.ReactElement {
       const opts = signal ? { signal } : undefined;
       const [cfgs, maps, liveStatus] = await Promise.all([
         api.get("/tracking/providers", opts) as Promise<ProviderConfig[]>,
-        api.get("/tracking/vehicles/mapping", opts) as Promise<VehicleMapping[]>,
+        api.get("/tracking/vehicles/mapping", opts) as Promise<
+          VehicleMapping[]
+        >,
         api.get("/tracking/live", opts).catch(() => null) as Promise<{
           trackingState?: string;
           providerDisplayName?: string;
@@ -519,7 +521,7 @@ export function TelematicsSetup(): React.ReactElement {
         <p className="font-semibold mb-1">Error loading telematics data</p>
         <p>{error}</p>
         <button
-          onClick={fetchData}
+          onClick={() => fetchData()}
           className="mt-2 px-3 py-1 bg-red-800 hover:bg-red-700 text-red-100 rounded text-xs"
         >
           Retry
@@ -562,31 +564,65 @@ export function TelematicsSetup(): React.ReactElement {
           <div className="bg-slate-900 rounded-lg p-3 text-center">
             {trackingState === "configured-live" ? (
               <>
-                <p data-testid="tracking-status-value" className="text-lg font-bold text-emerald-400">LIVE</p>
+                <p
+                  data-testid="tracking-status-value"
+                  className="text-lg font-bold text-emerald-400"
+                >
+                  LIVE
+                </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  Tracking Status{trackingProvider ? ` (${trackingProvider})` : ""}
+                  Tracking Status
+                  {trackingProvider ? ` (${trackingProvider})` : ""}
                 </p>
               </>
             ) : trackingState === "configured-idle" ? (
               <>
-                <p data-testid="tracking-status-value" className="text-lg font-bold text-amber-400">IDLE</p>
-                <p className="text-xs text-slate-400 mt-1">Tracking Status — No Active Vehicles</p>
+                <p
+                  data-testid="tracking-status-value"
+                  className="text-lg font-bold text-amber-400"
+                >
+                  IDLE
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Tracking Status — No Active Vehicles
+                </p>
               </>
             ) : trackingState === "configured-no-credentials" ? (
               <>
-                <p data-testid="tracking-status-value" className="text-lg font-bold text-amber-400">NO CREDS</p>
-                <p className="text-xs text-slate-400 mt-1">Provider Set Up — Credentials Missing</p>
+                <p
+                  data-testid="tracking-status-value"
+                  className="text-lg font-bold text-amber-400"
+                >
+                  NO CREDS
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Provider Set Up — Credentials Missing
+                </p>
               </>
             ) : trackingState === "provider-error" ? (
               <>
-                <p data-testid="tracking-status-value" className="text-lg font-bold text-red-400">ERROR</p>
-                <p className="text-xs text-slate-400 mt-1">Provider Error — Retrying</p>
+                <p
+                  data-testid="tracking-status-value"
+                  className="text-lg font-bold text-red-400"
+                >
+                  ERROR
+                </p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Provider Error — Retrying
+                </p>
               </>
             ) : (
               <>
-                <p data-testid="tracking-status-value" className="text-lg font-bold text-slate-500">—</p>
+                <p
+                  data-testid="tracking-status-value"
+                  className="text-lg font-bold text-slate-500"
+                >
+                  —
+                </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {configs.length === 0 ? "No Provider Configured" : "Tracking Status"}
+                  {configs.length === 0
+                    ? "No Provider Configured"
+                    : "Tracking Status"}
                 </p>
               </>
             )}
