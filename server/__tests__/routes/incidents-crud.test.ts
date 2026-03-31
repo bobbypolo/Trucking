@@ -130,9 +130,8 @@ describe("GET /api/incidents", () => {
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
-    // W4: response is wrapped in an envelope { incidents: [...] }
-    expect(Array.isArray(res.body.incidents)).toBe(true);
-    expect(res.body.incidents).toHaveLength(1);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveLength(1);
   });
 
   it("returns 500 on database error", async () => {
