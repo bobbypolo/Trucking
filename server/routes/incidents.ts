@@ -77,7 +77,7 @@ router.get(
       // NOTE: timeline/billingItems enrichment via batch queries deferred.
       // Tracked: loadpilot-backend#issue-enrichment — N+1 avoidance, not blocking for production.
       const incidents = await incidentRepository.findByCompany(companyId);
-      res.json({ incidents });
+      res.json(incidents);
     } catch (err) {
       next(err);
     }
@@ -207,10 +207,7 @@ router.patch(
     const patchLog = createRequestLogger(req, "PATCH /api/incidents/:id");
 
     try {
-      const existing = await incidentRepository.findById(
-        incidentId,
-        companyId,
-      );
+      const existing = await incidentRepository.findById(incidentId, companyId);
       if (!existing) {
         return res.status(404).json({ error: "Incident not found" });
       }
