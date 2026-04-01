@@ -117,6 +117,27 @@ export function calculateDistance(
 }
 
 /**
+ * Returns true if the driver's position is within radiusMiles of the facility.
+ * Uses Haversine — no external API call required.
+ *
+ * @param driverLat   - Driver's current latitude
+ * @param driverLng   - Driver's current longitude
+ * @param facilityLat - Facility center latitude (stored on load_leg)
+ * @param facilityLng - Facility center longitude (stored on load_leg)
+ * @param radiusMiles - Geofence radius (default 0.5 miles)
+ */
+export function isWithinGeofence(
+    driverLat: number,
+    driverLng: number,
+    facilityLat: number,
+    facilityLng: number,
+    radiusMiles: number = 0.5
+): boolean {
+    const distance = calculateDistance(driverLat, driverLng, facilityLat, facilityLng);
+    return distance <= radiusMiles;
+}
+
+/**
  * Decodes Google Polyline
  */
 export function decodePolyline(encoded: string): [number, number][] {
