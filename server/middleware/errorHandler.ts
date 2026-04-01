@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { AppError, InternalError } from "../errors/AppError";
 import { createChildLogger } from "../lib/logger";
+import { captureException } from "../lib/sentry";
 
 /**
  * Global Express error-handling middleware.
@@ -45,6 +46,13 @@ export function errorHandler(
     },
     appError.message,
   );
+
+  // Report to Sentry APM (no-op when DSN is not configured)
+  captureException(err instanceof Error ? err : appError, {
+    route: `${_req.method} ${_req.path}`,
+    correlationId: appError.correlation_id,
+    errorCode: appError.error_code,
+  });
 
   const payload = appError.toJSON();
   // Strip internal details from security-sensitive responses
