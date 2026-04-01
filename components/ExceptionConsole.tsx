@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Exception,
   ExceptionType,
@@ -13,6 +13,7 @@ import {
   createException,
 } from "../services/exceptionService";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 import {
   AlertCircle,
   Clock,
@@ -184,6 +185,8 @@ export const ExceptionConsole: React.FC<Props> = ({
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const createModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(createModalRef, showCreateModal, () => setShowCreateModal(false));
   const [createForm, setCreateForm] = useState<{
     type: string;
     severity: number;
@@ -398,7 +401,7 @@ export const ExceptionConsole: React.FC<Props> = ({
 
       {/* ── Create Issue Modal ── */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div ref={createModalRef} className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
               <h2 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-3">

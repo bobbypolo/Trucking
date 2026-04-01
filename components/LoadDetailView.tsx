@@ -49,6 +49,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   load: LoadData;
@@ -104,6 +105,8 @@ export const LoadDetailView: React.FC<Props> = ({
   const [showRateCard, setShowRateCard] = useState(false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
   const settlementRef = useRef<HTMLDivElement>(null);
+  const detailOverlayRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(detailOverlayRef, true, onClose);
   const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
@@ -302,6 +305,7 @@ export const LoadDetailView: React.FC<Props> = ({
 
   return (
     <div
+      ref={detailOverlayRef}
       className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500"
       data-testid="team2-load-detail-view"
     >

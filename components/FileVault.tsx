@@ -48,6 +48,7 @@ import {
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   currentUser: UserType;
@@ -72,6 +73,8 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
   const [selectedDocType, setSelectedDocType] = useState<VaultDocType>("BOL");
   const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(uploadModalRef, showUploadModal, () => setShowUploadModal(false));
 
   const resetUploadState = useCallback(() => {
     setSelectedFile(null);
@@ -518,6 +521,7 @@ export const FileVault: React.FC<Props> = ({ currentUser, loads }) => {
       {/* UPLOAD MODAL */}
       {showUploadModal && (
         <div
+          ref={uploadModalRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           data-testid="upload-modal"
         >

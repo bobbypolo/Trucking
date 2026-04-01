@@ -14,6 +14,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { EmptyState } from "./EmptyState";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   loads: LoadData[];
@@ -259,6 +260,8 @@ export const CalendarView: React.FC<Props> = ({
   // Refs for scrolling
   const containerRef = useRef<HTMLDivElement>(null);
   const monthRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(datePickerRef, showDatePicker, () => setShowDatePicker(false));
 
   // Date Picker State
   const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
@@ -346,7 +349,7 @@ export const CalendarView: React.FC<Props> = ({
     >
       {/* Date Picker Modal */}
       {showDatePicker && (
-        <div className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in">
+        <div ref={datePickerRef} className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-white font-bold flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-blue-400" /> Jump to Date
