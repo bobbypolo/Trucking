@@ -17,103 +17,116 @@ import { loadService } from "../services/load.service";
 import { LoadStatus } from "../services/load-state-machine";
 import { geocodeStopAddress } from "../services/geocoding.service";
 import { isWithinGeofence } from "../geoUtils";
-import { recordGeofenceEntry, recordBOLScan } from "../services/detentionPipeline";
-import { compareWeights, recordLoadCompletion } from "../services/discrepancyPipeline";
+import {
+  recordGeofenceEntry,
+  recordBOLScan,
+} from "../services/detentionPipeline";
+import {
+  compareWeights,
+  recordLoadCompletion,
+} from "../services/discrepancyPipeline";
+import { exportLoadToBigQuery } from "../services/bigqueryPipeline";
 
 const router = Router();
 
 // Loads — companyId derived from auth context (req.user.tenantId), NOT URL param
 // Supports ?for=schedule to return only loads with valid dates (for CalendarView)
 // Supports ?start=YYYY-MM-DD&end=YYYY-MM-DD for date-range filtering
-router.get("/api/loads", requireAuth, requireTenant, async (req: any, res, next) => {
-  const companyId = req.user.tenantId;
-  const isScheduleQuery = req.query.for === "schedule";
-  const startDate = req.query.start as string | undefined;
-  const endDate = req.query.end as string | undefined;
+router.get(
+  "/api/loads",
+  requireAuth,
+  requireTenant,
+  async (req: any, res, next) => {
+    const companyId = req.user.tenantId;
+    const isScheduleQuery = req.query.for === "schedule";
+    const startDate = req.query.start as string | undefined;
+    const endDate = req.query.end as string | undefined;
 
-  try {
-    // Base query: all non-deleted loads for this tenant
-    let sql = "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
-    const params: any[] = [companyId];
+    try {
+      // Base query: all non-deleted loads for this tenant
+      let sql =
+        "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
+      const params: any[] = [companyId];
 
-    // For schedule queries, only return loads that have a pickup_date
-    if (isScheduleQuery) {
-      sql += " AND pickup_date IS NOT NULL";
+      // For schedule queries, only return loads that have a pickup_date
+      if (isScheduleQuery) {
+        sql += " AND pickup_date IS NOT NULL";
+      }
+
+      // Date-range filter: loads whose pickup_date falls within the range
+      if (startDate) {
+        sql += " AND pickup_date >= ?";
+        params.push(startDate);
+      }
+      if (endDate) {
+        sql += " AND pickup_date <= ?";
+        params.push(endDate);
+      }
+
+      const [rows]: any = await pool.query(sql, params);
+      const settings = await getVisibilitySettings(companyId);
+
+      const enrichedLoads = await Promise.all(
+        rows.map(async (load: any) => {
+          const [legs]: any = await pool.query(
+            "SELECT * FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
+            [load.id],
+          );
+
+          // Derive dropoff_date from the last Dropoff leg for schedule rendering
+          const dropoffLeg = legs
+            .slice()
+            .reverse()
+            .find((leg: any) => leg.type === "Dropoff");
+          const dropoff_date = dropoffLeg?.date || null;
+
+          let loadData = {
+            ...load,
+            legs,
+            // Schedule-critical: expose dropoff_date derived from legs
+            dropoff_date,
+            notificationEmails: load.notification_emails
+              ? typeof load.notification_emails === "string"
+                ? JSON.parse(load.notification_emails)
+                : load.notification_emails
+              : [],
+            gpsHistory: load.gps_history
+              ? typeof load.gps_history === "string"
+                ? JSON.parse(load.gps_history)
+                : load.gps_history
+              : [],
+            podUrls: load.pod_urls
+              ? typeof load.pod_urls === "string"
+                ? JSON.parse(load.pod_urls)
+                : load.pod_urls
+              : [],
+            customerUserId: load.customer_user_id,
+          };
+
+          return loadData;
+        }),
+      );
+
+      // For schedule queries with a date range, also include loads whose
+      // dropoff_date extends into the range (multi-day loads)
+      let result = enrichedLoads;
+      if (isScheduleQuery && startDate && endDate) {
+        result = enrichedLoads.filter((load: any) => {
+          const pickup = load.pickup_date;
+          const dropoff = load.dropoff_date;
+          if (!pickup) return false;
+          // Load is visible if its span [pickup, dropoff||pickup] overlaps [start, end]
+          const effectiveDropoff = dropoff || pickup;
+          return effectiveDropoff >= startDate && pickup <= endDate;
+        });
+      }
+
+      res.json(redactData(result, req.user.role, settings));
+    } catch (err) {
+      next(err);
     }
-
-    // Date-range filter: loads whose pickup_date falls within the range
-    if (startDate) {
-      sql += " AND pickup_date >= ?";
-      params.push(startDate);
-    }
-    if (endDate) {
-      sql += " AND pickup_date <= ?";
-      params.push(endDate);
-    }
-
-    const [rows]: any = await pool.query(sql, params);
-    const settings = await getVisibilitySettings(companyId);
-
-    const enrichedLoads = await Promise.all(
-      rows.map(async (load: any) => {
-        const [legs]: any = await pool.query(
-          "SELECT * FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
-          [load.id],
-        );
-
-        // Derive dropoff_date from the last Dropoff leg for schedule rendering
-        const dropoffLeg = legs
-          .slice()
-          .reverse()
-          .find((leg: any) => leg.type === "Dropoff");
-        const dropoff_date = dropoffLeg?.date || null;
-
-        let loadData = {
-          ...load,
-          legs,
-          // Schedule-critical: expose dropoff_date derived from legs
-          dropoff_date,
-          notificationEmails: load.notification_emails
-            ? typeof load.notification_emails === "string"
-              ? JSON.parse(load.notification_emails)
-              : load.notification_emails
-            : [],
-          gpsHistory: load.gps_history
-            ? typeof load.gps_history === "string"
-              ? JSON.parse(load.gps_history)
-              : load.gps_history
-            : [],
-          podUrls: load.pod_urls
-            ? typeof load.pod_urls === "string"
-              ? JSON.parse(load.pod_urls)
-              : load.pod_urls
-            : [],
-          customerUserId: load.customer_user_id,
-        };
-
-        return loadData;
-      }),
-    );
-
-    // For schedule queries with a date range, also include loads whose
-    // dropoff_date extends into the range (multi-day loads)
-    let result = enrichedLoads;
-    if (isScheduleQuery && startDate && endDate) {
-      result = enrichedLoads.filter((load: any) => {
-        const pickup = load.pickup_date;
-        const dropoff = load.dropoff_date;
-        if (!pickup) return false;
-        // Load is visible if its span [pickup, dropoff||pickup] overlaps [start, end]
-        const effectiveDropoff = dropoff || pickup;
-        return effectiveDropoff >= startDate && pickup <= endDate;
-      });
-    }
-
-    res.json(redactData(result, req.user.role, settings));
-  } catch (err) {
-    next(err);
-  }
-});
+  },
+);
 
 router.post(
   "/api/loads",
@@ -322,12 +335,22 @@ router.patch(
         userId,
       );
 
-      // Pipeline: increment broker load count when load is settled
-      if (status === 'Settled' || status === 'Completed') {
-        const [rows]: any = await pool.query("SELECT customer_id FROM loads WHERE id = ?", [loadId]);
+      // Pipeline: increment broker load count + export to BigQuery when load is settled
+      if (status === "Settled" || status === "Completed") {
+        const [rows]: any = await pool.query(
+          "SELECT customer_id FROM loads WHERE id = ?",
+          [loadId],
+        );
         if (rows[0]?.customer_id) {
-          await recordLoadCompletion(pool, rows[0].customer_id, new Date().toISOString(), null);
+          await recordLoadCompletion(
+            pool,
+            rows[0].customer_id,
+            new Date().toISOString(),
+            null,
+          );
         }
+        // Fire-and-forget: export analytics snapshot to BigQuery (never blocks response)
+        exportLoadToBigQuery(pool, loadId);
       }
 
       res.json(result);
@@ -481,78 +504,104 @@ router.get(
 // PIPELINE: GPS Ping → Geofence Detection
 // ─────────────────────────────────────────────────────────
 router.post("/api/loads/:id/gps-ping", async (req, res) => {
-    const loadId = req.params.id;
-    const { driver_lat, driver_lng, occurred_at } = req.body;
+  const loadId = req.params.id;
+  const { driver_lat, driver_lng, occurred_at } = req.body;
 
-    if (!driver_lat || !driver_lng) {
-        return res.status(400).json({ error: "driver_lat and driver_lng are required" });
-    }
+  if (!driver_lat || !driver_lng) {
+    return res
+      .status(400)
+      .json({ error: "driver_lat and driver_lng are required" });
+  }
 
-    try {
-        const [legs]: any = await pool.query(
-            `SELECT id, latitude, longitude
+  try {
+    const [legs]: any = await pool.query(
+      `SELECT id, latitude, longitude
              FROM load_legs
              WHERE load_id = ? AND latitude IS NOT NULL AND arrived_at IS NULL AND completed = 0
              ORDER BY sequence_order ASC`,
-            [loadId]
+      [loadId],
+    );
+
+    for (const leg of legs) {
+      if (
+        isWithinGeofence(driver_lat, driver_lng, leg.latitude, leg.longitude)
+      ) {
+        await recordGeofenceEntry(
+          pool,
+          leg.id,
+          loadId,
+          driver_lat,
+          driver_lng,
+          occurred_at,
         );
-
-        for (const leg of legs) {
-            if (isWithinGeofence(driver_lat, driver_lng, leg.latitude, leg.longitude)) {
-                await recordGeofenceEntry(pool, leg.id, loadId, driver_lat, driver_lng, occurred_at);
-                return res.json({ geofence_triggered: true, load_leg_id: leg.id });
-            }
-        }
-
-        res.json({ geofence_triggered: false });
-    } catch (error) {
-        console.error("SERVER ERROR [POST /api/loads/gps-ping]:", error);
-        res.status(500).json({ error: "Database error" });
+        return res.json({ geofence_triggered: true, load_leg_id: leg.id });
+      }
     }
+
+    res.json({ geofence_triggered: false });
+  } catch (error) {
+    console.error("SERVER ERROR [POST /api/loads/gps-ping]:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // ─────────────────────────────────────────────────────────
 // PIPELINE: BOL Scan → Detention + Discrepancy Check
 // ─────────────────────────────────────────────────────────
 router.post("/api/loads/:id/bol-scan", async (req, res) => {
-    const loadId = req.params.id;
-    const { load_leg_id, load_number, driver_lat, driver_lng, scanned_weight, scanned_commodity, occurred_at } = req.body;
+  const loadId = req.params.id;
+  const {
+    load_leg_id,
+    load_number,
+    driver_lat,
+    driver_lng,
+    scanned_weight,
+    scanned_commodity,
+    occurred_at,
+  } = req.body;
 
-    if (!load_leg_id) {
-        return res.status(400).json({ error: "load_leg_id is required" });
+  if (!load_leg_id) {
+    return res.status(400).json({ error: "load_leg_id is required" });
+  }
+
+  try {
+    const [loadRows]: any = await pool.query(
+      `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
+      [loadId],
+    );
+
+    if (!loadRows.length)
+      return res.status(404).json({ error: "Load not found" });
+
+    const { customer_id, quoted_weight, quoted_commodity } = loadRows[0];
+
+    const detentionResult = await recordBOLScan(
+      pool,
+      load_leg_id,
+      loadId,
+      load_number || loadId,
+      driver_lat ?? null,
+      driver_lng ?? null,
+      occurred_at,
+    );
+
+    let discrepancyResult = { flagged: false, discrepancyPct: 0 };
+    if (scanned_weight != null) {
+      discrepancyResult = await compareWeights(
+        pool,
+        loadId,
+        quoted_weight ?? 0,
+        scanned_weight,
+        scanned_commodity ?? "",
+        customer_id,
+      );
     }
 
-    try {
-        const [loadRows]: any = await pool.query(
-            `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
-            [loadId]
-        );
-
-        if (!loadRows.length) return res.status(404).json({ error: "Load not found" });
-
-        const { customer_id, quoted_weight, quoted_commodity } = loadRows[0];
-
-        const detentionResult = await recordBOLScan(
-            pool, load_leg_id, loadId, load_number || loadId,
-            driver_lat ?? null, driver_lng ?? null, occurred_at
-        );
-
-        let discrepancyResult = { flagged: false, discrepancyPct: 0 };
-        if (scanned_weight != null) {
-            discrepancyResult = await compareWeights(
-                pool, loadId,
-                quoted_weight ?? 0,
-                scanned_weight,
-                scanned_commodity ?? "",
-                customer_id
-            );
-        }
-
-        res.json({ detention: detentionResult, discrepancy: discrepancyResult });
-    } catch (error) {
-        console.error("SERVER ERROR [POST /api/loads/bol-scan]:", error);
-        res.status(500).json({ error: "Database error" });
-    }
+    res.json({ detention: detentionResult, discrepancy: discrepancyResult });
+  } catch (error) {
+    console.error("SERVER ERROR [POST /api/loads/bol-scan]:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 export default router;
