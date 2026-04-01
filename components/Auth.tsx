@@ -177,6 +177,9 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
 
+  // Email verification notice after signup
+  const [verificationNotice, setVerificationNotice] = useState("");
+
   // Automation Pro (Tier 2) Specific States
   const [expenseCategories, setExpenseCategories] = useState<string[]>([
     "Fuel",
@@ -250,7 +253,9 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
           : "";
       const message = err instanceof Error ? err.message : "";
 
-      if (
+      if (message.includes("verify your email")) {
+        setError(message);
+      } else if (
         code === "auth/wrong-password" ||
         code === "auth/user-not-found" ||
         code === "auth/invalid-credential"
@@ -461,8 +466,9 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
     setIsProcessing(true);
 
     try {
-      const user = await createAccount();
-      onLogin(user);
+      await createAccount();
+      setVerificationNotice("Verification email sent. Check your inbox.");
+      setView("login");
     } catch (e) {
       setError("Signup failed. Please try again.");
     } finally {
@@ -517,11 +523,13 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
         }
       }
 
-      // Stripe not configured or no checkout URL — user already has trial account
-      onLogin(user);
+      // Stripe not configured or no checkout URL — show verification notice
+      setVerificationNotice("Verification email sent. Check your inbox.");
+      setView("login");
     } catch {
-      // Network error or Stripe unavailable — user already has trial account
-      onLogin(user);
+      // Network error or Stripe unavailable — show verification notice
+      setVerificationNotice("Verification email sent. Check your inbox.");
+      setView("login");
     } finally {
       setIsProcessing(false);
     }
@@ -663,6 +671,16 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
                   className="text-red-400 text-xs font-black uppercase tracking-widest"
                 >
                   {error}
+                </p>
+              )}
+              {verificationNotice && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  data-testid="verification-notice"
+                  className="text-green-400 text-xs font-black uppercase tracking-widest"
+                >
+                  {verificationNotice}
                 </p>
               )}
               <button

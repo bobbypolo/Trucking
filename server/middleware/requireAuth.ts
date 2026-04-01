@@ -67,6 +67,17 @@ export async function requireAuth(
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
 
+    // Gate: reject unverified email addresses (skip in test environment)
+    if (!decodedToken.email_verified && process.env.NODE_ENV !== "test") {
+      return next(
+        new AuthError(
+          "Email not verified. Please check your inbox.",
+          {},
+          "AUTH_EMAIL_UNVERIFIED_001",
+        ),
+      );
+    }
+
     // Check if user's tokens have been revoked
     const revoked = await isTokenRevoked(decodedToken.uid);
     if (revoked) {
