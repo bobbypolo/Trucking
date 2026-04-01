@@ -256,8 +256,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/authService.emailVerify.test.ts src/__tests__/components/Auth.emailVerify.test.tsx --reporter=verbose && cd server && npx vitest run __tests__/middleware/email-verification.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-005",

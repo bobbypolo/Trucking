@@ -910,3 +910,10 @@
 - **Files**: 6 component files + focus-trap.test.tsx
 - **Criteria**: 6/6 (R-A11Y-07 through R-A11Y-12)
 - **Summary**: useFocusTrap added to BrokerManager, CalendarView, FileVault, ExceptionConsole, IFTAManager, LoadDetailView. 12 total components now have focus trapping. 10 tests.
+
+## Phase 1: Auth Hardening
+
+### S-004 — PASS (2026-04-01)
+- **Files**: services/authService.ts, server/middleware/requireAuth.ts, components/Auth.tsx, + 3 test files
+- **Criteria**: 10/10 (R-AUTH-01 through R-AUTH-10)
+- **Summary**: sendEmailVerification after both signup paths, emailVerified check in login(), email_verified check in requireAuth (AUTH_EMAIL_UNVERIFIED_001), verification notice in Auth.tsx. 14 tests.
