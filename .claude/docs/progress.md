@@ -917,3 +917,10 @@
 - **Files**: services/authService.ts, server/middleware/requireAuth.ts, components/Auth.tsx, + 3 test files
 - **Criteria**: 10/10 (R-AUTH-01 through R-AUTH-10)
 - **Summary**: sendEmailVerification after both signup paths, emailVerified check in login(), email_verified check in requireAuth (AUTH_EMAIL_UNVERIFIED_001), verification notice in Auth.tsx. 14 tests.
+
+## Phase 3: Team Invitations
+
+### S-008 — PASS (2026-04-01)
+- **Files**: server/migrations/046_invitations.sql, server/schemas/invitation.ts, server/services/invitation.service.ts, server/routes/invitations.ts, server/index.ts, + 2 test files
+- **Criteria**: 11/11 (R-INV-01 through R-INV-11)
+- **Summary**: Invitation table with token UNIQUE, service with create/accept/list/cancel, 4 API endpoints, rate-limited accept (5/15min), email notification on invite. 24 tests.

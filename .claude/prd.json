@@ -516,8 +516,8 @@
       "gateCmds": {
         "unit": "cd server && npx vitest run __tests__/services/invitation.test.ts __tests__/routes/invitations.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-009",
