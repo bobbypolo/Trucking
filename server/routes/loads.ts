@@ -16,6 +16,9 @@ import { createRequestLogger } from "../lib/logger";
 import { loadService } from "../services/load.service";
 import { LoadStatus } from "../services/load-state-machine";
 import { geocodeStopAddress } from "../services/geocoding.service";
+import { isWithinGeofence } from "../geoUtils";
+import { recordGeofenceEntry, recordBOLScan } from "../services/detentionPipeline";
+import { compareWeights, recordLoadCompletion } from "../services/discrepancyPipeline";
 
 const router = Router();
 
@@ -131,6 +134,8 @@ router.post(
       freight_type,
       commodity,
       weight,
+      quoted_weight,
+      quoted_commodity,
       container_number,
       chassis_number,
       bol_number,
@@ -157,7 +162,7 @@ router.post(
     try {
       await connection.beginTransaction();
       await connection.query(
-        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, container_number, chassis_number, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, quoted_weight, quoted_commodity, container_number, chassis_number, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           company_id,
@@ -172,6 +177,8 @@ router.post(
           freight_type,
           commodity,
           weight,
+          quoted_weight ?? weight ?? null,
+          quoted_commodity ?? commodity ?? null,
           container_number,
           chassis_number,
           bol_number,
@@ -314,6 +321,14 @@ router.patch(
         companyId,
         userId,
       );
+
+      // Pipeline: increment broker load count when load is settled
+      if (status === 'Settled' || status === 'Completed') {
+        const [rows]: any = await pool.query("SELECT customer_id FROM loads WHERE id = ?", [loadId]);
+        if (rows[0]?.customer_id) {
+          await recordLoadCompletion(pool, rows[0].customer_id, new Date().toISOString(), null);
+        }
+      }
 
       res.json(result);
     } catch (error) {
@@ -461,5 +476,83 @@ router.get(
     }
   },
 );
+
+// ─────────────────────────────────────────────────────────
+// PIPELINE: GPS Ping → Geofence Detection
+// ─────────────────────────────────────────────────────────
+router.post("/api/loads/:id/gps-ping", async (req, res) => {
+    const loadId = req.params.id;
+    const { driver_lat, driver_lng, occurred_at } = req.body;
+
+    if (!driver_lat || !driver_lng) {
+        return res.status(400).json({ error: "driver_lat and driver_lng are required" });
+    }
+
+    try {
+        const [legs]: any = await pool.query(
+            `SELECT id, latitude, longitude
+             FROM load_legs
+             WHERE load_id = ? AND latitude IS NOT NULL AND arrived_at IS NULL AND completed = 0
+             ORDER BY sequence_order ASC`,
+            [loadId]
+        );
+
+        for (const leg of legs) {
+            if (isWithinGeofence(driver_lat, driver_lng, leg.latitude, leg.longitude)) {
+                await recordGeofenceEntry(pool, leg.id, loadId, driver_lat, driver_lng, occurred_at);
+                return res.json({ geofence_triggered: true, load_leg_id: leg.id });
+            }
+        }
+
+        res.json({ geofence_triggered: false });
+    } catch (error) {
+        console.error("SERVER ERROR [POST /api/loads/gps-ping]:", error);
+        res.status(500).json({ error: "Database error" });
+    }
+});
+
+// ─────────────────────────────────────────────────────────
+// PIPELINE: BOL Scan → Detention + Discrepancy Check
+// ─────────────────────────────────────────────────────────
+router.post("/api/loads/:id/bol-scan", async (req, res) => {
+    const loadId = req.params.id;
+    const { load_leg_id, load_number, driver_lat, driver_lng, scanned_weight, scanned_commodity, occurred_at } = req.body;
+
+    if (!load_leg_id) {
+        return res.status(400).json({ error: "load_leg_id is required" });
+    }
+
+    try {
+        const [loadRows]: any = await pool.query(
+            `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
+            [loadId]
+        );
+
+        if (!loadRows.length) return res.status(404).json({ error: "Load not found" });
+
+        const { customer_id, quoted_weight, quoted_commodity } = loadRows[0];
+
+        const detentionResult = await recordBOLScan(
+            pool, load_leg_id, loadId, load_number || loadId,
+            driver_lat ?? null, driver_lng ?? null, occurred_at
+        );
+
+        let discrepancyResult = { flagged: false, discrepancyPct: 0 };
+        if (scanned_weight != null) {
+            discrepancyResult = await compareWeights(
+                pool, loadId,
+                quoted_weight ?? 0,
+                scanned_weight,
+                scanned_commodity ?? "",
+                customer_id
+            );
+        }
+
+        res.json({ detention: detentionResult, discrepancy: discrepancyResult });
+    } catch (error) {
+        console.error("SERVER ERROR [POST /api/loads/bol-scan]:", error);
+        res.status(500).json({ error: "Database error" });
+    }
+});
 
 export default router;

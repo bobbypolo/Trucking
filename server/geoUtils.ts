@@ -47,6 +47,16 @@ export function detectState(lat: number, lng: number): string {
     return 'UNK';
 }
 
+export function isWithinGeofence(
+    driverLat: number,
+    driverLng: number,
+    facilityLat: number,
+    facilityLng: number,
+    radiusMiles: number = 0.5
+): boolean {
+    return calculateDistance(driverLat, driverLng, facilityLat, facilityLng) <= radiusMiles;
+}
+
 export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 3958.8;
     const dLat = (lat2 - lat1) * Math.PI / 180;
