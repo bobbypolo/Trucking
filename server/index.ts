@@ -58,7 +58,15 @@ const app = express();
 const port = process.env.PORT || 5000;
 
 app.set("trust proxy", 1); // Trust proxy headers behind reverse proxies
-app.use(helmet());
+app.use(
+  helmet({
+    hsts: {
+      maxAge: 31536000, // 1 year
+      includeSubDomains: true,
+      preload: true,
+    },
+  }),
+);
 app.use(compression());
 app.use(cors({ origin: getCorsOrigin(), credentials: true }));
 app.use(stripeRouter); // BEFORE express.json() so webhook receives raw body
