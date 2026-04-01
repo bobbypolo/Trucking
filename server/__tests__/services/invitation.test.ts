@@ -51,8 +51,9 @@ describe("invitation.service", () => {
     mockSendEmail.mockResolvedValue({ success: true });
   });
 
-  // Tests R-INV-02
+  // Tests R-INV-02, R-INV-10
   describe("createInvitation", () => {
+    // Tests R-INV-02
     it("inserts a new invitation into the database and returns it", async () => {
       mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, undefined]);
 
@@ -105,7 +106,7 @@ describe("invitation.service", () => {
     });
   });
 
-  // Tests R-INV-02, R-INV-06
+  // Tests R-INV-06, R-INV-07, R-INV-08, R-INV-10
   describe("acceptInvitation", () => {
     const mockConnRelease = vi.fn();
     const mockConnCommit = vi.fn();
@@ -128,7 +129,7 @@ describe("invitation.service", () => {
       });
     });
 
-    // Tests R-INV-06
+    // Tests R-INV-06, R-INV-10
     it("creates a user with the correct company_id from the invitation", async () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
       mockQuery.mockResolvedValueOnce([
@@ -167,7 +168,7 @@ describe("invitation.service", () => {
       expect(userInsertCall![1][1]).toBe("company-xyz");
     });
 
-    // Tests R-INV-07
+    // Tests R-INV-07, R-INV-10
     it("returns error for expired invitation", async () => {
       const pastDate = new Date(Date.now() - 86400000).toISOString();
       mockQuery
@@ -202,7 +203,7 @@ describe("invitation.service", () => {
       expect(caughtErr!.code).toBe("INVITATION_EXPIRED");
     });
 
-    // Tests R-INV-08
+    // Tests R-INV-08, R-INV-10
     it("returns error for already-accepted invitation", async () => {
       mockQuery.mockResolvedValueOnce([
         [

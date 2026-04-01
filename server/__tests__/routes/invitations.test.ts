@@ -86,7 +86,7 @@ function buildApp() {
   return app;
 }
 
-// Tests R-INV-03, R-INV-04, R-INV-05, R-INV-07, R-INV-08, R-INV-09
+// Tests R-INV-01, R-INV-02, R-INV-03, R-INV-04, R-INV-05, R-INV-06, R-INV-07, R-INV-08, R-INV-09, R-INV-10, R-INV-11
 describe("invitations routes", () => {
   let app: ReturnType<typeof buildApp>;
 
@@ -97,8 +97,9 @@ describe("invitations routes", () => {
     app = buildApp();
   });
 
-  // Tests R-INV-03, R-INV-04
+  // Tests R-INV-03, R-INV-04, R-INV-11
   describe("POST /api/invitations", () => {
+    // Tests R-INV-03, R-INV-04, R-INV-11
     it("creates an invitation with valid body and returns 201", async () => {
       mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, undefined]);
 
@@ -114,7 +115,7 @@ describe("invitations routes", () => {
       expect(res.body.invitation.role).toBe("dispatcher");
     });
 
-    // Tests R-INV-04 — validateBody(createInvitationSchema)
+    // Tests R-INV-04, R-INV-11 — validateBody(createInvitationSchema)
     it("rejects missing email with 400 validation error", async () => {
       const res = await request(app)
         .post("/api/invitations")
@@ -152,8 +153,9 @@ describe("invitations routes", () => {
     });
   });
 
-  // Tests R-INV-03
+  // Tests R-INV-03, R-INV-11
   describe("GET /api/invitations", () => {
+    // Tests R-INV-03, R-INV-11
     it("lists invitations for the authenticated tenant", async () => {
       const mockRows = [
         {
@@ -176,7 +178,7 @@ describe("invitations routes", () => {
     });
   });
 
-  // Tests R-INV-03, R-INV-05, R-INV-07, R-INV-08
+  // Tests R-INV-03, R-INV-05, R-INV-07, R-INV-08, R-INV-11
   describe("POST /api/invitations/accept", () => {
     const mockConnRelease = vi.fn();
     const mockConnCommit = vi.fn();
@@ -199,6 +201,7 @@ describe("invitations routes", () => {
       });
     });
 
+    // Tests R-INV-05, R-INV-11
     it("accepts a valid invitation and returns user info", async () => {
       const futureDate = new Date(Date.now() + 86400000).toISOString();
       mockQuery.mockResolvedValueOnce([
@@ -235,7 +238,7 @@ describe("invitations routes", () => {
       expect(res.body.role).toBe("dispatcher");
     });
 
-    // Tests R-INV-07 — expired invitation returns 410 Gone
+    // Tests R-INV-07, R-INV-11 — expired invitation returns 410 Gone
     it("returns 410 Gone for expired invitation", async () => {
       const pastDate = new Date(Date.now() - 86400000).toISOString();
       mockQuery
@@ -269,7 +272,7 @@ describe("invitations routes", () => {
       expect(res.body.message).toContain("expired");
     });
 
-    // Tests R-INV-08 — already accepted returns 409 Conflict
+    // Tests R-INV-08, R-INV-11 — already accepted returns 409 Conflict
     it("returns 409 Conflict for already-accepted invitation", async () => {
       mockQuery.mockResolvedValueOnce([
         [
@@ -317,8 +320,9 @@ describe("invitations routes", () => {
     });
   });
 
-  // Tests R-INV-03
+  // Tests R-INV-03, R-INV-11
   describe("DELETE /api/invitations/:id", () => {
+    // Tests R-INV-03, R-INV-11
     it("cancels a pending invitation and returns 200", async () => {
       mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, undefined]);
 

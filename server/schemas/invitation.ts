@@ -8,9 +8,7 @@ export const createInvitationSchema = z.object({
     .string()
     .min(1, "email is required")
     .email("Invalid email address"),
-  role: z.enum(["admin", "dispatcher", "driver", "accountant"], {
-    errorMap: () => ({ message: "role must be one of: admin, dispatcher, driver, accountant" }),
-  }),
+  role: z.enum(["admin", "dispatcher", "driver", "accountant"]),
 });
 
 /**
