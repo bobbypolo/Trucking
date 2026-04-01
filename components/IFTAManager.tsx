@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Fuel,
   Map,
@@ -32,6 +32,7 @@ import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   loads: LoadData[];
@@ -45,6 +46,8 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showAddMileage, setShowAddMileage] = useState(false);
+  const mileageModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(mileageModalRef, showAddMileage, () => setShowAddMileage(false));
   const [newEntry, setNewEntry] = useState<Partial<MileageEntry>>({
     date: new Date().toISOString().split("T")[0],
     stateCode: "",
@@ -589,7 +592,7 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
 
       {/* MODAL */}
       {showAddMileage && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10">
+        <div ref={mileageModalRef} className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10">
           <div className="bg-[#020617] border border-white/10 w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl space-y-8">
             <div>
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
