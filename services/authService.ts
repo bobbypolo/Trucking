@@ -21,6 +21,7 @@ import { auth, DEMO_MODE } from "./firebase";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signOut,
   onAuthStateChanged,
   getIdToken,
@@ -462,6 +463,13 @@ export const login = async (
       password || "",
     );
     const fbUser = userCredential.user;
+
+    // Gate: reject unverified email addresses
+    if (!fbUser.emailVerified) {
+      await signOut(auth);
+      throw new Error("Please verify your email before logging in.");
+    }
+
     _idToken = await getIdToken(fbUser);
     const res = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
@@ -486,6 +494,10 @@ export const login = async (
       return hydratedUser;
     }
   } catch (error) {
+    // Re-throw email verification errors so the UI can display them
+    if (error instanceof Error && error.message.includes("verify your email")) {
+      throw error;
+    }
     // Fail-closed: never fall back to local/fixture credentials.
     // Firebase authentication is the only accepted auth path.
     console.error("[authService] Firebase sign-in failed:", error);
@@ -629,6 +641,7 @@ export const registerCompany = async (
         password || _devFallbackPassword,
       );
       newUser.firebaseUid = credential.user.uid;
+      await sendEmailVerification(credential.user);
     } catch (error) {
       console.warn("[authService] Firebase user creation failed:", error);
     }
@@ -866,6 +879,7 @@ export const addDriver = async (
         password || _devFallbackPassword,
       );
       newUser.firebaseUid = credential.user.uid;
+      await sendEmailVerification(credential.user);
     } catch (error: any) {
       if (error.code === "auth/email-already-in-use") {
         // User already exists in Firebase Auth — skip creation silently
