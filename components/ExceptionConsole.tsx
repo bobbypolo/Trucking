@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Exception,
   ExceptionType,
@@ -186,7 +192,9 @@ export const ExceptionConsole: React.FC<Props> = ({
   const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const createModalRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(createModalRef, showCreateModal, () => setShowCreateModal(false));
+  useFocusTrap(createModalRef, showCreateModal, () =>
+    setShowCreateModal(false),
+  );
   const [createForm, setCreateForm] = useState<{
     type: string;
     severity: number;
@@ -401,7 +409,10 @@ export const ExceptionConsole: React.FC<Props> = ({
 
       {/* ── Create Issue Modal ── */}
       {showCreateModal && (
-        <div ref={createModalRef} className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+          ref={createModalRef}
+          className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4"
+        >
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
               <h2 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-3">
@@ -643,7 +654,10 @@ export const ExceptionConsole: React.FC<Props> = ({
       </div>
 
       {/* ── Main Content ── */}
-      <div className="flex-1 overflow-y-auto no-scrollbar" data-testid="issues-console">
+      <div
+        className="flex-1 overflow-y-auto no-scrollbar"
+        data-testid="issues-console"
+      >
         {/* Safety remains a filter inside the unified Issues & Alerts workflow. */}
         {false && activeCategory === "safety" ? (
           <div className="flex flex-col h-full">
@@ -802,7 +816,10 @@ export const ExceptionConsole: React.FC<Props> = ({
                             </div>
                           </button>
                           {/* Linked-record drilldown chips */}
-                          <div className="flex flex-wrap gap-1.5 mt-1.5" data-testid="linked-record-chips">
+                          <div
+                            className="flex flex-wrap gap-1.5 mt-1.5"
+                            data-testid="linked-record-chips"
+                          >
                             {Object.entries(parseExceptionLinks(ex.links)).map(
                               ([key, value]) => {
                                 const info = getLinkInfo(key);
@@ -851,6 +868,9 @@ export const ExceptionConsole: React.FC<Props> = ({
                             </div>
                             <div className="flex items-center gap-1.5">
                               <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                              <span className="sr-only">
+                                SLA warning active
+                              </span>
                               <div className="text-[11px] font-black text-red-500 uppercase">
                                 SLA: <SLACell dueAt={ex.slaDueAt} />
                               </div>
@@ -957,7 +977,10 @@ export const ExceptionConsole: React.FC<Props> = ({
                     </div>
                     {/* Linked-record drilldown chips (grid view) */}
                     {Object.keys(parseExceptionLinks(ex.links)).length > 0 && (
-                      <div className="flex flex-wrap gap-1.5" data-testid="linked-record-chips">
+                      <div
+                        className="flex flex-wrap gap-1.5"
+                        data-testid="linked-record-chips"
+                      >
                         {Object.entries(parseExceptionLinks(ex.links)).map(
                           ([key, value]) => {
                             const info = getLinkInfo(key);
@@ -1015,24 +1038,28 @@ export const ExceptionConsole: React.FC<Props> = ({
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-red-500" />
+            <span className="sr-only">Critical severity</span>
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               {criticalCount} Critical
             </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-orange-500" />
+            <span className="sr-only">High priority severity</span>
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               {highCount} High Priority
             </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-red-400" />
+            <span className="sr-only">Safety issue indicator</span>
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               {safetyCount} Safety
             </span>
           </div>
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <span className="sr-only">Maintenance issue indicator</span>
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
               {maintenanceCount} Maintenance
             </span>
