@@ -48,7 +48,10 @@ const isLoadOnDate = (load: LoadData, dateKey: string): boolean => {
  * Returns null for single-day loads or loads not on this date.
  */
 type SpanPosition = "start" | "middle" | "end";
-const getSpanPosition = (load: LoadData, dateKey: string): SpanPosition | null => {
+const getSpanPosition = (
+  load: LoadData,
+  dateKey: string,
+): SpanPosition | null => {
   const pickup = load.pickupDate;
   const dropoff = load.dropoffDate;
   if (!dropoff || dropoff === pickup) return null;
@@ -124,7 +127,9 @@ const DayCell: React.FC<DayCellProps> = ({
               e.stopPropagation();
               onEdit(load);
             }}
-            {...(isMultiDay ? { "data-multiday": "true", "data-span-position": spanPosition } : {})}
+            {...(isMultiDay
+              ? { "data-multiday": "true", "data-span-position": spanPosition }
+              : {})}
             className={`
                         cursor-move select-none text-[10px] p-1.5 rounded border shadow-sm transition-transform hover:scale-[1.02]
                         flex items-start gap-1 relative overflow-hidden group/card
@@ -149,7 +154,8 @@ const DayCell: React.FC<DayCellProps> = ({
                 <span>#{load.loadNumber}</span>
               </div>
               <div className="truncate opacity-80 flex items-center gap-1 mt-0.5">
-                <MapPin className="w-2.5 h-2.5 shrink-0" /> {load.dropoff?.city ?? ""}
+                <MapPin className="w-2.5 h-2.5 shrink-0" />{" "}
+                {load.dropoff?.city ?? ""}
               </div>
             </div>
           </div>
@@ -349,19 +355,28 @@ export const CalendarView: React.FC<Props> = ({
     >
       {/* Date Picker Modal */}
       {showDatePicker && (
-        <div ref={datePickerRef} className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in">
+        <div
+          ref={datePickerRef}
+          className="absolute top-16 left-4 z-50 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl p-4 w-80 animate-fade-in"
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-white font-bold flex items-center gap-2">
               <CalendarIcon className="w-4 h-4 text-blue-400" /> Jump to Date
             </h2>
-            <button onClick={() => setShowDatePicker(false)} aria-label="Close date picker">
+            <button
+              onClick={() => setShowDatePicker(false)}
+              aria-label="Close date picker"
+            >
               <X className="w-4 h-4 text-slate-400 hover:text-white" />
             </button>
           </div>
 
           {/* Manual Input */}
           <div className="mb-4 bg-slate-900/50 p-2 rounded border border-slate-700">
-            <label htmlFor="calendar-manual-date" className="text-[10px] text-slate-400 mb-1 block uppercase font-bold">
+            <label
+              htmlFor="calendar-manual-date"
+              className="text-[10px] text-slate-400 mb-1 block uppercase font-bold"
+            >
               Type Specific Date
             </label>
             <div className="flex gap-2">
@@ -465,6 +480,9 @@ export const CalendarView: React.FC<Props> = ({
                 <div
                   className={`w-2 h-2 rounded-full ${selectedDriverId === u.id ? "bg-white" : "bg-slate-500"}`}
                 ></div>
+                <span className="sr-only">
+                  {selectedDriverId === u.id ? "Selected" : "Not selected"}
+                </span>
                 <span className="truncate">{u.name}</span>
               </button>
             ))}
