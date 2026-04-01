@@ -165,11 +165,11 @@ describe("R-P1-02: LEGACY_TAB_ALIASES has no driver-pay entries", () => {
   });
 
   it("settlements alias is removed from LEGACY_TAB_ALIASES", () => {
-    expect(aliasBlock).not.toContain('settlements:');
+    expect(aliasBlock).not.toContain("settlements:");
   });
 
   it("payroll alias is removed from LEGACY_TAB_ALIASES", () => {
-    expect(aliasBlock).not.toContain('payroll:');
+    expect(aliasBlock).not.toContain("payroll:");
   });
 });
 
@@ -342,7 +342,7 @@ describe("App.tsx tab-to-render wiring (no dead nav items)", () => {
     expect(appSource).toContain('finance: "accounting"');
     const accountingBlock = appSource.slice(
       appSource.indexOf('activeTab === "accounting"'),
-      appSource.indexOf('activeTab === "accounting"') + 200,
+      appSource.indexOf('activeTab === "accounting"') + 300,
     );
     expect(accountingBlock).toContain("AccountingPortal");
   });

@@ -49,6 +49,7 @@ import { useCurrentUser } from "../hooks/useCurrentUser";
 import { v4 as uuidv4 } from "uuid";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   load: LoadData;
@@ -104,6 +105,8 @@ export const LoadDetailView: React.FC<Props> = ({
   const [showRateCard, setShowRateCard] = useState(false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
   const settlementRef = useRef<HTMLDivElement>(null);
+  const detailOverlayRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(detailOverlayRef, true, onClose);
   const hasGoogleMapsKey = Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY);
 
   useEffect(() => {
@@ -302,6 +305,7 @@ export const LoadDetailView: React.FC<Props> = ({
 
   return (
     <div
+      ref={detailOverlayRef}
       className="fixed inset-0 z-[1000] bg-[#050810]/95 backdrop-blur-2xl flex items-center justify-center p-4 md:p-8 animate-in fade-in duration-500"
       data-testid="team2-load-detail-view"
     >
@@ -392,6 +396,7 @@ export const LoadDetailView: React.FC<Props> = ({
             <button
               onClick={handleToggleLock}
               disabled={isLocking}
+              aria-label={localIsLocked ? "Unlock load" : "Lock load"}
               className={`flex items-center gap-2 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all disabled:opacity-50 ${localIsLocked ? "bg-red-900/20 border-red-500/30 text-red-500" : "bg-green-900/20 border-green-500/30 text-green-500"}`}
             >
               {localIsLocked ? (
@@ -476,7 +481,9 @@ export const LoadDetailView: React.FC<Props> = ({
                     Sales Contact
                   </label>
                   <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-slate-500 uppercase shadow-inner">
-                    {load.customerContact?.name || broker?.name || "-- UNASSIGNED --"}
+                    {load.customerContact?.name ||
+                      broker?.name ||
+                      "-- UNASSIGNED --"}
                   </div>
                 </div>
               </div>
@@ -485,8 +492,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   Dispatch Notes (Internal)
                 </label>
                 <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-4 text-xs text-slate-400 italic shadow-inner h-16 overflow-y-auto no-scrollbar">
-                  {load.dispatchNotes ||
-                    "No dispatch notes recorded."}
+                  {load.dispatchNotes || "No dispatch notes recorded."}
                 </div>
               </div>
             </div>
@@ -742,6 +748,7 @@ export const LoadDetailView: React.FC<Props> = ({
                   </h4>
                   <button
                     onClick={() => setAddingStopType(null)}
+                    aria-label="Close add stop form"
                     className="text-slate-500 hover:text-white transition-colors"
                   >
                     <X className="w-4 h-4" />
@@ -1098,6 +1105,7 @@ export const LoadDetailView: React.FC<Props> = ({
                 </h4>
                 <button
                   onClick={() => setShowDocuments(false)}
+                  aria-label="Close documents panel"
                   className="text-slate-500 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />

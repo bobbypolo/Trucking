@@ -185,6 +185,27 @@ export const EditLoadForm: React.FC<Props> = ({
     if (!formData.status) {
       errors.push("Load status is required");
     }
+    if ((formData.carrierRate ?? 0) < 0) {
+      errors.push("Carrier rate cannot be negative");
+    }
+    if ((formData.driverPay ?? 0) < 0) {
+      errors.push("Driver pay cannot be negative");
+    }
+    const pickupDates = pickups
+      .map((l) => l.date)
+      .filter(Boolean)
+      .sort();
+    const dropoffDates = dropoffs
+      .map((l) => l.date)
+      .filter(Boolean)
+      .sort();
+    if (pickupDates.length > 0 && dropoffDates.length > 0) {
+      const firstPickup = pickupDates[0];
+      const lastDropoff = dropoffDates[dropoffDates.length - 1];
+      if (firstPickup > lastDropoff) {
+        errors.push("Pickup date must be before dropoff date");
+      }
+    }
     return errors;
   };
 
@@ -647,6 +668,7 @@ export const EditLoadForm: React.FC<Props> = ({
                   id="elfGrossPayRevenue"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-white font-mono font-bold"
                   type="number"
+                  min="0"
                   value={formData.carrierRate}
                   onChange={(e) =>
                     setFormData({
@@ -676,6 +698,7 @@ export const EditLoadForm: React.FC<Props> = ({
                   id="elfCarrierPayExp"
                   className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg pl-8 pr-3 py-2 text-sm text-white font-mono font-bold"
                   type="number"
+                  min="0"
                   value={formData.driverPay}
                   onChange={(e) =>
                     setFormData({

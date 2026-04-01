@@ -260,7 +260,7 @@ describe("S-401: Auth Stripe Checkout", () => {
       ).toBeInTheDocument();
     });
 
-    it("bypasses payment and logs in with trial status", async () => {
+    it("bypasses payment and shows verification notice on trial signup", async () => {
       const user = await goToPayment();
       await user.click(
         screen.getByRole("button", { name: /start free trial/i }),
@@ -270,8 +270,11 @@ describe("S-401: Auth Stripe Checkout", () => {
         expect(mockRegisterCompany).toHaveBeenCalled();
       });
 
+      // After email verification flow, user is redirected to login with notice
       await waitFor(() => {
-        expect(onLogin).toHaveBeenCalledWith(mockUser);
+        expect(
+          screen.getByText(/verification email sent/i),
+        ).toBeInTheDocument();
       });
 
       // Should NOT have called the Stripe checkout API
@@ -284,7 +287,7 @@ describe("S-401: Auth Stripe Checkout", () => {
 
   // R-P4-04: Stripe not configured fallback
   describe("Stripe not configured fallback (R-P4-04)", () => {
-    it("falls through to trial when Stripe API returns error", async () => {
+    it("falls through to verification notice when Stripe API returns error", async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: false,
         status: 503,
@@ -305,8 +308,11 @@ describe("S-401: Auth Stripe Checkout", () => {
         expect(mockRegisterCompany).toHaveBeenCalled();
       });
 
+      // After email verification flow, user is redirected to login with notice
       await waitFor(() => {
-        expect(onLogin).toHaveBeenCalledWith(mockUser);
+        expect(
+          screen.getByText(/verification email sent/i),
+        ).toBeInTheDocument();
       });
     });
   });

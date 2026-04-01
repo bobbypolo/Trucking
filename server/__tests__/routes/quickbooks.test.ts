@@ -76,6 +76,9 @@ vi.mock("firebase-admin", () => {
 vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
+}));
 
 vi.mock("../../services/quickbooks.service", () => ({
   isQbConfigured: mockIsQbConfigured,
@@ -107,7 +110,9 @@ function buildApp() {
 describe("QuickBooks routes — auth enforcement (R-P3-08)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("GET /api/quickbooks/auth-url returns 401 without auth", async () => {
@@ -146,7 +151,9 @@ describe("QuickBooks routes — auth enforcement (R-P3-08)", () => {
 describe("GET /api/quickbooks/auth-url (R-P3-06)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns OAuth URL when configured", async () => {
@@ -188,11 +195,16 @@ describe("GET /api/quickbooks/auth-url (R-P3-06)", () => {
 describe("GET /api/quickbooks/callback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("exchanges code for tokens and redirects on success", async () => {
-    mockHandleCallback.mockResolvedValue({ success: true, realmId: "realm-123" });
+    mockHandleCallback.mockResolvedValue({
+      success: true,
+      realmId: "realm-123",
+    });
 
     const app = buildApp();
     const res = await request(app)
@@ -239,7 +251,9 @@ describe("GET /api/quickbooks/callback", () => {
 describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("syncs invoice and returns QBO reference ID", async () => {
@@ -249,10 +263,11 @@ describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
     });
 
     const invoiceData = {
+      loadId: "load-001",
+      totalAmount: 5000,
       invoiceNumber: "INV-001",
       customerName: "ACME Corp",
       lineItems: [{ description: "Freight", amount: 5000, quantity: 1 }],
-      amount: 5000,
     };
 
     const app = buildApp();
@@ -263,7 +278,10 @@ describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("qboInvoiceId", "qbo-inv-001");
-    expect(mockSyncInvoiceToQBO).toHaveBeenCalledWith("company-aaa", invoiceData);
+    expect(mockSyncInvoiceToQBO).toHaveBeenCalledWith(
+      "company-aaa",
+      expect.objectContaining({ loadId: "load-001", totalAmount: 5000 }),
+    );
   });
 
   it("returns 503 when QuickBooks not configured", async () => {
@@ -278,7 +296,7 @@ describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
     const res = await request(app)
       .post("/api/quickbooks/sync-invoice")
       .set("Authorization", "Bearer valid-token")
-      .send({ invoiceNumber: "INV-002" });
+      .send({ loadId: "load-002", totalAmount: 100, invoiceNumber: "INV-002" });
 
     expect(res.status).toBe(503);
   });
@@ -293,7 +311,7 @@ describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
     const res = await request(app)
       .post("/api/quickbooks/sync-invoice")
       .set("Authorization", "Bearer valid-token")
-      .send({ invoiceNumber: "INV-003" });
+      .send({ loadId: "load-003", totalAmount: 200, invoiceNumber: "INV-003" });
 
     expect(res.status).toBe(502);
     expect(res.body.error).toBeTruthy();
@@ -305,7 +323,9 @@ describe("POST /api/quickbooks/sync-invoice (R-P3-07)", () => {
 describe("POST /api/quickbooks/sync-bill", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("syncs bill and returns QBO reference ID", async () => {
@@ -315,10 +335,11 @@ describe("POST /api/quickbooks/sync-bill", () => {
     });
 
     const billData = {
+      vendorId: "vendor-001",
+      totalAmount: 1200,
       billNumber: "BILL-001",
       vendorName: "Fuel Supplier",
       lineItems: [{ description: "Diesel", amount: 1200, quantity: 1 }],
-      amount: 1200,
     };
 
     const app = buildApp();
@@ -329,7 +350,10 @@ describe("POST /api/quickbooks/sync-bill", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty("qboBillId", "qbo-bill-001");
-    expect(mockSyncBillToQBO).toHaveBeenCalledWith("company-aaa", billData);
+    expect(mockSyncBillToQBO).toHaveBeenCalledWith(
+      "company-aaa",
+      expect.objectContaining({ vendorId: "vendor-001", totalAmount: 1200 }),
+    );
   });
 
   it("returns 503 when QuickBooks not configured", async () => {
@@ -344,7 +368,11 @@ describe("POST /api/quickbooks/sync-bill", () => {
     const res = await request(app)
       .post("/api/quickbooks/sync-bill")
       .set("Authorization", "Bearer valid-token")
-      .send({ billNumber: "BILL-002" });
+      .send({
+        vendorId: "vendor-002",
+        totalAmount: 800,
+        billNumber: "BILL-002",
+      });
 
     expect(res.status).toBe(503);
   });
@@ -355,7 +383,9 @@ describe("POST /api/quickbooks/sync-bill", () => {
 describe("GET /api/quickbooks/status", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns connection state when connected", async () => {
@@ -411,10 +441,15 @@ describe("501 stub removed from accounting.ts (R-P3-05)", () => {
   it("accounting.ts should not contain a 501 QuickBooks stub", async () => {
     const fs = await import("node:fs");
     const path = await import("node:path");
-    const accountingPath = path.resolve(__dirname, "../../routes/accounting.ts");
+    const accountingPath = path.resolve(
+      __dirname,
+      "../../routes/accounting.ts",
+    );
     const content = fs.readFileSync(accountingPath, "utf8");
     expect(content).not.toContain("501");
-    expect(content).not.toContain("QuickBooks integration is not yet available");
+    expect(content).not.toContain(
+      "QuickBooks integration is not yet available",
+    );
     expect(content).not.toContain("sync-qb");
   });
 });

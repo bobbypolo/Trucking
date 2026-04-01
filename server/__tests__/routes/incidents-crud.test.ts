@@ -16,6 +16,13 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -67,6 +74,9 @@ vi.mock("firebase-admin", () => {
 
 vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+}));
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
 }));
 
 import express from "express";
@@ -152,12 +162,18 @@ describe("POST /api/incidents", () => {
   beforeEach(() => {
     app = buildApp();
     vi.clearAllMocks();
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("returns 401 without Authorization header", async () => {
-    const res = await request(app)
-      .post("/api/incidents")
-      .send({ load_id: "load-001", type: "Breakdown" });
+    const res = await request(app).post("/api/incidents").send({
+      load_id: "load-001",
+      type: "Breakdown",
+      severity: "High",
+      description: "Test",
+    });
     expect(res.status).toBe(401);
   });
 
@@ -168,7 +184,12 @@ describe("POST /api/incidents", () => {
     const res = await request(app)
       .post("/api/incidents")
       .set("Authorization", AUTH_HEADER)
-      .send({ load_id: "nonexistent", type: "Breakdown", severity: "High" });
+      .send({
+        load_id: "nonexistent",
+        type: "Breakdown",
+        severity: "High",
+        description: "Test incident",
+      });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toMatch(/FK Violation/i);

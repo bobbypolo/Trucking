@@ -275,6 +275,7 @@ export const OperationalMessaging: React.FC<Props> = ({
             <button
               className="p-2 hover:bg-white/5 rounded-lg text-slate-500"
               title="Manage Threads"
+              aria-label="Manage threads"
             >
               <MoreVertical className="w-4 h-4" />
             </button>
@@ -336,7 +337,10 @@ export const OperationalMessaging: React.FC<Props> = ({
                     {thread.primaryContext?.label}
                   </span>
                   {selectedThreadId === thread.id && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <>
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      <span className="sr-only">Selected thread</span>
+                    </>
                   )}
                 </div>
                 <p className="text-[10px] font-bold text-slate-500 uppercase truncate">
@@ -375,6 +379,11 @@ export const OperationalMessaging: React.FC<Props> = ({
                       <div
                         className={`w-1.5 h-1.5 rounded-full ${interactionState === "ACTIVE" ? "bg-green-500 animate-pulse" : "bg-slate-500"}`}
                       />
+                      <span className="sr-only">
+                        {interactionState === "ACTIVE"
+                          ? "Session active"
+                          : "Session idle"}
+                      </span>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest leading-none">
                         {interactionState}{" "}
                         {callSession?.id ? `(${callSession.id})` : ""}
@@ -405,6 +414,7 @@ export const OperationalMessaging: React.FC<Props> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowContext(!showContext)}
+                  aria-label="Toggle context panel"
                   className={`p-2 rounded-lg transition-colors ${showContext ? "bg-blue-600/20 text-blue-400" : "text-slate-500 hover:bg-white/5"}`}
                 >
                   <Info className="w-4 h-4" />
@@ -424,7 +434,10 @@ export const OperationalMessaging: React.FC<Props> = ({
                   </div>
                 )}
 
-                <button className="p-2 hover:bg-white/5 rounded-lg text-slate-500">
+                <button
+                  className="p-2 hover:bg-white/5 rounded-lg text-slate-500"
+                  aria-label="More options"
+                >
                   <MoreVertical className="w-4 h-4" />
                 </button>
               </div>
@@ -559,10 +572,16 @@ export const OperationalMessaging: React.FC<Props> = ({
             {activeViewTab === "MESSAGES" && (
               <div className="p-6 border-t border-white/5">
                 <div className="bg-slate-950 border border-white/5 rounded-2xl p-2 flex items-end gap-2 shadow-inner">
-                  <button className="p-3 text-slate-600 hover:text-slate-400 transition-colors">
+                  <button
+                    className="p-3 text-slate-600 hover:text-slate-400 transition-colors"
+                    aria-label="Insert emoji"
+                  >
                     <Smile className="w-5 h-5" />
                   </button>
-                  <button className="p-3 text-slate-600 hover:text-slate-400 transition-colors">
+                  <button
+                    className="p-3 text-slate-600 hover:text-slate-400 transition-colors"
+                    aria-label="Attach file"
+                  >
                     <Paperclip className="w-5 h-5" />
                   </button>
                   <textarea
@@ -587,6 +606,7 @@ export const OperationalMessaging: React.FC<Props> = ({
                     disabled={!messageText.trim() || isSubmitting}
                     className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-500 disabled:opacity-50 disabled:bg-slate-800 transition-all"
                     title={isSubmitting ? "Sending..." : "Send"}
+                    aria-label="Send message"
                   >
                     <Send className="w-5 h-5" />
                   </button>

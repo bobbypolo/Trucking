@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Search,
   Plus,
@@ -35,6 +35,7 @@ import { Toast } from "./Toast";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
+import { useFocusTrap } from "../hooks/useFocusTrap";
 
 interface Props {
   brokers?: Broker[];
@@ -109,6 +110,8 @@ export const BrokerManager: React.FC<Props> = ({
   const [editingBroker, setEditingBroker] = useState<Partial<Broker> | null>(
     null,
   );
+  const brokerModalRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(brokerModalRef, showForm, () => setShowForm(false));
   const [activeTab, setActiveTab] = useState<"My" | "All">("My");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
@@ -476,7 +479,7 @@ export const BrokerManager: React.FC<Props> = ({
 
       {/* Add/Edit Form Modal */}
       {showForm && editingBroker && (
-        <div className="fixed inset-0 z-[100] bg-[#020617]/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div ref={brokerModalRef} className="fixed inset-0 z-[100] bg-[#020617]/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="bg-[#0a0f1e] rounded-[2.5rem] border border-white/10 w-full max-w-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden flex flex-col max-h-[92vh]">
             {/* Header */}
             <div className="px-10 py-8 border-b border-white/5 flex justify-between items-center bg-[#0d1428]/50">

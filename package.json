@@ -16,6 +16,7 @@
     "@google/genai": "^1.30.0",
     "@googlemaps/js-api-loader": "^2.0.2",
     "@react-google-maps/api": "^2.20.8",
+    "@sentry/react": "^9.47.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",

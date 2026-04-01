@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ErrorBoundary, ComponentErrorBoundary } from "./components/ErrorBoundary";
 import ConnectionBanner from "./components/ui/ConnectionBanner";
 import { Toast } from "./components/Toast";
 import {
@@ -680,6 +680,7 @@ export default function App() {
       {(isAdding || editingLoad) && !scanMode && (
         <div className="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full h-full max-w-7xl">
+            <ComponentErrorBoundary>
             <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
               <EditLoadForm
                 initialData={editingLoad || {}}
@@ -708,11 +709,13 @@ export default function App() {
                 }}
               />
             </Suspense>
+            </ComponentErrorBoundary>
           </div>
         </div>
       )}
 
       {viewingLoad && (
+        <ComponentErrorBoundary>
         <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
           <LoadDetailView
             load={viewingLoad}
@@ -735,6 +738,7 @@ export default function App() {
             }}
           />
         </Suspense>
+        </ComponentErrorBoundary>
       )}
     </>
   );
@@ -931,6 +935,7 @@ export default function App() {
           <div className="flex-1 overflow-hidden p-4 md:p-6 relative flex flex-col">
             <div className="flex-1 min-h-0 w-full overflow-y-auto no-scrollbar">
               {activeTab === "operations-hub" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
@@ -956,8 +961,10 @@ export default function App() {
                     onLinkSessionToRecord={handleLinkSessionToRecord}
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "exceptions" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="list" count={3} />}
                 >
@@ -967,8 +974,10 @@ export default function App() {
                     onViewDetail={openRecordWorkspace}
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "quotes" && user && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
@@ -978,6 +987,7 @@ export default function App() {
                     onLoadCreated={() => refreshData(user)}
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "loads" && (
                 <div className="h-full flex flex-col">
@@ -996,6 +1006,7 @@ export default function App() {
                     )}
                   </div>
                   <div className="flex-1 min-h-0">
+                    <ComponentErrorBoundary>
                     <Suspense
                       fallback={<LoadingSkeleton variant="list" count={5} />}
                     >
@@ -1034,10 +1045,12 @@ export default function App() {
                         testId="team2-load-board-shell"
                       />
                     </Suspense>
+                    </ComponentErrorBoundary>
                   </div>
                 </div>
               )}
               {activeTab === "calendar" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
@@ -1057,15 +1070,19 @@ export default function App() {
                     testId="team2-schedule-shell"
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "network" && user && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
                   <NetworkPortal companyId={user.companyId} />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "accounting" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
@@ -1078,8 +1095,10 @@ export default function App() {
                     onNavigate={handleNavigate}
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "company" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
@@ -1088,13 +1107,16 @@ export default function App() {
                     onUserRegistryChange={() => refreshData(user)}
                   />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
               {activeTab === "telematics-setup" && (
+                <ComponentErrorBoundary>
                 <Suspense
                   fallback={<LoadingSkeleton variant="card" count={3} />}
                 >
                   <TelematicsSetup />
                 </Suspense>
+                </ComponentErrorBoundary>
               )}
             </div>
           </div>
@@ -1118,6 +1140,7 @@ export default function App() {
         {mainContent}
         {globalOverlays}
         {user && (
+          <ComponentErrorBoundary>
           <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
             <CommsOverlay
               session={session}
@@ -1135,6 +1158,7 @@ export default function App() {
               onLinkSessionToRecord={handleLinkSessionToRecord}
             />
           </Suspense>
+          </ComponentErrorBoundary>
         )}
         <SessionExpiredModal
           open={showSessionExpiredModal}

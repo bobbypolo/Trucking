@@ -24,6 +24,7 @@ const PRODUCTION_PUBLIC_ROUTES = new Set([
   "GET /api/health",
   "POST /api/stripe/webhook", // Stripe signature verification
   "POST /api/tracking/webhook", // X-GPS-API-Key header auth
+  "POST /api/invitations/accept", // Token-based auth (invitation token in body)
 ]);
 
 // Dev/staging adds provisioning endpoints (Firebase-backed)
@@ -195,7 +196,7 @@ describe("R-P1-05: Route Protection Audit", () => {
 
   describe("AC3: Public endpoint allowlist enforcement", () => {
     it("production public routes are health + webhooks only", () => {
-      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(3);
+      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(4);
       expect(PRODUCTION_PUBLIC_ROUTES.has("GET /api/health")).toBe(true);
     });
 

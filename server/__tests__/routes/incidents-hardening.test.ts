@@ -23,6 +23,13 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnThis(),
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -74,6 +81,9 @@ vi.mock("firebase-admin", () => {
 
 vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+}));
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
 }));
 
 import express from "express";
@@ -142,6 +152,7 @@ describe("POST /api/incidents — error paths", () => {
         load_id: "load-001",
         type: "Breakdown",
         severity: "High",
+        description: "Test DB error",
       });
 
     expect(res.status).toBe(500);

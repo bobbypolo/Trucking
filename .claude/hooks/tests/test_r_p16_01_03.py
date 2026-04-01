@@ -37,18 +37,30 @@ class TestDocFileReferencesCorrect:
             "PRODUCTION_CHECKLIST.md should reference WEATHER_API_SETUP.md"
         )
 
-    def test_migration_readme_next_prefix_is_045(self):
+    def test_migration_readme_next_prefix_is_current(self):
         """# Tests R-P16-01
 
-        server/migrations/README.md must state the next available prefix as 045,
-        matching the actual migration files on disk (001 through 044).
+        server/migrations/README.md must state the next available prefix
+        matching the actual migration files on disk.
         """
         readme = PROJECT_ROOT / "server" / "migrations" / "README.md"
         if not readme.exists():
             pytest.skip("server/migrations/README.md not present in worktree")
+
+        migrations_dir = PROJECT_ROOT / "server" / "migrations"
+        sql_files = sorted(migrations_dir.glob("*.sql"))
+        prefixes = []
+        for f in sql_files:
+            match = re.match(r"^(\d{3})_", f.name)
+            if match:
+                prefixes.append(int(match.group(1)))
+        highest = max(prefixes) if prefixes else 0
+        expected_next = f"{highest + 1:03d}"
+
         content = readme.read_text(encoding="utf-8")
-        assert "045" in content or "044" in content, (
-            "Migration README should reference next prefix 045 (actual files go through 044)"
+        assert expected_next in content or f"{highest:03d}" in content, (
+            f"Migration README should reference next prefix {expected_next} "
+            f"(actual files go through {highest:03d})"
         )
 
     def test_migration_readme_documents_038_042(self):
@@ -184,11 +196,11 @@ class TestMigrationNumbering:
                 prefixes.append(int(match.group(1)))
 
         highest_prefix = max(prefixes) if prefixes else 0
-        assert highest_prefix == 44, (
-            f"Expected highest migration prefix 044, got {highest_prefix:03d}"
+        assert highest_prefix == 46, (
+            f"Expected highest migration prefix 046, got {highest_prefix:03d}"
         )
-        assert total_files == 48, (
-            f"Expected 48 migration files (with duplicate 002/003/038/039 prefixes), "
+        assert total_files == 50, (
+            f"Expected 50 migration files (with duplicate 002/003/038/039 prefixes), "
             f"got {total_files}"
         )
 
@@ -211,11 +223,7 @@ class TestMigrationNumbering:
                 prefixes.append(int(match.group(1)))
 
         highest = max(prefixes) if prefixes else 0
-        assert highest == 44, f"Expected highest prefix 044, got {highest:03d}"
         expected_next = f"{highest + 1:03d}"
-        assert expected_next == "045", (
-            f"Expected next prefix to be 045, got {expected_next}"
-        )
 
         content = readme.read_text(encoding="utf-8")
         assert f"currently `{expected_next}`" in content, (
@@ -262,13 +270,14 @@ class TestNegativeCases:
     def test_invalid_migration_prefix_rejected(self):
         """# Tests R-P16-03
 
-        Verify that the old invalid prefix 040 is no longer stated as the
-        next available prefix in the migration README.
+        Verify that stale prefixes are no longer stated as the next available
+        prefix in the migration README.
         """
         readme = PROJECT_ROOT / "server" / "migrations" / "README.md"
         if not readme.exists():
             pytest.skip("server/migrations/README.md not present in worktree")
         content = readme.read_text(encoding="utf-8")
-        assert "currently `040`" not in content, (
-            "Migration README still says invalid prefix 040 (should be 045)"
-        )
+        for stale in ("040", "045"):
+            assert f"currently `{stale}`" not in content, (
+                f"Migration README still says invalid prefix {stale} (should be 047)"
+            )

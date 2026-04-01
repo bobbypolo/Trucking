@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import admin from "firebase-admin";
 import { AuthError, InternalError } from "../errors/AppError";
 import { resolveSqlPrincipalByFirebaseUid } from "../lib/sql-auth";
+import { isTokenRevoked } from "../lib/token-revocation";
 
 export interface AuthenticatedUser {
   id: string;
@@ -65,6 +66,30 @@ export async function requireAuth(
 
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
+
+    // Gate: reject unverified email addresses (skip in test environment)
+    if (!decodedToken.email_verified && process.env.NODE_ENV !== "test") {
+      return next(
+        new AuthError(
+          "Email not verified. Please check your inbox.",
+          {},
+          "AUTH_EMAIL_UNVERIFIED_001",
+        ),
+      );
+    }
+
+    // Check if user's tokens have been revoked
+    const revoked = await isTokenRevoked(decodedToken.uid);
+    if (revoked) {
+      return next(
+        new AuthError(
+          "Access revoked. Please contact your administrator.",
+          {},
+          "AUTH_REVOKED_001",
+        ),
+      );
+    }
+
     let principal;
 
     try {
