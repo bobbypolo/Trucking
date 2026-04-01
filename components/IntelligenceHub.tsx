@@ -23,7 +23,10 @@ import {
   BarChart3,
   ShieldAlert,
   Lock,
+  Bell,
+  MapPin,
 } from "lucide-react";
+import { api } from "../services/api";
 import { v4 as uuidv4 } from "uuid";
 import { getExceptions, getDashboardCards } from "../services/exceptionService";
 import { Exception, DashboardCard } from "../types";
@@ -182,6 +185,43 @@ const IntelligenceHub: React.FC<{
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(
     activeLoad?.id || null,
   );
+
+  // === INTELLIGENCE HUB LIVE DATA STATE ===
+  const [brokerRisk, setBrokerRisk] = useState<any[]>([]);
+  const [missedRevenue, setMissedRevenue] = useState<any[]>([]);
+  const [facilityQuery, setFacilityQuery] = useState("");
+  const [facilityResults, setFacilityResults] = useState<any[]>([]);
+  const [intelLoading, setIntelLoading] = useState(false);
+
+  useEffect(() => {
+    if (selectedTab !== "intelligence") return;
+    setIntelLoading(true);
+    Promise.all([
+      api.get(`/intelligence/broker-risk`),
+      api.get(`/intelligence/missed-revenue`),
+    ])
+      .then(([risk, missed]) => {
+        setBrokerRisk((risk as any[]) || []);
+        setMissedRevenue((missed as any[]) || []);
+      })
+      .catch(console.error)
+      .finally(() => setIntelLoading(false));
+  }, [selectedTab]);
+
+  const handleFacilitySearch = async () => {
+    if (!facilityQuery.trim()) return;
+    setIntelLoading(true);
+    try {
+      const results = await api.get(
+        `/intelligence/facility-index?facility=${encodeURIComponent(facilityQuery)}`,
+      );
+      setFacilityResults((results as any[]) || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIntelLoading(false);
+    }
+  };
 
   // === OPS DASHBOARD STATE (migrated from Dashboard.tsx) ===
   const [opsExceptions, setOpsExceptions] = useState<Exception[]>([]);
@@ -1499,6 +1539,7 @@ const IntelligenceHub: React.FC<{
                 { label: "COMMAND", tab: "command" },
                 { label: "SALES/CRM", tab: "crm" },
                 { label: "NETWORK", tab: "directory" },
+                { label: "INTELLIGENCE", tab: "intelligence" },
                 { label: "REPORTS", tab: "reports" },
               ].map((chip) => (
                 <button
@@ -1744,6 +1785,206 @@ const IntelligenceHub: React.FC<{
               {selectedTab === "directory" && (
                 <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617]">
                   <NetworkPortal companyId={user.companyId} />
+                </div>
+              )}
+
+              {selectedTab === "intelligence" && (
+                <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617] p-6 space-y-6">
+                  {/* Missed Revenue Alert Banner */}
+                  {missedRevenue.length > 0 && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Bell className="w-4 h-4 text-amber-400 shrink-0" />
+                        <span className="text-amber-300 text-xs font-black uppercase tracking-widest">
+                          {missedRevenue.length} Missed Revenue{" "}
+                          {missedRevenue.length === 1 ? "Alert" : "Alerts"}
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {missedRevenue.map((item: any, i: number) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between text-xs"
+                          >
+                            <span className="text-slate-300 font-mono">
+                              {item.load_number}
+                            </span>
+                            <span className="text-slate-500">
+                              {item.broker_name}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${item.reason === "DETENTION_NOT_INVOICED" ? "bg-red-500/20 text-red-400" : "bg-orange-500/20 text-orange-400"}`}
+                            >
+                              {item.reason === "DETENTION_NOT_INVOICED"
+                                ? "Detention"
+                                : "Lumper"}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Broker Risk Leaderboard */}
+                  <div className="bg-white/[0.03] border border-white/8 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
+                      <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+                      <span className="text-white text-xs font-black uppercase tracking-widest">
+                        Broker Risk Leaderboard
+                      </span>
+                    </div>
+                    {intelLoading ? (
+                      <div className="p-8 text-center text-slate-600 text-xs">
+                        Loading...
+                      </div>
+                    ) : brokerRisk.length === 0 ? (
+                      <div className="p-8 text-center text-slate-600 text-xs">
+                        No broker data yet. Complete loads to build the index.
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-white/5">
+                        {brokerRisk.map((broker: any, i: number) => (
+                          <div
+                            key={broker.id}
+                            className="flex items-center gap-4 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                          >
+                            <span
+                              className={`text-xs font-black w-5 shrink-0 ${i === 0 ? "text-red-400" : i === 1 ? "text-orange-400" : "text-slate-500"}`}
+                            >
+                              #{i + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white text-xs font-semibold truncate">
+                                {broker.name}
+                              </div>
+                              <div className="text-slate-500 text-[10px]">
+                                {broker.total_loads_completed ?? 0} loads
+                                completed
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 shrink-0">
+                              {broker.discrepancy_score > 0 && (
+                                <div className="text-right">
+                                  <div className="text-red-400 text-xs font-black">
+                                    {broker.discrepancy_score}
+                                  </div>
+                                  <div className="text-slate-600 text-[10px]">
+                                    Lie Score
+                                  </div>
+                                </div>
+                              )}
+                              {broker.avg_discrepancy_pct != null && (
+                                <div className="text-right">
+                                  <div className="text-orange-400 text-xs font-bold">
+                                    {broker.avg_discrepancy_pct}%
+                                  </div>
+                                  <div className="text-slate-600 text-[10px]">
+                                    Avg Variance
+                                  </div>
+                                </div>
+                              )}
+                              <div className="text-right">
+                                <div
+                                  className={`text-xs font-bold ${broker.avg_payment_days > 35 ? "text-red-400" : broker.avg_payment_days > 28 ? "text-yellow-400" : "text-green-400"}`}
+                                >
+                                  {broker.avg_payment_days ?? "—"} days
+                                </div>
+                                <div className="text-slate-600 text-[10px]">
+                                  Avg Pay Time
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Facility Index Search */}
+                  <div className="bg-white/[0.03] border border-white/8 rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5">
+                      <MapPin className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="text-white text-xs font-black uppercase tracking-widest">
+                        Facility Index
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <div className="flex gap-2 mb-4">
+                        <input
+                          type="text"
+                          value={facilityQuery}
+                          onChange={(e) => setFacilityQuery(e.target.value)}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleFacilitySearch()
+                          }
+                          placeholder="Search facility name (e.g. Americold, Atlanta)"
+                          className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+                        />
+                        <button
+                          onClick={handleFacilitySearch}
+                          className="px-4 py-2 bg-blue-600/80 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Search className="w-3 h-3" /> Search
+                        </button>
+                      </div>
+                      {facilityResults.length > 0 ? (
+                        <div className="space-y-2">
+                          {facilityResults.map((fac: any, i: number) => {
+                            const avgHours = fac.avg_detention_minutes
+                              ? (fac.avg_detention_minutes / 60).toFixed(1)
+                              : null;
+                            return (
+                              <div
+                                key={i}
+                                className="bg-white/[0.03] border border-white/8 rounded-lg px-4 py-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <div className="text-white text-xs font-bold">
+                                      {fac.facility_name}
+                                    </div>
+                                    <div className="text-slate-500 text-[10px]">
+                                      {fac.city}, {fac.state} ·{" "}
+                                      {fac.total_visits} visits
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-4 shrink-0">
+                                    {avgHours && (
+                                      <div className="text-right">
+                                        <div
+                                          className={`text-xs font-black ${parseFloat(avgHours) > 4 ? "text-red-400" : parseFloat(avgHours) > 2 ? "text-yellow-400" : "text-green-400"}`}
+                                        >
+                                          {avgHours}h avg
+                                        </div>
+                                        <div className="text-slate-600 text-[10px]">
+                                          Load Time
+                                        </div>
+                                      </div>
+                                    )}
+                                    {fac.recommended_rate_increase > 0 && (
+                                      <div className="text-right">
+                                        <div className="text-blue-400 text-xs font-black">
+                                          +${fac.recommended_rate_increase}
+                                        </div>
+                                        <div className="text-slate-600 text-[10px]">
+                                          Rec. Rate Add
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : facilityQuery && !intelLoading ? (
+                        <div className="text-center text-slate-600 text-xs py-4">
+                          No data yet for that facility. It builds automatically
+                          as loads complete.
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 </div>
               )}
 
