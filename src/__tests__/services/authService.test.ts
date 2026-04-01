@@ -644,7 +644,11 @@ describe("authService", () => {
     });
 
     it("returns user on successful sign-in and API login", async () => {
-      const mockFbUser = { uid: "fb-uid", email: "test@test.com" };
+      const mockFbUser = {
+        uid: "fb-uid",
+        email: "test@test.com",
+        emailVerified: true,
+      };
       (signInWithEmailAndPassword as any).mockResolvedValue({
         user: mockFbUser,
       });
@@ -666,7 +670,11 @@ describe("authService", () => {
     });
 
     it("falls back to hydration when API login returns non-ok", async () => {
-      const mockFbUser = { uid: "fb-uid", email: "test@test.com" };
+      const mockFbUser = {
+        uid: "fb-uid",
+        email: "test@test.com",
+        emailVerified: true,
+      };
       (signInWithEmailAndPassword as any).mockResolvedValue({
         user: mockFbUser,
       });
@@ -1170,7 +1178,7 @@ describe("authService", () => {
         getIdToken: mockGetToken,
       } = await import("firebase/auth");
       (mockSignIn as any).mockResolvedValue({
-        user: { uid: "fb-uid", email: "test@test.com" },
+        user: { uid: "fb-uid", email: "test@test.com", emailVerified: true },
       });
       (mockGetToken as any).mockResolvedValue("mock-token");
 

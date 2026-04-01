@@ -863,7 +863,7 @@ describe("Auth component", () => {
       expect(screen.getByText("Subscription Plan")).toBeInTheDocument();
     });
 
-    it("calls registerCompany and onLogin on free trial signup", async () => {
+    it("calls registerCompany and redirects to login with verification notice on free trial signup", async () => {
       const user = await goToPayment();
 
       await user.click(
@@ -888,8 +888,11 @@ describe("Auth component", () => {
         expect(mockUpdateCompany).toHaveBeenCalled();
       });
 
+      // After email verification flow, user is redirected to login with notice
       await waitFor(() => {
-        expect(onLogin).toHaveBeenCalledWith(mockUser);
+        expect(
+          screen.getByText(/verification email sent/i),
+        ).toBeInTheDocument();
       });
     });
 
@@ -1035,8 +1038,11 @@ describe("Auth component", () => {
         screen.getByRole("button", { name: /start free trial/i }),
       );
 
+      // After email verification flow, user is redirected to login with notice
       await waitFor(() => {
-        expect(onLogin).toHaveBeenCalled();
+        expect(
+          screen.getByText(/verification email sent/i),
+        ).toBeInTheDocument();
       });
 
       // Wizard state should be cleared
