@@ -1,4 +1,5 @@
 import React, { ReactNode } from "react";
+import { captureException } from "../services/sentry";
 export { useApiError } from "../hooks/useApiError";
 
 /* ---------- shared types ---------- */
@@ -29,6 +30,10 @@ export class PageErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      boundary: "PageErrorBoundary",
+    });
     // Intentional: error logging for production diagnostics
     // eslint-disable-next-line no-console
     console.error(
@@ -92,6 +97,10 @@ export class ComponentErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      boundary: "ComponentErrorBoundary",
+    });
     // Intentional: error logging for production diagnostics
     // eslint-disable-next-line no-console
     console.error(
@@ -138,6 +147,10 @@ export class ErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
+    captureException(error, {
+      componentStack: errorInfo.componentStack,
+      boundary: "ErrorBoundary",
+    });
     // Intentional: error logging for production diagnostics
     // eslint-disable-next-line no-console
     console.error("[ErrorBoundary] Uncaught render error:", error, errorInfo);

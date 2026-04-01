@@ -16,6 +16,7 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^1.30.0",
+    "@sentry/node": "^9.47.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
