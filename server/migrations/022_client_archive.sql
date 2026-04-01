@@ -2,12 +2,12 @@
 -- UP
 
 ALTER TABLE customers
-  ADD COLUMN IF NOT EXISTS archived_at DATETIME NULL DEFAULT NULL,
-  ADD COLUMN IF NOT EXISTS archived_by VARCHAR(128) NULL DEFAULT NULL;
+  ADD COLUMN archived_at DATETIME NULL DEFAULT NULL,
+  ADD COLUMN archived_by VARCHAR(128) NULL DEFAULT NULL;
 
-CREATE INDEX IF NOT EXISTS idx_customers_archived_at ON customers (archived_at);
+CREATE INDEX idx_customers_archived_at ON customers (archived_at);
 
 -- DOWN
 ALTER TABLE customers
-  DROP COLUMN IF EXISTS archived_by,
-  DROP COLUMN IF EXISTS archived_at;
+  DROP COLUMN archived_by,
+  DROP COLUMN archived_at;

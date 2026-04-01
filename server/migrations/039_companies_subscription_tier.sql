@@ -1,8 +1,13 @@
 -- Migration: Add subscription_tier to companies and seed supported dev tenants
 -- UP
 
-ALTER TABLE companies
-  ADD COLUMN IF NOT EXISTS subscription_tier VARCHAR(30) DEFAULT 'Records Vault' AFTER subscription_status;
+-- Column subscription_tier may already exist from migration 027_add_subscription_tier.sql
+-- Using session variable + prepared statement for idempotent ADD COLUMN
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'companies' AND COLUMN_NAME = 'subscription_tier');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE companies ADD COLUMN subscription_tier VARCHAR(30) DEFAULT ''Records Vault''', 'SELECT 1');
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 UPDATE companies
    SET subscription_tier = 'Fleet Core'
@@ -26,4 +31,4 @@ UPDATE companies
    'dev-company-001'
  );
 
-ALTER TABLE companies DROP COLUMN IF EXISTS subscription_tier;
+ALTER TABLE companies DROP COLUMN subscription_tier;

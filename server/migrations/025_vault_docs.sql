@@ -13,9 +13,9 @@
 
 -- Index for efficient vault document queries by company + document_type
 -- (covers the common GET /api/vault-docs?document_type=... pattern)
-CREATE INDEX IF NOT EXISTS idx_documents_vault
+CREATE INDEX idx_documents_vault
     ON documents(company_id, document_type, created_at DESC);
 
 -- DOWN
 
-DROP INDEX IF EXISTS idx_documents_vault ON documents;
+DROP INDEX idx_documents_vault ON documents;
