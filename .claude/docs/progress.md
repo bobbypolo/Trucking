@@ -889,3 +889,24 @@
 - **Files**: server/schemas/incident.ts, server/schemas/quickbooks.ts, server/routes/incidents.ts, server/routes/quickbooks.ts, + 4 test files
 - **Criteria**: 10/10 (R-SEC-13 through R-SEC-22)
 - **Summary**: Zod schemas for incidents (4) + quickbooks (2), validateBody on 6 endpoints. 43 tests.
+
+## Phase 2: Frontend Error Resilience
+
+### S-005 — PASS (2026-03-31)
+- **Files**: App.tsx, src/__tests__/components/ErrorBoundary.wrap.test.tsx
+- **Criteria**: 5/5 (R-ERR-01 through R-ERR-05)
+- **Summary**: Wrapped 12 data-fetching lazy components with ComponentErrorBoundary. 11 tests.
+
+## Phase 3: Form Validation
+
+### S-007 — PASS (2026-03-31)
+- **Files**: components/EditLoadForm.tsx, src/__tests__/components/EditLoadForm.validation.test.tsx
+- **Criteria**: 7/7 (R-VAL-01 through R-VAL-07)
+- **Summary**: Carrier rate + driver pay negative rejection, pickup/dropoff date validation, min=0 on inputs. 9 tests.
+
+## Phase 4: Accessibility
+
+### S-010 — PASS (2026-03-31)
+- **Files**: 6 component files + focus-trap.test.tsx
+- **Criteria**: 6/6 (R-A11Y-07 through R-A11Y-12)
+- **Summary**: useFocusTrap added to BrokerManager, CalendarView, FileVault, ExceptionConsole, IFTAManager, LoadDetailView. 12 total components now have focus trapping. 10 tests.

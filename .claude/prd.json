@@ -302,8 +302,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/ErrorBoundary.wrap.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-006",
@@ -434,8 +434,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/components/EditLoadForm.validation.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-008",
@@ -623,8 +623,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/accessibility/focus-trap.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
