@@ -62,6 +62,10 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock("../../repositories/incident.repository", () => ({
   incidentRepository: {
     findByCompany: mockFindByCompany,
@@ -203,9 +207,7 @@ describe("R-SEC-15, R-SEC-16: incidents.ts validateBody wiring", () => {
 
   it("POST /api/incidents/:id/charges with valid body proceeds", async () => {
     mockQuery
-      .mockResolvedValueOnce([
-        [{ company_id: "company-aaa" }],
-      ])
+      .mockResolvedValueOnce([[{ company_id: "company-aaa" }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }]);
     const res = await request(app)
       .post("/api/incidents/inc-001/charges")

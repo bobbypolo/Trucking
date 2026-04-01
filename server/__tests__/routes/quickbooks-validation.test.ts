@@ -53,6 +53,10 @@ vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
 }));
 
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
+}));
+
 vi.mock("../../services/quickbooks.service", () => ({
   getAuthorizationUrl: vi.fn(),
   handleCallback: vi.fn(),
