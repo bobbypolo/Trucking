@@ -48,6 +48,11 @@ vi.mock("firebase-admin", () => {
       uid: "firebase-uid-1",
       email_verified: true,
     }),
+    createUser: vi.fn().mockResolvedValue({ uid: "firebase-uid-invited" }),
+    deleteUser: vi.fn().mockResolvedValue(undefined),
+    generateEmailVerificationLink: vi
+      .fn()
+      .mockResolvedValue("https://verify.link/test"),
   };
   return {
     default: {
@@ -92,7 +97,9 @@ describe("invitations routes", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
     mockSendEmail.mockResolvedValue({ success: true });
     app = buildApp();
   });
@@ -223,13 +230,11 @@ describe("invitations routes", () => {
       mockConnQuery.mockResolvedValue([{ affectedRows: 1 }, undefined]);
       mockConnCommit.mockResolvedValue(undefined);
 
-      const res = await request(app)
-        .post("/api/invitations/accept")
-        .send({
-          token: "valid-invite-token",
-          name: "New User",
-          password: "securepassword123",
-        });
+      const res = await request(app).post("/api/invitations/accept").send({
+        token: "valid-invite-token",
+        name: "New User",
+        password: "securepassword123",
+      });
 
       expect(res.status).toBe(200);
       expect(res.body.message).toBe("Invitation accepted");
@@ -260,13 +265,11 @@ describe("invitations routes", () => {
         ])
         .mockResolvedValueOnce([{ affectedRows: 1 }, undefined]);
 
-      const res = await request(app)
-        .post("/api/invitations/accept")
-        .send({
-          token: "expired-token",
-          name: "Late User",
-          password: "securepassword123",
-        });
+      const res = await request(app).post("/api/invitations/accept").send({
+        token: "expired-token",
+        name: "Late User",
+        password: "securepassword123",
+      });
 
       expect(res.status).toBe(410);
       expect(res.body.message).toContain("expired");
@@ -291,13 +294,11 @@ describe("invitations routes", () => {
         undefined,
       ]);
 
-      const res = await request(app)
-        .post("/api/invitations/accept")
-        .send({
-          token: "accepted-token",
-          name: "Dup User",
-          password: "securepassword123",
-        });
+      const res = await request(app).post("/api/invitations/accept").send({
+        token: "accepted-token",
+        name: "Dup User",
+        password: "securepassword123",
+      });
 
       expect(res.status).toBe(409);
       expect(res.body.message).toContain("already been accepted");
