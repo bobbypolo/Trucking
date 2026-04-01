@@ -924,3 +924,21 @@
 - **Files**: server/migrations/046_invitations.sql, server/schemas/invitation.ts, server/services/invitation.service.ts, server/routes/invitations.ts, server/index.ts, + 2 test files
 - **Criteria**: 11/11 (R-INV-01 through R-INV-11)
 - **Summary**: Invitation table with token UNIQUE, service with create/accept/list/cancel, 4 API endpoints, rate-limited accept (5/15min), email notification on invite. 24 tests.
+
+## Phase 2: Sentry APM
+
+### S-006 — PASS (2026-04-01)
+- **Files**: services/sentry.ts, server/lib/sentry.ts, components/ErrorBoundary.tsx, server/middleware/errorHandler.ts, package.json, server/package.json, + 2 test files
+- **Criteria**: 10/10 (R-ERR-06 through R-ERR-15)
+- **Summary**: @sentry/react + @sentry/node v9.47.1, captureException in ErrorBoundary (4 occurrences) + errorHandler, graceful no-op when DSN unset. 17 tests.
+
+## Phase 4: Accessibility (Icon Labels)
+
+### S-009 — PASS (2026-04-01)
+- **Files**: 5 component files + 2 test files
+- **Criteria**: 6/6 (R-A11Y-01 through R-A11Y-06)
+- **Summary**: 11 new aria-labels on icon-only buttons across LoadDetailView, CommandCenterView, OperationalMessaging, CalendarView, ExceptionConsole. 9 sr-only spans on color-only status dots. 34 accessibility tests.
+
+---
+
+## SPRINT COMPLETE: 10/10 stories passed (0 skipped)

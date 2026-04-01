@@ -378,8 +378,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/services/sentry.test.ts --reporter=verbose && cd server && npx vitest run __tests__/lib/sentry.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-007",
@@ -567,8 +567,8 @@
       "gateCmds": {
         "unit": "npx vitest run src/__tests__/accessibility/icon-buttons.test.tsx src/__tests__/accessibility/status-indicators.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-010",
