@@ -53,6 +53,7 @@ import quickbooksRouter from "./routes/quickbooks";
 import callLogsRouter from "./routes/call-logs";
 import geofenceRouter from "./routes/geofence";
 import stripeRouter from "./routes/stripe";
+import invitationsRouter from "./routes/invitations";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -115,6 +116,7 @@ app.use(notificationJobsRouter);
 app.use(documentsRouter);
 app.use(callLogsRouter);
 app.use(geofenceRouter);
+app.use(invitationsRouter);
 
 app.use(errorHandler);
 
