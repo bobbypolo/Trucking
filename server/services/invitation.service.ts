@@ -1,5 +1,6 @@
 import { randomBytes } from "crypto";
 import { v4 as uuidv4 } from "uuid";
+import admin from "firebase-admin";
 import pool from "../db";
 import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { createChildLogger } from "../lib/logger";
@@ -103,7 +104,7 @@ export async function createInvitation(
 export async function acceptInvitation(
   token: string,
   name: string,
-  _password: string,
+  password: string,
 ): Promise<{ invitation: InvitationRow; userId: string }> {
   const [rows] = await pool.query<RowDataPacket[]>(
     "SELECT * FROM invitations WHERE token = ?",
@@ -145,16 +146,60 @@ export async function acceptInvitation(
     throw err;
   }
 
-  // Create the user record in the users table
+  // Create Firebase Auth account
+  let firebaseUid: string;
+  try {
+    const firebaseUser = await admin.auth().createUser({
+      email: invitation.email,
+      password,
+      displayName: name,
+      emailVerified: false,
+    });
+    firebaseUid = firebaseUser.uid;
+  } catch (fbErr: unknown) {
+    const msg =
+      fbErr instanceof Error ? fbErr.message : "Firebase user creation failed";
+    log.error({ err: fbErr, email: invitation.email }, msg);
+    const err = new Error(msg);
+    (err as Error & { code: string }).code = "FIREBASE_CREATE_FAILED";
+    throw err;
+  }
+
+  // Send verification email link (best-effort)
+  try {
+    const verificationLink = await admin
+      .auth()
+      .generateEmailVerificationLink(invitation.email);
+    await sendEmail({
+      to: invitation.email,
+      subject: "Verify your LoadPilot email",
+      body: `Please verify your email address: ${verificationLink}`,
+      html: `<p>Please verify your email address:</p><p><a href="${verificationLink}">Verify Email</a></p>`,
+    });
+  } catch (emailErr: unknown) {
+    log.warn(
+      { err: emailErr, email: invitation.email },
+      "Failed to send verification email (non-blocking)",
+    );
+  }
+
+  // Create the user record in the users table with firebase_uid
   const userId = uuidv4();
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
 
     await conn.query<ResultSetHeader>(
-      `INSERT INTO users (id, company_id, name, email, role, status, created_at)
-       VALUES (?, ?, ?, ?, ?, 'active', NOW())`,
-      [userId, invitation.company_id, name, invitation.email, invitation.role],
+      `INSERT INTO users (id, company_id, name, email, role, firebase_uid, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', NOW())`,
+      [
+        userId,
+        invitation.company_id,
+        name,
+        invitation.email,
+        invitation.role,
+        firebaseUid,
+      ],
     );
 
     await conn.query<ResultSetHeader>(
@@ -165,18 +210,36 @@ export async function acceptInvitation(
     await conn.commit();
   } catch (txErr: unknown) {
     await conn.rollback();
+    // Clean up Firebase user if DB insert fails
+    try {
+      await admin.auth().deleteUser(firebaseUid);
+    } catch (cleanupErr: unknown) {
+      log.error(
+        { err: cleanupErr, firebaseUid },
+        "Failed to clean up Firebase user after DB rollback",
+      );
+    }
     throw txErr;
   } finally {
     conn.release();
   }
 
   log.info(
-    { invitationId: invitation.id, userId, email: invitation.email },
-    "Invitation accepted, user created",
+    {
+      invitationId: invitation.id,
+      userId,
+      firebaseUid,
+      email: invitation.email,
+    },
+    "Invitation accepted, Firebase + SQL user created",
   );
 
   return {
-    invitation: { ...invitation, status: "accepted", accepted_at: new Date().toISOString() },
+    invitation: {
+      ...invitation,
+      status: "accepted",
+      accepted_at: new Date().toISOString(),
+    },
     userId,
   };
 }

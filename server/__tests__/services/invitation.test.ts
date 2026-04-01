@@ -5,10 +5,16 @@ const {
   mockQuery,
   mockGetConnection,
   mockSendEmail,
+  mockCreateUser,
+  mockDeleteUser,
+  mockGenerateEmailVerificationLink,
 } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockGetConnection: vi.fn(),
   mockSendEmail: vi.fn(),
+  mockCreateUser: vi.fn(),
+  mockDeleteUser: vi.fn(),
+  mockGenerateEmailVerificationLink: vi.fn(),
 }));
 
 vi.mock("../../db", () => ({
@@ -38,6 +44,16 @@ vi.mock("../../services/notification-delivery.service", () => ({
   sendEmail: mockSendEmail,
 }));
 
+vi.mock("firebase-admin", () => ({
+  default: {
+    auth: () => ({
+      createUser: mockCreateUser,
+      deleteUser: mockDeleteUser,
+      generateEmailVerificationLink: mockGenerateEmailVerificationLink,
+    }),
+  },
+}));
+
 import {
   createInvitation,
   acceptInvitation,
@@ -49,6 +65,11 @@ describe("invitation.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSendEmail.mockResolvedValue({ success: true });
+    mockCreateUser.mockResolvedValue({ uid: "firebase-uid-invited" });
+    mockGenerateEmailVerificationLink.mockResolvedValue(
+      "https://verify.link/test",
+    );
+    mockDeleteUser.mockResolvedValue(undefined);
   });
 
   // Tests R-INV-02, R-INV-10
@@ -153,19 +174,35 @@ describe("invitation.service", () => {
       mockConnQuery.mockResolvedValue([{ affectedRows: 1 }, undefined]);
       mockConnCommit.mockResolvedValue(undefined);
 
-      const result = await acceptInvitation("abc123", "New User", "password123");
+      const result = await acceptInvitation(
+        "abc123",
+        "New User",
+        "password123",
+      );
 
       expect(result.userId).toBeDefined();
       expect(result.invitation.company_id).toBe("company-xyz");
       expect(result.invitation.status).toBe("accepted");
 
-      // Verify the INSERT INTO users uses the invitation's company_id
+      // Verify Firebase Auth account was created
+      expect(mockCreateUser).toHaveBeenCalledWith({
+        email: "user@test.com",
+        password: "password123",
+        displayName: "New User",
+        emailVerified: false,
+      });
+
+      // Verify the INSERT INTO users includes firebase_uid
       const userInsertCall = mockConnQuery.mock.calls.find(
-        (call: unknown[]) => typeof call[0] === "string" && call[0].includes("INSERT INTO users"),
+        (call: unknown[]) =>
+          typeof call[0] === "string" && call[0].includes("INSERT INTO users"),
       );
       expect(userInsertCall).toBeDefined();
+      expect(userInsertCall![0]).toContain("firebase_uid");
       // The second parameter array should contain company_id = "company-xyz"
       expect(userInsertCall![1][1]).toBe("company-xyz");
+      // firebase_uid should be in the params
+      expect(userInsertCall![1]).toContain("firebase-uid-invited");
     });
 
     // Tests R-INV-07, R-INV-10
@@ -192,7 +229,7 @@ describe("invitation.service", () => {
         ])
         .mockResolvedValueOnce([{ affectedRows: 1 }, undefined]); // UPDATE to expired
 
-      let caughtErr: Error & { code?: string } | undefined;
+      let caughtErr: (Error & { code?: string }) | undefined;
       try {
         await acceptInvitation("expired-token", "Late User", "password123");
       } catch (err: unknown) {
@@ -224,7 +261,7 @@ describe("invitation.service", () => {
         undefined,
       ]);
 
-      let caughtErr: Error & { code?: string } | undefined;
+      let caughtErr: (Error & { code?: string }) | undefined;
       try {
         await acceptInvitation("accepted-token", "Dup User", "password123");
       } catch (err: unknown) {
@@ -278,8 +315,18 @@ describe("invitation.service", () => {
   describe("listInvitations", () => {
     it("returns all invitations for a company ordered by created_at DESC", async () => {
       const mockRows = [
-        { id: "inv-1", company_id: "company-aaa", email: "a@test.com", status: "pending" },
-        { id: "inv-2", company_id: "company-aaa", email: "b@test.com", status: "accepted" },
+        {
+          id: "inv-1",
+          company_id: "company-aaa",
+          email: "a@test.com",
+          status: "pending",
+        },
+        {
+          id: "inv-2",
+          company_id: "company-aaa",
+          email: "b@test.com",
+          status: "accepted",
+        },
       ];
       mockQuery.mockResolvedValueOnce([mockRows, undefined]);
 
@@ -299,7 +346,9 @@ describe("invitation.service", () => {
       const result = await cancelInvitation("inv-1", "company-aaa");
 
       expect(result).toBe(true);
-      expect(mockQuery.mock.calls[0][0]).toContain("UPDATE invitations SET status = 'cancelled'");
+      expect(mockQuery.mock.calls[0][0]).toContain(
+        "UPDATE invitations SET status = 'cancelled'",
+      );
     });
 
     it("returns false when invitation is not found or already processed", async () => {
