@@ -1,5 +1,61 @@
 import { v4 as uuidv4 } from 'uuid';
-import { calculateDetention } from '../../services/detentionService';
+
+type DetentionResult = {
+    isBillable: boolean;
+    dwellMinutes: number;
+    billableHours: number;
+    totalAmount: number;
+    detentionRequest: {
+        loadId: string;
+        loadNumber: string;
+        arrivedAt: string;
+        loadedAt: string;
+        dwellMinutes: number;
+        billableHours: number;
+        totalAmount: number;
+    } | null;
+};
+
+/**
+ * Server-side detention calculator used by the passive geofence pipeline.
+ * Kept local to avoid importing client-side service code into server runtime.
+ */
+function calculateDetention(
+    arrivedAt: string,
+    loadedAt: string,
+    loadId: string,
+    loadNumber: string
+): DetentionResult {
+    const freeHours = Number(process.env.DETENTION_FREE_HOURS ?? 2);
+    const hourlyRate = Number(process.env.DETENTION_HOURLY_RATE ?? 75);
+
+    const dwellMinutes = Math.max(
+        0,
+        Math.round((new Date(loadedAt).getTime() - new Date(arrivedAt).getTime()) / 60000)
+    );
+    const dwellHours = dwellMinutes / 60;
+    const billableHours = Math.max(0, Math.ceil(dwellHours - freeHours));
+    const totalAmount = billableHours * hourlyRate;
+    const isBillable = billableHours > 0;
+
+    return {
+        isBillable,
+        dwellMinutes,
+        billableHours,
+        totalAmount,
+        detentionRequest: isBillable
+            ? {
+                  loadId,
+                  loadNumber,
+                  arrivedAt,
+                  loadedAt,
+                  dwellMinutes,
+                  billableHours,
+                  totalAmount,
+              }
+            : null,
+    };
+}
 
 /**
  * detentionPipeline.ts
