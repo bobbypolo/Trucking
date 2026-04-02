@@ -784,8 +784,17 @@ export const EditLoadForm: React.FC<Props> = ({
           </div>
         </div>
 
-        {/* Driver Info Sub-Header Bar (Matches Driver Row in Dr. Dispatch) */}
-        <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
+        {/* Assignment controls stay editable on unassigned loads until invoicing lock */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+              Driver & Equipment Assignment
+            </h2>
+            <span className="text-[10px] text-slate-600 uppercase">
+              Optional until dispatch
+            </span>
+          </div>
+          <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
           <div className="space-y-1 shrink-0">
             <label
               htmlFor="elfTruck"
@@ -891,6 +900,7 @@ export const EditLoadForm: React.FC<Props> = ({
               <span className="text-[10px] font-bold">Log Call</span>
             </button>
           </div>
+        </div>
         </div>
 
         {/* Load Stops Execution Table */}

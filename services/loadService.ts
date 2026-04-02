@@ -11,6 +11,16 @@ import { api } from "./api";
 import { v4 as uuidv4 } from "uuid";
 import { LoadData, User, LoadStatus } from "../types";
 
+export interface PartialLoadUpdatePayload {
+  weight?: number;
+  commodity?: string;
+  bolNumber?: string;
+  referenceNumber?: string;
+  referenceNumbers?: string[];
+  pickupDate?: string;
+  notes?: string;
+}
+
 /** Map a backend load row to frontend LoadData shape. */
 function mapRowToLoadData(row: any): LoadData {
   // Derive dropoffDate from the Dropoff leg when not explicitly on the row.
@@ -164,6 +174,27 @@ export async function fetchLoads(): Promise<LoadData[]> {
 export async function createLoad(load: LoadData): Promise<void> {
   const payload = mapLoadDataToPayload(load);
   await api.post("/loads", payload);
+}
+
+/**
+ * Patch scanner-derived fields onto an existing load without invoking the
+ * broader create/replace flow.
+ */
+export async function patchLoadApi(
+  loadId: string,
+  patch: PartialLoadUpdatePayload,
+): Promise<LoadData> {
+  const row = await api.patch(`/loads/${loadId}`, {
+    weight: patch.weight,
+    commodity: patch.commodity,
+    bol_number: patch.bolNumber,
+    reference_number: patch.referenceNumber,
+    reference_numbers: patch.referenceNumbers,
+    pickup_date: patch.pickupDate,
+    notes: patch.notes,
+  });
+
+  return mapRowToLoadData(row);
 }
 
 /**

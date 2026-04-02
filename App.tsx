@@ -122,6 +122,7 @@ const CustomerPortalView = React.lazy(() =>
 );
 import { LoadingSkeleton } from "./components/ui/LoadingSkeleton";
 import { SessionExpiredModal } from "./components/ui/SessionExpiredModal";
+import { DriverAssignmentPanel } from "./components/DriverAssignmentPanel";
 const AccountingPortal = React.lazy(
   () => import("./components/AccountingPortal"),
 );
@@ -406,6 +407,17 @@ export default function App() {
   const permissions: RolePermissions = user
     ? getEffectivePermissions(user, company || undefined)
     : {};
+  const canManageAssignments =
+    !!user &&
+    [
+      "admin",
+      "dispatcher",
+      "DISPATCHER",
+      "OWNER_ADMIN",
+      "ORG_OWNER_SUPER_ADMIN",
+      "OPS",
+      "OPS_MANAGER",
+    ].includes(user.role);
 
   const handleRecordAction = async (event: OperationalEvent) => {
     if (!user) return;
@@ -935,33 +947,44 @@ export default function App() {
           <div className="flex-1 overflow-hidden p-4 md:p-6 relative flex flex-col">
             <div className="flex-1 min-h-0 w-full overflow-y-auto no-scrollbar">
               {activeTab === "operations-hub" && (
-                <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <IntelligenceHub
-                    show={true}
-                    user={user}
-                    company={company || undefined}
-                    loads={loads}
-                    incidents={incidents}
-                    users={companyUsers}
-                    brokers={brokers}
-                    session={session}
-                    setSession={setSession}
-                    onClose={() => handleNavigate("loads")}
-                    onRecordAction={handleRecordAction}
-                    initialTab={hubInitialTab}
-                    initialShowCallForm={hubInitialShowCallForm}
-                    initialCallSession={activeCallSession}
-                    initialOverlayState={overlayState}
-                    onNavigate={handleNavigate}
-                    openRecordWorkspace={openRecordWorkspace}
-                    onCloseContext={handleCloseContext}
-                    onLinkSessionToRecord={handleLinkSessionToRecord}
-                  />
-                </Suspense>
-                </ComponentErrorBoundary>
+                <div className="flex flex-col gap-6">
+                  {canManageAssignments && (
+                    <DriverAssignmentPanel
+                      loads={loads}
+                      users={companyUsers}
+                      onAssignLoad={async (load) => {
+                        await handleSaveLoad(load);
+                      }}
+                    />
+                  )}
+                  <ComponentErrorBoundary>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <IntelligenceHub
+                      show={true}
+                      user={user}
+                      company={company || undefined}
+                      loads={loads}
+                      incidents={incidents}
+                      users={companyUsers}
+                      brokers={brokers}
+                      session={session}
+                      setSession={setSession}
+                      onClose={() => handleNavigate("loads")}
+                      onRecordAction={handleRecordAction}
+                      initialTab={hubInitialTab}
+                      initialShowCallForm={hubInitialShowCallForm}
+                      initialCallSession={activeCallSession}
+                      initialOverlayState={overlayState}
+                      onNavigate={handleNavigate}
+                      openRecordWorkspace={openRecordWorkspace}
+                      onCloseContext={handleCloseContext}
+                      onLinkSessionToRecord={handleLinkSessionToRecord}
+                    />
+                  </Suspense>
+                  </ComponentErrorBoundary>
+                </div>
               )}
               {activeTab === "exceptions" && (
                 <ComponentErrorBoundary>

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { BookingPortal } from "../../../components/BookingPortal";
 import { User, Company } from "../../../types";
 
@@ -38,24 +38,15 @@ const mockGetCompany = vi.fn().mockResolvedValue({
   name: "Test Co",
   loadNumberingConfig: { prefix: "LP", nextNumber: 100 },
 });
+const mockGetIdTokenAsync = vi.fn().mockResolvedValue("test-token");
 
 vi.mock("../../../services/authService", () => ({
   checkCapability: (...args: unknown[]) => mockCheckCapability(...args),
   getCompany: (...args: unknown[]) => mockGetCompany(...args),
+  getIdTokenAsync: (...args: unknown[]) => mockGetIdTokenAsync(...args),
 }));
 
-const mockExtractLoadData = vi.fn().mockResolvedValue({
-  loadData: {
-    pickup: { city: "Denver", state: "CO" },
-    dropoff: { city: "Phoenix", state: "AZ" },
-    carrierRate: 2500,
-    freightType: "Dry Van",
-  },
-});
-
-vi.mock("../../../services/ocrService", () => ({
-  extractLoadData: (...args: unknown[]) => mockExtractLoadData(...args),
-}));
+const mockFetch = vi.fn();
 
 const mockUser: User = {
   id: "user-1",
@@ -95,16 +86,26 @@ describe("BookingPortal component", () => {
       name: "Test Co",
       loadNumberingConfig: { prefix: "LP", nextNumber: 100 },
     });
-    mockExtractLoadData.mockResolvedValue({
-      loadData: {
-        pickup: { city: "Denver", state: "CO" },
-        dropoff: { city: "Phoenix", state: "AZ" },
-        carrierRate: 2500,
-        freightType: "Dry Van",
-      },
+    mockGetIdTokenAsync.mockResolvedValue("test-token");
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        loadInfo: {
+          load: {
+            pickup: { city: "Denver", state: "CO" },
+            dropoff: { city: "Phoenix", state: "AZ" },
+            carrierRate: 2500,
+            freightType: "Dry Van",
+          },
+        },
+      }),
     });
+    vi.stubGlobal("fetch", mockFetch);
   });
 
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
   describe("initial rendering (intake step)", () => {
     it("renders without crashing", async () => {
       render(<BookingPortal {...defaultProps} />);
@@ -512,7 +513,16 @@ describe("BookingPortal component", () => {
       });
       await user.upload(fileInput, file);
       await waitFor(() => {
-        expect(mockExtractLoadData).toHaveBeenCalledWith(file);
+        expect(mockFetch).toHaveBeenCalledWith(
+          "/api/ai/extract-load",
+          expect.objectContaining({
+            method: "POST",
+            headers: expect.objectContaining({
+              "Content-Type": "application/json",
+              Authorization: "Bearer test-token",
+            }),
+          }),
+        );
         expect(screen.getByText(/Build Quote/)).toBeInTheDocument();
       });
       await waitFor(() => {
@@ -523,7 +533,10 @@ describe("BookingPortal component", () => {
     });
 
     it("shows error feedback when OCR extraction fails", async () => {
-      mockExtractLoadData.mockRejectedValueOnce(new Error("OCR failed"));
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        json: vi.fn().mockResolvedValue({ error: "OCR failed" }),
+      });
       const user = userEvent.setup();
       render(<BookingPortal {...defaultProps} />);
       await waitFor(() => {

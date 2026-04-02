@@ -11,7 +11,11 @@ import {
 } from "../helpers";
 import { validateBody } from "../middleware/validate";
 import { idempotencyMiddleware } from "../middleware/idempotency";
-import { createLoadSchema, updateLoadStatusSchema } from "../schemas/loads";
+import {
+  createLoadSchema,
+  partialUpdateLoadSchema,
+  updateLoadStatusSchema,
+} from "../schemas/loads";
 import { createRequestLogger } from "../lib/logger";
 import { loadService } from "../services/load.service";
 import { LoadStatus } from "../services/load-state-machine";
@@ -28,6 +32,33 @@ import {
 import { exportLoadToBigQuery } from "../services/bigqueryPipeline";
 
 const router = Router();
+let cachedLoadNotesColumn: string | null | undefined;
+
+async function resolveLoadNotesColumn(): Promise<string | null> {
+  if (cachedLoadNotesColumn !== undefined) {
+    return cachedLoadNotesColumn;
+  }
+
+  const candidates = ["dispatch_notes", "special_instructions", "notes"];
+  for (const candidate of candidates) {
+    const [rows]: any = await pool.query(
+      `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'loads'
+          AND COLUMN_NAME = ?`,
+      [candidate],
+    );
+
+    if (Array.isArray(rows) && rows.length > 0) {
+      cachedLoadNotesColumn = candidate;
+      return candidate;
+    }
+  }
+
+  cachedLoadNotesColumn = null;
+  return null;
+}
 
 // Loads — companyId derived from auth context (req.user.tenantId), NOT URL param
 // Supports ?for=schedule to return only loads with valid dates (for CalendarView)
@@ -315,6 +346,121 @@ router.get(
 
 // Status Transition — wired to state machine via loadService.transitionLoad
 // Idempotency enforced: duplicate transition requests with same key+hash replay stored response
+router.patch(
+  "/api/loads/:id",
+  requireAuth,
+  requireTenant,
+  validateBody(partialUpdateLoadSchema),
+  async (req: any, res, next) => {
+    const loadId = req.params.id;
+    const companyId = req.user.tenantId;
+    const {
+      weight,
+      commodity,
+      bol_number,
+      reference_number,
+      reference_numbers,
+      pickup_date,
+      notes,
+    } = req.body;
+
+    const normalizedReference =
+      reference_number ||
+      (Array.isArray(reference_numbers) ? reference_numbers[0] : undefined);
+    const normalizedBolNumber = bol_number || normalizedReference;
+
+    try {
+      const [existingRows]: any = await pool.query(
+        "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        [loadId, companyId],
+      );
+
+      if (!Array.isArray(existingRows) || existingRows.length === 0) {
+        return res.status(404).json({ error: "Load not found" });
+      }
+
+      const updates: string[] = [];
+      const params: any[] = [];
+
+      if (weight !== undefined) {
+        updates.push("weight = ?");
+        params.push(weight);
+      }
+
+      if (commodity !== undefined) {
+        updates.push("commodity = ?");
+        params.push(commodity);
+      }
+
+      if (normalizedBolNumber !== undefined) {
+        updates.push("bol_number = ?");
+        params.push(normalizedBolNumber);
+      }
+
+      if (pickup_date !== undefined) {
+        updates.push("pickup_date = ?");
+        params.push(pickup_date);
+      }
+
+      if (notes !== undefined) {
+        const notesColumn = await resolveLoadNotesColumn();
+        if (notesColumn) {
+          updates.push(`${notesColumn} = ?`);
+          params.push(notes);
+        }
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          error:
+            "No supported persisted fields were provided for partial load update",
+        });
+      }
+
+      await pool.query(
+        `UPDATE loads SET ${updates.join(", ")} WHERE id = ? AND company_id = ?`,
+        [...params, loadId, companyId],
+      );
+
+      const [rows]: any = await pool.query(
+        "SELECT * FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        [loadId, companyId],
+      );
+      const load = rows?.[0];
+
+      const [legs]: any = await pool.query(
+        "SELECT * FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
+        [loadId],
+      );
+
+      const responseLoad = {
+        ...load,
+        legs,
+        notificationEmails: load?.notification_emails
+          ? typeof load.notification_emails === "string"
+            ? JSON.parse(load.notification_emails)
+            : load.notification_emails
+          : [],
+        gpsHistory: load?.gps_history
+          ? typeof load.gps_history === "string"
+            ? JSON.parse(load.gps_history)
+            : load.gps_history
+          : [],
+        podUrls: load?.pod_urls
+          ? typeof load.pod_urls === "string"
+            ? JSON.parse(load.pod_urls)
+            : load.pod_urls
+          : [],
+        customerUserId: load?.customer_user_id,
+      };
+
+      res.json(responseLoad);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
 router.patch(
   "/api/loads/:id/status",
   requireAuth,

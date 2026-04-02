@@ -5,6 +5,11 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { DriverMobileHome } from "../../../components/DriverMobileHome";
 import type { LoadData, User, Company } from "../../../types";
+import { patchLoadApi } from "../../../services/loadService";
+
+vi.mock("../../../services/loadService", () => ({
+  patchLoadApi: vi.fn(),
+}));
 
 // Mock Scanner so it renders a test-visible sentinel
 vi.mock("../../../components/Scanner", () => ({
@@ -18,7 +23,17 @@ vi.mock("../../../components/Scanner", () => ({
     <div data-testid="scanner-mock">
       <button
         data-testid="scanner-extract"
-        onClick={() => onDataExtracted({ docType: "BOL", confidence: 0.95 })}
+        onClick={() =>
+          onDataExtracted({
+            docType: "BOL",
+            confidence: 0.95,
+            weight: 42000,
+            commodity: "Steel Coils",
+            bolNumber: "BOL-420",
+            referenceNumber: "REF-420",
+            specialInstructions: "Check in at gate 3",
+          })
+        }
       >
         Extract
       </button>
@@ -66,6 +81,13 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
     onSaveLoad = vi.fn().mockResolvedValue(undefined) as unknown as MockedFunction<(load: LoadData) => Promise<void>>;
     onLogout = vi.fn() as unknown as MockedFunction<() => void>;
     onOpenHub = vi.fn() as unknown as MockedFunction<(tab?: "feed" | "messaging" | "intelligence" | "reports") => void>;
+    vi.mocked(patchLoadApi).mockResolvedValue({
+      ...mockLoad,
+      weight: 42000,
+      commodity: "Steel Coils",
+      bolNumber: "BOL-420",
+      specialInstructions: "Check in at gate 3",
+    });
     localStorage.clear();
   });
 
@@ -93,7 +115,7 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
     });
   });
 
-  it("R-P4-03: when Scanner calls onDataExtracted, calls onSaveLoad with updated load", async () => {
+  it("R-P4-03: Upload still uses onSaveLoad for document checklist updates", async () => {
     const user = userEvent.setup();
     render(
       <DriverMobileHome
@@ -124,6 +146,44 @@ describe("DriverMobileHome Scanner integration (R-P4-02, R-P4-03)", () => {
 
     const savedLoad = onSaveLoad.mock.calls[0][0] as LoadData;
     expect(savedLoad.id).toBe(mockLoad.id);
+    expect(patchLoadApi).not.toHaveBeenCalled();
+  });
+
+  it("uses Scan at Pickup to patch the existing load without creating a new one", async () => {
+    const user = userEvent.setup();
+    render(
+      <DriverMobileHome
+        user={mockUser}
+        loads={[mockLoad]}
+        onLogout={onLogout}
+        onSaveLoad={onSaveLoad}
+        onOpenHub={onOpenHub}
+      />,
+    );
+
+    await user.click(screen.getByText(/LD-001/));
+    await user.click(screen.getByRole("button", { name: /Scan at Pickup/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("scanner-mock")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByTestId("scanner-extract"));
+
+    await waitFor(() => {
+      expect(patchLoadApi).toHaveBeenCalledWith(
+        mockLoad.id,
+        expect.objectContaining({
+          weight: 42000,
+          commodity: "Steel Coils",
+          bolNumber: "BOL-420",
+          referenceNumber: "REF-420",
+          notes: "Check in at gate 3",
+        }),
+      );
+    });
+
+    expect(onSaveLoad).not.toHaveBeenCalled();
   });
 
   it("Scanner modal closes when cancel is clicked", async () => {

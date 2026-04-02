@@ -174,7 +174,7 @@ export const saveLoad = async (load: LoadData, user: User) => {
   const loadToSave: LoadData = {
     ...load,
     companyId: load.companyId || user.companyId,
-    driverId: load.driverId || user.id,
+    driverId: load.driverId || "",
   };
 
   await apiCreateLoad(loadToSave);

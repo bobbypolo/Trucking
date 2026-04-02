@@ -99,11 +99,12 @@ export const LoadSetupModal: React.FC<Props> = ({
   };
 
   const handleContinue = async (forcePhoneOrder: boolean = false) => {
-    if (selectedDriverId && selectedBrokerId) {
+    if (selectedBrokerId) {
       setIsSubmitting(true);
       // Resolve "Direct / No Broker" sentinel to empty string for downstream
       const resolvedBrokerId =
         selectedBrokerId === DIRECT_BROKER_ID ? "" : selectedBrokerId;
+      const resolvedDriverId = selectedDriverId || "";
       try {
         if (forcePhoneOrder || isPhoneOrder) {
           const company = await getCompany(currentUser.companyId);
@@ -112,20 +113,20 @@ export const LoadSetupModal: React.FC<Props> = ({
             const newLoadNumber = generateNextLoadNumber(company, broker.name);
             onContinue(
               resolvedBrokerId,
-              selectedDriverId,
+              resolvedDriverId,
               newLoadNumber,
               callNotes,
             );
           } else {
             onContinue(
               resolvedBrokerId,
-              selectedDriverId,
+              resolvedDriverId,
               undefined,
               callNotes,
             );
           }
         } else {
-          onContinue(resolvedBrokerId, selectedDriverId);
+          onContinue(resolvedBrokerId, resolvedDriverId);
         }
       } finally {
         setIsSubmitting(false);
@@ -133,7 +134,6 @@ export const LoadSetupModal: React.FC<Props> = ({
     } else {
       const errs: Record<string, string> = {};
       if (!selectedBrokerId) errs.broker = "Broker or Direct is required";
-      if (!selectedDriverId) errs.driver = "Driver is required";
       if (callNotes.length > 500)
         errs.callNotes = "Call notes must be 500 characters or fewer";
       setFormErrors(errs);
@@ -499,7 +499,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                 htmlFor="lsmAssignDriver"
                 className="text-xs font-bold text-slate-400"
               >
-                Assign Driver <span className="text-red-400">*</span>
+                Assign Driver
               </label>
               <button
                 type="button"
@@ -523,7 +523,7 @@ export const LoadSetupModal: React.FC<Props> = ({
                 onChange={(e) => setSelectedDriverId(e.target.value)}
                 className={`w-full bg-[#0a0f18] border ${formErrors.driver ? "border-red-500" : "border-slate-800"} rounded-xl px-4 py-3 text-sm text-white font-bold appearance-none focus:border-blue-500 outline-none`}
               >
-                <option value="">Select Carrier / Driver</option>
+                <option value="">Assign Later</option>
                 {drivers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name}
@@ -672,7 +672,7 @@ export const LoadSetupModal: React.FC<Props> = ({
           <div className="flex gap-4 pt-4">
             <button
               onClick={() => handleContinue(false)}
-              disabled={isSubmitting || !selectedBrokerId || !selectedDriverId}
+              disabled={isSubmitting || !selectedBrokerId}
               className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Loading..." : "Scan Doc"}{" "}

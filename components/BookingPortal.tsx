@@ -23,8 +23,11 @@ import {
   saveBooking,
   saveLead,
 } from "../services/storageService";
-import { checkCapability, getCompany } from "../services/authService";
-import { extractLoadData } from "../services/ocrService";
+import {
+  checkCapability,
+  getCompany,
+  getIdTokenAsync,
+} from "../services/authService";
 import {
   Camera,
   FileText,
@@ -54,6 +57,66 @@ import { v4 as uuidv4 } from "uuid";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
+
+const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
+
+interface ExtractLoadResponse {
+  loadInfo?: {
+    load?: Partial<LoadData> & {
+      carrierRate?: number;
+      freightType?: FreightType | string;
+    };
+  };
+}
+
+const fileToBase64 = async (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("Failed to read uploaded file"));
+        return;
+      }
+
+      const [, base64 = ""] = result.split(",", 2);
+      if (!base64) {
+        reject(new Error("Failed to encode uploaded file"));
+        return;
+      }
+
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("Failed to read uploaded file"));
+    reader.readAsDataURL(file);
+  });
+};
+
+const extractLoadFromUpload = async (
+  file: File,
+): Promise<ExtractLoadResponse["loadInfo"]> => {
+  const imageBase64 = await fileToBase64(file);
+  const token = (await getIdTokenAsync()) ?? "";
+  const res = await fetch(`${API_BASE}/ai/extract-load`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      imageBase64,
+      mimeType: file.type || "application/pdf",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `AI extraction failed: ${res.status}`);
+  }
+
+  const data = (await res.json()) as ExtractLoadResponse;
+  return data.loadInfo;
+};
 
 interface Props {
   user: User;
@@ -158,15 +221,18 @@ export const BookingPortal: React.FC<Props> = ({
 
     setIsScanning(true);
     try {
-      const results = await extractLoadData(file);
-      const data = results.loadData;
+      const loadInfo = await extractLoadFromUpload(file);
+      const data = loadInfo?.load ?? {};
       setQuote((prev) => ({
         ...prev,
         pickup: data.pickup || prev.pickup,
         dropoff: data.dropoff || prev.dropoff,
-        linehaul: data.carrierRate || 0,
-        equipmentType: data.freightType || "Intermodal",
-        totalRate: data.carrierRate || 0,
+        linehaul: data.carrierRate || prev.linehaul || 0,
+        equipmentType:
+          (data.freightType as FreightType | undefined) ||
+          prev.equipmentType ||
+          "Intermodal",
+        totalRate: data.carrierRate || prev.totalRate || 0,
       }));
       setStep("quote");
       showFeedback(
@@ -187,6 +253,7 @@ export const BookingPortal: React.FC<Props> = ({
       setStep("quote");
     } finally {
       setIsScanning(false);
+      e.target.value = "";
     }
   };
 

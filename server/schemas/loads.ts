@@ -78,3 +78,34 @@ export const updateLoadStatusSchema = z.object({
   status: z.string().min(1),
   dispatcher_id: z.string().optional(),
 });
+
+/**
+ * Schema for PATCH /api/loads/:id - partial load updates from scan/intake flows.
+ * This is intentionally narrow so scanner-driven updates cannot mutate the
+ * broader load lifecycle or bypass state-machine rules.
+ */
+export const partialUpdateLoadSchema = z
+  .object({
+    weight: z.coerce.number().finite().nonnegative().optional(),
+    commodity: z.string().trim().min(1).optional(),
+    bol_number: z.string().trim().min(1).optional(),
+    reference_number: z.string().trim().min(1).optional(),
+    reference_numbers: z.array(z.string().trim().min(1)).optional(),
+    pickup_date: z.string().trim().min(1).optional(),
+    notes: z.string().trim().min(1).max(2000).optional(),
+  })
+  .refine(
+    (data) =>
+      data.weight !== undefined ||
+      data.commodity !== undefined ||
+      data.bol_number !== undefined ||
+      data.reference_number !== undefined ||
+      (data.reference_numbers !== undefined &&
+        data.reference_numbers.length > 0) ||
+      data.pickup_date !== undefined ||
+      data.notes !== undefined,
+    {
+      message:
+        "At least one supported partial-update field is required for PATCH /api/loads/:id",
+    },
+  );

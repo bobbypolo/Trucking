@@ -135,7 +135,7 @@ describe("LoadSetupModal component", () => {
   describe("driver selection dropdown", () => {
     it("renders driver select with placeholder", () => {
       render(<LoadSetupModal {...defaultProps} />);
-      expect(screen.getByText("Select Carrier / Driver")).toBeInTheDocument();
+      expect(screen.getByText("Assign Later")).toBeInTheDocument();
     });
 
     it("populates drivers from API after mount", async () => {
@@ -328,7 +328,7 @@ describe("LoadSetupModal component", () => {
       expect(brokerSelect.value).toBe("broker-1");
     });
 
-    it("enables Scan Doc when broker and driver are both selected", async () => {
+    it("enables Scan Doc when a broker is selected without assigning a driver", async () => {
       const user = userEvent.setup();
       render(<LoadSetupModal {...defaultProps} />);
       await waitFor(() => {
@@ -339,18 +339,12 @@ describe("LoadSetupModal component", () => {
         name: /Select Broker \/ Customer/,
       }) as HTMLSelectElement;
       await user.selectOptions(brokerSelect, "broker-1");
-      // Select driver
-      const driverSelect = document.querySelectorAll("select");
-      const dSelect = Array.from(driverSelect).find((s) =>
-        Array.from(s.options).some((o) => o.textContent === "John Driver"),
-      ) as HTMLSelectElement;
-      await user.selectOptions(dSelect, "driver-1");
       // Scan Doc should now be enabled
       const scanBtn = screen.getByText(/Scan Doc/).closest("button");
       expect(scanBtn).not.toBeDisabled();
     });
 
-    it("enables Scan Doc with Direct / No Broker + driver selected", async () => {
+    it("enables Scan Doc with Direct / No Broker and no driver selected", async () => {
       const user = userEvent.setup();
       render(<LoadSetupModal {...defaultProps} />);
       await waitFor(() => {
@@ -361,18 +355,12 @@ describe("LoadSetupModal component", () => {
         name: /Select Broker \/ Customer/,
       }) as HTMLSelectElement;
       await user.selectOptions(brokerSelect, "__direct__");
-      // Select driver
-      const dSelect = Array.from(document.querySelectorAll("select")).find(
-        (s) =>
-          Array.from(s.options).some((o) => o.textContent === "John Driver"),
-      ) as HTMLSelectElement;
-      await user.selectOptions(dSelect, "driver-1");
       // Scan Doc should be enabled
       const scanBtn = screen.getByText(/Scan Doc/).closest("button");
       expect(scanBtn).not.toBeDisabled();
     });
 
-    it("calls onContinue with empty brokerId when Direct / No Broker is selected", async () => {
+    it("calls onContinue with empty brokerId and empty driverId when Direct / No Broker is selected without assignment", async () => {
       const user = userEvent.setup();
       const onContinue = vi.fn();
       render(<LoadSetupModal {...defaultProps} onContinue={onContinue} />);
@@ -384,19 +372,13 @@ describe("LoadSetupModal component", () => {
         name: /Select Broker \/ Customer/,
       }) as HTMLSelectElement;
       await user.selectOptions(brokerSelect, "__direct__");
-      // Select driver
-      const dSelect = Array.from(document.querySelectorAll("select")).find(
-        (s) =>
-          Array.from(s.options).some((o) => o.textContent === "John Driver"),
-      ) as HTMLSelectElement;
-      await user.selectOptions(dSelect, "driver-1");
       // Click Scan Doc
       const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
       await user.click(scanBtn);
-      expect(onContinue).toHaveBeenCalledWith("", "driver-1");
+      expect(onContinue).toHaveBeenCalledWith("", "");
     });
 
-    it("calls onContinue with actual brokerId when a real broker is selected", async () => {
+    it("calls onContinue with actual brokerId and empty driverId when a real broker is selected without assignment", async () => {
       const user = userEvent.setup();
       const onContinue = vi.fn();
       render(<LoadSetupModal {...defaultProps} onContinue={onContinue} />);
@@ -408,13 +390,28 @@ describe("LoadSetupModal component", () => {
         name: /Select Broker \/ Customer/,
       }) as HTMLSelectElement;
       await user.selectOptions(brokerSelect, "broker-1");
-      // Select driver
-      const dSelect = Array.from(document.querySelectorAll("select")).find(
-        (s) =>
-          Array.from(s.options).some((o) => o.textContent === "John Driver"),
+      // Click Scan Doc
+      const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
+      await user.click(scanBtn);
+      expect(onContinue).toHaveBeenCalledWith("broker-1", "");
+    });
+
+    it("still passes a driverId when one is explicitly assigned before continuing", async () => {
+      const user = userEvent.setup();
+      const onContinue = vi.fn();
+      render(<LoadSetupModal {...defaultProps} onContinue={onContinue} />);
+      await waitFor(() => {
+        expect(screen.getByText("John Driver")).toBeInTheDocument();
+      });
+      const brokerSelect = screen.getByRole("combobox", {
+        name: /Select Broker \/ Customer/,
+      }) as HTMLSelectElement;
+      await user.selectOptions(brokerSelect, "broker-1");
+      const driverSelect = document.querySelectorAll("select");
+      const dSelect = Array.from(driverSelect).find((s) =>
+        Array.from(s.options).some((o) => o.textContent === "John Driver"),
       ) as HTMLSelectElement;
       await user.selectOptions(dSelect, "driver-1");
-      // Click Scan Doc
       const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
       await user.click(scanBtn);
       expect(onContinue).toHaveBeenCalledWith("broker-1", "driver-1");

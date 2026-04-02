@@ -45,6 +45,7 @@ import { v4 as uuidv4 } from "uuid";
 import { api } from "../services/api";
 import { createException } from "../services/exceptionService";
 import { getSettlements } from "../services/financialService";
+import { patchLoadApi } from "../services/loadService";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
 import { EmptyState } from "./ui/EmptyState";
@@ -74,6 +75,8 @@ interface ToastState {
   message: string;
   type: "success" | "error" | "info" | "warning";
 }
+
+type ScannerIntent = "document" | "pickup";
 
 const extensionForMimeType = (mimeType: string): string => {
   if (mimeType.includes("pdf")) return "pdf";
@@ -143,9 +146,14 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [selectedLoadId, setSelectedLoadIdState] = useState<string | null>(
     getStoredLoadId,
   );
-  const [isCapturingDoc, setIsCapturingDoc] = useState(false);
+  const [scannerIntent, setScannerIntent] = useState<ScannerIntent | null>(
+    null,
+  );
   const [isCreatingChange, setIsCreatingChange] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [loadOverrides, setLoadOverrides] = useState<
+    Record<string, Partial<LoadData>>
+  >({});
   // Breakdown modal flow state
   const [breakdownStep, setBreakdownStep] = useState<
     "idle" | "notes" | "tow" | "cargo"
@@ -239,18 +247,26 @@ export const DriverMobileHome: React.FC<Props> = ({
     }>
   >([]);
 
+  const mergedLoads = useMemo(
+    () =>
+      loads.map((load) => ({
+        ...load,
+        ...(loadOverrides[load.id] || {}),
+      })),
+    [loads, loadOverrides],
+  );
   const activeLoads = useMemo(
     () =>
-      loads.filter(
+      mergedLoads.filter(
         (l) =>
           l.driverId === user.id &&
           !["delivered", "completed"].includes(l.status),
       ),
-    [loads, user.id],
+    [mergedLoads, user.id],
   );
   const selectedLoad = useMemo(
-    () => loads.find((l) => l.id === selectedLoadId),
-    [loads, selectedLoadId],
+    () => mergedLoads.find((l) => l.id === selectedLoadId),
+    [mergedLoads, selectedLoadId],
   );
 
   // Stable list of driver load IDs for useEffect dependency
@@ -359,7 +375,11 @@ export const DriverMobileHome: React.FC<Props> = ({
   };
 
   // Scanner data extracted handler (R-P4-03)
-  const handleDataExtracted = (data: unknown) => {
+  const closeScanner = () => {
+    setScannerIntent(null);
+  };
+
+  const handleDocumentDataExtracted = (data: unknown) => {
     if (!selectedLoad) return;
     // Attach extracted document metadata to the load
     const docMeta = data as { docType?: string; confidence?: number };
@@ -377,7 +397,99 @@ export const DriverMobileHome: React.FC<Props> = ({
     onSaveLoad(updatedLoad).catch(() => {
       setToast({ message: "Failed to save document", type: "error" });
     });
-    setIsCapturingDoc(false);
+    closeScanner();
+  };
+
+  const handlePickupScanExtracted = async (data: unknown) => {
+    if (!selectedLoad) return;
+
+    const extracted = data as {
+      weight?: number | string;
+      commodity?: string;
+      bolNumber?: string;
+      bol_number?: string;
+      referenceNumber?: string;
+      referenceNumbers?: string[];
+      pickupDate?: string;
+      specialInstructions?: string;
+      notes?: string;
+    };
+
+    const normalizedWeight =
+      extracted.weight !== undefined && extracted.weight !== ""
+        ? Number(extracted.weight)
+        : undefined;
+    const normalizedCommodity = extracted.commodity?.trim() || undefined;
+    const normalizedReference =
+      extracted.referenceNumber?.trim() ||
+      extracted.referenceNumbers?.find(
+        (value) => typeof value === "string" && value.trim().length > 0,
+      );
+    const normalizedBolNumber =
+      extracted.bolNumber?.trim() ||
+      extracted.bol_number?.trim() ||
+      normalizedReference;
+    const normalizedPickupDate = extracted.pickupDate?.trim() || undefined;
+    const normalizedNotes =
+      extracted.specialInstructions?.trim() || extracted.notes?.trim() || undefined;
+
+    if (
+      normalizedWeight === undefined &&
+      normalizedCommodity === undefined &&
+      normalizedBolNumber === undefined &&
+      normalizedPickupDate === undefined &&
+      normalizedNotes === undefined
+    ) {
+      setToast({
+        message: "Scan did not return any pickup fields to update.",
+        type: "warning",
+      });
+      closeScanner();
+      return;
+    }
+
+    try {
+      const updatedLoad = await patchLoadApi(selectedLoad.id, {
+        weight:
+          normalizedWeight !== undefined && Number.isFinite(normalizedWeight)
+            ? normalizedWeight
+            : undefined,
+        commodity: normalizedCommodity,
+        bolNumber: normalizedBolNumber,
+        referenceNumber: normalizedReference,
+        pickupDate: normalizedPickupDate,
+        notes: normalizedNotes,
+      });
+
+      const changedFields = [
+        normalizedWeight !== undefined ? "weight" : null,
+        normalizedCommodity ? "commodity" : null,
+        normalizedBolNumber ? "BOL" : null,
+        normalizedPickupDate ? "pickup date" : null,
+        normalizedNotes ? "notes" : null,
+      ].filter(Boolean) as string[];
+
+      setLoadOverrides((prev) => ({
+        ...prev,
+        [selectedLoad.id]: {
+          ...updatedLoad,
+          specialInstructions:
+            normalizedNotes || updatedLoad.specialInstructions,
+        },
+      }));
+
+      setToast({
+        message: `Pickup scan updated ${changedFields.join(", ")}.`,
+        type: "success",
+      });
+    } catch {
+      setToast({
+        message: "Failed to update load from pickup scan.",
+        type: "error",
+      });
+    } finally {
+      closeScanner();
+    }
   };
 
   const createChangeRequest = async (type: ChangeRequest["type"]) => {
@@ -788,12 +900,22 @@ export const DriverMobileHome: React.FC<Props> = ({
               <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                 <FileText className="w-3 h-3" /> Documents
               </h3>
-              <button
-                onClick={() => setIsCapturingDoc(true)}
-                className="flex items-center gap-2 text-xs font-black text-blue-500 uppercase"
-              >
-                <Plus className="w-3 h-3" /> Upload
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setScannerIntent("pickup")}
+                  aria-label="Scan at Pickup"
+                  className="flex items-center gap-2 text-xs font-black text-emerald-400 uppercase"
+                >
+                  <ScanLine className="w-3 h-3" /> Scan at Pickup
+                </button>
+                <button
+                  onClick={() => setScannerIntent("document")}
+                  aria-label="Upload document"
+                  className="flex items-center gap-2 text-xs font-black text-blue-500 uppercase"
+                >
+                  <Plus className="w-3 h-3" /> Upload
+                </button>
+              </div>
             </div>
             <div className="space-y-2">
               {loadDocuments.length > 0
@@ -967,24 +1089,30 @@ export const DriverMobileHome: React.FC<Props> = ({
         />
 
         {/* Scanner Modal Overlay (R-P4-02) */}
-        {isCapturingDoc && (
+        {scannerIntent && (
           <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
             <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
               <div className="flex justify-between items-center p-6 border-b border-white/5">
                 <h2 className="text-base font-black text-white uppercase tracking-tight">
-                  Scan Document
+                  {scannerIntent === "pickup"
+                    ? "Scan at Pickup"
+                    : "Scan Document"}
                 </h2>
                 <button
-                  onClick={() => setIsCapturingDoc(false)}
+                  onClick={closeScanner}
                   className="text-slate-500 hover:text-white"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
               <Scanner
-                onDataExtracted={handleDataExtracted}
-                onCancel={() => setIsCapturingDoc(false)}
-                onDismiss={() => setIsCapturingDoc(false)}
+                onDataExtracted={
+                  scannerIntent === "pickup"
+                    ? handlePickupScanExtracted
+                    : handleDocumentDataExtracted
+                }
+                onCancel={closeScanner}
+                onDismiss={closeScanner}
                 mode="load"
               />
             </div>

@@ -1,7 +1,7 @@
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { BookingPortal } from "../../../components/BookingPortal";
 import { User, Company } from "../../../types";
 
@@ -28,18 +28,10 @@ vi.mock("../../../services/authService", () => ({
     name: "Test Co",
     loadNumberingConfig: { prefix: "LP", nextNumber: 100 },
   }),
+  getIdTokenAsync: vi.fn().mockResolvedValue("test-token"),
 }));
 
-vi.mock("../../../services/ocrService", () => ({
-  extractLoadData: vi.fn().mockResolvedValue({
-    loadData: {
-      pickup: { city: "Denver", state: "CO" },
-      dropoff: { city: "Phoenix", state: "AZ" },
-      carrierRate: 2500,
-      freightType: "Dry Van",
-    },
-  }),
-}));
+const mockFetch = vi.fn();
 
 const mockUser: User = {
   id: "user-1",
@@ -68,6 +60,24 @@ describe("BookingPortal coverage — review/confirmation steps", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({
+        loadInfo: {
+          load: {
+            pickup: { city: "Denver", state: "CO" },
+            dropoff: { city: "Phoenix", state: "AZ" },
+            carrierRate: 2500,
+            freightType: "Dry Van",
+          },
+        },
+      }),
+    });
+    vi.stubGlobal("fetch", mockFetch);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("navigates through full flow: intake -> quote -> fill rate -> finalize -> review", async () => {
