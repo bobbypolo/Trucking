@@ -57,7 +57,7 @@ export const createSettlement = async (
 export const importFuelPurchases = async (
   purchases: FuelEntry[],
 ): Promise<void> => {
-  await api.post("/accounting/fuel/import", purchases);
+  await api.post("/accounting/batch-import", { type: "Fuel", data: purchases });
 };
 
 export const getInvoices = async (
@@ -101,6 +101,19 @@ export const saveMileageEntry = async (
   entry: Partial<MileageEntry>,
 ): Promise<void> => {
   await api.post("/accounting/mileage", entry);
+};
+
+export const saveFuelReceipt = async (receipt: {
+  vendorName: string;
+  gallons: number;
+  pricePerGallon: number;
+  totalCost: number;
+  transactionDate: string;
+  stateCode: string;
+  truckId?: string;
+  cardNumber?: string;
+}): Promise<{ id: string }> => {
+  return api.post("/accounting/fuel-receipt", receipt);
 };
 
 export const postIFTAToLedger = async (data: {

@@ -35,6 +35,7 @@ import {
   Phone,
   ScanLine,
   Wallet,
+  Fuel,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
 import { Scanner, IntakeAccumulatedData } from "./Scanner";
@@ -44,7 +45,7 @@ import { InputDialog } from "./ui/InputDialog";
 import { v4 as uuidv4 } from "uuid";
 import { api } from "../services/api";
 import { createException } from "../services/exceptionService";
-import { getSettlements } from "../services/financialService";
+import { getSettlements, saveFuelReceipt } from "../services/financialService";
 import { patchLoadApi } from "../services/loadService";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
 import { ErrorState } from "./ui/ErrorState";
@@ -76,7 +77,7 @@ interface ToastState {
   type: "success" | "error" | "info" | "warning";
 }
 
-type ScannerIntent = "document" | "pickup";
+type ScannerIntent = "document" | "pickup" | "fuel";
 
 const extensionForMimeType = (mimeType: string): string => {
   if (mimeType.includes("pdf")) return "pdf";
@@ -199,6 +200,18 @@ export const DriverMobileHome: React.FC<Props> = ({
     scannedDocImages: [],
   });
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
+
+  // Fuel receipt scanning state
+  const [fuelReviewData, setFuelReviewData] = useState<{
+    vendorName: string;
+    gallons: string;
+    pricePerGallon: string;
+    totalCost: string;
+    transactionDate: string;
+    stateCode: string;
+    truckId: string;
+  } | null>(null);
+  const [fuelSubmitting, setFuelSubmitting] = useState(false);
 
   // Driver pay / settlement state
   const [mySettlements, setMySettlements] = useState<DriverSettlement[]>([]);
@@ -699,6 +712,47 @@ export const DriverMobileHome: React.FC<Props> = ({
     }
   }, [intakeFormData, user.id, user.companyId, onSaveLoad]);
 
+  /** Handle data extracted from Scanner in fuel mode — show review step */
+  const handleFuelDataExtracted = useCallback((data: any) => {
+    setFuelReviewData({
+      vendorName: data?.vendorName || "",
+      gallons: data?.gallons?.toString() || "",
+      pricePerGallon: data?.pricePerGallon?.toString() || "",
+      totalCost: data?.totalCost?.toString() || "",
+      transactionDate: data?.transactionDate || new Date().toISOString().split("T")[0],
+      stateCode: data?.stateCode || "",
+      truckId: data?.truckId || "",
+    });
+    setScannerIntent(null);
+  }, []);
+
+  /** Submit reviewed fuel receipt data */
+  const submitFuelReceipt = useCallback(async () => {
+    if (!fuelReviewData) return;
+    if (!fuelReviewData.vendorName || !fuelReviewData.gallons || !fuelReviewData.totalCost || !fuelReviewData.stateCode) {
+      setToast({ message: "Vendor, gallons, total cost, and state are required", type: "error" });
+      return;
+    }
+    setFuelSubmitting(true);
+    try {
+      await saveFuelReceipt({
+        vendorName: fuelReviewData.vendorName,
+        gallons: parseFloat(fuelReviewData.gallons) || 0,
+        pricePerGallon: parseFloat(fuelReviewData.pricePerGallon) || 0,
+        totalCost: parseFloat(fuelReviewData.totalCost) || 0,
+        transactionDate: fuelReviewData.transactionDate,
+        stateCode: fuelReviewData.stateCode.toUpperCase(),
+        truckId: fuelReviewData.truckId || undefined,
+      });
+      setToast({ message: "Fuel receipt saved successfully", type: "success" });
+      setFuelReviewData(null);
+    } catch (err: any) {
+      setToast({ message: err?.message || "Failed to save fuel receipt", type: "error" });
+    } finally {
+      setFuelSubmitting(false);
+    }
+  }, [fuelReviewData]);
+
   /** Cancel the intake flow */
   const cancelIntake = useCallback(() => {
     setIntakeStep("idle");
@@ -902,6 +956,13 @@ export const DriverMobileHome: React.FC<Props> = ({
               </h3>
               <div className="flex items-center gap-4">
                 <button
+                  onClick={() => setScannerIntent("fuel")}
+                  aria-label="Scan Fuel Receipt"
+                  className="flex items-center gap-2 text-xs font-black text-emerald-400 uppercase"
+                >
+                  <Fuel className="w-3 h-3" /> Fuel
+                </button>
+                <button
                   onClick={() => setScannerIntent("pickup")}
                   aria-label="Scan at Pickup"
                   className="flex items-center gap-2 text-xs font-black text-emerald-400 uppercase"
@@ -1096,7 +1157,9 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <h2 className="text-base font-black text-white uppercase tracking-tight">
                   {scannerIntent === "pickup"
                     ? "Scan at Pickup"
-                    : "Scan Document"}
+                    : scannerIntent === "fuel"
+                      ? "Scan Fuel Receipt"
+                      : "Scan Document"}
                 </h2>
                 <button
                   onClick={closeScanner}
@@ -1107,14 +1170,116 @@ export const DriverMobileHome: React.FC<Props> = ({
               </div>
               <Scanner
                 onDataExtracted={
-                  scannerIntent === "pickup"
-                    ? handlePickupScanExtracted
-                    : handleDocumentDataExtracted
+                  scannerIntent === "fuel"
+                    ? handleFuelDataExtracted
+                    : scannerIntent === "pickup"
+                      ? handlePickupScanExtracted
+                      : handleDocumentDataExtracted
                 }
                 onCancel={closeScanner}
                 onDismiss={closeScanner}
-                mode="load"
+                mode={scannerIntent === "fuel" ? "fuel" : "load"}
               />
+            </div>
+          </div>
+        )}
+
+        {/* Fuel Receipt Review */}
+        {fuelReviewData && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+            <div className="bg-[#020617] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl space-y-6">
+              <div>
+                <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                  Review Fuel Receipt
+                </h3>
+                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">
+                  Verify extracted data before saving
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Vendor *</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                    value={fuelReviewData.vendorName}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, vendorName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Gallons *</label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                    value={fuelReviewData.gallons}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, gallons: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Price/Gal</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                    value={fuelReviewData.pricePerGallon}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, pricePerGallon: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Total Cost *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                    value={fuelReviewData.totalCost}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, totalCost: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">State *</label>
+                  <input
+                    type="text"
+                    maxLength={2}
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
+                    value={fuelReviewData.stateCode}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, stateCode: e.target.value.toUpperCase() })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Date *</label>
+                  <input
+                    type="date"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                    value={fuelReviewData.transactionDate}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, transactionDate: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black text-slate-600 uppercase">Truck ID</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
+                    value={fuelReviewData.truckId}
+                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, truckId: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button
+                  onClick={() => setFuelReviewData(null)}
+                  className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitFuelReceipt}
+                  disabled={fuelSubmitting}
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                >
+                  {fuelSubmitting ? "Saving..." : "Save Fuel Entry"}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1244,6 +1409,15 @@ export const DriverMobileHome: React.FC<Props> = ({
             >
               <ScanLine className="w-5 h-5" />
               New Load Intake — Scan Documents
+            </button>
+
+            {/* Scan Fuel Receipt CTA */}
+            <button
+              onClick={() => setScannerIntent("fuel")}
+              className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
+            >
+              <Fuel className="w-4 h-4" />
+              Scan Fuel Receipt
             </button>
 
             {/* Message Dispatch button (R-P4-07) */}
@@ -1892,6 +2066,131 @@ export const DriverMobileHome: React.FC<Props> = ({
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fuel Scanner Overlay */}
+      {scannerIntent === "fuel" && (
+        <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center p-6 border-b border-white/5">
+              <h2 className="text-base font-black text-white uppercase tracking-tight">
+                Scan Fuel Receipt
+              </h2>
+              <button
+                onClick={closeScanner}
+                className="text-slate-500 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <Scanner
+              onDataExtracted={handleFuelDataExtracted}
+              onCancel={closeScanner}
+              onDismiss={closeScanner}
+              mode="fuel"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Fuel Receipt Review */}
+      {fuelReviewData && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-4">
+          <div className="bg-[#020617] border border-white/10 w-full max-w-md rounded-3xl p-8 shadow-2xl space-y-6">
+            <div>
+              <h3 className="text-xl font-black text-white uppercase tracking-tighter">
+                Review Fuel Receipt
+              </h3>
+              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">
+                Verify extracted data before saving
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Vendor *</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                  value={fuelReviewData.vendorName}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, vendorName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Gallons *</label>
+                <input
+                  type="number"
+                  step="0.001"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                  value={fuelReviewData.gallons}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, gallons: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Price/Gal</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                  value={fuelReviewData.pricePerGallon}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, pricePerGallon: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Total Cost *</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                  value={fuelReviewData.totalCost}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, totalCost: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">State *</label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
+                  value={fuelReviewData.stateCode}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, stateCode: e.target.value.toUpperCase() })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Date *</label>
+                <input
+                  type="date"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
+                  value={fuelReviewData.transactionDate}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, transactionDate: e.target.value })}
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <label className="text-[10px] font-black text-slate-600 uppercase">Truck ID</label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
+                  value={fuelReviewData.truckId}
+                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, truckId: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 pt-2">
+              <button
+                onClick={() => setFuelReviewData(null)}
+                className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitFuelReceipt}
+                disabled={fuelSubmitting}
+                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+              >
+                {fuelSubmitting ? "Saving..." : "Save Fuel Entry"}
+              </button>
             </div>
           </div>
         </div>

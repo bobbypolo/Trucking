@@ -10,7 +10,9 @@ import {
   trackingWebhookSchema,
   createProviderConfigSchema,
   createVehicleMappingSchema,
+  mobileGpsSchema,
 } from "../schemas/tracking";
+import { bridgeGpsToIfta, findActiveLoadsForCompany } from "../services/ifta-evidence.service";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
@@ -289,6 +291,34 @@ async function storePositions(
   } catch (err) {
     log.error({ err }, "Failed to store GPS positions");
   }
+
+  // Bridge GPS positions to IFTA trip evidence (best-effort)
+  try {
+    const activeLoads = await findActiveLoadsForCompany(companyId, pool);
+    for (const p of realPositions) {
+      const driverId = p.driverId || null;
+      const loadId = driverId ? activeLoads.get(driverId) ?? null : null;
+      if (loadId) {
+        await bridgeGpsToIfta(
+          {
+            companyId,
+            vehicleId: p.vehicleId,
+            driverId,
+            lat: p.latitude,
+            lng: p.longitude,
+            speed: p.speed ?? null,
+            odometer: null,
+            timestamp: p.recordedAt || new Date(),
+            source: "ELD",
+          },
+          pool,
+          loadId,
+        );
+      }
+    }
+  } catch (err) {
+    log.error({ err }, "Failed to bridge GPS positions to IFTA evidence");
+  }
 }
 
 /**
@@ -509,11 +539,109 @@ router.post("/api/tracking/webhook", async (req: any, res, next) => {
       ],
     );
 
+    // Bridge to IFTA evidence (best-effort, non-blocking)
+    try {
+      await bridgeGpsToIfta(
+        {
+          companyId: resolvedCompanyId,
+          vehicleId,
+          driverId: driverId || null,
+          lat: latitude,
+          lng: longitude,
+          speed: speed ?? null,
+          odometer: null,
+          timestamp: new Date(),
+          source: "GPS",
+        },
+        pool,
+      );
+    } catch (bridgeErr) {
+      log.error({ err: bridgeErr, vehicleId }, "IFTA bridge failed for webhook GPS");
+    }
+
     res.status(201).json({ stored: true, id });
   } catch (error) {
     next(error);
   }
 });
+
+/**
+ * POST /api/tracking/mobile-gps
+ * Accepts GPS pings from driver mobile devices.
+ * Auth: Firebase (driver is logged in), not API key.
+ */
+router.post(
+  "/api/tracking/mobile-gps",
+  requireAuth,
+  requireTenant,
+  validateBody(mobileGpsSchema),
+  async (req: any, res, next) => {
+    const companyId = req.user.tenantId;
+    const driverId = req.user.id || req.user.uid;
+    const log = createRequestLogger(req, "POST /api/tracking/mobile-gps");
+
+    const { latitude, longitude, speed, heading, accuracy, timestamp } =
+      req.body;
+
+    try {
+      const id = randomUUID();
+      const vehicleId = `mobile-${driverId}`;
+      const recordedAt = timestamp ? new Date(timestamp) : new Date();
+
+      // Filter out low-accuracy pings (> 200 meters)
+      if (accuracy && accuracy > 200) {
+        res
+          .status(200)
+          .json({ stored: false, reason: "accuracy_too_low" });
+        return;
+      }
+
+      await pool.query(
+        `INSERT INTO gps_positions
+           (id, company_id, vehicle_id, driver_id, latitude, longitude,
+            speed, heading, recorded_at, provider, provider_vehicle_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          companyId,
+          vehicleId,
+          driverId,
+          latitude,
+          longitude,
+          speed ?? null,
+          heading ?? null,
+          recordedAt,
+          "mobile",
+          vehicleId,
+        ],
+      );
+
+      // Bridge to IFTA evidence (best-effort)
+      try {
+        await bridgeGpsToIfta(
+          {
+            companyId,
+            vehicleId,
+            driverId,
+            lat: latitude,
+            lng: longitude,
+            speed: speed ?? null,
+            odometer: null,
+            timestamp: recordedAt,
+            source: "GPS",
+          },
+          pool,
+        );
+      } catch (bridgeErr) {
+        log.error({ err: bridgeErr }, "IFTA bridge failed for mobile GPS");
+      }
+
+      res.status(201).json({ stored: true, id });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Provider Config API

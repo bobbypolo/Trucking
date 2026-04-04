@@ -29,6 +29,9 @@ import {
 } from "../schemas/document.schema";
 import { createDiskStorageAdapter } from "../services/disk-storage-adapter";
 import { createStorageAdapter } from "../services/document.service";
+import { requireTier } from "../middleware/requireTier";
+import { createOcrService, type OcrService } from "../services/ocr.service";
+import { createGeminiOcrAdapter } from "../services/gemini-ocr-adapter";
 
 const router = Router();
 
@@ -50,6 +53,18 @@ async function getStorageAdapter(): Promise<StorageAdapter> {
 export async function createDocumentsRouteService(storage?: StorageAdapter) {
   const adapter = storage ?? (await getStorageAdapter());
   return createDocumentService(adapter);
+}
+
+/** Lazy-initialized OCR service backed by Gemini adapter. */
+let resolvedOcrService: OcrService | null = null;
+
+async function getOcrService(): Promise<OcrService> {
+  if (!resolvedOcrService) {
+    const storage = await getStorageAdapter();
+    const adapter = createGeminiOcrAdapter(storage);
+    resolvedOcrService = createOcrService(adapter);
+  }
+  return resolvedOcrService;
 }
 
 /**
@@ -193,6 +208,19 @@ router.post(
         status: result.status,
         sanitizedFilename: result.sanitizedFilename,
       });
+
+      // Fire-and-forget OCR for eligible document types
+      const ocrEligible = ["BOL", "Rate-Con", "Fuel", "POD", "Rate Confirmation", "Fuel Receipt"];
+      if (ocrEligible.includes(documentType.trim())) {
+        getOcrService()
+          .then((svc) => svc.processDocument(result.documentId, companyId))
+          .catch((ocrErr) =>
+            log.warn(
+              { err: ocrErr, documentId: result.documentId },
+              "Auto-OCR trigger failed (non-fatal)",
+            ),
+          );
+      }
     } catch (error) {
       if (error instanceof ValidationError) {
         if (error.error_code === "VALIDATION_FILE_SIZE") {
@@ -340,6 +368,66 @@ router.get(
         { err: error },
         "SERVER ERROR [GET /api/documents/:id/download]",
       );
+      next(error);
+    }
+  },
+);
+
+// ── POST /api/documents/:id/process-ocr ─────────────────────────────────
+
+router.post(
+  "/api/documents/:id/process-ocr",
+  requireAuth,
+  requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const log = createRequestLogger(req, "POST /api/documents/:id/process-ocr");
+    const companyId = req.user!.tenantId;
+    const { id } = req.params;
+
+    try {
+      const ocrSvc = await getOcrService();
+      const result = await ocrSvc.processDocument(id, companyId);
+      if (result.status === "error") {
+        res.status(202).json(result);
+      } else {
+        res.json(result);
+      }
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        const status = error.error_code?.includes("NOT_FOUND") ? 404 : 400;
+        res
+          .status(status)
+          .json({ error: error.message, error_code: error.error_code });
+        return;
+      }
+      log.error({ err: error }, "SERVER ERROR [POST /api/documents/:id/process-ocr]");
+      next(error);
+    }
+  },
+);
+
+// ── GET /api/documents/:id/ocr ──────────────────────────────────────────
+
+router.get(
+  "/api/documents/:id/ocr",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res: Response, next: NextFunction) => {
+    const log = createRequestLogger(req, "GET /api/documents/:id/ocr");
+    const companyId = req.user!.tenantId;
+    const { id } = req.params;
+
+    try {
+      const ocrSvc = await getOcrService();
+      const result = await ocrSvc.getOcrResult(id, companyId);
+      if (!result) {
+        res.status(404).json({ error: "No OCR result found for this document" });
+        return;
+      }
+      res.json({ ocrResult: result });
+    } catch (error) {
+      log.error({ err: error }, "SERVER ERROR [GET /api/documents/:id/ocr]");
       next(error);
     }
   },

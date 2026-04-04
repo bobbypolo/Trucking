@@ -121,3 +121,17 @@ export const batchUpdateSettlementsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1),
   status: z.enum(["Draft", "Calculated", "Approved", "Paid", "Finalized"]),
 });
+
+/**
+ * Schema for POST /api/accounting/fuel-receipt — creating a fuel entry from scanned receipt.
+ */
+export const fuelReceiptSchema = z.object({
+  vendorName: z.string().min(1),
+  gallons: z.number().positive(),
+  pricePerGallon: z.number().min(0),
+  totalCost: z.number().positive(),
+  transactionDate: z.string().min(1),
+  stateCode: z.string().length(2),
+  truckId: z.string().optional(),
+  cardNumber: z.string().optional(),
+});

@@ -24,9 +24,11 @@ import {
   getMileageEntries,
   saveMileageEntry,
   postIFTAToLedger,
+  saveFuelReceipt,
 } from "../services/financialService";
 import { exportToExcel, exportToPDF } from "../services/exportService";
 import { IFTAEvidenceReview } from "./IFTAEvidenceReview";
+import { Scanner } from "./Scanner";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { LoadingSkeleton } from "./ui/LoadingSkeleton";
@@ -64,6 +66,18 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
   const [mileageErrors, setMileageErrors] = useState<Record<string, string>>(
     {},
   );
+  // Fuel receipt scanning state
+  const [showFuelScanner, setShowFuelScanner] = useState(false);
+  const [fuelReviewData, setFuelReviewData] = useState<{
+    vendorName: string;
+    gallons: string;
+    pricePerGallon: string;
+    totalCost: string;
+    transactionDate: string;
+    stateCode: string;
+    truckId: string;
+  } | null>(null);
+  const [fuelSubmitting, setFuelSubmitting] = useState(false);
   const US_STATES = [
     "AL",
     "AK",
@@ -199,6 +213,61 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
       loadData();
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFuelDataExtracted = (data: any) => {
+    setFuelReviewData({
+      vendorName: data?.vendorName || "",
+      gallons: data?.gallons?.toString() || "",
+      pricePerGallon: data?.pricePerGallon?.toString() || "",
+      totalCost: data?.totalCost?.toString() || "",
+      transactionDate:
+        data?.transactionDate || new Date().toISOString().split("T")[0],
+      stateCode: data?.stateCode || "",
+      truckId: data?.truckId || "",
+    });
+    setShowFuelScanner(false);
+  };
+
+  const submitFuelReceipt = async () => {
+    if (!fuelReviewData) return;
+    if (
+      !fuelReviewData.vendorName ||
+      !fuelReviewData.gallons ||
+      !fuelReviewData.totalCost ||
+      !fuelReviewData.stateCode
+    ) {
+      setToast({
+        message: "Vendor, gallons, total cost, and state are required",
+        type: "error",
+      });
+      return;
+    }
+    setFuelSubmitting(true);
+    try {
+      await saveFuelReceipt({
+        vendorName: fuelReviewData.vendorName,
+        gallons: parseFloat(fuelReviewData.gallons) || 0,
+        pricePerGallon: parseFloat(fuelReviewData.pricePerGallon) || 0,
+        totalCost: parseFloat(fuelReviewData.totalCost) || 0,
+        transactionDate: fuelReviewData.transactionDate,
+        stateCode: fuelReviewData.stateCode.toUpperCase(),
+        truckId: fuelReviewData.truckId || undefined,
+      });
+      setToast({
+        message: "Fuel receipt saved successfully",
+        type: "success",
+      });
+      setFuelReviewData(null);
+      loadData(); // Refresh IFTA numbers
+    } catch (err: any) {
+      setToast({
+        message: err?.message || "Failed to save fuel receipt",
+        type: "error",
+      });
+    } finally {
+      setFuelSubmitting(false);
     }
   };
 
@@ -548,12 +617,20 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
           <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
             Manual Mileage Log & Correction
           </h4>
-          <button
-            onClick={() => setShowAddMileage(true)}
-            className="px-4 py-2 text-[11px] font-black text-blue-500 uppercase flex items-center gap-2 hover:bg-blue-500/10 rounded-xl transition-all"
-          >
-            <Plus className="w-4 h-4" /> Add Manual Entry
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowFuelScanner(true)}
+              className="px-4 py-2 text-[11px] font-black text-emerald-500 uppercase flex items-center gap-2 hover:bg-emerald-500/10 rounded-xl transition-all"
+            >
+              <Fuel className="w-4 h-4" /> Scan Fuel Receipt
+            </button>
+            <button
+              onClick={() => setShowAddMileage(true)}
+              className="px-4 py-2 text-[11px] font-black text-blue-500 uppercase flex items-center gap-2 hover:bg-blue-500/10 rounded-xl transition-all"
+            >
+              <Plus className="w-4 h-4" /> Add Manual Entry
+            </button>
+          </div>
         </div>
         <div className="space-y-4">
           {mileageEntries.slice(0, 5).map((m) => (
@@ -723,6 +800,168 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
             setReviewLoad(null);
           }}
         />
+      )}
+
+      {/* Fuel Receipt Scanner Overlay */}
+      {showFuelScanner && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10">
+          <div className="w-full max-w-lg">
+            <Scanner
+              mode="fuel"
+              onDataExtracted={handleFuelDataExtracted}
+              onCancel={() => setShowFuelScanner(false)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Fuel Receipt Review Modal */}
+      {fuelReviewData && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10">
+          <div className="bg-[#020617] border border-white/10 w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl space-y-8">
+            <div>
+              <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
+                Review Fuel Receipt
+              </h3>
+              <p className="text-slate-500 text-[11px] font-black uppercase tracking-widest mt-1">
+                Verify AI-extracted data before saving to IFTA ledger
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="col-span-2 space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Vendor / Station *
+                </label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white outline-none"
+                  value={fuelReviewData.vendorName}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      vendorName: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Gallons *
+                </label>
+                <input
+                  type="number"
+                  step="0.001"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white outline-none"
+                  value={fuelReviewData.gallons}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      gallons: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Price / Gallon
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white outline-none"
+                  value={fuelReviewData.pricePerGallon}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      pricePerGallon: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Total Cost *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white outline-none"
+                  value={fuelReviewData.totalCost}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      totalCost: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  State *
+                </label>
+                <input
+                  type="text"
+                  maxLength={2}
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
+                  value={fuelReviewData.stateCode}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      stateCode: e.target.value.toUpperCase(),
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white outline-none"
+                  value={fuelReviewData.transactionDate}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      transactionDate: e.target.value,
+                    })
+                  }
+                />
+              </div>
+              <div className="col-span-2 space-y-2">
+                <label className="text-[10px] font-black text-slate-600 uppercase ml-1">
+                  Truck ID
+                </label>
+                <input
+                  type="text"
+                  className="w-full bg-slate-900 border border-white/5 rounded-xl p-4 text-xs font-black text-white uppercase outline-none"
+                  value={fuelReviewData.truckId}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      truckId: e.target.value,
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex gap-4 pt-4">
+              <button
+                onClick={() => setFuelReviewData(null)}
+                className="flex-1 py-4 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitFuelReceipt}
+                disabled={fuelSubmitting}
+                className="flex-1 py-4 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {fuelSubmitting ? "Saving..." : "Save to IFTA Ledger"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
