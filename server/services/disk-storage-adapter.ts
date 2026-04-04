@@ -56,5 +56,10 @@ export function createDiskStorageAdapter(
       // download endpoint can resolve to serve the actual file.
       return `disk://${path}`;
     },
+
+    async readBlob(path: string): Promise<Buffer> {
+      const fullPath = join(baseDir, path);
+      return readFile(fullPath);
+    },
   };
 }

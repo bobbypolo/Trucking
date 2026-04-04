@@ -29,6 +29,7 @@ export interface StorageAdapter {
   ): Promise<void>;
   deleteBlob(path: string): Promise<void>;
   getSignedUrl(path: string, expiresInMs: number): Promise<string>;
+  readBlob(path: string): Promise<Buffer>;
 }
 
 /**

@@ -1,27 +1,10 @@
+import { reverseGeocodeState } from "./services/geocoding.service";
 
 export interface StatePolygon {
     code: string;
     name: string;
     polygon: number[][][][];
 }
-
-const STATES_DATA = [
-    {
-        code: 'TX',
-        name: 'Texas',
-        polygon: [[
-            [36.5, -106.5], [36.5, -100.0], [34.5, -100.0], [34.0, -94.0], [29.5, -93.5],
-            [26.0, -97.0], [29.0, -106.0], [32.0, -106.5], [36.5, -106.5]
-        ]]
-    },
-    {
-        code: 'OK',
-        name: 'Oklahoma',
-        polygon: [[
-            [37.0, -103.0], [37.0, -94.5], [34.0, -94.5], [34.0, -100.0], [36.5, -100.0], [36.5, -103.0], [37.0, -103.0]
-        ]]
-    }
-];
 
 export function isPointInPolygon(lat: number, lng: number, polygon: number[][][]): boolean {
     let inside = false;
@@ -38,13 +21,17 @@ export function isPointInPolygon(lat: number, lng: number, polygon: number[][][]
     return inside;
 }
 
-export function detectState(lat: number, lng: number): string {
-    for (const state of STATES_DATA) {
-        if (isPointInPolygon(lat, lng, state.polygon)) {
-            return state.code;
-        }
-    }
-    return 'UNK';
+/**
+ * Detect the US state or Canadian province for a GPS coordinate.
+ *
+ * Uses Google Maps Reverse Geocoding API with aggressive caching
+ * (~5.5km grid cells, cached forever). No hardcoded state boundaries.
+ *
+ * @returns 2-letter state/province code (e.g., "TX", "ON") or null
+ *          if the coordinate cannot be resolved.
+ */
+export async function detectState(lat: number, lng: number): Promise<string | null> {
+    return reverseGeocodeState(lat, lng);
 }
 
 export function isWithinGeofence(

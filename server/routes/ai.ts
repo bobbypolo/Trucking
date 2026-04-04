@@ -16,6 +16,7 @@ import {
   extractEquipmentFromImage,
   generateTrainingFromImage,
   analyzeSafetyCompliance,
+  extractFuelReceipt,
 } from "../services/gemini.service";
 import { createRequestLogger } from "../lib/logger";
 
@@ -253,6 +254,44 @@ router.post(
       res.json({ analysis: result });
     } catch (error) {
       log.error({ err: error }, "Gemini analyzeSafetyCompliance failed");
+      next(error);
+    }
+  },
+);
+
+/**
+ * POST /extract-fuel-receipt  (mounted at /api/ai → effective: /api/ai/extract-fuel-receipt)
+ * Extract fuel purchase info from a receipt image.
+ * Body: { imageBase64: string, mimeType?: string }
+ */
+router.post(
+  "/extract-fuel-receipt",
+  requireAuth,
+  requireTenant,
+  requireTier("Automation Pro", "Fleet Core", "Fleet Command"),
+  async (req: Request, res: Response, next: NextFunction) => {
+    const log = createRequestLogger(req, "POST /api/ai/extract-fuel-receipt");
+    const validationError = validateImagePayload(req.body);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
+      return;
+    }
+    const mimeError = validateMimeType(req.body as Record<string, unknown>);
+    if (mimeError) {
+      res.status(400).json({ error: mimeError });
+      return;
+    }
+
+    const { imageBase64, mimeType = "image/jpeg" } = req.body as {
+      imageBase64: string;
+      mimeType?: string;
+    };
+
+    try {
+      const result = await extractFuelReceipt(imageBase64, mimeType);
+      res.json({ fuelReceiptInfo: result });
+    } catch (error) {
+      log.error({ err: error }, "Gemini extractFuelReceipt failed");
       next(error);
     }
   },

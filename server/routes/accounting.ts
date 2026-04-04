@@ -12,6 +12,7 @@ import {
   createBillSchema,
   batchImportSchema,
   batchUpdateSettlementsSchema,
+  fuelReceiptSchema,
 } from "../schemas/accounting";
 import { createRequestLogger } from "../lib/logger";
 
@@ -806,8 +807,13 @@ router.post(
       const p1 = pings[i - 1];
       const p2 = pings[i];
       const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
-      const state = detectState(p2.lat, p2.lng);
-      jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
+      // Use pre-stored state_code from evidence first (populated at ingestion),
+      // falling back to async reverse geocoding for legacy data without it
+      const state =
+        p2.state_code || p2.stateCode || (await detectState(p2.lat, p2.lng));
+      if (state) {
+        jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
+      }
     }
     res.json({
       jurisdictionMiles,
@@ -1034,6 +1040,58 @@ router.post(
   },
 );
 
+// Fuel Receipt (from AI scan)
+router.post(
+  "/api/accounting/fuel-receipt",
+  requireAuth,
+  requireTenant,
+  validateBody(fuelReceiptSchema),
+  async (req: any, res: any, next: NextFunction) => {
+    const tenantId = req.user.tenantId;
+    const {
+      vendorName,
+      gallons,
+      pricePerGallon,
+      totalCost,
+      transactionDate,
+      stateCode,
+      truckId,
+      cardNumber,
+    } = req.body;
+    try {
+      const id = uuidv4();
+      await pool.query(
+        `INSERT INTO fuel_ledger
+           (id, company_id, truck_id, state_code, gallons, total_cost,
+            price_per_gallon, vendor_name, entry_date, source)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Receipt')`,
+        [
+          id,
+          tenantId,
+          truckId || null,
+          stateCode,
+          gallons,
+          totalCost,
+          pricePerGallon,
+          vendorName,
+          transactionDate,
+        ],
+      );
+      res.status(201).json({ id, message: "Fuel receipt recorded" });
+    } catch (e) {
+      const log = createRequestLogger(
+        req,
+        "POST /api/accounting/fuel-receipt",
+      );
+      log.error(
+        { err: e },
+        "SERVER ERROR [POST /api/accounting/fuel-receipt]",
+      );
+      next(e);
+    }
+  },
+);
+
 router.post(
   "/api/accounting/ifta-post",
   requireAuth,
@@ -1124,7 +1182,10 @@ router.post(
         const id = item.id || uuidv4();
         if (type === "Fuel") {
           await connection.query(
-            "INSERT INTO fuel_ledger (id, company_id, state_code, gallons, total_cost, entry_date, truck_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            `INSERT INTO fuel_ledger
+               (id, company_id, state_code, gallons, total_cost, entry_date,
+                truck_id, vendor_name, price_per_gallon, receipt_url, source, load_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               id,
               tenantId,
@@ -1133,6 +1194,11 @@ router.post(
               item.totalCost,
               item.date,
               item.truckId,
+              item.vendorName ?? null,
+              item.pricePerGallon ?? null,
+              item.receiptUrl ?? null,
+              item.source ?? "Import",
+              item.loadId ?? null,
             ],
           );
         } else if (type === "Bills") {

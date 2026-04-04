@@ -82,5 +82,11 @@ export function createFirebaseStorageAdapter(
       log.info({ path, expiresInMs }, "Signed URL generated");
       return url;
     },
+
+    async readBlob(path: string): Promise<Buffer> {
+      const file = bucket.file(path);
+      const [buffer] = await file.download();
+      return buffer;
+    },
   };
 }
