@@ -33,6 +33,42 @@ const isMissingTableError = (error: unknown, tableName?: string) => {
 };
 
 // Clients / Brokers Routes
+
+// GET /api/clients — list clients for authenticated tenant
+router.get(
+  "/api/clients",
+  requireAuth,
+  requireTenant,
+  async (req: any, res: any, next: NextFunction) => {
+    const tenantId = req.user!.tenantId;
+    try {
+      const [rows]: any = await pool.query(
+        "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC",
+        [tenantId],
+      );
+      const settings = await getVisibilitySettings(tenantId);
+      res.json(redactData(rows, req.user.role, settings));
+    } catch (error: any) {
+      if (
+        isMissingTableError(error, "customers") ||
+        isMissingTableError(error, "archived_at")
+      ) {
+        try {
+          const [rows]: any = await pool.query(
+            "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
+            [tenantId],
+          );
+          return res.json(rows);
+        } catch (_) {
+          /* fall through */
+        }
+      }
+      next(error);
+    }
+  },
+);
+
+// GET /api/clients/:companyId — legacy route
 router.get(
   "/api/clients/:companyId",
   requireAuth,
@@ -501,14 +537,12 @@ router.get(
         [allConstraintRules],
         [allCatalogLinks],
       ]: any = await Promise.all([
-        pool.query(
-          "SELECT * FROM party_contacts WHERE party_id IN (?)",
-          [partyIds],
-        ),
-        pool.query(
-          "SELECT * FROM party_documents WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM party_contacts WHERE party_id IN (?)", [
+          partyIds,
+        ]),
+        pool.query("SELECT * FROM party_documents WHERE party_id IN (?)", [
+          partyIds,
+        ]),
         pool.query(
           `SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end,
                   t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
@@ -517,10 +551,9 @@ router.get(
            WHERE r.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query(
-          "SELECT * FROM constraint_sets WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM constraint_sets WHERE party_id IN (?)", [
+          partyIds,
+        ]),
         pool.query(
           `SELECT cr.*, cs.party_id
            FROM constraint_rules cr
@@ -528,10 +561,9 @@ router.get(
            WHERE cs.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query(
-          "SELECT * FROM party_catalog_links WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM party_catalog_links WHERE party_id IN (?)", [
+          partyIds,
+        ]),
       ]);
 
       // Group results by party_id into Maps for O(1) lookup

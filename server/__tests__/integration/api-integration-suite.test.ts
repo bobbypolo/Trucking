@@ -537,8 +537,8 @@ describe("R-P12-01: API Endpoint Request/Response Validation", () => {
     expect(res.body[0].event_type).toBe("load_assigned");
   });
 
-  // 9. GET /api/incidents (uses incidentRepository, returns { incidents: [...] })
-  it("GET /api/incidents returns 200 with incidents envelope", async () => {
+  // 9. GET /api/incidents (uses incidentRepository, returns direct array)
+  it("GET /api/incidents returns 200 with incidents array", async () => {
     const mockIncidents = [
       {
         id: "inc-1",
@@ -553,10 +553,9 @@ describe("R-P12-01: API Endpoint Request/Response Validation", () => {
     const res = await request(app).get("/api/incidents");
 
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty("incidents");
-    expect(Array.isArray(res.body.incidents)).toBe(true);
-    expect(res.body.incidents[0].type).toBe("accident");
-    expect(res.body.incidents[0].severity).toBe("minor");
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body[0].type).toBe("accident");
+    expect(res.body[0].severity).toBe("minor");
   });
 
   // 10. GET /api/messages (uses messageRepository, returns { messages: [...] })
