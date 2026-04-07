@@ -80,7 +80,7 @@ User captures image/screenshot
 
 ## ADE Workflow (`.claude/`)
 
-A portable workflow framework for Claude Code that enforces structured development via 6 agents, 10 slash-command skills, Python hook-based quality gates, and a V-Model orchestrator (Ralph v5) that drives autonomous Plan-Build-Verify loops with persistent worktree-isolated sub-agents. All workflow state is unified in `.workflow-state.json`.
+A portable workflow framework for Claude Code that enforces structured development via 5 agents, 10 slash-command skills, Python hook-based quality gates, and a V-Model orchestrator (Ralph v5) that drives autonomous Plan-Build-Verify loops with persistent worktree-isolated sub-agents. All workflow state is unified in `.workflow-state.json`.
 
 ## System Diagram
 
@@ -126,26 +126,24 @@ Quality utilities:
 | ----------------- | -------------------- | -------------------------------------------------------------------------- |
 | `architect.md`    | Planning             | Produces PLAN.md, no code                                                  |
 | `builder.md`      | Implementation       | Follows plan, TDD, selective staging                                       |
-| `/verify` skill   | Verification         | 12-step pipeline via qa_runner.py incl. acceptance tests + prod-grade scan |
 | `librarian.md`    | Documentation        | Updates knowledge, decisions, handoffs                                     |
-| `ralph-story.md`  | Story orchestration  | Per-story agent: checkpoint, plan check, worker dispatch, QA, merge        |
+| `qa-reviewer.md`  | Peer review          | Read-only validator; parses QA receipt, emits `REVIEWER_RESULT` block      |
 | `ralph-worker.md` | Story implementation | Worktree-isolated worker: Build + QA with fix loop, persists until pass    |
 
 ### Skills (`.claude/skills/`)
 
-| Skill          | Purpose                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `ralph`        | V-Model orchestrator v5 — autonomous Plan-Build-Verify per story                                            |
-| `plan`         | Create PLAN.md + auto-generate prd.json v2                                                                  |
-| `audit`        | 9-section end-to-end workflow integrity audit (incl. error handling resilience via `silent-failure-hunter`) |
-| `verify`       | Run phase verification commands                                                                             |
-| `health`       | Environment readiness check                                                                                 |
-| `refresh`      | Re-sync context mid-session                                                                                 |
-| `build-system` | Unified plan-build-audit-handoff pipeline                                                                   |
-| `brainstorm`   | Structured idea generation with build strategy                                                              |
-| `learn`        | Capture lessons learned                                                                                     |
-| `decision`     | Record architecture decisions (ADRs)                                                                        |
-| `handoff`      | Session handoff with state detection                                                                        |
+| Skill            | Purpose                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `ralph`          | V-Model orchestrator v5 — autonomous Plan-Build-Verify per story                                            |
+| `plan`           | Create PLAN.md + auto-generate prd.json v2                                                                  |
+| `audit`          | End-to-end workflow integrity audit (plan, PRD, tests, verification logs, architecture, hooks, test quality)|
+| `verify`         | Run 12-step QA pipeline via qa_runner.py                                                                    |
+| `health`         | Environment readiness check                                                                                 |
+| `cleanup`        | Post-sprint housekeeping: prune branches/worktrees/receipts, rotate logs, reset workflow state              |
+| `build-system`   | Unified plan-build-audit-handoff pipeline                                                                   |
+| `brainstorm`     | Structured idea generation with build strategy                                                              |
+| `security-audit` | On-demand security audit: pattern inventory, SCA deep scan, DAST (ZAP), remediation matrix                  |
+| `librarian`      | Knowledge management — lessons (`/librarian learn`), decisions (`/librarian decision`), handoffs            |
 
 ### Hooks (`.claude/hooks/`)
 
@@ -158,7 +156,7 @@ Quality utilities:
 | `stop_verify_gate.py`     | Stop                   | Block stop if `needs_verify` or `prod_violations` set in `.workflow-state.json`. Force-stop clears all (escape after 3)       |
 | `post_compact_restore.py` | SessionStart           | Remind about workflow rules, read current state from `.workflow-state.json`                                                   |
 | `_lib.py`                 | Shared                 | Common utilities (audit_log, parse_hook_stdin, quality scanning, verification log)                                            |
-| `_prod_patterns.py`       | Shared                 | 43 production violation regex patterns (7 BLOCK, 6 WARN) + `scan_file_violations()`                                           |
+| `_prod_patterns.py`       | Shared                 | 43 production violation regex patterns (30 BLOCK, 13 WARN) + `scan_file_violations()`                                         |
 | `_qa_lib.py`              | Shared                 | QA helpers (prd schema validation, R-marker validation, plan hash, story complexity estimation)                               |
 
 ### Quality Utilities (`.claude/hooks/`)
@@ -296,9 +294,9 @@ Stop session → stop_verify_gate.py reads .workflow-state.json → allowed if a
 ├── .mcp.json.example      # Per-project MCP server template
 ├── .gitignore             # Includes runtime state exclusions
 └── .claude/
-    ├── agents/            # 4 role-based agents (incl. ralph-worker)
-    ├── rules/             # Path-specific rules (code-quality.md)
-    ├── skills/            # 11 slash commands (incl. build-system)
+    ├── agents/            # 5 role-based agents (incl. ralph-worker, qa-reviewer)
+    ├── rules/             # Path-specific rules (code-quality.md, production-standards.md, build-conventions.md)
+    ├── skills/            # 10 slash commands (incl. build-system, cleanup, security-audit)
     ├── hooks/             # 6 Python hooks + shared libs (_lib, _prod_patterns, _qa_lib) + CLI tools (qa_runner, test_quality, plan_validator)
     ├── scripts/           # Deployment (new-ade.ps1, update-ade.ps1)
     ├── templates/         # config.yaml, qa_receipt_fallback.json
