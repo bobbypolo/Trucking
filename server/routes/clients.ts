@@ -324,7 +324,7 @@ router.post(
     const log = createRequestLogger(req, "POST /api/companies");
 
     // Enforce admin-only access for company settings changes
-    const callerRole = req.user?.role;
+    const callerRole = req.user?.role || "";
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
     if (!adminRoles.includes(callerRole)) {
       return res

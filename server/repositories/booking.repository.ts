@@ -95,7 +95,7 @@ export const bookingRepository = {
     companyId: string,
     userId: string,
   ) {
-    const bookingId = data.id || uuidv4();
+    const bookingId = (data.id as string | undefined) || uuidv4();
     const loadId = uuidv4();
     const connection = await pool.getConnection();
 

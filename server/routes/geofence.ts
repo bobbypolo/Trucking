@@ -24,7 +24,7 @@ router.post(
   requireTenant,
   validateBody(createGeofenceEventSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const {
       loadId,
       driverId,
@@ -78,7 +78,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const loadId = req.query.loadId as string;
 
     if (!loadId) {
@@ -104,7 +104,7 @@ router.post(
   requireTenant,
   validateBody(calculateDetentionSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const { loadId } = req.body;
 
     try {

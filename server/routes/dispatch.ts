@@ -26,7 +26,7 @@ router.post(
   requireTenant,
   validateBody(createTimeLogSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const {
       id,
       user_id,
@@ -94,7 +94,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     if (user.uid !== req.params.userId && user.role === "driver") {
       return res.status(403).json({ error: "Unauthorized profile access" });
     }
@@ -121,7 +121,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT t.* FROM driver_time_logs t JOIN users u ON t.user_id = u.id WHERE u.company_id = ? ORDER BY t.clock_in DESC LIMIT 500",
@@ -145,7 +145,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",
@@ -169,7 +169,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",
@@ -193,7 +193,7 @@ router.post(
   requireTenant,
   validateBody(createDispatchEventSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const { id, load_id, dispatcher_id, event_type, message, payload } =
       req.body;
 
@@ -254,7 +254,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const tenantId = user.tenantId;
 
     // Parse optional query params
@@ -348,7 +348,7 @@ router.post(
   requireTenant,
   validateBody(bestMatchesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const { loadId, maxCandidates } = req.body;
 
     const limit = maxCandidates && maxCandidates > 0 ? maxCandidates : 10;

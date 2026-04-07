@@ -14,8 +14,14 @@ interface VisibilitySettings {
 // Redaction Helper (Security Hardening)
 // Generic preserves caller's input type so callers can keep accessing
 // domain-specific fields after redaction without re-asserting types.
-export const redactData = <T>(data: T, role: string, settings: VisibilitySettings | null | undefined): T => {
-    if (role !== 'driver' || !settings) return data;
+// The return type intersects with `legs?` so callers/tests can probe
+// the optional nested legs array even when the input shape doesn't
+// declare it (matches the pre-refactor `: any` ergonomics).
+type RedactedResult<T> = T & {
+    legs: Array<Record<string, unknown>>;
+};
+export const redactData = <T>(data: T, role: string, settings: VisibilitySettings | null | undefined): RedactedResult<T> => {
+    if (role !== 'driver' || !settings) return data as RedactedResult<T>;
 
     const redactObject = (obj: Record<string, unknown>): Record<string, unknown> => {
         const redacted = { ...obj };
@@ -49,14 +55,14 @@ export const redactData = <T>(data: T, role: string, settings: VisibilitySetting
                 redacted.legs = redacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
             }
             return redacted;
-        }) as unknown as T;
+        }) as unknown as RedactedResult<T>;
     }
 
     const finalRedacted = redactObject(data as Record<string, unknown>);
     if (finalRedacted.legs && Array.isArray(finalRedacted.legs)) {
         finalRedacted.legs = finalRedacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
     }
-    return finalRedacted as unknown as T;
+    return finalRedacted as unknown as RedactedResult<T>;
 };
 
 // Helper for Email Notifications (KCI Specialization)

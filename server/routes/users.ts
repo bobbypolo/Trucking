@@ -117,7 +117,7 @@ router.post(
       "OWNER_ADMIN",
       "ORG_OWNER_SUPER_ADMIN",
     ];
-    if (!registerAdminRoles.includes(authReq.user.role)) {
+    if (!registerAdminRoles.includes(authReq.user!.role)) {
       return res.status(403).json({ error: "Admin role required." });
     }
 
@@ -129,7 +129,7 @@ router.post(
     try {
       const userInput = {
         id: resolveString(req.body.id) || uuidv4(),
-        companyId: authReq.user.tenantId,
+        companyId: authReq.user!.tenantId,
         email: req.body.email,
         name: req.body.name,
         role: req.body.role,
@@ -161,8 +161,8 @@ router.post(
     const log = createRequestLogger(req, "POST /api/users");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
-    const isAdmin = adminRoles.includes(authReq.user.role);
-    const isSelfSync = authReq.user.email === req.body.email;
+    const isAdmin = adminRoles.includes(authReq.user!.role);
+    const isSelfSync = authReq.user!.email === req.body.email;
 
     if (!isAdmin && !isSelfSync) {
       return res
@@ -175,14 +175,14 @@ router.post(
       isSelfSync &&
       !isAdmin &&
       req.body.role &&
-      req.body.role !== authReq.user.role
+      req.body.role !== authReq.user!.role
     ) {
       return res
         .status(403)
         .json({ error: "Forbidden: cannot change own role." });
     }
 
-    const companyId = authReq.user.tenantId;
+    const companyId = authReq.user!.tenantId;
 
     log.info({ data: { email: req.body.email } }, "User sync request received");
 
@@ -194,7 +194,7 @@ router.post(
         name: resolveString(req.body.name) || req.body.email,
         role:
           isSelfSync && !isAdmin
-            ? authReq.user.role
+            ? authReq.user!.role
             : resolveString(req.body.role) || "driver",
         passwordHash: req.body.password
           ? await bcrypt.hash(req.body.password, 10)
@@ -459,7 +459,7 @@ router.post(
     const log = createRequestLogger(req, "POST /api/users/:id/revoke");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
-    if (!adminRoles.includes(authReq.user.role)) {
+    if (!adminRoles.includes(authReq.user!.role)) {
       return res.status(403).json({ error: "Admin role required." });
     }
 
@@ -489,7 +489,7 @@ router.post(
       );
 
       log.info(
-        { targetUserId, revokedBy: authReq.user.id },
+        { targetUserId, revokedBy: authReq.user!.id },
         "User tokens revoked",
       );
 

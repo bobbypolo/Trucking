@@ -103,9 +103,9 @@ router.post(
         : defaultCancelUrl;
 
     const result = await createCheckoutSession(
-      authReq.user.companyId,
+      authReq.user!.companyId,
       tier || "",
-      email || authReq.user.email,
+      email || authReq.user!.email,
       safeSuccessUrl,
       safeCancelUrl,
     );
@@ -146,7 +146,7 @@ router.post(
     // Look up stripeCustomerId from the authenticated user's company (IDOR prevention)
     const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT stripe_customer_id FROM companies WHERE id = ?",
-      [authReq.user.companyId],
+      [authReq.user!.companyId],
     );
 
     const stripeCustomerId = rows?.[0]?.stripe_customer_id;
