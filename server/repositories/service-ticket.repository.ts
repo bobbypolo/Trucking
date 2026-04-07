@@ -32,7 +32,7 @@ export const serviceTicketRepository = {
   },
 
   async create(data: ServiceTicketInput, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO service_tickets (id, company_id, type, status, vendor,
         cost, equipment_id, description, created_by, updated_by)

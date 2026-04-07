@@ -315,7 +315,7 @@ export async function syncInvoiceToQBO(
       body: qboInvoice,
     });
 
-    const invoice = response.json?.Invoice;
+    const invoice = response.json?.Invoice as { Id?: string } | undefined;
     log.info(
       { companyId, invoiceId: invoice?.Id, docNumber: invoiceData.invoiceNumber },
       "Invoice synced to QuickBooks",
@@ -377,7 +377,7 @@ export async function syncBillToQBO(
       body: qboBill,
     });
 
-    const bill = response.json?.Bill;
+    const bill = response.json?.Bill as { Id?: string } | undefined;
     log.info(
       { companyId, billId: bill?.Id, docNumber: billData.billNumber },
       "Bill synced to QuickBooks",

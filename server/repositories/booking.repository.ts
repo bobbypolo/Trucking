@@ -56,7 +56,7 @@ export const bookingRepository = {
    * Used only when load creation is handled externally or not needed.
    */
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO bookings (id, company_id, quote_id, customer_id, status,
         pickup_date, delivery_date, load_id, notes, created_by, updated_by)

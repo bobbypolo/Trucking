@@ -150,7 +150,7 @@ router.get(
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     try {
       const [loads] = await pool.query<RowDataPacket[]>(
         `SELECT id, load_number, status, driver_id
@@ -185,7 +185,7 @@ router.get(
       }
 
       const result: TrackingLoad[] = loads.map((load) => {
-        const legs = legsByLoad.get(load.id) || [];
+        const legs = (legsByLoad.get(load.id) || []) as unknown as TrackingLeg[];
         return {
           id: load.id,
           loadNumber: load.load_number,
@@ -213,7 +213,7 @@ router.get(
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const loadId = req.params.id;
 
     try {
@@ -227,7 +227,7 @@ router.get(
       }
 
       const load = loads[0];
-      const [legs] = await pool.query<RowDataPacket[]>(
+      const [legRows] = await pool.query<RowDataPacket[]>(
         `SELECT id, load_id, type, facility_name, city, state,
                     latitude, longitude, completed, sequence_order
              FROM load_legs
@@ -235,6 +235,7 @@ router.get(
              ORDER BY sequence_order ASC`,
         [load.id],
       );
+      const legs = legRows as unknown as TrackingLeg[];
 
       res.json({
         id: load.id,
@@ -336,7 +337,7 @@ router.get(
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/live");
 
     try {
@@ -577,8 +578,8 @@ router.post(
   requireTenant,
   validateBody(mobileGpsSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const driverId = req.user.id || req.user.uid;
+    const companyId = req.user!.tenantId;
+    const driverId = req.user!.id || req.user!.uid;
     const log = createRequestLogger(req, "POST /api/tracking/mobile-gps");
 
     const { latitude, longitude, speed, heading, accuracy, timestamp } =
@@ -662,8 +663,8 @@ router.post(
   requireTenant,
   validateBody(createProviderConfigSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -750,7 +751,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/providers");
 
     try {
@@ -824,8 +825,8 @@ router.delete(
   requireTenant,
   validateParams(idParam),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!ADMIN_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -869,8 +870,8 @@ router.post(
   requireTenant,
   validateParams(idParam),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -1092,8 +1093,8 @@ router.post(
   requireTenant,
   validateBody(createVehicleMappingSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -1160,7 +1161,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/vehicles/mapping");
 
     try {
@@ -1207,8 +1208,8 @@ router.delete(
   requireTenant,
   validateParams(idParam),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!ADMIN_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });

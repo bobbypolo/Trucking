@@ -33,7 +33,7 @@ export const crisisActionRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO crisis_actions (id, company_id, type, status, incident_id,
         load_id, operator_id, location, timeline, description,

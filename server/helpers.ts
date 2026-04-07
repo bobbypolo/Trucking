@@ -12,10 +12,12 @@ interface VisibilitySettings {
 }
 
 // Redaction Helper (Security Hardening)
-export const redactData = (data: Record<string, unknown> | Record<string, unknown>[], role: string, settings: VisibilitySettings | null) => {
+// Generic preserves caller's input type so callers can keep accessing
+// domain-specific fields after redaction without re-asserting types.
+export const redactData = <T>(data: T, role: string, settings: VisibilitySettings | null | undefined): T => {
     if (role !== 'driver' || !settings) return data;
 
-    const redactObject = (obj: Record<string, unknown>) => {
+    const redactObject = (obj: Record<string, unknown>): Record<string, unknown> => {
         const redacted = { ...obj };
         if (settings.hideRates) {
             delete redacted.carrier_rate;
@@ -41,20 +43,20 @@ export const redactData = (data: Record<string, unknown> | Record<string, unknow
     };
 
     if (Array.isArray(data)) {
-        return data.map(item => {
+        return data.map((item: Record<string, unknown>) => {
             const redacted = redactObject(item);
             if (redacted.legs && Array.isArray(redacted.legs)) {
                 redacted.legs = redacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
             }
             return redacted;
-        });
+        }) as unknown as T;
     }
 
-    const finalRedacted = redactObject(data);
+    const finalRedacted = redactObject(data as Record<string, unknown>);
     if (finalRedacted.legs && Array.isArray(finalRedacted.legs)) {
         finalRedacted.legs = finalRedacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
     }
-    return finalRedacted;
+    return finalRedacted as unknown as T;
 };
 
 // Helper for Email Notifications (KCI Specialization)

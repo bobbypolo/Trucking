@@ -40,7 +40,7 @@ export const quoteRepository = {
   },
 
   async create(data: QuoteInput, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO quotes (id, company_id, status, pickup_city, pickup_state, pickup_facility,
         dropoff_city, dropoff_state, dropoff_facility, equipment_type,

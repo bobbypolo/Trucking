@@ -44,7 +44,7 @@ export const kciRequestRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO kci_requests (id, company_id, type, status, priority,
         requested_amount, approved_amount, currency, load_id, driver_id,

@@ -425,7 +425,7 @@ router.post(
 
 router.get("/api/users/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const user = await findSqlUserById(req.user.uid);
+    const user = await findSqlUserById(req.user!.uid);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }

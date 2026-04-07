@@ -147,10 +147,10 @@ router.get(
         category,
       } = req.query;
       let query = "SELECT * FROM exceptions WHERE tenant_id = ?";
-      const params: (string | number)[] = [req.user.tenantId];
+      const params: (string | number)[] = [req.user!.tenantId];
       if (status) {
         query += " AND status = ?";
-        params.push(status);
+        params.push(String(status));
       }
       if (status_not_in) {
         const excluded = (status_not_in as string)
@@ -165,23 +165,23 @@ router.get(
       }
       if (type) {
         query += " AND type = ?";
-        params.push(type);
+        params.push(String(type));
       }
       if (severity) {
         query += " AND severity = ?";
-        params.push(severity);
+        params.push(String(severity));
       }
       if (entityType) {
         query += " AND entity_type = ?";
-        params.push(entityType);
+        params.push(String(entityType));
       }
       if (entityId) {
         query += " AND entity_id = ?";
-        params.push(entityId);
+        params.push(String(entityId));
       }
       if (ownerId) {
         query += " AND owner_user_id = ?";
-        params.push(ownerId);
+        params.push(String(ownerId));
       }
       // Category filter — maps unified workspace tabs to exception types
       if (category) {
@@ -236,7 +236,7 @@ router.post(
         "INSERT INTO exceptions (id, tenant_id, type, status, severity, entity_type, entity_id, owner_user_id, team, sla_due_at, workflow_step, financial_impact_est, description, links) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
-          req.user.tenantId,
+          req.user!.tenantId,
           ex.type,
           ex.status || "OPEN",
           ex.severity || 2,

@@ -61,7 +61,7 @@ async function resolveLoadNotesColumn(): Promise<string | null> {
   return null;
 }
 
-// Loads — companyId derived from auth context (req.user.tenantId), NOT URL param
+// Loads — companyId derived from auth context (req.user!.tenantId), NOT URL param
 // Supports ?for=schedule to return only loads with valid dates (for CalendarView)
 // Supports ?start=YYYY-MM-DD&end=YYYY-MM-DD for date-range filtering
 router.get(
@@ -69,7 +69,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const isScheduleQuery = req.query.for === "schedule";
     const startDate = req.query.start as string | undefined;
     const endDate = req.query.end as string | undefined;
@@ -144,8 +144,9 @@ router.get(
       let result = enrichedLoads;
       if (isScheduleQuery && startDate && endDate) {
         result = enrichedLoads.filter((load) => {
-          const pickup = load.pickup_date;
-          const dropoff = load.dropoff_date;
+          const loadAny = load as Record<string, unknown>;
+          const pickup = loadAny.pickup_date as string | undefined;
+          const dropoff = loadAny.dropoff_date as string | undefined;
           if (!pickup) return false;
           // Load is visible if its span [pickup, dropoff||pickup] overlaps [start, end]
           const effectiveDropoff = dropoff || pickup;
@@ -153,7 +154,7 @@ router.get(
         });
       }
 
-      res.json(redactData(result, req.user.role, settings));
+      res.json(redactData(result, req.user!.role, settings));
     } catch (err) {
       next(err);
     }
@@ -193,7 +194,7 @@ router.post(
     } = req.body;
 
     // company_id derived from auth context — never trust the request body
-    const company_id = req.user.tenantId;
+    const company_id = req.user!.tenantId;
 
     // Reject if body explicitly provides a company_id that mismatches auth context
     if (req.body.company_id && req.body.company_id !== company_id) {
@@ -309,7 +310,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT status, COUNT(*) as count FROM loads WHERE company_id = ? AND deleted_at IS NULL GROUP BY status",
@@ -354,7 +355,7 @@ router.patch(
   validateBody(partialUpdateLoadSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const {
       weight,
       commodity,
@@ -471,8 +472,8 @@ router.patch(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { status } = req.body;
     const loadId = req.params.id;
-    const companyId = req.user.tenantId;
-    const userId = req.user.id;
+    const companyId = req.user!.tenantId;
+    const userId = req.user!.id;
 
     try {
       const result = await loadService.transitionLoad(
@@ -522,7 +523,7 @@ router.delete(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
 
     try {
       // Look up the load, scoped to the requesting tenant and not already deleted
@@ -574,7 +575,7 @@ router.post(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     const { type, notes, isUrgent } = req.body;
 
     if (!type || !VALID_CHANGE_REQUEST_TYPES.includes(type)) {
@@ -622,7 +623,7 @@ router.get(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
 
     try {
       // Verify load belongs to this tenant

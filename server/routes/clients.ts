@@ -48,7 +48,7 @@ router.get(
         [tenantId],
       );
       const settings = await getVisibilitySettings(tenantId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (error: unknown) {
       if (
         isMissingTableError(error, "customers") ||
@@ -82,7 +82,7 @@ router.get(
         : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
       const [rows] = await pool.query<RowDataPacket[]>(sql, [req.params.companyId]);
       const settings = await getVisibilitySettings(req.params.companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/clients");
       if (
@@ -95,7 +95,7 @@ router.get(
             [req.params.companyId],
           );
           const settings = await getVisibilitySettings(req.params.companyId);
-          return res.json(redactData(rows, req.user.role, settings));
+          return res.json(redactData(rows, req.user!.role, settings));
         } catch (fallbackError) {
           log.error(
             { err: fallbackError },
@@ -119,18 +119,18 @@ router.patch(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/archive");
 
-    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user!.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
       return;
     }
 
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
 
     try {
       const [result] = await pool.query<ResultSetHeader>(
         "UPDATE customers SET archived_at = NOW(), archived_by = ? WHERE id = ? AND company_id = ?",
-        [req.user.uid, id, tenantId],
+        [req.user!.uid, id, tenantId],
       );
 
       if (result.affectedRows === 0) {
@@ -138,7 +138,7 @@ router.patch(
         return;
       }
 
-      log.info({ clientId: id, archivedBy: req.user.uid }, "Client archived");
+      log.info({ clientId: id, archivedBy: req.user!.uid }, "Client archived");
       res.json({ message: "Client archived" });
     } catch (error) {
       log.error(
@@ -158,13 +158,13 @@ router.patch(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/unarchive");
 
-    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user!.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
       return;
     }
 
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
 
     try {
       const [result] = await pool.query<ResultSetHeader>(
@@ -289,7 +289,7 @@ router.get(
       }
 
       // Self-heal missing company rows so settings can still render and save.
-      const displayName = (req.user?.name || req.user?.email || "Company")
+      const displayName = (req.user?.email || "Company")
         .split("@")[0]
         .trim();
       const safeDisplayName = displayName
@@ -617,7 +617,10 @@ router.get(
         const rawRates = ratesByParty.get(p.id) || [];
 
         // Group rate rows with their tiers (same logic as before)
-        const groupedRates = rawRates.reduce((acc: Record<string, unknown>[], row) => {
+        type GroupedRate = Record<string, unknown> & {
+          tiers: Array<Record<string, unknown>>;
+        };
+        const groupedRates = rawRates.reduce((acc: GroupedRate[], row) => {
           let r = acc.find((item) => item.id === row.id);
           if (!r) {
             r = {
@@ -747,7 +750,7 @@ router.patch(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { status } = req.body;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
     const log = createRequestLogger(req, "PATCH /api/parties/:id/status");
 
     if (!status) {
@@ -819,8 +822,8 @@ router.post(
     const tagsJson = JSON.stringify(tags);
     const partyId = id || uuidv4();
 
-    const finalCompanyId = req.user.tenantId;
-    const finalTenantId = req.user.tenantId;
+    const finalCompanyId = req.user!.tenantId;
+    const finalTenantId = req.user!.tenantId;
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -1028,8 +1031,8 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const { query } = req.query;
-    const companyId = req.user.companyId;
+    const query = typeof req.query.query === "string" ? req.query.query : "";
+    const companyId = req.user!.companyId;
 
     if (!query || query.length < 2) return res.json([]);
     const q = `%${query}%`;

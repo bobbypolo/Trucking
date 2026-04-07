@@ -46,7 +46,7 @@ export const taskRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO operational_tasks (id, company_id, type, title, description, status,
         priority, assignee_id, assigned_to, due_date, links,
@@ -118,7 +118,7 @@ export const workItemRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO work_items (id, company_id, type, label, description, priority,
         status, sla_deadline, assignee_id, entity_type, entity_id,

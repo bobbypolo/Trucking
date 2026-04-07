@@ -190,8 +190,8 @@ export async function runReconciliation(
   );
 
   const duplicateAssignments: DuplicateAssignment[] = [
-    ...duplicateDrivers,
-    ...duplicateEquipment,
+    ...(duplicateDrivers as unknown as DuplicateAssignment[]),
+    ...(duplicateEquipment as unknown as DuplicateAssignment[]),
   ];
 
   // 5 & 6. Bidirectional document reconciliation
@@ -231,9 +231,9 @@ export async function runReconciliation(
   const report: ReconciliationReport = {
     companyId,
     generatedAt: new Date().toISOString(),
-    orphanStops,
-    missingEventTrails,
-    settlementMismatches,
+    orphanStops: orphanStops as unknown as OrphanStop[],
+    missingEventTrails: missingEventTrails as unknown as MissingEventTrail[],
+    settlementMismatches: settlementMismatches as unknown as SettlementMismatch[],
     duplicateAssignments,
     metadataWithoutStorage,
     storageWithoutMetadata,

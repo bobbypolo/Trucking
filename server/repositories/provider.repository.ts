@@ -36,7 +36,7 @@ export const providerRepository = {
   },
 
   async create(data: ProviderInput, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO providers (id, company_id, name, type, status, phone, email,
         coverage, capabilities, contacts, after_hours_contacts, is_247, notes,

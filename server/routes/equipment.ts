@@ -23,13 +23,13 @@ router.get(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const companyId = req.user.tenantId;
+      const companyId = req.user!.tenantId;
       const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM equipment WHERE company_id = ?",
         [companyId],
       );
       const settings = await getVisibilitySettings(companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (err) {
       next(err);
     }
@@ -48,7 +48,7 @@ router.get(
         [req.params.companyId],
       );
       const settings = await getVisibilitySettings(req.params.companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (err) {
       next(err);
     }
@@ -110,8 +110,8 @@ router.patch(
   validateBody(patchEquipmentSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const companyId: string = req.user.tenantId;
-    const userRole: string = req.user.role;
+    const companyId: string = req.user!.tenantId;
+    const userRole: string = req.user!.role;
 
     if (
       !PATCH_ALLOWED_ROLES.includes(

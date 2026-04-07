@@ -33,7 +33,7 @@ export const contactRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO contacts (id, company_id, name, email, phone, title, type,
         organization, preferred_channel, normalized_phone, notes,

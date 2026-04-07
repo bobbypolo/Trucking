@@ -33,7 +33,7 @@ router.get(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const rows = await accountingService.getChartOfAccounts(req.user.tenantId);
+      const rows = await accountingService.getChartOfAccounts(req.user!.tenantId);
       res.json(rows);
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/accounts");
@@ -51,7 +51,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const result = await accountingService.calculateLoadPnl(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.params.loadId,
       );
       res.json(result);
@@ -71,7 +71,7 @@ router.post(
   validateBody(createJournalEntrySchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await accountingService.postJournalEntry(req.user.tenantId, req.body);
+      await accountingService.postJournalEntry(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Journal entry posted" });
     } catch (error) {
       const log = createRequestLogger(req, "POST /api/accounting/journal");
@@ -90,7 +90,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       await accountingService.createInvoiceWithGlPosting(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.body,
       );
       res.status(201).json({ message: "Invoice created and posted to GL" });
@@ -111,7 +111,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       await accountingService.createBillWithGlPosting(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.body,
       );
       res.status(201).json({ message: "Bill created and posted to GL" });
@@ -133,7 +133,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const enriched = await accountingService.listInvoicesWithLines(
-        req.user.tenantId,
+        req.user!.tenantId,
       );
       res.json(enriched);
     } catch (error) {
@@ -152,7 +152,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const enriched = await accountingService.listBillsWithLines(
-        req.user.tenantId,
+        req.user!.tenantId,
       );
       res.json(enriched);
     } catch (error) {
@@ -171,7 +171,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const perm = accountingService.checkSettlementViewPermission(
-        req.user.role,
+        req.user!.role,
       );
       if (!perm.allowed) {
         return res
@@ -181,11 +181,11 @@ router.get(
 
       // Drivers can only see their own settlements (server-enforced self-scope)
       const driverId = perm.isDriver
-        ? req.user.id
+        ? req.user!.id
         : (req.query.driverId as string | undefined);
 
       const enriched = await accountingService.listSettlementsWithLines(
-        req.user.tenantId,
+        req.user!.tenantId,
         driverId,
       );
       res.json(enriched);
@@ -207,14 +207,14 @@ router.post(
   requireTenant,
   validateBody(createSettlementSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!accountingService.canCreateSettlement(req.user.role)) {
+    if (!accountingService.canCreateSettlement(req.user!.role)) {
       return res
         .status(403)
         .json({ error: "Insufficient permissions to create settlements" });
     }
     try {
       await accountingService.createSettlementWithGlPosting(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.body,
       );
       res.status(201).json({ message: "Settlement created and posted to GL" });
@@ -236,7 +236,7 @@ router.patch(
   requireTenant,
   validateBody(batchUpdateSettlementsSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!accountingService.canApproveSettlement(req.user.role)) {
+    if (!accountingService.canApproveSettlement(req.user!.role)) {
       return res
         .status(403)
         .json({ error: "Insufficient permissions to update settlements" });
@@ -244,7 +244,7 @@ router.patch(
     try {
       const { ids, status } = req.body;
       const result = await accountingService.batchUpdateSettlementStatus(
-        req.user.tenantId,
+        req.user!.tenantId,
         ids,
         status,
       );
@@ -274,7 +274,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const rows = await accountingService.getIftaEvidence(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.params.loadId,
       );
       res.json(rows);
@@ -317,7 +317,7 @@ router.post(
   validateBody(iftaAuditLockSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await accountingService.lockIftaAudit(req.user.tenantId, req.body);
+      await accountingService.lockIftaAudit(req.user!.tenantId, req.body);
       res.json({ message: "Trip locked for audit" });
     } catch (e) {
       const log = createRequestLogger(
@@ -341,7 +341,7 @@ router.get(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const result = await accountingService.getIftaSummary(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.query.quarter as string,
         req.query.year as string,
       );
@@ -367,7 +367,7 @@ router.get(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const rows = await accountingService.listMileage(req.user.tenantId);
+      const rows = await accountingService.listMileage(req.user!.tenantId);
       res.json(rows);
     } catch (e) {
       const log = createRequestLogger(req, "GET /api/accounting/mileage");
@@ -385,7 +385,7 @@ router.post(
   validateBody(mileageSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await accountingService.createMileage(req.user.tenantId, req.body);
+      await accountingService.createMileage(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Mileage logged" });
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/mileage");
@@ -404,7 +404,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const id = await accountingService.createFuelReceipt(
-        req.user.tenantId,
+        req.user!.tenantId,
         req.body,
       );
       res.status(201).json({ id, message: "Fuel receipt recorded" });
@@ -432,7 +432,7 @@ router.post(
     try {
       const { quarter, year, netTaxDue } = req.body;
       await accountingService.postIftaTaxes(
-        req.user.tenantId,
+        req.user!.tenantId,
         quarter,
         year,
         netTaxDue,
@@ -454,7 +454,7 @@ router.post(
   validateBody(adjustmentSchema),
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await accountingService.createAdjustment(req.user.tenantId, req.body);
+      await accountingService.createAdjustment(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Adjustment recorded" });
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/adjustments");
@@ -474,7 +474,7 @@ router.post(
     try {
       const { type, data } = req.body;
       const count = await accountingService.batchImport(
-        req.user.tenantId,
+        req.user!.tenantId,
         type,
         data,
       );

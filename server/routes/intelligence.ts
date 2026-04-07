@@ -20,7 +20,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT
@@ -58,7 +58,7 @@ router.get(
       facility?: string;
       state?: string;
     };
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
 
     if (!facility) {
       return res.status(400).json({ error: "facility query param required" });
@@ -100,7 +100,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
     try {
       const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT

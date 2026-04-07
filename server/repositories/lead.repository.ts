@@ -32,7 +32,7 @@ export const leadRepository = {
   },
 
   async create(data: Record<string, unknown>, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO leads (id, company_id, status, source, contact_name, contact_email,
         contact_phone, company_name, notes, estimated_value, lane, equipment_needed,
