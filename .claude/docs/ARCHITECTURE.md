@@ -246,6 +246,46 @@ Stop session → stop_verify_gate.py reads .workflow-state.json → allowed if a
 | /build-system pipeline  | Unified plan-build meta-command                                      | Chains full lifecycle with user approval gates                                     |
 | Cherry-pick plugins     | Optional plugins (code-review, pr-review-toolkit) with graceful skip | Don't integrate plugins into inner QA loop; workflow degrades gracefully if absent |
 
+## Product Design Rationale
+
+> Rationale for non-obvious product shape decisions. The "why" behind what's built — extracted from the 2026-03-24 post-rework product audit before that audit doc was removed from the repo.
+
+### Map Capability Placement
+
+**Decision (2026-03-24):** Keep fleet-location capability, but remove the standalone `Fleet Map` destination from production nav. Treat the map as an *embedded* operational capability, not a first-class destination.
+
+**Why:**
+
+- A standalone Fleet Map page plus an embedded map inside Operations Center / Load Detail creates two parallel surfaces where dispatchers can watch trucks, which duplicates KPIs and confuses where live monitoring "belongs."
+- The real product value is live truck location inside the workflow the dispatcher is already using (Ops Center, load detail, optional split view on load board) — not a dedicated page visited out of context.
+- Tracking capability itself must remain real: live pings, provider setup, per-truck provider vehicle-ID mapping, connection health, fallback state when configured but no pings are arriving. Deletion is about *nav placement*, not the underlying feature.
+
+**How to apply:**
+
+- Map component (`components/GlobalMapViewEnhanced.tsx` or successors) stays — but only as an embedded widget inside Ops Center, load detail, and the load board split view. No top-level `Fleet Map` nav entry.
+- `/api/tracking/live` and `/api/tracking/webhook` remain the canonical live-tracking pipeline. A real admin surface for telematics setup (provider + credentials + vehicle mapping) must exist — do not require engineering to hand-wire new providers.
+- When adding a new "look at the map" entry point: ask whether the user is inside an operational workflow. If yes, embed. If no, reconsider whether the entry point should exist.
+
+### Load Intake Model
+
+**Decision (2026-03-24):** Support two clearly different load-creation flows, with driver-submitted intake treated as a first-class operational workflow, not a side feature.
+
+1. **Dispatcher-created load** — dispatcher picks broker/customer + driver, then builds the load. This is the current `LoadSetupModal` path.
+2. **Driver-submitted load intake** — driver arrives, uploads paperwork (BOL / rate con / scale ticket / POD), OCR drafts a load record, dispatch approves, and the load auto-appears in schedule + load board.
+
+**Why:**
+
+- The stakeholder expectation is that drivers do the first keystroke — they receive paperwork on the road, upload it, and the load *materializes* in the system without dispatch having to pre-stage broker/customer/driver selections.
+- The old flow assumed dispatch already knew broker/customer/driver before any document-driven intake could finish. That's the inverse of how the business actually operates.
+- Document-upload-for-existing-loads (current behavior) is not the same thing as driver-first intake. Having only the former means drivers can attach paperwork but cannot *originate* a load from paperwork, which breaks the primary operational motion.
+
+**How to apply:**
+
+- Driver app must have a `Driver Load Intake` entry point: scan/upload → OCR draft → prompt only for missing required fields → submit for dispatch review.
+- OCR output lands as either a new load directly OR a `Pending Intake` record requiring dispatch approval (choose based on confidence / policy).
+- After approval, the load must automatically appear in schedule + load board with no further dispatcher data entry.
+- When touching load-creation code: preserve both flows. Do not regress driver-intake by assuming a pre-selected broker/driver context.
+
 ## File Organization
 
 ```

@@ -2,628 +2,481 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "32874b9562b26d6ba4b3adff1914fb418e4fecc5e3c9fcb5bea183e9cbe68ecf",
+  "plan_hash": "c648d88ae9061d4252dfb03bfd31445e3a0853107b324154e420f46d28b20d62",
   "stories": [
     {
       "id": "S-001",
-      "description": "HSTS Security Headers \u00e2\u20ac\u201d Replace bare helmet() with explicit HSTS config (maxAge 1yr, includeSubDomains, preload)",
-      "phase": 0,
+      "description": "Independent Sales-Demo Seed Pipeline — new server/scripts/seed-sales-demo.ts (zero edits to seed-demo.ts), reset-sales-demo.ts with explicit company_id-scoped DELETE list for non-cascading accounting/IFTA tables (verified against migration 038 column rename), GL-6900 + GL-2200 IFTA accounts, Fleet Core tier pinned, single .env.local contract",
+      "phase": 1,
       "phase_type": "foundation",
       "component": "server/",
       "scope": [
-        "server/index.ts",
-        "server/__tests__/middleware/security-headers.test.ts"
+        "server/scripts/seed-sales-demo.ts",
+        "server/scripts/reset-sales-demo.ts",
+        "server/scripts/sales-demo-fixtures/sales-demo-data.json",
+        "server/__tests__/scripts/seed-sales-demo.test.ts",
+        "server/__tests__/scripts/reset-sales-demo.test.ts",
+        "server/__tests__/middleware/sales-demo-tier-audit.test.ts",
+        "server/__tests__/docs/sales-demo-seed-contract.test.ts",
+        "server/__tests__/docs/env-example-sales-demo.test.ts",
+        "docs/sales-demo-seed-contract.md",
+        ".env.example.sales-demo",
+        "package.json"
       ],
-      "complexity": "simple",
+      "complexity": "medium",
       "maxTurns": 100,
       "dependsOn": [],
       "parallelGroup": 0,
       "acceptanceCriteria": [
         {
-          "id": "R-SEC-01",
-          "criterion": "server/index.ts calls helmet({ with hsts: config (not bare helmet())",
+          "id": "R-P1-01",
+          "criterion": "seedSalesDemo issues UPDATE companies SET subscription_tier='Fleet Core' for SALES-DEMO-001 (assert by SQL capture)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-02",
+          "criterion": "seedSalesDemo throws Error('SALES_DEMO_ADMIN_FIREBASE_UID required') when env var unset",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-03",
+          "criterion": "resetSalesDemo throws when DB_NAME='production-loadpilot' (prod-name guard)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-04",
+          "criterion": "seedSalesDemo inserts gl_accounts rows with ids GL-6900 AND GL-2200 (the IFTA pair) before any IFTA evidence insert",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "Tier audit walks ≥15 requireTier('Fleet Core'|'Automation Pro') routes and asserts statusCode !== 403 for the seeded admin",
           "testType": "integration"
         },
         {
-          "id": "R-SEC-02",
-          "criterion": "Response header strict-transport-security contains max-age=31536000",
-          "testType": "integration"
+          "id": "R-P1-06",
+          "criterion": "docs/sales-demo-seed-contract.md contains 5 required H2 sections: ## Rows present after reset, ## Firebase UID env contract, ## GL accounts that must exist, ## Hidden routes & rationale, ## Known SaaS follow-ups",
+          "testType": "unit"
         },
         {
-          "id": "R-SEC-03",
-          "criterion": "Header contains includeSubDomains",
-          "testType": "integration"
+          "id": "R-P1-07",
+          "criterion": "100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent — second invocation produces 0 new rows)",
+          "testType": "unit"
         },
         {
-          "id": "R-SEC-04",
-          "criterion": "Header contains preload",
-          "testType": "integration"
+          "id": "R-P1-08",
+          "criterion": "seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline guarantee — assert via grep on the source)",
+          "testType": "unit"
         },
         {
-          "id": "R-SEC-05",
-          "criterion": "cd server && npx vitest run __tests__/middleware/security-headers.test.ts exits 0",
-          "testType": "integration"
+          "id": "R-P1-09",
+          "criterion": "resetSalesDemo issues DELETE statements against ALL 10 non-cascading tables (ifta_trips_audit, ifta_trip_evidence, mileage_jurisdiction, fuel_ledger, journal_lines, journal_entries, ar_invoices, ap_bills, gl_accounts, documents) BEFORE the DELETE FROM companies. The 8 accounting/IFTA tables filter on company_id (verified against migration 038); journal_lines filters via journal_entry_id subquery; documents filters on company_id. Assert via SQL capture: every table name appears in the captured DELETE list, every WHERE clause uses company_id (NOT tenant_id), and the company DELETE is the LAST one issued.",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-10",
+          "criterion": "resetSalesDemo is idempotent — second invocation against an already-empty tenant exits 0 without 'row not found' or FK violation errors",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-11",
+          "criterion": ".env.example.sales-demo file exists at the repo root and contains placeholder lines for all 7 required keys: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, SALES_DEMO_ADMIN_FIREBASE_UID, SALES_DEMO_DRIVER_FIREBASE_UID (assert via grep on the file)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P1-12",
+          "criterion": "seedSalesDemo source contains exactly one dotenv.config call and that call references '.env.local' (NOT '.env') — proves the single env contract for seed/reset/certify. Assert via grep on the source.",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "integration": "cd server && npx vitest run __tests__/middleware/security-headers.test.ts --reporter=verbose"
+        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo.test.ts __tests__/scripts/reset-sales-demo.test.ts __tests__/docs/sales-demo-seed-contract.test.ts __tests__/docs/env-example-sales-demo.test.ts --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/middleware/sales-demo-tier-audit.test.ts --reporter=verbose"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-002",
-      "description": "Token Revocation Table + Middleware Check \u00e2\u20ac\u201d migration 045, isTokenRevoked() in requireAuth, POST /api/users/:id/revoke endpoint",
-      "phase": 0,
-      "phase_type": "foundation",
+      "description": "Pre-Seeded Hero Load + Broker — seed customers row + loads row (with customer_id FK) + load_legs + 3 documents linked to LP-DEMO-RC-001. Live LoadDetailView reads everything via unmodified routes. Document UI labels are stubbed today (out of scope).",
+      "phase": 2,
+      "phase_type": "module",
       "component": "server/",
       "scope": [
-        "server/migrations/045_revoked_tokens.sql",
-        "server/lib/token-revocation.ts",
-        "server/middleware/requireAuth.ts",
-        "server/routes/users.ts"
+        "server/scripts/seed-sales-demo-loads.ts",
+        "server/scripts/sales-demo-fixtures/loads/LP-DEMO-RC-001.json",
+        "server/scripts/sales-demo-fixtures/loads/extracted-fields.md",
+        "server/scripts/seed-sales-demo.ts",
+        "server/__tests__/scripts/seed-sales-demo-loads.test.ts",
+        "server/__tests__/integration/sales-demo-load-readback.test.ts",
+        "e2e/sales-demo/01-document-automation.spec.ts"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 0,
+      "complexity": "medium",
+      "maxTurns": 100,
+      "dependsOn": ["S-001"],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-SEC-06",
-          "criterion": "045_revoked_tokens.sql has CREATE TABLE with firebase_uid column + INDEX",
+          "id": "R-P2-01",
+          "criterion": "seedSalesDemoLoads inserts exactly 1 row into customers with id 'SALES-DEMO-CUST-001' and type 'Broker' (assert via SQL capture)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-07",
-          "criterion": "token-revocation.ts exports isTokenRevoked",
+          "id": "R-P2-02",
+          "criterion": "seedSalesDemoLoads inserts exactly 1 row into loads with id 'LP-DEMO-RC-001' AND customer_id = 'SALES-DEMO-CUST-001' (assert the FK linkage via SQL capture)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-08",
-          "criterion": "token-revocation.ts exports revokeUserTokens",
+          "id": "R-P2-03",
+          "criterion": "seedSalesDemoLoads inserts exactly 2 rows into load_legs and 3 rows into documents linked to LP-DEMO-RC-001",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-09",
-          "criterion": "requireAuth.ts calls isTokenRevoked -- grep returns 1+ match",
+          "id": "R-P2-04",
+          "criterion": "seedSalesDemoLoads is idempotent — second invocation produces 0 new rows (INSERT IGNORE count)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-10",
-          "criterion": "Revoked user gets 401 with REVOKED in error code -- test assertion",
+          "id": "R-P2-05",
+          "criterion": "seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or server/services/gemini.service.ts (live-functions-only guarantee — assert via grep)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-11",
-          "criterion": "POST /api/users/:id/revoke exists in users.ts -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P2-06",
+          "criterion": "GET /api/loads returns the seeded load with loadNumber 'LP-DEMO-RC-001'; GET /api/clients/SALES-DEMO-001 returns the broker with id 'SALES-DEMO-CUST-001' and name 'ACME Logistics LLC'; GET /api/documents?load_id=LP-DEMO-RC-001 returns 3 document rows. All three calls use the unmodified production handlers.",
+          "testType": "integration"
         },
         {
-          "id": "R-SEC-12",
-          "criterion": "cd server && npx vitest run __tests__/middleware/token-revocation.test.ts __tests__/routes/user-revocation.test.ts exits 0",
+          "id": "R-P2-07",
+          "criterion": "Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts visible DOM contains 'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds. Clicks Documents button and asserts at least 3 document cards (container selector) are visible. Spec does NOT assert on doc.filename or doc.type text content.",
+          "testType": "e2e"
+        },
+        {
+          "id": "R-P2-08",
+          "criterion": "grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx, components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs sprint-end shows zero diff (snapshot test on file SHA256 for each file)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/middleware/token-revocation.test.ts __tests__/routes/user-revocation.test.ts --reporter=verbose"
+        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-loads.test.ts --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-load-readback.test.ts --reporter=verbose",
+        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/01-document-automation.spec.ts"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-003",
-      "description": "Zod Schemas for Incidents + QuickBooks \u00e2\u20ac\u201d create incident.ts and quickbooks.ts schemas, wire validateBody on 6 unvalidated endpoints",
-      "phase": 0,
-      "phase_type": "foundation",
+      "description": "IFTA Trip-Based Evidence Seed + Real-UI Walkthrough — 12 ifta_trip_evidence rows tied to LP-DEMO-RC-001 (load-based, NOT truck-based; equipment row NOT seeded). All accounting/IFTA INSERTs use company_id (verified against migration 038); fuel_ledger uses entry_date column (verified against migration 011 line 114). Live IFTAManager + IFTAEvidenceReview UI walkthrough using text selectors against verified button labels.",
+      "phase": 3,
+      "phase_type": "integration",
       "component": "server/",
       "scope": [
-        "server/schemas/incident.ts",
-        "server/schemas/quickbooks.ts",
-        "server/routes/incidents.ts",
-        "server/routes/quickbooks.ts"
+        "server/scripts/seed-sales-demo-ifta.ts",
+        "server/scripts/sales-demo-fixtures/ifta-q4-2025.json",
+        "server/scripts/seed-sales-demo.ts",
+        "server/__tests__/scripts/seed-sales-demo-ifta.test.ts",
+        "server/__tests__/integration/sales-demo-ifta-summary.test.ts",
+        "e2e/sales-demo/02-ifta-walkthrough.spec.ts"
       ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 0,
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": ["S-001", "S-002"],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-SEC-13",
-          "criterion": "server/schemas/incident.ts exports 4 schemas (createIncidentSchema, createIncidentActionSchema, patchIncidentSchema, createIncidentChargeSchema)",
+          "id": "R-P3-01",
+          "criterion": "seedSalesDemoIfta returns { evidenceRows: 12, fuelRows: 8, mileageRows: 6 }. The return shape contains NO trucksInserted field (trip-based, not truck-based)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-14",
-          "criterion": "server/schemas/quickbooks.ts exports syncInvoiceSchema and syncBillSchema",
+          "id": "R-P3-02",
+          "criterion": "All 12 ifta_trip_evidence INSERT statements have company_id = 'SALES-DEMO-001' AND load_id = 'LP-DEMO-RC-001'. All 8 fuel_ledger INSERTs use the column name 'entry_date' (NOT 'fuel_date' which does not exist) and company_id = 'SALES-DEMO-001'. All 6 mileage_jurisdiction INSERTs use company_id = 'SALES-DEMO-001'. Assert via SQL capture against a mocked mysql connection.",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-15",
-          "criterion": "incidents.ts imports validateBody",
+          "id": "R-P3-03",
+          "criterion": "seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO 'INSERT INTO equipment' statements (assert via grep — proves trip-based design)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-16",
-          "criterion": "grep -c validateBody server/routes/incidents.ts returns 4",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-17",
-          "criterion": "quickbooks.ts imports validateBody",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-18",
-          "criterion": "grep -c validateBody server/routes/quickbooks.ts returns 2",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-19",
-          "criterion": "POST /api/incidents with empty body returns 400 VALIDATION error",
+          "id": "R-P3-04",
+          "criterion": "GET /api/accounting/ifta-summary?quarter=4&year=2025 returns rows.length >= 6 && totalMiles >= 20000 && netTaxDue > 0. Uses the live unmodified route handler.",
           "testType": "integration"
         },
         {
-          "id": "R-SEC-20",
-          "criterion": "POST /api/incidents/:id/charges with amount:-5 returns 400",
-          "testType": "integration"
+          "id": "R-P3-05",
+          "criterion": "Playwright walkthrough completes the full text-selector sequence (nav-accounting → Fuel & IFTA → Q4 → 2025 → load card → Evidence Timeline visible → Computed Jurisdiction Split visible → attestation checkbox → Lock Trip for Audit → success indicator) within 10 seconds. Spec uses zero data-testid on IFTA elements; grep confirms no 'data-testid=\"ifta-' substrings in the spec file.",
+          "testType": "e2e"
         },
         {
-          "id": "R-SEC-21",
-          "criterion": "cd server && npx vitest run __tests__/schemas/incident.test.ts __tests__/schemas/quickbooks.test.ts exits 0",
+          "id": "R-P3-06",
+          "criterion": "seedSalesDemoIfta is idempotent (second invocation produces 0 new rows)",
           "testType": "unit"
         },
         {
-          "id": "R-SEC-22",
-          "criterion": "cd server && npx vitest run __tests__/routes/incidents-validation.test.ts __tests__/routes/quickbooks-validation.test.ts exits 0",
-          "testType": "integration"
+          "id": "R-P3-07",
+          "criterion": "grep components/IFTAManager.tsx, components/IFTAEvidenceReview.tsx, components/AccountingPortal.tsx HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
+          "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/schemas/incident.test.ts __tests__/schemas/quickbooks.test.ts __tests__/routes/incidents-validation.test.ts __tests__/routes/quickbooks-validation.test.ts --reporter=verbose"
+        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-ifta.test.ts --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-ifta-summary.test.ts --reporter=verbose",
+        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/02-ifta-walkthrough.spec.ts"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-004",
-      "description": "Email Verification on Signup + Login Gate \u00e2\u20ac\u201d sendEmailVerification after both signup paths, emailVerified check in login() and requireAuth",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "services/",
+      "description": "CRM Registry Depth — seed 12 parties (3/2/2/3/2 split) into the 8 verified party_* tables that GET /api/parties enriches. Direct SQL only (POST /api/parties has unrelated bug). NetworkPortal renders 6 tabs with seeded data.",
+      "phase": 4,
+      "phase_type": "integration",
+      "component": "server/",
       "scope": [
-        "services/authService.ts",
-        "server/middleware/requireAuth.ts",
-        "components/Auth.tsx"
+        "server/scripts/seed-sales-demo-parties.ts",
+        "server/scripts/sales-demo-fixtures/parties.json",
+        "server/scripts/seed-sales-demo.ts",
+        "server/__tests__/scripts/seed-sales-demo-parties.test.ts",
+        "server/__tests__/integration/sales-demo-network-portal.test.ts",
+        "e2e/sales-demo/03-network-portal-walkthrough.spec.ts"
       ],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [
-        "S-002"
-      ],
-      "parallelGroup": null,
+      "dependsOn": ["S-001"],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-AUTH-01",
-          "criterion": "authService.ts imports sendEmailVerification -- grep 1+ match",
+          "id": "R-P4-01",
+          "criterion": "seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2 contractors (12 parties total) — assert by type breakdown via SQL capture",
           "testType": "unit"
         },
         {
-          "id": "R-AUTH-02",
-          "criterion": "sendEmailVerification called after createUserWithEmailAndPassword in registerCompany() -- 1+ match",
+          "id": "R-P4-02",
+          "criterion": "Every party has at least 1 contact, 1 document, 1 rate row, 1 constraint set, 1 catalog link (assert via fixture validation + SQL capture counts)",
           "testType": "unit"
         },
         {
-          "id": "R-AUTH-03",
-          "criterion": "2+ total sendEmailVerification calls in authService.ts (both signup paths)",
+          "id": "R-P4-03",
+          "criterion": "seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores, customer_rate_sheets, or party_interactions (none of those tables exist — assert via grep on the source)",
           "testType": "unit"
         },
         {
-          "id": "R-AUTH-04",
-          "criterion": "login() checks emailVerified -- grep 1+ match",
+          "id": "R-P4-04",
+          "criterion": "seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from server/routes/clients.ts (live-functions-only via direct SQL — assert via grep)",
           "testType": "unit"
         },
         {
-          "id": "R-AUTH-05",
-          "criterion": "requireAuth.ts checks email_verified -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P4-05",
+          "criterion": "GET /api/parties returns exactly 12 parties for the sales-demo tenant with the correct type breakdown (3/2/2/3/2) and the first broker has all 5 enrichment arrays (contacts, documents, rates, constraintSets, catalogLinks) non-empty",
+          "testType": "integration"
         },
         {
-          "id": "R-AUTH-06",
-          "criterion": "Unverified login throws error containing verify -- test assertion",
-          "testType": "unit"
+          "id": "R-P4-06",
+          "criterion": "Playwright walkthrough opens NetworkPortal, drills into a broker, clicks each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible in each",
+          "testType": "e2e"
         },
         {
-          "id": "R-AUTH-07",
-          "criterion": "Auth component shows verification notice after signup -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-08",
-          "criterion": "npx vitest run src/__tests__/services/authService.emailVerify.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-09",
-          "criterion": "cd server && npx vitest run __tests__/middleware/email-verification.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-10",
-          "criterion": "npx vitest run src/__tests__/components/Auth.emailVerify.test.tsx exits 0",
+          "id": "R-P4-07",
+          "criterion": "grep components/NetworkPortal.tsx, services/networkService.ts, server/routes/clients.ts HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/authService.emailVerify.test.ts src/__tests__/components/Auth.emailVerify.test.tsx --reporter=verbose && cd server && npx vitest run __tests__/middleware/email-verification.test.ts --reporter=verbose"
+        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-parties.test.ts --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-network-portal.test.ts --reporter=verbose",
+        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/03-network-portal-walkthrough.spec.ts"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-005",
-      "description": "Wrap 12 Data-Fetching Components with ComponentErrorBoundary in App.tsx",
-      "phase": 2,
+      "description": "Demo-Blocker Regression Tests — lock down the SafetyView empty-state KPI, GlobalMapViewEnhanced env-var-leak fallback, and document Quotes route disposition. Tests only — zero production code edits.",
+      "phase": 5,
       "phase_type": "module",
-      "component": "src/",
+      "component": "frontend/",
       "scope": [
-        "App.tsx"
+        "__tests__/components/SafetyView.sales-demo.test.tsx",
+        "__tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx",
+        "__tests__/components/GoogleMapsAPITester.sales-demo.test.tsx",
+        "docs/sales-demo-seed-contract.md"
       ],
       "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 2,
+      "dependsOn": ["S-001"],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-ERR-01",
-          "criterion": "App.tsx imports ComponentErrorBoundary",
+          "id": "R-P5-01",
+          "criterion": "SafetyView with operators=[] does not render the substring \"13\" anywhere in the DOM (assert via screen.queryByText('13') returning null)",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-02",
-          "criterion": "grep -c ComponentErrorBoundary App.tsx returns 12+",
+          "id": "R-P5-02",
+          "criterion": "SafetyView with 5 compliant operators renders \"0\" and \"All Clear\" in the Non-Compliant tile",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-03",
-          "criterion": "AccountingPortal rendering block wrapped -- grep confirms ComponentErrorBoundary near AccountingPortal",
+          "id": "R-P5-03",
+          "criterion": "GlobalMapViewEnhanced fallback DOM never contains the substring \"VITE_GOOGLE_MAPS_API_KEY\"",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-04",
-          "criterion": "Test: throwing child renders error card (not blank page) -- test assertion",
+          "id": "R-P5-04",
+          "criterion": "docs/sales-demo-seed-contract.md contains a ## Quotes route disposition H2 section with non-empty body",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-05",
-          "criterion": "npx vitest run src/__tests__/components/ErrorBoundary.wrap.test.tsx exits 0",
+          "id": "R-P5-05",
+          "criterion": "grep components/SafetyView.tsx, components/GlobalMapViewEnhanced.tsx HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ErrorBoundary.wrap.test.tsx --reporter=verbose"
+        "unit": "npx vitest run __tests__/components/SafetyView.sales-demo.test.tsx __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx __tests__/components/GoogleMapsAPITester.sales-demo.test.tsx --reporter=verbose"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-006",
-      "description": "Sentry APM Integration \u00e2\u20ac\u201d @sentry/react + @sentry/node, captureException in ErrorBoundary + errorHandler, graceful no-op when DSN unset",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "services/",
+      "description": "Demo Shell Allowlist + Reset Endpoint — App.tsx nav filter behind VITE_DEMO_NAV_MODE=sales (real route keys: operations-hub, loads, calendar, network, accounting, exceptions). Triple-locked POST /api/demo/reset endpoint. Surgical: <30 lines added to App.tsx, exactly 2 lines added to server/index.ts.",
+      "phase": 6,
+      "phase_type": "integration",
+      "component": "frontend+server/",
       "scope": [
-        "package.json",
-        "server/package.json",
-        "services/sentry.ts",
-        "server/lib/sentry.ts",
-        "components/ErrorBoundary.tsx",
-        "server/middleware/errorHandler.ts"
+        "services/demoNavConfig.ts",
+        "App.tsx",
+        "server/routes/demo.ts",
+        "server/index.ts",
+        "docs/sales-demo-runbook.md",
+        "__tests__/services/demoNavConfig.test.ts",
+        "__tests__/App.demo-nav.test.tsx",
+        "server/__tests__/routes/demo.test.ts",
+        "server/__tests__/docs/sales-demo-runbook.test.ts"
       ],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 2,
+      "dependsOn": ["S-001"],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-ERR-06",
-          "criterion": "@sentry/react in package.json dependencies",
+          "id": "R-P6-01",
+          "criterion": "isDemoNavMode() returns true iff VITE_DEMO_NAV_MODE === 'sales' (verified by unit test asserting both true and false branches)",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-07",
-          "criterion": "@sentry/node in server/package.json dependencies",
+          "id": "R-P6-02",
+          "criterion": "DEMO_NAV_ALLOWLIST deep-equals exactly the array ['operations-hub','loads','calendar','network','accounting','exceptions'] (toEqual on literal array — real App.tsx route keys, no fictional ones)",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-08",
-          "criterion": "services/sentry.ts exists and exports captureException",
+          "id": "R-P6-03",
+          "criterion": "App.tsx with demo mode off renders Telematics, Company Settings, Issues & Alerts, and Operations Center nav items (production-untouched proof)",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-09",
-          "criterion": "server/lib/sentry.ts exists and exports captureException",
+          "id": "R-P6-04",
+          "criterion": "App.tsx with demo mode on renders only the 6 allowlisted nav items + Reset Demo button; Telematics and Company Settings are absent",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-10",
-          "criterion": "ErrorBoundary.tsx imports from sentry",
+          "id": "R-P6-05",
+          "criterion": "POST /api/demo/reset returns 401 unauthenticated, 403 for non-admin role, 403 for non-SALES-DEMO-001 tenant, 403 when ALLOW_DEMO_RESET env unset (4 separate integration assertions)",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P6-06",
+          "criterion": "POST /api/demo/reset returns 200 with { ok: true } when all 4 gates pass and the inner resetSalesDemo (mocked to return a sentinel) runs",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P6-07",
+          "criterion": "docs/sales-demo-runbook.md contains 6 required H2 sections: ## Two Chrome profiles, ## Setting demo nav mode (.env.local), ## Resetting between demos, ## Recovery from accidental URL, ## Firebase user provisioning prerequisite, ## Live Gemini disclaimer",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-11",
-          "criterion": "grep -c captureException components/ErrorBoundary.tsx returns 3+",
+          "id": "R-P6-08",
+          "criterion": "App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only minimal-touch guarantee — assert via git diff --numstat App.tsx)",
           "testType": "unit"
         },
         {
-          "id": "R-ERR-12",
-          "criterion": "errorHandler.ts calls captureException",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-13",
-          "criterion": "When DSN is not set captureException is a no-op -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-14",
-          "criterion": "npx vitest run src/__tests__/services/sentry.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-15",
-          "criterion": "cd server && npx vitest run __tests__/lib/sentry.test.ts exits 0",
+          "id": "R-P6-09",
+          "criterion": "server/index.ts diff vs HEAD is exactly 2 added lines (the import + the conditional ALLOW_DEMO_RESET mount)",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/sentry.test.ts --reporter=verbose && cd server && npx vitest run __tests__/lib/sentry.test.ts --reporter=verbose"
+        "unit": "npx vitest run __tests__/services/demoNavConfig.test.ts __tests__/App.demo-nav.test.tsx --reporter=verbose && cd server && npx vitest run __tests__/docs/sales-demo-runbook.test.ts --reporter=verbose",
+        "integration": "cd server && npx vitest run __tests__/routes/demo.test.ts --reporter=verbose"
       },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "S-007",
-      "description": "EditLoadForm Carrier Rate + Date Validation \u00e2\u20ac\u201d negative rate rejection, pickup<=dropoff date check, min=0 on rate inputs",
-      "phase": 3,
-      "phase_type": "module",
-      "component": "components/",
+      "description": "Windows-Safe Certification Pipeline — single npm script demo:certify:sales runs reset + 4 Playwright specs + appends timestamped pass record to docs/release/evidence.md. .cjs script using os.tmpdir() (no /tmp), .env.local for env vars (no cross-env), Firebase user provisioning documented as prerequisite.",
+      "phase": 7,
+      "phase_type": "e2e",
+      "component": "frontend+server/",
       "scope": [
-        "components/EditLoadForm.tsx"
+        "scripts/demo-certify.cjs",
+        "e2e/sales-demo/00-smoke.spec.ts",
+        "e2e/sales-demo/README.md",
+        "package.json",
+        "docs/release/evidence.md",
+        "__tests__/scripts/demo-certify.test.ts",
+        "server/__tests__/docs/sales-demo-e2e-readme.test.ts",
+        "server/__tests__/docs/release-evidence.test.ts"
       ],
-      "complexity": "simple",
+      "complexity": "medium",
       "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 3,
+      "dependsOn": ["S-002", "S-003", "S-004", "S-006"],
+      "parallelGroup": 2,
       "acceptanceCriteria": [
         {
-          "id": "R-VAL-01",
-          "criterion": "validateForm() checks carrierRate < 0 -- grep confirms",
+          "id": "R-P7-01",
+          "criterion": "scripts/demo-certify.cjs appends a ### <timestamp> block under ## Sales Demo Certification with the last 50 lines of input log (verified via temp-dir unit test)",
           "testType": "unit"
         },
         {
-          "id": "R-VAL-02",
-          "criterion": "validateForm() checks driverPay < 0 -- grep confirms",
+          "id": "R-P7-02",
+          "criterion": "scripts/demo-certify.cjs exits 1 when the input log file is missing",
           "testType": "unit"
         },
         {
-          "id": "R-VAL-03",
-          "criterion": "validateForm() compares pickup/dropoff dates",
+          "id": "R-P7-03",
+          "criterion": "scripts/demo-certify.cjs source contains zero references to /tmp (regex assertion); references os.tmpdir() instead",
           "testType": "unit"
         },
         {
-          "id": "R-VAL-04",
-          "criterion": "Rate inputs have min=0 or min={0} attribute",
+          "id": "R-P7-04",
+          "criterion": "e2e/sales-demo/00-smoke.spec.ts passes against the seeded sales-demo tenant when FIREBASE_WEB_API_KEY is set; gracefully test.skips with a clear message when not",
+          "testType": "e2e"
+        },
+        {
+          "id": "R-P7-05",
+          "criterion": "e2e/sales-demo/README.md exists and lists all 4 specs (00-smoke, 01-document-automation, 02-ifta-walkthrough, 03-network-portal-walkthrough)",
           "testType": "unit"
         },
         {
-          "id": "R-VAL-05",
-          "criterion": "Negative carrier rate shows error message -- test assertion",
+          "id": "R-P7-06",
+          "criterion": "package.json demo:certify:sales script value is exactly 'node scripts/demo-certify.cjs' (no Unix env syntax, no cross-env, no &&)",
           "testType": "unit"
         },
         {
-          "id": "R-VAL-06",
-          "criterion": "Invalid date range (pickup after dropoff) shows error -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-07",
-          "criterion": "npx vitest run src/__tests__/components/EditLoadForm.validation.test.tsx exits 0",
+          "id": "R-P7-07",
+          "criterion": "docs/release/evidence.md contains a ## Sales Demo Certification H2 section",
           "testType": "unit"
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/EditLoadForm.validation.test.tsx --reporter=verbose"
+        "unit": "npx vitest run __tests__/scripts/demo-certify.test.ts --reporter=verbose && cd server && npx vitest run __tests__/docs/sales-demo-e2e-readme.test.ts __tests__/docs/release-evidence.test.ts --reporter=verbose",
+        "e2e": "npm run demo:certify:sales"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-008",
-      "description": "Team Invitation Flow \u00e2\u20ac\u201d migration 046, invitation service, 4 API endpoints (create/list/accept/cancel), email notification on invite",
-      "phase": 3,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/migrations/046_invitations.sql",
-        "server/schemas/invitation.ts",
-        "server/services/invitation.service.ts",
-        "server/routes/invitations.ts",
-        "server/index.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 250,
-      "dependsOn": [
-        "S-004"
-      ],
-      "parallelGroup": 3,
-      "acceptanceCriteria": [
-        {
-          "id": "R-INV-01",
-          "criterion": "046_invitations.sql has CREATE TABLE invitations with token UNIQUE column",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-02",
-          "criterion": "invitation.service.ts exports createInvitation and acceptInvitation",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-03",
-          "criterion": "invitations.ts has 4 route handlers (POST create, GET list, POST accept, DELETE cancel)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-04",
-          "criterion": "POST create uses validateBody(createInvitationSchema)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-05",
-          "criterion": "POST accept is rate-limited (5 req / 15 min)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-06",
-          "criterion": "Acceptance creates user with correct company_id from invitation -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-07",
-          "criterion": "Expired invitation returns 410 Gone -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-08",
-          "criterion": "Already-accepted invitation returns 409 Conflict -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-09",
-          "criterion": "server/index.ts registers invitationsRouter -- grep confirms",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-10",
-          "criterion": "cd server && npx vitest run __tests__/services/invitation.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-11",
-          "criterion": "cd server && npx vitest run __tests__/routes/invitations.test.ts exits 0",
-          "testType": "integration"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/services/invitation.test.ts __tests__/routes/invitations.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-009",
-      "description": "Icon Button aria-labels + Status Indicator Text \u00e2\u20ac\u201d add aria-label to 30+ icon buttons across 12 components, sr-only text on color-only status dots",
-      "phase": 4,
-      "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "components/"
-      ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 4,
-      "acceptanceCriteria": [
-        {
-          "id": "R-A11Y-01",
-          "criterion": "Zero icon-only buttons (X, Trash2, Plus, etc.) lacking aria-label in target files",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-02",
-          "criterion": "All Trash2/delete buttons have aria-label containing delete or remove",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-03",
-          "criterion": "Color-only status dots have adjacent sr-only text -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-04",
-          "criterion": "30+ new aria-label attributes added across codebase (grep count increase)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-05",
-          "criterion": "npx vitest run src/__tests__/accessibility/icon-buttons.test.tsx exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-06",
-          "criterion": "npx vitest run src/__tests__/accessibility/status-indicators.test.tsx exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/accessibility/icon-buttons.test.tsx src/__tests__/accessibility/status-indicators.test.tsx --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-010",
-      "description": "Modal Focus Trapping \u00e2\u20ac\u201d add useFocusTrap to 6 modals (BrokerManager, CalendarView, FileVault, ExceptionConsole, IFTAManager, LoadDetailView)",
-      "phase": 4,
-      "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "components/BrokerManager.tsx",
-        "components/CalendarView.tsx",
-        "components/FileVault.tsx",
-        "components/ExceptionConsole.tsx",
-        "components/IFTAManager.tsx",
-        "components/LoadDetailView.tsx"
-      ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 4,
-      "acceptanceCriteria": [
-        {
-          "id": "R-A11Y-07",
-          "criterion": "BrokerManager.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-08",
-          "criterion": "CalendarView.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-09",
-          "criterion": "FileVault.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-10",
-          "criterion": "ExceptionConsole.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-11",
-          "criterion": "11+ components total import useFocusTrap (up from 6)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-A11Y-12",
-          "criterion": "npx vitest run src/__tests__/accessibility/focus-trap.test.tsx exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/accessibility/focus-trap.test.tsx --reporter=verbose"
-      },
-      "passed": true,
+      "passed": false,
       "verificationRef": "verification-log.jsonl"
     }
   ]

@@ -79,3 +79,16 @@ fixtures/test-users.json
 team1-frontend.*
 server/team1-backend.*
 
+# Test coverage output (Vitest / Jest / Istanbul)
+coverage/
+server/coverage/
+
+# Root-level workflow state (different from .claude/.workflow-state.json)
+/.workflow-state.json
+
+# DB handoff bundles — contain DB dumps, never commit
+handoff/
+
+# Local dev PowerShell scripts — keep local-only for now
+scripts/dev/*.ps1
+
