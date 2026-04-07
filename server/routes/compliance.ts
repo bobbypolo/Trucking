@@ -1,6 +1,6 @@
-import { Router, NextFunction } from "express";
+import { Router, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createComplianceAlertSchema } from "../schemas/compliance";
@@ -14,19 +14,19 @@ router.get(
   "/api/compliance/:userId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (
-      req.user.id !== req.params.userId &&
-      req.user.role !== "admin" &&
-      req.user.role !== "dispatcher" &&
-      req.user.role !== "safety_manager"
+      req.user!.id !== req.params.userId &&
+      req.user!.role !== "admin" &&
+      req.user!.role !== "dispatcher" &&
+      req.user!.role !== "safety_manager"
     ) {
       return res.status(403).json({ error: "Unauthorized profile access" });
     }
     try {
       const [rows] = await pool.query(
         "SELECT cr.* FROM compliance_records cr JOIN users u ON cr.user_id = u.id WHERE cr.user_id = ? AND u.company_id = ?",
-        [req.params.userId, req.user.tenantId],
+        [req.params.userId, req.user!.tenantId],
       );
       res.json(rows);
     } catch (error) {
@@ -43,9 +43,9 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createComplianceAlertSchema),
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { entityType, entityId, description, severity, alertType } = req.body;
-    const companyId = req.user.tenantId;
+    const companyId = req.user!.tenantId;
 
     const exceptionId = uuidv4();
     const numericSeverity = severity || 3;
@@ -74,7 +74,7 @@ router.post(
       await pool.query(
         `INSERT INTO exception_events (id, exception_id, action, notes, actor_name)
          VALUES (?, ?, 'Exception Created', 'Compliance alert created', ?)`,
-        [uuidv4(), exceptionId, req.user.uid || "System"],
+        [uuidv4(), exceptionId, req.user!.uid || "System"],
       );
       res
         .status(201)

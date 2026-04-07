@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { createChildLogger } from "./logger";
 
 /**
@@ -48,7 +49,7 @@ export async function syncDomainToException(
 
   try {
     // Find exceptions linked to this domain record via JSON_EXTRACT
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT id, status FROM exceptions
        WHERE tenant_id = ?
          AND JSON_UNQUOTE(JSON_EXTRACT(links, ?)) = ?

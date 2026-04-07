@@ -16,6 +16,7 @@ export type { GpsPosition, GpsProvider } from "./gps-provider.interface";
 export { SamsaraAdapter } from "./samsara.adapter";
 
 import type { GpsPosition, GpsProvider } from "./gps-provider.interface";
+import type { RowDataPacket } from "mysql2/promise";
 import { SamsaraAdapter } from "./samsara.adapter";
 
 /**
@@ -78,9 +79,9 @@ export interface GpsProviderResult {
  */
 export async function getGpsProviderForTenant(
   companyId: string,
-  db: { query: (sql: string, params?: any[]) => Promise<any> },
+  db: { query: (sql: string, params?: unknown[]) => Promise<[RowDataPacket[], unknown]> },
 ): Promise<GpsProviderResult> {
-  const [rows]: any = await db.query(
+  const [rows] = await db.query(
     `SELECT id, provider_name, api_token
      FROM tracking_provider_configs
      WHERE company_id = ? AND is_active = TRUE

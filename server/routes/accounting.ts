@@ -1,9 +1,6 @@
-import { Router, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import { Router, Response, NextFunction } from "express";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
-import pool from "../db";
-import { detectState, calculateDistance } from "../geoUtils";
 import { validateBody } from "../middleware/validate";
 import { createSettlementSchema } from "../schemas/settlements";
 import {
@@ -13,8 +10,17 @@ import {
   batchImportSchema,
   batchUpdateSettlementsSchema,
   fuelReceiptSchema,
+  iftaAnalyzeSchema,
+  iftaAuditLockSchema,
+  mileageSchema,
+  iftaPostSchema,
+  adjustmentSchema,
 } from "../schemas/accounting";
 import { createRequestLogger } from "../lib/logger";
+import {
+  accountingService,
+  ValidationError,
+} from "../services/accounting.service";
 
 const router = Router();
 
@@ -25,13 +31,9 @@ router.get(
   "/api/accounting/accounts",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const [rows] = await pool.query(
-        "SELECT * FROM gl_accounts WHERE company_id = ? AND is_active = TRUE ORDER BY account_number ASC",
-        [tenantId],
-      );
+      const rows = await accountingService.getChartOfAccounts(req.user!.tenantId);
       res.json(rows);
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/accounts");
@@ -46,53 +48,13 @@ router.get(
   "/api/accounting/load-pl/:loadId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const loadId = req.params.loadId;
-
-      // Fetch revenue vs expense from journal lines allocated to this load
-      const [rows]: any = await pool.query(
-        `
-            SELECT
-                jl.allocation_id,
-                a.name as account_name,
-                a.type as account_type,
-                SUM(jl.debit) as total_debit,
-                SUM(jl.credit) as total_credit
-            FROM journal_lines jl
-            JOIN gl_accounts a ON jl.gl_account_id = a.id
-            JOIN journal_entries je ON jl.journal_entry_id = je.id
-            WHERE jl.allocation_type = 'Load' AND jl.allocation_id = ? AND je.company_id = ?
-            GROUP BY jl.gl_account_id, a.name, a.type
-        `,
-        [loadId, tenantId],
+      const result = await accountingService.calculateLoadPnl(
+        req.user!.tenantId,
+        req.params.loadId,
       );
-
-      let revenue = 0;
-      let costs = 0;
-      const details = rows.map((r: any) => {
-        const val =
-          r.account_type === "Income"
-            ? r.total_credit - r.total_debit
-            : r.total_debit - r.total_credit;
-        if (r.account_type === "Income") revenue += val;
-        if (r.account_type === "Expense") costs += val;
-        return {
-          account: r.account_name,
-          type: r.account_type,
-          amount: val,
-        };
-      });
-
-      res.json({
-        loadId,
-        revenue,
-        costs,
-        margin: revenue - costs,
-        marginPercent: revenue > 0 ? ((revenue - costs) / revenue) * 100 : 0,
-        details,
-      });
+      res.json(result);
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/load-pl");
       log.error({ err: error }, "SERVER ERROR [GET /api/accounting/load-pl]");
@@ -107,318 +69,71 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createJournalEntrySchema),
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const {
-      id,
-      entryDate,
-      referenceNumber,
-      description,
-      sourceDocumentType,
-      sourceDocumentId,
-      createdBy,
-      lines,
-    } = req.body;
-    const connection = await pool.getConnection();
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await connection.beginTransaction();
-
-      // 1. Post Header — always use auth-derived tenantId
-      await connection.query(
-        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
-        [
-          id,
-          tenantId,
-          entryDate,
-          referenceNumber,
-          description,
-          sourceDocumentType,
-          sourceDocumentId,
-          createdBy,
-        ],
-      );
-
-      // 2. Post Lines
-      for (const line of lines) {
-        await connection.query(
-          "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          [
-            line.id || uuidv4(),
-            id,
-            line.glAccountId,
-            line.debit || 0,
-            line.credit || 0,
-            line.allocationType,
-            line.allocationId,
-            line.notes,
-          ],
-        );
-      }
-
-      await connection.commit();
+      await accountingService.postJournalEntry(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Journal entry posted" });
     } catch (error) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/journal");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/journal]");
       next(error);
-    } finally {
-      connection.release();
     }
   },
 );
 
-// AR Invoices
+// AR Invoices — Create
 router.post(
   "/api/accounting/invoices",
   requireAuth,
   requireTenant,
   validateBody(createInvoiceSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const invoice = req.body;
-    const connection = await pool.getConnection();
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await connection.beginTransaction();
-
-      // 1. Create Invoice Header — always use auth-derived tenantId
-      await connection.query(
-        "INSERT INTO ar_invoices (id, company_id, customer_id, load_id, invoice_number, invoice_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          invoice.id,
-          tenantId,
-          invoice.customerId,
-          invoice.loadId,
-          invoice.invoiceNumber,
-          invoice.invoiceDate,
-          invoice.dueDate,
-          invoice.status,
-          invoice.totalAmount,
-          invoice.totalAmount,
-        ],
+      await accountingService.createInvoiceWithGlPosting(
+        req.user!.tenantId,
+        req.body,
       );
-
-      // 2. Create Invoice Lines (V3)
-      if (invoice.lines && Array.isArray(invoice.lines)) {
-        for (const line of invoice.lines) {
-          await connection.query(
-            "INSERT INTO ar_invoice_lines (id, invoice_id, catalog_item_id, description, quantity, unit_price, total_amount, gl_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-              line.id || uuidv4(),
-              invoice.id,
-              line.catalogItemId,
-              line.description,
-              line.quantity || 1,
-              line.unitPrice,
-              line.totalAmount,
-              line.glAccountId,
-            ],
-          );
-        }
-      }
-
-      // 3. AUTO-POST TO GL — always use auth-derived tenantId
-      const entryId = uuidv4();
-      await connection.query(
-        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
-        [
-          entryId,
-          tenantId,
-          invoice.invoiceDate,
-          invoice.invoiceNumber,
-          `Invoice ${invoice.invoiceNumber} for Load ${invoice.loadId}`,
-          "Invoice",
-          invoice.id,
-          "SYSTEM",
-        ],
-      );
-
-      // Debit AR
-      await connection.query(
-        "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [
-          uuidv4(),
-          entryId,
-          "GL-1200",
-          invoice.totalAmount,
-          0,
-          "Load",
-          invoice.loadId,
-        ],
-      );
-
-      // Credit Revenue (Itemized if lines exist, otherwise generic)
-      if (invoice.lines && Array.isArray(invoice.lines)) {
-        for (const line of invoice.lines) {
-          await connection.query(
-            "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              uuidv4(),
-              entryId,
-              line.glAccountId || "GL-4000",
-              0,
-              line.totalAmount,
-              "Load",
-              invoice.loadId,
-            ],
-          );
-        }
-      } else {
-        await connection.query(
-          "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [
-            uuidv4(),
-            entryId,
-            "GL-4000",
-            0,
-            invoice.totalAmount,
-            "Load",
-            invoice.loadId,
-          ],
-        );
-      }
-
-      await connection.commit();
       res.status(201).json({ message: "Invoice created and posted to GL" });
     } catch (error) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/invoices");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/invoices]");
       next(error);
-    } finally {
-      connection.release();
     }
   },
 );
 
-// AP Bills
+// AP Bills — Create
 router.post(
   "/api/accounting/bills",
   requireAuth,
   requireTenant,
   validateBody(createBillSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const bill = req.body;
-    const connection = await pool.getConnection();
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await connection.beginTransaction();
-
-      // 1. Create Bill Header — always use auth-derived tenantId
-      await connection.query(
-        "INSERT INTO ap_bills (id, company_id, vendor_id, bill_number, bill_date, due_date, status, total_amount, balance_due) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          bill.id,
-          tenantId,
-          bill.vendorId,
-          bill.billNumber,
-          bill.billDate,
-          bill.dueDate,
-          bill.status,
-          bill.totalAmount,
-          bill.totalAmount,
-        ],
+      await accountingService.createBillWithGlPosting(
+        req.user!.tenantId,
+        req.body,
       );
-
-      // 2. Create Bill Lines (V3)
-      if (bill.lines && Array.isArray(bill.lines)) {
-        for (const line of bill.lines) {
-          await connection.query(
-            "INSERT INTO ap_bill_lines (id, bill_id, description, amount, gl_account_id, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              line.id || uuidv4(),
-              bill.id,
-              line.description,
-              line.amount,
-              line.glAccountId,
-              line.allocationType || "Overhead",
-              line.allocationId,
-            ],
-          );
-        }
-      }
-
-      // 3. AUTO-POST TO GL — always use auth-derived tenantId
-      const entryId = uuidv4();
-      await connection.query(
-        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
-        [
-          entryId,
-          tenantId,
-          bill.billDate,
-          bill.billNumber,
-          `Bill ${bill.billNumber} from Vendor ${bill.vendorId}`,
-          "Bill",
-          bill.id,
-          "SYSTEM",
-        ],
-      );
-
-      // Header post for AP liability (Credit Accounts Payable)
-      await connection.query(
-        "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit) VALUES (?, ?, ?, ?, ?)",
-        [uuidv4(), entryId, "GL-2000", 0, bill.totalAmount],
-      );
-
-      // Detail lines post to expenses (Debit Expenses)
-      if (bill.lines && Array.isArray(bill.lines)) {
-        for (const line of bill.lines) {
-          await connection.query(
-            "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              uuidv4(),
-              entryId,
-              line.glAccountId || "GL-6100",
-              line.amount,
-              0,
-              line.allocationType,
-              line.allocationId,
-            ],
-          );
-        }
-      } else {
-        // Generic fallback if no lines provided
-        await connection.query(
-          "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-          [uuidv4(), entryId, "GL-6100", bill.totalAmount, 0, "Overhead", null],
-        );
-      }
-
-      await connection.commit();
       res.status(201).json({ message: "Bill created and posted to GL" });
     } catch (error) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/bills");
       log.error({ err: error }, "SERVER ERROR [POST /api/accounting/bills]");
       next(error);
-    } finally {
-      connection.release();
     }
   },
 );
 
 // --- ACCOUNTING V3 EXTENSIONS ---
 
-// AR Invoices List
+// AR Invoices — List
 router.get(
   "/api/accounting/invoices",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const [rows]: any = await pool.query(
-        "SELECT * FROM ar_invoices WHERE company_id = ? ORDER BY invoice_date DESC",
-        [tenantId],
-      );
-      const enriched = await Promise.all(
-        rows.map(async (inv: any) => {
-          const [lines] = await pool.query(
-            "SELECT * FROM ar_invoice_lines WHERE invoice_id = ?",
-            [inv.id],
-          );
-          return { ...inv, lines };
-        }),
+      const enriched = await accountingService.listInvoicesWithLines(
+        req.user!.tenantId,
       );
       res.json(enriched);
     } catch (error) {
@@ -429,26 +144,15 @@ router.get(
   },
 );
 
-// AP Bills List
+// AP Bills — List
 router.get(
   "/api/accounting/bills",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const [rows]: any = await pool.query(
-        "SELECT * FROM ap_bills WHERE company_id = ? ORDER BY bill_date DESC",
-        [tenantId],
-      );
-      const enriched = await Promise.all(
-        rows.map(async (bill: any) => {
-          const [lines] = await pool.query(
-            "SELECT * FROM ap_bill_lines WHERE bill_id = ?",
-            [bill.id],
-          );
-          return { ...bill, lines };
-        }),
+      const enriched = await accountingService.listBillsWithLines(
+        req.user!.tenantId,
       );
       res.json(enriched);
     } catch (error) {
@@ -459,89 +163,30 @@ router.get(
   },
 );
 
-// --- Settlement Role Constants ---
-const SETTLEMENT_ADMIN_ROLES = [
-  "admin",
-  "payroll_manager",
-  "dispatcher",
-  "PAYROLL_SETTLEMENTS",
-  "FINANCE",
-  "OWNER_ADMIN",
-  "ORG_OWNER_SUPER_ADMIN",
-  "ACCOUNTING_AR",
-];
-const SETTLEMENT_EDIT_ROLES = [
-  "admin",
-  "payroll_manager",
-  "PAYROLL_SETTLEMENTS",
-  "FINANCE",
-  "OWNER_ADMIN",
-  "ORG_OWNER_SUPER_ADMIN",
-];
-const SETTLEMENT_APPROVE_ROLES = [
-  "admin",
-  "payroll_manager",
-  "PAYROLL_SETTLEMENTS",
-  "FINANCE",
-  "OWNER_ADMIN",
-  "ORG_OWNER_SUPER_ADMIN",
-];
-const DRIVER_ROLES = ["driver", "DRIVER_PORTAL"];
-const CANONICAL_STATUSES = ["Draft", "Calculated", "Approved", "Paid"] as const;
-const ALLOWED_TRANSITIONS: Record<string, string[]> = {
-  Draft: ["Calculated"],
-  Calculated: ["Approved"],
-  Approved: ["Paid"],
-  Paid: [],
-};
-
-// Driver Settlements List — role-enforced
+// Driver Settlements — List (role-enforced)
 router.get(
   "/api/accounting/settlements",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const userRole = req.user.role;
-      const userId = req.user.id;
-      const isDriver = DRIVER_ROLES.includes(userRole);
-      const isAdmin = SETTLEMENT_ADMIN_ROLES.includes(userRole);
-
-      // Drivers can only see their own settlements (server-enforced self-scope)
-      // Admin/payroll/finance roles can view all or filter by driverId
-      if (!isDriver && !isAdmin) {
+      const perm = accountingService.checkSettlementViewPermission(
+        req.user!.role,
+      );
+      if (!perm.allowed) {
         return res
           .status(403)
           .json({ error: "Insufficient permissions to view settlements" });
       }
 
-      let query = "SELECT * FROM driver_settlements WHERE company_id = ?";
-      const params: any[] = [tenantId];
+      // Drivers can only see their own settlements (server-enforced self-scope)
+      const driverId = perm.isDriver
+        ? req.user!.id
+        : (req.query.driverId as string | undefined);
 
-      if (isDriver) {
-        // Force self-scope: ignore client-provided driverId param
-        query += " AND driver_id = ?";
-        params.push(userId);
-      } else {
-        // Admin/payroll: allow optional driverId filter
-        const { driverId } = req.query;
-        if (driverId) {
-          query += " AND driver_id = ?";
-          params.push(driverId);
-        }
-      }
-
-      query += " ORDER BY settlement_date DESC";
-      const [rows]: any = await pool.query(query, params);
-      const enriched = await Promise.all(
-        rows.map(async (set: any) => {
-          const [lines] = await pool.query(
-            "SELECT * FROM settlement_lines WHERE settlement_id = ?",
-            [set.id],
-          );
-          return { ...set, lines };
-        }),
+      const enriched = await accountingService.listSettlementsWithLines(
+        req.user!.tenantId,
+        driverId,
       );
       res.json(enriched);
     } catch (error) {
@@ -555,130 +200,31 @@ router.get(
   },
 );
 
+// Driver Settlements — Create
 router.post(
   "/api/accounting/settlements",
   requireAuth,
   requireTenant,
   validateBody(createSettlementSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    // Role guard: only payroll/admin roles can create settlements
-    const userRole = req.user.role;
-    if (!SETTLEMENT_EDIT_ROLES.includes(userRole)) {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!accountingService.canCreateSettlement(req.user!.role)) {
       return res
         .status(403)
         .json({ error: "Insufficient permissions to create settlements" });
     }
-    const tenantId = req.user.tenantId;
-    const set = req.body;
-    const connection = await pool.getConnection();
     try {
-      await connection.beginTransaction();
-
-      // 1. Create Settlement Header — always use auth-derived tenantId
-      await connection.query(
-        "INSERT INTO driver_settlements (id, company_id, driver_id, settlement_date, period_start, period_end, total_earnings, total_deductions, total_reimbursements, net_pay, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          set.id,
-          tenantId,
-          set.driverId,
-          set.settlementDate,
-          set.periodStart,
-          set.periodEnd,
-          set.totalEarnings,
-          set.totalDeductions,
-          set.totalReimbursements,
-          set.netPay,
-          set.status || "Draft",
-        ],
+      await accountingService.createSettlementWithGlPosting(
+        req.user!.tenantId,
+        req.body,
       );
-
-      // 2. Create Settlement Lines (V3)
-      if (set.lines && Array.isArray(set.lines)) {
-        for (const line of set.lines) {
-          await connection.query(
-            "INSERT INTO settlement_lines (id, settlement_id, description, amount, load_id, gl_account_id, type) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [
-              line.id || uuidv4(),
-              set.id,
-              line.description,
-              line.amount,
-              line.loadId,
-              line.glAccountId,
-              line.type,
-            ],
-          );
-        }
-      }
-
-      // 3. AUTO-POST TO GL — always use auth-derived tenantId
-      const entryId = uuidv4();
-      await connection.query(
-        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)",
-        [
-          entryId,
-          tenantId,
-          set.settlementDate,
-          `SETTLE-${set.id.substring(0, 8)}`,
-          `Settlement for Driver ${set.driverId}`,
-          "Settlement",
-          set.id,
-          "SYSTEM",
-        ],
-      );
-
-      // Debit Expenses (Earnings/Reimb), Credit Liabilities (Net Pay), Credit Offsets (Deductions)
-      // Net Pay (Credit Liability)
-      await connection.query(
-        "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit) VALUES (?, ?, ?, ?, ?)",
-        [uuidv4(), entryId, "GL-2100", 0, set.netPay],
-      );
-
-      if (set.lines && Array.isArray(set.lines)) {
-        for (const line of set.lines) {
-          if (line.type === "Earning" || line.type === "Reimbursement") {
-            // Debit Expense
-            await connection.query(
-              "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-              [
-                uuidv4(),
-                entryId,
-                line.glAccountId || "GL-6000",
-                line.amount,
-                0,
-                "Driver",
-                set.driverId,
-              ],
-            );
-          } else if (line.type === "Deduction") {
-            // Credit Offset
-            await connection.query(
-              "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-              [
-                uuidv4(),
-                entryId,
-                line.glAccountId || "GL-6000",
-                0,
-                line.amount,
-                "Driver",
-                set.driverId,
-              ],
-            );
-          }
-        }
-      }
-
-      await connection.commit();
       res.status(201).json({ message: "Settlement created and posted to GL" });
     } catch (error) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/settlements");
       log.error(
         { err: error },
         "SERVER ERROR [POST /api/accounting/settlements]",
       );
       next(error);
-    } finally {
-      connection.release();
     }
   },
 );
@@ -689,66 +235,28 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(batchUpdateSettlementsSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    // Role guard: only payroll/admin roles can approve/finalize settlements
-    const userRole = req.user.role;
-    if (!SETTLEMENT_APPROVE_ROLES.includes(userRole)) {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!accountingService.canApproveSettlement(req.user!.role)) {
       return res
         .status(403)
         .json({ error: "Insufficient permissions to update settlements" });
     }
-    const tenantId = req.user.tenantId;
-    const { ids, status: targetStatus } = req.body;
-
-    // Normalize "Finalized" to canonical "Paid" to prevent status vocabulary drift
-    const normalizedStatus =
-      targetStatus === "Finalized" ? "Paid" : targetStatus;
-
-    // Validate target status is canonical
-    if (
-      !CANONICAL_STATUSES.includes(
-        normalizedStatus as (typeof CANONICAL_STATUSES)[number],
-      )
-    ) {
-      return res.status(400).json({
-        error: `Invalid status "${targetStatus}". Allowed: ${CANONICAL_STATUSES.join(", ")}`,
-      });
-    }
-
     try {
-      // Fetch current statuses to enforce valid transitions
-      const placeholders = ids.map(() => "?").join(",");
-      const [currentRows]: any = await pool.query(
-        `SELECT id, status FROM driver_settlements WHERE company_id = ? AND id IN (${placeholders})`,
-        [tenantId, ...ids],
+      const { ids, status } = req.body;
+      const result = await accountingService.batchUpdateSettlementStatus(
+        req.user!.tenantId,
+        ids,
+        status,
       );
-
-      const blocked: string[] = [];
-      const allowed: string[] = [];
-      for (const row of currentRows) {
-        const validNext = ALLOWED_TRANSITIONS[row.status] || [];
-        if (validNext.includes(normalizedStatus)) {
-          allowed.push(row.id);
-        } else {
-          blocked.push(
-            `${row.id}: cannot transition from ${row.status} to ${normalizedStatus}`,
-          );
-        }
-      }
-
-      let updated = 0;
-      if (allowed.length > 0) {
-        const allowedPlaceholders = allowed.map(() => "?").join(",");
-        const [result]: any = await pool.query(
-          `UPDATE driver_settlements SET status = ? WHERE company_id = ? AND id IN (${allowedPlaceholders})`,
-          [normalizedStatus, tenantId, ...allowed],
-        );
-        updated = result.affectedRows || 0;
-      }
-
-      res.json({ updated, blocked: blocked.length > 0 ? blocked : undefined });
+      res.json(result);
     } catch (error) {
-      const log = createRequestLogger(req, "PATCH /api/accounting/settlements/batch");
+      if (error instanceof ValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
+      const log = createRequestLogger(
+        req,
+        "PATCH /api/accounting/settlements/batch",
+      );
       log.error(
         { err: error },
         "SERVER ERROR [PATCH /api/accounting/settlements/batch]",
@@ -758,17 +266,16 @@ router.patch(
   },
 );
 
-// IFTA Intelligence & Auditing
+// IFTA Evidence
 router.get(
   "/api/accounting/ifta-evidence/:loadId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const [rows] = await pool.query(
-        "SELECT * FROM ifta_trip_evidence WHERE company_id = ? AND load_id = ? ORDER BY timestamp ASC",
-        [tenantId, req.params.loadId],
+      const rows = await accountingService.getIftaEvidence(
+        req.user!.tenantId,
+        req.params.loadId,
       );
       res.json(rows);
     } catch (e) {
@@ -779,97 +286,44 @@ router.get(
   },
 );
 
+// IFTA Analyze
 router.post(
   "/api/accounting/ifta-analyze",
   requireAuth,
   requireTenant,
-  async (req: any, res) => {
-    const { pings, mode } = req.body; // mode: 'GPS' | 'ROUTES'
-
-    if (!Array.isArray(pings) || pings.length > 10_000) {
-      res.status(400).json({
-        error:
-          "pings must be an array with at most 10,000 items. Received: " +
-          (Array.isArray(pings) ? pings.length + " items" : typeof pings),
-      });
-      return;
+  validateBody(iftaAnalyzeSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const result = await accountingService.analyzeIftaJurisdictions(
+        req.body.pings,
+      );
+      res.json(result);
+    } catch (e) {
+      const log = createRequestLogger(req, "POST /api/accounting/ifta-analyze");
+      log.error(
+        { err: e },
+        "SERVER ERROR [POST /api/accounting/ifta-analyze]",
+      );
+      next(e);
     }
-
-    if (mode !== "GPS") {
-      res
-        .status(400)
-        .json({ error: "Only GPS mode is supported for IFTA analysis" });
-      return;
-    }
-
-    const jurisdictionMiles: any = {};
-    for (let i = 1; i < pings.length; i++) {
-      const p1 = pings[i - 1];
-      const p2 = pings[i];
-      const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
-      // Use pre-stored state_code from evidence first (populated at ingestion),
-      // falling back to async reverse geocoding for legacy data without it
-      const state =
-        p2.state_code || p2.stateCode || (await detectState(p2.lat, p2.lng));
-      if (state) {
-        jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
-      }
-    }
-    res.json({
-      jurisdictionMiles,
-      method: "ACTUAL_GPS",
-      confidence: "HIGH",
-    });
   },
 );
 
+// IFTA Audit Lock
 router.post(
   "/api/accounting/ifta-audit-lock",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const audit = req.body;
+  validateBody(iftaAuditLockSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await pool.query(
-        "INSERT INTO ifta_trips_audit (id, company_id, truck_id, load_id, trip_date, start_odometer, end_odometer, total_miles, method, confidence_level, jurisdiction_miles, status, attested_by, attested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())",
-        [
-          uuidv4(),
-          tenantId,
-          audit.truckId,
-          audit.loadId,
-          audit.tripDate,
-          audit.startOdometer,
-          audit.endOdometer,
-          audit.totalMiles,
-          audit.method,
-          audit.confidenceLevel,
-          JSON.stringify(audit.jurisdictionMiles),
-          "LOCKED",
-          audit.attestedBy,
-        ],
-      );
-
-      // Sync to legacy mileage_jurisdiction for backward compatibility
-      for (const state in audit.jurisdictionMiles) {
-        await pool.query(
-          "INSERT INTO mileage_jurisdiction (id, company_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-          [
-            uuidv4(),
-            tenantId,
-            audit.truckId,
-            audit.loadId,
-            state,
-            audit.jurisdictionMiles[state],
-            audit.tripDate,
-            audit.method === "ACTUAL_GPS" ? "ELD" : "Manual",
-          ],
-        );
-      }
-
+      await accountingService.lockIftaAudit(req.user!.tenantId, req.body);
       res.json({ message: "Trip locked for audit" });
     } catch (e) {
-      const log = createRequestLogger(req, "POST /api/accounting/ifta-audit-lock");
+      const log = createRequestLogger(
+        req,
+        "POST /api/accounting/ifta-audit-lock",
+      );
       log.error(
         { err: e },
         "SERVER ERROR [POST /api/accounting/ifta-audit-lock]",
@@ -884,102 +338,18 @@ router.get(
   "/api/accounting/ifta-summary",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const { quarter, year } = req.query;
-
-      // Determine quarter end date for rate lookup
-      const qNum = parseInt(quarter as string, 10) || 4;
-      const yNum = parseInt(year as string, 10) || new Date().getFullYear();
-      if (qNum < 1 || qNum > 4) {
-        return res.status(400).json({ error: "quarter must be 1-4" });
-      }
-      const quarterEndDays: Record<number, string> = {
-        1: "03-31",
-        2: "06-30",
-        3: "09-30",
-        4: "12-31",
-      };
-      const quarterEnd = `${yNum}-${quarterEndDays[qNum]}`;
-
-      // Query per-jurisdiction tax rates from the ifta_tax_rates table
-      const [rateRows]: any = await pool.query(
-        `SELECT r.state_code, r.rate_per_gallon FROM ifta_tax_rates r
-         INNER JOIN (SELECT state_code, MAX(effective_date) as max_date FROM ifta_tax_rates WHERE effective_date <= ? GROUP BY state_code) latest
-         ON r.state_code = latest.state_code AND r.effective_date = latest.max_date`,
-        [quarterEnd],
+      const result = await accountingService.getIftaSummary(
+        req.user!.tenantId,
+        req.query.quarter as string,
+        req.query.year as string,
       );
-      const rateMap: Record<string, number> = {};
-      for (const r of rateRows) {
-        rateMap[r.state_code] = Number(r.rate_per_gallon);
-      }
-
-      const [mileageRows]: any = await pool.query(
-        "SELECT state_code, SUM(miles) as total_miles FROM mileage_jurisdiction WHERE company_id = ? GROUP BY state_code",
-        [tenantId],
-      );
-      const [fuelRows]: any = await pool.query(
-        "SELECT state_code, SUM(gallons) as total_gallons, SUM(total_cost) as total_cost FROM fuel_ledger WHERE company_id = ? GROUP BY state_code",
-        [tenantId],
-      );
-
-      // Calculate fleet average MPG from totals
-      const totalMilesAll = mileageRows.reduce(
-        (sum: number, r: any) => sum + Number(r.total_miles),
-        0,
-      );
-      const totalGallonsAll = fuelRows.reduce(
-        (sum: number, r: any) => sum + Number(r.total_gallons),
-        0,
-      );
-      const fleetAvgMpg =
-        totalGallonsAll > 0 ? totalMilesAll / totalGallonsAll : 6.0;
-
-      const rows = mileageRows.map((m: any) => {
-        const f = fuelRows.find(
-          (fr: any) => fr.state_code === m.state_code,
-        ) || { total_gallons: 0, total_cost: 0 };
-        const totalMiles = Number(m.total_miles);
-        const stateGallons = Number(f.total_gallons);
-        const taxRate = rateMap[m.state_code] ?? 0.2;
-        const taxableGallons = fleetAvgMpg > 0 ? totalMiles / fleetAvgMpg : 0;
-        const taxDue = taxableGallons * taxRate;
-        const taxPaidAtPump = stateGallons * taxRate;
-        const netTax = taxDue - taxPaidAtPump;
-        return {
-          stateCode: m.state_code,
-          totalMiles,
-          totalGallons: stateGallons,
-          taxableGallons: Math.round(taxableGallons * 100) / 100,
-          taxRate,
-          taxRateSource: "IRP",
-          taxDue: Math.round(taxDue * 100) / 100,
-          taxPaidAtPump: Math.round(taxPaidAtPump * 100) / 100,
-          netTax: Math.round(netTax * 100) / 100,
-        };
-      });
-
-      const totalMiles = rows.reduce(
-        (s: number, r: any) => s + r.totalMiles,
-        0,
-      );
-      const totalGallons = rows.reduce(
-        (s: number, r: any) => s + r.totalGallons,
-        0,
-      );
-      const netTaxDue = rows.reduce((s: number, r: any) => s + r.netTax, 0);
-
-      res.json({
-        quarter,
-        year,
-        rows,
-        totalMiles,
-        totalGallons,
-        fleetAvgMpg: Math.round(fleetAvgMpg * 100) / 100,
-        netTaxDue: Math.round(netTaxDue * 100) / 100,
-      });
+      res.json(result);
     } catch (error) {
+      if (error instanceof ValidationError) {
+        return res.status(400).json({ error: error.message });
+      }
       const log = createRequestLogger(req, "GET /api/accounting/ifta-summary");
       log.error(
         { err: error },
@@ -990,17 +360,14 @@ router.get(
   },
 );
 
+// Mileage — List
 router.get(
   "/api/accounting/mileage",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const tenantId = req.user.tenantId;
-      const [rows] = await pool.query(
-        "SELECT * FROM mileage_jurisdiction WHERE company_id = ? ORDER BY entry_date DESC LIMIT 50",
-        [tenantId],
-      );
+      const rows = await accountingService.listMileage(req.user!.tenantId);
       res.json(rows);
     } catch (e) {
       const log = createRequestLogger(req, "GET /api/accounting/mileage");
@@ -1010,27 +377,15 @@ router.get(
   },
 );
 
+// Mileage — Create
 router.post(
   "/api/accounting/mileage",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const { truckId, loadId, date, stateCode, miles, source } = req.body;
+  validateBody(mileageSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await pool.query(
-        "INSERT INTO mileage_jurisdiction (id, company_id, truck_id, load_id, state_code, miles, date, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          uuidv4(),
-          tenantId,
-          truckId,
-          loadId,
-          stateCode,
-          miles,
-          date,
-          source || "Manual",
-        ],
-      );
+      await accountingService.createMileage(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Mileage logged" });
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/mileage");
@@ -1046,36 +401,11 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(fuelReceiptSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const {
-      vendorName,
-      gallons,
-      pricePerGallon,
-      totalCost,
-      transactionDate,
-      stateCode,
-      truckId,
-      cardNumber,
-    } = req.body;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const id = uuidv4();
-      await pool.query(
-        `INSERT INTO fuel_ledger
-           (id, company_id, truck_id, state_code, gallons, total_cost,
-            price_per_gallon, vendor_name, entry_date, source)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Receipt')`,
-        [
-          id,
-          tenantId,
-          truckId || null,
-          stateCode,
-          gallons,
-          totalCost,
-          pricePerGallon,
-          vendorName,
-          transactionDate,
-        ],
+      const id = await accountingService.createFuelReceipt(
+        req.user!.tenantId,
+        req.body,
       );
       res.status(201).json({ id, message: "Fuel receipt recorded" });
     } catch (e) {
@@ -1092,45 +422,26 @@ router.post(
   },
 );
 
+// IFTA Post (GL posting)
 router.post(
   "/api/accounting/ifta-post",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const { quarter, year, netTaxDue } = req.body;
-    const connection = await pool.getConnection();
+  validateBody(iftaPostSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await connection.beginTransaction();
-      const entryId = uuidv4();
-      await connection.query(
-        "INSERT INTO journal_entries (id, company_id, entry_date, reference_number, description, source_document_type) VALUES (?, ?, NOW(), ?, ?, ?)",
-        [
-          entryId,
-          tenantId,
-          `IFTA-Q${quarter}-${year}`,
-          `IFTA Tax Liability Q${quarter} ${year}`,
-          "IFTA_POSTING",
-        ],
+      const { quarter, year, netTaxDue } = req.body;
+      await accountingService.postIftaTaxes(
+        req.user!.tenantId,
+        quarter,
+        year,
+        netTaxDue,
       );
-      // Debit IFTA Expense, Credit IFTA Payable
-      await connection.query(
-        "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit) VALUES (?, ?, ?, ?, ?)",
-        [uuidv4(), entryId, "GL-6900", netTaxDue, 0],
-      );
-      await connection.query(
-        "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit) VALUES (?, ?, ?, ?, ?)",
-        [uuidv4(), entryId, "GL-2200", 0, netTaxDue],
-      );
-      await connection.commit();
       res.json({ message: "IFTA posted successfully" });
     } catch (e) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/ifta-post");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/ifta-post]");
       next(e);
-    } finally {
-      connection.release();
     }
   },
 );
@@ -1140,23 +451,10 @@ router.post(
   "/api/accounting/adjustments",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const adj = req.body;
+  validateBody(adjustmentSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await pool.query(
-        "INSERT INTO adjustment_entries (id, company_id, parent_entity_type, parent_entity_id, reason_code, description, amount_adjustment, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [
-          uuidv4(),
-          tenantId,
-          adj.parentEntityType,
-          adj.parentEntityId,
-          adj.reasonCode,
-          adj.description,
-          adj.amountAdjustment,
-          adj.createdBy,
-        ],
-      );
+      await accountingService.createAdjustment(req.user!.tenantId, req.body);
       res.status(201).json({ message: "Adjustment recorded" });
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/adjustments");
@@ -1172,84 +470,19 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(batchImportSchema),
-  async (req: any, res: any, next: NextFunction) => {
-    const tenantId = req.user.tenantId;
-    const { type, data } = req.body;
-    const connection = await pool.getConnection();
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      await connection.beginTransaction();
-      for (const item of data) {
-        const id = item.id || uuidv4();
-        if (type === "Fuel") {
-          await connection.query(
-            `INSERT INTO fuel_ledger
-               (id, company_id, state_code, gallons, total_cost, entry_date,
-                truck_id, vendor_name, price_per_gallon, receipt_url, source, load_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-              id,
-              tenantId,
-              item.stateCode,
-              item.gallons,
-              item.totalCost,
-              item.date,
-              item.truckId,
-              item.vendorName ?? null,
-              item.pricePerGallon ?? null,
-              item.receiptUrl ?? null,
-              item.source ?? "Import",
-              item.loadId ?? null,
-            ],
-          );
-        } else if (type === "Bills") {
-          await connection.query(
-            "INSERT INTO ap_bills (id, company_id, bill_number, total_amount, bill_date, status) VALUES (?, ?, ?, ?, ?, ?)",
-            [
-              id,
-              tenantId,
-              item.billNumber,
-              item.totalAmount,
-              item.billDate,
-              item.status || "Draft",
-            ],
-          );
-        } else if (type === "Invoices") {
-          await connection.query(
-            "INSERT INTO ar_invoices (id, company_id, invoice_number, total_amount, invoice_date, status, customer_id, load_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            [
-              id,
-              tenantId,
-              item.invoiceNumber,
-              item.totalAmount,
-              item.invoiceDate,
-              item.status || "Draft",
-              item.customerId,
-              item.loadId,
-            ],
-          );
-        } else if (type === "Settlements") {
-          await connection.query(
-            "INSERT INTO driver_settlements (id, company_id, driver_id, settlement_date, net_pay, status) VALUES (?, ?, ?, ?, ?, ?)",
-            [
-              id,
-              tenantId,
-              item.driverId,
-              item.settlementDate,
-              item.netPay,
-              item.status || "Draft",
-            ],
-          );
-        }
-      }
-      await connection.commit();
-      res.json({ message: `Successfully imported ${data.length} records` });
+      const { type, data } = req.body;
+      const count = await accountingService.batchImport(
+        req.user!.tenantId,
+        type,
+        data,
+      );
+      res.json({ message: `Successfully imported ${count} records` });
     } catch (e) {
-      await connection.rollback();
       const log = createRequestLogger(req, "POST /api/accounting/batch-import");
       log.error({ err: e }, "SERVER ERROR [POST /api/accounting/batch-import]");
       next(e);
-    } finally {
-      connection.release();
     }
   },
 );

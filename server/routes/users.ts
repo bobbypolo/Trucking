@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -57,7 +58,7 @@ const resetPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-function getBearerToken(req: any): string | null {
+function getBearerToken(req: Request): string | null {
   const authHeader = req.headers?.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -116,7 +117,7 @@ router.post(
       "OWNER_ADMIN",
       "ORG_OWNER_SUPER_ADMIN",
     ];
-    if (!registerAdminRoles.includes(authReq.user.role)) {
+    if (!registerAdminRoles.includes(authReq.user!.role)) {
       return res.status(403).json({ error: "Admin role required." });
     }
 
@@ -128,7 +129,7 @@ router.post(
     try {
       const userInput = {
         id: resolveString(req.body.id) || uuidv4(),
-        companyId: authReq.user.tenantId,
+        companyId: authReq.user!.tenantId,
         email: req.body.email,
         name: req.body.name,
         role: req.body.role,
@@ -160,8 +161,8 @@ router.post(
     const log = createRequestLogger(req, "POST /api/users");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
-    const isAdmin = adminRoles.includes(authReq.user.role);
-    const isSelfSync = authReq.user.email === req.body.email;
+    const isAdmin = adminRoles.includes(authReq.user!.role);
+    const isSelfSync = authReq.user!.email === req.body.email;
 
     if (!isAdmin && !isSelfSync) {
       return res
@@ -174,14 +175,14 @@ router.post(
       isSelfSync &&
       !isAdmin &&
       req.body.role &&
-      req.body.role !== authReq.user.role
+      req.body.role !== authReq.user!.role
     ) {
       return res
         .status(403)
         .json({ error: "Forbidden: cannot change own role." });
     }
 
-    const companyId = authReq.user.tenantId;
+    const companyId = authReq.user!.tenantId;
 
     log.info({ data: { email: req.body.email } }, "User sync request received");
 
@@ -193,7 +194,7 @@ router.post(
         name: resolveString(req.body.name) || req.body.email,
         role:
           isSelfSync && !isAdmin
-            ? authReq.user.role
+            ? authReq.user!.role
             : resolveString(req.body.role) || "driver",
         passwordHash: req.body.password
           ? await bcrypt.hash(req.body.password, 10)
@@ -422,9 +423,9 @@ router.post(
   },
 );
 
-router.get("/api/users/me", requireAuth, async (req: any, res, next) => {
+router.get("/api/users/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const user = await findSqlUserById(req.user.uid);
+    const user = await findSqlUserById(req.user!.uid);
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -439,7 +440,7 @@ router.get(
   "/api/users/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res, next) => {
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));
@@ -458,7 +459,7 @@ router.post(
     const log = createRequestLogger(req, "POST /api/users/:id/revoke");
 
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
-    if (!adminRoles.includes(authReq.user.role)) {
+    if (!adminRoles.includes(authReq.user!.role)) {
       return res.status(403).json({ error: "Admin role required." });
     }
 
@@ -488,7 +489,7 @@ router.post(
       );
 
       log.info(
-        { targetUserId, revokedBy: authReq.user.id },
+        { targetUserId, revokedBy: authReq.user!.id },
         "User tokens revoked",
       );
 

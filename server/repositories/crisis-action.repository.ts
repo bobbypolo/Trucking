@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { buildSafeUpdate } from "../lib/safe-update";
 
 const CRISIS_ACTION_UPDATABLE_COLUMNS = [
@@ -20,7 +21,7 @@ export const crisisActionRepository = {
       "SELECT * FROM crisis_actions WHERE company_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [companyId, limit, offset],
     );
-    return rows as any[];
+    return rows as RowDataPacket[];
   },
 
   async findById(id: string) {
@@ -28,11 +29,11 @@ export const crisisActionRepository = {
       "SELECT * FROM crisis_actions WHERE id = ?",
       [id],
     );
-    return (rows as any[])[0] || null;
+    return (rows as RowDataPacket[])[0] || null;
   },
 
-  async create(data: any, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+  async create(data: Record<string, unknown>, companyId: string, userId: string) {
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO crisis_actions (id, company_id, type, status, incident_id,
         load_id, operator_id, location, timeline, description,
@@ -56,7 +57,7 @@ export const crisisActionRepository = {
     return this.findById(id);
   },
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, data: Record<string, unknown>, userId: string) {
     // Pre-serialize JSON fields before passing to buildSafeUpdate
     const safeCopy = { ...data };
     for (const key of ["location", "timeline"] as const) {

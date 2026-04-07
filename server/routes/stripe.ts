@@ -25,6 +25,7 @@ import { requireAuth, AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { createChildLogger, createRequestLogger } from "../lib/logger";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 
 const log = createChildLogger({ route: "stripe" });
 const router = Router();
@@ -102,9 +103,9 @@ router.post(
         : defaultCancelUrl;
 
     const result = await createCheckoutSession(
-      authReq.user.companyId,
+      authReq.user!.companyId,
       tier || "",
-      email || authReq.user.email,
+      email || authReq.user!.email,
       safeSuccessUrl,
       safeCancelUrl,
     );
@@ -143,9 +144,9 @@ router.post(
     const { returnUrl } = req.body;
 
     // Look up stripeCustomerId from the authenticated user's company (IDOR prevention)
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT stripe_customer_id FROM companies WHERE id = ?",
-      [authReq.user.companyId],
+      [authReq.user!.companyId],
     );
 
     const stripeCustomerId = rows?.[0]?.stripe_customer_id;

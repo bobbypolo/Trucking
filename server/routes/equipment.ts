@@ -1,5 +1,7 @@
-import { Router, type NextFunction } from "express";
+import { Router, Response, type NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
 import { requireAuth } from "../middleware/requireAuth";
+import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import { redactData, getVisibilitySettings } from "../helpers";
@@ -19,15 +21,15 @@ router.get(
   "/api/equipment",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const companyId = req.user.tenantId;
-      const [rows]: any = await pool.query(
+      const companyId = req.user!.tenantId;
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM equipment WHERE company_id = ?",
         [companyId],
       );
       const settings = await getVisibilitySettings(companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (err) {
       next(err);
     }
@@ -39,14 +41,14 @@ router.get(
   "/api/equipment/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM equipment WHERE company_id = ?",
         [req.params.companyId],
       );
       const settings = await getVisibilitySettings(req.params.companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (err) {
       next(err);
     }
@@ -58,7 +60,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createEquipmentSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const {
       id,
       company_id,
@@ -106,10 +108,10 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchEquipmentSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
-    const companyId: string = req.user.tenantId;
-    const userRole: string = req.user.role;
+    const companyId: string = req.user!.tenantId;
+    const userRole: string = req.user!.role;
 
     if (
       !PATCH_ALLOWED_ROLES.includes(

@@ -1,4 +1,9 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { RowDataPacket } from 'mysql2/promise';
+
+interface DbQueryable {
+    query(sql: string, params?: unknown[]): Promise<[RowDataPacket[], unknown]>;
+}
 
 type DetentionResult = {
     isBillable: boolean;
@@ -76,7 +81,7 @@ function calculateDetention(
  * Writes arrived_at to load_legs (first hit only) and logs GEOFENCE_ENTRY.
  */
 export async function recordGeofenceEntry(
-    db: any,
+    db: DbQueryable,
     loadLegId: string,
     loadId: string,
     driverLat: number,
@@ -117,7 +122,7 @@ export async function recordGeofenceEntry(
  * @returns detentionResult — pass to caller to store the billing request if isBillable
  */
 export async function recordBOLScan(
-    db: any,
+    db: DbQueryable,
     loadLegId: string,
     loadId: string,
     loadNumber: string,
@@ -127,7 +132,7 @@ export async function recordBOLScan(
 ): Promise<{ isBillable: boolean; totalAmount: number; detentionRequest: object | null }> {
 
     // Read real arrived_at from load_legs
-    const [rows]: any = await db.query(
+    const [rows] = await db.query(
         `SELECT arrived_at FROM load_legs WHERE id = ?`,
         [loadLegId]
     );

@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 /**
  * Database row shape for the `loads` table.
@@ -270,7 +270,7 @@ export const loadRepository = {
     // Always scope by id AND company_id
     values.push(id, companyId);
 
-    const [result]: any = await pool.query(
+    const [result] = await pool.query<ResultSetHeader>(
       `UPDATE loads SET ${setClauses.join(", ")} WHERE id = ? AND company_id = ?`,
       values,
     );

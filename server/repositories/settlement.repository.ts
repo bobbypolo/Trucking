@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 /**
  * Database row shape for the `settlements` table.
@@ -234,7 +234,7 @@ export const settlementRepository = {
     try {
       await connection.beginTransaction();
 
-      const [result]: any = await connection.execute(
+      const [result] = await connection.execute<ResultSetHeader>(
         `UPDATE settlements SET status = ?, version = version + 1, updated_at = NOW()
          WHERE id = ? AND company_id = ? AND version = ?`,
         [newStatus, id, companyId, expectedVersion],

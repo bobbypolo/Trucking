@@ -5,11 +5,11 @@
  */
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
 
 // Load .env from project root (two levels up from server/)
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Use __dirname (CommonJS global) instead of import.meta.url to avoid
+// requiring the ESM-only `import.meta` syntax under CommonJS module setting.
 const projectRoot = path.resolve(__dirname, "../../../");
 dotenv.config({ path: path.join(projectRoot, ".env") });
 

@@ -25,7 +25,7 @@ class DocumentReference {
         };
     }
 
-    async set(data: any, options?: { merge: boolean }) {
+    async set(data: Record<string, unknown>, options?: { merge: boolean }) {
         const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
         if (!db[this.collectionName]) db[this.collectionName] = {};
 
@@ -41,13 +41,14 @@ class DocumentReference {
 }
 
 class Query {
-    constructor(private collectionName: string, private field: string, private operator: string, private value: any) { }
+    constructor(private collectionName: string, private field: string, private operator: string, private value: unknown) { }
 
     async get() {
         const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
         const collection = db[this.collectionName] || {};
-        const docs = Object.values(collection).filter((item: any) => {
-            if (this.operator === '==') return item[this.field] === this.value;
+        const docs = Object.values(collection).filter((item: unknown) => {
+            const record = item as Record<string, unknown>;
+            if (this.operator === '==') return record[this.field] === this.value;
             return false;
         });
 
@@ -55,7 +56,7 @@ class Query {
             empty: docs.length === 0,
             docs: docs.map(data => ({
                 data: () => data,
-                id: (data as any).id
+                id: (data as Record<string, unknown>).id as string
             }))
         };
     }
@@ -68,7 +69,7 @@ class CollectionReference {
         return new DocumentReference(this.name, id);
     }
 
-    where(field: string, operator: string, value: any) {
+    where(field: string, operator: string, value: unknown) {
         return new Query(this.name, field, operator, value);
     }
 
@@ -80,7 +81,7 @@ class CollectionReference {
             empty: docs.length === 0,
             docs: docs.map(data => ({
                 data: () => data,
-                id: (data as any).id
+                id: (data as Record<string, unknown>).id as string
             }))
         };
     }

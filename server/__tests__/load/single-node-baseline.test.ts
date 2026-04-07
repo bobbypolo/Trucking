@@ -22,13 +22,12 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
 import mysql from "mysql2/promise";
 import express from "express";
 import request from "supertest";
 import { isDockerRunning } from "../helpers/test-env.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Use CommonJS __dirname instead of import.meta.url to match tsconfig module setting
 const projectRoot = path.resolve(__dirname, "../../../");
 dotenv.config({ path: path.join(projectRoot, ".env") });
 
