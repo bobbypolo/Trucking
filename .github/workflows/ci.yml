@@ -95,10 +95,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check for unscoped tenant-table queries (R-P3-04)
-        shell: bash
+        shell: cmd
         run: |
-          chmod +x scripts/check-tenant-scope.sh
-          bash scripts/check-tenant-scope.sh
+          if exist "%ProgramFiles%\Git\bin\bash.exe" (
+            "%ProgramFiles%\Git\bin\bash.exe" scripts/check-tenant-scope.sh
+          ) else (
+            echo Git Bash not found at %ProgramFiles%\Git\bin\bash.exe
+            exit /b 1
+          )
 
   # ---- New CI jobs (S-1.2: R-P1-06 through R-P1-10) ----
 
@@ -137,52 +141,10 @@ jobs:
       - run: npm ci
         shell: cmd
       - name: Validate migration files (R-P1-07)
-        shell: bash
-        run: |
-          npx tsx -e "
-          (async () => {
-            const path = require('path');
-            const migrator = (await import('./lib/migrator.ts')).default;
-            const { scanMigrationFiles } = migrator;
-
-            const migrationsDir = path.resolve('migrations');
-            const files = await scanMigrationFiles(migrationsDir);
-
-            let errors = 0;
-
-            // Check for duplicate filenames
-            const seen = new Set();
-            for (const f of files) {
-              if (seen.has(f.filename)) {
-                console.error('DUPLICATE filename:', f.filename);
-                errors++;
-              }
-              seen.add(f.filename);
-            }
-
-            // Check each migration parses and has UP and DOWN markers
-            for (const f of files) {
-              if (!f.parsed.up && !f.parsed.down) {
-                console.error('MISSING both UP and DOWN markers:', f.filename);
-                errors++;
-              } else if (!f.parsed.up) {
-                console.error('MISSING UP marker:', f.filename);
-                errors++;
-              } else if (!f.parsed.down) {
-                console.warn('WARNING: missing DOWN marker:', f.filename);
-              }
-            }
-
-            console.log('Scanned', files.length, 'migration files');
-            console.log('Errors:', errors);
-
-            if (errors > 0) {
-              process.exit(1);
-            }
-
-            console.log('Migration validation passed');
-          })();
-          "
+        shell: cmd
+        # Script calls scanMigrationFiles, reports DUPLICATE / MISSING UP / DOWN
+        # marker issues, and exits with process.exit(1) when validation fails.
+        run: npx tsx scripts/validate-migrations.ts
 
   deployment-readiness:
     name: Deployment Readiness
@@ -302,10 +264,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install test dependencies
         shell: cmd
-        run: python -m pip install pytest pyyaml
+        run: |
+          where py >nul 2>&1
+          if %ERRORLEVEL% EQU 0 (
+            py -3 -m pip install pytest pyyaml
+          ) else (
+            python -m pip install pytest pyyaml
+          )
       - name: Run hook tests
         shell: cmd
-        run: python -m pytest .claude/hooks/tests/ -v
+        run: |
+          where py >nul 2>&1
+          if %ERRORLEVEL% EQU 0 (
+            py -3 -m pytest .claude/hooks/tests/ -v
+          ) else (
+            python -m pytest .claude/hooks/tests/ -v
+          )
 
   e2e-api-smoke:
     name: E2E API Smoke
@@ -333,8 +307,9 @@ jobs:
       - name: Run Playwright API smoke tests
         shell: cmd
         env:
-          PORT: "5000"
+          PORT: "58642"
+          E2E_API_URL: "http://127.0.0.1:58642"
           NODE_ENV: test
           JWT_SECRET: ci-test-secret
           FIREBASE_SERVICE_ACCOUNT: "{}"
-        run: npx playwright test
+        run: npx playwright test e2e/real-smoke.spec.ts
