@@ -178,7 +178,7 @@ describe("R-SEC-10: revoked user gets 401 with REVOKED error code", () => {
       "active-uid",
     );
     expect(nextFn).toHaveBeenCalledOnce();
-    const user = (req as AuthenticatedRequest).user;
+    const user = (req as AuthenticatedRequest).user!;
     expect(user.firebaseUid).toBe("active-uid");
     expect(user.role).toBe("driver");
   });
