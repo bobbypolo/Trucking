@@ -283,8 +283,17 @@ jobs:
 
   e2e-api-smoke:
     name: E2E API Smoke
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [server-tests, frontend-tests]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: loadpilot_test
+        ports:
+          - "3306:3306"
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -292,24 +301,36 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install root dependencies
-        shell: cmd
         run: npm ci
       - name: Install server dependencies
-        shell: cmd
         run: cd server && npm ci
       - name: Create test fixtures
-        shell: cmd
         run: |
-          if not exist fixtures\test-users.json copy fixtures\test-users.example.json fixtures\test-users.json
+          if [ ! -f fixtures/test-users.json ]; then
+            cp fixtures/test-users.example.json fixtures/test-users.json
+          fi
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -u root --password=test --silent 2>/dev/null; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
       - name: Install Playwright browsers
-        shell: cmd
-        run: npx playwright install chromium
+        run: npx playwright install chromium --with-deps
       - name: Run Playwright API smoke tests
-        shell: cmd
         env:
           PORT: "58642"
           E2E_API_URL: "http://127.0.0.1:58642"
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_USER: root
+          DB_PASSWORD: test
+          DB_NAME: loadpilot_test
           NODE_ENV: test
           JWT_SECRET: ci-test-secret
-          FIREBASE_SERVICE_ACCOUNT: "{}"
+          FIREBASE_PROJECT_ID: ci-e2e-smoke
         run: npx playwright test e2e/real-smoke.spec.ts
