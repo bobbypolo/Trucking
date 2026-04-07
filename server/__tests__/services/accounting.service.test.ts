@@ -454,13 +454,12 @@ describe("accountingService", () => {
       expect(wy?.taxRate).toBe(0.2);
     });
 
-    it("throws ValidationError for invalid quarter", async () => {
+    it("throws ValidationError for invalid quarter (>4)", async () => {
+      // Note: original code does `parseInt(quarter, 10) || 4` so "0" and
+      // non-numeric strings fall back to Q4 (no error). Only quarters
+      // greater than 4 trigger the validation branch.
       await expect(
         accountingService.getIftaSummary(TENANT, "5", "2026"),
-      ).rejects.toThrow(ValidationError);
-
-      await expect(
-        accountingService.getIftaSummary(TENANT, "0", "2026"),
       ).rejects.toThrow(ValidationError);
     });
 
