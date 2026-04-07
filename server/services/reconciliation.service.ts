@@ -1,3 +1,4 @@
+import type { RowDataPacket } from "mysql2/promise";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 
@@ -89,7 +90,7 @@ export async function runReconciliation(
   log.info({ companyId }, "Starting reconciliation run");
 
   // 1. Orphan stops: stops whose load_id does not exist in loads table
-  const [orphanStops] = await pool.query<any[]>(
+  const [orphanStops] = await pool.query<RowDataPacket[]>(
     `/* orphan_stops */
      SELECT ll.id AS stop_id, ll.load_id
      FROM load_legs ll
@@ -108,7 +109,7 @@ export async function runReconciliation(
   );
 
   // 2. Missing event trails: loads with non-initial status but zero dispatch_events
-  const [missingEventTrails] = await pool.query<any[]>(
+  const [missingEventTrails] = await pool.query<RowDataPacket[]>(
     `/* missing_event_trails */
      SELECT l.id AS load_id, l.load_number, l.status
      FROM loads l
@@ -120,7 +121,7 @@ export async function runReconciliation(
   );
 
   // 3. Settlement mismatches: stored totals differ from recalculated line item sums
-  const [settlementMismatches] = await pool.query<any[]>(
+  const [settlementMismatches] = await pool.query<RowDataPacket[]>(
     `/* settlement_mismatches */
      SELECT
        s.id AS settlement_id,
@@ -154,7 +155,7 @@ export async function runReconciliation(
   );
 
   // 4a. Duplicate driver assignments: drivers on multiple active loads
-  const [duplicateDrivers] = await pool.query<any[]>(
+  const [duplicateDrivers] = await pool.query<RowDataPacket[]>(
     `/* duplicate_driver_assignments */
      SELECT
        'driver' AS entity_type,
@@ -171,7 +172,7 @@ export async function runReconciliation(
   );
 
   // 4b. Duplicate equipment assignments: equipment on multiple active loads
-  const [duplicateEquipment] = await pool.query<any[]>(
+  const [duplicateEquipment] = await pool.query<RowDataPacket[]>(
     `/* duplicate_equipment_assignments */
      SELECT
        'equipment' AS entity_type,
@@ -195,7 +196,7 @@ export async function runReconciliation(
 
   // 5 & 6. Bidirectional document reconciliation
   // 5a. Get all document metadata rows for this tenant
-  const [docMetadataRows] = await pool.query<any[]>(
+  const [docMetadataRows] = await pool.query<RowDataPacket[]>(
     `/* orphan_metadata */
      SELECT id AS doc_id, storage_path
      FROM documents
@@ -209,14 +210,14 @@ export async function runReconciliation(
 
   // Build sets for bidirectional comparison
   const metadataPaths = new Set(
-    docMetadataRows.map((r: any) => r.storage_path as string),
+    docMetadataRows.map((r) => r.storage_path as string),
   );
   const storagePaths = new Set(storageObjects);
 
   // 5c. Metadata without storage: DB rows whose storage_path is NOT in storage
   const metadataWithoutStorage: MetadataWithoutStorage[] = docMetadataRows
-    .filter((r: any) => !storagePaths.has(r.storage_path))
-    .map((r: any) => ({
+    .filter((r) => !storagePaths.has(r.storage_path as string))
+    .map((r) => ({
       doc_id: r.doc_id as string,
       storage_path: r.storage_path as string,
     }));

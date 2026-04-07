@@ -1,6 +1,6 @@
-import { Router, NextFunction } from "express";
+import { Router, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createComplianceAlertSchema } from "../schemas/compliance";
@@ -14,7 +14,7 @@ router.get(
   "/api/compliance/:userId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (
       req.user.id !== req.params.userId &&
       req.user.role !== "admin" &&
@@ -43,7 +43,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createComplianceAlertSchema),
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { entityType, entityId, description, severity, alertType } = req.body;
     const companyId = req.user.tenantId;
 

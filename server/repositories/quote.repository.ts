@@ -1,6 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { buildSafeUpdate } from "../lib/safe-update";
+
+export type QuoteInput = Record<string, unknown>;
 
 const QUOTE_UPDATABLE_COLUMNS = [
   "status",
@@ -24,19 +27,19 @@ const QUOTE_UPDATABLE_COLUMNS = [
 export const quoteRepository = {
   async findByCompany(companyId: string, page = 1, limit = 50) {
     const offset = (page - 1) * limit;
-    const [rows] = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT * FROM quotes WHERE company_id = ? AND archived_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [companyId, limit, offset],
     );
-    return rows as any[];
+    return rows;
   },
 
   async findById(id: string) {
-    const [rows] = await pool.query("SELECT * FROM quotes WHERE id = ?", [id]);
-    return (rows as any[])[0] || null;
+    const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM quotes WHERE id = ?", [id]);
+    return rows[0] || null;
   },
 
-  async create(data: any, companyId: string, userId: string) {
+  async create(data: QuoteInput, companyId: string, userId: string) {
     const id = data.id || uuidv4();
     await pool.query(
       `INSERT INTO quotes (id, company_id, status, pickup_city, pickup_state, pickup_facility,
@@ -69,7 +72,7 @@ export const quoteRepository = {
     return this.findById(id);
   },
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, data: QuoteInput, userId: string) {
     const result = buildSafeUpdate(
       data,
       QUOTE_UPDATABLE_COLUMNS,

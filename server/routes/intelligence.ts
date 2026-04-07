@@ -1,5 +1,7 @@
-import { Router } from "express";
+import { Router, Response, NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
 import { requireAuth } from "../middleware/requireAuth";
+import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 
@@ -17,10 +19,10 @@ router.get(
   "/api/intelligence/broker-risk",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const companyId = req.user.tenantId;
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT
             c.id,
             c.name,
@@ -51,7 +53,7 @@ router.get(
   "/api/intelligence/facility-index",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { facility, state } = req.query as {
       facility?: string;
       state?: string;
@@ -64,7 +66,7 @@ router.get(
 
     try {
       const searchTerm = `%${facility}%`;
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT
             ll.facility_name,
             ll.city,
@@ -97,10 +99,10 @@ router.get(
   "/api/intelligence/missed-revenue",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const companyId = req.user.tenantId;
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT
             l.id         AS load_id,
             l.load_number,

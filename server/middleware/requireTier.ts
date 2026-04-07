@@ -64,13 +64,15 @@ async function resolveTierInfo(
       [companyId],
     );
     resultRows = rows as typeof resultRows;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // Legacy schema compatibility: if subscription_tier column doesn't exist
     // (migration 027/039 not yet applied), bypass tier enforcement entirely.
     // This allows dev/demo environments to function without all migrations.
+    const errMessage = err instanceof Error ? err.message : "";
+    const errCode = (err as { code?: string })?.code;
     if (
-      err.message?.includes("Unknown column") ||
-      err.code === "ER_BAD_FIELD_ERROR"
+      errMessage.includes("Unknown column") ||
+      errCode === "ER_BAD_FIELD_ERROR"
     ) {
       const log = createChildLogger({ route: "requireTier" });
       log.warn(

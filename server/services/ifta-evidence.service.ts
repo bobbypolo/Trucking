@@ -10,6 +10,7 @@
  */
 
 import { v4 as uuidv4 } from "uuid";
+import type { RowDataPacket } from "mysql2/promise";
 import { detectState } from "../geoUtils";
 import { createChildLogger } from "../lib/logger";
 
@@ -38,10 +39,10 @@ export interface GpsToIftaInput {
  */
 export async function findActiveLoadsForCompany(
   companyId: string,
-  pool: { query: (sql: string, params?: any[]) => Promise<any> },
+  pool: { query(sql: string, params?: unknown[]): Promise<[RowDataPacket[], unknown]> },
 ): Promise<Map<string, string>> {
   const placeholders = ACTIVE_LOAD_STATUSES.map(() => "?").join(", ");
-  const [rows]: any = await pool.query(
+  const [rows] = await pool.query(
     `SELECT id, driver_id FROM loads
      WHERE company_id = ? AND status IN (${placeholders})
      AND driver_id IS NOT NULL`,
@@ -69,13 +70,13 @@ export async function findActiveLoadForVehicle(
   companyId: string,
   vehicleId: string,
   driverId: string | null,
-  pool: { query: (sql: string, params?: any[]) => Promise<any> },
+  pool: { query(sql: string, params?: unknown[]): Promise<[RowDataPacket[], unknown]> },
 ): Promise<string | null> {
   const placeholders = ACTIVE_LOAD_STATUSES.map(() => "?").join(", ");
 
   // Strategy 1: Direct driver_id lookup
   if (driverId) {
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query(
       `SELECT id FROM loads
        WHERE company_id = ? AND driver_id = ? AND status IN (${placeholders})
        ORDER BY created_at DESC LIMIT 1`,
@@ -85,7 +86,7 @@ export async function findActiveLoadForVehicle(
   }
 
   // Strategy 2: Resolve vehicle → driver via recent GPS positions
-  const [driverRows]: any = await pool.query(
+  const [driverRows] = await pool.query(
     `SELECT driver_id FROM gps_positions
      WHERE company_id = ? AND vehicle_id = ? AND driver_id IS NOT NULL
      ORDER BY recorded_at DESC LIMIT 1`,
@@ -94,7 +95,7 @@ export async function findActiveLoadForVehicle(
 
   if (driverRows.length > 0 && driverRows[0].driver_id) {
     const resolvedDriverId = driverRows[0].driver_id;
-    const [loadRows]: any = await pool.query(
+    const [loadRows] = await pool.query(
       `SELECT id FROM loads
        WHERE company_id = ? AND driver_id = ? AND status IN (${placeholders})
        ORDER BY created_at DESC LIMIT 1`,
@@ -114,7 +115,7 @@ export async function findActiveLoadForVehicle(
  */
 export async function bridgeGpsToIfta(
   input: GpsToIftaInput,
-  pool: { query: (sql: string, params?: any[]) => Promise<any> },
+  pool: { query(sql: string, params?: unknown[]): Promise<[RowDataPacket[], unknown]> },
   loadId?: string | null,
 ): Promise<void> {
   try {

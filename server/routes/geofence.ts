@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
 import {
   requireAuth,
@@ -37,7 +38,7 @@ router.post(
 
     try {
       // Verify load belongs to user's tenant
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT company_id FROM loads WHERE id = ?",
         [loadId],
       );
@@ -108,13 +109,13 @@ router.post(
 
     try {
       // Get all geofence events for this load, ordered by timestamp
-      const [events]: any = await pool.query(
+      const [events] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM geofence_events WHERE load_id = ? AND company_id = ? ORDER BY event_timestamp ASC",
         [loadId, user.tenantId],
       );
 
       // Get detention rules for this company (or use defaults)
-      const [ruleRows]: any = await pool.query(
+      const [ruleRows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM detention_rules WHERE company_id = ? LIMIT 1",
         [user.tenantId],
       );

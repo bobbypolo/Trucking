@@ -18,6 +18,7 @@
 
 import OAuthClient from "intuit-oauth";
 import { randomBytes, createCipheriv, createDecipheriv } from "node:crypto";
+import type { RowDataPacket } from "mysql2/promise";
 import pool from "../db";
 import { createChildLogger } from "../lib/logger";
 
@@ -46,7 +47,7 @@ export type CallbackResult =
   | { success: false; error: string; available?: false; reason?: string };
 
 export type GetClientResult =
-  | { client: any; realmId: string }
+  | { client: OAuthClient; realmId: string }
   | { error: string; available?: false; reason?: string };
 
 export type SyncInvoiceResult =
@@ -208,7 +209,7 @@ export async function getClient(
 
   try {
     // Fetch encrypted tokens from DB
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT * FROM quickbooks_tokens WHERE company_id = ?",
       [companyId],
     );
@@ -284,7 +285,7 @@ export async function syncInvoiceToQBO(
 
   const clientResult = await getClient(companyId);
   if ("error" in clientResult) {
-    return { success: false, error: clientResult.error, available: (clientResult as any).available, reason: (clientResult as any).reason };
+    return { success: false, error: clientResult.error, available: clientResult.available, reason: clientResult.reason };
   }
 
   const { client, realmId } = clientResult;
@@ -346,7 +347,7 @@ export async function syncBillToQBO(
 
   const clientResult = await getClient(companyId);
   if ("error" in clientResult) {
-    return { success: false, error: clientResult.error, available: (clientResult as any).available, reason: (clientResult as any).reason };
+    return { success: false, error: clientResult.error, available: clientResult.available, reason: clientResult.reason };
   }
 
   const { client, realmId } = clientResult;
@@ -401,7 +402,7 @@ export async function getConnectionStatus(
   }
 
   try {
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT id, company_id, realm_id, expires_at FROM quickbooks_tokens WHERE company_id = ?",
       [companyId],
     );

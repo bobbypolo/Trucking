@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -57,7 +58,7 @@ const resetPasswordLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-function getBearerToken(req: any): string | null {
+function getBearerToken(req: Request): string | null {
   const authHeader = req.headers?.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return null;
@@ -422,7 +423,7 @@ router.post(
   },
 );
 
-router.get("/api/users/me", requireAuth, async (req: any, res, next) => {
+router.get("/api/users/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const user = await findSqlUserById(req.user.uid);
     if (!user) {
@@ -439,7 +440,7 @@ router.get(
   "/api/users/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res, next) => {
     try {
       const users = await findSqlUsersByCompany(req.params.companyId);
       res.json(users.map(mapUserRowToApiUser));

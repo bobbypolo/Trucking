@@ -1,6 +1,8 @@
-import { Router } from "express";
+import { Router, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from "uuid";
+import type { RowDataPacket } from "mysql2/promise";
 import { requireAuth } from "../middleware/requireAuth";
+import type { AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import {
@@ -41,7 +43,7 @@ async function syncExceptionToDomain(
   });
 
   try {
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       "SELECT links, entity_type, entity_id FROM exceptions WHERE id = ? AND tenant_id = ?",
       [exceptionId, tenantId],
     );
@@ -132,7 +134,7 @@ router.get(
   "/api/exceptions",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const {
         status,
@@ -145,7 +147,7 @@ router.get(
         category,
       } = req.query;
       let query = "SELECT * FROM exceptions WHERE tenant_id = ?";
-      const params: any[] = [req.user.tenantId];
+      const params: (string | number)[] = [req.user.tenantId];
       if (status) {
         query += " AND status = ?";
         params.push(status);
@@ -226,7 +228,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createExceptionSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const ex = req.body;
     const id = uuidv4();
     try {
@@ -272,19 +274,19 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(patchExceptionSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const { status, ownerUserId, workflowStep, severity, notes, actorName } =
       req.body;
     try {
-      const [old]: any = await pool.query(
+      const [old] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM exceptions WHERE id = ? AND tenant_id = ?",
         [id, req.user!.tenantId],
       );
       if (old.length === 0) return res.status(404).json({ error: "Not found" });
 
       let query = "UPDATE exceptions SET updated_at = CURRENT_TIMESTAMP";
-      const params: any[] = [];
+      const params: (string | number)[] = [];
       if (status) {
         query += ", status = ?";
         params.push(status);
@@ -345,7 +347,7 @@ router.get(
   "/api/exceptions/:id/events",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const [rows] = await pool.query(
         "SELECT ee.* FROM exception_events ee INNER JOIN exceptions e ON ee.exception_id = e.id WHERE ee.exception_id = ? AND e.tenant_id = ? ORDER BY ee.timestamp DESC",
@@ -362,7 +364,7 @@ router.get(
   "/api/exception-types",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const [rows] = await pool.query(
         "SELECT * FROM exception_type ORDER BY display_name ASC",

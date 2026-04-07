@@ -124,41 +124,41 @@ function getMockSafetyData(dotNumber: string): FmcsaResponse {
 
 // ── API Parsing ──────────────────────────────────────────────────────────────
 
-function parseCarrierResponse(responseData: any): FmcsaSafetyData | null {
-  const content = responseData?.content;
+function parseCarrierResponse(responseData: unknown): FmcsaSafetyData | null {
+  const content = (responseData as { content?: Record<string, unknown> })?.content;
   if (!content) return null;
 
-  const carrier = content.carrier;
+  const carrier = content.carrier as Record<string, unknown> | undefined;
   if (!carrier) return null;
 
-  const inspectionsRaw = content.inspections;
+  const inspectionsRaw = content.inspections as Record<string, unknown> | undefined;
   let inspections: FmcsaInspectionData | null = null;
   if (inspectionsRaw) {
     inspections = {
-      totalInspections: parseInt(inspectionsRaw.totalInspections, 10) || 0,
+      totalInspections: parseInt(String(inspectionsRaw.totalInspections), 10) || 0,
       totalOosInspections:
-        parseInt(inspectionsRaw.totalOosInspections, 10) || 0,
-      driverOosRate: parseFloat(inspectionsRaw.driverOosRate) || 0,
-      vehicleOosRate: parseFloat(inspectionsRaw.vehicleOosRate) || 0,
+        parseInt(String(inspectionsRaw.totalOosInspections), 10) || 0,
+      driverOosRate: parseFloat(String(inspectionsRaw.driverOosRate)) || 0,
+      vehicleOosRate: parseFloat(String(inspectionsRaw.vehicleOosRate)) || 0,
     };
   }
 
   const basicsRaw = content.basics;
   const basicsScores: FmcsaBasicsScore[] = Array.isArray(basicsRaw)
-    ? basicsRaw.map((b: any) => ({
-        type: b.basicsType || "Unknown",
-        value: parseFloat(b.basicsValue) || 0,
-        runDate: b.basicsRunDate || "",
+    ? basicsRaw.map((b: Record<string, unknown>) => ({
+        type: (b.basicsType as string) || "Unknown",
+        value: parseFloat(String(b.basicsValue)) || 0,
+        runDate: (b.basicsRunDate as string) || "",
       }))
     : [];
 
   return {
-    dotNumber: carrier.dotNumber || "",
-    legalName: carrier.legalName || "",
-    safetyRating: carrier.safetyRating || null,
-    safetyRatingDate: carrier.safetyRatingDate || null,
-    totalDrivers: parseInt(carrier.totalDrivers, 10) || 0,
-    totalPowerUnits: parseInt(carrier.totalPowerUnits, 10) || 0,
+    dotNumber: (carrier.dotNumber as string) || "",
+    legalName: (carrier.legalName as string) || "",
+    safetyRating: (carrier.safetyRating as string | null) || null,
+    safetyRatingDate: (carrier.safetyRatingDate as string | null) || null,
+    totalDrivers: parseInt(String(carrier.totalDrivers), 10) || 0,
+    totalPowerUnits: parseInt(String(carrier.totalPowerUnits), 10) || 0,
     inspections,
     basicsScores,
   };

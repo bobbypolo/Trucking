@@ -12,7 +12,7 @@ dotenv.config();
 // 3. Save the JSON file as 'server/serviceAccount.json' (DO NOT COMMIT THIS FILE)
 
 let authReady = false;
-let serviceAccount: any;
+let serviceAccount: admin.ServiceAccount | undefined;
 try {
     serviceAccount = require('./serviceAccount.json');
 } catch (e) {
@@ -44,7 +44,9 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
     logger.info('Firebase Auth Emulator active');
 }
 
-export const verifyFirebaseToken = async (req: any, res: any, next: any) => {
+import { Request, Response, NextFunction } from 'express';
+
+export const verifyFirebaseToken = async (req: Request, res: Response, next: NextFunction) => {
     if (!authReady) {
         logger.error('CRITICAL: Firebase Admin credentials unavailable. Rejecting request to enforce security.');
         return res.status(500).json({ error: 'Server Security Configuration Error: Firebase Admin credentials unavailable.' });

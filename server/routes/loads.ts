@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Response, NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import {
@@ -41,7 +42,7 @@ async function resolveLoadNotesColumn(): Promise<string | null> {
 
   const candidates = ["dispatch_notes", "special_instructions", "notes"];
   for (const candidate of candidates) {
-    const [rows]: any = await pool.query(
+    const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT COLUMN_NAME
          FROM INFORMATION_SCHEMA.COLUMNS
         WHERE TABLE_SCHEMA = DATABASE()
@@ -67,7 +68,7 @@ router.get(
   "/api/loads",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const companyId = req.user.tenantId;
     const isScheduleQuery = req.query.for === "schedule";
     const startDate = req.query.start as string | undefined;
@@ -77,7 +78,7 @@ router.get(
       // Base query: all non-deleted loads for this tenant
       let sql =
         "SELECT * FROM loads WHERE company_id = ? AND deleted_at IS NULL";
-      const params: any[] = [companyId];
+      const params: (string | number)[] = [companyId];
 
       // For schedule queries, only return loads that have a pickup_date
       if (isScheduleQuery) {
@@ -94,12 +95,12 @@ router.get(
         params.push(endDate);
       }
 
-      const [rows]: any = await pool.query(sql, params);
+      const [rows] = await pool.query<RowDataPacket[]>(sql, params);
       const settings = await getVisibilitySettings(companyId);
 
       const enrichedLoads = await Promise.all(
-        rows.map(async (load: any) => {
-          const [legs]: any = await pool.query(
+        rows.map(async (load) => {
+          const [legs] = await pool.query<RowDataPacket[]>(
             "SELECT * FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
             [load.id],
           );
@@ -108,7 +109,7 @@ router.get(
           const dropoffLeg = legs
             .slice()
             .reverse()
-            .find((leg: any) => leg.type === "Dropoff");
+            .find((leg) => leg.type === "Dropoff");
           const dropoff_date = dropoffLeg?.date || null;
 
           let loadData = {
@@ -142,7 +143,7 @@ router.get(
       // dropoff_date extends into the range (multi-day loads)
       let result = enrichedLoads;
       if (isScheduleQuery && startDate && endDate) {
-        result = enrichedLoads.filter((load: any) => {
+        result = enrichedLoads.filter((load) => {
           const pickup = load.pickup_date;
           const dropoff = load.dropoff_date;
           if (!pickup) return false;
@@ -164,7 +165,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createLoadSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const {
       id,
       customer_id,
@@ -307,10 +308,10 @@ router.get(
   "/api/loads/counts",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const companyId = req.user.tenantId;
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT status, COUNT(*) as count FROM loads WHERE company_id = ? AND deleted_at IS NULL GROUP BY status",
         [companyId],
       );
@@ -351,7 +352,7 @@ router.patch(
   requireAuth,
   requireTenant,
   validateBody(partialUpdateLoadSchema),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
     const companyId = req.user.tenantId;
     const {
@@ -370,7 +371,7 @@ router.patch(
     const normalizedBolNumber = bol_number || normalizedReference;
 
     try {
-      const [existingRows]: any = await pool.query(
+      const [existingRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
@@ -380,7 +381,7 @@ router.patch(
       }
 
       const updates: string[] = [];
-      const params: any[] = [];
+      const params: (string | number)[] = [];
 
       if (weight !== undefined) {
         updates.push("weight = ?");
@@ -422,13 +423,13 @@ router.patch(
         [...params, loadId, companyId],
       );
 
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
       const load = rows?.[0];
 
-      const [legs]: any = await pool.query(
+      const [legs] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
         [loadId],
       );
@@ -467,7 +468,7 @@ router.patch(
   requireTenant,
   validateBody(updateLoadStatusSchema),
   idempotencyMiddleware(),
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { status } = req.body;
     const loadId = req.params.id;
     const companyId = req.user.tenantId;
@@ -483,7 +484,7 @@ router.patch(
 
       // Pipeline: increment broker load count + export to BigQuery when load is settled
       if (status === "Settled" || status === "Completed") {
-        const [rows]: any = await pool.query(
+        const [rows] = await pool.query<RowDataPacket[]>(
           "SELECT customer_id FROM loads WHERE id = ?",
           [loadId],
         );
@@ -519,13 +520,13 @@ router.delete(
   "/api/loads/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
     const companyId = req.user.tenantId;
 
     try {
       // Look up the load, scoped to the requesting tenant and not already deleted
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT id, status FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
@@ -571,7 +572,7 @@ router.post(
   "/api/loads/:id/change-requests",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
     const companyId = req.user.tenantId;
     const { type, notes, isUrgent } = req.body;
@@ -584,7 +585,7 @@ router.post(
 
     try {
       // Verify load belongs to this tenant
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
@@ -603,7 +604,7 @@ router.post(
         [id, companyId, priority, type, notes || "", loadId],
       );
 
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM work_items WHERE id = ? AND company_id = ?",
         [id, companyId],
       );
@@ -619,13 +620,13 @@ router.get(
   "/api/loads/:id/change-requests",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const loadId = req.params.id;
     const companyId = req.user.tenantId;
 
     try {
       // Verify load belongs to this tenant
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
@@ -634,7 +635,7 @@ router.get(
         return res.status(404).json({ error: "Load not found" });
       }
 
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM work_items WHERE entity_id = ? AND entity_type = 'load' AND type = 'CHANGE_REQUEST' AND company_id = ? ORDER BY created_at DESC",
         [loadId, companyId],
       );
@@ -660,7 +661,7 @@ router.post("/api/loads/:id/gps-ping", async (req, res) => {
   }
 
   try {
-    const [legs]: any = await pool.query(
+    const [legs] = await pool.query<RowDataPacket[]>(
       `SELECT id, latitude, longitude
              FROM load_legs
              WHERE load_id = ? AND latitude IS NOT NULL AND arrived_at IS NULL AND completed = 0
@@ -711,7 +712,7 @@ router.post("/api/loads/:id/bol-scan", async (req, res) => {
   }
 
   try {
-    const [loadRows]: any = await pool.query(
+    const [loadRows] = await pool.query<RowDataPacket[]>(
       `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
       [loadId],
     );

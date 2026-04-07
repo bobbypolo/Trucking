@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
 import { buildSafeUpdate } from "../lib/safe-update";
 
+export type ServiceTicketInput = Record<string, unknown>;
+
 const SERVICE_TICKET_UPDATABLE_COLUMNS = [
   "type",
   "status",
@@ -29,7 +31,7 @@ export const serviceTicketRepository = {
     return (rows as any[])[0] || null;
   },
 
-  async create(data: any, companyId: string, userId: string) {
+  async create(data: ServiceTicketInput, companyId: string, userId: string) {
     const id = data.id || uuidv4();
     await pool.query(
       `INSERT INTO service_tickets (id, company_id, type, status, vendor,
@@ -51,7 +53,7 @@ export const serviceTicketRepository = {
     return this.findById(id);
   },
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, data: ServiceTicketInput, userId: string) {
     const result = buildSafeUpdate(
       data,
       SERVICE_TICKET_UPDATABLE_COLUMNS,

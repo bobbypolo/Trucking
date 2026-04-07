@@ -2,6 +2,8 @@ import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
 import { buildSafeUpdate } from "../lib/safe-update";
 
+export type ProviderInput = Record<string, unknown>;
+
 const PROVIDER_UPDATABLE_COLUMNS = [
   "name",
   "type",
@@ -33,7 +35,7 @@ export const providerRepository = {
     return (rows as any[])[0] || null;
   },
 
-  async create(data: any, companyId: string, userId: string) {
+  async create(data: ProviderInput, companyId: string, userId: string) {
     const id = data.id || uuidv4();
     await pool.query(
       `INSERT INTO providers (id, company_id, name, type, status, phone, email,
@@ -63,7 +65,7 @@ export const providerRepository = {
     return this.findById(id);
   },
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, data: ProviderInput, userId: string) {
     // Pre-serialize JSON fields before passing to buildSafeUpdate
     const safeCopy = { ...data };
     for (const key of [

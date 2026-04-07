@@ -6,6 +6,7 @@ import { requireTenant } from "../middleware/requireTenant";
 import { validateParams } from "../middleware/validateParams";
 import { idParam } from "../schemas/params";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { createRequestLogger } from "../lib/logger";
 import { deliverNotification } from "../services/notification-delivery.service";
 
@@ -19,7 +20,7 @@ router.get(
   async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM notification_jobs WHERE company_id = ? ORDER BY sent_at DESC",
         [companyId],
       );
@@ -47,7 +48,7 @@ router.get(
     const companyId = req.user!.tenantId;
     const jobId = req.params.id;
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM notification_jobs WHERE id = ?",
         [jobId],
       );
@@ -184,7 +185,7 @@ router.patch(
     }
 
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM notification_jobs WHERE id = ?",
         [jobId],
       );

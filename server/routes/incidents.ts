@@ -11,6 +11,7 @@ import {
   createIncidentChargeSchema,
 } from "../schemas/incident";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { createRequestLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
 import { NotFoundError } from "../errors/AppError";
@@ -112,7 +113,7 @@ router.post(
 
     // Validation: check if load exists to prevent FK violation
     try {
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM loads WHERE id = ?",
         [load_id],
       );

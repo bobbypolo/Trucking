@@ -1,13 +1,21 @@
 import pool from './db';
+import type { RowDataPacket } from 'mysql2/promise';
 import { calculateDistance } from './geoUtils';
 import { logger } from './lib/logger';
 import { deliverNotification } from './services/notification-delivery.service';
 
+interface VisibilitySettings {
+    hideRates?: boolean;
+    showDriverPay?: boolean;
+    maskCustomerName?: boolean;
+    hideBrokerContacts?: boolean;
+}
+
 // Redaction Helper (Security Hardening)
-export const redactData = (data: any, role: string, settings: any) => {
+export const redactData = (data: Record<string, unknown> | Record<string, unknown>[], role: string, settings: VisibilitySettings | null) => {
     if (role !== 'driver' || !settings) return data;
 
-    const redactObject = (obj: any) => {
+    const redactObject = (obj: Record<string, unknown>) => {
         const redacted = { ...obj };
         if (settings.hideRates) {
             delete redacted.carrier_rate;
@@ -36,7 +44,7 @@ export const redactData = (data: any, role: string, settings: any) => {
         return data.map(item => {
             const redacted = redactObject(item);
             if (redacted.legs && Array.isArray(redacted.legs)) {
-                redacted.legs = redacted.legs.map((leg: any) => redactObject(leg));
+                redacted.legs = redacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
             }
             return redacted;
         });
@@ -44,7 +52,7 @@ export const redactData = (data: any, role: string, settings: any) => {
 
     const finalRedacted = redactObject(data);
     if (finalRedacted.legs && Array.isArray(finalRedacted.legs)) {
-        finalRedacted.legs = finalRedacted.legs.map((leg: any) => redactObject(leg));
+        finalRedacted.legs = finalRedacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
     }
     return finalRedacted;
 };
@@ -70,7 +78,7 @@ export const sendNotification = (emails: string[], subject: string, message: str
  */
 export const checkBreakdownLateness = async (loadId: string, lat: number, lng: number) => {
     try {
-        const [legs]: any = await pool.query('SELECT * FROM load_legs WHERE load_id = ? AND type = "Dropoff" ORDER BY sequence_order DESC LIMIT 1', [loadId]);
+        const [legs] = await pool.query<RowDataPacket[]>('SELECT * FROM load_legs WHERE load_id = ? AND type = "Dropoff" ORDER BY sequence_order DESC LIMIT 1', [loadId]);
         if (legs.length === 0) return { isLate: false };
 
         const dropoff = legs[0];
@@ -99,7 +107,7 @@ export const checkBreakdownLateness = async (loadId: string, lat: number, lng: n
  * Helper to fetch driver visibility settings from company
  */
 export const getVisibilitySettings = async (companyId: string) => {
-    const [companyRows]: any = await pool.query('SELECT driver_visibility_settings FROM companies WHERE id = ?', [companyId]);
+    const [companyRows] = await pool.query<RowDataPacket[]>('SELECT driver_visibility_settings FROM companies WHERE id = ?', [companyId]);
     let settings = null;
     try {
         const rawSettings = companyRows[0]?.driver_visibility_settings;

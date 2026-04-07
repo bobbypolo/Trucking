@@ -15,6 +15,7 @@
 
 import Stripe from "stripe";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { createChildLogger } from "../lib/logger";
 
 const log = createChildLogger({ service: "stripe" });
@@ -223,7 +224,7 @@ export async function handleWebhookEvent(
   }
 
   // 2. Idempotency check — skip if event.id already processed
-  const [existingRows]: any = await pool.query(
+  const [existingRows] = await pool.query<RowDataPacket[]>(
     "SELECT event_id FROM stripe_webhook_events WHERE event_id = ?",
     [event.id],
   );
