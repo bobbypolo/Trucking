@@ -2,11 +2,11 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "dc9199dce51300a6d75808c3528e13ad041ac2bfa8aab9feadb9c694f9d25642",
+  "plan_hash": "a3098eba356955eadc845e1617626f644d4a2dfdb2192a75190c002db5bef694",
   "stories": [
     {
       "id": "S-001",
-      "description": "Independent Sales-Demo Seed Pipeline \u00e2\u20ac\u201d new server/scripts/seed-sales-demo.ts (zero edits to seed-demo.ts), reset-sales-demo.ts with explicit company_id-scoped DELETE list for non-cascading accounting/IFTA tables (verified against migration 038 column rename), GL-6900 + GL-2200 IFTA accounts, Fleet Core tier pinned, single .env.local contract",
+      "description": "Independent Sales-Demo Seed Pipeline â€” new server/scripts/seed-sales-demo.ts (zero edits to seed-demo.ts), reset-sales-demo.ts with explicit company_id-scoped DELETE list for non-cascading accounting/IFTA tables (verified against migration 038 column rename), GL-6900 + GL-2200 IFTA accounts, Fleet Core tier pinned, single .env.local contract",
       "phase": 1,
       "phase_type": "foundation",
       "component": "server/",
@@ -50,7 +50,7 @@
         },
         {
           "id": "R-P1-05",
-          "criterion": "Tier audit walks \u00e2\u2030\u00a515 requireTier('Fleet Core'|'Automation Pro') routes and asserts statusCode !== 403 for the seeded admin",
+          "criterion": "Tier audit walks â‰¥15 requireTier('Fleet Core'|'Automation Pro') routes and asserts statusCode !== 403 for the seeded admin",
           "testType": "integration"
         },
         {
@@ -60,12 +60,12 @@
         },
         {
           "id": "R-P1-07",
-          "criterion": "100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent \u00e2\u20ac\u201d second invocation produces 0 new rows)",
+          "criterion": "100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent â€” second invocation produces 0 new rows)",
           "testType": "unit"
         },
         {
           "id": "R-P1-08",
-          "criterion": "seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline guarantee \u00e2\u20ac\u201d assert via grep on the source)",
+          "criterion": "seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline guarantee â€” assert via grep on the source)",
           "testType": "unit"
         },
         {
@@ -75,7 +75,7 @@
         },
         {
           "id": "R-P1-10",
-          "criterion": "resetSalesDemo is idempotent \u00e2\u20ac\u201d second invocation against an already-empty tenant exits 0 without 'row not found' or FK violation errors",
+          "criterion": "resetSalesDemo is idempotent â€” second invocation against an already-empty tenant exits 0 without 'row not found' or FK violation errors",
           "testType": "unit"
         },
         {
@@ -85,7 +85,7 @@
         },
         {
           "id": "R-P1-12",
-          "criterion": "seedSalesDemo source contains exactly one dotenv.config call and that call references '.env.local' (NOT '.env') \u00e2\u20ac\u201d proves the single env contract for seed/reset/certify. Assert via grep on the source.",
+          "criterion": "seedSalesDemo source contains exactly one dotenv.config call and that call references '.env.local' (NOT '.env') â€” proves the single env contract for seed/reset/certify. Assert via grep on the source.",
           "testType": "unit"
         }
       ],
@@ -98,7 +98,7 @@
     },
     {
       "id": "S-002",
-      "description": "Pre-Seeded Hero Load + Broker \u00e2\u20ac\u201d seed customers row + loads row (with customer_id FK) + load_legs + 3 documents linked to LP-DEMO-RC-001. Live LoadDetailView reads everything via unmodified routes. Document UI labels are stubbed today (out of scope).",
+      "description": "Pre-Seeded Hero Load + Broker + Real Artifacts + Canonical Doc Mapping — seed LP-DEMO-RC-001 with ACME Logistics LLC broker and 3 real PDF documents (rate con, BOL, lumper receipt) downloadable via the live /api/documents/:id/download endpoint; add a <=10-line mapping in document.repository.ts so the documents panel shows readable filename/type labels instead of 'undefined'",
       "phase": 2,
       "phase_type": "module",
       "component": "server/",
@@ -109,7 +109,13 @@
         "server/scripts/seed-sales-demo.ts",
         "server/__tests__/scripts/seed-sales-demo-loads.test.ts",
         "server/__tests__/integration/sales-demo-load-readback.test.ts",
-        "e2e/sales-demo/01-document-automation.spec.ts"
+        "e2e/sales-demo/01-document-automation.spec.ts",
+        "server/scripts/sales-demo-fixtures/loads/artifacts/rate-con.pdf",
+        "server/scripts/sales-demo-fixtures/loads/artifacts/bol.pdf",
+        "server/scripts/sales-demo-fixtures/loads/artifacts/lumper-receipt.pdf",
+        "server/__tests__/repositories/document.repository.mapping.test.ts",
+        "server/__tests__/integration/sales-demo-document-download.test.ts",
+        "server/repositories/document.repository.ts"
       ],
       "complexity": "medium",
       "maxTurns": 100,
@@ -135,12 +141,12 @@
         },
         {
           "id": "R-P2-04",
-          "criterion": "seedSalesDemoLoads is idempotent \u00e2\u20ac\u201d second invocation produces 0 new rows (INSERT IGNORE count)",
+          "criterion": "seedSalesDemoLoads is idempotent â€” second invocation produces 0 new rows (INSERT IGNORE count)",
           "testType": "unit"
         },
         {
           "id": "R-P2-05",
-          "criterion": "seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or server/services/gemini.service.ts (live-functions-only guarantee \u00e2\u20ac\u201d assert via grep)",
+          "criterion": "seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or server/services/gemini.service.ts (live-functions-only guarantee â€” assert via grep)",
           "testType": "unit"
         },
         {
@@ -150,13 +156,38 @@
         },
         {
           "id": "R-P2-07",
-          "criterion": "Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts visible DOM contains 'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds. Clicks Documents button and asserts at least 3 document cards (container selector) are visible. Spec does NOT assert on doc.filename or doc.type text content.",
+          "criterion": "Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts the visible DOM contains 'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds. Clicks Documents button and asserts at least 3 document cards (container selector) are visible",
           "testType": "e2e"
         },
         {
           "id": "R-P2-08",
-          "criterion": "grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx, components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs sprint-end shows zero diff (snapshot test on file SHA256 for each file)",
+          "criterion": "grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx, components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs sprint-end shows zero diff (snapshot test on file SHA256 for each file). server/repositories/document.repository.ts is DELIBERATELY EXCLUDED — the canonical doc mapping fix lives in that file per R-P2-12",
           "testType": "unit"
+        },
+        {
+          "id": "R-P2-09",
+          "criterion": "Three real binary artifact fixtures exist at server/scripts/sales-demo-fixtures/loads/artifacts/{rate-con,bol,lumper-receipt}.pdf; each file is at least 1024 bytes AND the first 4 bytes of each file equal `%PDF` (valid PDF magic number) — assert via fs.statSync + fs.readFileSync on the raw bytes",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-10",
+          "criterion": "seedSalesDemoLoads copies the 3 fixtures into the live upload directory at `${UPLOAD_DIR}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf` where UPLOAD_DIR defaults to './uploads'. After the seed runs, the 3 destination files exist AND their sizes match the fixture source sizes; second invocation is a no-op (idempotent copy)",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-11",
+          "criterion": "GET /api/documents/:id/download for each of the 3 seeded documents on LP-DEMO-RC-001 returns status 200, Content-Type 'application/pdf', Content-Length > 1024, and the first 4 bytes of the response body equal `%PDF`. Uses the unmodified production download handler at server/routes/documents.ts:297",
+          "testType": "integration"
+        },
+        {
+          "id": "R-P2-12",
+          "criterion": "The document repository accessor that returns rows to GET /api/documents and GET /api/documents/:id aliases original_filename -> filename and document_type -> type on every returned row. Diff on server/repositories/document.repository.ts is <= 10 added lines and 0 removed lines — assert via git diff --numstat",
+          "testType": "unit"
+        },
+        {
+          "id": "R-P2-13",
+          "criterion": "Extends R-P2-07: after the Documents panel opens with >= 3 cards, each card's visible text contains a non-empty filename string matching /\\w+\\.pdf$/ AND a readable type label ('Rate Confirmation', 'Bill of Lading', or 'Lumper Receipt'). The literal string 'undefined' does NOT appear inside any of the 3 document cards",
+          "testType": "e2e"
         }
       ],
       "gateCmds": {
@@ -169,7 +200,7 @@
     },
     {
       "id": "S-003",
-      "description": "IFTA Trip-Based Evidence Seed + Real-UI Walkthrough \u00e2\u20ac\u201d 12 ifta_trip_evidence rows tied to LP-DEMO-RC-001 (load-based, NOT truck-based; equipment row NOT seeded). All accounting/IFTA INSERTs use company_id (verified against migration 038); fuel_ledger uses entry_date column (verified against migration 011 line 114). Live IFTAManager + IFTAEvidenceReview UI walkthrough using text selectors against verified button labels.",
+      "description": "IFTA Trip-Based Evidence Seed + Real-UI Walkthrough â€” 12 ifta_trip_evidence rows tied to LP-DEMO-RC-001 (load-based, NOT truck-based; equipment row NOT seeded). All accounting/IFTA INSERTs use company_id (verified against migration 038); fuel_ledger uses entry_date column (verified against migration 011 line 114). Live IFTAManager + IFTAEvidenceReview UI walkthrough using text selectors against verified button labels.",
       "phase": 3,
       "phase_type": "integration",
       "component": "server/",
@@ -201,7 +232,7 @@
         },
         {
           "id": "R-P3-03",
-          "criterion": "seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO 'INSERT INTO equipment' statements (assert via grep \u00e2\u20ac\u201d proves trip-based design)",
+          "criterion": "seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO 'INSERT INTO equipment' statements (assert via grep â€” proves trip-based design)",
           "testType": "unit"
         },
         {
@@ -211,7 +242,7 @@
         },
         {
           "id": "R-P3-05",
-          "criterion": "Playwright walkthrough completes the full text-selector sequence (nav-accounting \u00e2\u2020\u2019 Fuel & IFTA \u00e2\u2020\u2019 Q4 \u00e2\u2020\u2019 2025 \u00e2\u2020\u2019 load card \u00e2\u2020\u2019 Evidence Timeline visible \u00e2\u2020\u2019 Computed Jurisdiction Split visible \u00e2\u2020\u2019 attestation checkbox \u00e2\u2020\u2019 Lock Trip for Audit \u00e2\u2020\u2019 success indicator) within 10 seconds. Spec uses zero data-testid on IFTA elements; grep confirms no 'data-testid=\"ifta-' substrings in the spec file.",
+          "criterion": "Playwright walkthrough completes the full text-selector sequence (nav-accounting â†’ Fuel & IFTA â†’ Q4 â†’ 2025 â†’ load card â†’ Evidence Timeline visible â†’ Computed Jurisdiction Split visible â†’ attestation checkbox â†’ Lock Trip for Audit â†’ success indicator) within 10 seconds. Spec uses zero data-testid on IFTA elements; grep confirms no 'data-testid=\"ifta-' substrings in the spec file.",
           "testType": "e2e"
         },
         {
@@ -235,7 +266,7 @@
     },
     {
       "id": "S-004",
-      "description": "CRM Registry Depth \u00e2\u20ac\u201d seed 12 parties (3/2/2/3/2 split) into the 8 verified party_* tables that GET /api/parties enriches. Direct SQL only (POST /api/parties has unrelated bug). NetworkPortal renders 6 tabs with seeded data.",
+      "description": "CRM Registry Depth â€” seed 12 parties (3/2/2/3/2 split) into the 8 verified party_* tables that GET /api/parties enriches. Direct SQL only (POST /api/parties has unrelated bug). NetworkPortal renders 6 tabs with seeded data.",
       "phase": 4,
       "phase_type": "integration",
       "component": "server/",
@@ -256,7 +287,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2 contractors (12 parties total) \u00e2\u20ac\u201d assert by type breakdown via SQL capture",
+          "criterion": "seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2 contractors AND one of the 2 brokers is SALES-DEMO-CUST-001 / 'ACME Logistics LLC' (the same broker attached to the Phase 2 hero load — continuity object) — assert by type breakdown AND exact-id lookup via SQL capture",
           "testType": "unit"
         },
         {
@@ -266,12 +297,12 @@
         },
         {
           "id": "R-P4-03",
-          "criterion": "seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores, customer_rate_sheets, or party_interactions (none of those tables exist \u00e2\u20ac\u201d assert via grep on the source)",
+          "criterion": "seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores, customer_rate_sheets, or party_interactions (none of those tables exist â€” assert via grep on the source)",
           "testType": "unit"
         },
         {
           "id": "R-P4-04",
-          "criterion": "seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from server/routes/clients.ts (live-functions-only via direct SQL \u00e2\u20ac\u201d assert via grep)",
+          "criterion": "seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from server/routes/clients.ts (live-functions-only via direct SQL â€” assert via grep)",
           "testType": "unit"
         },
         {
@@ -281,7 +312,7 @@
         },
         {
           "id": "R-P4-06",
-          "criterion": "Playwright walkthrough opens NetworkPortal, drills into a broker, clicks each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible in each",
+          "criterion": "Playwright walkthrough opens NetworkPortal, locates the row whose visible text contains 'ACME Logistics LLC' (continuity-object assertion — must match Phase 2 hero broker, not any broker), clicks it, then clicks each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible in each",
           "testType": "e2e"
         },
         {
@@ -300,7 +331,7 @@
     },
     {
       "id": "S-005",
-      "description": "Demo-Blocker Regression Tests \u00e2\u20ac\u201d lock down the SafetyView empty-state KPI, GlobalMapViewEnhanced env-var-leak fallback, and document Quotes route disposition. Tests only \u00e2\u20ac\u201d zero production code edits.",
+      "description": "Demo-Blocker Regression Tests â€” lock down the SafetyView empty-state KPI, GlobalMapViewEnhanced env-var-leak fallback, and document Quotes route disposition. Tests only â€” zero production code edits.",
       "phase": 5,
       "phase_type": "module",
       "component": "frontend/",
@@ -351,7 +382,7 @@
     },
     {
       "id": "S-006",
-      "description": "Demo Shell Allowlist + Reset Endpoint \u00e2\u20ac\u201d App.tsx nav filter behind VITE_DEMO_NAV_MODE=sales (real route keys: operations-hub, loads, calendar, network, accounting, exceptions). Triple-locked POST /api/demo/reset endpoint. Surgical: <30 lines added to App.tsx, exactly 2 lines added to server/index.ts.",
+      "description": "Demo Shell Allowlist + Reset Endpoint â€” App.tsx nav filter behind VITE_DEMO_NAV_MODE=sales (real route keys: operations-hub, loads, calendar, network, accounting, exceptions). Triple-locked POST /api/demo/reset endpoint. Surgical: <30 lines added to App.tsx, exactly 2 lines added to server/index.ts.",
       "phase": 6,
       "phase_type": "integration",
       "component": "frontend+server/",
@@ -380,7 +411,7 @@
         },
         {
           "id": "R-P6-02",
-          "criterion": "DEMO_NAV_ALLOWLIST deep-equals exactly the array ['operations-hub','loads','calendar','network','accounting','exceptions'] (toEqual on literal array \u00e2\u20ac\u201d real App.tsx route keys, no fictional ones)",
+          "criterion": "DEMO_NAV_ALLOWLIST deep-equals exactly the array ['operations-hub','loads','calendar','network','accounting','exceptions'] (toEqual on literal array â€” real App.tsx route keys, no fictional ones)",
           "testType": "unit"
         },
         {
@@ -405,12 +436,12 @@
         },
         {
           "id": "R-P6-07",
-          "criterion": "docs/sales-demo-runbook.md contains 6 required H2 sections: ## Two Chrome profiles, ## Setting demo nav mode (.env.local), ## Resetting between demos, ## Recovery from accidental URL, ## Firebase user provisioning prerequisite, ## Live Gemini disclaimer",
+          "criterion": "docs/sales-demo-runbook.md contains all 8 required H2 sections: '## Two Chrome profiles', '## Setting demo nav mode (.env.local)', '## Resetting between demos', '## Recovery from accidental URL', '## Firebase user provisioning prerequisite', '## Live Gemini disclaimer', '## Certified Core demo script (6 steps)', '## Wow Appendix — Optional live driver upload'",
           "testType": "unit"
         },
         {
           "id": "R-P6-08",
-          "criterion": "App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only minimal-touch guarantee \u00e2\u20ac\u201d assert via git diff --numstat App.tsx)",
+          "criterion": "App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only minimal-touch guarantee â€” assert via git diff --numstat App.tsx)",
           "testType": "unit"
         },
         {
@@ -428,7 +459,7 @@
     },
     {
       "id": "S-007",
-      "description": "Windows-Safe Certification Pipeline \u00e2\u20ac\u201d single npm script demo:certify:sales runs reset + 4 Playwright specs + appends timestamped pass record to docs/release/evidence.md. .cjs script using os.tmpdir() (no /tmp), .env.local for env vars (no cross-env), Firebase user provisioning documented as prerequisite.",
+      "description": "Windows-Safe Certification Pipeline â€” single npm script demo:certify:sales runs reset + 4 Playwright specs + appends timestamped pass record to docs/release/evidence.md. .cjs script using os.tmpdir() (no /tmp), .env.local for env vars (no cross-env), Firebase user provisioning documented as prerequisite.",
       "phase": 7,
       "phase_type": "e2e",
       "component": "frontend+server/",

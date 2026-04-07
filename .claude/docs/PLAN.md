@@ -65,6 +65,30 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  This is what "live function only" actually looks like: data the seed wrote, code the production tenants run.
 
  ---
+ Continuity Objects — the thread that carries through every hero flow
+
+ The same objects must appear in every hero step so the buyer feels one coherent story instead of five
+ unrelated screens. Any phase that introduces new seeded data MUST reuse these exact identifiers / names
+ verbatim — this continuity is the single biggest driver of the "wow" reaction on stage.
+
+ | Object            | Canonical value                                            | Appears in                          |
+ | ----------------- | ---------------------------------------------------------- | ------------------------------------ |
+ | Tenant / company  | `SALES-DEMO-001`                                           | Phases 1, 2, 3, 4, 6, 7             |
+ | Hero load         | `LP-DEMO-RC-001`                                           | Phases 2, 3, 7; all 3 hero specs    |
+ | Broker (customer) | `SALES-DEMO-CUST-001` / `ACME Logistics LLC` (MC / DOT set)| Phases 2, 3 (IFTA narrative), 4     |
+ | Commodity + wt    | `Frozen Beef`, `42,500 lbs`                                | Phase 2 load card + runbook script  |
+ | Rate              | `$3,250` carrier rate                                      | Phase 2 load card + runbook script  |
+ | Route             | Houston TX → Chicago IL (6 IFTA jurisdictions)             | Phases 2 + 3 (same trip)            |
+ | IFTA period       | Q4 2025                                                    | Phase 3 walkthrough + summary       |
+ | Rate con artifact | `rate-con.pdf` (real file, seeded to storage)              | Phase 2 document card download      |
+ | BOL artifact      | `bol.pdf`                                                  | Phase 2 document card download      |
+ | Lumper artifact   | `lumper-receipt.pdf`                                       | Phase 2 document card download      |
+
+ **Phase 4 reminder**: when seeding the 12 CRM parties, ONE of the two brokers MUST be
+ `SALES-DEMO-CUST-001` / ACME Logistics LLC (the same broker the salesperson just saw attached to the hero
+ load in Phase 2). The buyer opens the broker in NetworkPortal and recognizes it — that is the magic moment.
+
+ ---
  Findings (verified) and corrections
 
  #: 1
@@ -467,14 +491,17 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  - The certified demo asserts on FIELDS THAT LIVE ON THE LOAD ROW (loadNumber, pickup/dropoff facility,
    commodity, weight, rate, broker name resolved through customers table). These all render through
    LoadDetailView.tsx unchanged (verified at LoadDetailView.tsx:140 for the broker lookup).
- - The certified demo does NOT assert on document filenames or types being rendered as readable labels.
-   The canonical documents UI at LoadDetailView.tsx:1125-1135 reads doc.filename and doc.type, but the
-   GET /api/documents response returns raw rows from the documents table where the columns are
-   original_filename / sanitized_filename / document_type — there is no mapping layer (verified at
-   server/repositories/document.repository.ts:9-24 and services/storage/vault.ts:65-81). The labels render
-   as undefined in the live UI today. The Phase 2 spec only asserts that the documents PANEL OPENS with
-   3 cards visible — not that the cards have readable text. Fixing the document UI mapping is OUT OF
-   SCOPE this sprint (would touch production source).
+ - The canonical documents UI at LoadDetailView.tsx:1125-1135 reads doc.filename and doc.type, but the
+   GET /api/documents response today returns raw rows where the columns are original_filename /
+   sanitized_filename / document_type — there is no mapping layer (verified at
+   server/repositories/document.repository.ts:9-24 and services/storage/vault.ts:65-81). In the current
+   code the labels render as undefined. **This sprint relaxes the zero-production-diff constraint for
+   exactly one file — `server/repositories/document.repository.ts` — to add a ≤10-line mapping that
+   aliases original_filename → filename and document_type → type on every returned row.** It is the
+   single highest-value polish touch: a buyer looking at the hero load's documents panel sees
+   professional labels instead of "undefined undefined". LoadDetailView.tsx itself stays untouched
+   (R-P2-08 still greps it for zero diff). document.service.ts also stays untouched (Phase 7 still
+   greps it for zero diff). The mapping lives only at the repository layer.
  - Broker name visibility requires a row in the legacy customers table (NOT parties), because
    App.tsx:294-296 calls getBrokers() which queries GET /api/clients/:companyId, and that route at
    server/routes/clients.ts:37-72 runs SELECT * FROM customers WHERE company_id = ?. The Phase 4
@@ -507,8 +534,35 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  ────────────────────────────────────────
  Path: server/scripts/sales-demo-fixtures/loads/extracted-fields.md
  Purpose: Human-readable cheat sheet listing the exact fields the salesperson should narrate when opening
-   LP-DEMO-RC-001 on stage. Explicitly notes that the documents panel shows row count but labels are
-   stubbed today (out of scope this sprint).
+   LP-DEMO-RC-001 on stage. Documents panel now shows readable filename/type labels (repository mapping
+   added this sprint) and documents are downloadable (seeded artifacts added this sprint).
+ ────────────────────────────────────────
+ Path: server/scripts/sales-demo-fixtures/loads/artifacts/rate-con.pdf
+ Purpose: Real binary artifact for the hero load's rate confirmation document. A small text-only PDF
+   (≥ 1KB, valid %PDF- magic number) that the seed script copies into the live upload directory so
+   clicking Download on the rate con card returns a real file. Content is a one-page printout showing
+   ACME Logistics LLC header, Frozen Beef line item, Houston → Chicago route, $3,250 rate.
+ ────────────────────────────────────────
+ Path: server/scripts/sales-demo-fixtures/loads/artifacts/bol.pdf
+ Purpose: Real binary artifact for the hero load's BOL. A small text-only PDF with shipper / consignee /
+   commodity / weight fields readable so the salesperson can open the downloaded file on stage if asked.
+ ────────────────────────────────────────
+ Path: server/scripts/sales-demo-fixtures/loads/artifacts/lumper-receipt.pdf
+ Purpose: Real binary artifact for the hero load's lumper receipt. Small text-only PDF with a scanned
+   look (single-column receipt layout) showing the date, facility, lumper fee, signature line.
+ ────────────────────────────────────────
+ Path: server/__tests__/repositories/document.repository.mapping.test.ts
+ Purpose: Unit test for the new mapping layer. Given a raw row from the database with fields
+   `{original_filename: "rate-con.pdf", document_type: "rate_confirmation", ...}`, the repository
+   accessor returns an object whose `.filename === "rate-con.pdf"` AND `.type === "rate_confirmation"`,
+   with both the original fields AND the aliases present (backwards compatibility). Also asserts the
+   mapping is a pure transform (no I/O).
+ ────────────────────────────────────────
+ Path: server/__tests__/integration/sales-demo-document-download.test.ts
+ Purpose: Integration: against the seeded sales-demo tenant, calls the live
+   GET /api/documents/:id/download for each of the 3 seeded documents (rate-con, bol, lumper-receipt).
+   Asserts: (a) status 200, (b) Content-Type === 'application/pdf', (c) response body length > 1024
+   bytes, (d) first 4 bytes equal `%PDF`. Uses the unmodified production download handler.
  ────────────────────────────────────────
  Path: server/__tests__/scripts/seed-sales-demo-loads.test.ts
  Purpose: Asserts the seed inserts exactly 1 customer + 1 load + 2 legs + 3 documents in that order, with
@@ -535,8 +589,25 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
    document cards visible (selector: card containers, NOT inner label text). No upload action. No AI call.
    Reads existing seeded data through the unmodified UI.
 
- Files (existing) extended: server/scripts/seed-sales-demo.ts — call seedSalesDemoLoads(conn) after
- seedGlAccounts(conn) (Phase 1 created the orchestrator; Phase 2 just appends one call).
+ Files (existing) extended:
+
+ Path: server/scripts/seed-sales-demo.ts
+ What changes: call seedSalesDemoLoads(conn) after seedGlAccounts(conn) (Phase 1 created the orchestrator;
+   Phase 2 appends one call). Additionally, inside seedSalesDemoLoads, after the INSERTs, copy the three
+   artifact PDFs from server/scripts/sales-demo-fixtures/loads/artifacts/ into the live upload directory
+   at `${process.env.UPLOAD_DIR || "./uploads"}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf`
+   so the download endpoint (GET /api/documents/:id/download) can return them as real files. Uses
+   `fs.promises.copyFile` with `{ recursive: true }` mkdir on the parent. Idempotent — skip copy if
+   destination file already exists with the expected size.
+ ────────────────────────────────────────
+ Path: server/repositories/document.repository.ts
+ What changes (precise diff scope, ≤ 10 added lines, 0 removed lines): in the accessor(s) that return
+   document rows to callers (listDocuments / findById / whatever is used by the GET /api/documents and
+   GET /api/documents/:id handlers), append two alias properties to each returned row before returning:
+   `row.filename = row.original_filename; row.type = row.document_type;`. Both aliases live ALONGSIDE
+   the original columns — no column is removed, renamed, or deleted. LoadDetailView.tsx:1125-1135 then
+   reads `doc.filename` and `doc.type` and renders readable text instead of undefined. This is the
+   single production-code relaxation this sprint; it is tested by R-P2-12 (unit) and R-P2-13 (e2e).
 
  Acceptance criteria:
  - R-P2-01 [unit]: seedSalesDemoLoads inserts exactly 1 row into customers with id 'SALES-DEMO-CUST-001'
@@ -555,15 +626,42 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  - R-P2-07 [e2e]: Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts the visible DOM contains
    'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds.
    Clicks Documents button and asserts at least 3 document cards (container selector) are visible.
-   Spec does NOT assert on doc.filename or doc.type text content.
  - R-P2-08 [unit]: grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx,
    components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs
-   sprint-end shows zero diff (snapshot test on file SHA256 for each file).
+   sprint-end shows zero diff (snapshot test on file SHA256 for each file). NOTE:
+   server/repositories/document.repository.ts is DELIBERATELY EXCLUDED from this grep — the mapping
+   fix lives in that file (R-P2-12).
+ - R-P2-09 [unit]: three real binary artifact fixtures exist at
+   server/scripts/sales-demo-fixtures/loads/artifacts/{rate-con,bol,lumper-receipt}.pdf; each file is
+   at least 1024 bytes AND the first 4 bytes of each file equal `%PDF` (valid PDF magic number).
+   Assert via fs.statSync + fs.readFileSync on the raw bytes.
+ - R-P2-10 [unit]: seedSalesDemoLoads copies the 3 fixtures into the live upload directory at
+   `${UPLOAD_DIR}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf` where UPLOAD_DIR
+   defaults to './uploads'. After the seed runs, the 3 destination files exist AND their sizes
+   match the fixture source sizes. Assert via fs.stat post-seed. Second invocation is a no-op
+   (idempotent copy).
+ - R-P2-11 [integration]: GET /api/documents/:id/download for each of the 3 seeded documents on
+   LP-DEMO-RC-001 returns status 200, Content-Type 'application/pdf', Content-Length > 1024, and
+   the first 4 bytes of the response body equal `%PDF`. Uses the unmodified production download
+   handler at server/routes/documents.ts:297.
+ - R-P2-12 [unit]: the document repository accessor that returns rows to the GET /api/documents and
+   GET /api/documents/:id handlers aliases original_filename → filename and document_type → type on
+   every returned row. Test: insert a document row with original_filename='rate-con.pdf' and
+   document_type='rate_confirmation', call the accessor, assert result.filename === 'rate-con.pdf'
+   AND result.type === 'rate_confirmation' AND the original columns are still present. Diff on
+   document.repository.ts is ≤ 10 added lines and 0 removed lines (assert via git diff --numstat).
+ - R-P2-13 [e2e]: extends R-P2-07. After the Documents panel opens with ≥ 3 cards, assert each
+   card's visible text contains a non-empty filename string (matches /\\w+\\.pdf$/) AND a readable
+   type label ('Rate Confirmation', 'Bill of Lading', or 'Lumper Receipt' — all seeded via the
+   document_type values). The literal string 'undefined' does NOT appear anywhere inside any of
+   the 3 document cards.
 
  Verification command:
  cd server && npx vitest run __tests__/scripts/seed-sales-demo-loads.test.ts
- __tests__/integration/sales-demo-load-readback.test.ts && cd .. && set E2E_SERVER_RUNNING=1&& npx playwright
- test e2e/sales-demo/01-document-automation.spec.ts
+ __tests__/integration/sales-demo-load-readback.test.ts
+ __tests__/integration/sales-demo-document-download.test.ts
+ __tests__/repositories/document.repository.mapping.test.ts
+ && cd .. && set E2E_SERVER_RUNNING=1&& npx playwright test e2e/sales-demo/01-document-automation.spec.ts
 
  ▎ The set VAR=val&& (Windows cmd) syntax is portable. The runbook documents the PowerShell equivalent.
 
@@ -616,7 +714,7 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  ────────────────────────────────────────
  Path: server/__tests__/scripts/seed-sales-demo-ifta.test.ts
  Purpose: Asserts via SQL capture: 12 ifta_trip_evidence INSERTs all with load_id 'LP-DEMO-RC-001';
-   8 fuel_ledger INSERTs all with tenant_id 'SALES-DEMO-001'; 6 mileage_jurisdiction INSERTs;
+   8 fuel_ledger INSERTs all with company_id 'SALES-DEMO-001'; 6 mileage_jurisdiction INSERTs;
    ZERO INSERT INTO equipment statements; idempotent on second run.
  ────────────────────────────────────────
  Path: server/__tests__/integration/sales-demo-ifta-summary.test.ts
@@ -624,7 +722,10 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
    and asserts rows.length >= 6, totalMiles >= 20000, netTaxDue > 0. Uses the unmodified production route.
  ────────────────────────────────────────
  Path: e2e/sales-demo/02-ifta-walkthrough.spec.ts
- Purpose: Playwright spec, all text selectors against the real UI. Sequence:
+ Purpose: Playwright spec, all text selectors against the real UI. Continuity narrative for sales:
+   *"This is the same `LP-DEMO-RC-001` trip you just opened — Houston TX → Chicago IL, 42,500 lbs of Frozen
+   Beef. Now it's filing its Q4 2025 fuel tax across 6 jurisdictions, and we're about to audit-lock it."*
+ Sequence:
    [data-testid="nav-accounting"] click → button:has-text("Fuel & IFTA") click →
    button:has-text("Q4") click → select[aria-label="Select year"] choose '2025' → wait for the
    delivered-load card whose visible text contains 'LP-DEMO-RC-001' → click the card → wait for
@@ -683,6 +784,10 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
    1-2 tiers (15+ rate rows), ≥1 constraint set per party with 1-2 rules (15+ rules), ≥1 catalog link per
  party
     (12+ links). All values realistic for trucking.
+   **CONTINUITY REQUIREMENT**: one of the two brokers MUST reuse the same party identity the salesperson
+   already saw on the hero load in Phase 2: `SALES-DEMO-CUST-001` / name `ACME Logistics LLC`. This broker
+   gets the full enrichment treatment (≥1 contact, ≥1 document, ≥1 rate row with tiers, ≥1 constraint set,
+   ≥1 catalog link). The Playwright spec explicitly drills into ACME Logistics LLC — not a random broker.
  ────────────────────────────────────────
  Path: server/__tests__/scripts/seed-sales-demo-parties.test.ts
  Purpose: Asserts row counts via SQL capture; asserts type breakdown (3 Customer, 2 Broker, ...); idempotent;
@@ -696,16 +801,19 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  Path: e2e/sales-demo/03-network-portal-walkthrough.spec.ts
  Purpose: Playwright spec. [data-testid="nav-network"] click → wait for NetworkPortal shell → assert ≥12 party
 
-   rows visible → click first party row that has type Broker → wait for the 6 tabs (IDENTITY, CONTACTS,
-   CATALOG, RATES, CONSTRAINTS, DOCS) → for each tab in turn click and assert at least one row of content
-   visible.
+   rows visible → click the party row whose name text contains `ACME Logistics LLC` (NOT the first broker
+   in the list — the continuity requirement: buyer must recognize the same broker from the hero load) →
+   wait for the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) → for each tab in turn click
+   and assert at least one row of content visible.
 
  Files (existing) extended: server/scripts/seed-sales-demo.ts — append seedSalesDemoParties(conn) call after
  seedSalesDemoIfta.
 
  Acceptance criteria:
  - R-P4-01 [unit]: seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2
- contractors (assert by type breakdown via SQL capture).
+ contractors AND one of the 2 brokers is `SALES-DEMO-CUST-001` / `ACME Logistics LLC` (the same broker
+ attached to the Phase 2 hero load — continuity object) — assert by type breakdown AND exact-id lookup via
+ SQL capture.
  - R-P4-02 [unit]: every party has at least 1 contact, 1 document, 1 rate row, 1 constraint set, 1 catalog
  link (assert via fixture validation + SQL capture counts).
  - R-P4-03 [unit]: seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores,
@@ -714,8 +822,10 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  server/routes/clients.ts (live-functions-only via direct SQL).
  - R-P4-05 [integration]: GET /api/parties returns exactly 12 parties for the sales-demo tenant with the
  correct type breakdown and the first broker has all 5 enrichment arrays non-empty.
- - R-P4-06 [e2e]: Playwright walkthrough opens NetworkPortal, drills into a broker, clicks each of the 6 tabs
- (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS), and asserts content is visible in each.
+ - R-P4-06 [e2e]: Playwright walkthrough opens NetworkPortal, locates the row with text `ACME Logistics LLC`
+ (continuity-object assertion — must match the Phase 2 hero broker, not any broker), clicks it, then clicks
+ each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible
+ in each.
  - R-P4-07 [unit]: grep components/NetworkPortal.tsx, services/networkService.ts, server/routes/clients.ts
  HEAD vs sprint-end shows zero diff.
 
@@ -805,10 +915,18 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
    resetSalesDemo returning a sentinel summary.
  ────────────────────────────────────────
  Path: docs/sales-demo-runbook.md
- Purpose: Salesperson runbook. H2 sections required by tests: ## Two Chrome profiles, ## Setting demo nav mode
-
-   (.env.local), ## Resetting between demos, ## Recovery from accidental URL, ## Firebase user provisioning
-   prerequisite, ## Live Gemini disclaimer.
+ Purpose: Salesperson runbook. 8 H2 sections required by tests:
+   ## Two Chrome profiles
+   ## Setting demo nav mode (.env.local)
+   ## Resetting between demos
+   ## Recovery from accidental URL
+   ## Firebase user provisioning prerequisite
+   ## Live Gemini disclaimer
+   ## Certified Core demo script (6 steps)
+   ## Wow Appendix — Optional live driver upload
+   The last two sections mirror the narrative + table from PLAN.md so the salesperson has a single
+   document to read on stage. Each hero step in the Certified Core section includes its
+   "Business outcome" line verbatim.
  ────────────────────────────────────────
  Path: server/__tests__/docs/sales-demo-runbook.test.ts
  Purpose: Doc-as-spec test for the 6 H2 sections.
@@ -841,7 +959,11 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  non-SALES-DEMO-001 tenant, 403 when ALLOW_DEMO_RESET env unset.
  - R-P6-06 [integration]: POST /api/demo/reset returns 200 with ok: true when all 4 gates pass and the inner
  resetSalesDemo (mocked to return a sentinel) runs.
- - R-P6-07 [unit]: docs/sales-demo-runbook.md contains the 6 required H2 sections.
+ - R-P6-07 [unit]: docs/sales-demo-runbook.md contains all 8 required H2 sections: "## Two Chrome
+ profiles", "## Setting demo nav mode (.env.local)", "## Resetting between demos", "## Recovery from
+ accidental URL", "## Firebase user provisioning prerequisite", "## Live Gemini disclaimer",
+ "## Certified Core demo script (6 steps)", "## Wow Appendix — Optional live driver upload". Assert
+ via regex match on each H2 line.
  - R-P6-08 [unit]: App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only
  minimal-touch guarantee — assert via git diff --numstat App.tsx).
  - R-P6-09 [unit]: server/index.ts diff vs HEAD is exactly 2 added lines (the import + the conditional mount).
@@ -1086,17 +1208,23 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  - S-001: R-P1-01..12 (12) — added R-P1-09 (explicit DELETE list), R-P1-10 (idempotent reset) as
    correction #1; added R-P1-11 (.env.example.sales-demo) and R-P1-12 (single .env.local contract) as
    correction #3 (env source unification)
- - S-002: R-P2-01..08 (8) — split prior R-P2-01 into customers + loads INSERTs (now R-P2-01 + R-P2-02);
-   added R-P2-08 (snapshot grep covering LoadDetailView, brokerService) as part of correction #2/#3
+ - S-002: R-P2-01..13 (13) — split prior R-P2-01 into customers + loads INSERTs (R-P2-01 + R-P2-02);
+   added R-P2-08 (snapshot grep covering LoadDetailView, brokerService) as part of correction #2/#3;
+   added R-P2-09..11 (real PDF artifacts: fixtures-on-disk, seed-copies-to-upload-dir, live download
+   endpoint returns real binary) and R-P2-12..13 (canonical document mapping fix: repository aliases
+   original_filename→filename and document_type→type, e2e asserts no 'undefined' in doc cards) as
+   part of the wow-upgrade pass
  - S-003: R-P3-01..07 (7) — added R-P3-02 (load_id linkage assert), R-P3-03 (zero equipment INSERTs),
    renumbered remaining markers as part of correction #4. All accounting/IFTA SQL uses company_id
    (verified against migration 038); fuel_ledger uses entry_date (verified against migration 011).
- - S-004: R-P4-01..07 (7)
+ - S-004: R-P4-01..07 (7) — R-P4-01 + R-P4-06 strengthened to require ACME Logistics LLC as one of
+   the 2 seeded brokers (continuity object — same broker as the Phase 2 hero load)
  - S-005: R-P5-01..05 (5)
- - S-006: R-P6-01..09 (9)
+ - S-006: R-P6-01..09 (9) — R-P6-07 expanded from 6 to 8 required H2 sections in the runbook
+   (adds Certified Core demo script + Wow Appendix)
  - S-007: R-P7-01..07 (7)
- - Total: 55 R-markers (was 48 in original plan, then 53 after first correction pass, now 55 after
-   second correction pass adding the .env.local contract markers)
+ - Total: 60 R-markers (was 48 in original plan → 53 → 55 → 60 after the wow-upgrade pass added
+   5 new Phase 2 markers for real artifacts + canonical doc mapping)
 
  ---
  Ralph alignment checklist (post plan-mode-exit, executed in order)
@@ -1108,7 +1236,7 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  3. Compute new plan_hash: python -c "import hashlib;
  print(hashlib.sha256(open('.claude/docs/PLAN.md','rb').read()).hexdigest())" and use the result as the
  plan_hash field in prd.json.
- 4. Write the new .claude/prd.json from the spec block above. 7 stories, 55 R-markers, the dependency
+ 4. Write the new .claude/prd.json from the spec block above. 7 stories, 60 R-markers, the dependency
    graph as listed.
  5. Reset .claude/.workflow-state.json ralph section: clear feature_branch (empty string so ralph creates
  ralph/bulletproof-sales-demo on first dispatch), clear current_story_id, set current_attempt: 0, clear
@@ -1116,7 +1244,7 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  prior_failure_summary, clear checkpoint_hash, clear cumulative_drift_warnings. Leave max_attempts: 4.
  6. Validate plan-vs-prd alignment with these greps:
    - grep -c "R-P[1-7]-[0-9]\{2\}" .claude/docs/PLAN.md should equal grep -c '"id": "R-P' .claude/prd.json
-   should equal 55.
+   should equal 60.
    - For every R-marker in PLAN.md, the same id appears in prd.json (use comm against sorted lists).
    - For every scope file in prd.json, the path appears in PLAN.md (paste-in check).
    - The plan_hash in prd.json equals sha256(.claude/docs/PLAN.md).
@@ -1143,7 +1271,10 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  server/scripts/seed-demo.ts components/Scanner.tsx components/DriverMobileHome.tsx components/IFTAManager.tsx
   components/IFTAEvidenceReview.tsx components/AccountingPortal.tsx components/NetworkPortal.tsx
  services/networkService.ts components/SafetyView.tsx components/GlobalMapViewEnhanced.tsx
- components/LoadBoardEnhanced.tsx shows zero diff — proves live-functions-only.
+ components/LoadBoardEnhanced.tsx shows zero diff — proves live-functions-only. NOTE:
+ server/repositories/document.repository.ts is DELIBERATELY EXCLUDED from this zero-diff list — it is
+ the single production-code relaxation this sprint (≤ 10-line mapping that aliases original_filename →
+ filename and document_type → type; see Phase 2 R-P2-12). No other production file is touched.
  6. STRETCH GATE (not blocking, runs nightly or pre-release): the full prior 6,432-test regression suite
    still passes (cd server && npx vitest run and npx vitest run from root). This is a stretch gate
    because (a) it covers the entire SaaS scope, far broader than this sprint's blast radius, and (b) the
@@ -1152,31 +1283,107 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
    to this sprint and gets a separate bug ticket — it does NOT block sprint sign-off. The mandatory blocking
    gates are steps 1-5 above plus the full Playwright certify run in step 4.
 
- The 6-step salesperson script then walks:
+ ---
+ Certified Core Demo Script — 6 steps (lead with the pain, not the dashboard)
 
- ┌──────┬─────────┬──────────────────────────────────────────────────────────────────────────┬────────────┐
- │ Step │ Window  │                                  Action                                  │ Validates  │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │ 1    │ Admin   │ Click Reset Demo in nav → toast Demo reset complete                      │ Phase 1 +  │
- │      │ Chrome  │                                                                          │ Phase 6    │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │ 2    │ Admin   │ nav-loads → row LP-DEMO-RC-001 → open it → narrate the seeded broker /   │ Phase 2    │
- │      │ Chrome  │ commodity / weight / extracted fields                                    │            │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │      │ Admin   │ nav-accounting → Fuel & IFTA tab → Q4 → 2025 → click LP-DEMO-RC-001 card │            │
- │ 3    │ Chrome  │  → wait for jurisdiction split → check attest → Lock Trip for Audit →    │ Phase 3    │
- │      │         │ success toast                                                            │            │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │      │ Admin   │ nav-network → click a Broker → walk all 6 tabs                           │            │
- │ 4    │ Chrome  │ (IDENTITY/CONTACTS/CATALOG/RATES/CONSTRAINTS/DOCS) → each tab shows      │ Phase 4    │
- │      │         │ seeded data                                                              │            │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │ 5    │ Admin   │ Confirm Telematics and Company Settings nav items are not visible        │ Phase 6    │
- │      │ Chrome  │ (allowlist works)                                                        │            │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────────────┼────────────┤
- │ 6    │ Admin   │ At end of demo, click Reset Demo again → confirm state is identical the  │ Phase 1 +  │
- │      │ Chrome  │ next time                                                                │ Phase 6    │
- └──────┴─────────┴──────────────────────────────────────────────────────────────────────────┴────────────┘
+ Narrative opening (read aloud before clicking anything):
+ *"Your driver just sent paperwork from the cab. Watch what happens next — the system has already
+ extracted the load details, filed the IFTA evidence, and cross-referenced the broker in your CRM.
+ You never touched a keyboard for this load."*
+
+ The certified core is the **guaranteed path**. Every step below is covered by a Phase 2-6 test that
+ runs as part of `npm run demo:certify:sales`. If any step breaks, `demo:certify:sales` fails and the
+ sprint is not done.
+
+ ┌──────┬─────────┬──────────────────────────────────────────────────────────────────┬───────────┬──────────────────────────────────────────────┐
+ │ Step │ Window  │                              Action                             │ Validates │ Business outcome sales should say out loud   │
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 1    │ Admin   │ Click Reset Demo in nav → toast "Demo reset complete"            │ Phase 1+6 │ "Clean slate — every buyer sees the same    │
+ │      │ Chrome  │                                                                  │           │  outcome on stage."                          │
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 2    │ Admin   │ nav-loads → open LP-DEMO-RC-001 → narrate the seeded broker     │ Phase 2   │ "This load came in from a driver's          │
+ │      │ Chrome  │ (ACME Logistics LLC), commodity (Frozen Beef, 42,500 lbs), rate │           │  paperwork. The AI pulled every field —     │
+ │      │         │ ($3,250), route (Houston → Chicago). Click Documents → open     │           │  zero manual entry. The documents are       │
+ │      │         │ Rate Con card → click Download → real PDF opens.                │           │  downloadable right now."                    │
+ │      │         │                                                                  │           │  **Outcome: manual entry avoided**           │
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 3    │ Admin   │ nav-accounting → Fuel & IFTA tab → Q4 → 2025 → click the        │ Phase 3   │ "Same trip, different hat. This is now your │
+ │      │ Chrome  │ LP-DEMO-RC-001 card → wait for Computed Jurisdiction Split      │           │  Q4 IFTA evidence — 6 jurisdictions, fuel   │
+ │      │         │ (auto-runs) → check attest → Lock Trip for Audit → success      │           │  purchases, mileage split — and it's        │
+ │      │         │ toast. Say: "This is the same LP-DEMO-RC-001 trip from step 2". │           │  audit-locked in one click."                 │
+ │      │         │                                                                  │           │  **Outcome: multi-state IFTA quarter ready** │
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 4    │ Admin   │ nav-network → locate row `ACME Logistics LLC` (the SAME broker  │ Phase 4   │ "And here is that same ACME Logistics       │
+ │      │ Chrome  │ from step 2) → click it → walk all 6 tabs                        │           │  record in our trucking-aware CRM — one     │
+ │      │         │ (IDENTITY/CONTACTS/CATALOG/RATES/CONSTRAINTS/DOCS) → each tab   │           │  registry across brokers, customers,        │
+ │      │         │ shows seeded data for THIS broker.                               │           │  vendors, facilities, and contractors."     │
+ │      │         │                                                                  │           │  **Outcome: one registry across broker /    │
+ │      │         │                                                                  │           │  customer / vendor / facility / contractor**│
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 5    │ Admin   │ Walk the nav bar and confirm Telematics, Company Settings,      │ Phase 6   │ "Demo mode hides modules that are not       │
+ │      │ Chrome  │ Issues & Alerts, Dashboard, Quotes, and all operations-hub-     │           │  certified for today — the customer only    │
+ │      │         │ adjacent items are not present (allowlist works).                │           │  sees what we have proved."                  │
+ ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
+ │ 6    │ Admin   │ At end of demo, click Reset Demo again → refresh → confirm the  │ Phase 1+6 │ "Reset is one click and idempotent — the    │
+ │      │ Chrome  │ exact same state is ready for the next buyer.                    │           │  next buyer sees the exact same thing."     │
+ └──────┴─────────┴──────────────────────────────────────────────────────────────────┴───────────┴──────────────────────────────────────────────┘
+
+ **Continuity rule for sales**: step 2's broker, step 3's trip, and step 4's CRM record MUST all
+ refer to the same object. If step 4 opens a different broker than `ACME Logistics LLC`, the demo
+ has regressed — file an issue before running it again. The Phase 4 Playwright spec (R-P4-06)
+ enforces this programmatically by drilling into ACME by name.
+
+ ---
+ Wow Appendix — Optional live driver upload (NOT certified)
+
+ The certified core above always works. The wow appendix is a **second, optional path** that lets
+ sales do a real live upload in front of the buyer for maximum impact. It uses live Gemini extraction
+ so it has real model variability: if Gemini is slow, returns partial data, or rate-limits, the
+ fallback is the backup 20-30 second screen recording below. Do NOT run this path unless Gemini
+ has been pre-flight-tested in the last hour.
+
+ Setup (do BEFORE the buyer arrives):
+ 1. Open a second Chrome profile (Menu → Add profile → "DisbatchMe Driver").
+ 2. In that profile, log in as `SALES_DEMO_DRIVER_FIREBASE_UID`. Leave the tab parked on driver mobile
+    home (App.tsx routes the driver role to DriverMobileHome on line ~761).
+ 3. Keep a real PDF of a rate confirmation or BOL on your laptop at `%USERPROFILE%\sales-demo-upload.pdf`.
+ 4. Alt-Tab between the admin Chrome profile (for the certified core) and the driver Chrome profile
+    (for the appendix). The buyer sees two real windows, not a tabbed fake.
+
+ Execution (1-2 minutes, after step 4 of the certified core):
+ 1. Switch to the driver Chrome profile.
+ 2. Open the Scanner (DriverMobileHome → Scan Document button).
+ 3. Upload `sales-demo-upload.pdf` — this hits POST /api/ai/extract-load live.
+ 4. Wait for extraction (≤ 10 seconds typical). Narrate: *"The driver just did one tap. The AI is
+    extracting commodity, weight, facilities, and rate from the raw document."*
+ 5. When extraction returns, a new load appears in the driver's load list AND — switch to admin
+    Chrome — in the admin's load board. Narrate: *"One tap. Zero manual entry. Dispatch already
+    sees it."*
+ 6. Optional: open the new load's Documents panel to show the uploaded PDF is attached.
+
+ Failure recovery: if Gemini takes > 15 seconds OR returns obvious garbage, press Alt-Tab back to
+ admin Chrome and say: *"Gemini is having a moment — let me show you what it looks like when it
+ works."* Then play `docs/sales-demo-backup-assets/04-wow-appendix-live-upload.mp4` (see Backup Assets
+ below) on the admin screen. Do not apologize. Do not open the terminal.
+
+ ---
+ Backup Assets
+
+ Sales must keep one screenshot AND one 20-30 second screen recording per hero flow for fallback.
+ These are NOT committed as code artifacts — they are captured manually by sales after running
+ the certified core once. Reserve directory: `docs/sales-demo-backup-assets/` (gitignored).
+
+ | File                                       | Captures                                         |
+ | ------------------------------------------ | ------------------------------------------------- |
+ | 01-load-detail-seeded.png                  | Step 2: LP-DEMO-RC-001 load detail panel         |
+ | 01-load-detail-documents.png               | Step 2: documents panel with 3 labeled cards     |
+ | 02-ifta-jurisdiction-split.png             | Step 3: IFTAEvidenceReview computed split        |
+ | 02-ifta-audit-locked.png                   | Step 3: post-audit-lock success state            |
+ | 03-network-acme-tabs.png                   | Step 4: NetworkPortal showing ACME's 6 tabs      |
+ | 04-wow-appendix-live-upload.mp4 (20-30s)   | Driver mobile → scan → load appears in admin    |
+
+ If any backup asset file is missing when sales starts the demo, do NOT run the wow appendix.
+ The certified core still works without these assets, but the appendix must have the video fallback.
 
  ---
  Risks & mitigations (refreshed)
@@ -1252,10 +1459,27 @@ Bulletproof Sales Demo — CORRECTED Plan (live functions only)
  salesperson to file an issue if they hit one on stage.
 
  ---
+ Positioning (how sales should frame the product on stage)
+
+ These three lines are the pitch the demo is engineered to support. Every hero step below must feel
+ like evidence for one of these claims:
+
+ 1. **"Your drivers send paperwork once. The system pulls the load details out for them."**
+    (Evidence: step 2 of certified core + wow appendix)
+ 2. **"That same trip becomes compliance evidence instead of another back-office task."**
+    (Evidence: step 3 of certified core — same LP-DEMO-RC-001 becomes Q4 IFTA audit)
+ 3. **"And all of it lives inside one trucking-aware CRM/operations system, even if trucking is only
+    one part of the business."**
+    (Evidence: step 4 of certified core — same ACME Logistics LLC in NetworkPortal)
+
+ The buyer is not asking you to list features. They are asking whether your product removes work
+ they currently do manually. These three statements are the answer.
+
+ ---
  Definition of Done
 
  The sprint is complete when:
- - All 55 R-markers are passed=true in .claude/prd.json
+ - All 60 R-markers are passed=true in .claude/prd.json
  - npm run demo:certify:sales exits 0 against a fresh npm run demo:reset:sales
  - The live-functions-only diff check (Verification step 5 above) shows zero unrelated source edits
  - The salesperson 6-step script completes in under 10 minutes with zero terminal access
