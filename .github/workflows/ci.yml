@@ -258,7 +258,7 @@ jobs:
         run: |
           # Start server in background
           cd server
-          npx tsx index.ts &
+          npx ts-node index.ts &
           SERVER_PID=$!
 
           # Wait for server to be ready (up to 30 seconds)
