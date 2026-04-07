@@ -253,8 +253,7 @@ jobs:
           DB_PASSWORD: test
           DB_NAME: loadpilot_test
           NODE_ENV: test
-          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_PROJECT_ID: ci-smoke-test
         run: |
           # Start server in background
           cd server
