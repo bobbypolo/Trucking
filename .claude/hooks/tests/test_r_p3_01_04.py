@@ -132,13 +132,13 @@ def test_loads_route_derives_companyid_from_auth():
     loads.ts route handler derives companyId from req.user.tenantId, not URL/body.
     """
     source = _read_file(ROUTES_DIR / "loads.ts")
-    # Must use req.user.tenantId for companyId
-    assert "req.user.tenantId" in source, (
+    # Must use auth-derived tenantId for companyId
+    assert re.search(r"req\.user!?\.tenantId", source), (
         "loads.ts must derive companyId from req.user.tenantId"
     )
     # Must NOT use req.params.companyId for main queries
     # (the file may have legacy endpoints that use params, but primary endpoints use auth)
-    auth_derivations = len(re.findall(r"req\.user\.tenantId", source))
+    auth_derivations = len(re.findall(r"req\.user!?\.tenantId", source))
     assert auth_derivations >= 3, (
         f"loads.ts should derive companyId from auth at least 3 times, found {auth_derivations}"
     )
@@ -149,7 +149,7 @@ def test_equipment_route_derives_companyid_from_auth():
     equipment.ts has at least one auth-derived companyId endpoint.
     """
     source = _read_file(ROUTES_DIR / "equipment.ts")
-    assert "req.user.tenantId" in source, (
+    assert re.search(r"req\.user!?\.tenantId", source), (
         "equipment.ts must derive companyId from req.user.tenantId"
     )
 

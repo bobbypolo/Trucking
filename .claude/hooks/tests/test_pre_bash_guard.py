@@ -17,4 +17,3 @@ def test_check_command_unwraps_shell_wrapper():
     allowed, reason = pre_bash_guard.check_command("bash -c 'rm -rf /'")
     assert allowed is False
     assert reason
-

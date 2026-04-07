@@ -62,4 +62,3 @@ def test_workflow_state_round_trip_with_defaults(tmp_path, monkeypatch):
     assert json.loads(state_path.read_text(encoding="utf-8"))["needs_verify"] == (
         "Modified: app.py"
     )
-
