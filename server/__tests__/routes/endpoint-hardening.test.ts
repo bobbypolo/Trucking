@@ -94,12 +94,6 @@ vi.mock("../../middleware/requireTier", () => ({
       next(),
 }));
 
-vi.mock("../../middleware/validate", () => ({
-  validateBody:
-    (_schema: unknown) => (_req: unknown, _res: unknown, next: Function) =>
-      next(),
-}));
-
 vi.mock("../../schemas/settlements", () => ({
   createSettlementSchema: {},
 }));
@@ -116,6 +110,7 @@ import express from "express";
 import request from "supertest";
 import accountingRouter from "../../routes/accounting";
 import aiRouter from "../../routes/ai";
+import { errorHandler } from "../../middleware/errorHandler";
 import { DEFAULT_SQL_PRINCIPAL } from "../helpers/mock-sql-auth";
 
 const TEST_TENANT_ID = "tenant-hardening-test";
@@ -132,6 +127,7 @@ function buildAccountingApp() {
   const app = express();
   app.use(express.json({ limit: "20mb" }));
   app.use(accountingRouter);
+  app.use(errorHandler);
   return app;
 }
 
@@ -139,6 +135,7 @@ function buildAiApp(jsonLimit = "5mb") {
   const app = express();
   app.use(express.json({ limit: jsonLimit }));
   app.use(aiRouter);
+  app.use(errorHandler);
   return app;
 }
 
@@ -163,7 +160,9 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
       .send({ pings: "not-an-array", mode: "GPS" });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/pings must be an array/i);
+    expect(res.body.error_code).toBe("VALIDATION_001");
+    expect(res.body.message).toBe("Validation failed");
+    expect(JSON.stringify(res.body.details)).toMatch(/array/i);
   });
 
   it("returns 400 when pings has exactly 10,001 items (R-S29-04 boundary)", async () => {
@@ -178,7 +177,8 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
       .send({ pings, mode: "GPS" });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/10,000/);
+    expect(res.body.error_code).toBe("VALIDATION_001");
+    expect(JSON.stringify(res.body.details)).toMatch(/10,?000|max|too big/i);
   });
 
   it("returns 400 for pings null (non-array variant)", async () => {
@@ -188,7 +188,9 @@ describe("IFTA /api/accounting/ifta-analyze — pings bounds check (R-S29-01)", 
       .send({ pings: null, mode: "GPS" });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toMatch(/pings must be an array/i);
+    expect(res.body.error_code).toBe("VALIDATION_001");
+    expect(res.body.message).toBe("Validation failed");
+    expect(JSON.stringify(res.body.details)).toMatch(/array/i);
   });
 
   it("accepts exactly 10,000 pings (at-limit boundary — R-S29-04)", async () => {

@@ -1,4 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+const { mockReverseGeocodeState } = vi.hoisted(() => ({
+  mockReverseGeocodeState: vi.fn(),
+}));
+
+vi.mock("../../services/geocoding.service", () => ({
+  reverseGeocodeState: mockReverseGeocodeState,
+}));
 import {
   isPointInPolygon,
   detectState,
@@ -12,6 +20,20 @@ import {
  */
 
 describe("geoUtils.ts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    mockReverseGeocodeState.mockImplementation(
+      async (lat: number, lng: number) => {
+        if (lat === 32.7767 && lng === -96.797) return "TX";
+        if (lat === 29.7604 && lng === -95.3698) return "TX";
+        if (lat === 35.4676 && lng === -97.5164) return "OK";
+        if (lat === 36.3 && lng === -100.0) return "OK";
+        return null;
+      },
+    );
+  });
+
   describe("calculateDistance (Haversine)", () => {
     it("returns 0 for same point", () => {
       const dist = calculateDistance(32.7767, -96.797, 32.7767, -96.797);
@@ -160,44 +182,44 @@ describe("geoUtils.ts", () => {
   });
 
   describe("detectState", () => {
-    it("detects Texas for point in Dallas", () => {
+    it("detects Texas for point in Dallas", async () => {
       // Dallas: lat 32.7767, lng -96.797
-      const state = detectState(32.7767, -96.797);
+      const state = await detectState(32.7767, -96.797);
       expect(state).toBe("TX");
     });
 
-    it("detects Texas for point in Houston", () => {
+    it("detects Texas for point in Houston", async () => {
       // Houston: lat 29.7604, lng -95.3698
-      const state = detectState(29.7604, -95.3698);
+      const state = await detectState(29.7604, -95.3698);
       expect(state).toBe("TX");
     });
 
-    it("detects Oklahoma for point in Oklahoma City", () => {
+    it("detects Oklahoma for point in Oklahoma City", async () => {
       // OKC: lat 35.4676, lng -97.5164
-      const state = detectState(35.4676, -97.5164);
+      const state = await detectState(35.4676, -97.5164);
       expect(state).toBe("OK");
     });
 
-    it("returns UNK for point outside all defined states", () => {
+    it("returns null for point outside all defined states", async () => {
       // New York City - not in TX or OK polygons
-      const state = detectState(40.7128, -74.006);
-      expect(state).toBe("UNK");
+      const state = await detectState(40.7128, -74.006);
+      expect(state).toBeNull();
     });
 
-    it("returns UNK for point in the ocean", () => {
-      const state = detectState(0, 0);
-      expect(state).toBe("UNK");
+    it("returns null for point in the ocean", async () => {
+      const state = await detectState(0, 0);
+      expect(state).toBeNull();
     });
 
-    it("returns UNK for negative lat/lng outside any state", () => {
-      const state = detectState(-45, -170);
-      expect(state).toBe("UNK");
+    it("returns null for negative lat/lng outside any state", async () => {
+      const state = await detectState(-45, -170);
+      expect(state).toBeNull();
     });
 
-    it("detects correctly at state boundary area between TX and OK", () => {
+    it("detects correctly at state boundary area between TX and OK", async () => {
       // Point on border area around lat 36.5, which is near TX/OK boundary
       // At the boundary, the specific lat/lng determines which polygon contains the point
-      const state = detectState(36.3, -100.0);
+      const state = await detectState(36.3, -100.0);
       expect(["TX", "OK"]).toContain(state);
     });
   });

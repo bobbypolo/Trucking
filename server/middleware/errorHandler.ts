@@ -23,6 +23,31 @@ export function errorHandler(
     return;
   }
 
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    ("type" in err || "status" in err || "statusCode" in err)
+  ) {
+    const candidate = err as {
+      type?: string;
+      status?: number;
+      statusCode?: number;
+    };
+
+    if (
+      candidate.type === "entity.too.large" ||
+      candidate.status === 413 ||
+      candidate.statusCode === 413
+    ) {
+      const log = createChildLogger({
+        route: `${_req.method} ${_req.path}`,
+      });
+      log.warn({ err }, "Request body exceeded configured size limit");
+      res.status(413).json({ error: "Payload too large" });
+      return;
+    }
+  }
+
   let appError: AppError;
 
   if (err instanceof AppError) {

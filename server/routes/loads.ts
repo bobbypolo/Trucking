@@ -486,8 +486,8 @@ router.patch(
       // Pipeline: increment broker load count + export to BigQuery when load is settled
       if (status === "Settled" || status === "Completed") {
         const [rows] = await pool.query<RowDataPacket[]>(
-          "SELECT customer_id FROM loads WHERE id = ?",
-          [loadId],
+          "SELECT customer_id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+          [loadId, companyId],
         );
         if (rows[0]?.customer_id) {
           await recordLoadCompletion(
@@ -775,6 +775,7 @@ router.post("/api/loads/:id/bol-scan", requireAuth, requireTenant, async (req: a
       discrepancyResult = await compareWeights(
         pool,
         loadId,
+        companyId,
         quoted_weight ?? 0,
         scanned_weight,
         scanned_commodity ?? "",

@@ -11,8 +11,34 @@ dotenv.config();
 // 2. Click "Generate new private key"
 // 3. Save the JSON file as 'server/serviceAccount.json' (DO NOT COMMIT THIS FILE)
 
+type ServiceAccountCandidate = {
+    project_id?: string;
+    projectId?: string;
+    client_email?: string;
+    clientEmail?: string;
+    private_key?: string;
+    privateKey?: string;
+};
+
 let authReady = false;
-let serviceAccount: admin.ServiceAccount | null | undefined;
+let serviceAccount: admin.ServiceAccount | null = null;
+
+function normalizeServiceAccount(candidate: unknown): admin.ServiceAccount | null {
+    if (!candidate || typeof candidate !== "object") {
+        return null;
+    }
+
+    const raw = candidate as ServiceAccountCandidate;
+    const projectId = raw.projectId ?? raw.project_id;
+    const clientEmail = raw.clientEmail ?? raw.client_email;
+    const privateKey = raw.privateKey ?? raw.private_key;
+
+    if (!projectId || !clientEmail || !privateKey) {
+        return null;
+    }
+
+    return { projectId, clientEmail, privateKey };
+}
 
 function loadInlineServiceAccount(): admin.ServiceAccount | null {
     const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -21,35 +47,27 @@ function loadInlineServiceAccount(): admin.ServiceAccount | null {
     }
 
     try {
-        return JSON.parse(raw);
+        return normalizeServiceAccount(JSON.parse(raw));
     } catch (error) {
         logger.error({ err: error }, "FIREBASE_SERVICE_ACCOUNT is not valid JSON.");
         return null;
     }
 }
 
-function hasCertFields(candidate: any): boolean {
-    return Boolean(
-        candidate?.project_id &&
-        candidate?.client_email &&
-        candidate?.private_key
-    );
-}
-
 serviceAccount = loadInlineServiceAccount();
 try {
     if (!serviceAccount) {
-        serviceAccount = require('./serviceAccount.json');
+        serviceAccount = normalizeServiceAccount(require('./serviceAccount.json'));
     }
 } catch (_e) {
     logger.warn('Firebase Service Account not found at server/serviceAccount.json. Falling back to environment/application credentials if available.');
 }
 
 try {
-    if (hasCertFields(serviceAccount)) {
+    if (serviceAccount) {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
-            projectId: serviceAccount.project_id,
+            projectId: serviceAccount.projectId,
         });
         authReady = true;
         logger.info('Firebase Admin initialized successfully from service account credentials.');

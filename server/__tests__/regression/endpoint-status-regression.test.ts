@@ -201,6 +201,12 @@ vi.mock("../../schemas/accounting", () => ({
   createDocumentVaultSchema: {},
   batchImportSchema: {},
   batchUpdateSettlementsSchema: {},
+  fuelReceiptSchema: {},
+  iftaAnalyzeSchema: {},
+  iftaAuditLockSchema: {},
+  mileageSchema: {},
+  iftaPostSchema: {},
+  adjustmentSchema: {},
 }));
 
 vi.mock("../../schemas/parties", () => ({
