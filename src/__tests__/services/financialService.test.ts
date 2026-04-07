@@ -239,8 +239,9 @@ describe("financialService (api.* helpers)", () => {
       const fetchCall = (globalThis.fetch as any).mock.calls[0];
       expect(fetchCall[1].method).toBe("POST");
       const body = JSON.parse(fetchCall[1].body as string);
-      expect(body).toHaveLength(1);
-      expect(body[0].gallons).toBe(100);
+      expect(body.type).toBe("Fuel");
+      expect(body.data).toHaveLength(1);
+      expect(body.data[0].gallons).toBe(100);
     });
   });
 
