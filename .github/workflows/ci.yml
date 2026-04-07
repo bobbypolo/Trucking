@@ -140,45 +140,48 @@ jobs:
         shell: bash
         run: |
           npx tsx -e "
-          import { scanMigrationFiles } from './lib/migrator.ts';
-          import * as path from 'path';
+          (async () => {
+            const path = require('path');
+            const migrator = (await import('./lib/migrator.ts')).default;
+            const { scanMigrationFiles } = migrator;
 
-          const migrationsDir = path.resolve('migrations');
-          const files = await scanMigrationFiles(migrationsDir);
+            const migrationsDir = path.resolve('migrations');
+            const files = await scanMigrationFiles(migrationsDir);
 
-          let errors = 0;
+            let errors = 0;
 
-          // Check for duplicate filenames
-          const seen = new Set();
-          for (const f of files) {
-            if (seen.has(f.filename)) {
-              console.error('DUPLICATE filename:', f.filename);
-              errors++;
+            // Check for duplicate filenames
+            const seen = new Set();
+            for (const f of files) {
+              if (seen.has(f.filename)) {
+                console.error('DUPLICATE filename:', f.filename);
+                errors++;
+              }
+              seen.add(f.filename);
             }
-            seen.add(f.filename);
-          }
 
-          // Check each migration parses and has UP and DOWN markers
-          for (const f of files) {
-            if (!f.parsed.up && !f.parsed.down) {
-              console.error('MISSING both UP and DOWN markers:', f.filename);
-              errors++;
-            } else if (!f.parsed.up) {
-              console.error('MISSING UP marker:', f.filename);
-              errors++;
-            } else if (!f.parsed.down) {
-              console.warn('WARNING: missing DOWN marker:', f.filename);
+            // Check each migration parses and has UP and DOWN markers
+            for (const f of files) {
+              if (!f.parsed.up && !f.parsed.down) {
+                console.error('MISSING both UP and DOWN markers:', f.filename);
+                errors++;
+              } else if (!f.parsed.up) {
+                console.error('MISSING UP marker:', f.filename);
+                errors++;
+              } else if (!f.parsed.down) {
+                console.warn('WARNING: missing DOWN marker:', f.filename);
+              }
             }
-          }
 
-          console.log('Scanned', files.length, 'migration files');
-          console.log('Errors:', errors);
+            console.log('Scanned', files.length, 'migration files');
+            console.log('Errors:', errors);
 
-          if (errors > 0) {
-            process.exit(1);
-          }
+            if (errors > 0) {
+              process.exit(1);
+            }
 
-          console.log('Migration validation passed');
+            console.log('Migration validation passed');
+          })();
           "
 
   deployment-readiness:
@@ -298,12 +301,9 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
       - name: Install test dependencies
         shell: cmd
-        run: pip install pytest pyyaml
+        run: python -m pip install pytest pyyaml
       - name: Run hook tests
         shell: cmd
         run: python -m pytest .claude/hooks/tests/ -v
