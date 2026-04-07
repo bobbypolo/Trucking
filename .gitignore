@@ -19,6 +19,7 @@ verification-log.jsonl
 .claude/.workflow-state.json
 # Prevent nested .claude dirs from accidental CWD-drift hook runs
 .claude/hooks/.claude/
+server/.claude/
 .mcp.json
 .claude/.file-manifest.json
 .claude/runtime/
@@ -71,6 +72,16 @@ CLAUDE.md
 WORKFLOW.md
 PROJECT_BRIEF.md
 .mcp.json.example
+!/.claude/
+/.claude/*
+!/.claude/hooks/
+/.claude/hooks/*
+!/.claude/hooks/_lib.py
+!/.claude/hooks/_prod_patterns.py
+!/.claude/hooks/_server_lifecycle.py
+!/.claude/hooks/pre_bash_guard.py
+!/.claude/hooks/tests/
+!/.claude/hooks/tests/**
 
 # Test seed fixtures ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â contains dev credentials, never commit
 fixtures/test-users.json
@@ -78,4 +89,3 @@ fixtures/test-users.json
 # Team 1 local validation logs
 team1-frontend.*
 server/team1-backend.*
-

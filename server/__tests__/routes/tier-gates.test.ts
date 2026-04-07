@@ -69,6 +69,15 @@ vi.mock("../../services/gps", () => ({
 
 // ---- Mock logger ----
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -125,6 +134,7 @@ vi.mock("../../services/geocoding.service", () => ({
 // ---- Mock schemas ----
 vi.mock("../../schemas/loads", () => ({
   createLoadSchema: { parse: (d: any) => d },
+  partialUpdateLoadSchema: { parse: (d: any) => d },
   updateLoadStatusSchema: { parse: (d: any) => d },
 }));
 

@@ -36,6 +36,7 @@ execution order is deterministic and correct:
 | 44  | `044_loads_composite_index.sql`           | Composite index on loads table for performance                            |
 | 45  | `045_revoked_tokens.sql`                  | Token revocation table for secure logout (S-007)                          |
 | 46  | `046_invitations.sql`                     | Team invitation flow table (S-008)                                        |
+| 47  | `047_data_pipeline.sql`                   | Data pipeline tables and indexes                                          |
 
 The duplicate prefixes (two `002_*`, two `003_*`, two `038_*`, and two `039_*`) are harmless because:
 
@@ -89,7 +90,7 @@ seeds the supported dev tenants used by Team 1 and Team 3 validation.
 
 ## Adding New Migrations
 
-1. Use the next available 3-digit prefix (currently `047`)
+1. Use the next available 3-digit prefix (currently `048`)
 2. Include both `-- UP` and `-- DOWN` sections
 3. Use `company_id` (not `tenant_id`) for multi-tenant columns
 4. Keep `companies.subscription_tier` present for tier-gated features

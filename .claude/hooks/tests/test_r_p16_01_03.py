@@ -196,11 +196,11 @@ class TestMigrationNumbering:
                 prefixes.append(int(match.group(1)))
 
         highest_prefix = max(prefixes) if prefixes else 0
-        assert highest_prefix == 46, (
-            f"Expected highest migration prefix 046, got {highest_prefix:03d}"
+        assert highest_prefix == 47, (
+            f"Expected highest migration prefix 047, got {highest_prefix:03d}"
         )
-        assert total_files == 50, (
-            f"Expected 50 migration files (with duplicate 002/003/038/039 prefixes), "
+        assert total_files == 51, (
+            f"Expected 51 migration files (with duplicate 002/003/038/039 prefixes), "
             f"got {total_files}"
         )
 

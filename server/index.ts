@@ -51,8 +51,7 @@ import documentsRouter from "./routes/documents";
 import healthRouter from "./routes/health";
 import quickbooksRouter from "./routes/quickbooks";
 import callLogsRouter from "./routes/call-logs";
-import geofenceRouter from "./routes/geofence";
-import stripeRouter from "./routes/stripe";
+import geofenceRouter from "./routes/geofence"; import stripeRouter from "./routes/stripe";
 import invitationsRouter from "./routes/invitations";
 import intelligenceRouter from "./routes/intelligence";
 
@@ -76,7 +75,6 @@ app.use(express.json({ limit: "5mb" }));
 app.use(correlationId);
 app.use(metricsMiddleware);
 app.use(healthRouter); // Unauthenticated, before rate limiter
-
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 500,
@@ -119,7 +117,6 @@ app.use(callLogsRouter);
 app.use(geofenceRouter);
 app.use(invitationsRouter);
 app.use(intelligenceRouter);
-
 app.use(errorHandler);
 
 const server = app.listen(port, () => {

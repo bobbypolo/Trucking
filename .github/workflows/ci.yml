@@ -140,7 +140,7 @@ jobs:
         shell: bash
         run: |
           npx tsx -e "
-          import { scanMigrationFiles } from './lib/migrator.js';
+          import { scanMigrationFiles } from './lib/migrator.ts';
           import * as path from 'path';
 
           const migrationsDir = path.resolve('migrations');
@@ -250,8 +250,8 @@ jobs:
           DB_PASSWORD: test
           DB_NAME: loadpilot_test
           NODE_ENV: test
-          JWT_SECRET: ci-test-secret
-          FIREBASE_SERVICE_ACCOUNT: "{}"
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           # Start server in background
           cd server

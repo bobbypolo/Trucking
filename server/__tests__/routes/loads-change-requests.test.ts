@@ -46,6 +46,15 @@ vi.mock("../../middleware/idempotency", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -56,6 +65,7 @@ vi.mock("../../lib/logger", () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
@@ -75,6 +85,7 @@ vi.mock("../../services/geocoding.service", () => ({
 
 vi.mock("../../schemas/loads", () => ({
   createLoadSchema: { parse: vi.fn((d: any) => d) },
+  partialUpdateLoadSchema: { parse: vi.fn((d: any) => d) },
   updateLoadStatusSchema: { parse: vi.fn((d: any) => d) },
 }));
 
