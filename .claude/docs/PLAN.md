@@ -1,1489 +1,1032 @@
-Bulletproof Sales Demo — CORRECTED Plan (live functions only)
+Pre-Demo Remediation Plan — Fix the 4 Broken Systems Blocking the Bulletproof Sales Demo (Rev 3)
 
- ▎ Status: replaces the existing F:\Trucking\DisbatchMe\.claude\docs\PLAN.md. The current PLAN.md was written
- against assumptions that do not match the live codebase. This plan re-derives every phase from ground truth
- gathered by 3 parallel Explore agents on 2026-04-07.
+ ▎ Status: Rev 3 (2026-04-07). Corrected after a second verification pass run by four parallel Explore
+ agents against the live `ralph/bulletproof-sales-demo` working tree. Rev 3 fixes five drifts that
+ would have caused Rev 2 to fail at Ralph STEP 2:
+ (a) `LoadBoardEnhanced.tsx` is prop-driven and has NO self-loading useEffect to wrap — the actual
+ loads fetch is orchestrated by `App.tsx:292-357 refreshData()` called from the auth-listener useEffect
+ at `App.tsx:257-290`. Phase 2 now adds the polling interval inside App.tsx, not LoadBoardEnhanced;
+ (b) `NetworkPortal.tsx:222-224` useEffect deps are `[companyId]`, not `[]` — the R-P2-05 grep assert
+ is updated to match the real pattern and the polling swap preserves `companyId` as the primary dep;
+ (c) `partialUpdateLoadSchema` at `server/schemas/loads.ts:87-111` whitelists only 7 partial-update
+ fields, so Phase 5's driver-intake approval flow (`PATCH /api/loads/:id { equipment_id }`) would be
+ silently rejected without an additive update to BOTH `partialUpdateLoadSchema` AND the handler's
+ `if (X !== undefined)` block — Phase 4 now covers the update path too;
+ (d) `services/api.ts` does NOT propagate server `details` today — the Phase 1 edit is mandatory not
+ optional;
+ (e) minor file:line drifts (Scanner Props 76-83, POST /api/loads destructure 168-192, INSERT SQL
+ line 209, App.tsx Scanner render line 666, ExceptionConsole disabled lines 563-567) — all aligned.
 
- ▎ Branch (created by ralph at dispatch time): ralph/bulletproof-sales-demo
- ▎ Replaces: F:\Trucking\DisbatchMe\.claude\prd.json (the prior production-readiness sprint, all 10 stories
- already passed=true, backup saved at .claude/prd.production-readiness.completed.json)
+ ▎ Rev 2 carry-over fixes (still valid):
+ (a) loads.equipment_id is not persisted anywhere in the backend, so a frontend equipment selector alone
+ cannot make UI-created loads dispatchable; (b) `components/Scanner.tsx` has no public API to auto-trigger
+ file capture on mount, so the "no edits to Scanner" rule conflicted with the "auto-open file picker"
+ outcome; (c) the driver-intake create contract was under-specified (who generates load_number, what are
+ the minimum fields, is approval status-only or status+equipment); (d) the migration rule wording was
+ internally contradictory ("no DROP COLUMN" vs "DOWN sections must drop what UP added"). All four
+ remain fixed.
+
+ ▎ This file is a SEPARATE file from `.claude/docs/PLAN.md`. It does NOT replace the Bulletproof Sales
+ Demo plan. When the user is ready to execute this sprint, `PLAN.md` will be temporarily swapped with
+ `PLAN-remediation.md` (or renamed), Ralph will run on it, the fixes will merge to `main`, and the
+ original `PLAN.md` (Bulletproof Sales Demo) will be restored for the next sprint.
+
+ ▎ Branch (created by Ralph at dispatch time): `ralph/pre-demo-remediation`
+ ▎ Targeted defects: 4 issues discovered during user's 2026-04-07 walkthrough that block the demo
+ regardless of how well the sales-demo seed pipeline is built.
 
  ---
  Context
 
- The salesperson needs a bulletproof self-led product demo of three hero stories: AI-assisted document
- automation, IFTA compliance, and the cross-entity CRM/registry. The current product is functionally complete
- for these stories but the stock demo seed and live AI model variability make it unsafe to put in front of
- customers. A prior plan (PLAN.md at HEAD) tried to address this with a tenant-scoped extraction shim and
- several other approaches that turned out to be incompatible with both the user's "live functions only, no
- mocks or stubs" constraint AND the actual code (wrong table names, wrong route keys, wrong UI selectors,
- wrong assumptions about exported helpers).
+ The user walked two concurrent sessions (same Firebase user, two devices) through the live app on
+ 2026-04-07 and found four failures. Root causes were pinned to exact file:line locations by parallel
+ Explore agents plus direct verification on 2026-04-07:
 
- This corrected plan re-derives every phase under one prime directive and against verified file paths, line
- numbers, table schemas, and UI selectors gathered from the live source.
+ 1. **Onboarding "Failed to save entity" + multi-user sync gap**
+    - Schema drift: `server/routes/clients.ts:797` INSERTs columns `entity_class` and `vendor_profile`
+      into the `parties` table. Neither column exists in any of the 51 `.sql` files in
+      `server/migrations/` (verified via grep). Table lineage: `032_parties_subsystem.sql` (base),
+      `037_fix_parties_fk.sql` (FK only), `038_parties_tags.sql` (NO-OP placeholder),
+      `040_parties_tags.sql` (tags only). MySQL raises `ER_BAD_FIELD_ERROR`, transaction rolls back.
+    - Error-swallowing: `clients.ts:971` calls `isMissingTableError(error, "parties")`. That helper at
+      lines 25-33 only matches `ER_BAD_FIELD_ERROR` when the error message contains the literal string
+      `"parties"` — MySQL's "Unknown column" message does NOT include the table name. The 503
+      schema-drift path is never taken; the code falls through to `next(error)` → generic 500.
+    - UX: `components/NetworkPortal.tsx:344-346` shows a hardcoded `"Failed to save entity"` toast that
+      hides the real server message.
+    - Multi-user sync gap: `NetworkPortal.tsx:222-224` uses
+      `useEffect(() => { loadData(); }, [companyId])` — refetches only when `companyId` flips,
+      which never happens during a live session. No polling, no listeners, no websockets.
+      Project-wide grep confirms zero realtime data plane anywhere in the app (verified 2026-04-07).
+
+ 2. **Load Board Scan Doc + Phone Order produce undispatchable loads**
+    - Scan Doc button at `LoadSetupModal.tsx:678` calls `handleContinue(false)` which closes the modal
+      and opens `Scanner.tsx` overlay. Scanner.tsx (props at `Scanner.tsx:76-83`) exposes only
+      `onDataExtracted`, `onCancel`, `onDismiss`, and `mode` — no mechanism for auto-triggering the
+      file picker or camera on mount. The user clicks through the modal and lands in the Scanner with
+      no upload kicked off.
+    - Phone Order at `LoadSetupModal.tsx:682` generates a load number via `generateNextLoadNumber` and
+      captures call notes — nothing else.
+    - `EditLoadForm.tsx` (1223 lines) has NO equipment selector at all (verified via grep — only
+      "elfEquipment" label strings and a "Driver & Equipment Assignment" section heading).
+    - `server/services/load.service.ts:88-117` explicitly flags the current dispatch check as a
+      temporary fallback: the current "equipment check" at line 91 derives an equipment identifier
+      from `chassis_number || container_number` because the code comment literally says "This will be
+      expanded when equipment_id is added to the loads table". **`loads.equipment_id` does not exist
+      in the schema.** Verified: migration 020 has `equipment_id` on the `service_tickets` table, not
+      `loads`. No migration anywhere adds it to `loads`.
+    - `server/routes/loads.ts:168-192` POST /api/loads destructures 23 fields but NOT `equipment_id`.
+      `server/schemas/loads.ts:7-72` `createLoadSchema` does not include an `equipment_id` field at all.
+    - `server/schemas/loads.ts:87-111` `partialUpdateLoadSchema` (used by `PATCH /api/loads/:id` at
+      `loads.ts:349`) only whitelists 7 partial-update fields (weight, commodity, bol_number,
+      reference_number, reference_numbers, pickup_date, notes) — so even after migration 049 persists
+      `equipment_id`, the PATCH route silently drops it unless the update schema is ALSO extended.
+      Rev 2 missed this; corrected in Phase 4 below.
+    - `validateDispatchGuards` lives in `server/services/load-state-machine.ts:157`, NOT in
+      `load.service.ts`. The dispatch transition at `load.service.ts:88-117` calls the state-machine
+      guard — R-P4-07/08 regress that function in place.
+    - **Consequence**: even with a frontend equipment selector, the selected equipment would be dropped
+      at the API boundary (on create OR update) and not persisted. Rev 1 missed the create path; Rev 2
+      missed the update path. Both are corrected in Phase 4 below (Rev 3).
+
+ 3. **Issue Board "Create Issue" stuck in spinner**
+    - `components/ExceptionConsole.tsx:349-384` `handleCreateIssue` has no `try/catch/finally`.
+      `setIsCreating(false)` is unreached on error; the button stays disabled via line 564-567; modal
+      never closes.
+    - Backend at `server/routes/exceptions.ts:224-267` is fine. 100% frontend bug.
+
+ 4. **Operations Board stale snapshot**
+    - `components/IntelligenceHub.tsx:254-260`: empty deps useEffect calling
+      `loadOpsDashboardData(controller.signal)` — no interval. All 8 KPI cards in
+      `components/operations/OpsDashboardPanel.tsx:52-107` are derived via
+      `useMemo(..., [loads, opsExceptions])` and freeze at whatever `loads/opsExceptions` were set on
+      mount. The queues sub-panel at `IntelligenceHub.tsx:1009` DOES call
+      `setInterval(..., 10000)` — the ops dashboard just forgot.
+
+ Architecture discovery (Rev 3, 2026-04-07, verified via parallel Explore agents):
+ - `components/LoadBoardEnhanced.tsx` is PROP-DRIVEN — it owns no loads state, no data-loading
+   useEffect, and no fetch call. The authoritative loads fetch lives in `App.tsx:292-357`
+   (`refreshData(currentUser)` calls `getLoads + getBrokers + getCompanyUsers + getCompany +
+   getDispatchEvents + getTimeLogs + getIncidents`). `App.tsx:257-290` is an `onUserChange` auth
+   listener that runs `refreshData` exactly once per sign-in. There is no periodic refresh of any
+   of these 7 stores. Phase 2 therefore adds a `setInterval` inside the existing App.tsx
+   auth-listener useEffect (not inside LoadBoardEnhanced) that re-runs `refreshData(user)` every
+   10 seconds whenever `user` is non-null. This is the smallest fix that unblocks the user-observed
+   stale-load-board symptom while ALSO fixing the adjacent stale-brokers / stale-users /
+   stale-dispatch-events panels with zero extra code.
+ - `components/ExceptionConsole.tsx` has its own `loadData` useCallback at line 213 and a
+   `useEffect(..., [loadData])` at lines 221-223 — Phase 2 wraps this useEffect in `usePollingEffect`.
+ - `services/api.ts:94-100` does NOT propagate the server error body's `details` field (only
+   `errorData.error`). Phase 1 therefore MANDATORILY extends `apiFetch` to surface `details`.
+
+ User direction (2026-04-07):
+ - **Polling for realtime** (5–10s `setInterval`), not websockets/SSE/Firestore listeners.
+ - **Fix all 4 in one remediation sprint**, separate from Bulletproof Sales Demo PLAN.md.
+ - **Both load-intake flows** (dispatcher AND driver) rebuilt to match industry standard.
 
  ---
- Prime Directive — LIVE FUNCTIONS ONLY
+ Prime Directive — SMALLEST VIABLE FIX PER DEFECT
 
- The demo must use only the unmodified production code paths that already exist on main. Every "magic moment"
- in the salesperson's demo comes from pre-seeded real database rows that the live, untouched production code
- reads and renders. There are no mocks, no stubs, no test doubles, no if (tenantId === 'SALES-DEMO') { return
- cannedResponse; } shortcuts, no shims sitting in front of any service.
+ Every defect gets the smallest fix that fully resolves the user-observed problem AND has a test that
+ fails before the fix and passes after. No opportunistic refactoring, no cleanups adjacent to the fix
+ site, no helper extraction unless 2+ call sites are changed in the same phase. See
+ `.claude/rules/build-conventions.md` rules 6-9.
 
  Hard rules:
- 1. Zero edits to server/routes/ai.ts, server/services/gemini.service.ts, server/services/document.service.ts,
-  server/services/ocr.service.ts, server/middleware/requireAuth.ts, server/middleware/requireTier.ts,
- server/middleware/requireTenant.ts, server/lib/sql-auth.ts, any existing migration, or any existing route
- handler.
- 2. Two acceptable categories of new code only:
-   - Seed scripts and fixture data that INSERT rows into existing tables via existing schemas using INSERT
- IGNORE.
-   - Two demo-mode opt-in surfaces that are flag-gated and never run on production tenants:
-       - A nav filter in App.tsx that hides routes when VITE_DEMO_NAV_MODE=sales.
-     - A POST /api/demo/reset route that runs the live reset script when triple-locked (admin role +
- sales-demo tenant id + ALLOW_DEMO_RESET=1 env var).
- 3. No backwards-compat shims, no helper modules wrapped around production functions, no "demo branch" inside
- any existing handler.
- 4. Production tenant behavior is byte-for-byte identical before and after this sprint. The only way to enter
- demo mode is via env vars that are not set in production.
-
- What this means for the document-automation hero story (the main change vs prior plan)
-
- The prior plan tried to short-circuit POST /api/ai/extract-load for the sales-demo tenant. REJECTED. Instead:
-
- - The seed creates a real loads row (e.g. id LP-DEMO-RC-001), real documents rows attached to it with the
- extracted fields stored on the load record in their normal columns, and real linked artifact files in storage
-  (or skipped if the existing document model treats artifact paths as optional).
- - The salesperson's demo flow is: "Here is a load that came in this morning. Here is the rate confirmation
- the driver uploaded from the cab. Here are all the fields the AI auto-extracted, sitting on the load record."
-  The salesperson opens existing rows via the live LoadBoardEnhanced and live document UI. Zero AI calls
- happen during this demo.
- - A documented secondary path lets the salesperson optionally do a real live upload (real Gemini, real cost)
- for extra impact — but Phase 7 certification covers only the seeded path so the salesperson is never exposed
- to model variability when it matters.
-
- This is what "live function only" actually looks like: data the seed wrote, code the production tenants run.
+ 1. Zero edits to files not explicitly listed in a phase's File Inventory.
+ 2. Every fix must have a test added to `server/__tests__/` or `src/__tests__/` or `e2e/` that fails
+    without the fix. TDD order is mandatory (Red → Green → Refactor → Gate).
+ 3. Polling intervals default to 10 seconds except where the user sees visible staleness in <5s demo
+    flow (NetworkPortal in multi-user scenario = 5s).
+ 4. **Migration rule**: Schema changes must be additive in the UP section — existing columns (created
+    by migrations 001-047) may NOT be dropped or renamed. Every new migration MUST include a DOWN
+    section that cleanly reverses its UP (i.e., the DOWN drops the columns the UP added). DROP COLUMN
+    is forbidden in UP and permitted in DOWN only against columns the same migration added. No
+    migration may drop or rename a column that a prior migration created.
+ 5. Load board driver-intake flow reuses the existing `Scanner.tsx` OCR path. Scanner.tsx gets a
+    single additive prop (`autoTrigger?: 'upload' | 'camera'`) — no other edits. This was relaxed from
+    Rev 1's "zero edits to Scanner.tsx" rule because that rule conflicted with the user's
+    "auto-open file picker" requirement (Scanner exposes no imperative API for capture).
+ 6. The migration numbers in this sprint are `048_parties_entity_class.sql`,
+    `049_loads_equipment_id.sql`, `050_loads_intake_source.sql`. Current HEAD is 047 per MEMORY.md.
 
  ---
- Continuity Objects — the thread that carries through every hero flow
-
- The same objects must appear in every hero step so the buyer feels one coherent story instead of five
- unrelated screens. Any phase that introduces new seeded data MUST reuse these exact identifiers / names
- verbatim — this continuity is the single biggest driver of the "wow" reaction on stage.
-
- | Object            | Canonical value                                            | Appears in                          |
- | ----------------- | ---------------------------------------------------------- | ------------------------------------ |
- | Tenant / company  | `SALES-DEMO-001`                                           | Phases 1, 2, 3, 4, 6, 7             |
- | Hero load         | `LP-DEMO-RC-001`                                           | Phases 2, 3, 7; all 3 hero specs    |
- | Broker (customer) | `SALES-DEMO-CUST-001` / `ACME Logistics LLC` (MC / DOT set)| Phases 2, 3 (IFTA narrative), 4     |
- | Commodity + wt    | `Frozen Beef`, `42,500 lbs`                                | Phase 2 load card + runbook script  |
- | Rate              | `$3,250` carrier rate                                      | Phase 2 load card + runbook script  |
- | Route             | Houston TX → Chicago IL (6 IFTA jurisdictions)             | Phases 2 + 3 (same trip)            |
- | IFTA period       | Q4 2025                                                    | Phase 3 walkthrough + summary       |
- | Rate con artifact | `rate-con.pdf` (real file, seeded to storage)              | Phase 2 document card download      |
- | BOL artifact      | `bol.pdf`                                                  | Phase 2 document card download      |
- | Lumper artifact   | `lumper-receipt.pdf`                                       | Phase 2 document card download      |
-
- **Phase 4 reminder**: when seeding the 12 CRM parties, ONE of the two brokers MUST be
- `SALES-DEMO-CUST-001` / ACME Logistics LLC (the same broker the salesperson just saw attached to the hero
- load in Phase 2). The buyer opens the broker in NetworkPortal and recognizes it — that is the magic moment.
-
- ---
- Findings (verified) and corrections
-
- #: 1
- User finding: CRM phase built on wrong tables (broker_credit_scores, customer_rate_sheets,
- party_interactions)
-   and unsupported endpoints (/api/contacts?party_id, /api/documents?party_id)
- Verified?: Verified by Agent A — none of those tables exist; neither endpoint supports party_id filtering
- Correction: Rewrite Phase 4 around the 8 real tables that server/routes/clients.ts:477-535 actually JOINs and
-
-   the single API call GET /api/parties that NetworkPortal makes
- ────────────────────────────────────────
- #: 2
- User finding: Demo-shell allowlist does not match real App.tsx route keys
- Verified?: Verified by Agent B — real keys are operations-hub, loads, calendar, network, telematics-setup,
-   accounting, exceptions, company (+ hidden quotes); IFTA is a nested tab inside accounting, not a top-level
-   route
- Correction: Rewrite Phase 6 allowlist to use the real keys and document that IFTA navigation is accounting →
-   "Fuel & IFTA" tab
- ────────────────────────────────────────
- #: 3
- User finding: Deterministic intake story does not actually produce a deterministic created load (Scanner can
-   stabilize extracted fields, but DriverMobileHome.tsx:573 regenerates loadNumber =
-   INT-${Date.now().toString(36).toUpperCase()} client-side and the extraction payload cannot override it)
- Verified?: Verified by Agent B — line 573 confirmed
- Correction: Phase 2 abandons the "live extraction → deterministic load number" narrative entirely. The seed
-   creates the load row directly with id LP-DEMO-RC-001. The salesperson navigates to a pre-existing load. No
-   code change to DriverMobileHome.tsx.
- ────────────────────────────────────────
- #: 4
- User finding: IFTA Phase written against UI controls that do not exist (ifta-quarter-select,
-   ifta-run-analysis, etc.)
- Verified?: Verified by Agent B — quarter selector is <button>Q1</button>...Q4, year selector is <select> with
-
-   2025/2026, IFTA evidence + analysis auto-run on mount of IFTAEvidenceReview (no Run Analysis button), zero
-   data-testid attributes anywhere in IFTA UI
- Correction: Phase 3 Playwright spec rewritten to use text selectors only against the real button text and the
-
-   auto-run flow
- ────────────────────────────────────────
- #: 5
- User finding: Certification under-specified for Windows + Firebase
- Verified?: Verified by Agent C — cross-env not installed; e2e auth fixture requires FIREBASE_WEB_API_KEY +
-   pre-existing Firebase users; no programmatic user provisioning anywhere
- Correction: Phase 7 ships a .env.local driven Windows-safe script and an explicit Firebase user provisioning
-   prerequisite documented in the runbook
- ────────────────────────────────────────
- #: 6
- User finding: Phase 1 understated seed-script implementation work
- Verified?: Verified by Agent C — seed-demo.ts has zero exports, no helpers callable from outside, and does
- NOT
-    seed GL-6900/GL-2200 or create Firebase users
- Correction: Phase 1 ships an independent seed pipeline at server/scripts/seed-sales-demo.ts. Zero edits to
-   seed-demo.ts (touching it would violate the prime directive — that file is part of the SaaS source). The
- new
-    pipeline duplicates the small amount of SQL it needs
-
- Plus three additional corrections discovered during exploration that the user did not flag:
-
- #: 7
- Discovery: The brief said "documents" was a top-level nav route. It is not — there is no documents route key
-   in App.tsx. Documents are accessed within loads / network / accounting.
- Source: Agent B
- Correction: Drop documents from the demo allowlist. Driver intake lives inside the loads Driver Mobile
-   experience, not a separate documents route.
- ────────────────────────────────────────
- #: 8
- Discovery: seed-demo.ts does not seed GL-6900 (IFTA Expense) or GL-2200 (IFTA Payable). Phase 3 IFTA POST
-   /api/accounting/ifta-post would FK-fail without them.
- Source: Agent C
- Correction: The new seed-sales-demo.ts must seed GL-6900 + GL-2200 in its own GL accounts step.
- ────────────────────────────────────────
- #: 9
- Discovery: POST /api/parties has a bug in server/routes/clients.ts:797 — it tries to INSERT entity_class and
-   vendor_profile columns that don't exist. Existing GET /api/parties works fine because the read query uses
-   SELECT *.
- Source: Agent A
- Correction: Phase 4 seeds parties via direct SQL INSERT (not the buggy POST endpoint). The live read path is
-   fine and we use it. We do NOT fix the POST bug as part of this sprint — that is a SaaS bug, not a demo
-   concern, and this sprint touches no SaaS source. Filed as a follow-up note in the seed-contract doc.
-
- ---
- Tech inventory (verified, paste-quality)
-
- App.tsx route keys (Agent B, lines 546-604, 949-1143)
-
- ┌──────────────────┬─────────────┬────────────┬──────────────────────────────────┬──────────────────────┐
- │       Key        │    Label    │  Category  │            Component             │     Use in demo?     │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ operations-hub   │ Operations  │ OPERATIONS │ IntelligenceHub                  │ YES (default         │
- │                  │ Center      │            │                                  │ landing)             │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │                  │             │            │                                  │ YES (hero 1 — show   │
- │ loads            │ Load Board  │ OPERATIONS │ LoadBoardEnhanced                │ seeded               │
- │                  │             │            │                                  │ LP-DEMO-RC-001)      │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ calendar         │ Schedule    │ OPERATIONS │ CalendarView                     │ YES                  │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ network          │ Onboarding  │ OPERATIONS │ NetworkPortal                    │ YES (hero 3 — CRM)   │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ telematics-setup │ Telematics  │ OPERATIONS │ TelematicsSetup                  │ NO (hide in demo)    │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │                  │             │            │ AccountingPortal (contains       │                      │
- │ accounting       │ Financials  │ FINANCIALS │ nested "Fuel & IFTA" tab →       │ YES (hero 2 — IFTA)  │
- │                  │             │            │ IFTAManager →                    │                      │
- │                  │             │            │ IFTAEvidenceReview)              │                      │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ exceptions       │ Issues &    │ ADMIN      │ ExceptionConsole                 │ YES                  │
- │                  │ Alerts      │            │                                  │                      │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ company          │ Company     │ ADMIN      │ CompanyProfile                   │ NO (hide in demo)    │
- │                  │ Settings    │            │                                  │                      │
- ├──────────────────┼─────────────┼────────────┼──────────────────────────────────┼──────────────────────┤
- │ quotes           │ (no nav     │ (route     │ QuoteManager                     │ NO (already hidden — │
- │                  │ entry)      │ only)      │                                  │  known 403 issue)    │
- └──────────────────┴─────────────┴────────────┴──────────────────────────────────┴──────────────────────┘
-
- Nav button data-testid pattern (App.tsx ~line 866): data-testid="nav-${item.id}" — e.g., nav-accounting,
- nav-network, nav-loads. Stable for Playwright.
-
- CRM enrichment chain (Agent A, server/routes/clients.ts:477-535)
-
- GET /api/parties runs one base query then 6 parallel Promise.all enrichments and assembles the response. The
- 8 tables touched by the read path:
-
- Table: parties
- Migration: 032_parties_subsystem.sql:6-20, FK fixed in 037_fix_parties_fk.sql
- Required cols: id, company_id, name; defaults: type='carrier', status='active'; nullable: mc_number,
-   dot_number, rating, tags JSON (added in 040)
- NetworkPortal tab consuming the data: IDENTITY
- ────────────────────────────────────────
- Table: party_contacts
- Migration: 032:22-33
- Required cols: id, party_id, name
- NetworkPortal tab consuming the data: CONTACTS
- ────────────────────────────────────────
- Table: party_documents
- Migration: 032:35-43
- Required cols: id, party_id
- NetworkPortal tab consuming the data: DOCS
- ────────────────────────────────────────
- Table: rate_rows
- Migration: 032:45-69
- Required cols: id, party_id
- NetworkPortal tab consuming the data: RATES
- ────────────────────────────────────────
- Table: rate_tiers
- Migration: 032:71-80
- Required cols: id, rate_row_id
- NetworkPortal tab consuming the data: RATES (nested under rate row)
- ────────────────────────────────────────
- Table: constraint_sets
- Migration: 032:82-94
- Required cols: id, party_id
- NetworkPortal tab consuming the data: CONSTRAINTS
- ────────────────────────────────────────
- Table: constraint_rules
- Migration: 032:96-107
- Required cols: id, constraint_set_id
- NetworkPortal tab consuming the data: CONSTRAINTS (nested under set)
- ────────────────────────────────────────
- Table: party_catalog_links
- Migration: 032:109-115
- Required cols: id, party_id, catalog_item_id
- NetworkPortal tab consuming the data: CATALOG
-
- Tables that DO NOT exist (verified by grep across server/migrations/*.sql): broker_credit_scores,
- customer_rate_sheets, party_interactions. The prior plan referenced all three.
-
- Filter capability gaps (do not use):
- - GET /api/contacts — no party_id filter (server/routes/contacts.ts:13-34).
- - GET /api/documents — party_id is not in documentListQuerySchema
- (server/schemas/document.schema.ts:117-127).
-
- Single API call to populate every NetworkPortal tab: GET /api/parties. NetworkPortal makes one fetch on mount
-  (components/NetworkPortal.tsx:230 via services/networkService.ts:4-26). All 6 tabs (IDENTITY, CONTACTS,
- CATALOG, RATES, CONSTRAINTS, DOCS) read from the enriched response. No per-tab API calls.
-
- Known SaaS bug (NOT fixed in this sprint, documented as out-of-scope follow-up): POST /api/parties
- (clients.ts:797) tries to INSERT entity_class and vendor_profile columns that do not exist. Phase 4 seeds via
-  direct INSERT and never calls POST.
-
- IFTA UI (Agent B, IFTAManager.tsx, IFTAEvidenceReview.tsx)
-
- Navigation: nav-accounting → click tab labeled "Fuel & IFTA" → IFTAManager renders → click "Q4" button →
- select year 2025 from <select aria-label="Select year"> → IFTAManager lists delivered loads as cards (no
- data-testid, only the load number text like #LP-DEMO-RC-001) → click the load card → IFTAEvidenceReview
- opens.
-
- IFTAEvidenceReview (useEffect at lines 47-60):
- - Fetches evidence via getIFTAEvidence(load.id) on mount.
- - If evidence rows exist, automatically calls analyzeIFTA({ pings: data, mode: 'GPS' }) and renders the
- jurisdiction split table.
- - The user manually checks an attestation <input type="checkbox"> ("Confirm and Attest Evidence") and clicks
- <button>Lock Trip for Audit</button>.
-
- There is no manual "Run Analysis" button. There are no data-testid attributes in either file. Playwright must
-  use text-based selectors throughout.
-
- Driver intake load number (Agent B, DriverMobileHome.tsx:570-605)
-
- Line 573: const loadNumber = \INT-${Date.now().toString(36).toUpperCase()}`;`
-
- Pure client-side, not overridable, never reads from extraction payload. The plan does not modify this —
- instead the seed creates the demo load row directly with id LP-DEMO-RC-001, so the demo never exercises the
- intake submit path during the sales presentation.
-
- seed-demo.ts (Agent C, server/scripts/seed-demo.ts)
-
- - Zero export statements. Strictly procedural CLI.
- - 11 helper functions (seedCompany 206-233, seedUsers 235-262, ..., seedApBills 552-654, verifySeed 656-741)
- all private; main() at 745-824 invoked at 826.
- - Uses companyId = process.env.DEMO_COMPANY_ID || seedData.company.id (default DEMO-COMPANY-001).
- - Seeds 5 GL accounts (1200 / 2000 / 4000 / 6100 / 6200). Does NOT seed GL-6900 (IFTA Expense) or GL-2200
- (IFTA Payable).
- - Inserts MySQL users rows with role + email but no firebase_uid. Comment at line 808: "Log in using any
- Firebase user linked to this company_id."
-
- Decision: do not touch this file. The new seed pipeline is fully independent at
- server/scripts/seed-sales-demo.ts and duplicates the SQL it needs.
-
- e2e auth fixture (Agent C, e2e/fixtures/auth.fixture.ts)
-
- - Reads FIREBASE_WEB_API_KEY (required), E2E_API_URL (default http://localhost:5000), and per-role
- E2E_<ROLE>_EMAIL / E2E_<ROLE>_PASSWORD env vars (defaults admin@loadpilot.dev / AdminPassword123! etc.).
- - Calls signInWithPassword against
- https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY} and wraps the
- returned idToken in an AuthContext with .get/.post/.patch/.delete helpers.
- - No programmatic user creation. Users must pre-exist in Firebase.
- - If creds missing, returns a no-token context so callers can test.skip(!process.env.FIREBASE_WEB_API_KEY,
- "...").
-
- Playwright + Windows scripting (Agent C)
-
- - playwright.config.ts: testDir: "./e2e", baseURL: "http://localhost:3101", single chromium project,
- reporter: "list", webServer block starts both Express (port 5000) + Vite (port 3101) when
- E2E_SERVER_RUNNING=1 is set, otherwise Express only.
- - 46 spec files, kebab-case naming (auth.spec.ts, team02-dispatch-load-create.spec.ts, ...).
- - cross-env is NOT installed. Root package.json scripts use Unix syntax (cd server && npm.cmd run dev).
- Windows portability requires .env.local files or PowerShell $env:VAR=value syntax.
+ Constraints / Non-Goals
+ - No full Pending Intake approval queue with SLA tracking. Driver-submitted loads land in
+   `status='Draft'` with `intake_source='driver'`. Approval is a single PATCH with `status='Planned'`
+   and a required `equipment_id`.
+ - No real-time data plane beyond polling. SSE, websockets, and Firestore listeners are deferred.
+ - No new loads state-machine states. Driver-intake loads use existing `status='Draft'` and transition
+   to `'Planned'` on approval via the existing `PATCH /api/loads/:id/status` path.
+ - `loads.equipment_id` is added as a nullable VARCHAR(36) column in Phase 4. It is not backfilled on
+   existing loads — legacy loads continue to use the current `chassis_number || container_number`
+   fallback (verified present at `load.service.ts:91`).
+ - Existing Bulletproof Sales Demo PLAN.md is NOT touched. This plan lives in its own file.
+ - The `/api/parties` 503 fallback path in `clients.ts` is kept as a safety net but hardened — not
+   replaced.
 
  ---
  Phase Breakdown
 
- Phase 1 — Independent Sales-Demo Seed Pipeline (foundation)
+## Phase 1 — Parties Schema Fix + Error Surfacing (foundation)
 
- Goal: A fresh SALES-DEMO-001 tenant exists in the database with subscription_tier='Fleet Core', GL accounts
- including GL-6900 and GL-2200, two MySQL user rows linked by env-supplied firebase_uid values, and a
- one-button reset script. Independent of seed-demo.ts — does not import, modify, or call it.
+ **Phase Type**: `foundation`
+
+ Goal: After this phase, an end-to-end test can create a `parties` row with `entity_class='Customer'`
+ and a non-null `vendor_profile` payload without any MySQL error, and future schema drift on the
+ `parties` table will surface a descriptive error to the frontend user instead of a generic "Failed
+ to save entity" toast.
 
  Files (new):
 
- Path: server/scripts/seed-sales-demo.ts
- Purpose: Standalone TS script. main() loads env via dotenv.config({ path: '.env.local' }) — SINGLE ENV
-   CONTRACT, .env.local is the one source of truth across seed, reset, and certify (NOT .env). Then
-   creates a mysql connection and calls 5 internal helpers (seedCompany, seedUsers, seedGlAccounts,
-   seedSalesDemoIfta (added Phase 3), seedSalesDemoParties (added Phase 4)), exits 0/1. Mirrors the
-   structure of seed-demo.ts but copies only the minimum SQL needed. Hard-codes companyId =
-   'SALES-DEMO-001'. After inserts runs UPDATE companies SET subscription_tier='Fleet Core',
-   subscription_status='active' WHERE id=?.
-
-   Required env vars in .env.local (validated at startup, fail-fast with explanatory error if missing):
-     - DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME (existing project DB conventions)
-     - SALES_DEMO_ADMIN_FIREBASE_UID (the Firebase Auth UID for the seeded admin user; provisioned
-       manually via Firebase Console — see Phase 6 runbook)
-     - SALES_DEMO_DRIVER_FIREBASE_UID (the Firebase Auth UID for the seeded driver user; same)
-
-   ENV CONTRACT (single source of truth):
-     - .env.local is the ONLY env file consumed by seed, reset, and certify scripts.
-     - .env (without .local) is reserved for the existing SaaS dev workflow and is NOT touched.
-     - The runbook (Phase 6) tells the salesperson to copy .env.example.sales-demo (added in Phase 1)
-       to .env.local and fill in the 7 required values.
-     - Phase 7's demo-certify.cjs ALSO loads from .env.local — NO env split between seed/reset and cert.
+ Path: `server/migrations/048_parties_entity_class.sql`
+ Purpose: Additive migration. UP adds `entity_class VARCHAR(50) DEFAULT NULL` and `vendor_profile
+   JSON DEFAULT NULL` to the `parties` table, plus an index
+   `idx_parties_entity_class (company_id, entity_class)` matching the GET /api/parties query pattern
+   at `clients.ts:478`. DOWN drops both columns and the index. No pre-existing columns are touched
+   (additive UP; reversible DOWN per Hard Rule 4).
  ────────────────────────────────────────
- Path: server/scripts/reset-sales-demo.ts
- Purpose: Wraps the seed. Refuses to run when process.env.DB_NAME matches /prod|production/i. Then runs
-   tenant-scoped DELETE statements in this exact order BEFORE deleting the company row, because several
-   seeded tables have NO FK to companies and DO NOT cascade (verified against migrations 005, 011, 012,
-   013, and the column rename in 038):
-
-   IMPORTANT — column name verified against migration 038_accounting_tenant_to_company_id.sql: every
-   accounting and IFTA table that originally used tenant_id was renamed to company_id by migration 038
-   (gl_accounts line 30, journal_entries line 40, ar_invoices line 49, ap_bills line 59, fuel_ledger
-   line 67, mileage_jurisdiction line 83, ifta_trip_evidence line 115, ifta_trips_audit line 123).
-   The DELETE statements MUST use company_id, NOT tenant_id, against the live schema.
-
-     1. DELETE FROM ifta_trips_audit         WHERE company_id  = 'SALES-DEMO-001';
-     2. DELETE FROM ifta_trip_evidence       WHERE company_id  = 'SALES-DEMO-001';
-     3. DELETE FROM mileage_jurisdiction     WHERE company_id  = 'SALES-DEMO-001';
-     4. DELETE FROM fuel_ledger              WHERE company_id  = 'SALES-DEMO-001';
-     5. DELETE FROM journal_lines            WHERE journal_entry_id IN
-          (SELECT id FROM journal_entries WHERE company_id = 'SALES-DEMO-001');
-        -- journal_lines has FK to journal_entries ON DELETE CASCADE so step 6 also handles this,
-        -- but explicit deletion makes the script defensive against partial state. journal_lines
-        -- itself has NO company_id / tenant_id column — it must be filtered via journal_entries.
-     6. DELETE FROM journal_entries          WHERE company_id  = 'SALES-DEMO-001';
-     7. DELETE FROM ar_invoices              WHERE company_id  = 'SALES-DEMO-001';
-     8. DELETE FROM ap_bills                 WHERE company_id  = 'SALES-DEMO-001';
-     9. DELETE FROM gl_accounts              WHERE company_id  = 'SALES-DEMO-001';
-    10. DELETE FROM documents                WHERE company_id  = 'SALES-DEMO-001';
-    11. DELETE FROM companies                WHERE id          = 'SALES-DEMO-001';
-        -- This cascades through: users, customers, parties (after migration 037),
-        -- party_contacts, party_documents, rate_rows, rate_tiers, constraint_sets,
-        -- constraint_rules, party_catalog_links, loads, load_legs, equipment.
-
-   Finally invokes seedSalesDemo on the now-clean tenant. The 11 DELETE statements are idempotent
-   (safe to run when no rows exist) and tenant-scoped (zero risk to other tenants in shared dev DB).
+ Path: `server/__tests__/routes/parties-entity-class.test.ts`
+ Purpose: Integration test that POSTs a `Contractor` party with a populated `vendorProfile` and
+   asserts 201 response, `entityClass === 'Contractor'` in the response body, and that the mock DB
+   captured an INSERT including both `entity_class` and `vendor_profile` values. Uses the existing
+   `parties-crud.test.ts` mock scaffolding pattern.
  ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/sales-demo-data.json
- Purpose: Static JSON fixture: 1 company, 2 users (admin + driver), 7 GL accounts (the 5 stock + GL-6900 +
-   GL-2200), the IFTA + parties data referenced by Phases 3 and 4.
- ────────────────────────────────────────
- Path: server/__tests__/scripts/seed-sales-demo.test.ts
- Purpose: Unit tests against a mocked mysql connection: asserts the company INSERT, the explicit
-   subscription_tier='Fleet Core' UPDATE, all 7 GL accounts present, missing-env-var error path, idempotent on
-
-   second run (counts INSERT IGNORE vs INSERT).
- ────────────────────────────────────────
- Path: server/__tests__/scripts/reset-sales-demo.test.ts
- Purpose: Unit tests for reset: prod-name guard, DELETE-then-seed call order, error propagation.
- ────────────────────────────────────────
- Path: server/__tests__/middleware/sales-demo-tier-audit.test.ts
- Purpose: Integration: walks every route registered in server/index.ts that uses requireTier('Automation Pro')
-
-   or requireTier('Fleet Core'), fires a fake request with a mocked DB returning subscription_tier='Fleet
- Core'
-    for SALES-DEMO-001, and asserts statusCode !== 403 for every one. Asserts at least 15 routes are
- exercised.
- ────────────────────────────────────────
- Path: docs/sales-demo-seed-contract.md
- Purpose: Authoritative reset contract. Sections: ## Rows present after reset, ## Firebase UID env contract,
- ##
-   GL accounts that must exist, ## Hidden routes & rationale, ## Known SaaS follow-ups (out of scope this
-   sprint) (lists the POST /api/parties entity_class/vendor_profile bug).
- ────────────────────────────────────────
- Path: server/__tests__/docs/sales-demo-seed-contract.test.ts
- Purpose: Doc-as-spec test: regex-asserts the 5 H2 sections above are present.
- ────────────────────────────────────────
- Path: .env.example.sales-demo
- Purpose: Example env file documenting the 7 required env vars (DB_HOST/PORT/USER/PASSWORD/NAME +
-   SALES_DEMO_ADMIN_FIREBASE_UID + SALES_DEMO_DRIVER_FIREBASE_UID). Salesperson copies this to
-   .env.local and fills in real values. Committed to git as the env contract source of truth.
- ────────────────────────────────────────
- Path: server/__tests__/docs/env-example-sales-demo.test.ts
- Purpose: Doc-as-spec: asserts .env.example.sales-demo file exists and contains placeholder lines for
-   all 7 required keys (regex-checked).
+ Path: `server/__tests__/migrations/048_parties_entity_class.test.ts`
+ Purpose: Doc-as-spec regression — asserts the migration file exists, contains `ADD COLUMN
+   entity_class` and `ADD COLUMN vendor_profile` in UP, `DROP COLUMN entity_class` and `DROP COLUMN
+   vendor_profile` in DOWN, and NO `DROP COLUMN` statements targeting any column name other than
+   `entity_class` / `vendor_profile`.
 
  Files (existing) extended:
 
- Path: package.json (root)
- What changes: Add scripts: "demo:reset:sales": "ts-node --transpile-only server/scripts/reset-sales-demo.ts",
+ Path: `server/routes/clients.ts`
+ What changes: Widen `isMissingTableError` at lines 25-33 so that when `tableName` is provided AND the
+   error code is `ER_BAD_FIELD_ERROR`, the helper ALSO matches when the error message contains
+   `"Unknown column"` (column-drift marker), in addition to the existing table-name substring check.
+   This preserves the old behavior for `ER_NO_SUCH_TABLE` but lets `ER_BAD_FIELD_ERROR` surface via
+   the 503 path. Max 6 added lines, zero removed. The helper is called from 3 sites (lines 52, 692,
+   971) — none of the existing call sites regress because the new branch only widens `true` cases.
+   Additionally, in the POST /api/parties catch block at lines 968-985, when `isMissingTableError`
+   matches, the 503 response body gains a new `code` field with value `'SCHEMA_DRIFT'` so the frontend
+   can discriminate schema issues from true missing tables.
 
-   "demo:seed:sales": "ts-node --transpile-only server/scripts/seed-sales-demo.ts". Use --transpile-only so it
+ Path: `components/NetworkPortal.tsx`
+ What changes: Replace the hardcoded `"Failed to save entity"` toast at line 346 with
+   `setToast({ message: e instanceof Error ? e.message : "Failed to save entity", type: "error" })`.
+   Same treatment at line 395 (`handleSaveContact`). Two single-line edits.
 
-   works on Windows without an explicit tsconfig path. No env vars in script  value — the salesperson sets
- them
-    in .env.local.
+ Path: `services/api.ts`
+ What changes: MANDATORY edit. Verified at lines 94-100 on the current branch: `apiFetch` only reads
+   `errorData.error` from the parsed JSON body and ignores `errorData.details`. Extend the two
+   catch-block paths (ForbiddenError at line 94-95 and generic error at line 98-100) to include
+   `errorData.details` in the thrown `Error.message` when the server populated it. Pattern:
+   `const msg = errorData.details ? \`${errorData.error || "Request failed"}: ${errorData.details}\` :
+   (errorData.error || \`API Request failed: ${response.status}\`);`
+   Max 6 added lines, zero removed.
 
  Acceptance criteria (R-markers):
- - R-P1-01 [unit]: seedSalesDemo issues UPDATE companies SET subscription_tier='Fleet Core' for SALES-DEMO-001
-  (assert by SQL capture).
- - R-P1-02 [unit]: seedSalesDemo throws Error('SALES_DEMO_ADMIN_FIREBASE_UID required') when env var unset.
- - R-P1-03 [unit]: resetSalesDemo throws when DB_NAME='production-loadpilot'.
- - R-P1-04 [unit]: seedSalesDemo inserts gl_accounts rows with ids GL-6900 AND GL-2200 (the IFTA pair) before
- any IFTA evidence insert.
- - R-P1-05 [integration]: tier audit walks ≥15 requireTier('Fleet Core'|'Automation Pro') routes and asserts
- statusCode !== 403 for the seeded admin.
- - R-P1-06 [unit]: docs/sales-demo-seed-contract.md contains the 5 required H2 sections.
- - R-P1-07 [unit]: 100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent).
- - R-P1-08 [unit]: seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline
- guarantee — assert via grep on the source).
- - R-P1-09 [unit]: resetSalesDemo issues DELETE statements against ALL of these 10 tables in the verified
-   non-cascading list, in order, BEFORE the DELETE FROM companies: ifta_trips_audit, ifta_trip_evidence,
-   mileage_jurisdiction, fuel_ledger, journal_lines, journal_entries, ar_invoices, ap_bills, gl_accounts,
-   documents. Asserted by SQL capture against a mocked mysql connection — every table name appears in the
-   captured DELETE list at least once and the company DELETE is the LAST one issued.
- - R-P1-10 [unit]: resetSalesDemo is idempotent — second invocation against an already-empty tenant exits 0
-   without error (no "row not found" or FK violation).
- - R-P1-11 [unit]: .env.example.sales-demo file exists at the repo root and contains placeholder lines
-   for all 7 required keys (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME,
-   SALES_DEMO_ADMIN_FIREBASE_UID, SALES_DEMO_DRIVER_FIREBASE_UID) — assert via grep on the file.
- - R-P1-12 [unit]: seedSalesDemo source contains exactly one dotenv.config call and that call references
-   '.env.local' (NOT '.env') — proves the single env contract. Assert via grep on the source.
+ - R-P1-01 [unit]: Migration `048_parties_entity_class.sql` exists and contains literal strings
+   `ADD COLUMN entity_class` and `ADD COLUMN vendor_profile` in its UP section — grep assert.
+ - R-P1-02 [unit]: Migration 048 DOWN section contains `DROP COLUMN entity_class` and
+   `DROP COLUMN vendor_profile` and contains NO `DROP COLUMN` targeting any other column name — grep
+   assert (per Hard Rule 4: DOWN may drop only what UP added).
+ - R-P1-03 [integration]: `POST /api/parties` with body
+   `{ name, type: "Contractor", entityClass: "Contractor", company_id, vendorProfile:
+   { capabilities: ["fuel"], cdlNumber: "X123" } }` returns HTTP 201 and body
+   `{ id, entityClass: "Contractor" }` against a mock mysql that accepts both new columns.
+ - R-P1-04 [integration]: `POST /api/parties` against a mock mysql that throws
+   `{ code: "ER_BAD_FIELD_ERROR", message: "Unknown column 'entity_class' in 'field list'" }` returns
+   HTTP 503 with body `{ error: "Party registry unavailable", details: <string containing
+   "migrations">, code: "SCHEMA_DRIFT" }`.
+ - R-P1-05 [unit]: `isMissingTableError(error, "parties")` in isolation returns `true` when given
+   `{ code: "ER_BAD_FIELD_ERROR", message: "Unknown column 'entity_class' in 'field list'" }`
+   (message does NOT contain "parties" substring — proves the widened matcher).
+ - R-P1-06 [unit]: `components/NetworkPortal.tsx` line 346 toast expression matches
+   `e instanceof Error ? e.message : "Failed to save entity"` — grep assert on source.
+ - R-P1-07 [integration]: End-to-end POST /api/parties with all 8 contractor vendorProfile fields
+   populated (`capabilities`, `serviceArea`, `equipmentOwnership`, `insuranceProvider`,
+   `insurancePolicyNumber`, `cdlNumber`, `cdlState`, `cdlExpiry`) succeeds and stores the full JSON.
 
  Verification command:
- cd server && npx vitest run __tests__/scripts/seed-sales-demo.test.ts
- __tests__/scripts/reset-sales-demo.test.ts __tests__/middleware/sales-demo-tier-audit.test.ts
- __tests__/docs/sales-demo-seed-contract.test.ts
+
+ ```bash
+ bash -c "cd server && npx vitest run __tests__/routes/parties-entity-class.test.ts __tests__/migrations/048_parties_entity_class.test.ts __tests__/routes/clients.test.ts"
+ ```
 
  ---
- Phase 2 — Pre-Seeded Hero Load + Broker (live data, zero AI calls)
+## Phase 2 — Polling Layer for Stale Panels (module)
 
- Goal: After npm run demo:reset:sales, a load with id LP-DEMO-RC-001 exists in the sales-demo tenant with
- a real customers row attached as the broker AND three documents linked to the load. The salesperson opens
- the load via the live LoadBoardEnhanced and live LoadDetailView. The seeded broker name, commodity, weight,
- and rate are visible in the load detail panel. The documents panel shows that 3 documents exist on the load.
- Zero changes to ai.ts, Scanner.tsx, DriverMobileHome.tsx, gemini.service.ts, document.service.ts,
- LoadDetailView.tsx, brokerService.ts, or any other production code path.
+ **Phase Type**: `module`
 
- IMPORTANT NARRATIVE CONSTRAINTS (verified against live source):
- - The certified demo asserts on FIELDS THAT LIVE ON THE LOAD ROW (loadNumber, pickup/dropoff facility,
-   commodity, weight, rate, broker name resolved through customers table). These all render through
-   LoadDetailView.tsx unchanged (verified at LoadDetailView.tsx:140 for the broker lookup).
- - The canonical documents UI at LoadDetailView.tsx:1125-1135 reads doc.filename and doc.type, but the
-   GET /api/documents response today returns raw rows where the columns are original_filename /
-   sanitized_filename / document_type — there is no mapping layer (verified at
-   server/repositories/document.repository.ts:9-24 and services/storage/vault.ts:65-81). In the current
-   code the labels render as undefined. **This sprint relaxes the zero-production-diff constraint for
-   exactly one file — `server/repositories/document.repository.ts` — to add a ≤10-line mapping that
-   aliases original_filename → filename and document_type → type on every returned row.** It is the
-   single highest-value polish touch: a buyer looking at the hero load's documents panel sees
-   professional labels instead of "undefined undefined". LoadDetailView.tsx itself stays untouched
-   (R-P2-08 still greps it for zero diff). document.service.ts also stays untouched (Phase 7 still
-   greps it for zero diff). The mapping lives only at the repository layer.
- - Broker name visibility requires a row in the legacy customers table (NOT parties), because
-   App.tsx:294-296 calls getBrokers() which queries GET /api/clients/:companyId, and that route at
-   server/routes/clients.ts:37-72 runs SELECT * FROM customers WHERE company_id = ?. The Phase 4
-   parties seed is for the NetworkPortal CRM hero ONLY — it does NOT populate the broker lookup used
-   by LoadDetailView.
+ Goal: Four frontend panels that currently fetch-once-on-mount gain a `setInterval`-based polling
+ loop that re-runs their existing data-loading function. No backend changes. Polling is tied to
+ mount/unmount lifecycle with `AbortController` cleanup.
 
  Files (new):
 
- Path: server/scripts/seed-sales-demo-loads.ts
- Purpose: Helper module. Exports seedSalesDemoLoads(conn). INSERT IGNORE in this exact order:
-   1. INTO customers (id 'SALES-DEMO-CUST-001', company_id, name 'ACME Logistics LLC', type 'Broker',
-      mc_number, dot_number, email, phone, address, payment_terms 'Net 30') — this becomes the broker
-      that LoadDetailView resolves via getBrokers().
-   2. INTO loads (id 'LP-DEMO-RC-001', company_id 'SALES-DEMO-001', status 'delivered',
-      customer_id 'SALES-DEMO-CUST-001' [CRITICAL — this is what the broker lookup keys on],
-      driver_id (a seeded user from Phase 1), loadNumber 'LP-DEMO-RC-001', commodity, weight,
-      pickup/dropoff city/state/facility name, carrier_rate, driver_pay, all the columns
-      LoadDetailView.tsx renders).
-   3. INTO load_legs (2 rows: pickup + dropoff, FK to LP-DEMO-RC-001).
-   4. INTO documents (3 rows: rate confirmation, BOL, lumper receipt; all linked via load_id =
-      'LP-DEMO-RC-001'; column values populate original_filename, sanitized_filename, mime_type,
-      file_size_bytes, storage_path, document_type, status='ready', uploaded_by). Storage path may
-      point at a non-existent file — the documents panel just lists the row, it does not require
-      the binary to exist for the demo.
+ Path: `services/usePollingEffect.ts`
+ Purpose: Tiny hook (≤15 lines). Signature:
+   `usePollingEffect(fn: (signal: AbortSignal) => void | Promise<void>, intervalMs: number, deps: React.DependencyList)`.
+   Justification for extraction per build-conventions rule 7: 4 panels adopt this pattern in this
+   phase (>2 call sites).
  ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/loads/LP-DEMO-RC-001.json
- Purpose: Static fixture: 1 customers row + 1 load row + 2 load_legs + 3 documents rows. Pickup Houston TX,
-   dropoff Chicago IL, commodity 'Frozen Beef', weight '42,500 lbs', carrier rate '$3,250', broker name
-   'ACME Logistics LLC'. All values are what the salesperson narrates on stage.
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/loads/extracted-fields.md
- Purpose: Human-readable cheat sheet listing the exact fields the salesperson should narrate when opening
-   LP-DEMO-RC-001 on stage. Documents panel now shows readable filename/type labels (repository mapping
-   added this sprint) and documents are downloadable (seeded artifacts added this sprint).
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/loads/artifacts/rate-con.pdf
- Purpose: Real binary artifact for the hero load's rate confirmation document. A small text-only PDF
-   (≥ 1KB, valid %PDF- magic number) that the seed script copies into the live upload directory so
-   clicking Download on the rate con card returns a real file. Content is a one-page printout showing
-   ACME Logistics LLC header, Frozen Beef line item, Houston → Chicago route, $3,250 rate.
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/loads/artifacts/bol.pdf
- Purpose: Real binary artifact for the hero load's BOL. A small text-only PDF with shipper / consignee /
-   commodity / weight fields readable so the salesperson can open the downloaded file on stage if asked.
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/loads/artifacts/lumper-receipt.pdf
- Purpose: Real binary artifact for the hero load's lumper receipt. Small text-only PDF with a scanned
-   look (single-column receipt layout) showing the date, facility, lumper fee, signature line.
- ────────────────────────────────────────
- Path: server/__tests__/repositories/document.repository.mapping.test.ts
- Purpose: Unit test for the new mapping layer. Given a raw row from the database with fields
-   `{original_filename: "rate-con.pdf", document_type: "rate_confirmation", ...}`, the repository
-   accessor returns an object whose `.filename === "rate-con.pdf"` AND `.type === "rate_confirmation"`,
-   with both the original fields AND the aliases present (backwards compatibility). Also asserts the
-   mapping is a pure transform (no I/O).
- ────────────────────────────────────────
- Path: server/__tests__/integration/sales-demo-document-download.test.ts
- Purpose: Integration: against the seeded sales-demo tenant, calls the live
-   GET /api/documents/:id/download for each of the 3 seeded documents (rate-con, bol, lumper-receipt).
-   Asserts: (a) status 200, (b) Content-Type === 'application/pdf', (c) response body length > 1024
-   bytes, (d) first 4 bytes equal `%PDF`. Uses the unmodified production download handler.
- ────────────────────────────────────────
- Path: server/__tests__/scripts/seed-sales-demo-loads.test.ts
- Purpose: Asserts the seed inserts exactly 1 customer + 1 load + 2 legs + 3 documents in that order, with
-   the load.customer_id matching the seeded customer.id; idempotent on second run.
- ────────────────────────────────────────
- Path: server/__tests__/integration/sales-demo-load-readback.test.ts
- Purpose: Integration: against the seeded sales-demo tenant, calls the LIVE GET /api/loads/:id, the LIVE
-   GET /api/clients/SALES-DEMO-001, and the LIVE GET /api/documents?load_id=LP-DEMO-RC-001 endpoints.
-   Asserts:
-     - GET /api/loads returns the seeded load with loadNumber 'LP-DEMO-RC-001'.
-     - GET /api/clients returns at least 1 customer row with id 'SALES-DEMO-CUST-001' and name
-       'ACME Logistics LLC'.
-     - GET /api/documents returns 3 documents linked to load_id 'LP-DEMO-RC-001'.
-   All three calls go through the unmodified production handlers.
- ────────────────────────────────────────
- Path: e2e/sales-demo/01-document-automation.spec.ts
- Purpose: Playwright spec. Logs in as SALES-DEMO-ADMIN, navigates [data-testid="nav-loads"] → finds row
-   containing 'LP-DEMO-RC-001' → clicks it → asserts the load detail panel shows:
-     - text 'LP-DEMO-RC-001' (loadNumber)
-     - text 'ACME Logistics LLC' (broker name resolved through getBrokers)
-     - text 'Frozen Beef' (commodity)
-     - text 'Houston' AND text 'Chicago' (pickup + dropoff cities)
-   Then clicks the 'Documents' action button → asserts the documents panel opens and has at least 3
-   document cards visible (selector: card containers, NOT inner label text). No upload action. No AI call.
-   Reads existing seeded data through the unmodified UI.
+ Path: `src/__tests__/services/usePollingEffect.test.tsx`
+ Purpose: Unit tests with `renderHook` + `vi.useFakeTimers`: asserts immediate-on-mount call, interval
+   call after N×ms, no call after unmount, AbortSignal fires on unmount.
 
  Files (existing) extended:
 
- Path: server/scripts/seed-sales-demo.ts
- What changes: call seedSalesDemoLoads(conn) after seedGlAccounts(conn) (Phase 1 created the orchestrator;
-   Phase 2 appends one call). Additionally, inside seedSalesDemoLoads, after the INSERTs, copy the three
-   artifact PDFs from server/scripts/sales-demo-fixtures/loads/artifacts/ into the live upload directory
-   at `${process.env.UPLOAD_DIR || "./uploads"}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf`
-   so the download endpoint (GET /api/documents/:id/download) can return them as real files. Uses
-   `fs.promises.copyFile` with `{ recursive: true }` mkdir on the parent. Idempotent — skip copy if
-   destination file already exists with the expected size.
+ Path: `components/NetworkPortal.tsx`
+ What changes: Replace `useEffect(() => { loadData(); }, [companyId])` at lines 222-224 with
+   `usePollingEffect((signal) => loadData(signal), 5000, [companyId])`. `loadData` at line 226 is
+   currently `const loadData = async () => { ... }` with no params — it gains an optional
+   `signal?: AbortSignal` parameter forwarded to `getParties(companyId, signal)`. Max ≤15 added lines.
  ────────────────────────────────────────
- Path: server/repositories/document.repository.ts
- What changes (precise diff scope, ≤ 10 added lines, 0 removed lines): in the accessor(s) that return
-   document rows to callers (listDocuments / findById / whatever is used by the GET /api/documents and
-   GET /api/documents/:id handlers), append two alias properties to each returned row before returning:
-   `row.filename = row.original_filename; row.type = row.document_type;`. Both aliases live ALONGSIDE
-   the original columns — no column is removed, renamed, or deleted. LoadDetailView.tsx:1125-1135 then
-   reads `doc.filename` and `doc.type` and renders readable text instead of undefined. This is the
-   single production-code relaxation this sprint; it is tested by R-P2-12 (unit) and R-P2-13 (e2e).
+ Path: `components/IntelligenceHub.tsx`
+ What changes: Replace the useEffect at lines 254-260 with
+   `usePollingEffect((signal) => loadOpsDashboardData(signal), 10000, [])`. `loadOpsDashboardData`
+   already accepts an `AbortSignal` parameter per its signature at line 232. Zero net added lines.
+ ────────────────────────────────────────
+ Path: `App.tsx`
+ What changes: `LoadBoardEnhanced.tsx` is prop-driven — it does NOT own loads state or fetch loads
+   (confirmed by Rev 3 verification). The authoritative loads fetch lives in `App.tsx:292-357`
+   `refreshData(currentUser)` which runs `getLoads + getBrokers + getCompanyUsers + getCompany +
+   getDispatchEvents + getTimeLogs + getIncidents` in parallel. The only caller is the auth-listener
+   useEffect at `App.tsx:257-290` which fires once on `onUserChange`. Extend this useEffect to ALSO
+   create a `setInterval(() => { if (user) refreshData(user); }, 10000)` inside the inner
+   `onUserChange` async callback once `updatedUser` is non-null, storing the handle in a ref, and
+   clear it in both the cleanup return AND when `updatedUser` transitions back to null. This
+   single polling interval refreshes loads, brokers, users, company, dispatch events, time logs,
+   AND incidents — fixing the stale load board AND the adjacent stale panels with zero extra code.
+   Does NOT touch `LoadBoardEnhanced.tsx` (preserving the "smallest viable fix" directive). Max 15
+   added lines inside the existing useEffect.
+ ────────────────────────────────────────
+ Path: `components/ExceptionConsole.tsx`
+ What changes: `loadData` is a `useCallback` at line 213; the useEffect at lines 221-223 calls it
+   with deps `[loadData]`. Replace with
+   `usePollingEffect((signal) => loadData(signal), 10000, [loadData])`. `loadData` gains an optional
+   `signal?: AbortSignal` parameter forwarded to the fetch inside it. Max 8 added lines.
+ ────────────────────────────────────────
+ Path: `services/networkService.ts`
+ What changes: `getParties` at lines 4-6 currently has signature
+   `export const getParties = async (companyId: string): Promise<NetworkParty[]>`. Gains an optional
+   `signal?: AbortSignal` parameter forwarded to `api.get`. ~3 added lines.
 
- Acceptance criteria:
- - R-P2-01 [unit]: seedSalesDemoLoads inserts exactly 1 row into customers with id 'SALES-DEMO-CUST-001'
-   and type 'Broker' (assert via SQL capture).
- - R-P2-02 [unit]: seedSalesDemoLoads inserts exactly 1 row into loads with id 'LP-DEMO-RC-001' AND
-   customer_id = 'SALES-DEMO-CUST-001' (assert the FK linkage via SQL capture).
- - R-P2-03 [unit]: seedSalesDemoLoads inserts exactly 2 rows into load_legs and 3 rows into documents
-   linked to LP-DEMO-RC-001.
- - R-P2-04 [unit]: seedSalesDemoLoads is idempotent — second invocation produces 0 new rows (INSERT IGNORE
-   count).
- - R-P2-05 [unit]: seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or
-   server/services/gemini.service.ts (live-functions-only guarantee — assert via grep).
- - R-P2-06 [integration]: GET /api/loads against the sales-demo admin returns the load with loadNumber
-   'LP-DEMO-RC-001'; GET /api/clients/SALES-DEMO-001 returns the broker; GET /api/documents?load_id=
-   'LP-DEMO-RC-001' returns 3 document rows. All three use the unmodified production handlers.
- - R-P2-07 [e2e]: Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts the visible DOM contains
-   'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds.
-   Clicks Documents button and asserts at least 3 document cards (container selector) are visible.
- - R-P2-08 [unit]: grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx,
-   components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs
-   sprint-end shows zero diff (snapshot test on file SHA256 for each file). NOTE:
-   server/repositories/document.repository.ts is DELIBERATELY EXCLUDED from this grep — the mapping
-   fix lives in that file (R-P2-12).
- - R-P2-09 [unit]: three real binary artifact fixtures exist at
-   server/scripts/sales-demo-fixtures/loads/artifacts/{rate-con,bol,lumper-receipt}.pdf; each file is
-   at least 1024 bytes AND the first 4 bytes of each file equal `%PDF` (valid PDF magic number).
-   Assert via fs.statSync + fs.readFileSync on the raw bytes.
- - R-P2-10 [unit]: seedSalesDemoLoads copies the 3 fixtures into the live upload directory at
-   `${UPLOAD_DIR}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf` where UPLOAD_DIR
-   defaults to './uploads'. After the seed runs, the 3 destination files exist AND their sizes
-   match the fixture source sizes. Assert via fs.stat post-seed. Second invocation is a no-op
-   (idempotent copy).
- - R-P2-11 [integration]: GET /api/documents/:id/download for each of the 3 seeded documents on
-   LP-DEMO-RC-001 returns status 200, Content-Type 'application/pdf', Content-Length > 1024, and
-   the first 4 bytes of the response body equal `%PDF`. Uses the unmodified production download
-   handler at server/routes/documents.ts:297.
- - R-P2-12 [unit]: the document repository accessor that returns rows to the GET /api/documents and
-   GET /api/documents/:id handlers aliases original_filename → filename and document_type → type on
-   every returned row. Test: insert a document row with original_filename='rate-con.pdf' and
-   document_type='rate_confirmation', call the accessor, assert result.filename === 'rate-con.pdf'
-   AND result.type === 'rate_confirmation' AND the original columns are still present. Diff on
-   document.repository.ts is ≤ 10 added lines and 0 removed lines (assert via git diff --numstat).
- - R-P2-13 [e2e]: extends R-P2-07. After the Documents panel opens with ≥ 3 cards, assert each
-   card's visible text contains a non-empty filename string (matches /\\w+\\.pdf$/) AND a readable
-   type label ('Rate Confirmation', 'Bill of Lading', or 'Lumper Receipt' — all seeded via the
-   document_type values). The literal string 'undefined' does NOT appear anywhere inside any of
-   the 3 document cards.
+ Acceptance criteria (R-markers):
+ - R-P2-01 [unit]: `services/usePollingEffect.ts` exists and exports a function `usePollingEffect`
+   — assert via import.
+ - R-P2-02 [unit]: `usePollingEffect(fn, 1000, [])` calls `fn` exactly once immediately on mount.
+ - R-P2-03 [unit]: After advancing fake timers by 4500ms, `fn` has been called 5 times (1 immediate
+   + 4 intervals).
+ - R-P2-04 [unit]: Unmount clears the interval AND fires the `AbortController.abort()` on the last
+   signal.
+ - R-P2-05 [unit]: `NetworkPortal.tsx` source does NOT contain the literal substring
+   `useEffect(() => { loadData(); }, [companyId])` — grep assert (proves the pre-fix pattern was
+   replaced). The source MUST contain `usePollingEffect` applied with deps including `companyId`.
+ - R-P2-06 [unit]: `NetworkPortal.tsx` imports `usePollingEffect` and passes `5000` as the interval
+   argument — grep assert.
+ - R-P2-07 [unit]: `IntelligenceHub.tsx` calls `usePollingEffect` with interval `10000` near line
+   254 — grep assert.
+ - R-P2-08 [unit]: `App.tsx` source contains `setInterval` with `10000` AND references
+   `refreshData` within 200 characters of the setInterval call — grep assert proves the polling
+   interval was added to the auth-listener useEffect.
+ - R-P2-09 [unit]: `App.tsx` cleanup return function (at the end of the useEffect around line 285)
+   contains a `clearInterval` call — grep assert proves cleanup.
+ - R-P2-10 [unit]: `ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` — grep
+   assert.
+ - R-P2-11 [unit]: `services/networkService.ts` `getParties` signature accepts an optional
+   `signal?: AbortSignal` — assert via a TS test file that calls
+   `getParties('c', new AbortController().signal)` and type-checks.
+ - R-P2-12 [integration]: Render `<App />` with a mock `onUserChange` that fires with a non-null
+   user, advance fake timers by 10500ms, assert `getLoads` was called at least 2 times (once on
+   initial refresh, once from the 10s poll).
 
  Verification command:
- cd server && npx vitest run __tests__/scripts/seed-sales-demo-loads.test.ts
- __tests__/integration/sales-demo-load-readback.test.ts
- __tests__/integration/sales-demo-document-download.test.ts
- __tests__/repositories/document.repository.mapping.test.ts
- && cd .. && set E2E_SERVER_RUNNING=1&& npx playwright test e2e/sales-demo/01-document-automation.spec.ts
 
- ▎ The set VAR=val&& (Windows cmd) syntax is portable. The runbook documents the PowerShell equivalent.
+ ```bash
+ bash -c "npx vitest run src/__tests__/services/usePollingEffect.test.tsx"
+ ```
 
  ---
- Phase 3 — IFTA Trip-Based Evidence Seed + Real-UI Walkthrough (integration)
+## Phase 3 — Issue Board Create Handler Fix (module)
 
- Goal: The hero load LP-DEMO-RC-001 (seeded by Phase 2) has Q4 2025 IFTA evidence in the database — GPS
- pings spanning 6+ jurisdictions, fuel purchases, mileage by jurisdiction — so that the live
- GET /api/accounting/ifta-summary returns a valid quarter and the live IFTAEvidenceReview UI can analyze,
- attest, and lock the trip. Phase 3 is FUNDAMENTALLY trip/load-based, NOT truck-based.
+ **Phase Type**: `module`
 
- IMPORTANT NARRATIVE CONSTRAINT (verified at IFTAEvidenceReview.tsx:65-66):
- The IFTA audit-lock flow writes truckId from load.driver_id, NOT from a real truck/equipment row:
-   const audit: Partial<IFTATripAudit> = {
-     truckId: load.driver_id || "UNKNOWN",   // line 66 — this is NOT a truck FK
-     loadId: load.id,
-     ...
-   };
- So the seeded "truck" in the prior plan was decorative. The corrected design seeds NO equipment row.
- The "trip" the salesperson locks is identified by load_id (LP-DEMO-RC-001) — the truck_id column gets
- populated from the load's driver_id at lock time. The salesperson narrates the demo as "every trip we
- deliver becomes IFTA evidence the next quarter" — load-centric, not fleet-centric.
+ Goal: The "Create Issue" flow no longer hangs in a spinner state on error. Error messages from the
+ backend are surfaced via the existing toast pattern. The submit button re-enables after an error.
 
  Files (new):
 
- Path: server/scripts/seed-sales-demo-ifta.ts
- Purpose: Helper. Exports seedSalesDemoIfta(conn). INSERT IGNORE in this exact order. ALL column names
-   verified against migrations 011, 012, 013, 038 — the accounting/IFTA tables use company_id (renamed
-   from tenant_id by migration 038) and fuel_ledger uses entry_date (verified at 011 line 114):
-
-   1. INTO ifta_trip_evidence: 12 rows. ALL 12 rows have company_id = 'SALES-DEMO-001', load_id =
-      'LP-DEMO-RC-001' (the Phase 2 hero load) and driver_id = (the seeded driver from Phase 1).
-      truck_id column is set to NULL (the lock-time handler will populate it from load.driver_id at
-      audit time). Each row has lat/lng/timestamp/state_code crossing Texas → Louisiana → Arkansas →
-      Missouri → Illinois → Indiana → Ohio for a realistic Q4 2025 trip. source = 'GPS'.
-   2. INTO fuel_ledger: 8 rows with company_id = 'SALES-DEMO-001', distributed across the same 6
-      jurisdictions for Q4 2025. Required columns per migration 011 line 103-121: id, company_id
-      (renamed from tenant_id), state_code (CHAR(2) NOT NULL), gallons (DECIMAL(10,3) NOT NULL),
-      total_cost (DECIMAL(10,2) NOT NULL), entry_date (DATE NOT NULL — NOT 'fuel_date'), source
-      (ENUM Manual/ELD/Import/Receipt). Optional: truck_id, load_id, price_per_gallon, vendor_name.
-   3. INTO mileage_jurisdiction: 6 rows with company_id = 'SALES-DEMO-001' for Q4 2025 (one per
-      jurisdiction), summing to ≥20,000 miles.
-   NO INSERT INTO equipment. NO truck row. Trip-based, not truck-based.
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/ifta-q4-2025.json
- Purpose: The 26 rows above (12 + 8 + 6) as static data. All rows scoped to company_id =
-   'SALES-DEMO-001' (column name verified against migration 038) and the ifta_trip_evidence rows
-   are load-scoped to 'LP-DEMO-RC-001'. The fuel_ledger rows use the entry_date column name
-   (verified against migration 011 line 114), NOT 'fuel_date' which does not exist.
- ────────────────────────────────────────
- Path: server/__tests__/scripts/seed-sales-demo-ifta.test.ts
- Purpose: Asserts via SQL capture: 12 ifta_trip_evidence INSERTs all with load_id 'LP-DEMO-RC-001';
-   8 fuel_ledger INSERTs all with company_id 'SALES-DEMO-001'; 6 mileage_jurisdiction INSERTs;
-   ZERO INSERT INTO equipment statements; idempotent on second run.
- ────────────────────────────────────────
- Path: server/__tests__/integration/sales-demo-ifta-summary.test.ts
- Purpose: Calls the live GET /api/accounting/ifta-summary?quarter=4&year=2025 against the seeded admin
-   and asserts rows.length >= 6, totalMiles >= 20000, netTaxDue > 0. Uses the unmodified production route.
- ────────────────────────────────────────
- Path: e2e/sales-demo/02-ifta-walkthrough.spec.ts
- Purpose: Playwright spec, all text selectors against the real UI. Continuity narrative for sales:
-   *"This is the same `LP-DEMO-RC-001` trip you just opened — Houston TX → Chicago IL, 42,500 lbs of Frozen
-   Beef. Now it's filing its Q4 2025 fuel tax across 6 jurisdictions, and we're about to audit-lock it."*
- Sequence:
-   [data-testid="nav-accounting"] click → button:has-text("Fuel & IFTA") click →
-   button:has-text("Q4") click → select[aria-label="Select year"] choose '2025' → wait for the
-   delivered-load card whose visible text contains 'LP-DEMO-RC-001' → click the card → wait for
-   IFTAEvidenceReview panel (assert text 'Evidence Timeline' visible — Agent B verified this header at
-   IFTAEvidenceReview.tsx:138) → wait for text 'Computed Jurisdiction Split' (proves auto-analysis ran;
-   Agent B verified this header at IFTAEvidenceReview.tsx:194) → check input[type="checkbox"]
-   (the attestation checkbox; verified at IFTAEvidenceReview.tsx:259-265) → click
-   button:has-text("Lock Trip for Audit") (verified at IFTAEvidenceReview.tsx:290) → wait for the
-   success toast text 'Trip evidence locked' or similar success indicator within 10 seconds.
-
- Files (existing) extended: server/scripts/seed-sales-demo.ts — append seedSalesDemoIfta(conn) call after
- seedSalesDemoLoads (Phase 3 depends on the load row from Phase 2 existing first).
-
- Acceptance criteria:
- - R-P3-01 [unit]: seedSalesDemoIfta returns { evidenceRows: 12, fuelRows: 8, mileageRows: 6 }. The return
-   shape contains NO trucksInserted field (trip-based, not truck-based).
- - R-P3-02 [unit]: All 12 ifta_trip_evidence INSERT statements have load_id = 'LP-DEMO-RC-001' (assert via
-   SQL capture against a mocked mysql connection).
- - R-P3-03 [unit]: seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO
-   'INSERT INTO equipment' statements (assert via grep — proves trip-based design).
- - R-P3-04 [integration]: GET /api/accounting/ifta-summary?quarter=4&year=2025 returns rows.length >= 6 &&
-   totalMiles >= 20000 && netTaxDue > 0. Uses the live unmodified route handler.
- - R-P3-05 [e2e]: Playwright walkthrough completes the full sequence above and asserts the evidence-locked
-   success indicator appears within 10 seconds. Spec uses zero data-testid on IFTA elements (only text
-   selectors); grep on the spec file confirms no occurrence of `data-testid="ifta-`.
- - R-P3-06 [unit]: seedSalesDemoIfta is idempotent (second invocation produces 0 new rows).
- - R-P3-07 [unit]: grep components/IFTAManager.tsx, components/IFTAEvidenceReview.tsx,
-   components/AccountingPortal.tsx HEAD vs sprint-end shows zero diff (live-functions-only guarantee).
-
- Verification command:
- cd server && npx vitest run __tests__/scripts/seed-sales-demo-ifta.test.ts
- __tests__/integration/sales-demo-ifta-summary.test.ts && cd .. && set E2E_SERVER_RUNNING=1&& npx playwright
- test e2e/sales-demo/02-ifta-walkthrough.spec.ts
-
- ---
- Phase 4 — CRM Registry Depth (the rewrite — real tables, real /api/parties)
-
- Goal: NetworkPortal renders 12 parties (3 customers, 2 brokers, 2 vendors, 3 facilities, 2 contractors), each
-  enriched with contacts, documents, rates, constraints, and catalog links via the live GET /api/parties
- enrichment query. Zero edits to clients.ts, NetworkPortal.tsx, networkService.ts, contacts.ts, documents.ts,
- or any schema.
-
- Files (new):
-
- Path: server/scripts/seed-sales-demo-parties.ts
- Purpose: Helper. Exports seedSalesDemoParties(conn). Direct SQL INSERT IGNORE into the 8 verified tables
-   (parties, party_contacts, party_documents, rate_rows, rate_tiers, constraint_sets, constraint_rules,
-   party_catalog_links). Does NOT touch broker_credit_scores, customer_rate_sheets, or party_interactions
- (none
-    exist). Does NOT call POST /api/parties (it has the entity_class/vendor_profile bug).
- ────────────────────────────────────────
- Path: server/scripts/sales-demo-fixtures/parties.json
- Purpose: 12 parties (3/2/2/3/2 split across Customer/Broker/Vendor/Facility/Contractor) with full
- sub-records:
-   ≥1 contact per party (24 contacts total), ≥1 document per party (12 documents), ≥1 rate row per party with
-   1-2 tiers (15+ rate rows), ≥1 constraint set per party with 1-2 rules (15+ rules), ≥1 catalog link per
- party
-    (12+ links). All values realistic for trucking.
-   **CONTINUITY REQUIREMENT**: one of the two brokers MUST reuse the same party identity the salesperson
-   already saw on the hero load in Phase 2: `SALES-DEMO-CUST-001` / name `ACME Logistics LLC`. This broker
-   gets the full enrichment treatment (≥1 contact, ≥1 document, ≥1 rate row with tiers, ≥1 constraint set,
-   ≥1 catalog link). The Playwright spec explicitly drills into ACME Logistics LLC — not a random broker.
- ────────────────────────────────────────
- Path: server/__tests__/scripts/seed-sales-demo-parties.test.ts
- Purpose: Asserts row counts via SQL capture; asserts type breakdown (3 Customer, 2 Broker, ...); idempotent;
-   gracefully no-ops if any optional table is missing (defensive).
- ────────────────────────────────────────
- Path: server/__tests__/integration/sales-demo-network-portal.test.ts
- Purpose: Calls live GET /api/parties against the seeded admin. Asserts: response length === 12; type
-   breakdown; first broker has contacts.length >= 1, documents.length >= 1, rates.length >= 1,
-   constraintSets.length >= 1, catalogLinks.length >= 1.
- ────────────────────────────────────────
- Path: e2e/sales-demo/03-network-portal-walkthrough.spec.ts
- Purpose: Playwright spec. [data-testid="nav-network"] click → wait for NetworkPortal shell → assert ≥12 party
-
-   rows visible → click the party row whose name text contains `ACME Logistics LLC` (NOT the first broker
-   in the list — the continuity requirement: buyer must recognize the same broker from the hero load) →
-   wait for the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) → for each tab in turn click
-   and assert at least one row of content visible.
-
- Files (existing) extended: server/scripts/seed-sales-demo.ts — append seedSalesDemoParties(conn) call after
- seedSalesDemoIfta.
-
- Acceptance criteria:
- - R-P4-01 [unit]: seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2
- contractors AND one of the 2 brokers is `SALES-DEMO-CUST-001` / `ACME Logistics LLC` (the same broker
- attached to the Phase 2 hero load — continuity object) — assert by type breakdown AND exact-id lookup via
- SQL capture.
- - R-P4-02 [unit]: every party has at least 1 contact, 1 document, 1 rate row, 1 constraint set, 1 catalog
- link (assert via fixture validation + SQL capture counts).
- - R-P4-03 [unit]: seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores,
- customer_rate_sheets, or party_interactions (assert via grep on the source).
- - R-P4-04 [unit]: seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from
- server/routes/clients.ts (live-functions-only via direct SQL).
- - R-P4-05 [integration]: GET /api/parties returns exactly 12 parties for the sales-demo tenant with the
- correct type breakdown and the first broker has all 5 enrichment arrays non-empty.
- - R-P4-06 [e2e]: Playwright walkthrough opens NetworkPortal, locates the row with text `ACME Logistics LLC`
- (continuity-object assertion — must match the Phase 2 hero broker, not any broker), clicks it, then clicks
- each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible
- in each.
- - R-P4-07 [unit]: grep components/NetworkPortal.tsx, services/networkService.ts, server/routes/clients.ts
- HEAD vs sprint-end shows zero diff.
-
- Verification command:
- cd server && npx vitest run __tests__/scripts/seed-sales-demo-parties.test.ts
- __tests__/integration/sales-demo-network-portal.test.ts && cd .. && set E2E_SERVER_RUNNING=1&& npx playwright
-  test e2e/sales-demo/03-network-portal-walkthrough.spec.ts
-
- ---
- Phase 5 — Demo-Blocker Regression Tests (no production-code edits)
-
- Goal: Lock down the three demo-blocker concerns from the brief (SafetyView fake KPI, FleetMap env-var leak,
- Quotes 403) with regression tests so they cannot regress. Discovery showed two of them are already correct in
-  the code; this phase asserts they stay correct. The third is handled by Phase 6's nav allowlist (Quotes is
- hidden in demo mode).
-
- Files (new):
-
- Path: __tests__/components/SafetyView.sales-demo.test.tsx
- Purpose: Render with operators=[], assert Non-Compliant tile shows the empty-state value (verified by Agent
-   finding) and never renders the literal string "13". Render with 5 compliant operators, assert tile shows
- "0"
-    and "All Clear".
- ────────────────────────────────────────
- Path: __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx
- Purpose: Render with VITE_GOOGLE_MAPS_API_KEY="", assert fallback data-testid="map-fallback" is present and
-   the substring "VITE_GOOGLE_MAPS_API_KEY" does not appear anywhere in the rendered DOM.
- ────────────────────────────────────────
- Path: __tests__/components/GoogleMapsAPITester.sales-demo.test.tsx
- Purpose: Render GoogleMapsAPITester (the actual debug page that DOES expose the env var name) and assert it
- is
-   hidden by Phase 6's allowlist test (cross-references Phase 6).
-
- Files (existing) extended: docs/sales-demo-seed-contract.md — append section ## Quotes route disposition
- explaining the route is hidden by Phase 6 nav filter, not deleted, and root cause of the 403 is
- environment-specific user/tenant mapping.
-
- Acceptance criteria:
- - R-P5-01 [unit]: SafetyView with operators=[] does not render the substring "13" anywhere in the DOM.
- - R-P5-02 [unit]: SafetyView with 5 compliant operators renders "0" and "All Clear" in the Non-Compliant
- tile.
- - R-P5-03 [unit]: GlobalMapViewEnhanced fallback DOM never contains the substring "VITE_GOOGLE_MAPS_API_KEY".
- - R-P5-04 [unit]: docs/sales-demo-seed-contract.md contains a ## Quotes route disposition H2 section.
- - R-P5-05 [unit]: grep components/SafetyView.tsx, components/GlobalMapViewEnhanced.tsx HEAD vs sprint-end
- shows zero diff.
-
- Verification command:
- npx vitest run __tests__/components/SafetyView.sales-demo.test.tsx
- __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx
- __tests__/components/GoogleMapsAPITester.sales-demo.test.tsx && cd server && npx vitest run
- __tests__/docs/sales-demo-seed-contract.test.ts
-
- ---
- Phase 6 — Demo Shell: Nav Allowlist + Reset Button + Reset Endpoint (the only production-code touch)
-
- Goal: When VITE_DEMO_NAV_MODE=sales, the App.tsx nav renders only the demo-safe routes (using the real route
- keys) plus a Reset Demo button that POSTs to a triple-locked /api/demo/reset endpoint. Production users (no
- env var set) see byte-for-byte identical behavior.
-
- This is the only phase that touches production source code. Two files change: App.tsx (nav filter + reset
- button) and server/index.ts (one-line route mount). Both changes are env-flag-gated.
-
- Files (new):
-
- Path: services/demoNavConfig.ts
- Purpose: Pure config. Exports DEMO_NAV_ALLOWLIST =
-   ['operations-hub','loads','calendar','network','accounting','exceptions'] as const and isDemoNavMode = ()
- =>
-    import.meta.env.VITE_DEMO_NAV_MODE === 'sales'. Real route keys only, no fictional ones.
- ────────────────────────────────────────
- Path: __tests__/services/demoNavConfig.test.ts
- Purpose: Asserts allowlist contains exactly the 6 keys, isDemoNavMode() true/false branches.
- ────────────────────────────────────────
- Path: __tests__/App.demo-nav.test.tsx
- Purpose: Renders App with stubbed env. Demo-mode-off: assert Telematics and Company Settings nav items
-   present. Demo-mode-on: assert they are absent, Reset Demo button present.
- ────────────────────────────────────────
- Path: server/routes/demo.ts
- Purpose: New router. POST /api/demo/reset triple-locked: (1) requireAuth, (2) req.user.role === 'admin', (3)
-   req.user.tenantId === 'SALES-DEMO-001', (4) process.env.ALLOW_DEMO_RESET === '1'. On all 4 conditions,
-   dynamically await import('../scripts/reset-sales-demo') and run resetSalesDemo. Returns { ok: true, summary
-
-   } or 403 with explanatory error field.
- ────────────────────────────────────────
- Path: server/__tests__/routes/demo.test.ts
- Purpose: Integration tests: 401 unauth, 403 non-admin, 403 wrong tenant, 403 missing env, 200 with mocked
-   resetSalesDemo returning a sentinel summary.
- ────────────────────────────────────────
- Path: docs/sales-demo-runbook.md
- Purpose: Salesperson runbook. 8 H2 sections required by tests:
-   ## Two Chrome profiles
-   ## Setting demo nav mode (.env.local)
-   ## Resetting between demos
-   ## Recovery from accidental URL
-   ## Firebase user provisioning prerequisite
-   ## Live Gemini disclaimer
-   ## Certified Core demo script (6 steps)
-   ## Wow Appendix — Optional live driver upload
-   The last two sections mirror the narrative + table from PLAN.md so the salesperson has a single
-   document to read on stage. Each hero step in the Certified Core section includes its
-   "Business outcome" line verbatim.
- ────────────────────────────────────────
- Path: server/__tests__/docs/sales-demo-runbook.test.ts
- Purpose: Doc-as-spec test for the 6 H2 sections.
+ Path: `src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx`
+ Purpose: Unit tests for `handleCreateIssue` covering happy path + 3 error paths (validation, network,
+   unexpected shape). Asserts spinner resets in `finally`, modal behavior, toast message.
 
  Files (existing) extended:
 
- Path: App.tsx
- What changes (precise diff scope): Add 1 import line (demoNavConfig). In the nav-rendering block (around line
-
-   866), wrap the categories[].items filter so when isDemoNavMode(), items not in DEMO_NAV_ALLOWLIST are
-   dropped. Inside the filter, when isDemoNavMode() && currentUser.role === 'admin', append a synthetic Reset
-   Demo nav item (id demo-reset, custom onClick that POSTs to /api/demo/reset and toasts the result). No other
-
-   lines touched. Total diff < 30 lines.
+ Path: `components/ExceptionConsole.tsx`
+ What changes: Wrap the body of `handleCreateIssue` at lines 349-384 in `try/catch/finally`. Move
+   `setIsCreating(false)` into `finally`. Catch sets the toast to the real error message:
+   `setToast({ message: err instanceof Error ? err.message : "Failed to create issue", type: "error" })`.
+   The empty-form guard at line 350 stays outside the try. Max ≤10 added lines.
  ────────────────────────────────────────
- Path: server/index.ts
- What changes (precise diff scope): Add 2 lines (1 import, 1 mount): import demoRouter from './routes/demo';
-   and app.use('/api/demo', demoRouter);. Mount only when process.env.ALLOW_DEMO_RESET === '1' so production
-   never registers the route at all.
+ Path: `services/exceptionService.ts`
+ What changes: `createException` at lines 16-21 wraps the `api.post` call in try/catch that rethrows
+   `new Error(\`Failed to create exception: ${e.message}\`)` preserving the original via
+   `{ cause: e }`. Max 6 added lines.
 
- Acceptance criteria:
- - R-P6-01 [unit]: isDemoNavMode() returns true iff VITE_DEMO_NAV_MODE === 'sales'.
- - R-P6-02 [unit]: DEMO_NAV_ALLOWLIST deep-equals exactly
- ['operations-hub','loads','calendar','network','accounting','exceptions'] (toEqual on literal array).
- - R-P6-03 [unit]: App.tsx with demo mode off renders Telematics, Company Settings, Issues & Alerts,
- Operations Center nav items (production-untouched proof).
- - R-P6-04 [unit]: App.tsx with demo mode on renders only the 6 allowlisted nav items + Reset Demo button;
- Telematics and Company Settings are absent.
- - R-P6-05 [integration]: POST /api/demo/reset returns 401 unauthenticated, 403 for non-admin, 403 for
- non-SALES-DEMO-001 tenant, 403 when ALLOW_DEMO_RESET env unset.
- - R-P6-06 [integration]: POST /api/demo/reset returns 200 with ok: true when all 4 gates pass and the inner
- resetSalesDemo (mocked to return a sentinel) runs.
- - R-P6-07 [unit]: docs/sales-demo-runbook.md contains all 8 required H2 sections: "## Two Chrome
- profiles", "## Setting demo nav mode (.env.local)", "## Resetting between demos", "## Recovery from
- accidental URL", "## Firebase user provisioning prerequisite", "## Live Gemini disclaimer",
- "## Certified Core demo script (6 steps)", "## Wow Appendix — Optional live driver upload". Assert
- via regex match on each H2 line.
- - R-P6-08 [unit]: App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only
- minimal-touch guarantee — assert via git diff --numstat App.tsx).
- - R-P6-09 [unit]: server/index.ts diff vs HEAD is exactly 2 added lines (the import + the conditional mount).
+ Acceptance criteria (R-markers):
+ - R-P3-01 [unit]: `handleCreateIssue` happy path — mock `createException` to resolve with
+   `"ex-123"`; assert calls to `setIsCreating(true)`, `setIsCreating(false)`,
+   `setShowCreateModal(false)`, `loadData()` in order.
+ - R-P3-02 [unit]: Validation error path — mock rejection with
+   `new Error("Validation failed: description too short")`; assert `setIsCreating(false)` IS called,
+   `setToast` message contains `"Validation failed: description too short"`, and
+   `setShowCreateModal(false)` is NEVER called (modal stays open).
+ - R-P3-03 [unit]: Network error path — mock rejection with `new Error("Network request failed")`;
+   assert `setIsCreating(false)` is called and toast contains `"Network request failed"`.
+ - R-P3-04 [unit]: `ExceptionConsole.tsx` source contains `finally` followed (within 100 chars) by
+   `setIsCreating(false)` — grep assert.
+ - R-P3-05 [unit]: `services/exceptionService.ts` `createException` body contains
+   `throw new Error` and `cause:` — grep assert.
+ - R-P3-06 [integration]: Full-component render test with `@testing-library/react`: render
+   `<ExceptionConsole />`, click "New Issue", fill required fields, click Submit, mock the API to
+   return 500. After the rejection settles, assert the "Creating..." spinner text is gone and the
+   modal remains visible.
 
  Verification command:
- npx vitest run __tests__/services/demoNavConfig.test.ts __tests__/App.demo-nav.test.tsx && cd server && npx
- vitest run __tests__/routes/demo.test.ts __tests__/docs/sales-demo-runbook.test.ts
+
+ ```bash
+ bash -c "npx vitest run src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx"
+ ```
 
  ---
- Phase 7 — Windows-Safe Certification Pipeline (e2e)
+## Phase 4 — Load Equipment Persistence + Dispatcher Intake Flow (module)
 
- Goal: A single npm script (demo:certify:sales) runs against a freshly seeded sales-demo tenant on Windows,
- executes the 3 hero Playwright specs from Phases 2/3/4 plus a smoke spec, and writes a timestamped pass
- record into docs/release/evidence.md. No cross-env, no /tmp, no Unix-only env syntax.
+ **Phase Type**: `module`
+
+ Goal: Close the backend gap that prevents any UI-created load from passing dispatch guards. After
+ this phase:
+ 1. `loads.equipment_id` is a persisted column (migration 049) with FK to `equipment.id`.
+ 2. `POST /api/loads` accepts and stores `equipment_id`.
+ 3. `server/services/load.service.ts` prefers the persisted `load.equipment_id` over the legacy
+    `chassis_number || container_number` fallback in the dispatch guard.
+ 4. `EditLoadForm` has an equipment selector that actually persists.
+ 5. `LoadSetupModal`'s Scan Doc button opens a file picker immediately on click (via a new
+    `autoTrigger` prop on `Scanner.tsx`).
+ 6. `LoadSetupModal`'s Phone Order mode collects minimum dispatchable fields.
+ 7. `partialUpdateLoadSchema` and `PATCH /api/loads/:id` accept and persist `equipment_id` so that
+    Phase 5's driver-intake approval flow can attach equipment via a single PATCH request.
 
  Files (new):
 
- Path: e2e/sales-demo/00-smoke.spec.ts
- Purpose: Bare-minimum smoke. Asserts /api/health 200, login as sales-demo admin succeeds (skip with clear
-   message if FIREBASE_WEB_API_KEY unset), homepage h1 visible. Catches catastrophic infrastructure failures
-   before the 3 hero specs run.
+ Path: `server/migrations/049_loads_equipment_id.sql`
+ Purpose: Additive migration. UP:
+   `ALTER TABLE loads ADD COLUMN equipment_id VARCHAR(36) DEFAULT NULL`,
+   `ALTER TABLE loads ADD CONSTRAINT fk_loads_equipment_id FOREIGN KEY (equipment_id) REFERENCES
+    equipment(id) ON DELETE SET NULL`,
+   `CREATE INDEX idx_loads_equipment_id ON loads (equipment_id)`.
+   DOWN drops the index, the FK, then the column — in reverse order. No pre-existing columns touched.
  ────────────────────────────────────────
- Path: e2e/sales-demo/README.md
- Purpose: One-page guide. Lists the 4 specs in order, the env vars required, the Windows + Unix invocation
-   commands, the Firebase user provisioning prerequisite.
+ Path: `server/__tests__/migrations/049_loads_equipment_id.test.ts`
+ Purpose: Doc-as-spec regression — asserts `ADD COLUMN equipment_id` in UP, `DROP COLUMN equipment_id`
+   in DOWN, and NO `DROP COLUMN` against any other column name.
  ────────────────────────────────────────
- Path: scripts/demo-certify.cjs
- Purpose: Tiny Node script (no deps, .cjs so no ESM resolution issues on Windows). Reads .env.local via fs,
-   spawns npx ts-node --transpile-only server/scripts/reset-sales-demo.ts then spawns npx playwright test
-   e2e/sales-demo/, captures stdout to <os.tmpdir()>/sales-demo-cert-<timestamp>.log, then appends the last 50
-
-   lines of the log to docs/release/evidence.md under a ## Sales Demo Certification H2 section with timestamp.
-
-   Exits with the spawned playwright exit code. Uses os.tmpdir() not /tmp.
+ Path: `server/__tests__/routes/loads-equipment-partial-update.test.ts`
+ Purpose: Integration test for PATCH /api/loads/:id — (a) updates `equipment_id` against an existing
+   draft load, asserts the UPDATE SQL contains `equipment_id = ?` with the correct parameter;
+   (b) PATCH with ONLY `{ equipment_id }` in the body succeeds (no other fields), proving the
+   `.refine()` predicate was extended; (c) PATCH with empty body still returns 400 with the
+   "No supported persisted fields" error (regression guard).
  ────────────────────────────────────────
- Path: __tests__/scripts/demo-certify.test.ts
- Purpose: Unit tests against demo-certify.cjs using temp dirs: appends correctly under the heading, exits
-   non-zero on missing input, handles empty Playwright output gracefully.
+ Path: `server/__tests__/routes/loads-equipment-persistence.test.ts`
+ Purpose: Integration test — POST /api/loads with `{ ...minimumLoad, equipment_id: "EQ-001" }`, asserts
+   the captured INSERT contains `equipment_id = "EQ-001"`. Also: POST without `equipment_id` — assert
+   null is persisted (not undefined, not "").
  ────────────────────────────────────────
- Path: server/__tests__/docs/sales-demo-e2e-readme.test.ts
- Purpose: Doc-as-spec: e2e/sales-demo/README.md lists ≥4 spec filenames.
+ Path: `server/__tests__/services/load-service-dispatch-guard.test.ts`
+ Purpose: Unit test covering both layers of the dispatch guard:
+   (a) `load.service.ts` `transitionLoad` call path — creates a load with `equipment_id='EQ-001'`
+   and NO `chassis_number`/`container_number`, triggers transition to `DISPATCHED`, asserts the
+   equipment lookup query at `load.service.ts:95-98` is executed with `EQ-001` as the parameter
+   (proving the new preference order picked the persisted column).
+   (b) `validateDispatchGuards` at `load-state-machine.ts:157` — regression asserting the pure
+   function still accepts `{ equipmentId: 'EQ-001', ... }` and rejects `{ equipmentId: null, ... }`
+   with an error message containing `"equipment"`. This is a REGRESSION assertion; the function
+   itself is not modified in this phase.
+ ────────────────────────────────────────
+ Path: `src/__tests__/components/EditLoadForm.equipment-selector.test.tsx`
+ Purpose: Render the form with a mock equipment list, assert the selector is present
+   (`getByLabelText(/equipment/i)`), assert `onSave` is called with `equipment_id` set when user
+   picks one, assert a warning is shown on save attempt with `status='Planned'` and
+   `equipment_id=null`.
+ ────────────────────────────────────────
+ Path: `src/__tests__/components/LoadSetupModal.scan-doc.test.tsx`
+ Purpose: Assert that clicking "Scan Doc" renders `<Scanner autoTrigger="upload" ... />` and that
+   Scanner (under the new prop) programmatically clicks its hidden file input on mount. Also assert
+   that when a file is selected and OCR returns, the extracted data flows into `editingLoad`.
+ ────────────────────────────────────────
+ Path: `src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx`
+ Purpose: Assert the phone-order sub-form renders 8 required inputs (broker, pickupCity, pickupState,
+   pickupDate, dropoffCity, dropoffState, dropoffDate, rate, equipmentId) plus the existing call
+   notes textarea. Assert Submit is disabled until the 8 are populated. Assert save payload includes
+   a `legs` array with one `type: "Pickup"` and one `type: "Dropoff"` stop.
 
  Files (existing) extended:
 
- ┌─────────────────────────────────────────────────┬──────────────────────────────────────────────────────┐
- │                      Path                       │                     What changes                     │
- ├─────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤
- │                                                 │ Add "demo:certify:sales": "node                      │
- │ package.json (root)                             │ scripts/demo-certify.cjs" (single command, no env    │
- │                                                 │ vars in the script value — .env.local carries them). │
- ├─────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤
- │ docs/release/evidence.md                        │ Append empty ## Sales Demo Certification H2 heading  │
- │                                                 │ section. Runtime appends from demo-certify.cjs.      │
- ├─────────────────────────────────────────────────┼──────────────────────────────────────────────────────┤
- │ server/__tests__/docs/release-evidence.test.ts  │ Doc-as-spec: ## Sales Demo Certification H2 present. │
- │ (new)                                           │                                                      │
- └─────────────────────────────────────────────────┴──────────────────────────────────────────────────────┘
+ Path: `server/schemas/loads.ts`
+ What changes: TWO additions.
+   1. Add `equipment_id: z.string().optional()` to `createLoadSchema` (after the
+      container_number/chassis_number fields). 1 added line.
+   2. Add `equipment_id: z.string().trim().min(1).optional()` to `partialUpdateLoadSchema` at lines
+      87-96, AND extend the `.refine(...)` predicate at lines 97-111 so `data.equipment_id !==
+      undefined` is one of the accepted "at least one field" conditions. Max 3 added lines.
+ ────────────────────────────────────────
+ Path: `server/routes/loads.ts`
+ What changes: TWO handlers modified.
+   1. POST /api/loads handler (destructure block at lines 168-192, INSERT SQL at line 209):
+      (a) Destructure `equipment_id` from `req.body` (1 added token in the destructure block).
+      (b) Extend the INSERT SQL column list + VALUES placeholder to include `equipment_id`.
+      (c) Add `equipment_id || null` to the parameter array.
+      Max 4 added lines.
+   2. PATCH /api/loads/:id handler (destructure block around line 357, updates builder around lines
+      382-411):
+      (a) Destructure `equipment_id` from `req.body` alongside weight/commodity/etc.
+      (b) Add a new `if (equipment_id !== undefined) { updates.push("equipment_id = ?");
+          params.push(equipment_id); }` block adjacent to the existing weight/commodity blocks.
+      Max 5 added lines. This is required so Phase 5's driver-intake approval flow can attach an
+      equipment to a Draft load via `PATCH /api/loads/:id { equipment_id }`.
+ ────────────────────────────────────────
+ Path: `server/services/load.service.ts`
+ What changes: In the dispatch transition logic at lines 88-117, prefer the persisted
+   `load.equipment_id` column over the legacy derived identifier. Logic:
+   ```
+   const equipmentId = load.equipment_id || load.chassis_number || load.container_number || null;
+   ```
+   This keeps backwards compatibility with loads that pre-date migration 049 (they still dispatch via
+   chassis_number/container_number lookup). The existing equipment lookup query at lines 95-98 stays
+   as-is (it already searches by both `unit_number` and `id`). Max 2 added lines (new variable binding
+   replacing the old one), 2 removed (old derivation).
+ ────────────────────────────────────────
+ Path: `components/Scanner.tsx`
+ What changes: Add a single optional prop to the Props interface at lines 76-83:
+   `autoTrigger?: 'upload' | 'camera'`. Inside the component, add a `useEffect(() => { ... }, [])`
+   that runs on mount: if `autoTrigger === 'upload'`, programmatically click the hidden file input
+   via a ref; if `autoTrigger === 'camera'`, call the existing camera-activation handler (Scanner
+   already has two useEffect hooks at lines 181 and 210 — the new one is independent and adjacent
+   to them). Zero changes to the existing prop behaviors — default is `undefined`, preserving
+   identical behavior for all current callers. Max 15 added lines, zero removed. This is the
+   SINGLE exception to the Rev 1 "no Scanner edits" rule, justified in Hard Rule 5 above.
+ ────────────────────────────────────────
+ Path: `components/EditLoadForm.tsx`
+ What changes: Add an equipment selector directly below the driver selector. Fetches the current
+   company's equipment list via `GET /api/equipment` (route exists at `server/routes/equipment.ts`).
+   Wires `equipment_id` into form state and the save payload. Shows a non-blocking validation
+   warning if `equipment_id` is null on a Planned-or-later status. Max 50 added lines.
+ ────────────────────────────────────────
+ Path: `components/LoadSetupModal.tsx`
+ What changes: Three edits:
+   1. At the Scan Doc button click handler (line 678): instead of just closing the modal, set
+      `setScannerAutoTrigger('upload')` state before closing. Pass `autoTrigger={scannerAutoTrigger}`
+      down when the Scanner component is rendered (via the existing `onContinue` → `App.tsx` path).
+      The existing Scanner render site is at `App.tsx:666-667` (three props currently:
+      `onDataExtracted`, `onCancel`, `onDismiss`) — `autoTrigger` flows through the existing
+      `onContinue(nextLoad, autoTrigger)` signature. `App.tsx` IS a listed file below (already
+      needed for Phase 2 polling); the autoTrigger prop drilling adds 3-5 additional lines. Max 5
+      added lines in LoadSetupModal.
+   2. At the Phone Order button (lines 682-695): expand the sub-form to collect the 8 minimum
+      dispatchable fields (broker already collected, driver optional, pickupCity, pickupState,
+      pickupDate, dropoffCity, dropoffState, dropoffDate, rate, equipmentId). Preserve the existing
+      call notes textarea. Max 80 added lines.
+   3. The save payload from phone-order mode builds a `legs` array with one `type: "Pickup"` stop and
+      one `type: "Dropoff"` stop from the collected fields, sets `equipment_id`, and calls
+      `onContinue` with a populated initial load. Max 15 added lines (included in the 80 above).
+ ────────────────────────────────────────
+ Path: `App.tsx` (already listed in Phase 2)
+ What changes: Extend the Phase 2 edits with 2-3 more lines to pass `autoTrigger` from
+   LoadSetupModal through `onContinue` to the Scanner render site at lines 666-667 (add
+   `autoTrigger={pendingScannerAutoTrigger}` to the Scanner JSX, store the value in a state variable
+   set by the LoadSetupModal callback). Max 5 additional lines on top of the Phase 2 App.tsx edits.
+ ────────────────────────────────────────
+ Path: `components/LoadBoardEnhanced.tsx`
+ What changes: Verify the props flow from LoadSetupModal through `EditLoadForm` preserves the new
+   `equipment_id` field. Likely zero edits — if the form save payload flows through a spread, the
+   new field passes through automatically.
 
- Acceptance criteria:
- - R-P7-01 [unit]: scripts/demo-certify.cjs appends a ### <timestamp> block under ## Sales Demo Certification
- with the last 50 lines of input log.
- - R-P7-02 [unit]: scripts/demo-certify.cjs exits 1 when the input log file is missing.
- - R-P7-03 [unit]: scripts/demo-certify.cjs source contains zero references to /tmp (regex assertion);
- references os.tmpdir() instead.
- - R-P7-04 [e2e]: e2e/sales-demo/00-smoke.spec.ts passes against the seeded sales-demo tenant when
- FIREBASE_WEB_API_KEY is set; gracefully test.skips with a clear message when not.
- - R-P7-05 [unit]: e2e/sales-demo/README.md lists all 4 specs (00-smoke, 01-document-automation,
- 02-ifta-walkthrough, 03-network-portal-walkthrough).
- - R-P7-06 [unit]: package.json demo:certify:sales script value is exactly node scripts/demo-certify.cjs (no
- Unix env syntax, no cross-env, no &&).
- - R-P7-07 [unit]: docs/release/evidence.md contains ## Sales Demo Certification H2.
+ Acceptance criteria (R-markers):
+ - R-P4-01 [unit]: Migration `049_loads_equipment_id.sql` UP contains
+   `ADD COLUMN equipment_id VARCHAR(36)` and the FK constraint line — grep assert.
+ - R-P4-02 [unit]: Migration `049_loads_equipment_id.sql` DOWN contains `DROP COLUMN equipment_id`
+   and NO `DROP COLUMN` against any other column name — grep assert (per Hard Rule 4).
+ - R-P4-03 [unit]: `server/schemas/loads.ts` `createLoadSchema` includes `equipment_id` as an
+   optional string field — assert via `createLoadSchema.safeParse({ load_number: "L1", status: "Draft",
+   equipment_id: "EQ-1" }).success === true`.
+ - R-P4-04 [integration]: `POST /api/loads` with body containing `equipment_id: "EQ-001"` captures
+   an INSERT that includes `equipment_id = "EQ-001"` against the mock DB.
+ - R-P4-05 [integration]: `POST /api/loads` with no `equipment_id` in the body persists `null` (not
+   undefined, not empty string).
+ - R-P4-06 [unit]: `load.service.ts` dispatch transition uses `load.equipment_id` as the first
+   preference for the equipment identifier, falling back to `chassis_number || container_number` —
+   assert via mock load that has `equipment_id='EQ-001'` and no chassis/container, and verify the
+   equipment lookup query is executed with `EQ-001` as the parameter.
+ - R-P4-07 [unit]: `validateDispatchGuards` passes for
+   `{ driverId: 'D1', equipmentId: 'EQ-001', stops: [pickup, dropoff], driverCompanyId: 'X',
+   equipmentCompanyId: 'X', companyId: 'X' }` — regression.
+ - R-P4-08 [unit]: `validateDispatchGuards` FAILS with error message containing `"equipment"` when
+   `equipmentId: null` — regression.
+ - R-P4-09 [unit]: `EditLoadForm` renders an equipment selector when given a non-empty equipment
+   list — assert via `getByLabelText(/equipment/i)`.
+ - R-P4-10 [unit]: `EditLoadForm` onSave payload includes `equipment_id` when user picks from the
+   selector — assert via spy.
+ - R-P4-11 [unit]: `EditLoadForm` displays a warning (`getByText(/equipment required/i)`) when user
+   saves with `status='Planned'` and `equipment_id=null`.
+ - R-P4-12 [unit]: `Scanner.tsx` Props interface includes
+   `autoTrigger?: 'upload' | 'camera'` — grep assert on `Scanner.tsx` source.
+ - R-P4-13 [unit]: `<Scanner autoTrigger="upload" ... />` fires a programmatic click on its hidden
+   file input on mount — assert via spy on `HTMLInputElement.prototype.click`.
+ - R-P4-14 [unit]: `<Scanner autoTrigger="camera" ... />` invokes the camera-activation path on
+   mount — assert via spy on the camera handler.
+ - R-P4-15 [unit]: `<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount —
+   regression proving additive-only behavior.
+ - R-P4-16 [unit]: `LoadSetupModal` Phone Order mode renders all 8 required input controls — assert
+   via `getAllByRole` queries.
+ - R-P4-17 [unit]: `LoadSetupModal` Phone Order Submit is disabled when any of the 8 required fields
+   is empty.
+ - R-P4-18 [unit]: `LoadSetupModal` Phone Order save payload `legs` array has exactly one
+   `type: "Pickup"` and one `type: "Dropoff"` entry populated from the form fields, plus
+   `equipment_id` set.
+ - R-P4-19 [unit]: `LoadSetupModal` Scan Doc button click path results in `Scanner` being rendered
+   with `autoTrigger="upload"` — integration test across modal → App.tsx → Scanner.
+ - R-P4-20 [unit]: `server/schemas/loads.ts` `partialUpdateLoadSchema` includes `equipment_id` as an
+   optional string field — assert via
+   `partialUpdateLoadSchema.safeParse({ equipment_id: "EQ-1" }).success === true`.
+ - R-P4-21 [integration]: `PATCH /api/loads/:id` with body `{ equipment_id: "EQ-001" }` against an
+   existing draft load updates the `equipment_id` column in the UPDATE SQL (assert via SQL capture
+   against a mock DB) and returns the updated load row with `equipment_id === "EQ-001"` in the
+   response body.
+ - R-P4-22 [integration]: `PATCH /api/loads/:id` with body `{ equipment_id: "EQ-001" }` and NO
+   other fields succeeds (proves the `.refine()` predicate was extended to accept
+   `equipment_id`-only partial updates). Previous behavior rejected single-field updates with
+   "No supported persisted fields" — this is the regression guard.
 
  Verification command:
- npx vitest run __tests__/scripts/demo-certify.test.ts && cd server && npx vitest run
- __tests__/docs/sales-demo-e2e-readme.test.ts __tests__/docs/release-evidence.test.ts && cd .. && npm run
- demo:certify:sales
+
+ ```bash
+ bash -c "cd server && npx vitest run __tests__/migrations/049_loads_equipment_id.test.ts __tests__/routes/loads-equipment-persistence.test.ts __tests__/routes/loads-equipment-partial-update.test.ts __tests__/services/load-service-dispatch-guard.test.ts && cd .. && npx vitest run src/__tests__/components/EditLoadForm.equipment-selector.test.tsx src/__tests__/components/LoadSetupModal.scan-doc.test.tsx src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx"
+ ```
 
  ---
- File Inventory (extend vs create) — final, verified
+## Phase 5 — Load Board Driver Intake Flow (module)
 
- Extended (existing files modified) — only 4 files in the entire SaaS source touched:
+ **Phase Type**: `module`
 
- ┌──────────────────────────┬──────────┬───────────────────────────────────────────────────────────────────┐
- │           File           │ Phase(s) │                            Diff scope                             │
- ├──────────────────────────┼──────────┼───────────────────────────────────────────────────────────────────┤
- │ package.json (root)      │ 1, 7     │ 3 added script lines (demo:reset:sales, demo:seed:sales,          │
- │                          │          │ demo:certify:sales)                                               │
- ├──────────────────────────┼──────────┼───────────────────────────────────────────────────────────────────┤
- │ App.tsx                  │ 6        │ < 30 added lines: 1 import + nav filter wrapper + reset button    │
- │                          │          │ injection (all if (isDemoNavMode()) gated)                        │
- ├──────────────────────────┼──────────┼───────────────────────────────────────────────────────────────────┤
- │ server/index.ts          │ 6        │ 2 added lines: import + conditional ALLOW_DEMO_RESET mount        │
- ├──────────────────────────┼──────────┼───────────────────────────────────────────────────────────────────┤
- │ docs/release/evidence.md │ 7        │ 1 added H2 heading line                                           │
- └──────────────────────────┴──────────┴───────────────────────────────────────────────────────────────────┘
+ Goal: A driver using `DriverMobileHome.tsx` can photograph a Rate Confirmation or BOL at the pickup
+ facility, upload it through the Scanner.tsx OCR path (with the new `autoTrigger` prop from Phase 4),
+ and have the extracted fields saved as a `status='Draft'`, `intake_source='driver'` load owned by
+ the current driver. The dispatcher sees these draft loads in a filtered tab on the load board and
+ approves them via a single PATCH that sets `status='Planned'` AND `equipment_id` in one operation.
 
- New files — all under server/scripts/, server/__tests__/, __tests__/, e2e/sales-demo/, services/, scripts/,
- and docs/:
+ Create contract (strict, fully specified to address Rev 1 ambiguity):
 
- Category: Seed scripts
- Files: server/scripts/seed-sales-demo.ts, seed-sales-demo-loads.ts, seed-sales-demo-ifta.ts,
-   seed-sales-demo-parties.ts, reset-sales-demo.ts
- ────────────────────────────────────────
- Category: Fixture data
- Files: server/scripts/sales-demo-fixtures/sales-demo-data.json, loads/LP-DEMO-RC-001.json,
-   loads/extracted-fields.md, ifta-q4-2025.json, parties.json
- ────────────────────────────────────────
- Category: Server tests
- Files: server/__tests__/scripts/seed-sales-demo.test.ts, reset-sales-demo.test.ts,
-   seed-sales-demo-loads.test.ts, seed-sales-demo-ifta.test.ts, seed-sales-demo-parties.test.ts,
-   __tests__/integration/sales-demo-load-readback.test.ts, sales-demo-ifta-summary.test.ts,
-   sales-demo-network-portal.test.ts, __tests__/middleware/sales-demo-tier-audit.test.ts,
-   __tests__/routes/demo.test.ts, __tests__/docs/sales-demo-seed-contract.test.ts, sales-demo-runbook.test.ts,
+ **1. Driver-intake create endpoint**: `POST /api/loads/driver-intake` (new route, separate from
+ `POST /api/loads`).
+    - Required body fields: NONE. All fields optional.
+    - Server-derived fields (never read from body):
+      - `company_id` — from `req.user.tenantId`
+      - `driver_id` — from `req.user.userId` (the submitting driver)
+      - `status` — hardcoded `'Draft'`
+      - `intake_source` — hardcoded `'driver'`
+      - `load_number` — generated server-side via new `generateNextLoadNumber(company_id)` helper
+        (see new file below). If the helper fails to produce a unique value after 3 attempts, the
+        endpoint returns 503 with a descriptive error.
+    - Optional body fields (whatever OCR returned):
+      - `commodity`, `weight`, `bol_number`, `reference_number`, `pickup_date`
+      - `pickup_city`, `pickup_state`, `pickup_facility_name`
+      - `dropoff_city`, `dropoff_state`, `dropoff_facility_name`
+    - Validation via new `createDriverIntakeLoadSchema` in `server/schemas/loads.ts` — a separate
+      schema from `createLoadSchema`, with all fields optional and no `load_number` requirement.
+    - Response on success: HTTP 201, body `{ id, load_number, status: "Draft",
+      intake_source: "driver" }`.
+    - Dispatch guards are NOT run (the load is a draft — it cannot transition to Dispatched until the
+      dispatcher approves and attaches equipment).
 
-   sales-demo-e2e-readme.test.ts, release-evidence.test.ts
- ────────────────────────────────────────
- Category: Frontend tests
- Files: __tests__/services/demoNavConfig.test.ts, __tests__/App.demo-nav.test.tsx,
-   __tests__/components/SafetyView.sales-demo.test.tsx, GlobalMapViewEnhanced.sales-demo.test.tsx,
-   GoogleMapsAPITester.sales-demo.test.tsx, __tests__/scripts/demo-certify.test.ts
- ────────────────────────────────────────
- Category: New runtime files
- Files: services/demoNavConfig.ts (frontend), server/routes/demo.ts (backend), scripts/demo-certify.cjs (root)
- ────────────────────────────────────────
- Category: e2e specs
- Files: e2e/sales-demo/00-smoke.spec.ts, 01-document-automation.spec.ts, 02-ifta-walkthrough.spec.ts,
-   03-network-portal-walkthrough.spec.ts, README.md
- ────────────────────────────────────────
- Category: Docs
- Files: docs/sales-demo-seed-contract.md, docs/sales-demo-runbook.md
+ **2. Dispatcher approval**: Uses the existing `PATCH /api/loads/:id` (partial update) endpoint plus
+ the existing `PATCH /api/loads/:id/status` path. The approval UI sends a single combined request
+ sequence:
+    - First: `PATCH /api/loads/:id` with body `{ equipment_id: <selected>, driver_id: <optionally
+      changed> }` — persists the equipment assignment via the path added in Phase 4.
+    - Then: `PATCH /api/loads/:id/status` with body `{ status: "Planned" }` — transitions state.
+      The existing state machine allows Draft → Planned without additional guards.
+    - If either request fails, the UI surfaces the error and leaves the load in Draft state.
+    - The approval modal REQUIRES `equipment_id` to be selected before the Approve button enables,
+      so loads approved via this flow always satisfy the dispatch guards when they later transition
+      to Dispatched.
 
- Files explicitly NOT touched (live-functions-only proof; will be asserted by R-markers and grep snapshots):
- server/routes/ai.ts, server/routes/clients.ts, server/routes/contacts.ts, server/routes/documents.ts,
- server/routes/accounting.ts, server/routes/quotes.ts, server/routes/leads.ts,
- server/services/gemini.service.ts, server/services/document.service.ts, server/services/ocr.service.ts,
- server/middleware/requireAuth.ts, server/middleware/requireTier.ts, server/middleware/requireTenant.ts,
- server/lib/sql-auth.ts, server/scripts/seed-demo.ts, server/scripts/seed-demo-data.json, every existing
- migration, components/Scanner.tsx, components/DriverMobileHome.tsx, components/IFTAManager.tsx,
- components/IFTAEvidenceReview.tsx, components/AccountingPortal.tsx, components/NetworkPortal.tsx,
- services/networkService.ts, components/SafetyView.tsx, components/GlobalMapViewEnhanced.tsx,
- components/LoadBoardEnhanced.tsx.
+ Files (new):
+
+ Path: `server/migrations/050_loads_intake_source.sql`
+ Purpose: Additive migration. UP: `ALTER TABLE loads ADD COLUMN intake_source VARCHAR(20) DEFAULT
+   'dispatcher'`. Values: `'dispatcher'` | `'driver'` | `'api'`. DOWN drops the column.
+ ────────────────────────────────────────
+ Path: `server/__tests__/migrations/050_loads_intake_source.test.ts`
+ Purpose: Doc-as-spec — asserts ADD COLUMN in UP, DROP COLUMN in DOWN, no other DROP COLUMN.
+ ────────────────────────────────────────
+ Path: `server/lib/loadNumberGenerator.ts`
+ Purpose: NEW server-side helper. Exports
+   `async generateNextLoadNumber(companyId: string, pool: Pool): Promise<string>`. Queries
+   `SELECT load_number FROM loads WHERE company_id = ? ORDER BY created_at DESC LIMIT 1`, parses the
+   highest numeric suffix, increments. Falls back to `DRAFT-${uuid().slice(0,8)}` if no existing
+   loads or parse failure. Max 30 lines.
+   **Name-collision note**: A frontend helper with the same name `generateNextLoadNumber` already
+   exists in `services/storageService.ts` (imported by `components/LoadSetupModal.tsx:15`). The new
+   server helper lives in a different module (`server/lib/`) under a different runtime, so there is
+   no runtime collision. Phase 5 tests import the server version explicitly from
+   `server/lib/loadNumberGenerator` to avoid any ambiguity.
+ ────────────────────────────────────────
+ Path: `server/__tests__/lib/loadNumberGenerator.test.ts`
+ Purpose: Unit tests — empty table → `DRAFT-<uuid>`; existing `LP-0001` → `LP-0002`; existing
+   `LP-DEMO-001` with non-numeric suffix → `DRAFT-<uuid>`; concurrent call safety documented (the
+   helper is not atomic — Phase 5 accepts the rare race as out-of-scope because drafts have no user-
+   visible numbering contract).
+ ────────────────────────────────────────
+ Path: `server/routes/loads-driver-intake.ts`
+ Purpose: New route file (justified per build-conventions rule 6 because this is a functionally
+   distinct endpoint with its own validation, auth, and ownership model). Exports a router with a
+   single handler:
+   `router.post("/api/loads/driver-intake", requireAuth, requireTenant, validateBody(createDriverIntakeLoadSchema), handler)`.
+   Handler: derives company_id/driver_id/status/intake_source server-side, calls
+   `generateNextLoadNumber`, constructs the load record, INSERTs via the same transaction pattern as
+   `POST /api/loads`, returns 201. Max 80 lines.
+ ────────────────────────────────────────
+ Path: `server/__tests__/routes/loads-driver-intake.test.ts`
+ Purpose: Integration tests — (a) empty body succeeds with server-generated load_number; (b) body
+   fields for pickup/dropoff are persisted; (c) attempt to set `status: "Planned"` in body is
+   ignored (server overrides to "Draft"); (d) attempt to set `driver_id` in body is ignored (server
+   uses req.user); (e) unauthenticated request returns 401; (f) response body includes the
+   generated `load_number`.
+ ────────────────────────────────────────
+ Path: `components/driver/DriverLoadIntakePanel.tsx`
+ Purpose: New component shown inside `DriverMobileHome.tsx` when the driver taps a new "Submit Load
+   Intake" tile. Renders `<Scanner autoTrigger="camera" mode="intake" onDataExtracted={...} />` on
+   mount. When the OCR callback fires, shows the extracted fields in an editable review screen. On
+   confirm, POSTs to `/api/loads/driver-intake`. On success shows "Submitted for dispatcher review"
+   and returns the driver to DriverMobileHome. Max 180 lines.
+ ────────────────────────────────────────
+ Path: `components/PendingDriverIntakeQueue.tsx`
+ Purpose: New dispatcher-side component — lists all loads where `status='Draft'` AND
+   `intake_source='driver'` via a filtered GET /api/loads query. Each row has an "Approve" button
+   that opens an approval modal. The modal REQUIRES the dispatcher to pick an equipment (from a
+   fetched equipment list) and optionally reassign the driver; Approve button is disabled until
+   `equipment_id` is selected. On submit, runs the two-request sequence documented above, then
+   removes the row on success. Max 160 lines.
+ ────────────────────────────────────────
+ Path: `src/__tests__/components/DriverLoadIntakePanel.test.tsx`
+ Purpose: Tests that the panel renders, mocks the Scanner's OCR callback to return a payload, calls
+   `POST /api/loads/driver-intake` with the expected body shape, asserts the success screen appears.
+ ────────────────────────────────────────
+ Path: `src/__tests__/components/PendingDriverIntakeQueue.test.tsx`
+ Purpose: Tests that the queue renders only loads matching the filter, that the Approve button is
+   disabled until equipment is selected, that clicking Approve fires a PATCH to
+   `/api/loads/:id` with equipment_id followed by PATCH to `/api/loads/:id/status` with
+   `status: "Planned"` in order.
+
+ Files (existing) extended:
+
+ Path: `server/schemas/loads.ts`
+ What changes: Add new export `createDriverIntakeLoadSchema = z.object({ ...11 optional fields... })`
+   — separate from `createLoadSchema`, does NOT include `load_number` or `status` (server-derived).
+   The 11 optional fields: `commodity`, `weight`, `bol_number`, `reference_number`, `pickup_date`,
+   `pickup_city`, `pickup_state`, `pickup_facility_name`, `dropoff_city`, `dropoff_state`,
+   `dropoff_facility_name`. Max 15 added lines.
+ ────────────────────────────────────────
+ Path: `server/index.ts`
+ What changes: Add 2 lines — `import driverIntakeRouter from "./routes/loads-driver-intake"` and
+   `app.use(driverIntakeRouter)`. Placed adjacent to the existing loads router registration.
+ ────────────────────────────────────────
+ Path: `server/routes/loads.ts`
+ What changes: In the same POST /api/loads handler touched in Phase 4, ALSO destructure
+   `intake_source` from the body and include it in the INSERT (default `'dispatcher'` if absent).
+   Max 3 added lines (1 destructure, 1 SQL column, 1 parameter).
+ ────────────────────────────────────────
+ Path: `components/DriverMobileHome.tsx`
+ What changes: Add a new "Submit Load Intake" tile that opens `DriverLoadIntakePanel`. Does NOT
+   modify any existing driver flow (BOL upload, POD upload, status transitions stay as-is). Max 20
+   added lines.
+ ────────────────────────────────────────
+ Path: `components/LoadBoardEnhanced.tsx`
+ What changes: Add a new tab/filter "Pending Driver Intake" that mounts `PendingDriverIntakeQueue`
+   when selected. Max 15 added lines.
+
+ Acceptance criteria (R-markers):
+ - R-P5-01 [unit]: Migration `050_loads_intake_source.sql` UP contains
+   `ADD COLUMN intake_source VARCHAR` — grep assert.
+ - R-P5-02 [unit]: Migration 050 DOWN contains `DROP COLUMN intake_source` and NO other DROP COLUMN
+   — grep assert (per Hard Rule 4).
+ - R-P5-03 [unit]: `generateNextLoadNumber('C1', mockPool)` against an empty mock returns a string
+   matching the pattern `^DRAFT-[a-f0-9]{8}$`.
+ - R-P5-04 [unit]: `generateNextLoadNumber` against a mock with `LP-0001` existing returns `LP-0002`.
+ - R-P5-05 [unit]: `createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid — all
+   fields optional).
+ - R-P5-06 [unit]: `createDriverIntakeLoadSchema` does NOT have a `load_number` field — assert via
+   `'load_number' in createDriverIntakeLoadSchema.shape === false`.
+ - R-P5-07 [integration]: `POST /api/loads/driver-intake` with empty body returns 201 with body
+   containing `{ status: "Draft", intake_source: "driver", load_number: <non-empty string> }` and
+   `driver_id` set to the authenticated user's userId.
+ - R-P5-08 [integration]: `POST /api/loads/driver-intake` with
+   `{ status: "Planned", driver_id: "other-user" }` in body IGNORES both fields — the persisted
+   record has `status: "Draft"` and `driver_id: <auth user>`. Proves server-derived fields override
+   body.
+ - R-P5-09 [integration]: `POST /api/loads/driver-intake` without authentication returns 401.
+ - R-P5-10 [unit]: `DriverLoadIntakePanel` renders `<Scanner autoTrigger="camera" mode="intake" />`
+   on mount — assert via rendered props.
+ - R-P5-11 [unit]: `DriverLoadIntakePanel` calls fetch with `/api/loads/driver-intake` after the
+   Scanner's `onDataExtracted` callback fires and the user confirms — assert via fetch spy.
+ - R-P5-12 [unit]: `PendingDriverIntakeQueue` filters the fetched loads list to only `status ===
+   "Draft"` AND `intake_source === "driver"` — assert via mock load list containing mixed records.
+ - R-P5-13 [unit]: `PendingDriverIntakeQueue` Approve button is disabled until `equipment_id` is
+   selected in the approval modal.
+ - R-P5-14 [unit]: `PendingDriverIntakeQueue` Approve button click fires TWO fetches in order: first
+   `PATCH /api/loads/:id` with `{ equipment_id: <selected> }`, then
+   `PATCH /api/loads/:id/status` with `{ status: "Planned" }` — assert via ordered fetch spy.
+ - R-P5-15 [unit]: `server/index.ts` source contains an import of `loads-driver-intake` and an
+   `app.use` registration — grep assert.
+ - R-P5-16 [unit]: `DriverMobileHome.tsx` imports `DriverLoadIntakePanel` — grep assert.
+ - R-P5-17 [unit]: `LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` — grep assert.
+
+ Verification command:
+
+ ```bash
+ bash -c "cd server && npx vitest run __tests__/migrations/050_loads_intake_source.test.ts __tests__/lib/loadNumberGenerator.test.ts __tests__/routes/loads-driver-intake.test.ts && cd .. && npx vitest run src/__tests__/components/DriverLoadIntakePanel.test.tsx src/__tests__/components/PendingDriverIntakeQueue.test.tsx"
+ ```
 
  ---
- Ralph prd.json specification block (drop-in ready)
+## Phase 6 — End-to-End Regression Suite (integration)
 
- This section is the authoritative source for the new .claude/prd.json after plan approval. The story shape
- mirrors the current prd.json schema (verified against the production-readiness sprint at
- .claude/prd.production-readiness.completed.json).
+ **Phase Type**: `integration`
 
- Top-level fields:
- {
-   "version": "2.0",
-   "planRef": ".claude/docs/PLAN.md",
-   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-   "plan_hash": "<SHA-256 of the corrected PLAN.md after this plan is committed there>",
-   "stories": [ /* 7 stories below */ ]
- }
+ Goal: Four Playwright specs exercise the user-observed failure scenarios end-to-end against a
+ running backend. These are the canonical demo-readiness bar.
 
- Story manifest — every field needed for prd.json:
+ Files (new):
 
- Story: S-001 Independent Sales-Demo Seed Pipeline
- Phase: 1
- Type: foundation
- parallelGroup: 0
- dependsOn: []
- Scope (files): seed-sales-demo.ts, reset-sales-demo.ts, sales-demo-data.json, package.json,
-   sales-demo-seed-contract.md + 4 test files
- gateCmd: Phase 1 verification command
+ Path: `e2e/pre-demo-remediation/01-onboarding-multi-user.spec.ts`
+ Purpose: Two-context test simulating User A and User B logged in as the same Firebase user. User A
+   creates a Contractor party via the onboarding wizard; User B's NetworkPortal asserts the new
+   party appears within 7 seconds (5s polling + 2s safety margin). Auth pattern reused from
+   `e2e/team05-onboarding-entities.spec.ts`.
  ────────────────────────────────────────
- Story: S-002 Pre-Seeded Document Automation Hero
- Phase: 2
- Type: module
- parallelGroup: 1
- dependsOn: [S-001]
- Scope (files): seed-sales-demo-loads.ts, LP-DEMO-RC-001.json, extracted-fields.md, seed-sales-demo.ts
- (extend)
-   + 3 test/spec files
- gateCmd: Phase 2 verification command
+ Path: `e2e/pre-demo-remediation/02-load-board-dispatcher-flow.spec.ts`
+ Purpose: Dispatcher logs in, clicks Create Load → Scan Doc → asserts file picker opens immediately
+   (proves `autoTrigger="upload"` works end-to-end). Uploads a fixture RateCon image, reviews
+   extracted fields, fills missing fields INCLUDING equipment, saves. Asserts the load appears on
+   the board with `status='Planned'`, `equipment_id` non-null, and passes dispatch guards by
+   transitioning to Dispatched.
  ────────────────────────────────────────
- Story: S-003 IFTA Evidence Seed + Real-UI Walkthrough
- Phase: 3
- Type: integration
- parallelGroup: 1
- dependsOn: [S-001, S-002]
- Scope (files): seed-sales-demo-ifta.ts, ifta-q4-2025.json, seed-sales-demo.ts (extend) + 3 test/spec files
- gateCmd: Phase 3 verification command
+ Path: `e2e/pre-demo-remediation/03-load-board-driver-intake-flow.spec.ts`
+ Purpose: Driver context taps Submit Load Intake, uploads a fixture BOL, confirms fields, submits.
+   Asserts the load appears with `status='Draft'` and `intake_source='driver'`. Dispatcher context
+   navigates to Pending Driver Intake tab, sees the load, clicks Approve, picks equipment, confirms.
+   Asserts the load transitions to Planned AND has `equipment_id` persisted.
  ────────────────────────────────────────
- Story: S-004 CRM Registry Depth (real /api/parties)
- Phase: 4
- Type: integration
- parallelGroup: 1
- dependsOn: [S-001]
- Scope (files): seed-sales-demo-parties.ts, parties.json, seed-sales-demo.ts (extend) + 3 test/spec files
- gateCmd: Phase 4 verification command
+ Path: `e2e/pre-demo-remediation/04-issue-board-create.spec.ts`
+ Purpose: Open the issue board, click New Issue, submit with invalid data (empty description), assert
+   the button re-enables within 2 seconds with an error toast visible. Then submit valid data,
+   assert the issue appears in the list within 12 seconds (10s polling + 2s margin).
  ────────────────────────────────────────
- Story: S-005 Demo-Blocker Regression Tests
- Phase: 5
- Type: module
- parallelGroup: 1
- dependsOn: [S-001]
- Scope (files): 3 frontend test files + sales-demo-seed-contract.md (extend)
- gateCmd: Phase 5 verification command
+ Path: `e2e/fixtures/ratecon-sample.png`
+ Purpose: Small (<100 KB) sample rate-confirmation image for the scan-doc spec. Generated during
+   Phase 6 and committed as a binary fixture.
  ────────────────────────────────────────
- Story: S-006 Demo Shell + Reset Endpoint
- Phase: 6
- Type: integration
- parallelGroup: 1
- dependsOn: [S-001]
- Scope (files): demoNavConfig.ts, App.tsx (extend), server/routes/demo.ts, server/index.ts (extend),
-   sales-demo-runbook.md + 4 test files
- gateCmd: Phase 6 verification command
- ────────────────────────────────────────
- Story: S-007 Windows-Safe Certification Pipeline
- Phase: 7
- Type: e2e
- parallelGroup: 2
- dependsOn: [S-002, S-003, S-004, S-006]
- Scope (files): scripts/demo-certify.cjs, e2e/sales-demo/00-smoke.spec.ts, e2e/sales-demo/README.md,
-   package.json (extend), docs/release/evidence.md (extend) + 3 test files
- gateCmd: Phase 7 verification command
+ Path: `e2e/fixtures/bol-sample.png`
+ Purpose: Small (<100 KB) sample BOL image for the driver intake spec.
 
- Story field defaults (apply to every story unless noted):
- - passed: false
- - verificationRef: "verification-log.jsonl"
- - complexity: simple for S-005, medium for S-001/S-002/S-005/S-007, complex for S-003/S-004/S-006
- - maxTurns: 100 for simple/medium, 200 for complex
- - component: server/ for S-001/S-002/S-003/S-004, frontend+server/ for S-005/S-006/S-007
+ Files (existing) extended:
 
- Dependency graph (for ralph parallel dispatch):
- S-001 (group 0, no deps)
-   └→ S-002, S-003, S-004, S-005, S-006 (group 1, all depend only on S-001 — eligible for parallel batch)
-        │  Note: S-003 also depends on S-002 because Phase 3 IFTA evidence references the load LP-DEMO-RC-001
- from Phase 2
-        │  → effective parallel set in group 1 = {S-002, S-004, S-005, S-006}, then S-003 after S-002
-        └→ S-007 (group 2, depends on S-002 + S-003 + S-004 + S-006 — runs last)
+ Path: `playwright.config.ts`
+ What changes: If the new spec directory `e2e/pre-demo-remediation/` is not auto-discovered, add it
+   to `testDir`/`testMatch`. Max 3 added lines; likely zero.
 
- With parallel_dispatch_enabled: true and parallel_batch_size: 3 (verified in .claude/workflow.json), ralph
- will dispatch S-001, then a batch of {S-002, S-004, S-005} or {S-002, S-004, S-006} (3 at a time), then the
- remainder, then S-003 once S-002 completes, then S-007.
+ Acceptance criteria (R-markers):
+ - R-P6-01 [e2e]: Onboarding multi-user spec — User A creates party; User B sees it within 7 seconds.
+ - R-P6-02 [e2e]: Dispatcher flow spec — Scan Doc click → file picker visible on screen within 1
+   second (proves autoTrigger). End state: load has `status='Planned'`, `equipment_id` non-null.
+ - R-P6-03 [e2e]: Driver intake spec — driver-submitted load appears in dispatcher's Pending Driver
+   Intake queue, gets approved with equipment attached, transitions to Planned.
+ - R-P6-04 [e2e]: Issue board create spec — invalid submission surfaces error toast and re-enables
+   button within 2s; valid submission appears in list within 12s.
+ - R-P6-05 [e2e]: All 4 specs under `e2e/pre-demo-remediation/` are auto-discovered by
+   `npx playwright test --list`.
 
- R-marker totals (for plan-vs-prd cross-check during validation):
- - S-001: R-P1-01..12 (12) — added R-P1-09 (explicit DELETE list), R-P1-10 (idempotent reset) as
-   correction #1; added R-P1-11 (.env.example.sales-demo) and R-P1-12 (single .env.local contract) as
-   correction #3 (env source unification)
- - S-002: R-P2-01..13 (13) — split prior R-P2-01 into customers + loads INSERTs (R-P2-01 + R-P2-02);
-   added R-P2-08 (snapshot grep covering LoadDetailView, brokerService) as part of correction #2/#3;
-   added R-P2-09..11 (real PDF artifacts: fixtures-on-disk, seed-copies-to-upload-dir, live download
-   endpoint returns real binary) and R-P2-12..13 (canonical document mapping fix: repository aliases
-   original_filename→filename and document_type→type, e2e asserts no 'undefined' in doc cards) as
-   part of the wow-upgrade pass
- - S-003: R-P3-01..07 (7) — added R-P3-02 (load_id linkage assert), R-P3-03 (zero equipment INSERTs),
-   renumbered remaining markers as part of correction #4. All accounting/IFTA SQL uses company_id
-   (verified against migration 038); fuel_ledger uses entry_date (verified against migration 011).
- - S-004: R-P4-01..07 (7) — R-P4-01 + R-P4-06 strengthened to require ACME Logistics LLC as one of
-   the 2 seeded brokers (continuity object — same broker as the Phase 2 hero load)
- - S-005: R-P5-01..05 (5)
- - S-006: R-P6-01..09 (9) — R-P6-07 expanded from 6 to 8 required H2 sections in the runbook
-   (adds Certified Core demo script + Wow Appendix)
- - S-007: R-P7-01..07 (7)
- - Total: 60 R-markers (was 48 in original plan → 53 → 55 → 60 after the wow-upgrade pass added
-   5 new Phase 2 markers for real artifacts + canonical doc mapping)
+ Verification command:
+
+ ```bash
+ bash -c "npx playwright test e2e/pre-demo-remediation/ --reporter=list"
+ ```
 
  ---
- Ralph alignment checklist (post plan-mode-exit, executed in order)
+ File Inventory (extend vs create) — final (Rev 3)
 
- 1. Backup current prd.json → cp .claude/prd.json .claude/prd.production-readiness.completed.json (already
- done before plan mode locked editing — file is on disk).
- 2. Replace .claude/docs/PLAN.md with the content of this plan file (the entire body above the "Ralph
- alignment checklist" section, plus this checklist re-stated, becomes the new PLAN.md).
- 3. Compute new plan_hash: python -c "import hashlib;
- print(hashlib.sha256(open('.claude/docs/PLAN.md','rb').read()).hexdigest())" and use the result as the
- plan_hash field in prd.json.
- 4. Write the new .claude/prd.json from the spec block above. 7 stories, 60 R-markers, the dependency
-   graph as listed.
- 5. Reset .claude/.workflow-state.json ralph section: clear feature_branch (empty string so ralph creates
- ralph/bulletproof-sales-demo on first dispatch), clear current_story_id, set current_attempt: 0, clear
- current_step, set stories_passed: 0, set stories_skipped: 0, set consecutive_skips: 0, clear
- prior_failure_summary, clear checkpoint_hash, clear cumulative_drift_warnings. Leave max_attempts: 4.
- 6. Validate plan-vs-prd alignment with these greps:
-   - grep -c "R-P[1-7]-[0-9]\{2\}" .claude/docs/PLAN.md should equal grep -c '"id": "R-P' .claude/prd.json
-   should equal 60.
-   - For every R-marker in PLAN.md, the same id appears in prd.json (use comm against sorted lists).
-   - For every scope file in prd.json, the path appears in PLAN.md (paste-in check).
-   - The plan_hash in prd.json equals sha256(.claude/docs/PLAN.md).
-   - No story in prd.json has passed: true (fresh sprint).
- 7. First /ralph invocation dispatches S-001 (foundation, no deps) on the new ralph/bulletproof-sales-demo
- branch.
+ ## Extended (existing files modified)
 
- ---
- Verification (end-to-end, after the sprint completes)
+ | File | Phase(s) | Diff scope |
+ |---|---|---|
+ | server/routes/clients.ts | 1 | ~6 added lines (widen `isMissingTableError` for ER_BAD_FIELD_ERROR) |
+ | components/NetworkPortal.tsx | 1, 2 | ~5 added lines (error surfacing + polling swap, deps stay `[companyId]`) |
+ | services/api.ts | 1 | ~6 added lines (MANDATORY — surface server `details` field at lines 94-100) |
+ | services/networkService.ts | 2 | ~3 added lines (AbortSignal forwarding) |
+ | components/IntelligenceHub.tsx | 2 | 0 net added (useEffect → usePollingEffect replacement) |
+ | App.tsx | 2, 4 | ~20 added lines (Phase 2: setInterval around refreshData in auth useEffect + clearInterval cleanup; Phase 4: autoTrigger prop drilling to Scanner at lines 666-667) |
+ | components/LoadBoardEnhanced.tsx | 5 | ~15 added lines (Pending Driver Intake tab ONLY — no polling here; loads fetch lives in App.tsx) |
+ | components/ExceptionConsole.tsx | 2, 3 | ~15 added lines (polling + try/catch/finally) |
+ | services/exceptionService.ts | 3 | ~6 added lines (error wrap) |
+ | server/schemas/loads.ts | 4, 5 | ~19 added lines (equipment_id in createLoadSchema + partialUpdateLoadSchema + .refine() predicate + createDriverIntakeLoadSchema) |
+ | server/routes/loads.ts | 4, 5 | ~12 added lines (POST equipment_id + PATCH equipment_id handler block + intake_source in POST) |
+ | server/services/load.service.ts | 4 | ~2 added, ~2 removed (prefer load.equipment_id in dispatch guard at lines 88-117) |
+ | components/Scanner.tsx | 4 | ~15 added lines (autoTrigger prop at Props interface lines 76-83) |
+ | components/EditLoadForm.tsx | 4 | ~50 added lines (equipment selector) |
+ | components/LoadSetupModal.tsx | 4 | ~100 added lines (file picker wiring + phone order fields) |
+ | server/index.ts | 5 | 2 added lines (register loads-driver-intake router) |
+ | components/DriverMobileHome.tsx | 5 | ~20 added lines (Submit Load Intake tile) |
+ | playwright.config.ts | 6 | ≤3 added lines (test dir — likely zero; testDir `./e2e` already auto-discovers subdirs) |
 
- The sprint is "salesperson-shippable" when ALL of the following are true on the developer machine:
+ ## New (files created)
 
- 1. npm run demo:reset:sales exits 0 (Phase 1 + the inner Phase 2/3/4 seed steps).
- 2. cd server && npx vitest run __tests__/scripts/seed-sales-demo*.test.ts
- __tests__/integration/sales-demo-*.test.ts __tests__/middleware/sales-demo-tier-audit.test.ts
- __tests__/routes/demo.test.ts __tests__/docs/sales-demo-*.test.ts exits 0.
- 3. npx vitest run __tests__/services/demoNavConfig.test.ts __tests__/App.demo-nav.test.tsx
- __tests__/components/SafetyView.sales-demo.test.tsx
- __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx __tests__/scripts/demo-certify.test.ts exits
- 0.
- 4. npm run demo:certify:sales exits 0 (runs reset + 4 specs + appends to evidence.md).
- 5. git diff main -- server/routes/ai.ts server/services/gemini.service.ts server/services/document.service.ts
-  server/middleware/requireAuth.ts server/middleware/requireTier.ts server/lib/sql-auth.ts
- server/scripts/seed-demo.ts components/Scanner.tsx components/DriverMobileHome.tsx components/IFTAManager.tsx
-  components/IFTAEvidenceReview.tsx components/AccountingPortal.tsx components/NetworkPortal.tsx
- services/networkService.ts components/SafetyView.tsx components/GlobalMapViewEnhanced.tsx
- components/LoadBoardEnhanced.tsx shows zero diff — proves live-functions-only. NOTE:
- server/repositories/document.repository.ts is DELIBERATELY EXCLUDED from this zero-diff list — it is
- the single production-code relaxation this sprint (≤ 10-line mapping that aliases original_filename →
- filename and document_type → type; see Phase 2 R-P2-12). No other production file is touched.
- 6. STRETCH GATE (not blocking, runs nightly or pre-release): the full prior 6,432-test regression suite
-   still passes (cd server && npx vitest run and npx vitest run from root). This is a stretch gate
-   because (a) it covers the entire SaaS scope, far broader than this sprint's blast radius, and (b) the
-   live-functions-only constraint plus the surgical diffs in Phase 6 (App.tsx <30 lines, server/index.ts
-   2 lines) make broad regressions structurally unlikely. If a regression is found, it must be unrelated
-   to this sprint and gets a separate bug ticket — it does NOT block sprint sign-off. The mandatory blocking
-   gates are steps 1-5 above plus the full Playwright certify run in step 4.
+ Category: Migrations (3)
+ - server/migrations/048_parties_entity_class.sql
+ - server/migrations/049_loads_equipment_id.sql
+ - server/migrations/050_loads_intake_source.sql
 
- ---
- Certified Core Demo Script — 6 steps (lead with the pain, not the dashboard)
+ Category: Server runtime (2)
+ - server/lib/loadNumberGenerator.ts
+ - server/routes/loads-driver-intake.ts
 
- Narrative opening (read aloud before clicking anything):
- *"Your driver just sent paperwork from the cab. Watch what happens next — the system has already
- extracted the load details, filed the IFTA evidence, and cross-referenced the broker in your CRM.
- You never touched a keyboard for this load."*
+ Category: Frontend runtime (3)
+ - services/usePollingEffect.ts
+ - components/driver/DriverLoadIntakePanel.tsx
+ - components/PendingDriverIntakeQueue.tsx
 
- The certified core is the **guaranteed path**. Every step below is covered by a Phase 2-6 test that
- runs as part of `npm run demo:certify:sales`. If any step breaks, `demo:certify:sales` fails and the
- sprint is not done.
+ Category: Server tests (9)
+ - server/__tests__/routes/parties-entity-class.test.ts
+ - server/__tests__/migrations/048_parties_entity_class.test.ts
+ - server/__tests__/migrations/049_loads_equipment_id.test.ts
+ - server/__tests__/migrations/050_loads_intake_source.test.ts
+ - server/__tests__/routes/loads-equipment-persistence.test.ts
+ - server/__tests__/routes/loads-equipment-partial-update.test.ts
+ - server/__tests__/services/load-service-dispatch-guard.test.ts
+ - server/__tests__/lib/loadNumberGenerator.test.ts
+ - server/__tests__/routes/loads-driver-intake.test.ts
 
- ┌──────┬─────────┬──────────────────────────────────────────────────────────────────┬───────────┬──────────────────────────────────────────────┐
- │ Step │ Window  │                              Action                             │ Validates │ Business outcome sales should say out loud   │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 1    │ Admin   │ Click Reset Demo in nav → toast "Demo reset complete"            │ Phase 1+6 │ "Clean slate — every buyer sees the same    │
- │      │ Chrome  │                                                                  │           │  outcome on stage."                          │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 2    │ Admin   │ nav-loads → open LP-DEMO-RC-001 → narrate the seeded broker     │ Phase 2   │ "This load came in from a driver's          │
- │      │ Chrome  │ (ACME Logistics LLC), commodity (Frozen Beef, 42,500 lbs), rate │           │  paperwork. The AI pulled every field —     │
- │      │         │ ($3,250), route (Houston → Chicago). Click Documents → open     │           │  zero manual entry. The documents are       │
- │      │         │ Rate Con card → click Download → real PDF opens.                │           │  downloadable right now."                    │
- │      │         │                                                                  │           │  **Outcome: manual entry avoided**           │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 3    │ Admin   │ nav-accounting → Fuel & IFTA tab → Q4 → 2025 → click the        │ Phase 3   │ "Same trip, different hat. This is now your │
- │      │ Chrome  │ LP-DEMO-RC-001 card → wait for Computed Jurisdiction Split      │           │  Q4 IFTA evidence — 6 jurisdictions, fuel   │
- │      │         │ (auto-runs) → check attest → Lock Trip for Audit → success      │           │  purchases, mileage split — and it's        │
- │      │         │ toast. Say: "This is the same LP-DEMO-RC-001 trip from step 2". │           │  audit-locked in one click."                 │
- │      │         │                                                                  │           │  **Outcome: multi-state IFTA quarter ready** │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 4    │ Admin   │ nav-network → locate row `ACME Logistics LLC` (the SAME broker  │ Phase 4   │ "And here is that same ACME Logistics       │
- │      │ Chrome  │ from step 2) → click it → walk all 6 tabs                        │           │  record in our trucking-aware CRM — one     │
- │      │         │ (IDENTITY/CONTACTS/CATALOG/RATES/CONSTRAINTS/DOCS) → each tab   │           │  registry across brokers, customers,        │
- │      │         │ shows seeded data for THIS broker.                               │           │  vendors, facilities, and contractors."     │
- │      │         │                                                                  │           │  **Outcome: one registry across broker /    │
- │      │         │                                                                  │           │  customer / vendor / facility / contractor**│
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 5    │ Admin   │ Walk the nav bar and confirm Telematics, Company Settings,      │ Phase 6   │ "Demo mode hides modules that are not       │
- │      │ Chrome  │ Issues & Alerts, Dashboard, Quotes, and all operations-hub-     │           │  certified for today — the customer only    │
- │      │         │ adjacent items are not present (allowlist works).                │           │  sees what we have proved."                  │
- ├──────┼─────────┼──────────────────────────────────────────────────────────────────┼───────────┼──────────────────────────────────────────────┤
- │ 6    │ Admin   │ At end of demo, click Reset Demo again → refresh → confirm the  │ Phase 1+6 │ "Reset is one click and idempotent — the    │
- │      │ Chrome  │ exact same state is ready for the next buyer.                    │           │  next buyer sees the exact same thing."     │
- └──────┴─────────┴──────────────────────────────────────────────────────────────────┴───────────┴──────────────────────────────────────────────┘
+ Category: Frontend tests (7)
+ - src/__tests__/services/usePollingEffect.test.tsx
+ - src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx
+ - src/__tests__/components/EditLoadForm.equipment-selector.test.tsx
+ - src/__tests__/components/LoadSetupModal.scan-doc.test.tsx
+ - src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx
+ - src/__tests__/components/DriverLoadIntakePanel.test.tsx
+ - src/__tests__/components/PendingDriverIntakeQueue.test.tsx
 
- **Continuity rule for sales**: step 2's broker, step 3's trip, and step 4's CRM record MUST all
- refer to the same object. If step 4 opens a different broker than `ACME Logistics LLC`, the demo
- has regressed — file an issue before running it again. The Phase 4 Playwright spec (R-P4-06)
- enforces this programmatically by drilling into ACME by name.
+ Category: E2E (6)
+ - e2e/pre-demo-remediation/01-onboarding-multi-user.spec.ts
+ - e2e/pre-demo-remediation/02-load-board-dispatcher-flow.spec.ts
+ - e2e/pre-demo-remediation/03-load-board-driver-intake-flow.spec.ts
+ - e2e/pre-demo-remediation/04-issue-board-create.spec.ts
+ - e2e/fixtures/ratecon-sample.png
+ - e2e/fixtures/bol-sample.png
+
+ ## Files explicitly NOT touched (proof of minimum scope)
+
+ `.claude/docs/PLAN.md`, `server/routes/ai.ts`, `server/services/gemini.service.ts`,
+ `server/services/document.service.ts`, `components/GlobalMapViewEnhanced.tsx`,
+ `components/SafetyView.tsx`, `components/AccountingPortal.tsx`, `components/IFTAManager.tsx`, any
+ existing migration 001-047, `server/scripts/seed-demo.ts`, `server/middleware/requireAuth.ts`,
+ `server/middleware/requireTier.ts`, `server/middleware/requireTenant.ts`, `server/lib/sql-auth.ts`,
+ `server/services/load-state-machine.ts` (the dispatch guard is only EXERCISED by this plan, not
+ modified).
+
+ NOTE: `components/Scanner.tsx` IS modified in this plan (Phase 4) — one additive prop
+ (`autoTrigger`). See Hard Rule 5 for the justification (Rev 1 had this file as NOT touched; that
+ constraint conflicted with the user requirement for auto-opening the file picker).
 
  ---
- Wow Appendix — Optional live driver upload (NOT certified)
+ Sprint summary (Rev 3)
 
- The certified core above always works. The wow appendix is a **second, optional path** that lets
- sales do a real live upload in front of the buyer for maximum impact. It uses live Gemini extraction
- so it has real model variability: if Gemini is slow, returns partial data, or rate-limits, the
- fallback is the backup 20-30 second screen recording below. Do NOT run this path unless Gemini
- has been pre-flight-tested in the last hour.
-
- Setup (do BEFORE the buyer arrives):
- 1. Open a second Chrome profile (Menu → Add profile → "DisbatchMe Driver").
- 2. In that profile, log in as `SALES_DEMO_DRIVER_FIREBASE_UID`. Leave the tab parked on driver mobile
-    home (App.tsx routes the driver role to DriverMobileHome on line ~761).
- 3. Keep a real PDF of a rate confirmation or BOL on your laptop at `%USERPROFILE%\sales-demo-upload.pdf`.
- 4. Alt-Tab between the admin Chrome profile (for the certified core) and the driver Chrome profile
-    (for the appendix). The buyer sees two real windows, not a tabbed fake.
-
- Execution (1-2 minutes, after step 4 of the certified core):
- 1. Switch to the driver Chrome profile.
- 2. Open the Scanner (DriverMobileHome → Scan Document button).
- 3. Upload `sales-demo-upload.pdf` — this hits POST /api/ai/extract-load live.
- 4. Wait for extraction (≤ 10 seconds typical). Narrate: *"The driver just did one tap. The AI is
-    extracting commodity, weight, facilities, and rate from the raw document."*
- 5. When extraction returns, a new load appears in the driver's load list AND — switch to admin
-    Chrome — in the admin's load board. Narrate: *"One tap. Zero manual entry. Dispatch already
-    sees it."*
- 6. Optional: open the new load's Documents panel to show the uploaded PDF is attached.
-
- Failure recovery: if Gemini takes > 15 seconds OR returns obvious garbage, press Alt-Tab back to
- admin Chrome and say: *"Gemini is having a moment — let me show you what it looks like when it
- works."* Then play `docs/sales-demo-backup-assets/04-wow-appendix-live-upload.mp4` (see Backup Assets
- below) on the admin screen. Do not apologize. Do not open the terminal.
+ - **6 phases**, **69 R-markers** total (verified via `prd_generator.py --dry-run`:
+   P1=7, P2=12, P3=6, P4=22, P5=17, P6=5). Up from Rev 2's 64 due to: +2 App.tsx polling
+   assertions R-P2-08/09, +1 App.tsx→getLoads integration R-P2-12, +3 partial-update-schema
+   assertions R-P4-20/21/22, -1 absorbed by the LoadBoardEnhanced polling drop (now in App.tsx).
+ - **18 extended files**, **30 new files** (3 migrations + 2 server runtime + 3 frontend runtime +
+   9 server tests + 7 frontend tests + 4 e2e specs + 2 binary fixtures).
+ - **3 new migrations**: 048 (parties.entity_class + vendor_profile), 049 (loads.equipment_id),
+   050 (loads.intake_source). Current HEAD verified as 047 on `ralph/bulletproof-sales-demo`.
+ - **Branch**: `ralph/pre-demo-remediation`.
+ - **Execution path**: back up `.claude/docs/PLAN.md` (to `PLAN-bulletproof-sales-demo.md`) →
+   rename `PLAN-remediation.md` to `PLAN.md` → run `python .claude/hooks/prd_generator.py --plan
+   .claude/docs/PLAN.md` to regenerate `prd.json` → `/ralph` → merge PR → restore the original
+   PLAN.md from `PLAN-bulletproof-sales-demo.md`. The Bulletproof Sales Demo plan stays
+   byte-for-byte identical throughout.
+ - **Known non-blocker**: `.claude/hooks/prd_generator.py` `_infer_test_type` only reads the
+   Testing Strategy table section (which this plan doesn't have, matching current PLAN.md format).
+   All 61 criteria will initially be generated with `testType: "manual"`, which is fine for Ralph
+   execution — `qa_runner.py` reads the `# Tests R-PN-NN` markers directly from test files (via
+   `_qa_lib.py:1314-1315`) and does not rely on the prd.json testType field for coverage
+   enforcement. If Ralph ever wants correct testType fields in prd.json, patch
+   `_R_ID_RE` at `prd_generator.py:44` to capture the bracket group + plumb into
+   `_infer_test_type`. Not required for this sprint.
 
  ---
- Backup Assets
+ Rev 3 changelog (second verification pass, 2026-04-07)
 
- Sales must keep one screenshot AND one 20-30 second screen recording per hero flow for fallback.
- These are NOT committed as code artifacts — they are captured manually by sales after running
- the certified core once. Reserve directory: `docs/sales-demo-backup-assets/` (gitignored).
+ 1. **Phase 2 polling target corrected**: `LoadBoardEnhanced.tsx` is prop-driven — it has NO
+    self-loading useEffect and no fetch call. The loads state and fetch orchestration live in
+    `App.tsx:292-357` `refreshData()`, called once-per-sign-in from the auth useEffect at
+    `App.tsx:257-290`. Phase 2 now adds the setInterval inside that App.tsx useEffect instead of
+    LoadBoardEnhanced. R-P2-08 changed from "LoadBoardEnhanced imports usePollingEffect" to
+    "App.tsx contains setInterval+refreshData"; R-P2-09 added for clearInterval cleanup; R-P2-12
+    added as an integration test asserting `getLoads` is called ≥2 times after 10s.
+ 2. **NetworkPortal useEffect deps drift**: Actual deps are `[companyId]`, not `[]`. R-P2-05 grep
+    pattern updated to match the real pre-fix pattern. Phase 2 polling swap preserves `companyId`
+    as the dep.
+ 3. **Phase 4 update-path gap**: `partialUpdateLoadSchema` at `server/schemas/loads.ts:87-111`
+    whitelists only 7 partial-update fields, so Phase 5's driver-intake approval flow (which does
+    `PATCH /api/loads/:id { equipment_id }`) would be silently rejected without an additive update
+    to BOTH the schema and the handler's update builder at `server/routes/loads.ts:382-411`.
+    Phase 4 now extends both. New R-markers: R-P4-20 (schema accepts equipment_id),
+    R-P4-21 (PATCH captures it), R-P4-22 (.refine() accepts equipment_id-only body).
+ 4. **`services/api.ts` edit promoted from optional to mandatory**: Verified at lines 94-100 on
+    the current branch — `apiFetch` reads only `errorData.error` and silently drops
+    `errorData.details`. The Phase 1 "if needed" wording is replaced with a concrete edit.
+ 5. **validateDispatchGuards file location corrected**: Lives in
+    `server/services/load-state-machine.ts:157`, not in `load.service.ts`. Phase 4's
+    `load-service-dispatch-guard.test.ts` is now explicit about covering both the call-path in
+    `load.service.ts:88-117` AND the pure function regression at `load-state-machine.ts:157`.
+ 6. **File:line drifts aligned**: Scanner Props 76-83 (was 77-84), POST /api/loads destructure
+    168-192 (was 162-193), INSERT SQL line 209 (was 208), App.tsx Scanner render 666-667 (was
+    667), ExceptionConsole disabled-state lines 563-567 (was 564-567), NetworkPortal useEffect
+    222-224 (was 222-225). None of these change the technical content — only the grep-assert
+    precision.
+ 7. **`generateNextLoadNumber` name-collision clarified**: A frontend helper with the same name
+    already exists in `services/storageService.ts` (imported by LoadSetupModal). The Phase 5
+    server helper in `server/lib/loadNumberGenerator.ts` is a different module. Tests import by
+    explicit path.
+ 8. **Known non-blocker documented**: `prd_generator.py` does not extract test-type brackets from
+    R-markers. Sprint summary now notes this is fine because `qa_runner.py` reads markers from
+    test files directly via `_qa_lib.py:1314-1315`.
 
- | File                                       | Captures                                         |
- | ------------------------------------------ | ------------------------------------------------- |
- | 01-load-detail-seeded.png                  | Step 2: LP-DEMO-RC-001 load detail panel         |
- | 01-load-detail-documents.png               | Step 2: documents panel with 3 labeled cards     |
- | 02-ifta-jurisdiction-split.png             | Step 3: IFTAEvidenceReview computed split        |
- | 02-ifta-audit-locked.png                   | Step 3: post-audit-lock success state            |
- | 03-network-acme-tabs.png                   | Step 4: NetworkPortal showing ACME's 6 tabs      |
- | 04-wow-appendix-live-upload.mp4 (20-30s)   | Driver mobile → scan → load appears in admin    |
+ Rev 2 changelog (peer review corrections)
 
- If any backup asset file is missing when sales starts the demo, do NOT run the wow appendix.
- The certified core still works without these assets, but the appendix must have the video fallback.
-
- ---
- Risks & mitigations (refreshed)
-
- Risk: Ralph regenerates prd.json from a stale PLAN.md and the plan_hash mismatches
- Likelihood: Medium
- Impact: High
- Mitigation: Step 2 of the alignment checklist explicitly replaces PLAN.md before computing the hash. Step 6
-   grep validation catches mismatches before /ralph runs.
- ────────────────────────────────────────
- Risk: Phase 2 seeded load is not visible on Load Board because LoadBoardEnhanced filters by tenant
- role/status
-   differently than expected
- Likelihood: Low
- Impact: High
- Mitigation: Phase 2 integration test (R-P2-05) calls the live GET /api/loads/:id endpoint, not just the seed
- —
-   failure surfaces in unit tests, not on stage.
- ────────────────────────────────────────
- Risk: Phase 3 IFTA Playwright spec flakes because the analysis auto-runs and may complete before Playwright's
-
-   first wait
- Likelihood: Medium
- Impact: Medium
- Mitigation: Spec waits on the rendered Computed Jurisdiction Split table text, not on a state transition.
-   Auto-run completes within ~500ms in prior runs of IFTAEvidenceReview.
- ────────────────────────────────────────
- Risk: Phase 4 seeds parties via direct INSERT and the parties table later requires a column the schema
- doesn't
-   enforce
- Likelihood: Low
- Impact: Medium
- Mitigation: Agent A verified the schema column-by-column. Seed only inserts existing columns.
- ────────────────────────────────────────
- Risk: Phase 6 App.tsx diff exceeds 30 lines because the JSX restructure is more invasive than estimated
- Likelihood: Low
- Impact: Low
- Mitigation: R-P6-08 enforces the 30-line cap as a hard test. If it fails, refactor the filter into a small
-   helper inside demoNavConfig.ts and call it from one site in App.tsx.
- ────────────────────────────────────────
- Risk: Phase 7 Windows certify script fails because Playwright's child-process env isn't inherited correctly
- Likelihood: Medium
- Impact: Low
- Mitigation: demo-certify.cjs uses child_process.spawn with env: process.env and explicitly sets
-   E2E_SERVER_RUNNING=1 in the spawned env, then asserts the cert works on a CI Windows runner via R-P7-04.
- ────────────────────────────────────────
- Risk: Firebase user provisioning forgotten before first demo
- Likelihood: High
- Impact: High
- Mitigation: Phase 6 runbook has a dedicated ## Firebase user provisioning prerequisite section with
-   step-by-step Firebase Console instructions. Phase 7 smoke spec gracefully skips with a clear
-   "FIREBASE_WEB_API_KEY missing" message instead of failing silently.
- ────────────────────────────────────────
- Risk: Demo extraction narrative ("AI extracted these fields") feels dishonest when nothing was extracted
- Likelihood: Low
- Impact: Medium
- Mitigation: The fields ARE real — they were extracted by AI in the original product flow on a real document,
-   captured to JSON, and seeded. The demo is showing real AI output, just from a previous run. The runbook
-   documents this disclosure pattern.
-
- ---
- Open questions
-
- 1. Firebase user UIDs for the sales-demo personas — must be created in the Firebase console and the UIDs
- pasted into .env.local as SALES_DEMO_ADMIN_FIREBASE_UID and SALES_DEMO_DRIVER_FIREBASE_UID. Decision: this is
-  a manual one-time prerequisite documented in the runbook. Phase 1 validates the env vars are set and fails
- fast if not.
- 2. Should the live Gemini "wow" demo path be certified? — The certified path is the seeded one. The live
- Gemini path is documented as an optional secondary flow but is not part of demo:certify:sales and is not
- gated by any test. The salesperson uses it at their own risk for extra impact.
- 3. What if a demo blocker reappears that the brief did not anticipate? — Phase 5 only locks down the three
- known blockers. A new regression would need a new test added to the certify suite. The runbook tells the
- salesperson to file an issue if they hit one on stage.
-
- ---
- Positioning (how sales should frame the product on stage)
-
- These three lines are the pitch the demo is engineered to support. Every hero step below must feel
- like evidence for one of these claims:
-
- 1. **"Your drivers send paperwork once. The system pulls the load details out for them."**
-    (Evidence: step 2 of certified core + wow appendix)
- 2. **"That same trip becomes compliance evidence instead of another back-office task."**
-    (Evidence: step 3 of certified core — same LP-DEMO-RC-001 becomes Q4 IFTA audit)
- 3. **"And all of it lives inside one trucking-aware CRM/operations system, even if trucking is only
-    one part of the business."**
-    (Evidence: step 4 of certified core — same ACME Logistics LLC in NetworkPortal)
-
- The buyer is not asking you to list features. They are asking whether your product removes work
- they currently do manually. These three statements are the answer.
-
- ---
- Definition of Done
-
- The sprint is complete when:
- - All 60 R-markers are passed=true in .claude/prd.json
- - npm run demo:certify:sales exits 0 against a fresh npm run demo:reset:sales
- - The live-functions-only diff check (Verification step 5 above) shows zero unrelated source edits
- - The salesperson 6-step script completes in under 10 minutes with zero terminal access
- - docs/release/evidence.md contains a ## Sales Demo Certification block with a recent timestamp and pass
- output
- - A PR titled feat: bulletproof sales demo (live functions only) is opened against main from
- ralph/bulletproof-sales-demo
+ 1. **Equipment persistence backend scope added to Phase 4**: migration 049_loads_equipment_id.sql,
+    `equipment_id` in `createLoadSchema`, destructure + INSERT in `POST /api/loads`, preference in
+    `load.service.ts` dispatch guard. Rev 1 treated equipment as frontend-only which would have
+    silently dropped the field at the API boundary. New R-markers: R-P4-01 through R-P4-08, R-P4-19.
+ 2. **Scanner.tsx autoTrigger prop permitted**: Rev 1's "no Scanner edits" rule conflicted with the
+    "auto-open file picker" outcome. Hard Rule 5 now permits a single additive prop
+    `autoTrigger?: 'upload' | 'camera'`. New R-markers: R-P4-12 through R-P4-15.
+ 3. **Driver-intake create contract fully specified**: separate `POST /api/loads/driver-intake`
+    route, separate `createDriverIntakeLoadSchema` with all fields optional, server-derived
+    `load_number` via new `generateNextLoadNumber` helper, explicit two-step approval flow
+    (PATCH equipment then PATCH status) with equipment required at approval. Rev 1 said "reuse POST
+    /api/loads as-is" which was ambiguous. New R-markers: R-P5-03 through R-P5-09, R-P5-13, R-P5-14.
+ 4. **Migration rule wording fixed**: Hard Rule 4 now states additive UP + reversible DOWN (DOWN may
+    drop only columns the same UP added). Rev 1 had contradictory "no DROP COLUMN" + "DOWN sections
+    that drop new columns" language. Acceptance criteria R-P1-02, R-P4-02, R-P5-02 now assert the
+    exact DOWN-only DROP COLUMN rule.

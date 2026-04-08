@@ -2,529 +2,535 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "a3098eba356955eadc845e1617626f644d4a2dfdb2192a75190c002db5bef694",
+  "plan_hash": "665928e2418f2855819cade266352117b9e96cf30d3febf52af5b05041125d4c",
   "stories": [
     {
-      "id": "S-001",
-      "description": "Independent Sales-Demo Seed Pipeline â€” new server/scripts/seed-sales-demo.ts (zero edits to seed-demo.ts), reset-sales-demo.ts with explicit company_id-scoped DELETE list for non-cascading accounting/IFTA tables (verified against migration 038 column rename), GL-6900 + GL-2200 IFTA accounts, Fleet Core tier pinned, single .env.local contract",
+      "id": "STORY-001",
+      "description": "Parties Schema Fix + Error Surfacing (foundation)",
       "phase": 1,
       "phase_type": "foundation",
-      "component": "server/",
-      "scope": [
-        "server/scripts/seed-sales-demo.ts",
-        "server/scripts/reset-sales-demo.ts",
-        "server/scripts/sales-demo-fixtures/sales-demo-data.json",
-        "server/__tests__/scripts/seed-sales-demo.test.ts",
-        "server/__tests__/scripts/reset-sales-demo.test.ts",
-        "server/__tests__/middleware/sales-demo-tier-audit.test.ts",
-        "server/__tests__/docs/sales-demo-seed-contract.test.ts",
-        "server/__tests__/docs/env-example-sales-demo.test.ts",
-        "docs/sales-demo-seed-contract.md",
-        ".env.example.sales-demo",
-        "package.json"
-      ],
+      "component": "",
+      "scope": [],
       "complexity": "medium",
-      "maxTurns": 100,
+      "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": 0,
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "seedSalesDemo issues UPDATE companies SET subscription_tier='Fleet Core' for SALES-DEMO-001 (assert by SQL capture)",
-          "testType": "unit"
+          "criterion": "Migration `048_parties_entity_class.sql` exists and contains literal strings",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-02",
-          "criterion": "seedSalesDemo throws Error('SALES_DEMO_ADMIN_FIREBASE_UID required') when env var unset",
-          "testType": "unit"
+          "criterion": "Migration 048 DOWN section contains `DROP COLUMN entity_class` and",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-03",
-          "criterion": "resetSalesDemo throws when DB_NAME='production-loadpilot' (prod-name guard)",
-          "testType": "unit"
+          "criterion": "`POST /api/parties` with body",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-04",
-          "criterion": "seedSalesDemo inserts gl_accounts rows with ids GL-6900 AND GL-2200 (the IFTA pair) before any IFTA evidence insert",
-          "testType": "unit"
+          "criterion": "`POST /api/parties` against a mock mysql that throws",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-05",
-          "criterion": "Tier audit walks â‰¥15 requireTier('Fleet Core'|'Automation Pro') routes and asserts statusCode !== 403 for the seeded admin",
-          "testType": "integration"
+          "criterion": "`isMissingTableError(error, \"parties\")` in isolation returns `true` when given",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-06",
-          "criterion": "docs/sales-demo-seed-contract.md contains 5 required H2 sections: ## Rows present after reset, ## Firebase UID env contract, ## GL accounts that must exist, ## Hidden routes & rationale, ## Known SaaS follow-ups",
-          "testType": "unit"
+          "criterion": "`components/NetworkPortal.tsx` line 346 toast expression matches",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P1-07",
-          "criterion": "100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent â€” second invocation produces 0 new rows)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-08",
-          "criterion": "seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline guarantee â€” assert via grep on the source)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-09",
-          "criterion": "resetSalesDemo issues DELETE statements against ALL 10 non-cascading tables (ifta_trips_audit, ifta_trip_evidence, mileage_jurisdiction, fuel_ledger, journal_lines, journal_entries, ar_invoices, ap_bills, gl_accounts, documents) BEFORE the DELETE FROM companies. The 8 accounting/IFTA tables filter on company_id (verified against migration 038); journal_lines filters via journal_entry_id subquery; documents filters on company_id. Assert via SQL capture: every table name appears in the captured DELETE list, every WHERE clause uses company_id (NOT tenant_id), and the company DELETE is the LAST one issued.",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-10",
-          "criterion": "resetSalesDemo is idempotent â€” second invocation against an already-empty tenant exits 0 without 'row not found' or FK violation errors",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-11",
-          "criterion": ".env.example.sales-demo file exists at the repo root and contains placeholder lines for all 7 required keys: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME, SALES_DEMO_ADMIN_FIREBASE_UID, SALES_DEMO_DRIVER_FIREBASE_UID (assert via grep on the file)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P1-12",
-          "criterion": "seedSalesDemo source contains exactly one dotenv.config call and that call references '.env.local' (NOT '.env') â€” proves the single env contract for seed/reset/certify. Assert via grep on the source.",
-          "testType": "unit"
+          "criterion": "End-to-end POST /api/parties with all 8 contractor vendorProfile fields",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo.test.ts __tests__/scripts/reset-sales-demo.test.ts __tests__/docs/sales-demo-seed-contract.test.ts __tests__/docs/env-example-sales-demo.test.ts --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/middleware/sales-demo-tier-audit.test.ts --reporter=verbose"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/parties-entity-class.test.ts __tests__/migrations/048_parties_entity_class.test.ts __tests__/routes/clients.test.ts\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
-      "id": "S-002",
-      "description": "Pre-Seeded Hero Load + Broker + Real Artifacts + Canonical Doc Mapping — seed LP-DEMO-RC-001 with ACME Logistics LLC broker and 3 real PDF documents (rate con, BOL, lumper receipt) downloadable via the live /api/documents/:id/download endpoint; add a <=10-line mapping in document.repository.ts so the documents panel shows readable filename/type labels instead of 'undefined'",
+      "id": "STORY-002",
+      "description": "Polling Layer for Stale Panels (module)",
       "phase": 2,
       "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/scripts/seed-sales-demo-loads.ts",
-        "server/scripts/sales-demo-fixtures/loads/LP-DEMO-RC-001.json",
-        "server/scripts/sales-demo-fixtures/loads/extracted-fields.md",
-        "server/scripts/seed-sales-demo.ts",
-        "server/__tests__/scripts/seed-sales-demo-loads.test.ts",
-        "server/__tests__/integration/sales-demo-load-readback.test.ts",
-        "e2e/sales-demo/01-document-automation.spec.ts",
-        "server/scripts/sales-demo-fixtures/loads/artifacts/rate-con.pdf",
-        "server/scripts/sales-demo-fixtures/loads/artifacts/bol.pdf",
-        "server/scripts/sales-demo-fixtures/loads/artifacts/lumper-receipt.pdf",
-        "server/__tests__/repositories/document.repository.mapping.test.ts",
-        "server/__tests__/integration/sales-demo-document-download.test.ts",
-        "server/repositories/document.repository.ts"
-      ],
+      "component": "",
+      "scope": [],
       "complexity": "medium",
-      "maxTurns": 100,
-      "dependsOn": [
-        "S-001"
-      ],
+      "maxTurns": 150,
+      "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P2-01",
-          "criterion": "seedSalesDemoLoads inserts exactly 1 row into customers with id 'SALES-DEMO-CUST-001' and type 'Broker' (assert via SQL capture)",
-          "testType": "unit"
+          "criterion": "`services/usePollingEffect.ts` exists and exports a function `usePollingEffect`",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-02",
-          "criterion": "seedSalesDemoLoads inserts exactly 1 row into loads with id 'LP-DEMO-RC-001' AND customer_id = 'SALES-DEMO-CUST-001' (assert the FK linkage via SQL capture)",
-          "testType": "unit"
+          "criterion": "`usePollingEffect(fn, 1000, [])` calls `fn` exactly once immediately on mount.",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-03",
-          "criterion": "seedSalesDemoLoads inserts exactly 2 rows into load_legs and 3 rows into documents linked to LP-DEMO-RC-001",
-          "testType": "unit"
+          "criterion": "After advancing fake timers by 4500ms, `fn` has been called 5 times (1 immediate",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-04",
-          "criterion": "seedSalesDemoLoads is idempotent â€” second invocation produces 0 new rows (INSERT IGNORE count)",
-          "testType": "unit"
+          "criterion": "Unmount clears the interval AND fires the `AbortController.abort()` on the last",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-05",
-          "criterion": "seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or server/services/gemini.service.ts (live-functions-only guarantee â€” assert via grep)",
-          "testType": "unit"
+          "criterion": "`NetworkPortal.tsx` source does NOT contain the literal substring",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-06",
-          "criterion": "GET /api/loads returns the seeded load with loadNumber 'LP-DEMO-RC-001'; GET /api/clients/SALES-DEMO-001 returns the broker with id 'SALES-DEMO-CUST-001' and name 'ACME Logistics LLC'; GET /api/documents?load_id=LP-DEMO-RC-001 returns 3 document rows. All three calls use the unmodified production handlers.",
-          "testType": "integration"
+          "criterion": "`NetworkPortal.tsx` imports `usePollingEffect` and passes `5000` as the interval",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-07",
-          "criterion": "Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts the visible DOM contains 'LP-DEMO-RC-001', 'ACME Logistics LLC', 'Frozen Beef', 'Houston', and 'Chicago' within 5 seconds. Clicks Documents button and asserts at least 3 document cards (container selector) are visible",
-          "testType": "e2e"
+          "criterion": "`IntelligenceHub.tsx` calls `usePollingEffect` with interval `10000` near line",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-08",
-          "criterion": "grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx, components/DriverMobileHome.tsx, components/LoadDetailView.tsx, services/brokerService.ts HEAD vs sprint-end shows zero diff (snapshot test on file SHA256 for each file). server/repositories/document.repository.ts is DELIBERATELY EXCLUDED — the canonical doc mapping fix lives in that file per R-P2-12",
-          "testType": "unit"
+          "criterion": "`App.tsx` source contains `setInterval` with `10000` AND references",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-09",
-          "criterion": "Three real binary artifact fixtures exist at server/scripts/sales-demo-fixtures/loads/artifacts/{rate-con,bol,lumper-receipt}.pdf; each file is at least 1024 bytes AND the first 4 bytes of each file equal `%PDF` (valid PDF magic number) — assert via fs.statSync + fs.readFileSync on the raw bytes",
-          "testType": "unit"
+          "criterion": "`App.tsx` cleanup return function (at the end of the useEffect around line 285)",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-10",
-          "criterion": "seedSalesDemoLoads copies the 3 fixtures into the live upload directory at `${UPLOAD_DIR}/sales-demo/LP-DEMO-RC-001/{rate-con,bol,lumper-receipt}.pdf` where UPLOAD_DIR defaults to './uploads'. After the seed runs, the 3 destination files exist AND their sizes match the fixture source sizes; second invocation is a no-op (idempotent copy)",
-          "testType": "unit"
+          "criterion": "`ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` — grep",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-11",
-          "criterion": "GET /api/documents/:id/download for each of the 3 seeded documents on LP-DEMO-RC-001 returns status 200, Content-Type 'application/pdf', Content-Length > 1024, and the first 4 bytes of the response body equal `%PDF`. Uses the unmodified production download handler at server/routes/documents.ts:297",
-          "testType": "integration"
+          "criterion": "`services/networkService.ts` `getParties` signature accepts an optional",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P2-12",
-          "criterion": "The document repository accessor that returns rows to GET /api/documents and GET /api/documents/:id aliases original_filename -> filename and document_type -> type on every returned row. Diff on server/repositories/document.repository.ts is <= 10 added lines and 0 removed lines — assert via git diff --numstat",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P2-13",
-          "criterion": "Extends R-P2-07: after the Documents panel opens with >= 3 cards, each card's visible text contains a non-empty filename string matching /\\w+\\.pdf$/ AND a readable type label ('Rate Confirmation', 'Bill of Lading', or 'Lumper Receipt'). The literal string 'undefined' does NOT appear inside any of the 3 document cards",
-          "testType": "e2e"
+          "criterion": "Render `<App />` with a mock `onUserChange` that fires with a non-null",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-loads.test.ts --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-load-readback.test.ts --reporter=verbose",
-        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/01-document-automation.spec.ts"
+        "unit": "bash -c \"npx vitest run src/__tests__/services/usePollingEffect.test.tsx\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
-      "id": "S-003",
-      "description": "IFTA Trip-Based Evidence Seed + Real-UI Walkthrough â€” 12 ifta_trip_evidence rows tied to LP-DEMO-RC-001 (load-based, NOT truck-based; equipment row NOT seeded). All accounting/IFTA INSERTs use company_id (verified against migration 038); fuel_ledger uses entry_date column (verified against migration 011 line 114). Live IFTAManager + IFTAEvidenceReview UI walkthrough using text selectors against verified button labels.",
+      "id": "STORY-003",
+      "description": "Issue Board Create Handler Fix (module)",
       "phase": 3,
-      "phase_type": "integration",
-      "component": "server/",
-      "scope": [
-        "server/scripts/seed-sales-demo-ifta.ts",
-        "server/scripts/sales-demo-fixtures/ifta-q4-2025.json",
-        "server/scripts/seed-sales-demo.ts",
-        "server/__tests__/scripts/seed-sales-demo-ifta.test.ts",
-        "server/__tests__/integration/sales-demo-ifta-summary.test.ts",
-        "e2e/sales-demo/02-ifta-walkthrough.spec.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "S-001",
-        "S-002"
-      ],
+      "phase_type": "module",
+      "component": "",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P3-01",
-          "criterion": "seedSalesDemoIfta returns { evidenceRows: 12, fuelRows: 8, mileageRows: 6 }. The return shape contains NO trucksInserted field (trip-based, not truck-based)",
-          "testType": "unit"
+          "criterion": "`handleCreateIssue` happy path — mock `createException` to resolve with",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P3-02",
-          "criterion": "All 12 ifta_trip_evidence INSERT statements have company_id = 'SALES-DEMO-001' AND load_id = 'LP-DEMO-RC-001'. All 8 fuel_ledger INSERTs use the column name 'entry_date' (NOT 'fuel_date' which does not exist) and company_id = 'SALES-DEMO-001'. All 6 mileage_jurisdiction INSERTs use company_id = 'SALES-DEMO-001'. Assert via SQL capture against a mocked mysql connection.",
-          "testType": "unit"
+          "criterion": "Validation error path — mock rejection with",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P3-03",
-          "criterion": "seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO 'INSERT INTO equipment' statements (assert via grep â€” proves trip-based design)",
-          "testType": "unit"
+          "criterion": "Network error path — mock rejection with `new Error(\"Network request failed\")`;",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P3-04",
-          "criterion": "GET /api/accounting/ifta-summary?quarter=4&year=2025 returns rows.length >= 6 && totalMiles >= 20000 && netTaxDue > 0. Uses the live unmodified route handler.",
-          "testType": "integration"
+          "criterion": "`ExceptionConsole.tsx` source contains `finally` followed (within 100 chars) by",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P3-05",
-          "criterion": "Playwright walkthrough completes the full text-selector sequence (nav-accounting â†’ Fuel & IFTA â†’ Q4 â†’ 2025 â†’ load card â†’ Evidence Timeline visible â†’ Computed Jurisdiction Split visible â†’ attestation checkbox â†’ Lock Trip for Audit â†’ success indicator) within 10 seconds. Spec uses zero data-testid on IFTA elements; grep confirms no 'data-testid=\"ifta-' substrings in the spec file.",
-          "testType": "e2e"
+          "criterion": "`services/exceptionService.ts` `createException` body contains",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P3-06",
-          "criterion": "seedSalesDemoIfta is idempotent (second invocation produces 0 new rows)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P3-07",
-          "criterion": "grep components/IFTAManager.tsx, components/IFTAEvidenceReview.tsx, components/AccountingPortal.tsx HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
-          "testType": "unit"
+          "criterion": "Full-component render test with `@testing-library/react`: render",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-ifta.test.ts --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-ifta-summary.test.ts --reporter=verbose",
-        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/02-ifta-walkthrough.spec.ts"
+        "unit": "bash -c \"npx vitest run src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
-      "id": "S-004",
-      "description": "CRM Registry Depth â€” seed 12 parties (3/2/2/3/2 split) into the 8 verified party_* tables that GET /api/parties enriches. Direct SQL only (POST /api/parties has unrelated bug). NetworkPortal renders 6 tabs with seeded data.",
+      "id": "STORY-004",
+      "description": "Load Equipment Persistence + Dispatcher Intake Flow (module)",
       "phase": 4,
-      "phase_type": "integration",
-      "component": "server/",
-      "scope": [
-        "server/scripts/seed-sales-demo-parties.ts",
-        "server/scripts/sales-demo-fixtures/parties.json",
-        "server/scripts/seed-sales-demo.ts",
-        "server/__tests__/scripts/seed-sales-demo-parties.test.ts",
-        "server/__tests__/integration/sales-demo-network-portal.test.ts",
-        "e2e/sales-demo/03-network-portal-walkthrough.spec.ts"
-      ],
+      "phase_type": "module",
+      "component": "",
+      "scope": [],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [
-        "S-001"
-      ],
+      "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2 contractors AND one of the 2 brokers is SALES-DEMO-CUST-001 / 'ACME Logistics LLC' (the same broker attached to the Phase 2 hero load — continuity object) — assert by type breakdown AND exact-id lookup via SQL capture",
-          "testType": "unit"
+          "criterion": "Migration `049_loads_equipment_id.sql` UP contains",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-02",
-          "criterion": "Every party has at least 1 contact, 1 document, 1 rate row, 1 constraint set, 1 catalog link (assert via fixture validation + SQL capture counts)",
-          "testType": "unit"
+          "criterion": "Migration `049_loads_equipment_id.sql` DOWN contains `DROP COLUMN equipment_id`",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-03",
-          "criterion": "seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores, customer_rate_sheets, or party_interactions (none of those tables exist â€” assert via grep on the source)",
-          "testType": "unit"
+          "criterion": "`server/schemas/loads.ts` `createLoadSchema` includes `equipment_id` as an",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-04",
-          "criterion": "seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from server/routes/clients.ts (live-functions-only via direct SQL â€” assert via grep)",
-          "testType": "unit"
+          "criterion": "`POST /api/loads` with body containing `equipment_id: \"EQ-001\"` captures",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-05",
-          "criterion": "GET /api/parties returns exactly 12 parties for the sales-demo tenant with the correct type breakdown (3/2/2/3/2) and the first broker has all 5 enrichment arrays (contacts, documents, rates, constraintSets, catalogLinks) non-empty",
-          "testType": "integration"
+          "criterion": "`POST /api/loads` with no `equipment_id` in the body persists `null` (not",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-06",
-          "criterion": "Playwright walkthrough opens NetworkPortal, locates the row whose visible text contains 'ACME Logistics LLC' (continuity-object assertion — must match Phase 2 hero broker, not any broker), clicks it, then clicks each of the 6 tabs (IDENTITY, CONTACTS, CATALOG, RATES, CONSTRAINTS, DOCS) and asserts content is visible in each",
-          "testType": "e2e"
+          "criterion": "`load.service.ts` dispatch transition uses `load.equipment_id` as the first",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P4-07",
-          "criterion": "grep components/NetworkPortal.tsx, services/networkService.ts, server/routes/clients.ts HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
-          "testType": "unit"
+          "criterion": "`validateDispatchGuards` passes for",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "`validateDispatchGuards` FAILS with error message containing `\"equipment\"` when",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "`EditLoadForm` renders an equipment selector when given a non-empty equipment",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-10",
+          "criterion": "`EditLoadForm` onSave payload includes `equipment_id` when user picks from the",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-11",
+          "criterion": "`EditLoadForm` displays a warning (`getByText(/equipment required/i)`) when user",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-12",
+          "criterion": "`Scanner.tsx` Props interface includes",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-13",
+          "criterion": "`<Scanner autoTrigger=\"upload\" ... />` fires a programmatic click on its hidden",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-14",
+          "criterion": "`<Scanner autoTrigger=\"camera\" ... />` invokes the camera-activation path on",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-15",
+          "criterion": "`<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount —",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-16",
+          "criterion": "`LoadSetupModal` Phone Order mode renders all 8 required input controls — assert",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-17",
+          "criterion": "`LoadSetupModal` Phone Order Submit is disabled when any of the 8 required fields",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-18",
+          "criterion": "`LoadSetupModal` Phone Order save payload `legs` array has exactly one",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-19",
+          "criterion": "`LoadSetupModal` Scan Doc button click path results in `Scanner` being rendered",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-20",
+          "criterion": "`server/schemas/loads.ts` `partialUpdateLoadSchema` includes `equipment_id` as an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-21",
+          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` against an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-22",
+          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` and NO",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/scripts/seed-sales-demo-parties.test.ts --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/integration/sales-demo-network-portal.test.ts --reporter=verbose",
-        "e2e": "set E2E_SERVER_RUNNING=1 && npx playwright test e2e/sales-demo/03-network-portal-walkthrough.spec.ts"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/049_loads_equipment_id.test.ts __tests__/routes/loads-equipment-persistence.test.ts __tests__/routes/loads-equipment-partial-update.test.ts __tests__/services/load-service-dispatch-guard.test.ts && cd .. && npx vitest run src/__tests__/components/EditLoadForm.equipment-selector.test.tsx src/__tests__/components/LoadSetupModal.scan-doc.test.tsx src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
-      "id": "S-005",
-      "description": "Demo-Blocker Regression Tests â€” lock down the SafetyView empty-state KPI, GlobalMapViewEnhanced env-var-leak fallback, and document Quotes route disposition. Tests only â€” zero production code edits.",
+      "id": "STORY-005",
+      "description": "Load Board Driver Intake Flow (module)",
       "phase": 5,
       "phase_type": "module",
-      "component": "frontend/",
-      "scope": [
-        "__tests__/components/SafetyView.sales-demo.test.tsx",
-        "__tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx",
-        "__tests__/components/GoogleMapsAPITester.sales-demo.test.tsx",
-        "docs/sales-demo-seed-contract.md"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "S-001"
-      ],
+      "component": "",
+      "scope": [],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P5-01",
-          "criterion": "SafetyView with operators=[] does not render the substring \"13\" anywhere in the DOM (assert via screen.queryByText('13') returning null)",
-          "testType": "unit"
+          "criterion": "Migration `050_loads_intake_source.sql` UP contains",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P5-02",
-          "criterion": "SafetyView with 5 compliant operators renders \"0\" and \"All Clear\" in the Non-Compliant tile",
-          "testType": "unit"
+          "criterion": "Migration 050 DOWN contains `DROP COLUMN intake_source` and NO other DROP COLUMN",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P5-03",
-          "criterion": "GlobalMapViewEnhanced fallback DOM never contains the substring \"VITE_GOOGLE_MAPS_API_KEY\"",
-          "testType": "unit"
+          "criterion": "`generateNextLoadNumber('C1', mockPool)` against an empty mock returns a string",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P5-04",
-          "criterion": "docs/sales-demo-seed-contract.md contains a ## Quotes route disposition H2 section with non-empty body",
-          "testType": "unit"
+          "criterion": "`generateNextLoadNumber` against a mock with `LP-0001` existing returns `LP-0002`.",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P5-05",
-          "criterion": "grep components/SafetyView.tsx, components/GlobalMapViewEnhanced.tsx HEAD vs sprint-end shows zero diff (live-functions-only guarantee)",
-          "testType": "unit"
+          "criterion": "`createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid — all",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-06",
+          "criterion": "`createDriverIntakeLoadSchema` does NOT have a `load_number` field — assert via",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-07",
+          "criterion": "`POST /api/loads/driver-intake` with empty body returns 201 with body",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-08",
+          "criterion": "`POST /api/loads/driver-intake` with",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-09",
+          "criterion": "`POST /api/loads/driver-intake` without authentication returns 401.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-10",
+          "criterion": "`DriverLoadIntakePanel` renders `<Scanner autoTrigger=\"camera\" mode=\"intake\" />`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-11",
+          "criterion": "`DriverLoadIntakePanel` calls fetch with `/api/loads/driver-intake` after the",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-12",
+          "criterion": "`PendingDriverIntakeQueue` filters the fetched loads list to only `status ===",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-13",
+          "criterion": "`PendingDriverIntakeQueue` Approve button is disabled until `equipment_id` is",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-14",
+          "criterion": "`PendingDriverIntakeQueue` Approve button click fires TWO fetches in order: first",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-15",
+          "criterion": "`server/index.ts` source contains an import of `loads-driver-intake` and an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-16",
+          "criterion": "`DriverMobileHome.tsx` imports `DriverLoadIntakePanel` — grep assert.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-17",
+          "criterion": "`LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` — grep assert.",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run __tests__/components/SafetyView.sales-demo.test.tsx __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx __tests__/components/GoogleMapsAPITester.sales-demo.test.tsx --reporter=verbose"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/050_loads_intake_source.test.ts __tests__/lib/loadNumberGenerator.test.ts __tests__/routes/loads-driver-intake.test.ts && cd .. && npx vitest run src/__tests__/components/DriverLoadIntakePanel.test.tsx src/__tests__/components/PendingDriverIntakeQueue.test.tsx\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     },
     {
-      "id": "S-006",
-      "description": "Demo Shell Allowlist + Reset Endpoint â€” App.tsx nav filter behind VITE_DEMO_NAV_MODE=sales (real route keys: operations-hub, loads, calendar, network, accounting, exceptions). Triple-locked POST /api/demo/reset endpoint. Surgical: <30 lines added to App.tsx, exactly 2 lines added to server/index.ts.",
+      "id": "STORY-006",
+      "description": "End-to-End Regression Suite (integration)",
       "phase": 6,
       "phase_type": "integration",
-      "component": "frontend+server/",
-      "scope": [
-        "services/demoNavConfig.ts",
-        "App.tsx",
-        "server/routes/demo.ts",
-        "server/index.ts",
-        "docs/sales-demo-runbook.md",
-        "__tests__/services/demoNavConfig.test.ts",
-        "__tests__/App.demo-nav.test.tsx",
-        "server/__tests__/routes/demo.test.ts",
-        "server/__tests__/docs/sales-demo-runbook.test.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "S-001"
-      ],
+      "component": "",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P6-01",
-          "criterion": "isDemoNavMode() returns true iff VITE_DEMO_NAV_MODE === 'sales' (verified by unit test asserting both true and false branches)",
-          "testType": "unit"
+          "criterion": "Onboarding multi-user spec — User A creates party; User B sees it within 7 seconds.",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P6-02",
-          "criterion": "DEMO_NAV_ALLOWLIST deep-equals exactly the array ['operations-hub','loads','calendar','network','accounting','exceptions'] (toEqual on literal array â€” real App.tsx route keys, no fictional ones)",
-          "testType": "unit"
+          "criterion": "Dispatcher flow spec — Scan Doc click → file picker visible on screen within 1",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P6-03",
-          "criterion": "App.tsx with demo mode off renders Telematics, Company Settings, Issues & Alerts, and Operations Center nav items (production-untouched proof)",
-          "testType": "unit"
+          "criterion": "Driver intake spec — driver-submitted load appears in dispatcher's Pending Driver",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P6-04",
-          "criterion": "App.tsx with demo mode on renders only the 6 allowlisted nav items + Reset Demo button; Telematics and Company Settings are absent",
-          "testType": "unit"
+          "criterion": "Issue board create spec — invalid submission surfaces error toast and re-enables",
+          "testType": "manual",
+          "testFile": null
         },
         {
           "id": "R-P6-05",
-          "criterion": "POST /api/demo/reset returns 401 unauthenticated, 403 for non-admin role, 403 for non-SALES-DEMO-001 tenant, 403 when ALLOW_DEMO_RESET env unset (4 separate integration assertions)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P6-06",
-          "criterion": "POST /api/demo/reset returns 200 with { ok: true } when all 4 gates pass and the inner resetSalesDemo (mocked to return a sentinel) runs",
-          "testType": "integration"
-        },
-        {
-          "id": "R-P6-07",
-          "criterion": "docs/sales-demo-runbook.md contains all 8 required H2 sections: '## Two Chrome profiles', '## Setting demo nav mode (.env.local)', '## Resetting between demos', '## Recovery from accidental URL', '## Firebase user provisioning prerequisite', '## Live Gemini disclaimer', '## Certified Core demo script (6 steps)', '## Wow Appendix — Optional live driver upload'",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-08",
-          "criterion": "App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only minimal-touch guarantee â€” assert via git diff --numstat App.tsx)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P6-09",
-          "criterion": "server/index.ts diff vs HEAD is exactly 2 added lines (the import + the conditional ALLOW_DEMO_RESET mount)",
-          "testType": "unit"
+          "criterion": "All 4 specs under `e2e/pre-demo-remediation/` are auto-discovered by",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run __tests__/services/demoNavConfig.test.ts __tests__/App.demo-nav.test.tsx --reporter=verbose && cd server && npx vitest run __tests__/docs/sales-demo-runbook.test.ts --reporter=verbose",
-        "integration": "cd server && npx vitest run __tests__/routes/demo.test.ts --reporter=verbose"
+        "unit": "bash -c \"npx playwright test e2e/pre-demo-remediation/ --reporter=list\""
       },
       "passed": false,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-007",
-      "description": "Windows-Safe Certification Pipeline â€” single npm script demo:certify:sales runs reset + 4 Playwright specs + appends timestamped pass record to docs/release/evidence.md. .cjs script using os.tmpdir() (no /tmp), .env.local for env vars (no cross-env), Firebase user provisioning documented as prerequisite.",
-      "phase": 7,
-      "phase_type": "e2e",
-      "component": "frontend+server/",
-      "scope": [
-        "scripts/demo-certify.cjs",
-        "e2e/sales-demo/00-smoke.spec.ts",
-        "e2e/sales-demo/README.md",
-        "package.json",
-        "docs/release/evidence.md",
-        "__tests__/scripts/demo-certify.test.ts",
-        "server/__tests__/docs/sales-demo-e2e-readme.test.ts",
-        "server/__tests__/docs/release-evidence.test.ts"
-      ],
-      "complexity": "medium",
-      "maxTurns": 100,
-      "dependsOn": [
-        "S-002",
-        "S-003",
-        "S-004",
-        "S-006"
-      ],
-      "parallelGroup": 2,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-01",
-          "criterion": "scripts/demo-certify.cjs appends a ### <timestamp> block under ## Sales Demo Certification with the last 50 lines of input log (verified via temp-dir unit test)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-02",
-          "criterion": "scripts/demo-certify.cjs exits 1 when the input log file is missing",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-03",
-          "criterion": "scripts/demo-certify.cjs source contains zero references to /tmp (regex assertion); references os.tmpdir() instead",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-04",
-          "criterion": "e2e/sales-demo/00-smoke.spec.ts passes against the seeded sales-demo tenant when FIREBASE_WEB_API_KEY is set; gracefully test.skips with a clear message when not",
-          "testType": "e2e"
-        },
-        {
-          "id": "R-P7-05",
-          "criterion": "e2e/sales-demo/README.md exists and lists all 4 specs (00-smoke, 01-document-automation, 02-ifta-walkthrough, 03-network-portal-walkthrough)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-06",
-          "criterion": "package.json demo:certify:sales script value is exactly 'node scripts/demo-certify.cjs' (no Unix env syntax, no cross-env, no &&)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-P7-07",
-          "criterion": "docs/release/evidence.md contains a ## Sales Demo Certification H2 section",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run __tests__/scripts/demo-certify.test.ts --reporter=verbose && cd server && npx vitest run __tests__/docs/sales-demo-e2e-readme.test.ts __tests__/docs/release-evidence.test.ts --reporter=verbose",
-        "e2e": "npm run demo:certify:sales"
-      },
-      "passed": false,
-      "verificationRef": "verification-log.jsonl"
+      "verificationRef": null
     }
   ]
 }
