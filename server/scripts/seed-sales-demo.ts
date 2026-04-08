@@ -457,6 +457,583 @@ export async function seedSalesDemoLoads(
   await copyHeroArtifacts(env);
 }
 
+// ─── Phase 4: CRM Registry Depth (12 parties + sub-records) ─────────────────
+//
+// Seeds the live parties, party_contacts, party_documents, rate_rows,
+// rate_tiers, constraint_sets, constraint_rules, and party_catalog_links
+// tables with 12 parties (3 Customer / 2 Broker / 2 Vendor / 3 Facility /
+// 2 Contractor), each enriched with at least 1 contact, 1 document, 1
+// rate row + tier, 1 constraint set + rule, and 1 catalog link.
+//
+// One of the 2 brokers IS the same broker the salesperson already saw on
+// the Phase 2 hero load (SALES-DEMO-CUST-001 / ACME Logistics LLC). The
+// Playwright walkthrough drills into ACME Logistics LLC by name to prove
+// the buyer recognizes the continuity object.
+//
+// Direct SQL via SqlExecutor only. Does NOT call the buggy CRM REST
+// create endpoint (it has a known schema bug — see PLAN.md Phase 4
+// correction #9). Does NOT touch the three legacy CRM tables that were
+// referenced by the original design but never made it into the schema
+// (the test file enumerates them by name).
+
+interface PartyFixture {
+  readonly id: string;
+  readonly name: string;
+  readonly type: "Customer" | "Broker" | "Vendor" | "Facility" | "Contractor";
+  readonly mc_number: string | null;
+  readonly dot_number: string | null;
+  readonly rating: number | null;
+  readonly contact_name: string;
+  readonly contact_role: string;
+  readonly contact_email: string;
+  readonly contact_phone: string;
+  readonly document_type: string;
+  readonly document_url: string;
+  readonly rate_direction: string;
+  readonly rate_unit_type: string;
+  readonly rate_base_amount: number;
+  readonly rate_unit_amount: number;
+  readonly tier_start: number;
+  readonly tier_end: number;
+  readonly constraint_applies_to: string;
+  readonly constraint_priority: number;
+  readonly rule_type: string;
+  readonly rule_field: string;
+  readonly rule_operator: string;
+  readonly rule_value: string;
+  readonly rule_message: string;
+  readonly catalog_item_id: string;
+}
+
+const SALES_DEMO_PARTIES: ReadonlyArray<PartyFixture> = [
+  // ── 3 Customers ──────────────────────────────────────────────────────────
+  {
+    id: "SALES-DEMO-PARTY-CUST-001",
+    name: "Lone Star Distribution Co",
+    type: "Customer",
+    mc_number: "MC-LSDC-1010",
+    dot_number: "DOT-LSDC-2020",
+    rating: 4.8,
+    contact_name: "Maria Rodriguez",
+    contact_role: "Logistics Manager",
+    contact_email: "maria@lonestar-distribution.invalid",
+    contact_phone: "713-555-0101",
+    document_type: "msa",
+    document_url: "https://docs.invalid/lonestar/msa.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "PER_MILE",
+    rate_base_amount: 0,
+    rate_unit_amount: 2.85,
+    tier_start: 0,
+    tier_end: 500,
+    constraint_applies_to: "loads",
+    constraint_priority: 10,
+    rule_type: "schedule",
+    rule_field: "delivery_window",
+    rule_operator: "EQ",
+    rule_value: "08:00-17:00 CT",
+    rule_message: "Receiving hours 8am-5pm Central",
+    catalog_item_id: "CAT-LSDC-DRYVAN-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-CUST-002",
+    name: "Heartland Grocery Wholesalers",
+    type: "Customer",
+    mc_number: "MC-HGW-2002",
+    dot_number: "DOT-HGW-3003",
+    rating: 4.6,
+    contact_name: "Daniel O'Brien",
+    contact_role: "Purchasing Director",
+    contact_email: "dobrien@heartland-wholesale.invalid",
+    contact_phone: "319-555-0202",
+    document_type: "credit_application",
+    document_url: "https://docs.invalid/heartland/credit.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "FLAT",
+    rate_base_amount: 1850,
+    rate_unit_amount: 0,
+    tier_start: 0,
+    tier_end: 1,
+    constraint_applies_to: "loads",
+    constraint_priority: 20,
+    rule_type: "appointment",
+    rule_field: "advance_notice_hours",
+    rule_operator: "GTE",
+    rule_value: "24",
+    rule_message: "24-hour advance booking required",
+    catalog_item_id: "CAT-HGW-REEFER-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-CUST-003",
+    name: "Pacific Northwest Lumber Mills",
+    type: "Customer",
+    mc_number: "MC-PNL-3030",
+    dot_number: "DOT-PNL-4040",
+    rating: 4.4,
+    contact_name: "Jennifer Chen",
+    contact_role: "Shipping Coordinator",
+    contact_email: "jchen@pnw-lumber.invalid",
+    contact_phone: "503-555-0303",
+    document_type: "insurance_certificate",
+    document_url: "https://docs.invalid/pnw/coi.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "PER_MILE",
+    rate_base_amount: 0,
+    rate_unit_amount: 3.1,
+    tier_start: 500,
+    tier_end: 2000,
+    constraint_applies_to: "loads",
+    constraint_priority: 15,
+    rule_type: "cargo",
+    rule_field: "max_weight_lbs",
+    rule_operator: "LTE",
+    rule_value: "48000",
+    rule_message: "Flatbed max 48k lbs per load",
+    catalog_item_id: "CAT-PNL-FLATBED-001",
+  },
+
+  // ── 2 Brokers (one is the Phase 2 hero broker — continuity object) ───────
+  {
+    // CONTINUITY: same broker the salesperson saw on hero load LP-DEMO-RC-001
+    id: SALES_DEMO_BROKER_ID,
+    name: "ACME Logistics LLC",
+    type: "Broker",
+    mc_number: "MC-ACME-4421",
+    dot_number: "DOT-ACME-8891",
+    rating: 4.9,
+    contact_name: "Thomas Wright",
+    contact_role: "Senior Broker",
+    contact_email: "twright@acme-logistics.invalid",
+    contact_phone: "555-0199",
+    document_type: "broker_authority",
+    document_url: "https://docs.invalid/acme/authority.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PERCENT",
+    rate_base_amount: 0,
+    rate_unit_amount: 0.12,
+    tier_start: 0,
+    tier_end: 5000,
+    constraint_applies_to: "loads",
+    constraint_priority: 5,
+    rule_type: "payment",
+    rule_field: "payment_terms_days",
+    rule_operator: "EQ",
+    rule_value: "30",
+    rule_message: "Net 30 payment terms",
+    catalog_item_id: "CAT-ACME-BROKERAGE-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-BRK-002",
+    name: "Continental Freight Brokerage",
+    type: "Broker",
+    mc_number: "MC-CFB-5005",
+    dot_number: "DOT-CFB-6006",
+    rating: 4.5,
+    contact_name: "Susan Martinez",
+    contact_role: "Operations Manager",
+    contact_email: "smartinez@continental-freight.invalid",
+    contact_phone: "404-555-0505",
+    document_type: "broker_authority",
+    document_url: "https://docs.invalid/continental/authority.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PERCENT",
+    rate_base_amount: 0,
+    rate_unit_amount: 0.1,
+    tier_start: 0,
+    tier_end: 3000,
+    constraint_applies_to: "loads",
+    constraint_priority: 12,
+    rule_type: "payment",
+    rule_field: "payment_terms_days",
+    rule_operator: "LTE",
+    rule_value: "45",
+    rule_message: "Net 45 max",
+    catalog_item_id: "CAT-CFB-BROKERAGE-001",
+  },
+
+  // ── 2 Vendors ────────────────────────────────────────────────────────────
+  {
+    id: "SALES-DEMO-PARTY-VEN-001",
+    name: "Big Rig Maintenance Services",
+    type: "Vendor",
+    mc_number: null,
+    dot_number: null,
+    rating: 4.7,
+    contact_name: "Robert Garcia",
+    contact_role: "Service Manager",
+    contact_email: "rgarcia@bigrig-maint.invalid",
+    contact_phone: "281-555-0606",
+    document_type: "service_agreement",
+    document_url: "https://docs.invalid/bigrig/sla.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PER_HOUR",
+    rate_base_amount: 0,
+    rate_unit_amount: 145,
+    tier_start: 0,
+    tier_end: 8,
+    constraint_applies_to: "vendor_orders",
+    constraint_priority: 10,
+    rule_type: "lead_time",
+    rule_field: "scheduling_days",
+    rule_operator: "GTE",
+    rule_value: "2",
+    rule_message: "48-hour scheduling window",
+    catalog_item_id: "CAT-BIGRIG-MAINT-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-VEN-002",
+    name: "Pilot Travel Centers",
+    type: "Vendor",
+    mc_number: null,
+    dot_number: null,
+    rating: 4.3,
+    contact_name: "Karen Phillips",
+    contact_role: "Account Manager",
+    contact_email: "kphillips@pilot-fleet.invalid",
+    contact_phone: "865-555-0707",
+    document_type: "fleet_card_agreement",
+    document_url: "https://docs.invalid/pilot/agreement.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PER_GALLON",
+    rate_base_amount: 0,
+    rate_unit_amount: 3.59,
+    tier_start: 0,
+    tier_end: 200,
+    constraint_applies_to: "vendor_orders",
+    constraint_priority: 20,
+    rule_type: "billing",
+    rule_field: "invoice_frequency",
+    rule_operator: "EQ",
+    rule_value: "weekly",
+    rule_message: "Weekly fleet card billing",
+    catalog_item_id: "CAT-PILOT-FUEL-001",
+  },
+
+  // ── 3 Facilities ─────────────────────────────────────────────────────────
+  {
+    id: "SALES-DEMO-PARTY-FAC-001",
+    name: "Gulf Coast Meatpacking",
+    type: "Facility",
+    mc_number: null,
+    dot_number: null,
+    rating: 4.8,
+    contact_name: "Frank Sullivan",
+    contact_role: "Dock Supervisor",
+    contact_email: "fsullivan@gulfcoast-meat.invalid",
+    contact_phone: "713-555-0808",
+    document_type: "facility_safety_protocol",
+    document_url: "https://docs.invalid/gulfcoast/safety.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "FLAT",
+    rate_base_amount: 75,
+    rate_unit_amount: 0,
+    tier_start: 0,
+    tier_end: 1,
+    constraint_applies_to: "facility_visits",
+    constraint_priority: 5,
+    rule_type: "safety",
+    rule_field: "ppe_required",
+    rule_operator: "EQ",
+    rule_value: "hardhat,vest,gloves",
+    rule_message: "Full PPE required at receiving dock",
+    catalog_item_id: "CAT-GCM-DOCK-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-FAC-002",
+    name: "Midwest Cold Storage",
+    type: "Facility",
+    mc_number: null,
+    dot_number: null,
+    rating: 4.6,
+    contact_name: "Linda Anderson",
+    contact_role: "Receiving Manager",
+    contact_email: "landerson@midwest-cold.invalid",
+    contact_phone: "312-555-0909",
+    document_type: "facility_safety_protocol",
+    document_url: "https://docs.invalid/midwest/safety.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "FLAT",
+    rate_base_amount: 110,
+    rate_unit_amount: 0,
+    tier_start: 0,
+    tier_end: 1,
+    constraint_applies_to: "facility_visits",
+    constraint_priority: 8,
+    rule_type: "temperature",
+    rule_field: "reefer_temp_f",
+    rule_operator: "LTE",
+    rule_value: "32",
+    rule_message: "Frozen storage 32F or below at gate",
+    catalog_item_id: "CAT-MCS-DOCK-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-FAC-003",
+    name: "Phoenix Cross-Dock Terminal",
+    type: "Facility",
+    mc_number: null,
+    dot_number: null,
+    rating: 4.5,
+    contact_name: "James Thompson",
+    contact_role: "Terminal Manager",
+    contact_email: "jthompson@phoenix-xdock.invalid",
+    contact_phone: "602-555-1010",
+    document_type: "terminal_handbook",
+    document_url: "https://docs.invalid/phoenix/handbook.pdf",
+    rate_direction: "INBOUND",
+    rate_unit_type: "FLAT",
+    rate_base_amount: 95,
+    rate_unit_amount: 0,
+    tier_start: 0,
+    tier_end: 1,
+    constraint_applies_to: "facility_visits",
+    constraint_priority: 12,
+    rule_type: "appointment",
+    rule_field: "dock_window_minutes",
+    rule_operator: "LTE",
+    rule_value: "120",
+    rule_message: "2-hour dock window per appointment",
+    catalog_item_id: "CAT-PXT-DOCK-001",
+  },
+
+  // ── 2 Contractors ────────────────────────────────────────────────────────
+  {
+    id: "SALES-DEMO-PARTY-CTR-001",
+    name: "Cascade Owner-Operator Group",
+    type: "Contractor",
+    mc_number: "MC-COG-7007",
+    dot_number: "DOT-COG-8008",
+    rating: 4.9,
+    contact_name: "Michael Brown",
+    contact_role: "Lead Owner-Operator",
+    contact_email: "mbrown@cascade-oo.invalid",
+    contact_phone: "206-555-1111",
+    document_type: "lease_agreement",
+    document_url: "https://docs.invalid/cascade/lease.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PER_MILE",
+    rate_base_amount: 0,
+    rate_unit_amount: 1.45,
+    tier_start: 0,
+    tier_end: 1500,
+    constraint_applies_to: "settlements",
+    constraint_priority: 5,
+    rule_type: "settlement",
+    rule_field: "pay_frequency",
+    rule_operator: "EQ",
+    rule_value: "weekly",
+    rule_message: "Weekly settlement runs Friday",
+    catalog_item_id: "CAT-COG-OWNERPAY-001",
+  },
+  {
+    id: "SALES-DEMO-PARTY-CTR-002",
+    name: "Lone Wolf Hauling LLC",
+    type: "Contractor",
+    mc_number: "MC-LWH-9009",
+    dot_number: "DOT-LWH-1212",
+    rating: 4.7,
+    contact_name: "David Jackson",
+    contact_role: "Owner",
+    contact_email: "djackson@lonewolf-haul.invalid",
+    contact_phone: "210-555-1212",
+    document_type: "lease_agreement",
+    document_url: "https://docs.invalid/lonewolf/lease.pdf",
+    rate_direction: "OUTBOUND",
+    rate_unit_type: "PER_MILE",
+    rate_base_amount: 0,
+    rate_unit_amount: 1.55,
+    tier_start: 0,
+    tier_end: 2000,
+    constraint_applies_to: "settlements",
+    constraint_priority: 8,
+    rule_type: "settlement",
+    rule_field: "fuel_advance_pct",
+    rule_operator: "LTE",
+    rule_value: "40",
+    rule_message: "Fuel advance capped at 40%",
+    catalog_item_id: "CAT-LWH-OWNERPAY-001",
+  },
+];
+
+/**
+ * Phase 4 seed — inserts the 12 sales-demo parties plus their full
+ * sub-record enrichment via direct SQL INSERT IGNORE. Idempotent: a
+ * second invocation re-runs the same INSERT IGNOREs which the DB
+ * treats as no-ops because every row has a deterministic primary key.
+ *
+ * Continuity contract: ACME Logistics LLC (SALES-DEMO-CUST-001) is one
+ * of the 2 brokers — the buyer will recognize it from the Phase 2 hero
+ * load walkthrough.
+ */
+export async function seedSalesDemoParties(conn: SqlExecutor): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  for (const party of SALES_DEMO_PARTIES) {
+    const isCustomer = party.type === "Customer" ? 1 : 0;
+    const isVendor = party.type === "Vendor" ? 1 : 0;
+
+    // Step 1: parties row. Column order matches PartyInsertParams in the
+    // unit tests: (id, company_id, name, type, is_customer, is_vendor,
+    // status, mc_number, dot_number, rating, tags, entity_class,
+    // vendor_profile). entity_class mirrors type so the live read shape
+    // resolves the canonical class without normalization.
+    await conn.execute(
+      `INSERT IGNORE INTO parties
+         (id, company_id, name, type, is_customer, is_vendor, status,
+          mc_number, dot_number, rating, tags, entity_class, vendor_profile)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        party.id,
+        companyId,
+        party.name,
+        party.type,
+        isCustomer,
+        isVendor,
+        "active",
+        party.mc_number,
+        party.dot_number,
+        party.rating,
+        JSON.stringify([party.type.toLowerCase()]),
+        party.type,
+        null,
+      ],
+    );
+
+    // Step 2: party_contacts — 1 contact per party. Column order:
+    // (id, party_id, name, role, email, phone, is_primary).
+    await conn.execute(
+      `INSERT IGNORE INTO party_contacts
+         (id, party_id, name, role, email, phone, is_primary)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        `${party.id}-CONTACT-001`,
+        party.id,
+        party.contact_name,
+        party.contact_role,
+        party.contact_email,
+        party.contact_phone,
+        1,
+      ],
+    );
+
+    // Step 3: party_documents — 1 document per party. Column order:
+    // (id, party_id, document_type, document_url).
+    await conn.execute(
+      `INSERT IGNORE INTO party_documents
+         (id, party_id, document_type, document_url)
+       VALUES (?, ?, ?, ?)`,
+      [
+        `${party.id}-DOC-001`,
+        party.id,
+        party.document_type,
+        party.document_url,
+      ],
+    );
+
+    // Step 4: rate_rows — 1 rate row per party. Column order:
+    // (id, party_id, company_id, catalog_item_id, variant_id, direction,
+    //  currency, price_type, unit_type, base_amount, unit_amount,
+    //  min_charge, max_charge, free_units, effective_start, effective_end,
+    //  taxable_flag, rounding_rule, notes_internal, approval_required).
+    const rateId = `${party.id}-RATE-001`;
+    await conn.execute(
+      `INSERT IGNORE INTO rate_rows
+         (id, party_id, company_id, catalog_item_id, variant_id, direction,
+          currency, price_type, unit_type, base_amount, unit_amount,
+          min_charge, max_charge, free_units, effective_start, effective_end,
+          taxable_flag, rounding_rule, notes_internal, approval_required)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        rateId,
+        party.id,
+        companyId,
+        party.catalog_item_id,
+        null,
+        party.rate_direction,
+        "USD",
+        "STANDARD",
+        party.rate_unit_type,
+        party.rate_base_amount,
+        party.rate_unit_amount,
+        null,
+        null,
+        null,
+        "2025-01-01",
+        "2025-12-31",
+        1,
+        "NEAREST_CENT",
+        `Sales-demo seeded rate for ${party.name}`,
+        0,
+      ],
+    );
+
+    // Step 5: rate_tiers — 1 tier per rate row. Column order:
+    // (id, rate_row_id, tier_start, tier_end, unit_amount, base_amount).
+    await conn.execute(
+      `INSERT IGNORE INTO rate_tiers
+         (id, rate_row_id, tier_start, tier_end, unit_amount, base_amount)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        `${rateId}-TIER-001`,
+        rateId,
+        party.tier_start,
+        party.tier_end,
+        party.rate_unit_amount,
+        party.rate_base_amount,
+      ],
+    );
+
+    // Step 6: constraint_sets — 1 set per party. Column order:
+    // (id, party_id, company_id, applies_to, priority, status,
+    //  effective_start, effective_end).
+    const constraintSetId = `${party.id}-CSET-001`;
+    await conn.execute(
+      `INSERT IGNORE INTO constraint_sets
+         (id, party_id, company_id, applies_to, priority, status,
+          effective_start, effective_end)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        constraintSetId,
+        party.id,
+        companyId,
+        party.constraint_applies_to,
+        party.constraint_priority,
+        "active",
+        "2025-01-01",
+        "2025-12-31",
+      ],
+    );
+
+    // Step 7: constraint_rules — 1 rule per constraint set. Column order:
+    // (id, constraint_set_id, rule_type, field_key, operator, value_text,
+    //  enforcement, message).
+    await conn.execute(
+      `INSERT IGNORE INTO constraint_rules
+         (id, constraint_set_id, rule_type, field_key, operator, value_text,
+          enforcement, message)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        `${constraintSetId}-RULE-001`,
+        constraintSetId,
+        party.rule_type,
+        party.rule_field,
+        party.rule_operator,
+        party.rule_value,
+        "BLOCK",
+        party.rule_message,
+      ],
+    );
+
+    // Step 8: party_catalog_links — 1 link per party. Column order:
+    // (id, party_id, catalog_item_id).
+    await conn.execute(
+      `INSERT IGNORE INTO party_catalog_links
+         (id, party_id, catalog_item_id)
+       VALUES (?, ?, ?)`,
+      [`${party.id}-LINK-001`, party.id, party.catalog_item_id],
+    );
+  }
+}
+
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function seedSalesDemo(
@@ -480,6 +1057,10 @@ export async function seedSalesDemo(
   // Phase 3: trip-based IFTA Q4 2025 evidence seed. Depends on the hero
   // load row from Phase 2 existing first.
   await seedSalesDemoIfta(conn);
+  // Phase 4: CRM registry depth seed — 12 parties + sub-records.
+  // ACME Logistics LLC reuses SALES_DEMO_BROKER_ID from Phase 2 so the
+  // INSERT IGNORE is a no-op for that row and the rest seed cleanly.
+  await seedSalesDemoParties(conn);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────
