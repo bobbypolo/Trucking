@@ -158,6 +158,11 @@ const TelematicsSetup = React.lazy(
 );
 import { getRecord360Data } from "./services/storageService";
 import { features } from "./config/features";
+import {
+  applyDemoNavFilter,
+  isDemoNavMode,
+  resetDemo,
+} from "./services/demoNavConfig";
 
 /** Navigation item with optional permission/capability/role gates. */
 interface NavItem {
@@ -696,6 +701,12 @@ export default function App() {
     }))
     .filter((cat) => cat.items.length > 0);
 
+  // Demo-mode nav collapse (R-P6-03/04). Mutates filteredCategories in
+  // place so the render block below stays byte-identical to production.
+  if (isDemoNavMode() && user?.role === "admin") {
+    applyDemoNavFilter(filteredCategories);
+  }
+
   // 4. Global Overlay Elements (Accessible everywhere)
   const globalOverlays = (
     <>
@@ -955,6 +966,15 @@ export default function App() {
               </div>
             ))}
           </nav>
+          {isDemoNavMode() && user?.role === "admin" && (
+            <button
+              data-testid="nav-demo-reset"
+              onClick={async () => setRefreshToast(await resetDemo())}
+              className="mx-3 mb-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest bg-amber-600/10 text-amber-400 border border-amber-500/20"
+            >
+              Reset Demo
+            </button>
+          )}
           <div className="p-3 border-t border-slate-800 bg-slate-900/30">
             <div
               className={`flex items-center gap-2.5 mb-3 px-1 overflow-hidden transition-all ${sidebarCollapsed ? "justify-center" : ""}`}

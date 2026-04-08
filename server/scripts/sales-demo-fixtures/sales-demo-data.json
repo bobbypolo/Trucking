@@ -1,0 +1,101 @@
+{
+  "_meta": {
+    "purpose": "Sales Demo seed fixture — independent of seed-demo.ts. Consumed by server/scripts/seed-sales-demo.ts.",
+    "tenant": "SALES-DEMO-001",
+    "version": "1.0.0"
+  },
+  "company": {
+    "id": "SALES-DEMO-001",
+    "name": "Sales Demo Carriers LLC",
+    "account_type": "fleet",
+    "email": "contact@salesdemo-loadpilot.invalid",
+    "address": "500 Demo Way",
+    "city": "Houston",
+    "state": "TX",
+    "zip": "77002",
+    "tax_id": "99-1234567",
+    "phone": "555-0100",
+    "mc_number": "MC-SALES-001",
+    "dot_number": "DOT-SALES-001",
+    "subscription_tier": "Fleet Core",
+    "subscription_status": "active"
+  },
+  "users": [
+    {
+      "id": "SALES-DEMO-ADMIN-001",
+      "email": "admin@salesdemo-loadpilot.invalid",
+      "name": "Demo Admin",
+      "role": "admin",
+      "pay_model": "salary",
+      "pay_rate": 0,
+      "onboarding_status": "Completed"
+    },
+    {
+      "id": "SALES-DEMO-DRIVER-001",
+      "email": "driver@salesdemo-loadpilot.invalid",
+      "name": "Demo Driver",
+      "role": "driver",
+      "pay_model": "mileage",
+      "pay_rate": 0.58,
+      "onboarding_status": "Completed"
+    }
+  ],
+  "gl_accounts": [
+    {
+      "id": "GL-1200",
+      "account_number": "1200",
+      "name": "Accounts Receivable",
+      "type": "Asset",
+      "sub_type": "Current Asset",
+      "description": "Outstanding customer invoices"
+    },
+    {
+      "id": "GL-2000",
+      "account_number": "2000",
+      "name": "Accounts Payable",
+      "type": "Liability",
+      "sub_type": "Current Liability",
+      "description": "Outstanding vendor bills"
+    },
+    {
+      "id": "GL-2200",
+      "account_number": "2200",
+      "name": "IFTA Payable",
+      "type": "Liability",
+      "sub_type": "Current Liability",
+      "description": "IFTA fuel tax payable — required for Q4 IFTA posting"
+    },
+    {
+      "id": "GL-4000",
+      "account_number": "4000",
+      "name": "Freight Revenue",
+      "type": "Income",
+      "sub_type": "Operating Revenue",
+      "description": "Revenue from completed loads"
+    },
+    {
+      "id": "GL-6100",
+      "account_number": "6100",
+      "name": "Carrier Cost",
+      "type": "Expense",
+      "sub_type": "Cost of Service",
+      "description": "Driver pay + carrier settlements"
+    },
+    {
+      "id": "GL-6200",
+      "account_number": "6200",
+      "name": "Fuel Expense",
+      "type": "Expense",
+      "sub_type": "Operating Expense",
+      "description": "Fuel purchases (general)"
+    },
+    {
+      "id": "GL-6900",
+      "account_number": "6900",
+      "name": "IFTA Fuel Tax Expense",
+      "type": "Expense",
+      "sub_type": "Operating Expense",
+      "description": "IFTA fuel tax expense — required for Q4 IFTA posting"
+    }
+  ]
+}

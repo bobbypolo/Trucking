@@ -276,3 +276,13 @@ Verified via existing unit test suite:
 
 Certified by: Ralph Orchestrator (claude-sonnet-4-6) -- STORY-503 Final Sign-off
 Final sign-off timestamp: 2026-03-19T08:24:28Z
+
+---
+
+## Sales Demo Certification
+
+This section is the append target for `npm run demo:certify:sales` (Phase 7 of the
+Bulletproof Sales Demo sprint — see `scripts/demo-certify.cjs`). Each run of the
+Windows-safe certification pipeline appends a `### <ISO timestamp>` block
+containing the last 50 lines of the Playwright run log. Backed by R-P7-01 and
+R-P7-07.

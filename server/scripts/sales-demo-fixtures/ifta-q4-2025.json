@@ -1,0 +1,251 @@
+{
+  "_meta": {
+    "description": "Phase 3 IFTA Q4 2025 seed fixture. Trip-based (not truck-based) evidence for the hero load LP-DEMO-RC-001.",
+    "company_id": "SALES-DEMO-001",
+    "load_id": "LP-DEMO-RC-001",
+    "driver_id": "SALES-DEMO-DRIVER-001",
+    "quarter": "Q4 2025",
+    "route": "Houston TX -> Chicago IL (outbound 11/10-11/12, return 11/13-11/15)",
+    "jurisdictions": ["TX", "OK", "KS", "MO", "IA", "IL"]
+  },
+  "ifta_trip_evidence": [
+    {
+      "id": "SALES-DEMO-IFTA-EV-001",
+      "trip": "outbound",
+      "timestamp": "2025-11-10 08:30:00",
+      "lat": 29.7604,
+      "lng": -95.3698,
+      "state_code": "TX",
+      "odometer": 100000.00,
+      "speed_mph": 55.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-002",
+      "trip": "outbound",
+      "timestamp": "2025-11-10 13:15:00",
+      "lat": 34.5731,
+      "lng": -96.5547,
+      "state_code": "OK",
+      "odometer": 100260.50,
+      "speed_mph": 62.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-003",
+      "trip": "outbound",
+      "timestamp": "2025-11-10 18:45:00",
+      "lat": 37.6922,
+      "lng": -97.3375,
+      "state_code": "KS",
+      "odometer": 100495.30,
+      "speed_mph": 60.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-004",
+      "trip": "outbound",
+      "timestamp": "2025-11-11 09:20:00",
+      "lat": 38.9517,
+      "lng": -92.3341,
+      "state_code": "MO",
+      "odometer": 100755.80,
+      "speed_mph": 58.5
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-005",
+      "trip": "outbound",
+      "timestamp": "2025-11-11 14:50:00",
+      "lat": 41.5868,
+      "lng": -93.6250,
+      "state_code": "IA",
+      "odometer": 100960.10,
+      "speed_mph": 61.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-006",
+      "trip": "outbound",
+      "timestamp": "2025-11-12 10:05:00",
+      "lat": 41.8781,
+      "lng": -87.6298,
+      "state_code": "IL",
+      "odometer": 101220.40,
+      "speed_mph": 45.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-007",
+      "trip": "return",
+      "timestamp": "2025-11-13 08:00:00",
+      "lat": 41.8781,
+      "lng": -87.6298,
+      "state_code": "IL",
+      "odometer": 101260.00,
+      "speed_mph": 50.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-008",
+      "trip": "return",
+      "timestamp": "2025-11-13 13:30:00",
+      "lat": 41.5868,
+      "lng": -93.6250,
+      "state_code": "IA",
+      "odometer": 101470.20,
+      "speed_mph": 60.5
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-009",
+      "trip": "return",
+      "timestamp": "2025-11-14 09:10:00",
+      "lat": 38.9517,
+      "lng": -92.3341,
+      "state_code": "MO",
+      "odometer": 101670.40,
+      "speed_mph": 59.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-010",
+      "trip": "return",
+      "timestamp": "2025-11-14 14:45:00",
+      "lat": 37.6922,
+      "lng": -97.3375,
+      "state_code": "KS",
+      "odometer": 101925.10,
+      "speed_mph": 63.0
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-011",
+      "trip": "return",
+      "timestamp": "2025-11-15 10:20:00",
+      "lat": 34.5731,
+      "lng": -96.5547,
+      "state_code": "OK",
+      "odometer": 102180.60,
+      "speed_mph": 62.5
+    },
+    {
+      "id": "SALES-DEMO-IFTA-EV-012",
+      "trip": "return",
+      "timestamp": "2025-11-15 16:00:00",
+      "lat": 29.7604,
+      "lng": -95.3698,
+      "state_code": "TX",
+      "odometer": 102440.00,
+      "speed_mph": 55.0
+    }
+  ],
+  "fuel_ledger": [
+    {
+      "id": "SALES-DEMO-FUEL-001",
+      "state_code": "TX",
+      "gallons": 125.500,
+      "total_cost": 456.82,
+      "price_per_gallon": 3.6400,
+      "vendor_name": "Pilot Flying J Houston",
+      "entry_date": "2025-11-10"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-002",
+      "state_code": "OK",
+      "gallons": 110.250,
+      "total_cost": 407.93,
+      "price_per_gallon": 3.7000,
+      "vendor_name": "Loves Travel Stop OKC",
+      "entry_date": "2025-11-10"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-003",
+      "state_code": "KS",
+      "gallons": 98.750,
+      "total_cost": 375.25,
+      "price_per_gallon": 3.8000,
+      "vendor_name": "TA Wichita",
+      "entry_date": "2025-11-10"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-004",
+      "state_code": "MO",
+      "gallons": 115.000,
+      "total_cost": 437.00,
+      "price_per_gallon": 3.8000,
+      "vendor_name": "Pilot Flying J Columbia",
+      "entry_date": "2025-11-11"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-005",
+      "state_code": "IA",
+      "gallons": 102.500,
+      "total_cost": 404.88,
+      "price_per_gallon": 3.9500,
+      "vendor_name": "Loves Des Moines",
+      "entry_date": "2025-11-11"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-006",
+      "state_code": "IL",
+      "gallons": 95.750,
+      "total_cost": 388.79,
+      "price_per_gallon": 4.0600,
+      "vendor_name": "TA Chicago Southside",
+      "entry_date": "2025-11-12"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-007",
+      "state_code": "MO",
+      "gallons": 108.000,
+      "total_cost": 410.40,
+      "price_per_gallon": 3.8000,
+      "vendor_name": "Pilot Flying J Kingdom City",
+      "entry_date": "2025-11-14"
+    },
+    {
+      "id": "SALES-DEMO-FUEL-008",
+      "state_code": "TX",
+      "gallons": 130.000,
+      "total_cost": 473.20,
+      "price_per_gallon": 3.6400,
+      "vendor_name": "TA Dallas",
+      "entry_date": "2025-11-15"
+    }
+  ],
+  "mileage_jurisdiction": [
+    {
+      "id": "SALES-DEMO-MILE-TX-Q4",
+      "state_code": "TX",
+      "miles": 4250.500,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    },
+    {
+      "id": "SALES-DEMO-MILE-OK-Q4",
+      "state_code": "OK",
+      "miles": 3180.750,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    },
+    {
+      "id": "SALES-DEMO-MILE-KS-Q4",
+      "state_code": "KS",
+      "miles": 3420.250,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    },
+    {
+      "id": "SALES-DEMO-MILE-MO-Q4",
+      "state_code": "MO",
+      "miles": 3610.000,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    },
+    {
+      "id": "SALES-DEMO-MILE-IA-Q4",
+      "state_code": "IA",
+      "miles": 3290.500,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    },
+    {
+      "id": "SALES-DEMO-MILE-IL-Q4",
+      "state_code": "IL",
+      "miles": 3450.000,
+      "entry_date": "2025-12-31",
+      "date": "2025-12-31"
+    }
+  ]
+}

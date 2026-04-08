@@ -10,7 +10,10 @@
     "server": "cd server && npm.cmd run dev",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:seed:sales": "ts-node --transpile-only server/scripts/seed-sales-demo.ts",
+    "demo:reset:sales": "ts-node --transpile-only server/scripts/reset-sales-demo.ts",
+    "demo:certify:sales": "node scripts/demo-certify.cjs"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
