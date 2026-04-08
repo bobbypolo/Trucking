@@ -2,497 +2,118 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "a3098eba356955eadc845e1617626f644d4a2dfdb2192a75190c002db5bef694",
+  "plan_hash": "507693d790859074bceff5d227928d67bc62f4023e640053b3bdcef1181243f0",
   "stories": [
     {
       "id": "STORY-001",
-      "description": "Independent Sales-Demo Seed Pipeline (foundation)",
+      "description": "IFTA Audit Packet Export MVP (module)",
       "phase": 1,
-      "phase_type": "foundation",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "services/",
+        "src/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": 1,
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "seedSalesDemo issues UPDATE companies SET subscription_tier='Fleet Core' for SALES-DEMO-001",
-          "testType": "manual",
+          "criterion": "`server/migrations/051_ifta_audit_packets.sql` creates exactly `1` table named `ifta_audit_packets` with at least the `9` named columns `id`, `company_id`, `quarter`, `tax_year`, `status`, `packet_hash`, `download_url`, `created_by`, and `created_at`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-02",
-          "criterion": "seedSalesDemo throws Error('SALES_DEMO_ADMIN_FIREBASE_UID required') when env var unset.",
-          "testType": "manual",
+          "criterion": "the DOWN section of `server/migrations/051_ifta_audit_packets.sql` drops exactly `1` table, `ifta_audit_packets`, and does not drop or rename any pre-existing table.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-03",
-          "criterion": "resetSalesDemo throws when DB_NAME='production-loadpilot'.",
-          "testType": "manual",
+          "criterion": "`server/migrations/052_invoices_aging_tracking.sql` adds exactly `2` columns, `days_since_issued` and `last_aging_snapshot_at`, to the invoice-aging source table and the DOWN section removes only those `2` columns.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-04",
-          "criterion": "seedSalesDemo inserts gl_accounts rows with ids GL-6900 AND GL-2200 (the IFTA pair) before",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with body `{ \"quarter\": 4, \"taxYear\": 2025, \"includeDocuments\": true }` returns `201` and a JSON body containing `packetId`, `status: \"generated\"`, a 64-character `packetHash`, and a non-empty `downloadUrl`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-05",
-          "criterion": "tier audit walks ≥15 requireTier('Fleet Core'|'Automation Pro') routes and asserts",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with invalid body `{ \"quarter\": 5, \"taxYear\": 2025 }` returns `400` and an error message containing the quoted field name `\"quarter\"`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-06",
-          "criterion": "docs/sales-demo-seed-contract.md contains the 5 required H2 sections.",
-          "testType": "manual",
+          "criterion": "`bundleAuditPacket()` produces a ZIP buffer containing exactly `4` top-level entries: `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `manifest.json`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-07",
-          "criterion": "100% of seedSalesDemo insert statements use INSERT IGNORE (idempotent).",
-          "testType": "manual",
+          "criterion": "`computePacketHash()` returns the same 64-character SHA-256 hex string for the same packet bytes across 2 consecutive calls.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-08",
-          "criterion": "seedSalesDemo does NOT import or require server/scripts/seed-demo.ts (independent pipeline",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `200 { \"verified\": true }` when the stored packet bytes match the saved `packet_hash`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-09",
-          "criterion": "resetSalesDemo issues DELETE statements against ALL of these 10 tables in the verified",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `409 { \"error\": \"HASH_MISMATCH\" }` when the stored packet bytes are modified after generation.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-10",
-          "criterion": "resetSalesDemo is idempotent — second invocation against an already-empty tenant exits 0",
-          "testType": "manual",
+          "criterion": "running `server/jobs/invoice-aging-nightly.ts` against 3 seeded invoices updates `days_since_issued` to values greater than `0` and writes a non-null `last_aging_snapshot_at`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-11",
-          "criterion": ".env.example.sales-demo file exists at the repo root and contains placeholder lines",
-          "testType": "manual",
+          "criterion": "`services/financialService.ts` exports the 4 methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-12",
-          "criterion": "seedSalesDemo source contains exactly one dotenv.config call and that call references",
-          "testType": "manual",
+          "criterion": "`components/IFTAManager.tsx` renders a button labeled `\"Generate Audit Packet\"`, a quarter selector with values `1` through `4`, and a tax-year selector seeded to the current year.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-13",
+          "criterion": "clicking `\"Generate Audit Packet\"` with selected values `Q4` and `2025` calls `generateIftaAuditPacket({ quarter: 4, taxYear: 2025, includeDocuments: true })` exactly once.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-14",
+          "criterion": "after a successful packet generation response, `IFTAManager.tsx` renders the returned 64-character `packetHash` and a clickable download action pointing at `downloadUrl`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-15",
+          "criterion": "in the current web app, generating a `Q4 2025` packet for a seeded company downloads a `.zip` file that opens successfully and contains at least 4 files, including `cover-letter.pdf` and `jurisdiction-summary.csv`.",
+          "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/seed-sales-demo.test.ts __tests__/scripts/reset-sales-demo.test.ts __tests__/middleware/sales-demo-tier-audit.test.ts __tests__/docs/sales-demo-seed-contract.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-002",
-      "description": "Pre-Seeded Hero Load + Broker (live data, zero AI calls)",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P2-01",
-          "criterion": "seedSalesDemoLoads inserts exactly 1 row into customers with id 'SALES-DEMO-CUST-001'",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-02",
-          "criterion": "seedSalesDemoLoads inserts exactly 1 row into loads with id 'LP-DEMO-RC-001' AND",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-03",
-          "criterion": "seedSalesDemoLoads inserts exactly 2 rows into load_legs and 3 rows into documents",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-04",
-          "criterion": "seedSalesDemoLoads is idempotent — second invocation produces 0 new rows (INSERT IGNORE",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-05",
-          "criterion": "seedSalesDemoLoads does NOT import or call any function from server/routes/ai.ts or",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-06",
-          "criterion": "GET /api/loads against the sales-demo admin returns the load with loadNumber",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-07",
-          "criterion": "Playwright spec opens LP-DEMO-RC-001 from Load Board, asserts the visible DOM contains",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-08",
-          "criterion": "grep server/routes/ai.ts, server/services/gemini.service.ts, components/Scanner.tsx,",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-09",
-          "criterion": "three real binary artifact fixtures exist at",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-10",
-          "criterion": "seedSalesDemoLoads copies the 3 fixtures into the live upload directory at",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-11",
-          "criterion": "GET /api/documents/:id/download for each of the 3 seeded documents on",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-12",
-          "criterion": "the document repository accessor that returns rows to the GET /api/documents and",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-13",
-          "criterion": "extends R-P2-07. After the Documents panel opens with ≥ 3 cards, assert each",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/seed-sales-demo-loads.test.ts __tests__/integration/sales-demo-load-readback.test.ts __tests__/integration/sales-demo-document-download.test.ts __tests__/repositories/document.repository.mapping.test.ts && cd .. && E2E_SERVER_RUNNING=1 npx playwright test e2e/sales-demo/01-document-automation.spec.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-003",
-      "description": "IFTA Trip-Based Evidence Seed + Real-UI Walkthrough (integration)",
-      "phase": 3,
-      "phase_type": "integration",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P3-01",
-          "criterion": "seedSalesDemoIfta returns { evidenceRows: 12, fuelRows: 8, mileageRows: 6 }. The return",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-02",
-          "criterion": "All 12 ifta_trip_evidence INSERT statements have load_id = 'LP-DEMO-RC-001' (assert via",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-03",
-          "criterion": "seedSalesDemoIfta source contains ZERO references to the string 'equipment' and ZERO",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-04",
-          "criterion": "GET /api/accounting/ifta-summary?quarter=4&year=2025 returns rows.length >= 6 &&",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-05",
-          "criterion": "Playwright walkthrough completes the full sequence above and asserts the evidence-locked",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-06",
-          "criterion": "seedSalesDemoIfta is idempotent (second invocation produces 0 new rows).",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-07",
-          "criterion": "grep components/IFTAManager.tsx, components/IFTAEvidenceReview.tsx,",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/seed-sales-demo-ifta.test.ts __tests__/integration/sales-demo-ifta-summary.test.ts && cd .. && E2E_SERVER_RUNNING=1 npx playwright test e2e/sales-demo/02-ifta-walkthrough.spec.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-004",
-      "description": "CRM Registry Depth (the rewrite — real tables, real /api/parties)",
-      "phase": 4,
-      "phase_type": "integration",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-01",
-          "criterion": "seedSalesDemoParties inserts exactly 3 customers, 2 brokers, 2 vendors, 3 facilities, 2",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-02",
-          "criterion": "every party has at least 1 contact, 1 document, 1 rate row, 1 constraint set, 1 catalog",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-03",
-          "criterion": "seedSalesDemoParties does NOT issue any INSERT against broker_credit_scores,",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-04",
-          "criterion": "seedSalesDemoParties does NOT call POST /api/parties and does NOT import any function from",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-05",
-          "criterion": "GET /api/parties returns exactly 12 parties for the sales-demo tenant with the",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "Playwright walkthrough opens NetworkPortal, locates the row with text `ACME Logistics LLC`",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-07",
-          "criterion": "grep components/NetworkPortal.tsx, services/networkService.ts, server/routes/clients.ts",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/seed-sales-demo-parties.test.ts __tests__/integration/sales-demo-network-portal.test.ts && cd .. && E2E_SERVER_RUNNING=1 npx playwright test e2e/sales-demo/03-network-portal-walkthrough.spec.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-005",
-      "description": "Demo-Blocker Regression Tests (no production-code edits)",
-      "phase": 5,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P5-01",
-          "criterion": "SafetyView with operators=[] does not render the substring \"13\" anywhere in the DOM.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-02",
-          "criterion": "SafetyView with 5 compliant operators renders \"0\" and \"All Clear\" in the Non-Compliant",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-03",
-          "criterion": "GlobalMapViewEnhanced fallback DOM never contains the substring \"VITE_GOOGLE_MAPS_API_KEY\".",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-04",
-          "criterion": "docs/sales-demo-seed-contract.md contains a ## Quotes route disposition H2 section.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-05",
-          "criterion": "grep components/SafetyView.tsx, components/GlobalMapViewEnhanced.tsx HEAD vs sprint-end",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run __tests__/components/SafetyView.sales-demo.test.tsx __tests__/components/GlobalMapViewEnhanced.sales-demo.test.tsx __tests__/components/GoogleMapsAPITester.sales-demo.test.tsx && cd server && npx vitest run __tests__/docs/sales-demo-seed-contract.test.ts"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-006",
-      "description": "Demo Shell: Nav Allowlist + Reset Button + Reset Endpoint (primary production-code touch)",
-      "phase": 6,
-      "phase_type": "integration",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-01",
-          "criterion": "isDemoNavMode() returns true iff VITE_DEMO_NAV_MODE === 'sales'.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-02",
-          "criterion": "DEMO_NAV_ALLOWLIST deep-equals exactly",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-03",
-          "criterion": "App.tsx with demo mode off renders Telematics, Company Settings, Issues & Alerts,",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-04",
-          "criterion": "App.tsx with demo mode on renders only the 6 allowlisted nav items + Reset Demo button;",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-05",
-          "criterion": "POST /api/demo/reset returns 401 unauthenticated, 403 for non-admin, 403 for",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-06",
-          "criterion": "POST /api/demo/reset returns 200 with ok: true when all 4 gates pass and the inner",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-07",
-          "criterion": "docs/sales-demo-runbook.md contains all 8 required H2 sections: \"## Two Chrome",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-08",
-          "criterion": "App.tsx diff vs HEAD is < 30 added lines and 0 removed lines (live-functions-only",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-09",
-          "criterion": "server/index.ts diff vs HEAD is exactly 2 added lines (the import + the conditional mount).",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run __tests__/services/demoNavConfig.test.ts __tests__/App.demo-nav.test.tsx && cd server && npx vitest run __tests__/routes/demo.test.ts __tests__/docs/sales-demo-runbook.test.ts"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-007",
-      "description": "Windows-Safe Certification Pipeline (e2e)",
-      "phase": 7,
-      "phase_type": "e2e",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-01",
-          "criterion": "scripts/demo-certify.cjs appends a ### <timestamp> block under ## Sales Demo Certification",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-02",
-          "criterion": "scripts/demo-certify.cjs exits 1 when the input log file is missing.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-03",
-          "criterion": "scripts/demo-certify.cjs source contains zero references to /tmp (regex assertion);",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-04",
-          "criterion": "e2e/sales-demo/00-smoke.spec.ts passes against the seeded sales-demo tenant when",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-05",
-          "criterion": "e2e/sales-demo/README.md lists all 4 specs (00-smoke, 01-document-automation,",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-06",
-          "criterion": "package.json demo:certify:sales script value is exactly node scripts/demo-certify.cjs (no",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-07",
-          "criterion": "docs/release/evidence.md contains ## Sales Demo Certification H2.",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run __tests__/scripts/demo-certify.test.ts && cd server && npx vitest run __tests__/docs/sales-demo-e2e-readme.test.ts __tests__/docs/release-evidence.test.ts && cd .. && npm run demo:certify:sales"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/051_ifta_audit_packets.test.ts __tests__/migrations/052_invoices_aging_tracking.test.ts __tests__/services/ifta-audit-packet.service.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/jobs/invoice-aging-nightly.test.ts && cd .. && npx vitest run src/__tests__/components/IFTAManager.audit-packet.test.tsx src/__tests__/services/financialService.ifta-audit-packet.test.ts\""
       },
       "passed": false,
       "verificationRef": null
