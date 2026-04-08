@@ -44,7 +44,9 @@ describe("generateNextLoadNumber", () => {
   });
 
   it("returns DRAFT fallback on pool query rejection", async () => {
-    const pool = { query: vi.fn().mockRejectedValue(new Error("DB down")) };
+    const pool = {
+      query: vi.fn().mockRejectedValue(new Error("DB down")),
+    } as any;
     const result = await generateNextLoadNumber("C1", pool);
     expect(result).toMatch(/^DRAFT-[a-f0-9]{8}$/);
   });
