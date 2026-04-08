@@ -136,7 +136,7 @@ describe("BrokerManager deep coverage", () => {
 
       await user.click(screen.getByText("Add to Approved List"));
 
-      expect(screen.getByText("TESTPROV")).toBeInTheDocument();
+      expect(await screen.findByText("TESTPROV")).toBeInTheDocument();
       expect(
         screen.queryByText(/No chassis rules defined/),
       ).not.toBeInTheDocument();
@@ -233,10 +233,10 @@ describe("BrokerManager deep coverage", () => {
 
       await user.click(screen.getByText("Add to Approved List"));
 
-      expect(screen.getByText("ZIMPROV")).toBeInTheDocument();
-      expect(screen.getByText("ZPFX")).toBeInTheDocument();
-      expect(screen.getByText("ZQFX")).toBeInTheDocument();
-      expect(screen.getByText("ZRFX")).toBeInTheDocument();
+      expect(await screen.findByText("ZIMPROV")).toBeInTheDocument();
+      expect(await screen.findByText("ZPFX")).toBeInTheDocument();
+      expect(await screen.findByText("ZQFX")).toBeInTheDocument();
+      expect(await screen.findByText("ZRFX")).toBeInTheDocument();
     });
   });
 });

@@ -649,8 +649,10 @@ router.get(
 // ─────────────────────────────────────────────────────────
 // PIPELINE: GPS Ping → Geofence Detection
 // ─────────────────────────────────────────────────────────
-router.post("/api/loads/:id/gps-ping", async (req, res) => {
+router.post("/api/loads/:id/gps-ping", requireAuth, requireTenant, async (req: any, res) => {
   const loadId = req.params.id;
+  const companyId = req.user.tenantId;
+  const log = createRequestLogger(req, "POST /api/loads/:id/gps-ping");
   const { driver_lat, driver_lng, occurred_at } = req.body;
 
   if (!driver_lat || !driver_lng) {
@@ -660,12 +662,29 @@ router.post("/api/loads/:id/gps-ping", async (req, res) => {
   }
 
   try {
+    const [loadRows]: any = await pool.query(
+      `SELECT id
+         FROM loads
+        WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+      [loadId, companyId],
+    );
+
+    if (!Array.isArray(loadRows) || loadRows.length === 0) {
+      return res.status(404).json({ error: "Load not found" });
+    }
+
     const [legs]: any = await pool.query(
-      `SELECT id, latitude, longitude
-             FROM load_legs
-             WHERE load_id = ? AND latitude IS NOT NULL AND arrived_at IS NULL AND completed = 0
-             ORDER BY sequence_order ASC`,
-      [loadId],
+      `SELECT ll.id, ll.latitude, ll.longitude
+         FROM load_legs ll
+         JOIN loads l ON l.id = ll.load_id
+        WHERE l.id = ?
+          AND l.company_id = ?
+          AND l.deleted_at IS NULL
+          AND ll.latitude IS NOT NULL
+          AND ll.arrived_at IS NULL
+          AND ll.completed = 0
+        ORDER BY ll.sequence_order ASC`,
+      [loadId, companyId],
     );
 
     for (const leg of legs) {
@@ -686,7 +705,7 @@ router.post("/api/loads/:id/gps-ping", async (req, res) => {
 
     res.json({ geofence_triggered: false });
   } catch (error) {
-    console.error("SERVER ERROR [POST /api/loads/gps-ping]:", error);
+    log.error({ err: error, loadId, companyId }, "GPS ping pipeline failed");
     res.status(500).json({ error: "Database error" });
   }
 });
@@ -694,11 +713,12 @@ router.post("/api/loads/:id/gps-ping", async (req, res) => {
 // ─────────────────────────────────────────────────────────
 // PIPELINE: BOL Scan → Detention + Discrepancy Check
 // ─────────────────────────────────────────────────────────
-router.post("/api/loads/:id/bol-scan", async (req, res) => {
+router.post("/api/loads/:id/bol-scan", requireAuth, requireTenant, async (req: any, res) => {
   const loadId = req.params.id;
+  const companyId = req.user.tenantId;
+  const log = createRequestLogger(req, "POST /api/loads/:id/bol-scan");
   const {
     load_leg_id,
-    load_number,
     driver_lat,
     driver_lng,
     scanned_weight,
@@ -711,9 +731,26 @@ router.post("/api/loads/:id/bol-scan", async (req, res) => {
   }
 
   try {
+    const [legRows]: any = await pool.query(
+      `SELECT ll.id
+         FROM load_legs ll
+         JOIN loads l ON l.id = ll.load_id
+        WHERE ll.id = ?
+          AND l.id = ?
+          AND l.company_id = ?
+          AND l.deleted_at IS NULL`,
+      [load_leg_id, loadId, companyId],
+    );
+
+    if (!Array.isArray(legRows) || legRows.length === 0) {
+      return res.status(404).json({ error: "Load leg not found" });
+    }
+
     const [loadRows]: any = await pool.query(
-      `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
-      [loadId],
+      `SELECT customer_id, quoted_weight, quoted_commodity, load_number
+         FROM loads
+        WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+      [loadId, companyId],
     );
 
     if (!loadRows.length)
@@ -725,7 +762,7 @@ router.post("/api/loads/:id/bol-scan", async (req, res) => {
       pool,
       load_leg_id,
       loadId,
-      load_number || loadId,
+      loadRows[0].load_number || loadId,
       driver_lat ?? null,
       driver_lng ?? null,
       occurred_at,
@@ -745,7 +782,7 @@ router.post("/api/loads/:id/bol-scan", async (req, res) => {
 
     res.json({ detention: detentionResult, discrepancy: discrepancyResult });
   } catch (error) {
-    console.error("SERVER ERROR [POST /api/loads/bol-scan]:", error);
+    log.error({ err: error, loadId, companyId, load_leg_id }, "BOL scan pipeline failed");
     res.status(500).json({ error: "Database error" });
   }
 });

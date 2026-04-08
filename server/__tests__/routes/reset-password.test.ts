@@ -18,7 +18,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -204,3 +206,4 @@ describe("POST /api/auth/reset-password — rate limiting (R-S28-02)", () => {
     expect(resetRoute.route.stack.length).toBeGreaterThanOrEqual(3);
   });
 });
+

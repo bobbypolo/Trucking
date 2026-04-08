@@ -68,6 +68,15 @@ vi.mock("../../helpers", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -346,3 +355,5 @@ describe("POST /api/loads — Canonical Driver Intake Contract", () => {
     expect(res.status).toBe(400);
   });
 });
+
+

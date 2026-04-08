@@ -13,19 +13,47 @@ dotenv.config();
 
 let authReady = false;
 let serviceAccount: any;
+
+function loadInlineServiceAccount(): any | null {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (!raw || raw.trim() === "") {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        logger.error({ err: error }, "FIREBASE_SERVICE_ACCOUNT is not valid JSON.");
+        return null;
+    }
+}
+
+function hasCertFields(candidate: any): boolean {
+    return Boolean(
+        candidate?.project_id &&
+        candidate?.client_email &&
+        candidate?.private_key
+    );
+}
+
+serviceAccount = loadInlineServiceAccount();
+
 try {
-    serviceAccount = require('./serviceAccount.json');
-} catch (e) {
-    logger.warn('Firebase Service Account not found at server/serviceAccount.json. Falling back to application default credentials if available.');
+    if (!serviceAccount) {
+        serviceAccount = require('./serviceAccount.json');
+    }
+} catch (_e) {
+    logger.warn('Firebase Service Account not found at server/serviceAccount.json. Falling back to environment/application credentials if available.');
 }
 
 try {
-    if (serviceAccount) {
+    if (hasCertFields(serviceAccount)) {
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            projectId: serviceAccount.project_id,
         });
         authReady = true;
-        logger.info('Firebase Admin initialized successfully from serviceAccount.json.');
+        logger.info('Firebase Admin initialized successfully from service account credentials.');
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_PROJECT_ID) {
         admin.initializeApp({
             credential: admin.credential.applicationDefault(),

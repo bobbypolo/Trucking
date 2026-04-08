@@ -15,6 +15,8 @@ vi.mock('mysql2/promise', () => {
   };
 });
 
+vi.unmock('../../db');
+
 describe('db-pool', () => {
   beforeEach(() => {
     vi.resetModules();

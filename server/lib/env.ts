@@ -3,7 +3,7 @@
  *
  * Required env vars (all environments):
  *   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
- *   FIREBASE_PROJECT_ID  OR  GOOGLE_APPLICATION_CREDENTIALS
+ *   FIREBASE_PROJECT_ID  OR  GOOGLE_APPLICATION_CREDENTIALS OR FIREBASE_SERVICE_ACCOUNT
  *
  * Fail-closed in staging/prod (NODE_ENV=staging|production):
  *   CORS_ORIGIN must be set — missing causes startup THROW (not just warn)
@@ -107,16 +107,21 @@ export function validateEnv(): void {
     }
   }
 
-  // Firebase: need at least one of FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS
+  // Firebase: allow either project ID, ADC path, or inline service account JSON.
   const hasProjectId =
     process.env.FIREBASE_PROJECT_ID &&
     process.env.FIREBASE_PROJECT_ID.trim() !== "";
   const hasCredentials =
     process.env.GOOGLE_APPLICATION_CREDENTIALS &&
     process.env.GOOGLE_APPLICATION_CREDENTIALS.trim() !== "";
+  const hasInlineServiceAccount =
+    process.env.FIREBASE_SERVICE_ACCOUNT &&
+    process.env.FIREBASE_SERVICE_ACCOUNT.trim() !== "";
 
-  if (!hasProjectId && !hasCredentials) {
-    missing.push("FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS");
+  if (!hasProjectId && !hasCredentials && !hasInlineServiceAccount) {
+    missing.push(
+      "FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT",
+    );
   }
 
   if (missing.length > 0) {

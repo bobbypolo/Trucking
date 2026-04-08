@@ -24,6 +24,15 @@ const { mockPoolQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(
 vi.mock("../../db", () => ({ default: { query: mockPoolQuery } }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -31,8 +40,8 @@ vi.mock("../../lib/logger", () => ({
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
-    error: vi.fn(),
     info: vi.fn(),
+    error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
   }),
@@ -463,3 +472,5 @@ describe("Dispatch routes — auth enforcement", () => {
     expect(res.status).toBe(401);
   });
 });
+
+

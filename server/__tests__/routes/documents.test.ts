@@ -116,6 +116,15 @@ vi.mock("firebase-admin", () => {
 
 // Mock logger
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -479,3 +488,5 @@ describe("R-P3-07: Cross-tenant document access returns 404", () => {
     });
   });
 });
+
+

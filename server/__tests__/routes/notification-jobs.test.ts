@@ -21,7 +21,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -298,3 +300,4 @@ describe("Cross-tenant access — R-P1-15: returns 404 for cross-tenant access",
     expect(res.status).toBe(404);
   });
 });
+

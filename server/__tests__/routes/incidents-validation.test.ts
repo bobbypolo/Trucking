@@ -30,7 +30,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -216,3 +218,4 @@ describe("R-SEC-15, R-SEC-16: incidents.ts validateBody wiring", () => {
     expect(res.status).toBe(201);
   });
 });
+

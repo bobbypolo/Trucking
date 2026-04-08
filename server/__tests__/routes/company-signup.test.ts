@@ -74,7 +74,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -316,3 +318,4 @@ describe("R-P2-09: GET /api/companies/:id returns 200 — MySQL fallback", () =>
     expect(res.status).toBe(404);
   });
 });
+

@@ -89,7 +89,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -542,3 +544,4 @@ describe("R-P5-07: DEMO_MODE is off throughout the entire test run", () => {
     expect(content).toContain("verifyIdToken");
   });
 });
+

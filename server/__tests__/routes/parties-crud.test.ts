@@ -79,6 +79,15 @@ vi.mock("../../helpers", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -792,3 +801,5 @@ describe("Party Registry Routes — Canonical DTO Contract", () => {
     });
   });
 });
+
+

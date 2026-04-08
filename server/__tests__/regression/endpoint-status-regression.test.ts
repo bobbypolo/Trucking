@@ -39,7 +39,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -427,3 +429,4 @@ describe("R-P7-08: Previously-404 endpoints now return 200", () => {
     expect(res.status).toBe(200);
   });
 });
+

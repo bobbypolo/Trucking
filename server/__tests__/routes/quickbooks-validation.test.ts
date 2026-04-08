@@ -21,7 +21,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -175,3 +177,4 @@ describe("R-SEC-17, R-SEC-18: quickbooks.ts validateBody wiring", () => {
     expect(res.body.qboBillId).toBe("qbo-bill-001");
   });
 });
+

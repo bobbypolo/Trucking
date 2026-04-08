@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "powershell -ExecutionPolicy Bypass -File scripts/dev/start-customer-tunnel.ps1",
     "build": "vite build",
     "preview": "vite preview",
     "server": "cd server && npm.cmd run dev",

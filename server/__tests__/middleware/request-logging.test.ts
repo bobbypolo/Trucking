@@ -4,17 +4,40 @@ import { metricsMiddleware, resetMetrics } from "../../middleware/metrics";
 
 // Tests R-P13-05, R-P13-06, R-P13-07, R-P13-08
 
-// Mock the logger module to capture log calls
-const mockLoggerInfo = vi.fn();
+const {
+  mockLoggerInfo,
+  mockLoggerError,
+  mockLoggerWarn,
+  mockLoggerDebug,
+} = vi.hoisted(() => ({
+  mockLoggerInfo: vi.fn(),
+  mockLoggerError: vi.fn(),
+  mockLoggerWarn: vi.fn(),
+  mockLoggerDebug: vi.fn(),
+}));
+
 vi.mock("../../lib/logger", () => ({
   logger: {
-    info: (...args: unknown[]) => mockLoggerInfo(...args),
-    child: () => ({
-      info: mockLoggerInfo,
-      error: vi.fn(),
-      warn: vi.fn(),
-    }),
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    debug: mockLoggerDebug,
+    child() {
+      return this;
+    },
   },
+  createChildLogger: () => ({
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    debug: mockLoggerDebug,
+  }),
+  createRequestLogger: () => ({
+    info: mockLoggerInfo,
+    error: mockLoggerError,
+    warn: mockLoggerWarn,
+    debug: mockLoggerDebug,
+  }),
 }));
 
 /**
@@ -239,3 +262,4 @@ describe("S-13.2: Structured request logging with correlation IDs", () => {
     });
   });
 });
+

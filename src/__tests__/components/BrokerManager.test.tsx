@@ -257,20 +257,24 @@ describe("BrokerManager component", () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      const nameInput = screen.getByPlaceholderText(
+      const nameInput = await screen.findByPlaceholderText(
         /ENTER FULL REGISTERED COMPANY NAME/,
       );
       await user.type(nameInput, "Omega Carriers");
-      expect(nameInput).toHaveValue("Omega Carriers");
+      await waitFor(() => {
+        expect(nameInput).toHaveValue("Omega Carriers");
+      });
     });
 
     it("allows typing MC number", async () => {
       const user = userEvent.setup();
       render(<BrokerManager {...defaultProps} />);
       await user.click(screen.getByText("Add Entity"));
-      const mcInput = screen.getByPlaceholderText("e.g., MC-123456");
+      const mcInput = await screen.findByPlaceholderText("e.g., MC-123456");
       await user.type(mcInput, "MC-777888");
-      expect(mcInput).toHaveValue("MC-777888");
+      await waitFor(() => {
+        expect(mcInput).toHaveValue("MC-777888");
+      });
     });
 
     it("calls saveBroker when Save Entity Profile is clicked", async () => {

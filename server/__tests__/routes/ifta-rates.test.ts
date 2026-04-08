@@ -20,7 +20,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -221,3 +223,4 @@ describe("GET /api/accounting/ifta-summary — real tax rates from DB", () => {
     expect(res.status).toBe(401);
   });
 });
+

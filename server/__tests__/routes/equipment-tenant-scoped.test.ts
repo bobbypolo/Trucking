@@ -20,7 +20,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -168,3 +170,4 @@ describe("GET /api/equipment — tenant-scoped (R-P2-12)", () => {
     expect(res.status).toBe(200);
   });
 });
+

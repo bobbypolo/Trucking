@@ -31,7 +31,16 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
+    child() {
+      return this;
+    },
   },
+  createChildLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
   createRequestLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -125,10 +134,18 @@ describe("PATCH /api/loads/:id", () => {
 
   it("updates scan-extracted fields on an existing tenant-scoped load", async () => {
     mockQuery
-      .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id: "load-123" }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([[{ ...loadRow, weight: 22000, commodity: "Steel", bol_number: "BOL-NEW" }]])
+      .mockResolvedValueOnce([
+        [
+          {
+            ...loadRow,
+            weight: 22000,
+            commodity: "Steel",
+            bol_number: "BOL-NEW",
+          },
+        ],
+      ])
       .mockResolvedValueOnce([[]]);
 
     const app = createApp();
@@ -146,15 +163,15 @@ describe("PATCH /api/loads/:id", () => {
     expect(res.body.commodity).toBe("Steel");
     expect(res.body.bol_number).toBe("BOL-NEW");
 
-    expect(mockQuery.mock.calls[1][0]).toContain(
+    expect(mockQuery.mock.calls[0][0]).toContain(
       "SELECT id FROM loads WHERE id = ? AND company_id = ?",
     );
-    expect(mockQuery.mock.calls[1][1]).toEqual(["load-123", "company-aaa"]);
+    expect(mockQuery.mock.calls[0][1]).toEqual(["load-123", "company-aaa"]);
 
-    expect(mockQuery.mock.calls[2][0]).toContain(
+    expect(mockQuery.mock.calls[1][0]).toContain(
       "UPDATE loads SET weight = ?, commodity = ?, bol_number = ?",
     );
-    expect(mockQuery.mock.calls[2][1]).toEqual([
+    expect(mockQuery.mock.calls[1][1]).toEqual([
       22000,
       "Steel",
       "BOL-NEW",
@@ -165,7 +182,6 @@ describe("PATCH /api/loads/:id", () => {
 
   it("maps reference_number to bol_number when a dedicated reference column is unavailable", async () => {
     mockQuery
-      .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id: "load-123" }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ ...loadRow, bol_number: "REF-7788" }]])
@@ -180,8 +196,8 @@ describe("PATCH /api/loads/:id", () => {
       });
 
     expect(res.status).toBe(200);
-    expect(mockQuery.mock.calls[2][0]).toContain("bol_number = ?");
-    expect(mockQuery.mock.calls[2][1]).toEqual([
+    expect(mockQuery.mock.calls[1][0]).toContain("bol_number = ?");
+    expect(mockQuery.mock.calls[1][1]).toEqual([
       "REF-7788",
       "load-123",
       "company-aaa",
@@ -190,7 +206,6 @@ describe("PATCH /api/loads/:id", () => {
 
   it("persists notes when the loads table exposes a notes-compatible column", async () => {
     mockQuery
-      .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id: "load-123" }]])
       .mockResolvedValueOnce([[{ COLUMN_NAME: "notes" }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
@@ -206,15 +221,16 @@ describe("PATCH /api/loads/:id", () => {
       });
 
     expect(res.status).toBe(200);
-    expect(mockQuery.mock.calls[2][0]).toContain("INFORMATION_SCHEMA.COLUMNS");
-    expect(mockQuery.mock.calls[3][0]).toContain("UPDATE loads SET");
-    expect(mockQuery.mock.calls[3][0]).toMatch(
+    expect(mockQuery.mock.calls[1][0]).toContain("INFORMATION_SCHEMA.COLUMNS");
+    expect(mockQuery.mock.calls[2][0]).toContain("UPDATE loads SET");
+    expect(mockQuery.mock.calls[2][0]).toMatch(
       /dispatch_notes = \?|special_instructions = \?|notes = \?/,
     );
-    expect(mockQuery.mock.calls[3][1]).toEqual([
+    expect(mockQuery.mock.calls[2][1]).toEqual([
       "Seal verified at pickup",
       "load-123",
       "company-aaa",
     ]);
   });
 });
+

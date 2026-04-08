@@ -43,6 +43,91 @@ function Wait-HttpOk {
     return $false
 }
 
+function Get-DotEnvValue {
+    param(
+        [Parameter(Mandatory = $true)][string]$FilePath,
+        [Parameter(Mandatory = $true)][string]$Key
+    )
+    if (-not (Test-Path $FilePath)) {
+        return $null
+    }
+    $line = Get-Content $FilePath | Where-Object {
+        $_ -match "^\s*$Key=" -and $_ -notmatch "^\s*#"
+    } | Select-Object -First 1
+    if (-not $line) {
+        return $null
+    }
+    $value = $line.Substring($line.IndexOf("=") + 1).Trim()
+    if ($value.StartsWith('"') -and $value.EndsWith('"')) {
+        return $value.Trim('"')
+    }
+    if ($value.StartsWith("'") -and $value.EndsWith("'")) {
+        return $value.Trim("'")
+    }
+    return $value
+}
+
+function Test-FirebaseTunnelAuth {
+    param(
+        [Parameter(Mandatory = $true)][string]$TunnelUrl,
+        [string]$FirebaseApiKey,
+        [string]$Email,
+        [string]$Password
+    )
+
+    if ([string]::IsNullOrWhiteSpace($FirebaseApiKey)) {
+        Write-Warning "Firebase auth probe skipped: FIREBASE_WEB_API_KEY/VITE_FIREBASE_API_KEY missing in .env."
+        return
+    }
+    if ([string]::IsNullOrWhiteSpace($Email) -or [string]::IsNullOrWhiteSpace($Password)) {
+        Write-Warning "Firebase auth probe skipped: E2E test credentials missing in .env."
+        return
+    }
+
+    $endpoint = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=$FirebaseApiKey"
+    $headers = @{
+        "Content-Type" = "application/json"
+        "Origin" = $TunnelUrl
+        "Referer" = "$TunnelUrl/"
+    }
+    $body = @{
+        email = $Email
+        password = $Password
+        returnSecureToken = $true
+    } | ConvertTo-Json -Compress
+
+    try {
+        $response = Invoke-RestMethod -Method Post -Uri $endpoint -Headers $headers -Body $body -TimeoutSec 20
+        if ($response.idToken) {
+            Write-Host "Firebase auth probe passed for tunnel origin."
+        }
+        return
+    } catch {
+        $firebaseMessage = $null
+        $raw = $_.ErrorDetails.Message
+        if ($raw) {
+            try {
+                $parsed = $raw | ConvertFrom-Json
+                $firebaseMessage = $parsed.error.message
+            } catch {
+                $firebaseMessage = $raw
+            }
+        }
+        if ([string]::IsNullOrWhiteSpace($firebaseMessage)) {
+            $firebaseMessage = $_.Exception.Message
+        }
+
+        if ($firebaseMessage -match "requests-from-referer|UNAUTHORIZED_DOMAIN|INVALID_APP_CREDENTIAL") {
+            throw "Firebase blocked the tunnel origin ($TunnelUrl). Add trycloudflare.com or this tunnel host to Firebase Authentication > Authorized domains. Raw Firebase error: $firebaseMessage"
+        }
+        if ($firebaseMessage -match "INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD") {
+            Write-Warning "Firebase auth probe used invalid credentials, so origin allowlist could not be fully verified. Update E2E_TEST_EMAIL/E2E_TEST_PASSWORD in .env if you want strict probe enforcement."
+            return
+        }
+        Write-Warning "Firebase auth probe returned: $firebaseMessage"
+    }
+}
+
 function Start-IfMissing {
     param(
         [Parameter(Mandatory = $true)][int]$Port,
@@ -61,6 +146,7 @@ function Start-IfMissing {
 }
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
+$envPath = Join-Path $repoRoot ".env"
 
 $frontendOut = Join-Path $repoRoot "frontend_start_runtime.out.log"
 $frontendErr = Join-Path $repoRoot "frontend_start_runtime.err.log"
@@ -139,11 +225,40 @@ if (-not (Wait-HttpOk -Url "$tunnelUrl/api/health" -TimeoutSeconds 60)) {
     throw "Tunnel API health did not become reachable: $tunnelUrl/api/health"
 }
 
+$firebaseApiKey = Get-DotEnvValue -FilePath $envPath -Key "FIREBASE_WEB_API_KEY"
+if ([string]::IsNullOrWhiteSpace($firebaseApiKey)) {
+    $firebaseApiKey = Get-DotEnvValue -FilePath $envPath -Key "VITE_FIREBASE_API_KEY"
+}
+$probeEmail = Get-DotEnvValue -FilePath $envPath -Key "E2E_TEST_EMAIL"
+if ([string]::IsNullOrWhiteSpace($probeEmail)) {
+    $probeEmail = Get-DotEnvValue -FilePath $envPath -Key "E2E_ADMIN_EMAIL"
+}
+$probePassword = Get-DotEnvValue -FilePath $envPath -Key "E2E_TEST_PASSWORD"
+if ([string]::IsNullOrWhiteSpace($probePassword)) {
+    $probePassword = Get-DotEnvValue -FilePath $envPath -Key "E2E_ADMIN_PASSWORD"
+}
+
+Test-FirebaseTunnelAuth -TunnelUrl $tunnelUrl -FirebaseApiKey $firebaseApiKey -Email $probeEmail -Password $probePassword
+
+$firebaseProjectId = Get-DotEnvValue -FilePath $envPath -Key "FIREBASE_PROJECT_ID"
+if ([string]::IsNullOrWhiteSpace($firebaseProjectId)) {
+    $firebaseProjectId = Get-DotEnvValue -FilePath $envPath -Key "VITE_FIREBASE_PROJECT_ID"
+}
+$tunnelHost = ([uri]$tunnelUrl).Host
+
 Write-Host ""
 Write-Host "Customer Tunnel Ready"
 Write-Host "Frontend URL: $tunnelUrl"
 Write-Host "Health URL:   $tunnelUrl/api/health"
-Write-Host "Login:        user@loadpilot.com / User123"
+Write-Host "Login:        $probeEmail / $probePassword"
+Write-Host ""
+Write-Host "Firebase Auth Domain Checklist:"
+Write-Host "  Ensure Firebase Authentication -> Settings -> Authorized domains includes:"
+Write-Host "  - trycloudflare.com (recommended for rotating quick tunnel hosts), OR"
+Write-Host "  - $tunnelHost"
+if (-not [string]::IsNullOrWhiteSpace($firebaseProjectId)) {
+    Write-Host "  Console: https://console.firebase.google.com/project/$firebaseProjectId/authentication/settings"
+}
 Write-Host ""
 Write-Host "Logs:"
 Write-Host "  Backend:   $backendOut"

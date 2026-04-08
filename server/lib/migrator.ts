@@ -155,16 +155,31 @@ export async function scanMigrationFiles(
     .filter((f) => MIGRATION_PATTERN.test(f))
     .sort();
 
-  return entries.map((filename) => {
+  const migrations: MigrationFile[] = [];
+
+  for (const filename of entries) {
     const filepath = path.join(dir, filename);
     const content = fs.readFileSync(filepath, "utf-8").replace(/\r\n/g, "\n");
-    return {
+
+    // Superseded placeholder files are retained on disk for operator context,
+    // but they are not part of the active migration chain and must not block CI.
+    if (
+      content.includes("SUPERSEDED") &&
+      !content.includes("-- UP") &&
+      !content.includes("-- DOWN")
+    ) {
+      continue;
+    }
+
+    migrations.push({
       filename,
       content,
       checksum: sha256(content),
       parsed: parseMigrationFile(content),
-    };
-  });
+    });
+  }
+
+  return migrations;
 }
 
 /** SQL to create the _migrations tracking table. */

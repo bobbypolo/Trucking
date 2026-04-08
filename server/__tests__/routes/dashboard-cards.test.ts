@@ -20,7 +20,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -153,3 +155,4 @@ describe("GET /api/dashboard/cards (R-P2-10)", () => {
     expect([401, 403]).toContain(res.status);
   });
 });
+

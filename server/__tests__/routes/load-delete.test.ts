@@ -26,6 +26,15 @@ vi.mock("../../helpers", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -297,3 +306,5 @@ describe("DELETE /api/loads/:id — soft-delete with status guard", () => {
     expect(selectCall[0]).toContain("deleted_at IS NULL");
   });
 });
+
+

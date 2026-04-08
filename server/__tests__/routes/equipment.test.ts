@@ -20,7 +20,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -492,3 +494,4 @@ describe("PATCH /api/equipment/:id — existing GET tests unaffected (R-S25-04)"
     expect(Array.isArray(res.body)).toBe(true);
   });
 });
+

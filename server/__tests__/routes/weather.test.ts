@@ -11,14 +11,27 @@ vi.mock("../../services/weather.service", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
-  logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(), child: vi.fn().mockReturnThis() },
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
   }),
-  createRequestLogger: () => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() }),
+  createRequestLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+  }),
 }));
 
 vi.mock("firebase-admin", () => {
@@ -200,3 +213,4 @@ describe("GET /api/weather — success", () => {
     expect(mockGetWeatherForLocation).toHaveBeenCalledWith(0, 0);
   });
 });
+

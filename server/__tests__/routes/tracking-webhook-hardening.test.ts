@@ -10,10 +10,20 @@ import request from "supertest";
  * Tests R-P3-09: Metrics counter incremented on rejection
  */
 
-const { mockQuery } = vi.hoisted(() => {
-  const mockQuery = vi.fn();
-  return { mockQuery };
-});
+const { mockQuery, logWarnCalls, mockWarn, mockInfo, mockError, mockDebug } =
+  vi.hoisted(() => {
+    const logWarnCalls: Array<{ args: Record<string, any>; msg: string }> = [];
+    return {
+      mockQuery: vi.fn(),
+      logWarnCalls,
+      mockWarn: vi.fn((args: Record<string, any>, msg: string) => {
+        logWarnCalls.push({ args, msg });
+      }),
+      mockInfo: vi.fn(),
+      mockError: vi.fn(),
+      mockDebug: vi.fn(),
+    };
+  });
 
 vi.mock("../../db", () => ({
   default: {
@@ -75,26 +85,27 @@ vi.mock("../../middleware/requireTier", () => ({
       next(),
 }));
 
-// Capture log output for redaction verification
-const logWarnCalls: Array<{ args: Record<string, any>; msg: string }> = [];
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
+    debug: mockDebug,
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
+    debug: mockDebug,
   }),
   createRequestLogger: () => ({
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn((...warnArgs: any[]) => {
-      // pino-style: first arg is object, second is message string
-      logWarnCalls.push({
-        args: warnArgs[0] as Record<string, any>,
-        msg: typeof warnArgs[1] === "string" ? warnArgs[1] : "",
-      });
-    }),
-    debug: vi.fn(),
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
+    debug: mockDebug,
   }),
 }));
 
@@ -484,3 +495,5 @@ describe("S-3.2: Webhook Tenant Resolution Hardening", () => {
     });
   });
 });
+
+

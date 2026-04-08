@@ -18,7 +18,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -184,3 +186,4 @@ describe("POST /api/auth/login — rate limiting (STORY-007)", () => {
     expect(hasRateLimitHeader).toBe(true);
   });
 });
+

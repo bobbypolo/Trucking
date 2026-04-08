@@ -15,21 +15,34 @@ vi.mock("nodemailer", () => ({
   createTransport: mockCreateTransport,
 }));
 
-// Mock logger
-const mockInfo = vi.fn();
-const mockWarn = vi.fn();
-const mockError = vi.fn();
+const { mockInfo, mockWarn, mockError, mockDebug } = vi.hoisted(() => ({
+  mockInfo: vi.fn(),
+  mockWarn: vi.fn(),
+  mockError: vi.fn(),
+  mockDebug: vi.fn(),
+}));
+
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: mockInfo,
+    error: mockError,
+    warn: mockWarn,
+    debug: mockDebug,
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: mockInfo,
     error: mockError,
     warn: mockWarn,
-    debug: vi.fn(),
+    debug: mockDebug,
   }),
   createRequestLogger: () => ({
     info: mockInfo,
-    warn: mockWarn,
     error: mockError,
+    warn: mockWarn,
+    debug: mockDebug,
   }),
 }));
 
@@ -323,3 +336,5 @@ describe("R-W7-01: Notification Delivery Service", () => {
     });
   });
 });
+
+

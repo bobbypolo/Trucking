@@ -144,7 +144,7 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: function () {
+    child() {
       return this;
     },
   },
@@ -867,3 +867,4 @@ describe("R-P12-04: Error Response Format", () => {
     expect(typeof res.body.message).toBe("string");
   });
 });
+

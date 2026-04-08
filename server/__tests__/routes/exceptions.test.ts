@@ -20,7 +20,9 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
     info: vi.fn(),
@@ -376,3 +378,4 @@ describe("GET /api/exceptions/:id/events — success", () => {
     expect(res.body).toHaveLength(1);
   });
 });
+

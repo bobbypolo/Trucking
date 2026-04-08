@@ -34,6 +34,15 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -41,9 +50,10 @@ vi.mock("../../lib/logger", () => ({
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
-    error: vi.fn(),
     info: vi.fn(),
+    error: vi.fn(),
     warn: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
@@ -488,3 +498,5 @@ describe("4c: GET /api/time-logs/:userId — tenant-scoped SELECT", () => {
     expect(params).not.toContain(OTHER_TENANT_ID);
   });
 });
+
+

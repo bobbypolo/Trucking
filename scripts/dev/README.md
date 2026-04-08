@@ -35,3 +35,8 @@ This script verifies:
 - Backend health on `http://127.0.0.1:5000/api/health`
 - Frontend reachability on `http://127.0.0.1:3101`
 - External tunnel URL and external `/api/health` through Cloudflare
+- Firebase Auth sign-in probe from the tunnel origin (using `.env` test credentials)
+
+Notes:
+- The script reads login/probe credentials from `.env` (`E2E_TEST_EMAIL` + `E2E_TEST_PASSWORD`, fallback to admin variants).
+- If Firebase reports `requests-from-referer-...-are-blocked`, add `trycloudflare.com` or the printed tunnel host to Firebase Authentication authorized domains.

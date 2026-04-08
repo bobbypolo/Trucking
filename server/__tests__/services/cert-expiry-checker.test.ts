@@ -14,6 +14,15 @@ vi.mock("../../db", () => ({
 }));
 
 vi.mock("../../lib/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    child() {
+      return this;
+    },
+  },
   createChildLogger: () => ({
     info: vi.fn(),
     error: vi.fn(),
@@ -383,3 +392,5 @@ describe("R-W7-VPC-802: unit tests pass, tsc clean", () => {
     expect(typeof cert.daysRemaining).toBe("number");
   });
 });
+
+
