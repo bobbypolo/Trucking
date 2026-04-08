@@ -190,6 +190,7 @@ router.post(
       gpsHistory,
       podUrls,
       customerUserId,
+      intake_source,
     } = req.body;
 
     // company_id derived from auth context — never trust the request body
@@ -207,7 +208,7 @@ router.post(
     try {
       await connection.beginTransaction();
       await connection.query(
-        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, quoted_weight, quoted_commodity, container_number, chassis_number, equipment_id, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, quoted_weight, quoted_commodity, container_number, chassis_number, equipment_id, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id, intake_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           company_id,
@@ -233,6 +234,7 @@ router.post(
           JSON.stringify(gpsHistory),
           JSON.stringify(podUrls),
           customerUserId,
+          intake_source || "dispatcher",
         ],
       );
 

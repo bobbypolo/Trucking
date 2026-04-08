@@ -37,6 +37,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
+import { DriverLoadIntakePanel } from "./driver/DriverLoadIntakePanel";
 import { Scanner, IntakeAccumulatedData } from "./Scanner";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -154,6 +155,9 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [loadOverrides, setLoadOverrides] = useState<
     Record<string, Partial<LoadData>>
   >({});
+  // Driver Load Intake Panel (new driver-intake flow via POST /api/loads/driver-intake)
+  const [showIntakePanel, setShowIntakePanel] = useState(false);
+
   // Breakdown modal flow state
   const [breakdownStep, setBreakdownStep] = useState<
     "idle" | "notes" | "tow" | "cargo"
@@ -289,7 +293,9 @@ export const DriverMobileHome: React.FC<Props> = ({
     Promise.all(
       ids.map((loadId) =>
         api
-          .get(`/loads/${loadId}/change-requests`, { signal: controller.signal })
+          .get(`/loads/${loadId}/change-requests`, {
+            signal: controller.signal,
+          })
           .then((data: any) => data?.changeRequests || [])
           .catch(() => []),
       ),
@@ -337,7 +343,9 @@ export const DriverMobileHome: React.FC<Props> = ({
     if (!selectedLoadId) return;
     const controller = new AbortController();
     api
-      .get(`/documents?load_id=${selectedLoadId}`, { signal: controller.signal })
+      .get(`/documents?load_id=${selectedLoadId}`, {
+        signal: controller.signal,
+      })
       .then((data: any) => {
         if (!controller.signal.aborted && data?.documents) {
           setLoadDocuments(data.documents);
@@ -431,7 +439,9 @@ export const DriverMobileHome: React.FC<Props> = ({
       normalizedReference;
     const normalizedPickupDate = extracted.pickupDate?.trim() || undefined;
     const normalizedNotes =
-      extracted.specialInstructions?.trim() || extracted.notes?.trim() || undefined;
+      extracted.specialInstructions?.trim() ||
+      extracted.notes?.trim() ||
+      undefined;
 
     if (
       normalizedWeight === undefined &&
@@ -1246,6 +1256,16 @@ export const DriverMobileHome: React.FC<Props> = ({
               New Load Intake — Scan Documents
             </button>
 
+            {/* Submit Load Intake tile — driver-intake flow (R-P5-16) */}
+            <button
+              data-testid="submit-load-intake-tile"
+              onClick={() => setShowIntakePanel(true)}
+              className="w-full py-4 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+            >
+              <Camera className="w-5 h-5" />
+              Submit Load Intake
+            </button>
+
             {/* Message Dispatch button (R-P4-07) */}
             {activeLoads.length > 0 && (
               <button
@@ -1643,6 +1663,24 @@ export const DriverMobileHome: React.FC<Props> = ({
           });
         }}
       />
+
+      {/* Driver Load Intake Panel Overlay (R-P5-16) */}
+      {showIntakePanel && (
+        <div className="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <DriverLoadIntakePanel
+              onComplete={() => {
+                setShowIntakePanel(false);
+                setToast({
+                  message: "Load submitted for dispatcher review",
+                  type: "success",
+                });
+              }}
+              onCancel={() => setShowIntakePanel(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Intake Scanner Overlay */}
       {intakeStep === "scanning" && (

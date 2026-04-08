@@ -73,6 +73,25 @@ export const createLoadSchema = z.object({
 });
 
 /**
+ * Schema for POST /api/loads/driver-intake — driver-initiated load creation.
+ * All fields are optional (OCR may extract only partial data).
+ * Server-derived fields (status, intake_source, driver_id, load_number) are NOT here.
+ */
+export const createDriverIntakeLoadSchema = z.object({
+  commodity: z.string().optional(),
+  weight: z.number().optional(),
+  bol_number: z.string().optional(),
+  reference_number: z.string().optional(),
+  pickup_date: z.string().optional(),
+  pickup_city: z.string().optional(),
+  pickup_state: z.string().optional(),
+  pickup_facility_name: z.string().optional(),
+  dropoff_city: z.string().optional(),
+  dropoff_state: z.string().optional(),
+  dropoff_facility_name: z.string().optional(),
+});
+
+/**
  * Schema for PATCH /api/loads/:id/status — status update.
  */
 export const updateLoadStatusSchema = z.object({
