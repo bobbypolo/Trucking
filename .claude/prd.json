@@ -74,7 +74,9 @@
       "scope": [],
       "complexity": "medium",
       "maxTurns": 150,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-001"
+      ],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
@@ -133,7 +135,7 @@
         },
         {
           "id": "R-P2-10",
-          "criterion": "`ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` — grep",
+          "criterion": "`ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` \u00e2\u20ac\u201d grep",
           "testType": "manual",
           "testFile": null
         },
@@ -165,24 +167,26 @@
       "scope": [],
       "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-002"
+      ],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P3-01",
-          "criterion": "`handleCreateIssue` happy path — mock `createException` to resolve with",
+          "criterion": "`handleCreateIssue` happy path \u00e2\u20ac\u201d mock `createException` to resolve with",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P3-02",
-          "criterion": "Validation error path — mock rejection with",
+          "criterion": "Validation error path \u00e2\u20ac\u201d mock rejection with",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P3-03",
-          "criterion": "Network error path — mock rejection with `new Error(\"Network request failed\")`;",
+          "criterion": "Network error path \u00e2\u20ac\u201d mock rejection with `new Error(\"Network request failed\")`;",
           "testType": "manual",
           "testFile": null
         },
@@ -220,7 +224,9 @@
       "scope": [],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-003"
+      ],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
@@ -309,13 +315,13 @@
         },
         {
           "id": "R-P4-15",
-          "criterion": "`<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount —",
+          "criterion": "`<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount \u00e2\u20ac\u201d",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P4-16",
-          "criterion": "`LoadSetupModal` Phone Order mode renders all 8 required input controls — assert",
+          "criterion": "`LoadSetupModal` Phone Order mode renders all 8 required input controls \u00e2\u20ac\u201d assert",
           "testType": "manual",
           "testFile": null
         },
@@ -371,7 +377,9 @@
       "scope": [],
       "complexity": "complex",
       "maxTurns": 200,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-004"
+      ],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
@@ -400,13 +408,13 @@
         },
         {
           "id": "R-P5-05",
-          "criterion": "`createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid — all",
+          "criterion": "`createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid \u00e2\u20ac\u201d all",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P5-06",
-          "criterion": "`createDriverIntakeLoadSchema` does NOT have a `load_number` field — assert via",
+          "criterion": "`createDriverIntakeLoadSchema` does NOT have a `load_number` field \u00e2\u20ac\u201d assert via",
           "testType": "manual",
           "testFile": null
         },
@@ -466,13 +474,13 @@
         },
         {
           "id": "R-P5-16",
-          "criterion": "`DriverMobileHome.tsx` imports `DriverLoadIntakePanel` — grep assert.",
+          "criterion": "`DriverMobileHome.tsx` imports `DriverLoadIntakePanel` \u00e2\u20ac\u201d grep assert.",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P5-17",
-          "criterion": "`LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` — grep assert.",
+          "criterion": "`LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` \u00e2\u20ac\u201d grep assert.",
           "testType": "manual",
           "testFile": null
         }
@@ -492,30 +500,32 @@
       "scope": [],
       "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-005"
+      ],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P6-01",
-          "criterion": "Onboarding multi-user spec — User A creates party; User B sees it within 7 seconds.",
+          "criterion": "Onboarding multi-user spec \u00e2\u20ac\u201d User A creates party; User B sees it within 7 seconds.",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P6-02",
-          "criterion": "Dispatcher flow spec — Scan Doc click → file picker visible on screen within 1",
+          "criterion": "Dispatcher flow spec \u00e2\u20ac\u201d Scan Doc click \u00e2\u2020\u2019 file picker visible on screen within 1",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P6-03",
-          "criterion": "Driver intake spec — driver-submitted load appears in dispatcher's Pending Driver",
+          "criterion": "Driver intake spec \u00e2\u20ac\u201d driver-submitted load appears in dispatcher's Pending Driver",
           "testType": "manual",
           "testFile": null
         },
         {
           "id": "R-P6-04",
-          "criterion": "Issue board create spec — invalid submission surfaces error toast and re-enables",
+          "criterion": "Issue board create spec \u00e2\u20ac\u201d invalid submission surfaces error toast and re-enables",
           "testType": "manual",
           "testFile": null
         },
