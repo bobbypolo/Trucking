@@ -2293,14 +2293,16 @@ Notes and Open Items
     is not safe. With it, many phase overlaps become tractable.
 
  6. **Split into multiple Ralph sprints** — 17-18 weeks is too long for a single sprint. The
-    plan is designed to be split into natural sub-sprints:
-    - Sprint A: Phases 0-1 (foundation + audit packet) — ~2 weeks
-    - Sprint B: Phases 2-4 (mobile shell + auth + trip workspace) — ~3 weeks
-    - Sprint C: Phase 5 (document intake with offline queue) — ~3 weeks
-    - Sprint D: Phase 6 (ELD integration) — ~2 weeks
-    - Sprint E: Phase 7-8 (compliance hub + mobile audit packet) — ~3 weeks
-    - Sprint F: Phase 9-10 (tier enforcement + broker credit) — ~3 weeks
-    - Sprint G: Phase 11 (hardening + beta launch) — ~2 weeks
+    executable order must follow the "audit packet first" directive, not the raw phase numbering:
+    - Sprint A: Phase 1 only (audit packet export, pre-monorepo) — dispatch artifact:
+      `docs/PLAN-trucker-app-sprint-a.md`
+    - Sprint B: Phase 0 only (manual pre-Phase-0 move already completed + monorepo/bootstrap)
+    - Sprint C: Phases 2-4 (mobile shell + auth + trip workspace)
+    - Sprint D: Phase 5 (document intake with offline queue)
+    - Sprint E: Phase 6 (ELD integration)
+    - Sprint F: Phases 7-8 (compliance hub + mobile audit packet)
+    - Sprint G: Phases 9-10 (tier enforcement + broker credit)
+    - Sprint H: Phase 11 (hardening + beta launch)
     Each sub-sprint has its own PLAN.md, its own prd.json, its own branch, its own PR. The
     handoff between sub-sprints is clean because each one leaves the system in a working state.
 

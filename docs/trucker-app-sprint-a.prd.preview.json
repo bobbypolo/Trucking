@@ -1,0 +1,122 @@
+{
+  "version": "2.0",
+  "planRef": ".claude/docs/PLAN.md",
+  "conventionsRef": ".claude/docs/knowledge/conventions.md",
+  "plan_hash": "507693d790859074bceff5d227928d67bc62f4023e640053b3bdcef1181243f0",
+  "stories": [
+    {
+      "id": "STORY-001",
+      "description": "IFTA Audit Packet Export MVP (module)",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "services/",
+        "src/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P1-01",
+          "criterion": "`server/migrations/051_ifta_audit_packets.sql` creates exactly `1` table named `ifta_audit_packets` with at least the `9` named columns `id`, `company_id`, `quarter`, `tax_year`, `status`, `packet_hash`, `download_url`, `created_by`, and `created_at`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-02",
+          "criterion": "the DOWN section of `server/migrations/051_ifta_audit_packets.sql` drops exactly `1` table, `ifta_audit_packets`, and does not drop or rename any pre-existing table.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-03",
+          "criterion": "`server/migrations/052_invoices_aging_tracking.sql` adds exactly `2` columns, `days_since_issued` and `last_aging_snapshot_at`, to the invoice-aging source table and the DOWN section removes only those `2` columns.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-04",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with body `{ \"quarter\": 4, \"taxYear\": 2025, \"includeDocuments\": true }` returns `201` and a JSON body containing `packetId`, `status: \"generated\"`, a 64-character `packetHash`, and a non-empty `downloadUrl`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with invalid body `{ \"quarter\": 5, \"taxYear\": 2025 }` returns `400` and an error message containing the quoted field name `\"quarter\"`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-06",
+          "criterion": "`bundleAuditPacket()` produces a ZIP buffer containing exactly `4` top-level entries: `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `manifest.json`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "`computePacketHash()` returns the same 64-character SHA-256 hex string for the same packet bytes across 2 consecutive calls.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-08",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `200 { \"verified\": true }` when the stored packet bytes match the saved `packet_hash`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-09",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `409 { \"error\": \"HASH_MISMATCH\" }` when the stored packet bytes are modified after generation.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-10",
+          "criterion": "running `server/jobs/invoice-aging-nightly.ts` against 3 seeded invoices updates `days_since_issued` to values greater than `0` and writes a non-null `last_aging_snapshot_at`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-11",
+          "criterion": "`services/financialService.ts` exports the 4 methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-12",
+          "criterion": "`components/IFTAManager.tsx` renders a button labeled `\"Generate Audit Packet\"`, a quarter selector with values `1` through `4`, and a tax-year selector seeded to the current year.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-13",
+          "criterion": "clicking `\"Generate Audit Packet\"` with selected values `Q4` and `2025` calls `generateIftaAuditPacket({ quarter: 4, taxYear: 2025, includeDocuments: true })` exactly once.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-14",
+          "criterion": "after a successful packet generation response, `IFTAManager.tsx` renders the returned 64-character `packetHash` and a clickable download action pointing at `downloadUrl`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-15",
+          "criterion": "in the current web app, generating a `Q4 2025` packet for a seeded company downloads a `.zip` file that opens successfully and contains at least 4 files, including `cover-letter.pdf` and `jurisdiction-summary.csv`.",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/051_ifta_audit_packets.test.ts __tests__/migrations/052_invoices_aging_tracking.test.ts __tests__/services/ifta-audit-packet.service.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/jobs/invoice-aging-nightly.test.ts && cd .. && npx vitest run src/__tests__/components/IFTAManager.audit-packet.test.tsx src/__tests__/services/financialService.ifta-audit-packet.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    }
+  ]
+}

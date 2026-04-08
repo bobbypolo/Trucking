@@ -41,7 +41,9 @@ _PHASE_NUM_RE = re.compile(r"##\s+Phase\s+(\d+)\s*[:—–-]\s*(.*)", re.IGNOREC
 
 # R-marker ID from acceptance-criteria bullets (supports AC-level IDs and
 # optional bracket annotations like [unit], [integration], [backend]).
-_R_ID_RE = re.compile(r"^(R-P\d+-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\n]+\])*\s*:\s*(.*)")
+_R_ID_RE = re.compile(
+    r"^(R-P\d+-\d{2}(?:-AC\d+)?)(?P<tags>(?:\s+\[[^\]\n]+\])*)\s*:\s*(.*)"
+)
 
 # Phase Type field: **Phase Type**: `module`
 _PHASE_TYPE_RE = re.compile(r"\*\*Phase\s+Type\*\*\s*:\s*`?(\w+)`?", re.IGNORECASE)
@@ -67,6 +69,16 @@ _STRATEGY_ROW_RE = re.compile(
 )
 
 _VALID_PHASE_TYPES = frozenset({"foundation", "module", "integration", "e2e"})
+_TEST_FILE_EXTENSIONS = (".py", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs")
+_TEST_TYPE_TAGS = {
+    "unit": "unit",
+    "integration": "integration",
+    "manual": "manual",
+    "e2e": "e2e",
+    "end-to-end": "e2e",
+    "backend": "unit",
+    "frontend": "unit",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -170,11 +182,25 @@ def _extract_testing_strategy(body: str) -> list[dict]:
     return rows
 
 
-def _infer_test_type(strategy_rows: list[dict]) -> str:
+def _extract_tags(raw_tags: str) -> list[str]:
+    """Return normalized bracket-tag values from a criterion prefix chunk."""
+    return [tag.lower() for tag in re.findall(r"\[([^\]\n]+)\]", raw_tags or "")]
+
+
+def _infer_test_type(strategy_rows: list[dict], tags: list[str] | None = None) -> str:
     """Infer testType for a criterion from the Testing Strategy table.
 
     Falls back to "manual" if no match found.
     """
+    ordered_tags = tags or []
+    for tag in ordered_tags:
+        if tag in ("unit", "integration", "manual", "e2e", "end-to-end"):
+            return _TEST_TYPE_TAGS[tag]
+
+    for tag in ordered_tags:
+        if tag in _TEST_TYPE_TAGS:
+            return _TEST_TYPE_TAGS[tag]
+
     for row in strategy_rows:
         test_type = row["type"]
         if test_type in ("unit", "integration", "e2e", "end-to-end", "system"):
@@ -185,22 +211,36 @@ def _infer_test_type(strategy_rows: list[dict]) -> str:
     return "manual"
 
 
-def _infer_test_file(changes_rows: list[dict], strategy_rows: list[dict]) -> str | None:
+def _infer_test_file(
+    changes_rows: list[dict], strategy_rows: list[dict], tags: list[str] | None = None
+) -> str | None:
     """Infer testFile for a criterion from Changes and Testing Strategy tables.
 
     Returns None if no test file can be inferred.
     """
+    preferred_type = None
+    for tag in tags or []:
+        if tag in ("unit", "integration", "manual", "e2e", "end-to-end"):
+            preferred_type = _TEST_TYPE_TAGS[tag]
+            break
+
     # First: check Changes table for test files
     test_files_from_changes = set()
     for row in changes_rows:
-        if row["test_file"] and row["test_file"].endswith(".py"):
+        if row["test_file"] and row["test_file"].endswith(_TEST_FILE_EXTENSIONS):
             test_files_from_changes.add(row["test_file"])
 
     # Check Testing Strategy for test files
     test_files_from_strategy = set()
     for row in strategy_rows:
+        if preferred_type and row.get("type") not in (
+            preferred_type,
+            "end-to-end" if preferred_type == "e2e" else preferred_type,
+            "system" if preferred_type == "e2e" else preferred_type,
+        ):
+            continue
         tf = row.get("test_file", "")
-        if tf and tf.endswith(".py"):
+        if tf and tf.endswith(_TEST_FILE_EXTENSIONS):
             test_files_from_strategy.add(tf)
 
     # Combine all test files found
@@ -210,10 +250,11 @@ def _infer_test_file(changes_rows: list[dict], strategy_rows: list[dict]) -> str
     if len(all_test_files) == 1:
         return all_test_files.pop()
 
-    # If multiple, return the first from strategy (more specific)
-    if test_files_from_strategy:
+    # If multiple candidates remain, leave null rather than assign a misleading
+    # file path to every criterion in the story.
+    if len(test_files_from_strategy) == 1:
         return sorted(test_files_from_strategy)[0]
-    if test_files_from_changes:
+    if len(test_files_from_changes) == 1:
         return sorted(test_files_from_changes)[0]
 
     return None
@@ -398,13 +439,14 @@ def generate_prd(plan_path: Path) -> dict:
             m = _R_ID_RE.match(item)
             if m:
                 cid = m.group(1)
-                criterion_text = m.group(2).strip()
+                tags = _extract_tags(m.group("tags"))
+                criterion_text = m.group(3).strip()
 
                 # Infer testType from strategy
-                test_type = _infer_test_type(strategy_rows)
+                test_type = _infer_test_type(strategy_rows, tags)
 
                 # Infer testFile
-                test_file = _infer_test_file(changes_rows, strategy_rows)
+                test_file = _infer_test_file(changes_rows, strategy_rows, tags)
 
                 acceptance_criteria.append(
                     {
