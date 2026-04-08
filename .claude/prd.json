@@ -365,8 +365,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/049_loads_equipment_id.test.ts __tests__/routes/loads-equipment-persistence.test.ts __tests__/routes/loads-equipment-partial-update.test.ts __tests__/services/load-service-dispatch-guard.test.ts && cd .. && npx vitest run src/__tests__/components/EditLoadForm.equipment-selector.test.tsx src/__tests__/components/LoadSetupModal.scan-doc.test.tsx src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-005",
