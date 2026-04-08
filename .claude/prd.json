@@ -539,8 +539,8 @@
       "gateCmds": {
         "unit": "bash -c \"npx playwright test e2e/pre-demo-remediation/ --reporter=list\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
