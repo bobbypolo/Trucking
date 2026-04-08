@@ -536,13 +536,40 @@ export const EditLoadForm: React.FC<Props> = ({
             </div>
             <div className="space-y-1">
               <label
-                htmlFor="elfEquipment"
+                htmlFor="elfEquipmentUnit"
                 className="text-[11px] font-bold text-slate-500 uppercase"
               >
-                Equipment
+                Equipment Unit
               </label>
               <select
-                id="elfEquipment"
+                id="elfEquipmentUnit"
+                className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
+                value={equipmentId ?? ""}
+                onChange={(e) => setEquipmentId(e.target.value || null)}
+                disabled={formData.isLocked}
+              >
+                <option value="">— Unassigned —</option>
+                {equipmentList.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.unit_number || eq.id}
+                  </option>
+                ))}
+              </select>
+              {equipmentWarning && (
+                <p className="text-[11px] text-yellow-400 mt-1">
+                  Equipment required for Planned status
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="elfFreightType"
+                className="text-[11px] font-bold text-slate-500 uppercase"
+              >
+                Freight Type
+              </label>
+              <select
+                id="elfFreightType"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                 value={formData.freightType}
                 onChange={(e) =>

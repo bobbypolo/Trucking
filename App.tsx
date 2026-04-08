@@ -215,6 +215,10 @@ export default function App() {
 
   const [isAdding, setIsAdding] = useState(false);
   const [scanMode, setScanMode] = useState(false);
+  // R-P4-19 — autoTrigger flows from LoadSetupModal Scan Doc through onContinue
+  const [pendingScannerAutoTrigger, setPendingScannerAutoTrigger] = useState<
+    "upload" | "camera" | undefined
+  >(undefined);
   const [editingLoad, setEditingLoad] = useState<Partial<LoadData> | null>(
     null,
   );
@@ -700,8 +704,18 @@ export default function App() {
           <LoadSetupModal
             currentUser={user!}
             preSelectedBrokerId={showLoadSetup.brokerId}
-            onContinue={(bid, did, ln, cn, oft, imd) => {
+            onContinue={(
+              bid,
+              did,
+              ln,
+              cn,
+              oft,
+              imd,
+              autoTrigger,
+              phoneData,
+            ) => {
               setShowLoadSetup(null);
+              setPendingScannerAutoTrigger(autoTrigger);
               setEditingLoad({
                 brokerId: bid,
                 driverId: did,
@@ -709,9 +723,10 @@ export default function App() {
                 phoneCallNotes: cn,
                 freightType: oft,
                 ...imd,
+                ...(phoneData ?? {}),
               });
               setIsAdding(true);
-              setScanMode(!ln);
+              setScanMode(!ln || autoTrigger === "upload");
             }}
             onCancel={() => setShowLoadSetup(null)}
           />
@@ -723,8 +738,10 @@ export default function App() {
           <div className="w-full max-w-lg relative">
             <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
               <Scanner
+                autoTrigger={pendingScannerAutoTrigger}
                 onDataExtracted={(d, b) => {
                   setScanMode(false);
+                  setPendingScannerAutoTrigger(undefined);
                   setEditingLoad((prev) => ({
                     ...prev,
                     ...d,
@@ -732,7 +749,10 @@ export default function App() {
                   }));
                   setPotentialBroker(b);
                 }}
-                onCancel={() => setScanMode(false)}
+                onCancel={() => {
+                  setScanMode(false);
+                  setPendingScannerAutoTrigger(undefined);
+                }}
               />
             </Suspense>
             <button
