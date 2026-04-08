@@ -1,7 +1,10 @@
 import { Router, Response, NextFunction } from "express";
 import type { RowDataPacket } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import pool from "../db";
 import {
@@ -661,105 +664,123 @@ router.get(
 // ─────────────────────────────────────────────────────────
 // PIPELINE: GPS Ping → Geofence Detection
 // ─────────────────────────────────────────────────────────
-router.post("/api/loads/:id/gps-ping", async (req, res) => {
-  const loadId = req.params.id;
-  const { driver_lat, driver_lng, occurred_at } = req.body;
+router.post(
+  "/api/loads/:id/gps-ping",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const loadId = req.params.id;
+    const { driver_lat, driver_lng, occurred_at } = req.body;
 
-  if (!driver_lat || !driver_lng) {
-    return res
-      .status(400)
-      .json({ error: "driver_lat and driver_lng are required" });
-  }
+    if (!driver_lat || !driver_lng) {
+      return res
+        .status(400)
+        .json({ error: "driver_lat and driver_lng are required" });
+    }
 
-  try {
-    const [legs] = await pool.query<RowDataPacket[]>(
-      `SELECT id, latitude, longitude
+    try {
+      const [legs] = await pool.query<RowDataPacket[]>(
+        `SELECT id, latitude, longitude
              FROM load_legs
              WHERE load_id = ? AND latitude IS NOT NULL AND arrived_at IS NULL AND completed = 0
              ORDER BY sequence_order ASC`,
-      [loadId],
-    );
+        [loadId],
+      );
 
-    for (const leg of legs) {
-      if (
-        isWithinGeofence(driver_lat, driver_lng, leg.latitude, leg.longitude)
-      ) {
-        await recordGeofenceEntry(
-          pool,
-          leg.id,
-          loadId,
-          driver_lat,
-          driver_lng,
-          occurred_at,
-        );
-        return res.json({ geofence_triggered: true, load_leg_id: leg.id });
+      for (const leg of legs) {
+        if (
+          isWithinGeofence(driver_lat, driver_lng, leg.latitude, leg.longitude)
+        ) {
+          await recordGeofenceEntry(
+            pool,
+            leg.id,
+            loadId,
+            driver_lat,
+            driver_lng,
+            occurred_at,
+          );
+          return res.json({ geofence_triggered: true, load_leg_id: leg.id });
+        }
       }
-    }
 
-    res.json({ geofence_triggered: false });
-  } catch (error) {
-    console.error("SERVER ERROR [POST /api/loads/gps-ping]:", error);
-    res.status(500).json({ error: "Database error" });
-  }
-});
+      res.json({ geofence_triggered: false });
+    } catch (error) {
+      const log = createRequestLogger(req);
+      log.error(
+        { err: error, route: "POST /api/loads/:id/gps-ping" },
+        "gps-ping handler failed",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
 
 // ─────────────────────────────────────────────────────────
 // PIPELINE: BOL Scan → Detention + Discrepancy Check
 // ─────────────────────────────────────────────────────────
-router.post("/api/loads/:id/bol-scan", async (req, res) => {
-  const loadId = req.params.id;
-  const {
-    load_leg_id,
-    load_number,
-    driver_lat,
-    driver_lng,
-    scanned_weight,
-    scanned_commodity,
-    occurred_at,
-  } = req.body;
-
-  if (!load_leg_id) {
-    return res.status(400).json({ error: "load_leg_id is required" });
-  }
-
-  try {
-    const [loadRows] = await pool.query<RowDataPacket[]>(
-      `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
-      [loadId],
-    );
-
-    if (!loadRows.length)
-      return res.status(404).json({ error: "Load not found" });
-
-    const { customer_id, quoted_weight, quoted_commodity } = loadRows[0];
-
-    const detentionResult = await recordBOLScan(
-      pool,
+router.post(
+  "/api/loads/:id/bol-scan",
+  requireAuth,
+  requireTenant,
+  async (req: any, res) => {
+    const loadId = req.params.id;
+    const {
       load_leg_id,
-      loadId,
-      load_number || loadId,
-      driver_lat ?? null,
-      driver_lng ?? null,
+      load_number,
+      driver_lat,
+      driver_lng,
+      scanned_weight,
+      scanned_commodity,
       occurred_at,
-    );
+    } = req.body;
 
-    let discrepancyResult = { flagged: false, discrepancyPct: 0 };
-    if (scanned_weight != null) {
-      discrepancyResult = await compareWeights(
-        pool,
-        loadId,
-        quoted_weight ?? 0,
-        scanned_weight,
-        scanned_commodity ?? "",
-        customer_id,
-      );
+    if (!load_leg_id) {
+      return res.status(400).json({ error: "load_leg_id is required" });
     }
 
-    res.json({ detention: detentionResult, discrepancy: discrepancyResult });
-  } catch (error) {
-    console.error("SERVER ERROR [POST /api/loads/bol-scan]:", error);
-    res.status(500).json({ error: "Database error" });
-  }
-});
+    try {
+      const [loadRows] = await pool.query<RowDataPacket[]>(
+        `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
+        [loadId],
+      );
+
+      if (!loadRows.length)
+        return res.status(404).json({ error: "Load not found" });
+
+      const { customer_id, quoted_weight, quoted_commodity } = loadRows[0];
+
+      const detentionResult = await recordBOLScan(
+        pool,
+        load_leg_id,
+        loadId,
+        load_number || loadId,
+        driver_lat ?? null,
+        driver_lng ?? null,
+        occurred_at,
+      );
+
+      let discrepancyResult = { flagged: false, discrepancyPct: 0 };
+      if (scanned_weight != null) {
+        discrepancyResult = await compareWeights(
+          pool,
+          loadId,
+          quoted_weight ?? 0,
+          scanned_weight,
+          scanned_commodity ?? "",
+          customer_id,
+        );
+      }
+
+      res.json({ detention: detentionResult, discrepancy: discrepancyResult });
+    } catch (error) {
+      const log = createRequestLogger(req);
+      log.error(
+        { err: error, route: "POST /api/loads/:id/bol-scan" },
+        "bol-scan handler failed",
+      );
+      res.status(500).json({ error: "Database error" });
+    }
+  },
+);
 
 export default router;
