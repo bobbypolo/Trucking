@@ -210,6 +210,10 @@ export const ExceptionConsole: React.FC<Props> = ({
     description: "",
   });
   const [isCreating, setIsCreating] = useState(false);
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "error" | "success";
+  } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -348,37 +352,45 @@ export const ExceptionConsole: React.FC<Props> = ({
   const handleCreateIssue = async () => {
     if (!createForm.entityId.trim() || !createForm.description.trim()) return;
     setIsCreating(true);
-    const slaHours =
-      createForm.severity >= 4
-        ? 2
-        : createForm.severity >= 3
-          ? 4
-          : createForm.severity >= 2
-            ? 24
-            : 72;
-    const slaDueAt = new Date(
-      Date.now() + slaHours * 3600 * 1000,
-    ).toISOString();
-    const id = await createException({
-      type: createForm.type,
-      severity: createForm.severity,
-      entityType: createForm.entityType,
-      entityId: createForm.entityId,
-      description: createForm.description,
-      slaDueAt,
-      createdBy: currentUser.name,
-    } as any);
-    setIsCreating(false);
-    if (id) {
-      setShowCreateModal(false);
-      setCreateForm({
-        type: ISSUE_TYPES[0].value,
-        severity: 2,
-        entityType: ISSUE_TYPES[0].entityType,
-        entityId: "",
-        description: "",
+    try {
+      const slaHours =
+        createForm.severity >= 4
+          ? 2
+          : createForm.severity >= 3
+            ? 4
+            : createForm.severity >= 2
+              ? 24
+              : 72;
+      const slaDueAt = new Date(
+        Date.now() + slaHours * 3600 * 1000,
+      ).toISOString();
+      const id = await createException({
+        type: createForm.type,
+        severity: createForm.severity,
+        entityType: createForm.entityType,
+        entityId: createForm.entityId,
+        description: createForm.description,
+        slaDueAt,
+        createdBy: currentUser.name,
+      } as any);
+      if (id) {
+        setShowCreateModal(false);
+        setCreateForm({
+          type: ISSUE_TYPES[0].value,
+          severity: 2,
+          entityType: ISSUE_TYPES[0].entityType,
+          entityId: "",
+          description: "",
+        });
+        loadData();
+      }
+    } catch (err) {
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to create issue",
+        type: "error",
       });
-      loadData();
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -397,6 +409,21 @@ export const ExceptionConsole: React.FC<Props> = ({
 
   return (
     <div className="flex flex-col h-full bg-[#0a0f18]">
+      {toast && (
+        <div
+          role="alert"
+          className="fixed top-4 right-4 z-[200] bg-red-900 border border-red-700 text-red-100 rounded-xl px-4 py-3 text-sm font-semibold shadow-xl max-w-sm"
+        >
+          {toast.message}
+          <button
+            onClick={() => setToast(null)}
+            aria-label="Dismiss notification"
+            className="ml-3 text-red-300 hover:text-white"
+          >
+            <X className="w-4 h-4 inline" />
+          </button>
+        </div>
+      )}
       <ConfirmDialog
         open={confirmResolveId !== null}
         title="Resolve Issue"
