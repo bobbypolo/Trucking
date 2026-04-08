@@ -488,8 +488,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/050_loads_intake_source.test.ts __tests__/lib/loadNumberGenerator.test.ts __tests__/routes/loads-driver-intake.test.ts && cd .. && npx vitest run src/__tests__/components/DriverLoadIntakePanel.test.tsx src/__tests__/components/PendingDriverIntakeQueue.test.tsx\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-006",
