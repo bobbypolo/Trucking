@@ -343,7 +343,10 @@ export const NetworkPortal: React.FC<Props> = ({
       setToast({ message: "Entity onboarded successfully.", type: "success" });
     } catch (e) {
       console.error("[NetworkPortal] Save party failed:", e);
-      setToast({ message: "Failed to save entity", type: "error" });
+      setToast({
+        message: e instanceof Error ? e.message : "Failed to save entity",
+        type: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -392,7 +395,10 @@ export const NetworkPortal: React.FC<Props> = ({
       await loadData();
     } catch (err) {
       console.error("[NetworkPortal] Failed to add contact:", err);
-      setToast({ message: "Failed to add contact", type: "error" });
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to add contact",
+        type: "error",
+      });
     } finally {
       setSavingContact(false);
     }

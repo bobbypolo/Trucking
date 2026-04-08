@@ -29,7 +29,15 @@ const isMissingTableError = (error: unknown, tableName?: string) => {
     err.code === "ER_NO_SUCH_TABLE" || err.code === "ER_BAD_FIELD_ERROR";
   if (!codeMatches) return false;
   if (!tableName) return true;
-  return (err.message || "").includes(tableName);
+  const message = err.message || "";
+  // Widened matcher: ER_BAD_FIELD_ERROR for a named table also matches when
+  // the message says "Unknown column ..." without mentioning the table name.
+  // This surfaces schema drift (e.g. parties table missing entity_class) as a
+  // 503 to the caller instead of a silent 500.
+  if (err.code === "ER_BAD_FIELD_ERROR" && message.includes("Unknown column")) {
+    return true;
+  }
+  return message.includes(tableName);
 };
 
 // Clients / Brokers Routes
@@ -501,14 +509,12 @@ router.get(
         [allConstraintRules],
         [allCatalogLinks],
       ]: any = await Promise.all([
-        pool.query(
-          "SELECT * FROM party_contacts WHERE party_id IN (?)",
-          [partyIds],
-        ),
-        pool.query(
-          "SELECT * FROM party_documents WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM party_contacts WHERE party_id IN (?)", [
+          partyIds,
+        ]),
+        pool.query("SELECT * FROM party_documents WHERE party_id IN (?)", [
+          partyIds,
+        ]),
         pool.query(
           `SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end,
                   t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
@@ -517,10 +523,9 @@ router.get(
            WHERE r.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query(
-          "SELECT * FROM constraint_sets WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM constraint_sets WHERE party_id IN (?)", [
+          partyIds,
+        ]),
         pool.query(
           `SELECT cr.*, cs.party_id
            FROM constraint_rules cr
@@ -528,10 +533,9 @@ router.get(
            WHERE cs.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query(
-          "SELECT * FROM party_catalog_links WHERE party_id IN (?)",
-          [partyIds],
-        ),
+        pool.query("SELECT * FROM party_catalog_links WHERE party_id IN (?)", [
+          partyIds,
+        ]),
       ]);
 
       // Group results by party_id into Maps for O(1) lookup
@@ -976,7 +980,8 @@ router.post(
         res.status(503).json({
           error: "Party registry unavailable",
           details:
-            "The parties table is not available. Please run database migrations.",
+            "The parties table or required columns are not available. Please run database migrations.",
+          code: "SCHEMA_DRIFT",
         });
         return;
       }
