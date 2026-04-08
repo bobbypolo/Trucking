@@ -73,7 +73,7 @@ app.use(
 app.use(compression());
 app.use(cors({ origin: getCorsOrigin(), credentials: true }));
 app.use(stripeRouter); // BEFORE express.json() so webhook receives raw body
-app.use(express.json());
+app.use(express.json({ limit: "5mb" }));
 app.use(correlationId);
 app.use(metricsMiddleware);
 app.use(healthRouter); // Unauthenticated, before rate limiter

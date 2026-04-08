@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket, PoolConnection } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader, PoolConnection } from "mysql2/promise";
 
 /**
  * Database row shape for the `ocr_results` table.
@@ -120,7 +120,7 @@ export const ocrRepository = {
     connection?: PoolConnection,
   ): Promise<OcrResultRow | null> {
     const conn = connection || pool;
-    const [result]: any = await conn.query(
+    const [result] = await conn.query<ResultSetHeader>(
       "UPDATE ocr_results SET status = ?, updated_at = NOW() WHERE id = ? AND company_id = ?",
       [status, id, companyId],
     );

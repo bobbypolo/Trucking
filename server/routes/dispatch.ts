@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Request, Response, NextFunction } from "express";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
 import {
   requireAuth,
@@ -25,7 +26,7 @@ router.post(
   requireTenant,
   validateBody(createTimeLogSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const {
       id,
       user_id,
@@ -46,7 +47,7 @@ router.post(
     try {
       // Validate user_id belongs to caller's tenant (4a: cross-tenant INSERT prevention)
       if (user_id !== user.uid) {
-        const [targetUser]: any = await pool.query(
+        const [targetUser] = await pool.query<RowDataPacket[]>(
           "SELECT company_id FROM users WHERE id = ?",
           [user_id],
         );
@@ -56,7 +57,7 @@ router.post(
       }
       if (clock_out) {
         // 4b: tenant-scoped clock-out UPDATE via JOIN
-        const [result]: any = await pool.query(
+        const [result] = await pool.query<ResultSetHeader>(
           "UPDATE driver_time_logs t JOIN users u ON t.user_id = u.id SET t.clock_out = ? WHERE t.id = ? AND u.company_id = ?",
           [clock_out, id, user.tenantId],
         );
@@ -93,7 +94,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     if (user.uid !== req.params.userId && user.role === "driver") {
       return res.status(403).json({ error: "Unauthorized profile access" });
     }
@@ -120,7 +121,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT t.* FROM driver_time_logs t JOIN users u ON t.user_id = u.id WHERE u.company_id = ? ORDER BY t.clock_in DESC LIMIT 500",
@@ -144,7 +145,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",
@@ -168,7 +169,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     try {
       const [rows] = await pool.query(
         "SELECT de.* FROM dispatch_events de JOIN loads l ON de.load_id = l.id WHERE l.company_id = ? ORDER BY de.created_at DESC",
@@ -192,7 +193,7 @@ router.post(
   requireTenant,
   validateBody(createDispatchEventSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const { id, load_id, dispatcher_id, event_type, message, payload } =
       req.body;
 
@@ -253,7 +254,7 @@ router.get(
   requireAuth,
   requireTenant,
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const tenantId = user.tenantId;
 
     // Parse optional query params
@@ -347,14 +348,14 @@ router.post(
   requireTenant,
   validateBody(bestMatchesSchema),
   async (req: Request, res: Response, next: NextFunction) => {
-    const { user } = req as AuthenticatedRequest;
+    const user = (req as AuthenticatedRequest).user!;
     const { loadId, maxCandidates } = req.body;
 
     const limit = maxCandidates && maxCandidates > 0 ? maxCandidates : 10;
 
     try {
       // 0. Verify load belongs to user's tenant
-      const [loadCheck]: any = await pool.query(
+      const [loadCheck] = await pool.query<RowDataPacket[]>(
         "SELECT company_id FROM loads WHERE id = ?",
         [loadId],
       );
@@ -363,7 +364,7 @@ router.post(
       }
 
       // 1. Get load pickup coordinates
-      const [legRows]: any = await pool.query(
+      const [legRows] = await pool.query<RowDataPacket[]>(
         "SELECT latitude, longitude FROM load_legs WHERE load_id = ? AND type = 'Pickup' LIMIT 1",
         [loadId],
       );
@@ -382,7 +383,7 @@ router.post(
       const pickupLng = Number(legRows[0].longitude);
 
       // 2. Get eligible drivers for this company
-      const [driverRows]: any = await pool.query(
+      const [driverRows] = await pool.query<RowDataPacket[]>(
         "SELECT id, name, role, safety_score, home_terminal_lat, home_terminal_lng FROM users WHERE company_id = ? AND role IN ('driver','owner_operator')",
         [user.tenantId],
       );
@@ -399,7 +400,7 @@ router.post(
 
       for (const driver of driverRows) {
         // 3. Get latest GPS position (within 48 hours)
-        const [gpsRows]: any = await pool.query(
+        const [gpsRows] = await pool.query<RowDataPacket[]>(
           "SELECT latitude, longitude, recorded_at FROM gps_positions WHERE driver_id = ? AND company_id = ? AND recorded_at > DATE_SUB(NOW(), INTERVAL 48 HOUR) ORDER BY recorded_at DESC LIMIT 1",
           [driver.id, user.tenantId],
         );

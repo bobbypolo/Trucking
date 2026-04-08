@@ -121,3 +121,79 @@ export const batchUpdateSettlementsSchema = z.object({
   ids: z.array(z.string().min(1)).min(1),
   status: z.enum(["Draft", "Calculated", "Approved", "Paid", "Finalized"]),
 });
+
+/**
+ * Schema for POST /api/accounting/fuel-receipt — creating a fuel entry from scanned receipt.
+ */
+export const fuelReceiptSchema = z.object({
+  vendorName: z.string().min(1),
+  gallons: z.number().positive(),
+  pricePerGallon: z.number().min(0),
+  totalCost: z.number().positive(),
+  transactionDate: z.string().min(1),
+  stateCode: z.string().length(2),
+  truckId: z.string().optional(),
+  cardNumber: z.string().optional(),
+});
+
+/**
+ * Schema for POST /api/accounting/ifta-analyze — GPS-based IFTA jurisdiction analysis.
+ */
+export const iftaAnalyzeSchema = z.object({
+  pings: z.array(z.object({
+    lat: z.number(),
+    lng: z.number(),
+    state_code: z.string().length(2).optional(),
+    stateCode: z.string().length(2).optional(),
+  })).min(1).max(10_000),
+  mode: z.enum(["GPS"]),
+});
+
+/**
+ * Schema for POST /api/accounting/ifta-audit-lock — locking a trip for IFTA audit.
+ */
+export const iftaAuditLockSchema = z.object({
+  truckId: z.string().optional(),
+  loadId: z.string().optional(),
+  tripDate: z.string().min(1),
+  startOdometer: z.number().min(0).optional(),
+  endOdometer: z.number().min(0).optional(),
+  totalMiles: z.number().min(0),
+  method: z.enum(["ACTUAL_GPS", "ROUTES", "MANUAL", "ELD_ODOMETER"]),
+  confidenceLevel: z.enum(["HIGH", "MEDIUM", "LOW"]),
+  jurisdictionMiles: z.record(z.string(), z.number().min(0)),
+  attestedBy: z.string().optional(),
+});
+
+/**
+ * Schema for POST /api/accounting/mileage — logging jurisdiction mileage.
+ */
+export const mileageSchema = z.object({
+  truckId: z.string().optional(),
+  loadId: z.string().optional(),
+  date: z.string().min(1),
+  stateCode: z.string().length(2),
+  miles: z.number().min(0),
+  source: z.enum(["ELD", "Manual", "GPS", "ROUTES", "Import"]).optional().default("Manual"),
+});
+
+/**
+ * Schema for POST /api/accounting/ifta-post — posting IFTA tax liability to the journal.
+ */
+export const iftaPostSchema = z.object({
+  quarter: z.union([z.number().int().min(1).max(4), z.string()]),
+  year: z.union([z.number().int(), z.string()]),
+  netTaxDue: z.number().min(0),
+});
+
+/**
+ * Schema for POST /api/accounting/adjustments — creating an adjustment entry.
+ */
+export const adjustmentSchema = z.object({
+  parentEntityType: z.string().min(1),
+  parentEntityId: z.string().min(1),
+  reasonCode: z.string().optional(),
+  description: z.string().optional(),
+  amountAdjustment: z.number(),
+  createdBy: z.string().optional(),
+});

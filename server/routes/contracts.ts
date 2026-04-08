@@ -1,5 +1,6 @@
-import { Router, NextFunction } from "express";
-import { requireAuth } from "../middleware/requireAuth";
+import { Router, Response, NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createContractSchema } from "../schemas/contract";
@@ -13,7 +14,7 @@ router.get(
   "/api/contracts/:customerId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const [rows] = await pool.query(
         "SELECT cc.* FROM customer_contracts cc INNER JOIN customers c ON cc.customer_id = c.id WHERE cc.customer_id = ? AND c.company_id = ?",
@@ -33,7 +34,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createContractSchema),
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const {
       id,
       customer_id,
@@ -46,7 +47,7 @@ router.post(
     } = req.body;
     try {
       // Verify the customer belongs to the authenticated user's tenant before inserting
-      const [customer]: any = await pool.query(
+      const [customer] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM customers WHERE id = ? AND company_id = ?",
         [customer_id, req.user!.tenantId],
       );

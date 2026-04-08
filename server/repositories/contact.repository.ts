@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { buildSafeUpdate } from "../lib/safe-update";
 
 const CONTACT_UPDATABLE_COLUMNS = [
@@ -21,18 +22,18 @@ export const contactRepository = {
       "SELECT * FROM contacts WHERE company_id = ? AND archived_at IS NULL ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [companyId, limit, offset],
     );
-    return rows as any[];
+    return rows as RowDataPacket[];
   },
 
   async findById(id: string) {
     const [rows] = await pool.query("SELECT * FROM contacts WHERE id = ?", [
       id,
     ]);
-    return (rows as any[])[0] || null;
+    return (rows as RowDataPacket[])[0] || null;
   },
 
-  async create(data: any, companyId: string, userId: string) {
-    const id = data.id || uuidv4();
+  async create(data: Record<string, unknown>, companyId: string, userId: string) {
+    const id = (data.id as string | undefined) || uuidv4();
     await pool.query(
       `INSERT INTO contacts (id, company_id, name, email, phone, title, type,
         organization, preferred_channel, normalized_phone, notes,
@@ -57,7 +58,7 @@ export const contactRepository = {
     return this.findById(id);
   },
 
-  async update(id: string, data: any, userId: string) {
+  async update(id: string, data: Record<string, unknown>, userId: string) {
     const result = buildSafeUpdate(
       data,
       CONTACT_UPDATABLE_COLUMNS,

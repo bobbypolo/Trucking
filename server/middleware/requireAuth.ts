@@ -14,8 +14,18 @@ export interface AuthenticatedUser {
   firebaseUid: string;
 }
 
+/**
+ * Request shape after `requireAuth` middleware has run.
+ *
+ * NOTE: `user` is declared optional here (matching the global Express
+ * Request augmentation in `types/express.d.ts`) so that handlers using
+ * `AuthenticatedRequest` remain assignable to Express's `RequestHandler`
+ * type (which expects the base `Request`). The runtime guarantee from
+ * `requireAuth` middleware means handlers can safely use `req.user!.X`
+ * without an additional null check.
+ */
 export interface AuthenticatedRequest extends Request {
-  user: AuthenticatedUser;
+  user?: AuthenticatedUser;
 }
 
 function isFirebaseInitialized(): boolean {

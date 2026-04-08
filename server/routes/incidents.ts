@@ -11,6 +11,7 @@ import {
   createIncidentChargeSchema,
 } from "../schemas/incident";
 import pool from "../db";
+import type { RowDataPacket } from "mysql2/promise";
 import { createRequestLogger } from "../lib/logger";
 import { incidentRepository } from "../repositories/incident.repository";
 import { NotFoundError } from "../errors/AppError";
@@ -84,7 +85,7 @@ router.get(
       // NOTE: timeline/billingItems enrichment via batch queries deferred.
       // Tracked: loadpilot-backend#issue-enrichment — N+1 avoidance, not blocking for production.
       const incidents = await incidentRepository.findByCompany(companyId);
-      res.json({ incidents });
+      res.json(incidents);
     } catch (err) {
       next(err);
     }
@@ -112,7 +113,7 @@ router.post(
 
     // Validation: check if load exists to prevent FK violation
     try {
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM loads WHERE id = ?",
         [load_id],
       );
@@ -217,10 +218,7 @@ router.patch(
     const patchLog = createRequestLogger(req, "PATCH /api/incidents/:id");
 
     try {
-      const existing = await incidentRepository.findById(
-        incidentId,
-        companyId,
-      );
+      const existing = await incidentRepository.findById(incidentId, companyId);
       if (!existing) {
         return res.status(404).json({ error: "Incident not found" });
       }

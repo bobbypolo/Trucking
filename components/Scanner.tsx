@@ -9,6 +9,7 @@ import {
   BookOpen,
   Video,
   XCircle,
+  Fuel,
 } from "lucide-react";
 import { getIdTokenAsync } from "../services/authService";
 import { validateImageBase64 } from "../services/validationGuards";
@@ -80,7 +81,7 @@ interface Props {
   /** onDismiss closes the scanner overlay without cancelling the parent load
    *  creation flow. If not provided, falls back to onCancel for backward compatibility. */
   onDismiss?: () => void;
-  mode?: "load" | "broker" | "equipment" | "training" | "intake";
+  mode?: "load" | "broker" | "equipment" | "training" | "intake" | "fuel";
   /** autoTrigger: if 'upload', programmatically clicks the hidden file input on mount.
    *  If 'camera', activates the camera on mount. Default undefined = no auto-trigger. */
   autoTrigger?: "upload" | "camera";
@@ -274,6 +275,13 @@ export const Scanner: React.FC<Props> = ({
           mimeType,
         )) as { training: unknown };
         onDataExtracted(result.training);
+      } else if (mode === "fuel") {
+        const result = (await aiPost(
+          "/ai/extract-fuel-receipt",
+          base64String,
+          mimeType,
+        )) as { fuelReceiptInfo: unknown };
+        onDataExtracted(result.fuelReceiptInfo);
       } else if (mode === "intake") {
         // Intake mode: accumulate data + document image from each scan
         const result = (await aiPost(
@@ -347,6 +355,13 @@ export const Scanner: React.FC<Props> = ({
             file.type,
           )) as { training: unknown };
           onDataExtracted(result.training);
+        } else if (mode === "fuel") {
+          const result = (await aiPost(
+            "/ai/extract-fuel-receipt",
+            base64String,
+            file.type,
+          )) as { fuelReceiptInfo: unknown };
+          onDataExtracted(result.fuelReceiptInfo);
         } else if (mode === "intake") {
           // Intake mode: accumulate data + document image from each scan
           const result = (await aiPost(
@@ -399,6 +414,7 @@ export const Scanner: React.FC<Props> = ({
     if (mode === "equipment") return "Scan Equipment ID";
     if (mode === "training") return "Harvest Training Content";
     if (mode === "intake") return "Scan Load Documents";
+    if (mode === "fuel") return "Scan Fuel Receipt";
     return "Scan Load Document";
   };
 
@@ -410,6 +426,8 @@ export const Scanner: React.FC<Props> = ({
       return "Upload safety manuals or technical bulletins to auto-generate quizzes.";
     if (mode === "intake")
       return "Scan BOL, Rate Con, or Scale Ticket to create a new load intake. You can scan multiple documents.";
+    if (mode === "fuel")
+      return "Photograph or upload a fuel receipt to log fuel purchase for IFTA.";
     return "Upload or take a photo of a Rate Confirmation or BOL.";
   };
 
@@ -471,6 +489,8 @@ export const Scanner: React.FC<Props> = ({
               <BookOpen className="w-8 h-8 text-blue-400" />
             ) : mode === "equipment" ? (
               <Truck className="w-8 h-8 text-blue-400" />
+            ) : mode === "fuel" ? (
+              <Fuel className="w-8 h-8 text-blue-400" />
             ) : (
               <FileText className="w-8 h-8 text-blue-400" />
             )}

@@ -1,4 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
+import type { Pool, PoolConnection } from 'mysql2/promise';
+
+type DbQueryable = Pool | PoolConnection;
 
 const DISCREPANCY_THRESHOLD_PCT = 5.0;
 
@@ -20,7 +23,7 @@ const DISCREPANCY_THRESHOLD_PCT = 5.0;
  * Writes results to loads table and logs DISCREPANCY_FLAGGED event if threshold exceeded.
  */
 export async function compareWeights(
-    db: any,
+    db: DbQueryable,
     loadId: string,
     quotedWeight: number,
     scannedWeight: number,
@@ -90,7 +93,7 @@ export async function compareWeights(
  * @param paidAt     - ISO date string when payment was received (null if not yet paid)
  */
 export async function recordLoadCompletion(
-    db: any,
+    db: DbQueryable,
     customerId: string,
     invoicedAt: string,
     paidAt: string | null

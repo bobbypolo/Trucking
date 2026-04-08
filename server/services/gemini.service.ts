@@ -212,3 +212,38 @@ export const analyzeSafetyCompliance = async (
     response.text || '{"summary": "Audit failed", "recommendations": []}',
   );
 };
+
+export const extractFuelReceipt = async (
+  base64Image: string,
+  mimeType: string,
+) => {
+  const ai = getClient();
+  const model = "gemini-3-flash-preview";
+  const prompt =
+    "Extract fuel purchase details from this receipt. Capture the vendor or gas station name, fuel quantity in gallons, price per gallon, total transaction cost, transaction date, the US state where purchased, and the truck or unit number if visible on the receipt.";
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      vendorName: { type: Type.STRING },
+      gallons: { type: Type.NUMBER },
+      pricePerGallon: { type: Type.NUMBER },
+      totalCost: { type: Type.NUMBER },
+      transactionDate: { type: Type.STRING },
+      stateCode: { type: Type.STRING, description: "2-letter US state code" },
+      truckId: { type: Type.STRING },
+      cardNumber: { type: Type.STRING },
+    },
+    required: ["vendorName", "gallons", "pricePerGallon", "totalCost", "transactionDate", "stateCode"],
+  };
+  const response = await ai.models.generateContent({
+    model,
+    contents: {
+      parts: [fileToGenerativePart(base64Image, mimeType), { text: prompt }],
+    },
+    config: { responseMimeType: "application/json", responseSchema: schema },
+  });
+  return JSON.parse(
+    response.text ||
+      '{"vendorName": "Unknown", "gallons": 0, "pricePerGallon": 0, "totalCost": 0, "transactionDate": "", "stateCode": "XX"}',
+  );
+};

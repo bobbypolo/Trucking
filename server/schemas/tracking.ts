@@ -32,3 +32,15 @@ export const createVehicleMappingSchema = z.object({
   providerConfigId: z.string().min(1, "providerConfigId is required"),
   providerVehicleId: z.string().min(1, "providerVehicleId is required"),
 });
+
+/**
+ * Schema for POST /api/tracking/mobile-gps — driver phone GPS ping.
+ */
+export const mobileGpsSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  speed: z.number().min(0).optional(),
+  heading: z.number().min(0).max(360).optional(),
+  accuracy: z.number().min(0).optional(),
+  timestamp: z.string().optional(),
+});

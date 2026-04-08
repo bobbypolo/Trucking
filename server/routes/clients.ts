@@ -1,6 +1,10 @@
-import { Router, NextFunction } from "express";
+import { Router, Response, NextFunction } from "express";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth } from "../middleware/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import {
@@ -41,19 +45,57 @@ const isMissingTableError = (error: unknown, tableName?: string) => {
 };
 
 // Clients / Brokers Routes
+
+// GET /api/clients — list clients for authenticated tenant
+router.get(
+  "/api/clients",
+  requireAuth,
+  requireTenant,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const tenantId = req.user!.tenantId;
+    try {
+      const [rows] = await pool.query<RowDataPacket[]>(
+        "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC",
+        [tenantId],
+      );
+      const settings = await getVisibilitySettings(tenantId);
+      res.json(redactData(rows, req.user!.role, settings));
+    } catch (error: unknown) {
+      if (
+        isMissingTableError(error, "customers") ||
+        isMissingTableError(error, "archived_at")
+      ) {
+        try {
+          const [rows] = await pool.query<RowDataPacket[]>(
+            "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
+            [tenantId],
+          );
+          return res.json(rows);
+        } catch (_) {
+          /* fall through */
+        }
+      }
+      next(error);
+    }
+  },
+);
+
+// GET /api/clients/:companyId — legacy route
 router.get(
   "/api/clients/:companyId",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
       const includeArchived = req.query.include_archived === "true";
       const sql = includeArchived
         ? "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC"
         : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
-      const [rows]: any = await pool.query(sql, [req.params.companyId]);
+      const [rows] = await pool.query<RowDataPacket[]>(sql, [
+        req.params.companyId,
+      ]);
       const settings = await getVisibilitySettings(req.params.companyId);
-      res.json(redactData(rows, req.user.role, settings));
+      res.json(redactData(rows, req.user!.role, settings));
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/clients");
       if (
@@ -61,12 +103,12 @@ router.get(
         isMissingTableError(error, "archived_at")
       ) {
         try {
-          const [rows]: any = await pool.query(
+          const [rows] = await pool.query<RowDataPacket[]>(
             "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC",
             [req.params.companyId],
           );
           const settings = await getVisibilitySettings(req.params.companyId);
-          return res.json(redactData(rows, req.user.role, settings));
+          return res.json(redactData(rows, req.user!.role, settings));
         } catch (fallbackError) {
           log.error(
             { err: fallbackError },
@@ -87,21 +129,21 @@ router.patch(
   "/api/clients/:id/archive",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/archive");
 
-    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user!.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
       return;
     }
 
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
 
     try {
-      const [result]: any = await pool.query(
+      const [result] = await pool.query<ResultSetHeader>(
         "UPDATE customers SET archived_at = NOW(), archived_by = ? WHERE id = ? AND company_id = ?",
-        [req.user.uid, id, tenantId],
+        [req.user!.uid, id, tenantId],
       );
 
       if (result.affectedRows === 0) {
@@ -109,7 +151,7 @@ router.patch(
         return;
       }
 
-      log.info({ clientId: id, archivedBy: req.user.uid }, "Client archived");
+      log.info({ clientId: id, archivedBy: req.user!.uid }, "Client archived");
       res.json({ message: "Client archived" });
     } catch (error) {
       log.error(
@@ -126,19 +168,19 @@ router.patch(
   "/api/clients/:id/unarchive",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PATCH /api/clients/:id/unarchive");
 
-    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user.role)) {
+    if (!ARCHIVE_ALLOWED_ROLES.includes(req.user!.role)) {
       res.status(403).json({ error: "Forbidden: insufficient role" });
       return;
     }
 
     const { id } = req.params;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
 
     try {
-      const [result]: any = await pool.query(
+      const [result] = await pool.query<ResultSetHeader>(
         "UPDATE customers SET archived_at = NULL, archived_by = NULL WHERE id = ? AND company_id = ?",
         [id, tenantId],
       );
@@ -165,7 +207,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createClientSchema),
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const tenantId = req.user!.tenantId;
     const log = createRequestLogger(req, "POST /api/clients");
 
@@ -228,7 +270,7 @@ router.get(
   "/api/companies/:id",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/companies");
 
     // Explicit tenant isolation: :id must match authenticated user's tenant
@@ -260,9 +302,7 @@ router.get(
       }
 
       // Self-heal missing company rows so settings can still render and save.
-      const displayName = (req.user?.name || req.user?.email || "Company")
-        .split("@")[0]
-        .trim();
+      const displayName = (req.user?.email || "Company").split("@")[0].trim();
       const safeDisplayName = displayName
         ? displayName.charAt(0).toUpperCase() + displayName.slice(1)
         : "Company";
@@ -291,11 +331,11 @@ router.post(
   "/api/companies",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/companies");
 
     // Enforce admin-only access for company settings changes
-    const callerRole = req.user?.role;
+    const callerRole = req.user?.role || "";
     const adminRoles = ["admin", "OWNER_ADMIN", "ORG_OWNER_SUPER_ADMIN"];
     if (!adminRoles.includes(callerRole)) {
       return res
@@ -486,9 +526,9 @@ router.get(
   "/api/parties",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const [parties]: any = await pool.query(
+      const [parties] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM parties WHERE company_id = ?",
         [req.user!.tenantId],
       );
@@ -498,7 +538,7 @@ router.get(
         return;
       }
 
-      const partyIds = parties.map((p: any) => p.id);
+      const partyIds = parties.map((p) => p.id);
 
       // Batch-fetch all related data in parallel (6 queries instead of 5N+1)
       const [
@@ -508,14 +548,16 @@ router.get(
         [allConstraintSets],
         [allConstraintRules],
         [allCatalogLinks],
-      ]: any = await Promise.all([
-        pool.query("SELECT * FROM party_contacts WHERE party_id IN (?)", [
-          partyIds,
-        ]),
-        pool.query("SELECT * FROM party_documents WHERE party_id IN (?)", [
-          partyIds,
-        ]),
-        pool.query(
+      ] = await Promise.all([
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_contacts WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_documents WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query<RowDataPacket[]>(
           `SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end,
                   t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
            FROM rate_rows r
@@ -523,58 +565,60 @@ router.get(
            WHERE r.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query("SELECT * FROM constraint_sets WHERE party_id IN (?)", [
-          partyIds,
-        ]),
-        pool.query(
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM constraint_sets WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query<RowDataPacket[]>(
           `SELECT cr.*, cs.party_id
            FROM constraint_rules cr
            JOIN constraint_sets cs ON cr.constraint_set_id = cs.id
            WHERE cs.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query("SELECT * FROM party_catalog_links WHERE party_id IN (?)", [
-          partyIds,
-        ]),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_catalog_links WHERE party_id IN (?)",
+          [partyIds],
+        ),
       ]);
 
       // Group results by party_id into Maps for O(1) lookup
-      const contactsByParty = new Map<string, any[]>();
+      const contactsByParty = new Map<string, RowDataPacket[]>();
       for (const c of allContacts) {
         const list = contactsByParty.get(c.party_id) || [];
         list.push(c);
         contactsByParty.set(c.party_id, list);
       }
 
-      const docsByParty = new Map<string, any[]>();
+      const docsByParty = new Map<string, RowDataPacket[]>();
       for (const d of allDocs) {
         const list = docsByParty.get(d.party_id) || [];
         list.push(d);
         docsByParty.set(d.party_id, list);
       }
 
-      const ratesByParty = new Map<string, any[]>();
+      const ratesByParty = new Map<string, RowDataPacket[]>();
       for (const row of allRates) {
         const list = ratesByParty.get(row.party_id) || [];
         list.push(row);
         ratesByParty.set(row.party_id, list);
       }
 
-      const constraintSetsByParty = new Map<string, any[]>();
+      const constraintSetsByParty = new Map<string, RowDataPacket[]>();
       for (const cs of allConstraintSets) {
         const list = constraintSetsByParty.get(cs.party_id) || [];
         list.push(cs);
         constraintSetsByParty.set(cs.party_id, list);
       }
 
-      const constraintRulesBySetId = new Map<string, any[]>();
+      const constraintRulesBySetId = new Map<string, RowDataPacket[]>();
       for (const cr of allConstraintRules) {
         const list = constraintRulesBySetId.get(cr.constraint_set_id) || [];
         list.push(cr);
         constraintRulesBySetId.set(cr.constraint_set_id, list);
       }
 
-      const catalogLinksByParty = new Map<string, any[]>();
+      const catalogLinksByParty = new Map<string, RowDataPacket[]>();
       for (const cl of allCatalogLinks) {
         const list = catalogLinksByParty.get(cl.party_id) || [];
         list.push(cl);
@@ -582,14 +626,17 @@ router.get(
       }
 
       // Assemble enriched parties from the maps
-      const enrichedParties = parties.map((p: any) => {
+      const enrichedParties = parties.map((p) => {
         const contacts = contactsByParty.get(p.id) || [];
         const docs = docsByParty.get(p.id) || [];
         const rawRates = ratesByParty.get(p.id) || [];
 
         // Group rate rows with their tiers (same logic as before)
-        const groupedRates = rawRates.reduce((acc: any, row: any) => {
-          let r = acc.find((item: any) => item.id === row.id);
+        type GroupedRate = Record<string, unknown> & {
+          tiers: Array<Record<string, unknown>>;
+        };
+        const groupedRates = rawRates.reduce((acc: GroupedRate[], row) => {
+          let r = acc.find((item) => item.id === row.id);
           if (!r) {
             r = {
               id: row.id,
@@ -629,7 +676,7 @@ router.get(
 
         // Build constraint sets with their rules from the maps
         const constraintSets = constraintSetsByParty.get(p.id) || [];
-        const enrichedConstraints = constraintSets.map((cs: any) => {
+        const enrichedConstraints = constraintSets.map((cs) => {
           const rules = constraintRulesBySetId.get(cs.id) || [];
           return {
             id: cs.id,
@@ -637,7 +684,7 @@ router.get(
             priority: cs.priority,
             status: cs.status,
             effectiveStart: cs.effective_start,
-            rules: rules.map((r: any) => ({
+            rules: rules.map((r) => ({
               id: r.id,
               type: r.rule_type,
               field: r.field_key,
@@ -684,7 +731,7 @@ router.get(
           documents: docs,
           rates: groupedRates,
           constraintSets: enrichedConstraints,
-          catalogLinks: catalogLinks.map((cl: any) => cl.catalog_item_id),
+          catalogLinks: catalogLinks.map((cl) => cl.catalog_item_id),
           createdAt: p.created_at,
           updatedAt: p.updated_at,
         };
@@ -716,9 +763,9 @@ router.patch(
   "/api/parties/:id/status",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const { status } = req.body;
-    const tenantId = req.user.tenantId;
+    const tenantId = req.user!.tenantId;
     const log = createRequestLogger(req, "PATCH /api/parties/:id/status");
 
     if (!status) {
@@ -727,7 +774,7 @@ router.patch(
     }
 
     try {
-      const [result]: any = await pool.query(
+      const [result] = await pool.query<ResultSetHeader>(
         "UPDATE parties SET status = ? WHERE id = ? AND company_id = ?",
         [status, req.params.id, tenantId],
       );
@@ -751,7 +798,7 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createPartySchema),
-  async (req: any, res: any, next: NextFunction) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "POST /api/parties");
 
     const {
@@ -790,8 +837,8 @@ router.post(
     const tagsJson = JSON.stringify(tags);
     const partyId = id || uuidv4();
 
-    const finalCompanyId = req.user.tenantId;
-    const finalTenantId = req.user.tenantId;
+    const finalCompanyId = req.user!.tenantId;
+    const finalTenantId = req.user!.tenantId;
     const connection = await pool.getConnection();
     try {
       await connection.beginTransaction();
@@ -999,21 +1046,21 @@ router.get(
   "/api/global-search",
   requireAuth,
   requireTenant,
-  async (req: any, res: any, next: NextFunction) => {
-    const { query } = req.query;
-    const companyId = req.user.companyId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const query = typeof req.query.query === "string" ? req.query.query : "";
+    const companyId = req.user!.companyId;
 
     if (!query || query.length < 2) return res.json([]);
     const q = `%${query}%`;
-    const results: any[] = [];
+    const results: Record<string, unknown>[] = [];
 
     try {
       // 1. Search Loads (MySQL)
-      const [loadRows]: any = await pool.query(
+      const [loadRows] = await pool.query<RowDataPacket[]>(
         "SELECT id, load_number, status, pickup_date FROM loads WHERE company_id = ? AND (load_number LIKE ? OR container_number LIKE ? OR bol_number LIKE ?)",
         [companyId, q, q, q],
       );
-      loadRows.forEach((l: any) => {
+      loadRows.forEach((l) => {
         results.push({
           id: l.id,
           type: "LOAD",
@@ -1025,11 +1072,11 @@ router.get(
       });
 
       // 2. Search Customers (MySQL)
-      const [customerRows]: any = await pool.query(
+      const [customerRows] = await pool.query<RowDataPacket[]>(
         "SELECT id, name, type, mc_number FROM customers WHERE company_id = ? AND (name LIKE ? OR mc_number LIKE ? OR email LIKE ?)",
         [companyId, q, q, q],
       );
-      customerRows.forEach((c: any) => {
+      customerRows.forEach((c) => {
         results.push({
           id: c.id,
           type: "BROKER",
@@ -1063,11 +1110,11 @@ router.get(
       });
 
       // 4. Search Quotes (MySQL)
-      const [quoteRows]: any = await pool.query(
+      const [quoteRows] = await pool.query<RowDataPacket[]>(
         "SELECT id, pickup_city, dropoff_city, status FROM quotes WHERE company_id = ? AND (id LIKE ? OR pickup_city LIKE ? OR dropoff_city LIKE ?)",
         [companyId, q, q, q],
       );
-      quoteRows.forEach((q: any) => {
+      quoteRows.forEach((q) => {
         results.push({
           id: q.id,
           type: "QUOTE",

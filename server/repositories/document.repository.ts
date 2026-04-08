@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket, PoolConnection } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader, PoolConnection } from "mysql2/promise";
 import { DocumentStatus } from "../services/document-state-machine";
 
 /**
@@ -202,7 +202,7 @@ export const documentRepository = {
     setClauses.push("updated_at = NOW()");
     params.push(id, companyId);
 
-    const [result]: any = await pool.query(
+    const [result] = await pool.query<ResultSetHeader>(
       `UPDATE documents SET ${setClauses.join(", ")} WHERE id = ? AND company_id = ?`,
       params,
     );
@@ -225,7 +225,7 @@ export const documentRepository = {
     connection?: PoolConnection,
   ): Promise<DocumentRow | null> {
     const conn = connection || pool;
-    const [result]: any = await conn.query(
+    const [result] = await conn.query<ResultSetHeader>(
       "UPDATE documents SET status = ?, updated_at = NOW() WHERE id = ? AND company_id = ?",
       [status, id, companyId],
     );
@@ -247,7 +247,7 @@ export const documentRepository = {
    * Delete a document metadata row. Used in compensating cleanup.
    */
   async deleteById(id: string, companyId: string): Promise<boolean> {
-    const [result]: any = await pool.query(
+    const [result] = await pool.query<ResultSetHeader>(
       "DELETE FROM documents WHERE id = ? AND company_id = ?",
       [id, companyId],
     );

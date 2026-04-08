@@ -21,8 +21,8 @@ try {
     });
     console.log('✅ SUCCESS: Firebase Admin initialized successfully.');
     console.log('Project ID:', serviceAccount.project_id);
-} catch (error: any) {
+} catch (error: unknown) {
     console.error('❌ ERROR: Failed to initialize Firebase Admin:');
-    console.error(error.message);
+    console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
 }

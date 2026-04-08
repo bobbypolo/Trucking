@@ -1,4 +1,4 @@
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import pool from "../db";
 import { logger } from "./logger";
 
@@ -194,7 +194,7 @@ export async function linkSqlUserToFirebaseUid(
     return true;
   }
 
-  const [result]: any = await pool.query(
+  const [result] = await pool.query<ResultSetHeader>(
     `UPDATE users
         SET firebase_uid = ?
       WHERE email = ?

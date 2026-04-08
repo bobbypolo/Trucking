@@ -33,6 +33,7 @@ import * as path from "path";
 import * as fs from "fs";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
+import type { RowDataPacket } from "mysql2/promise";
 
 // Load .env from the project root (two levels up from server/scripts/)
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
@@ -726,7 +727,7 @@ async function verifySeed(
   let allPassed = true;
   for (const check of checks) {
     const param = check.sql.includes("LIKE") ? [] : [companyId];
-    const [rows]: any = await conn.execute(check.sql, param);
+    const [rows] = await conn.execute<RowDataPacket[]>(check.sql, param);
     const actual: number = rows[0].n;
     const passed = actual >= check.expected;
     const status = passed ? "PASS" : "FAIL";

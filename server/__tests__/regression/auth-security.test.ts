@@ -250,10 +250,10 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
 
       const authReq = req as unknown as AuthenticatedRequest;
       expect(authReq.user).toBeDefined();
-      expect(authReq.user.uid).toBe("user-security-001");
-      expect(authReq.user.tenantId).toBe("company-security-001");
-      expect(authReq.user.role).toBe("driver");
-      expect(authReq.user.firebaseUid).toBe("firebase-uid-security-001");
+      expect(authReq.user!.uid).toBe("user-security-001");
+      expect(authReq.user!.tenantId).toBe("company-security-001");
+      expect(authReq.user!.role).toBe("driver");
+      expect(authReq.user!.firebaseUid).toBe("firebase-uid-security-001");
     });
 
     it("rejects when Firebase UID has no linked user profile (orphan)", async () => {

@@ -1,4 +1,5 @@
 import { BigQuery } from '@google-cloud/bigquery';
+import type { RowDataPacket } from 'mysql2/promise';
 
 /**
  * bigqueryPipeline.ts
@@ -82,10 +83,10 @@ export async function createAnalyticsTable(): Promise<void> {
  * @param db        - MySQL pool (to fetch load + broker + leg data)
  * @param loadId    - The load being exported
  */
-export async function exportLoadToBigQuery(db: any, loadId: string): Promise<void> {
+export async function exportLoadToBigQuery(db: { query(sql: string, params?: unknown[]): Promise<[RowDataPacket[], unknown]> }, loadId: string): Promise<void> {
     try {
         // Fetch the load with broker name and first pickup/dropoff legs
-        const [loadRows]: any = await db.query(
+        const [loadRows] = await db.query(
             `SELECT
                 l.id, l.load_number, l.company_id, l.customer_id,
                 c.name          AS broker_name,
@@ -107,7 +108,7 @@ export async function exportLoadToBigQuery(db: any, loadId: string): Promise<voi
         const load = loadRows[0];
 
         // Fetch first pickup and dropoff legs for facility index data
-        const [legs]: any = await db.query(
+        const [legs] = await db.query(
             `SELECT type, facility_name, city, state, detention_minutes
              FROM load_legs
              WHERE load_id = ?
@@ -115,12 +116,12 @@ export async function exportLoadToBigQuery(db: any, loadId: string): Promise<voi
             [loadId]
         );
 
-        const pickup  = legs.find((l: any) => l.type === 'Pickup');
-        const dropoff = legs.find((l: any) => l.type === 'Dropoff');
+        const pickup  = legs.find((l) => l.type === 'Pickup');
+        const dropoff = legs.find((l) => l.type === 'Dropoff');
 
         // Total detention across all legs
         const totalDetentionMinutes = legs.reduce(
-            (sum: number, l: any) => sum + (l.detention_minutes || 0), 0
+            (sum: number, l: RowDataPacket) => sum + (l.detention_minutes || 0), 0
         );
 
         const row = {
@@ -152,8 +153,9 @@ export async function exportLoadToBigQuery(db: any, loadId: string): Promise<voi
         await bq.dataset(DATASET_ID).table(TABLE_ID).insert([row]);
 
         console.log(`[BigQuery] Load ${load.load_number ?? loadId} exported to ${DATASET_ID}.${TABLE_ID}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Never let BigQuery errors surface to the user — this is background work
-        console.error(`[BigQuery] Export failed for load ${loadId}:`, error?.message ?? error);
+        const message = error instanceof Error ? error.message : String(error);
+        console.error(`[BigQuery] Export failed for load ${loadId}:`, message);
     }
 }

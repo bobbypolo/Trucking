@@ -155,12 +155,12 @@ describe("R-P1-05: requireAuth middleware", () => {
 
       const authReq = req as unknown as AuthenticatedRequest;
       expect(authReq.user).toBeDefined();
-      expect(authReq.user.uid).toBe("user-123");
-      expect(authReq.user.tenantId).toBe("company-abc");
-      expect(authReq.user.companyId).toBe("company-abc");
-      expect(authReq.user.role).toBe("driver");
-      expect(authReq.user.email).toBe("driver@company.com");
-      expect(authReq.user.firebaseUid).toBe("firebase-uid-456");
+      expect(authReq.user!.uid).toBe("user-123");
+      expect(authReq.user!.tenantId).toBe("company-abc");
+      expect(authReq.user!.companyId).toBe("company-abc");
+      expect(authReq.user!.role).toBe("driver");
+      expect(authReq.user!.email).toBe("driver@company.com");
+      expect(authReq.user!.firebaseUid).toBe("firebase-uid-456");
     });
 
     it("uses no JWT_SECRET - Firebase Admin SDK only", async () => {

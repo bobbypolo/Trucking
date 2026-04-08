@@ -232,6 +232,7 @@ function makeStorage(overrides: Partial<StorageAdapter> = {}): StorageAdapter {
     getSignedUrl: vi
       .fn()
       .mockResolvedValue("https://storage.example.com/signed"),
+    readBlob: vi.fn().mockResolvedValue(Buffer.from("")),
     ...overrides,
   };
 }

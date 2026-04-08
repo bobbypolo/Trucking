@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
+import type { RowDataPacket } from "mysql2/promise";
 import { randomUUID } from "crypto";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { requireTier } from "../middleware/requireTier";
 import { validateBody } from "../middleware/validate";
@@ -10,7 +11,9 @@ import {
   trackingWebhookSchema,
   createProviderConfigSchema,
   createVehicleMappingSchema,
+  mobileGpsSchema,
 } from "../schemas/tracking";
+import { bridgeGpsToIfta, findActiveLoadsForCompany } from "../services/ifta-evidence.service";
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getGpsProvider, getGpsProviderForTenant } from "../services/gps";
@@ -146,10 +149,10 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
     try {
-      const [loads]: any = await pool.query(
+      const [loads] = await pool.query<RowDataPacket[]>(
         `SELECT id, load_number, status, driver_id
              FROM loads
              WHERE company_id = ? AND status IN ('in_transit', 'dispatched', 'planned', 'arrived')
@@ -162,9 +165,9 @@ router.get(
       }
 
       // Single query for all load legs (avoids N+1)
-      const loadIds = loads.map((l: any) => l.id);
+      const loadIds = loads.map((l) => l.id);
       const placeholders = loadIds.map(() => "?").join(", ");
-      const [allLegs]: any = await pool.query(
+      const [allLegs] = await pool.query<RowDataPacket[]>(
         `SELECT id, load_id, type, facility_name, city, state,
                 latitude, longitude, completed, sequence_order
          FROM load_legs
@@ -174,15 +177,15 @@ router.get(
       );
 
       // Group legs by load_id
-      const legsByLoad = new Map<string, any[]>();
+      const legsByLoad = new Map<string, RowDataPacket[]>();
       for (const leg of allLegs) {
         const arr = legsByLoad.get(leg.load_id) || [];
         arr.push(leg);
         legsByLoad.set(leg.load_id, arr);
       }
 
-      const result: TrackingLoad[] = loads.map((load: any) => {
-        const legs = legsByLoad.get(load.id) || [];
+      const result: TrackingLoad[] = loads.map((load) => {
+        const legs = (legsByLoad.get(load.id) || []) as unknown as TrackingLeg[];
         return {
           id: load.id,
           loadNumber: load.load_number,
@@ -209,12 +212,12 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
     const loadId = req.params.id;
 
     try {
-      const [loads]: any = await pool.query(
+      const [loads] = await pool.query<RowDataPacket[]>(
         "SELECT id, load_number, status, driver_id FROM loads WHERE id = ? AND company_id = ?",
         [loadId, companyId],
       );
@@ -224,7 +227,7 @@ router.get(
       }
 
       const load = loads[0];
-      const [legs]: any = await pool.query(
+      const [legRows] = await pool.query<RowDataPacket[]>(
         `SELECT id, load_id, type, facility_name, city, state,
                     latitude, longitude, completed, sequence_order
              FROM load_legs
@@ -232,6 +235,7 @@ router.get(
              ORDER BY sequence_order ASC`,
         [load.id],
       );
+      const legs = legRows as unknown as TrackingLeg[];
 
       res.json({
         id: load.id,
@@ -289,6 +293,34 @@ async function storePositions(
   } catch (err) {
     log.error({ err }, "Failed to store GPS positions");
   }
+
+  // Bridge GPS positions to IFTA trip evidence (best-effort)
+  try {
+    const activeLoads = await findActiveLoadsForCompany(companyId, pool);
+    for (const p of realPositions) {
+      const driverId = p.driverId || null;
+      const loadId = driverId ? activeLoads.get(driverId) ?? null : null;
+      if (loadId) {
+        await bridgeGpsToIfta(
+          {
+            companyId,
+            vehicleId: p.vehicleId,
+            driverId,
+            lat: p.latitude,
+            lng: p.longitude,
+            speed: p.speed ?? null,
+            odometer: null,
+            timestamp: p.recordedAt || new Date(),
+            source: "ELD",
+          },
+          pool,
+          loadId,
+        );
+      }
+    }
+  } catch (err) {
+    log.error({ err }, "Failed to bridge GPS positions to IFTA evidence");
+  }
 }
 
 /**
@@ -304,8 +336,8 @@ router.get(
   requireAuth,
   requireTenant,
   requireTier("Fleet Core", "Fleet Command"),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/live");
 
     try {
@@ -380,7 +412,7 @@ setInterval(() => {
  * Auth: X-GPS-API-Key header validated against GPS_WEBHOOK_SECRET env var.
  * Not Firebase auth — ELD providers can't do Firebase.
  */
-router.post("/api/tracking/webhook", async (req: any, res, next) => {
+router.post("/api/tracking/webhook", async (req: Request, res: Response, next: NextFunction) => {
   const log = createRequestLogger(req, "POST /api/tracking/webhook");
 
   // Validate X-GPS-API-Key header
@@ -414,7 +446,7 @@ router.post("/api/tracking/webhook", async (req: any, res, next) => {
   // Validate body shape via Zod (API key auth is header-based, handled above)
   const parseResult = trackingWebhookSchema.safeParse(req.body);
   if (!parseResult.success) {
-    const failedFields = parseResult.error.issues.map((i: any) =>
+    const failedFields = parseResult.error.issues.map((i) =>
       i.path.join(".") || "(root)",
     );
 
@@ -453,7 +485,7 @@ router.post("/api/tracking/webhook", async (req: any, res, next) => {
 
   let resolvedCompanyId: string;
   try {
-    const [companies]: any = await pool.query(
+    const [companies] = await pool.query<RowDataPacket[]>(
       `SELECT id FROM companies WHERE id = ? LIMIT 1`,
       [companyId],
     );
@@ -509,11 +541,109 @@ router.post("/api/tracking/webhook", async (req: any, res, next) => {
       ],
     );
 
+    // Bridge to IFTA evidence (best-effort, non-blocking)
+    try {
+      await bridgeGpsToIfta(
+        {
+          companyId: resolvedCompanyId,
+          vehicleId,
+          driverId: driverId || null,
+          lat: latitude,
+          lng: longitude,
+          speed: speed ?? null,
+          odometer: null,
+          timestamp: new Date(),
+          source: "GPS",
+        },
+        pool,
+      );
+    } catch (bridgeErr) {
+      log.error({ err: bridgeErr, vehicleId }, "IFTA bridge failed for webhook GPS");
+    }
+
     res.status(201).json({ stored: true, id });
   } catch (error) {
     next(error);
   }
 });
+
+/**
+ * POST /api/tracking/mobile-gps
+ * Accepts GPS pings from driver mobile devices.
+ * Auth: Firebase (driver is logged in), not API key.
+ */
+router.post(
+  "/api/tracking/mobile-gps",
+  requireAuth,
+  requireTenant,
+  validateBody(mobileGpsSchema),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const driverId = req.user!.id || req.user!.uid;
+    const log = createRequestLogger(req, "POST /api/tracking/mobile-gps");
+
+    const { latitude, longitude, speed, heading, accuracy, timestamp } =
+      req.body;
+
+    try {
+      const id = randomUUID();
+      const vehicleId = `mobile-${driverId}`;
+      const recordedAt = timestamp ? new Date(timestamp) : new Date();
+
+      // Filter out low-accuracy pings (> 200 meters)
+      if (accuracy && accuracy > 200) {
+        res
+          .status(200)
+          .json({ stored: false, reason: "accuracy_too_low" });
+        return;
+      }
+
+      await pool.query(
+        `INSERT INTO gps_positions
+           (id, company_id, vehicle_id, driver_id, latitude, longitude,
+            speed, heading, recorded_at, provider, provider_vehicle_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          companyId,
+          vehicleId,
+          driverId,
+          latitude,
+          longitude,
+          speed ?? null,
+          heading ?? null,
+          recordedAt,
+          "mobile",
+          vehicleId,
+        ],
+      );
+
+      // Bridge to IFTA evidence (best-effort)
+      try {
+        await bridgeGpsToIfta(
+          {
+            companyId,
+            vehicleId,
+            driverId,
+            lat: latitude,
+            lng: longitude,
+            speed: speed ?? null,
+            odometer: null,
+            timestamp: recordedAt,
+            source: "GPS",
+          },
+          pool,
+        );
+      } catch (bridgeErr) {
+        log.error({ err: bridgeErr }, "IFTA bridge failed for mobile GPS");
+      }
+
+      res.status(201).json({ stored: true, id });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Provider Config API
@@ -532,9 +662,9 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createProviderConfigSchema),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -590,7 +720,7 @@ router.post(
       );
 
       // Fetch the record to return its canonical id and createdAt
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT id, provider_name, is_active, created_at
          FROM tracking_provider_configs
          WHERE company_id = ? AND provider_name = ?`,
@@ -620,12 +750,12 @@ router.get(
   "/api/tracking/providers",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/providers");
 
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT id, provider_name, api_token, webhook_secret, webhook_url, is_active, created_at
          FROM tracking_provider_configs
          WHERE company_id = ?
@@ -634,7 +764,7 @@ router.get(
       );
 
       res.json(
-        rows.map((r: any) => {
+        rows.map((r) => {
           // Mask secrets for display — decrypt first to get last 4 chars of original
           let maskedApiToken: string | null = null;
           let maskedWebhookSecret: string | null = null;
@@ -694,9 +824,9 @@ router.delete(
   requireAuth,
   requireTenant,
   validateParams(idParam),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!ADMIN_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -707,7 +837,7 @@ router.delete(
 
     try {
       // Verify ownership before delete
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM tracking_provider_configs WHERE id = ? AND company_id = ?",
         [configId, companyId],
       );
@@ -739,9 +869,9 @@ router.post(
   requireAuth,
   requireTenant,
   validateParams(idParam),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -754,7 +884,7 @@ router.post(
     );
 
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT id, provider_name, api_token, webhook_url, webhook_secret
          FROM tracking_provider_configs
          WHERE id = ? AND company_id = ?`,
@@ -962,9 +1092,9 @@ router.post(
   requireAuth,
   requireTenant,
   validateBody(createVehicleMappingSchema),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!WRITE_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -976,7 +1106,7 @@ router.post(
 
     try {
       // Verify the provider config belongs to this tenant
-      const [configRows]: any = await pool.query(
+      const [configRows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM tracking_provider_configs WHERE id = ? AND company_id = ?",
         [providerConfigId, companyId],
       );
@@ -998,7 +1128,7 @@ router.post(
       );
 
       // Fetch canonical row to return the actual id (may differ on UPDATE)
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT id, vehicle_id, provider_config_id, provider_vehicle_id
          FROM tracking_vehicle_mappings
          WHERE company_id = ? AND vehicle_id = ? AND provider_config_id = ?`,
@@ -1030,12 +1160,12 @@ router.get(
   "/api/tracking/vehicles/mapping",
   requireAuth,
   requireTenant,
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
     const log = createRequestLogger(req, "GET /api/tracking/vehicles/mapping");
 
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         `SELECT m.id, m.vehicle_id, m.provider_config_id,
                 m.provider_vehicle_id, c.provider_name
          FROM tracking_vehicle_mappings m
@@ -1046,7 +1176,7 @@ router.get(
       );
 
       res.json(
-        rows.map((r: any) => ({
+        rows.map((r) => ({
           id: r.id,
           vehicleId: r.vehicle_id,
           providerConfigId: r.provider_config_id,
@@ -1077,9 +1207,9 @@ router.delete(
   requireAuth,
   requireTenant,
   validateParams(idParam),
-  async (req: any, res, next) => {
-    const companyId = req.user.tenantId;
-    const userRole = req.user.role;
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const companyId = req.user!.tenantId;
+    const userRole = req.user!.role;
 
     if (!ADMIN_ROLES.includes(userRole)) {
       return res.status(403).json({ error: "Forbidden: insufficient role" });
@@ -1092,7 +1222,7 @@ router.delete(
     );
 
     try {
-      const [rows]: any = await pool.query(
+      const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT id FROM tracking_vehicle_mappings WHERE id = ? AND company_id = ?",
         [mappingId, companyId],
       );

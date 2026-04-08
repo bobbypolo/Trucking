@@ -125,7 +125,7 @@ describe("GET /api/incidents — hardening", () => {
       .set("Authorization", AUTH_HEADER);
 
     expect(res.status).toBe(200);
-    expect(res.body.incidents).toHaveLength(0);
+    expect(res.body).toHaveLength(0);
   });
 });
 

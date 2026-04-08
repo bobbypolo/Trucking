@@ -1,13 +1,29 @@
 import pool from './db';
+import type { RowDataPacket } from 'mysql2/promise';
 import { calculateDistance } from './geoUtils';
 import { logger } from './lib/logger';
 import { deliverNotification } from './services/notification-delivery.service';
 
-// Redaction Helper (Security Hardening)
-export const redactData = (data: any, role: string, settings: any) => {
-    if (role !== 'driver' || !settings) return data;
+interface VisibilitySettings {
+    hideRates?: boolean;
+    showDriverPay?: boolean;
+    maskCustomerName?: boolean;
+    hideBrokerContacts?: boolean;
+}
 
-    const redactObject = (obj: any) => {
+// Redaction Helper (Security Hardening)
+// Generic preserves caller's input type so callers can keep accessing
+// domain-specific fields after redaction without re-asserting types.
+// The return type intersects with `legs?` so callers/tests can probe
+// the optional nested legs array even when the input shape doesn't
+// declare it (matches the pre-refactor `: any` ergonomics).
+type RedactedResult<T> = T & {
+    legs: Array<Record<string, unknown>>;
+};
+export const redactData = <T>(data: T, role: string, settings: VisibilitySettings | null | undefined): RedactedResult<T> => {
+    if (role !== 'driver' || !settings) return data as RedactedResult<T>;
+
+    const redactObject = (obj: Record<string, unknown>): Record<string, unknown> => {
         const redacted = { ...obj };
         if (settings.hideRates) {
             delete redacted.carrier_rate;
@@ -33,20 +49,20 @@ export const redactData = (data: any, role: string, settings: any) => {
     };
 
     if (Array.isArray(data)) {
-        return data.map(item => {
+        return data.map((item: Record<string, unknown>) => {
             const redacted = redactObject(item);
             if (redacted.legs && Array.isArray(redacted.legs)) {
-                redacted.legs = redacted.legs.map((leg: any) => redactObject(leg));
+                redacted.legs = redacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
             }
             return redacted;
-        });
+        }) as unknown as RedactedResult<T>;
     }
 
-    const finalRedacted = redactObject(data);
+    const finalRedacted = redactObject(data as Record<string, unknown>);
     if (finalRedacted.legs && Array.isArray(finalRedacted.legs)) {
-        finalRedacted.legs = finalRedacted.legs.map((leg: any) => redactObject(leg));
+        finalRedacted.legs = finalRedacted.legs.map((leg: Record<string, unknown>) => redactObject(leg));
     }
-    return finalRedacted;
+    return finalRedacted as unknown as RedactedResult<T>;
 };
 
 // Helper for Email Notifications (KCI Specialization)
@@ -70,7 +86,7 @@ export const sendNotification = (emails: string[], subject: string, message: str
  */
 export const checkBreakdownLateness = async (loadId: string, lat: number, lng: number) => {
     try {
-        const [legs]: any = await pool.query('SELECT * FROM load_legs WHERE load_id = ? AND type = "Dropoff" ORDER BY sequence_order DESC LIMIT 1', [loadId]);
+        const [legs] = await pool.query<RowDataPacket[]>('SELECT * FROM load_legs WHERE load_id = ? AND type = "Dropoff" ORDER BY sequence_order DESC LIMIT 1', [loadId]);
         if (legs.length === 0) return { isLate: false };
 
         const dropoff = legs[0];
@@ -99,7 +115,7 @@ export const checkBreakdownLateness = async (loadId: string, lat: number, lng: n
  * Helper to fetch driver visibility settings from company
  */
 export const getVisibilitySettings = async (companyId: string) => {
-    const [companyRows]: any = await pool.query('SELECT driver_visibility_settings FROM companies WHERE id = ?', [companyId]);
+    const [companyRows] = await pool.query<RowDataPacket[]>('SELECT driver_visibility_settings FROM companies WHERE id = ?', [companyId]);
     let settings = null;
     try {
         const rawSettings = companyRows[0]?.driver_visibility_settings;
