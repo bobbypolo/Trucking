@@ -67,6 +67,27 @@ verification-log.jsonl
 .claude/
 .claude/worktrees/
 .claude/.workflow-state.json
+# EXCEPT: hook scripts and shared workflow files must be tracked so
+# isolated git worktrees inherit them. Without these negations, any
+# `git worktree add` would lack post_format / post_write_prod_scan /
+# stop_verify_gate, breaking parallel ralph-worker dispatch.
+!.claude/hooks/
+!.claude/hooks/*.py
+!.claude/hooks/tests/
+!.claude/hooks/tests/**/*.py
+!.claude/rules/
+!.claude/rules/*.md
+!.claude/settings.json
+!.claude/agents/
+!.claude/agents/*.md
+!.claude/skills/
+!.claude/skills/**/*.md
+!.claude/docs/
+!.claude/docs/*.md
+!.claude/docs/knowledge/
+!.claude/docs/knowledge/*.md
+!.claude/prd.json
+!.claude/workflow.json
 CLAUDE.md
 WORKFLOW.md
 PROJECT_BRIEF.md
