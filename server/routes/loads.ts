@@ -705,11 +705,8 @@ router.post(
 
       res.json({ geofence_triggered: false });
     } catch (error) {
-      const log = createRequestLogger(req);
-      log.error(
-        { err: error, route: "POST /api/loads/:id/gps-ping" },
-        "gps-ping handler failed",
-      );
+      const log = createRequestLogger(req, "POST /api/loads/:id/gps-ping");
+      log.error({ err: error }, "gps-ping handler failed");
       res.status(500).json({ error: "Database error" });
     }
   },
@@ -773,11 +770,8 @@ router.post(
 
       res.json({ detention: detentionResult, discrepancy: discrepancyResult });
     } catch (error) {
-      const log = createRequestLogger(req);
-      log.error(
-        { err: error, route: "POST /api/loads/:id/bol-scan" },
-        "bol-scan handler failed",
-      );
+      const log = createRequestLogger(req, "POST /api/loads/:id/bol-scan");
+      log.error({ err: error }, "bol-scan handler failed");
       res.status(500).json({ error: "Database error" });
     }
   },
