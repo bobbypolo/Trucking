@@ -56,6 +56,7 @@ import stripeRouter from "./routes/stripe";
 import invitationsRouter from "./routes/invitations";
 import intelligenceRouter from "./routes/intelligence";
 import driverIntakeRouter from "./routes/loads-driver-intake";
+import demoRouter from "./routes/demo";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -121,6 +122,7 @@ app.use(geofenceRouter);
 app.use(invitationsRouter);
 app.use(intelligenceRouter);
 app.use(driverIntakeRouter);
+if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
 
 app.use(errorHandler);
 
