@@ -212,8 +212,8 @@
       "gateCmds": {
         "unit": "bash -c \"npx vitest run src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",
