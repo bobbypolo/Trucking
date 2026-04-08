@@ -2,626 +2,542 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "32874b9562b26d6ba4b3adff1914fb418e4fecc5e3c9fcb5bea183e9cbe68ecf",
+  "plan_hash": "665928e2418f2855819cade266352117b9e96cf30d3febf52af5b05041125d4c",
   "stories": [
     {
-      "id": "S-001",
-      "description": "HSTS Security Headers \u00e2\u20ac\u201d Replace bare helmet() with explicit HSTS config (maxAge 1yr, includeSubDomains, preload)",
-      "phase": 0,
-      "phase_type": "foundation",
-      "component": "server/",
-      "scope": [
-        "server/index.ts",
-        "server/__tests__/middleware/security-headers.test.ts"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 0,
-      "acceptanceCriteria": [
-        {
-          "id": "R-SEC-01",
-          "criterion": "server/index.ts calls helmet({ with hsts: config (not bare helmet())",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-02",
-          "criterion": "Response header strict-transport-security contains max-age=31536000",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-03",
-          "criterion": "Header contains includeSubDomains",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-04",
-          "criterion": "Header contains preload",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-05",
-          "criterion": "cd server && npx vitest run __tests__/middleware/security-headers.test.ts exits 0",
-          "testType": "integration"
-        }
-      ],
-      "gateCmds": {
-        "integration": "cd server && npx vitest run __tests__/middleware/security-headers.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-002",
-      "description": "Token Revocation Table + Middleware Check \u00e2\u20ac\u201d migration 045, isTokenRevoked() in requireAuth, POST /api/users/:id/revoke endpoint",
-      "phase": 0,
-      "phase_type": "foundation",
-      "component": "server/",
-      "scope": [
-        "server/migrations/045_revoked_tokens.sql",
-        "server/lib/token-revocation.ts",
-        "server/middleware/requireAuth.ts",
-        "server/routes/users.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 0,
-      "acceptanceCriteria": [
-        {
-          "id": "R-SEC-06",
-          "criterion": "045_revoked_tokens.sql has CREATE TABLE with firebase_uid column + INDEX",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-07",
-          "criterion": "token-revocation.ts exports isTokenRevoked",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-08",
-          "criterion": "token-revocation.ts exports revokeUserTokens",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-09",
-          "criterion": "requireAuth.ts calls isTokenRevoked -- grep returns 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-10",
-          "criterion": "Revoked user gets 401 with REVOKED in error code -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-11",
-          "criterion": "POST /api/users/:id/revoke exists in users.ts -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-12",
-          "criterion": "cd server && npx vitest run __tests__/middleware/token-revocation.test.ts __tests__/routes/user-revocation.test.ts exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/middleware/token-revocation.test.ts __tests__/routes/user-revocation.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-003",
-      "description": "Zod Schemas for Incidents + QuickBooks \u00e2\u20ac\u201d create incident.ts and quickbooks.ts schemas, wire validateBody on 6 unvalidated endpoints",
-      "phase": 0,
-      "phase_type": "foundation",
-      "component": "server/",
-      "scope": [
-        "server/schemas/incident.ts",
-        "server/schemas/quickbooks.ts",
-        "server/routes/incidents.ts",
-        "server/routes/quickbooks.ts"
-      ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 0,
-      "acceptanceCriteria": [
-        {
-          "id": "R-SEC-13",
-          "criterion": "server/schemas/incident.ts exports 4 schemas (createIncidentSchema, createIncidentActionSchema, patchIncidentSchema, createIncidentChargeSchema)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-14",
-          "criterion": "server/schemas/quickbooks.ts exports syncInvoiceSchema and syncBillSchema",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-15",
-          "criterion": "incidents.ts imports validateBody",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-16",
-          "criterion": "grep -c validateBody server/routes/incidents.ts returns 4",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-17",
-          "criterion": "quickbooks.ts imports validateBody",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-18",
-          "criterion": "grep -c validateBody server/routes/quickbooks.ts returns 2",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-19",
-          "criterion": "POST /api/incidents with empty body returns 400 VALIDATION error",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-20",
-          "criterion": "POST /api/incidents/:id/charges with amount:-5 returns 400",
-          "testType": "integration"
-        },
-        {
-          "id": "R-SEC-21",
-          "criterion": "cd server && npx vitest run __tests__/schemas/incident.test.ts __tests__/schemas/quickbooks.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-SEC-22",
-          "criterion": "cd server && npx vitest run __tests__/routes/incidents-validation.test.ts __tests__/routes/quickbooks-validation.test.ts exits 0",
-          "testType": "integration"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/schemas/incident.test.ts __tests__/schemas/quickbooks.test.ts __tests__/routes/incidents-validation.test.ts __tests__/routes/quickbooks-validation.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-004",
-      "description": "Email Verification on Signup + Login Gate \u00e2\u20ac\u201d sendEmailVerification after both signup paths, emailVerified check in login() and requireAuth",
+      "id": "STORY-001",
+      "description": "Parties Schema Fix + Error Surfacing (foundation)",
       "phase": 1,
-      "phase_type": "module",
-      "component": "services/",
-      "scope": [
-        "services/authService.ts",
-        "server/middleware/requireAuth.ts",
-        "components/Auth.tsx"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "S-002"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-AUTH-01",
-          "criterion": "authService.ts imports sendEmailVerification -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-02",
-          "criterion": "sendEmailVerification called after createUserWithEmailAndPassword in registerCompany() -- 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-03",
-          "criterion": "2+ total sendEmailVerification calls in authService.ts (both signup paths)",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-04",
-          "criterion": "login() checks emailVerified -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-05",
-          "criterion": "requireAuth.ts checks email_verified -- grep 1+ match",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-06",
-          "criterion": "Unverified login throws error containing verify -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-07",
-          "criterion": "Auth component shows verification notice after signup -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-08",
-          "criterion": "npx vitest run src/__tests__/services/authService.emailVerify.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-09",
-          "criterion": "cd server && npx vitest run __tests__/middleware/email-verification.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-AUTH-10",
-          "criterion": "npx vitest run src/__tests__/components/Auth.emailVerify.test.tsx exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/authService.emailVerify.test.ts src/__tests__/components/Auth.emailVerify.test.tsx --reporter=verbose && cd server && npx vitest run __tests__/middleware/email-verification.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-005",
-      "description": "Wrap 12 Data-Fetching Components with ComponentErrorBoundary in App.tsx",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "src/",
-      "scope": [
-        "App.tsx"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 2,
-      "acceptanceCriteria": [
-        {
-          "id": "R-ERR-01",
-          "criterion": "App.tsx imports ComponentErrorBoundary",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-02",
-          "criterion": "grep -c ComponentErrorBoundary App.tsx returns 12+",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-03",
-          "criterion": "AccountingPortal rendering block wrapped -- grep confirms ComponentErrorBoundary near AccountingPortal",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-04",
-          "criterion": "Test: throwing child renders error card (not blank page) -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-05",
-          "criterion": "npx vitest run src/__tests__/components/ErrorBoundary.wrap.test.tsx exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ErrorBoundary.wrap.test.tsx --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-006",
-      "description": "Sentry APM Integration \u00e2\u20ac\u201d @sentry/react + @sentry/node, captureException in ErrorBoundary + errorHandler, graceful no-op when DSN unset",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "services/",
-      "scope": [
-        "package.json",
-        "server/package.json",
-        "services/sentry.ts",
-        "server/lib/sentry.ts",
-        "components/ErrorBoundary.tsx",
-        "server/middleware/errorHandler.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [],
-      "parallelGroup": 2,
-      "acceptanceCriteria": [
-        {
-          "id": "R-ERR-06",
-          "criterion": "@sentry/react in package.json dependencies",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-07",
-          "criterion": "@sentry/node in server/package.json dependencies",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-08",
-          "criterion": "services/sentry.ts exists and exports captureException",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-09",
-          "criterion": "server/lib/sentry.ts exists and exports captureException",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-10",
-          "criterion": "ErrorBoundary.tsx imports from sentry",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-11",
-          "criterion": "grep -c captureException components/ErrorBoundary.tsx returns 3+",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-12",
-          "criterion": "errorHandler.ts calls captureException",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-13",
-          "criterion": "When DSN is not set captureException is a no-op -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-14",
-          "criterion": "npx vitest run src/__tests__/services/sentry.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-ERR-15",
-          "criterion": "cd server && npx vitest run __tests__/lib/sentry.test.ts exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/sentry.test.ts --reporter=verbose && cd server && npx vitest run __tests__/lib/sentry.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-007",
-      "description": "EditLoadForm Carrier Rate + Date Validation \u00e2\u20ac\u201d negative rate rejection, pickup<=dropoff date check, min=0 on rate inputs",
-      "phase": 3,
-      "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "components/EditLoadForm.tsx"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 3,
-      "acceptanceCriteria": [
-        {
-          "id": "R-VAL-01",
-          "criterion": "validateForm() checks carrierRate < 0 -- grep confirms",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-02",
-          "criterion": "validateForm() checks driverPay < 0 -- grep confirms",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-03",
-          "criterion": "validateForm() compares pickup/dropoff dates",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-04",
-          "criterion": "Rate inputs have min=0 or min={0} attribute",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-05",
-          "criterion": "Negative carrier rate shows error message -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-06",
-          "criterion": "Invalid date range (pickup after dropoff) shows error -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-VAL-07",
-          "criterion": "npx vitest run src/__tests__/components/EditLoadForm.validation.test.tsx exits 0",
-          "testType": "unit"
-        }
-      ],
-      "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/EditLoadForm.validation.test.tsx --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-008",
-      "description": "Team Invitation Flow \u00e2\u20ac\u201d migration 046, invitation service, 4 API endpoints (create/list/accept/cancel), email notification on invite",
-      "phase": 3,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/migrations/046_invitations.sql",
-        "server/schemas/invitation.ts",
-        "server/services/invitation.service.ts",
-        "server/routes/invitations.ts",
-        "server/index.ts"
-      ],
-      "complexity": "complex",
-      "maxTurns": 250,
-      "dependsOn": [
-        "S-004"
-      ],
-      "parallelGroup": 3,
-      "acceptanceCriteria": [
-        {
-          "id": "R-INV-01",
-          "criterion": "046_invitations.sql has CREATE TABLE invitations with token UNIQUE column",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-02",
-          "criterion": "invitation.service.ts exports createInvitation and acceptInvitation",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-03",
-          "criterion": "invitations.ts has 4 route handlers (POST create, GET list, POST accept, DELETE cancel)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-04",
-          "criterion": "POST create uses validateBody(createInvitationSchema)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-05",
-          "criterion": "POST accept is rate-limited (5 req / 15 min)",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-06",
-          "criterion": "Acceptance creates user with correct company_id from invitation -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-07",
-          "criterion": "Expired invitation returns 410 Gone -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-08",
-          "criterion": "Already-accepted invitation returns 409 Conflict -- test assertion",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-09",
-          "criterion": "server/index.ts registers invitationsRouter -- grep confirms",
-          "testType": "integration"
-        },
-        {
-          "id": "R-INV-10",
-          "criterion": "cd server && npx vitest run __tests__/services/invitation.test.ts exits 0",
-          "testType": "unit"
-        },
-        {
-          "id": "R-INV-11",
-          "criterion": "cd server && npx vitest run __tests__/routes/invitations.test.ts exits 0",
-          "testType": "integration"
-        }
-      ],
-      "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/services/invitation.test.ts __tests__/routes/invitations.test.ts --reporter=verbose"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "S-009",
-      "description": "Icon Button aria-labels + Status Indicator Text \u00e2\u20ac\u201d add aria-label to 30+ icon buttons across 12 components, sr-only text on color-only status dots",
-      "phase": 4,
-      "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "components/"
-      ],
+      "phase_type": "foundation",
+      "component": "",
+      "scope": [],
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": 4,
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-A11Y-01",
-          "criterion": "Zero icon-only buttons (X, Trash2, Plus, etc.) lacking aria-label in target files",
-          "testType": "unit"
+          "id": "R-P1-01",
+          "criterion": "Migration `048_parties_entity_class.sql` exists and contains literal strings",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-02",
-          "criterion": "All Trash2/delete buttons have aria-label containing delete or remove",
-          "testType": "unit"
+          "id": "R-P1-02",
+          "criterion": "Migration 048 DOWN section contains `DROP COLUMN entity_class` and",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-03",
-          "criterion": "Color-only status dots have adjacent sr-only text -- test assertion",
-          "testType": "unit"
+          "id": "R-P1-03",
+          "criterion": "`POST /api/parties` with body",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-04",
-          "criterion": "30+ new aria-label attributes added across codebase (grep count increase)",
-          "testType": "unit"
+          "id": "R-P1-04",
+          "criterion": "`POST /api/parties` against a mock mysql that throws",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-05",
-          "criterion": "npx vitest run src/__tests__/accessibility/icon-buttons.test.tsx exits 0",
-          "testType": "unit"
+          "id": "R-P1-05",
+          "criterion": "`isMissingTableError(error, \"parties\")` in isolation returns `true` when given",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-06",
-          "criterion": "npx vitest run src/__tests__/accessibility/status-indicators.test.tsx exits 0",
-          "testType": "unit"
+          "id": "R-P1-06",
+          "criterion": "`components/NetworkPortal.tsx` line 346 toast expression matches",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "End-to-end POST /api/parties with all 8 contractor vendorProfile fields",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/accessibility/icon-buttons.test.tsx src/__tests__/accessibility/status-indicators.test.tsx --reporter=verbose"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/parties-entity-class.test.ts __tests__/migrations/048_parties_entity_class.test.ts __tests__/routes/clients.test.ts\""
       },
       "passed": true,
       "verificationRef": "verification-log.jsonl"
     },
     {
-      "id": "S-010",
-      "description": "Modal Focus Trapping \u00e2\u20ac\u201d add useFocusTrap to 6 modals (BrokerManager, CalendarView, FileVault, ExceptionConsole, IFTAManager, LoadDetailView)",
-      "phase": 4,
+      "id": "STORY-002",
+      "description": "Polling Layer for Stale Panels (module)",
+      "phase": 2,
       "phase_type": "module",
-      "component": "components/",
-      "scope": [
-        "components/BrokerManager.tsx",
-        "components/CalendarView.tsx",
-        "components/FileVault.tsx",
-        "components/ExceptionConsole.tsx",
-        "components/IFTAManager.tsx",
-        "components/LoadDetailView.tsx"
-      ],
+      "component": "",
+      "scope": [],
       "complexity": "medium",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 4,
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-A11Y-07",
-          "criterion": "BrokerManager.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P2-01",
+          "criterion": "`services/usePollingEffect.ts` exists and exports a function `usePollingEffect`",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-08",
-          "criterion": "CalendarView.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P2-02",
+          "criterion": "`usePollingEffect(fn, 1000, [])` calls `fn` exactly once immediately on mount.",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-09",
-          "criterion": "FileVault.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P2-03",
+          "criterion": "After advancing fake timers by 4500ms, `fn` has been called 5 times (1 immediate",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-10",
-          "criterion": "ExceptionConsole.tsx imports and calls useFocusTrap -- grep 1+ match",
-          "testType": "unit"
+          "id": "R-P2-04",
+          "criterion": "Unmount clears the interval AND fires the `AbortController.abort()` on the last",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-11",
-          "criterion": "11+ components total import useFocusTrap (up from 6)",
-          "testType": "unit"
+          "id": "R-P2-05",
+          "criterion": "`NetworkPortal.tsx` source does NOT contain the literal substring",
+          "testType": "manual",
+          "testFile": null
         },
         {
-          "id": "R-A11Y-12",
-          "criterion": "npx vitest run src/__tests__/accessibility/focus-trap.test.tsx exits 0",
-          "testType": "unit"
+          "id": "R-P2-06",
+          "criterion": "`NetworkPortal.tsx` imports `usePollingEffect` and passes `5000` as the interval",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-07",
+          "criterion": "`IntelligenceHub.tsx` calls `usePollingEffect` with interval `10000` near line",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-08",
+          "criterion": "`App.tsx` source contains `setInterval` with `10000` AND references",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-09",
+          "criterion": "`App.tsx` cleanup return function (at the end of the useEffect around line 285)",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-10",
+          "criterion": "`ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` \u00e2\u20ac\u201d grep",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-11",
+          "criterion": "`services/networkService.ts` `getParties` signature accepts an optional",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-12",
+          "criterion": "Render `<App />` with a mock `onUserChange` that fires with a non-null",
+          "testType": "manual",
+          "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/accessibility/focus-trap.test.tsx --reporter=verbose"
+        "unit": "bash -c \"npx vitest run src/__tests__/services/usePollingEffect.test.tsx\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-003",
+      "description": "Issue Board Create Handler Fix (module)",
+      "phase": 3,
+      "phase_type": "module",
+      "component": "",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-002"
+      ],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P3-01",
+          "criterion": "`handleCreateIssue` happy path \u00e2\u20ac\u201d mock `createException` to resolve with",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-02",
+          "criterion": "Validation error path \u00e2\u20ac\u201d mock rejection with",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-03",
+          "criterion": "Network error path \u00e2\u20ac\u201d mock rejection with `new Error(\"Network request failed\")`;",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "`ExceptionConsole.tsx` source contains `finally` followed (within 100 chars) by",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-05",
+          "criterion": "`services/exceptionService.ts` `createException` body contains",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-06",
+          "criterion": "Full-component render test with `@testing-library/react`: render",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"npx vitest run src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-004",
+      "description": "Load Equipment Persistence + Dispatcher Intake Flow (module)",
+      "phase": 4,
+      "phase_type": "module",
+      "component": "",
+      "scope": [],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-003"
+      ],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-01",
+          "criterion": "Migration `049_loads_equipment_id.sql` UP contains",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "Migration `049_loads_equipment_id.sql` DOWN contains `DROP COLUMN equipment_id`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "`server/schemas/loads.ts` `createLoadSchema` includes `equipment_id` as an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "`POST /api/loads` with body containing `equipment_id: \"EQ-001\"` captures",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "`POST /api/loads` with no `equipment_id` in the body persists `null` (not",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-06",
+          "criterion": "`load.service.ts` dispatch transition uses `load.equipment_id` as the first",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "`validateDispatchGuards` passes for",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "`validateDispatchGuards` FAILS with error message containing `\"equipment\"` when",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "`EditLoadForm` renders an equipment selector when given a non-empty equipment",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-10",
+          "criterion": "`EditLoadForm` onSave payload includes `equipment_id` when user picks from the",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-11",
+          "criterion": "`EditLoadForm` displays a warning (`getByText(/equipment required/i)`) when user",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-12",
+          "criterion": "`Scanner.tsx` Props interface includes",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-13",
+          "criterion": "`<Scanner autoTrigger=\"upload\" ... />` fires a programmatic click on its hidden",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-14",
+          "criterion": "`<Scanner autoTrigger=\"camera\" ... />` invokes the camera-activation path on",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-15",
+          "criterion": "`<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount \u00e2\u20ac\u201d",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-16",
+          "criterion": "`LoadSetupModal` Phone Order mode renders all 8 required input controls \u00e2\u20ac\u201d assert",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-17",
+          "criterion": "`LoadSetupModal` Phone Order Submit is disabled when any of the 8 required fields",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-18",
+          "criterion": "`LoadSetupModal` Phone Order save payload `legs` array has exactly one",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-19",
+          "criterion": "`LoadSetupModal` Scan Doc button click path results in `Scanner` being rendered",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-20",
+          "criterion": "`server/schemas/loads.ts` `partialUpdateLoadSchema` includes `equipment_id` as an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-21",
+          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` against an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-22",
+          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` and NO",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/049_loads_equipment_id.test.ts __tests__/routes/loads-equipment-persistence.test.ts __tests__/routes/loads-equipment-partial-update.test.ts __tests__/services/load-service-dispatch-guard.test.ts && cd .. && npx vitest run src/__tests__/components/EditLoadForm.equipment-selector.test.tsx src/__tests__/components/LoadSetupModal.scan-doc.test.tsx src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-005",
+      "description": "Load Board Driver Intake Flow (module)",
+      "phase": 5,
+      "phase_type": "module",
+      "component": "",
+      "scope": [],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-004"
+      ],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P5-01",
+          "criterion": "Migration `050_loads_intake_source.sql` UP contains",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-02",
+          "criterion": "Migration 050 DOWN contains `DROP COLUMN intake_source` and NO other DROP COLUMN",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-03",
+          "criterion": "`generateNextLoadNumber('C1', mockPool)` against an empty mock returns a string",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-04",
+          "criterion": "`generateNextLoadNumber` against a mock with `LP-0001` existing returns `LP-0002`.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-05",
+          "criterion": "`createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid \u00e2\u20ac\u201d all",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-06",
+          "criterion": "`createDriverIntakeLoadSchema` does NOT have a `load_number` field \u00e2\u20ac\u201d assert via",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-07",
+          "criterion": "`POST /api/loads/driver-intake` with empty body returns 201 with body",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-08",
+          "criterion": "`POST /api/loads/driver-intake` with",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-09",
+          "criterion": "`POST /api/loads/driver-intake` without authentication returns 401.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-10",
+          "criterion": "`DriverLoadIntakePanel` renders `<Scanner autoTrigger=\"camera\" mode=\"intake\" />`",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-11",
+          "criterion": "`DriverLoadIntakePanel` calls fetch with `/api/loads/driver-intake` after the",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-12",
+          "criterion": "`PendingDriverIntakeQueue` filters the fetched loads list to only `status ===",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-13",
+          "criterion": "`PendingDriverIntakeQueue` Approve button is disabled until `equipment_id` is",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-14",
+          "criterion": "`PendingDriverIntakeQueue` Approve button click fires TWO fetches in order: first",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-15",
+          "criterion": "`server/index.ts` source contains an import of `loads-driver-intake` and an",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-16",
+          "criterion": "`DriverMobileHome.tsx` imports `DriverLoadIntakePanel` \u00e2\u20ac\u201d grep assert.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-17",
+          "criterion": "`LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` \u00e2\u20ac\u201d grep assert.",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/050_loads_intake_source.test.ts __tests__/lib/loadNumberGenerator.test.ts __tests__/routes/loads-driver-intake.test.ts && cd .. && npx vitest run src/__tests__/components/DriverLoadIntakePanel.test.tsx src/__tests__/components/PendingDriverIntakeQueue.test.tsx\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-006",
+      "description": "End-to-End Regression Suite (integration)",
+      "phase": 6,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-005"
+      ],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P6-01",
+          "criterion": "Onboarding multi-user spec \u00e2\u20ac\u201d User A creates party; User B sees it within 7 seconds.",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-02",
+          "criterion": "Dispatcher flow spec \u00e2\u20ac\u201d Scan Doc click \u00e2\u2020\u2019 file picker visible on screen within 1",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-03",
+          "criterion": "Driver intake spec \u00e2\u20ac\u201d driver-submitted load appears in dispatcher's Pending Driver",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-04",
+          "criterion": "Issue board create spec \u00e2\u20ac\u201d invalid submission surfaces error toast and re-enables",
+          "testType": "manual",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-05",
+          "criterion": "All 4 specs under `e2e/pre-demo-remediation/` are auto-discovered by",
+          "testType": "manual",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"npx playwright test e2e/pre-demo-remediation/ --reporter=list\""
       },
       "passed": true,
       "verificationRef": "verification-log.jsonl"

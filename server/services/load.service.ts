@@ -85,10 +85,13 @@ export const loadService = {
           driverRows.length > 0 ? driverRows[0].company_id : null;
       }
 
-      // Equipment check: loads table uses chassis_number/container_number
-      // For now, we check if the load has an equipment reference
-      // This will be expanded when equipment_id is added to the loads table
-      const equipmentId = load.chassis_number || load.container_number || null;
+      // Equipment check: prefer persisted equipment_id, fall back to legacy
+      // chassis_number/container_number for loads that pre-date migration 049.
+      const equipmentId =
+        load.equipment_id ||
+        load.chassis_number ||
+        load.container_number ||
+        null;
       if (equipmentId) {
         // Look up equipment by identifier — search across ALL tenants to detect
         // cross-tenant references (not scoped to companyId)

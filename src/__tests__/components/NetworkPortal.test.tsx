@@ -118,7 +118,10 @@ describe("NetworkPortal component", () => {
   it("calls getParties on mount with companyId", async () => {
     render(<NetworkPortal {...defaultProps} />);
     await waitFor(() => {
-      expect(getParties).toHaveBeenCalledWith("company-1");
+      expect(getParties).toHaveBeenCalledWith(
+        "company-1",
+        expect.any(AbortSignal),
+      );
     });
   });
 
@@ -742,8 +745,10 @@ describe("NetworkPortal component", () => {
     });
 
     await user.click(screen.getByText("Save to Registry"));
+    // Tests R-P1-06: NetworkPortal toast surfaces the actual error message
+    // (e instanceof Error ? e.message) instead of the hardcoded fallback.
     await waitFor(() => {
-      expect(screen.getByText("Failed to save entity")).toBeInTheDocument();
+      expect(screen.getByText("Save failed")).toBeInTheDocument();
     });
   });
 

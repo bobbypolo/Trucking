@@ -375,7 +375,11 @@ describe("LoadSetupModal component", () => {
       // Click Scan Doc
       const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
       await user.click(scanBtn);
-      expect(onContinue).toHaveBeenCalledWith("", "");
+      // STORY-004 R-P4-19: Scan Doc now passes autoTrigger='upload' at index 6
+      const call = onContinue.mock.calls[0];
+      expect(call[0]).toBe("");
+      expect(call[1]).toBe("");
+      expect(call[6]).toBe("upload");
     });
 
     it("calls onContinue with actual brokerId and empty driverId when a real broker is selected without assignment", async () => {
@@ -393,7 +397,11 @@ describe("LoadSetupModal component", () => {
       // Click Scan Doc
       const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
       await user.click(scanBtn);
-      expect(onContinue).toHaveBeenCalledWith("broker-1", "");
+      // STORY-004 R-P4-19: Scan Doc now passes autoTrigger='upload' at index 6
+      const call = onContinue.mock.calls[0];
+      expect(call[0]).toBe("broker-1");
+      expect(call[1]).toBe("");
+      expect(call[6]).toBe("upload");
     });
 
     it("still passes a driverId when one is explicitly assigned before continuing", async () => {
@@ -414,7 +422,11 @@ describe("LoadSetupModal component", () => {
       await user.selectOptions(dSelect, "driver-1");
       const scanBtn = screen.getByText(/Scan Doc/).closest("button")!;
       await user.click(scanBtn);
-      expect(onContinue).toHaveBeenCalledWith("broker-1", "driver-1");
+      // STORY-004 R-P4-19: Scan Doc now passes autoTrigger='upload' at index 6
+      const call = onContinue.mock.calls[0];
+      expect(call[0]).toBe("broker-1");
+      expect(call[1]).toBe("driver-1");
+      expect(call[6]).toBe("upload");
     });
 
     it("does not show locked indicator when no preSelectedBrokerId", () => {
@@ -458,7 +470,9 @@ describe("LoadSetupModal component", () => {
       await user.click(screen.getByRole("button", { name: /Add new broker/i }));
       expect(screen.getByText("New Broker / Customer")).toBeInTheDocument();
       // Cancel via the header toggle button (now shows "Cancel")
-      await user.click(screen.getByRole("button", { name: /Cancel add broker/i }));
+      await user.click(
+        screen.getByRole("button", { name: /Cancel add broker/i }),
+      );
       expect(
         screen.queryByText("New Broker / Customer"),
       ).not.toBeInTheDocument();
@@ -483,7 +497,10 @@ describe("LoadSetupModal component", () => {
       await user.click(screen.getByRole("button", { name: /Save Broker/i }));
       await waitFor(() => {
         expect(saveBroker).toHaveBeenCalledWith(
-          expect.objectContaining({ name: "New Test Broker", clientType: "Broker" }),
+          expect.objectContaining({
+            name: "New Test Broker",
+            clientType: "Broker",
+          }),
         );
       });
     });
@@ -494,9 +511,7 @@ describe("LoadSetupModal component", () => {
       vi.mocked(getBrokers).mockResolvedValueOnce([]);
       render(<LoadSetupModal {...defaultProps} />);
       await waitFor(() => {
-        expect(
-          screen.getByText(/No brokers found/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/No brokers found/)).toBeInTheDocument();
       });
     });
   });
@@ -525,7 +540,9 @@ describe("LoadSetupModal component", () => {
       render(<LoadSetupModal {...defaultProps} />);
       await user.click(screen.getByRole("button", { name: /Add new driver/i }));
       expect(screen.getByText("New Driver")).toBeInTheDocument();
-      await user.click(screen.getByRole("button", { name: /Cancel add driver/i }));
+      await user.click(
+        screen.getByRole("button", { name: /Cancel add driver/i }),
+      );
       expect(screen.queryByText("New Driver")).not.toBeInTheDocument();
     });
 

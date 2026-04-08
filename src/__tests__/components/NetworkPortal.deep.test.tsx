@@ -438,7 +438,8 @@ describe("NetworkPortal deep coverage — quick create modals and wizard step 5"
 
     await waitFor(() => {
       expect(screen.getByTestId("toast-mock")).toBeInTheDocument();
-      expect(screen.getByText("Failed to save entity")).toBeInTheDocument();
+      // Tests R-P1-06: NetworkPortal toast surfaces actual error message
+      expect(screen.getByText("Network error")).toBeInTheDocument();
     });
   });
 });

@@ -89,6 +89,13 @@ export const EditLoadForm: React.FC<Props> = ({
 
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [users, setUsers] = useState<User[]>(propUsers);
+  const [equipmentList, setEquipmentList] = useState<
+    { id: string; unit_number: string }[]
+  >([]);
+  const [equipmentId, setEquipmentId] = useState<string | null>(
+    (initialData as any).equipment_id ?? null,
+  );
+  const [equipmentWarning, setEquipmentWarning] = useState(false);
   const [showUtilities, setShowUtilities] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState<{
@@ -112,6 +119,15 @@ export const EditLoadForm: React.FC<Props> = ({
           const coUsers = await getCompanyUsers(currentUser.companyId);
           if (controller.signal.aborted) return;
           setUsers(coUsers);
+        }
+        const eqRes = await fetch("/api/equipment", {
+          signal: controller.signal,
+        });
+        if (!controller.signal.aborted && eqRes.ok) {
+          const eqData = await eqRes.json();
+          setEquipmentList(
+            Array.isArray(eqData) ? eqData : (eqData.data ?? []),
+          );
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
@@ -211,6 +227,12 @@ export const EditLoadForm: React.FC<Props> = ({
 
   const handleSave = async () => {
     if (isSubmitting || formData.isLocked) return;
+    // Equipment required warning for Planned status
+    if (formData.status === LOAD_STATUS.Planned && !equipmentId) {
+      setEquipmentWarning(true);
+    } else {
+      setEquipmentWarning(false);
+    }
     const errors = validateForm();
     if (errors.length > 0) {
       setValidationErrors(errors);
@@ -220,7 +242,9 @@ export const EditLoadForm: React.FC<Props> = ({
     setValidationErrors([]);
     setIsSubmitting(true);
     try {
-      await onSave(formData as LoadData);
+      await onSave({ ...formData, equipment_id: equipmentId } as LoadData & {
+        equipment_id: string | null;
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -512,13 +536,40 @@ export const EditLoadForm: React.FC<Props> = ({
             </div>
             <div className="space-y-1">
               <label
-                htmlFor="elfEquipment"
+                htmlFor="elfEquipmentUnit"
                 className="text-[11px] font-bold text-slate-500 uppercase"
               >
-                Equipment
+                Equipment Unit
               </label>
               <select
-                id="elfEquipment"
+                id="elfEquipmentUnit"
+                className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
+                value={equipmentId ?? ""}
+                onChange={(e) => setEquipmentId(e.target.value || null)}
+                disabled={formData.isLocked}
+              >
+                <option value="">— Unassigned —</option>
+                {equipmentList.map((eq) => (
+                  <option key={eq.id} value={eq.id}>
+                    {eq.unit_number || eq.id}
+                  </option>
+                ))}
+              </select>
+              {equipmentWarning && (
+                <p className="text-[11px] text-yellow-400 mt-1">
+                  Equipment required for Planned status
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label
+                htmlFor="elfFreightType"
+                className="text-[11px] font-bold text-slate-500 uppercase"
+              >
+                Freight Type
+              </label>
+              <select
+                id="elfFreightType"
                 className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2.5 text-xs text-white uppercase"
                 value={formData.freightType}
                 onChange={(e) =>
@@ -795,112 +846,112 @@ export const EditLoadForm: React.FC<Props> = ({
             </span>
           </div>
           <div className="bg-slate-900 p-4 rounded-xl border border-slate-800 flex items-center justify-between gap-6 overflow-x-auto no-scrollbar">
-          <div className="space-y-1 shrink-0">
-            <label
-              htmlFor="elfTruck"
-              className="text-[10px] font-black text-slate-600 uppercase"
-            >
-              Truck #
-            </label>
-            <input
-              id="elfTruck"
-              className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
-              value={formData.truckNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, truckNumber: e.target.value })
-              }
-              placeholder="UNIT-"
-              disabled={formData.isLocked}
-              title={
-                formData.isLocked ? "Load is locked for invoicing" : undefined
-              }
-            />
+            <div className="space-y-1 shrink-0">
+              <label
+                htmlFor="elfTruck"
+                className="text-[10px] font-black text-slate-600 uppercase"
+              >
+                Truck #
+              </label>
+              <input
+                id="elfTruck"
+                className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
+                value={formData.truckNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, truckNumber: e.target.value })
+                }
+                placeholder="UNIT-"
+                disabled={formData.isLocked}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
+              />
+            </div>
+            <div className="space-y-1 shrink-0">
+              <label
+                htmlFor="elfTrailer"
+                className="text-[10px] font-black text-slate-600 uppercase"
+              >
+                Trailer #
+              </label>
+              <input
+                id="elfTrailer"
+                className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
+                value={formData.trailerNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, trailerNumber: e.target.value })
+                }
+                placeholder="TRL-"
+                disabled={formData.isLocked}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
+              />
+            </div>
+            <div className="space-y-1 shrink-0">
+              <label
+                htmlFor="elfChassis"
+                className="text-[10px] font-black text-slate-600 uppercase"
+              >
+                Chassis
+              </label>
+              <input
+                id="elfChassis"
+                className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
+                value={formData.chassisNumber}
+                onChange={(e) =>
+                  setFormData({ ...formData, chassisNumber: e.target.value })
+                }
+                disabled={formData.isLocked}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
+              />
+            </div>
+            <div className="space-y-1 flex-1 min-w-[150px]">
+              <label
+                htmlFor="elfAssignedDriver"
+                className="text-[10px] font-black text-slate-600 uppercase"
+              >
+                Assigned Driver
+              </label>
+              <select
+                id="elfAssignedDriver"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
+                value={formData.driverId}
+                onChange={(e) =>
+                  setFormData({ ...formData, driverId: e.target.value })
+                }
+                disabled={formData.isLocked}
+                title={
+                  formData.isLocked ? "Load is locked for invoicing" : undefined
+                }
+              >
+                <option value="">Assign Member...</option>
+                {users
+                  .filter(
+                    (u) => u.role === "driver" || u.role === "owner_operator",
+                  )
+                  .map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="space-y-1 shrink-0">
+              <label className="text-[10px] font-black text-slate-600 uppercase">
+                Contact Cell
+              </label>
+              <button
+                onClick={() => onOpenHub?.("feed", true)}
+                className="flex items-center gap-2 group cursor-pointer text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                <Headset className="w-3.5 h-3.5" />
+                <span className="text-[10px] font-bold">Log Call</span>
+              </button>
+            </div>
           </div>
-          <div className="space-y-1 shrink-0">
-            <label
-              htmlFor="elfTrailer"
-              className="text-[10px] font-black text-slate-600 uppercase"
-            >
-              Trailer #
-            </label>
-            <input
-              id="elfTrailer"
-              className="w-20 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
-              value={formData.trailerNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, trailerNumber: e.target.value })
-              }
-              placeholder="TRL-"
-              disabled={formData.isLocked}
-              title={
-                formData.isLocked ? "Load is locked for invoicing" : undefined
-              }
-            />
-          </div>
-          <div className="space-y-1 shrink-0">
-            <label
-              htmlFor="elfChassis"
-              className="text-[10px] font-black text-slate-600 uppercase"
-            >
-              Chassis
-            </label>
-            <input
-              id="elfChassis"
-              className="w-24 bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
-              value={formData.chassisNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, chassisNumber: e.target.value })
-              }
-              disabled={formData.isLocked}
-              title={
-                formData.isLocked ? "Load is locked for invoicing" : undefined
-              }
-            />
-          </div>
-          <div className="space-y-1 flex-1 min-w-[150px]">
-            <label
-              htmlFor="elfAssignedDriver"
-              className="text-[10px] font-black text-slate-600 uppercase"
-            >
-              Assigned Driver
-            </label>
-            <select
-              id="elfAssignedDriver"
-              className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white"
-              value={formData.driverId}
-              onChange={(e) =>
-                setFormData({ ...formData, driverId: e.target.value })
-              }
-              disabled={formData.isLocked}
-              title={
-                formData.isLocked ? "Load is locked for invoicing" : undefined
-              }
-            >
-              <option value="">Assign Member...</option>
-              {users
-                .filter(
-                  (u) => u.role === "driver" || u.role === "owner_operator",
-                )
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
-                  </option>
-                ))}
-            </select>
-          </div>
-          <div className="space-y-1 shrink-0">
-            <label className="text-[10px] font-black text-slate-600 uppercase">
-              Contact Cell
-            </label>
-            <button
-              onClick={() => onOpenHub?.("feed", true)}
-              className="flex items-center gap-2 group cursor-pointer text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              <Headset className="w-3.5 h-3.5" />
-              <span className="text-[10px] font-bold">Log Call</span>
-            </button>
-          </div>
-        </div>
         </div>
 
         {/* Load Stops Execution Table */}

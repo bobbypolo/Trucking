@@ -11,7 +11,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { getBrokers, saveBroker } from "../services/brokerService";
-import { getCompanyUsers, getCompany, updateUser } from "../services/authService";
+import {
+  getCompanyUsers,
+  getCompany,
+  updateUser,
+} from "../services/authService";
 import { generateNextLoadNumber } from "../services/storageService";
 import { Toast } from "./Toast";
 
@@ -30,6 +34,28 @@ interface QuickAddDriverForm {
   phone: string;
 }
 
+/**
+ * Phone Order minimum-dispatchable payload (R-P4-16..R-P4-18).
+ * The 8 required fields plus optional callNotes carryover.
+ * Save payload mapping (R-P4-18): legs = [{type:"Pickup",...}, {type:"Dropoff",...}].
+ */
+export interface PhoneOrderPayload {
+  pickupCity: string;
+  pickupState: string;
+  pickupDate: string;
+  dropoffCity: string;
+  dropoffState: string;
+  dropoffDate: string;
+  rate: string;
+  equipmentId: string;
+  legs: Array<{
+    type: "Pickup" | "Dropoff";
+    city: string;
+    state: string;
+    date: string;
+  }>;
+}
+
 interface Props {
   currentUser: User;
   preSelectedBrokerId?: string;
@@ -40,6 +66,8 @@ interface Props {
     callNotes?: string,
     overrideFreightType?: FreightType,
     intermodalData?: any,
+    autoTrigger?: "upload" | "camera",
+    phoneOrderData?: PhoneOrderPayload,
   ) => void;
   onCancel: () => void;
 }
@@ -59,6 +87,16 @@ export const LoadSetupModal: React.FC<Props> = ({
   const [selectedDriverId, setSelectedDriverId] = useState("");
   const [isPhoneOrder, setIsPhoneOrder] = useState(false);
   const [callNotes, setCallNotes] = useState("");
+
+  // Phone Order 8-field minimum-dispatchable form (R-P4-16..R-P4-18)
+  const [phonePickupCity, setPhonePickupCity] = useState("");
+  const [phonePickupState, setPhonePickupState] = useState("");
+  const [phonePickupDate, setPhonePickupDate] = useState("");
+  const [phoneDropoffCity, setPhoneDropoffCity] = useState("");
+  const [phoneDropoffState, setPhoneDropoffState] = useState("");
+  const [phoneDropoffDate, setPhoneDropoffDate] = useState("");
+  const [phoneRate, setPhoneRate] = useState("");
+  const [phoneEquipmentId, setPhoneEquipmentId] = useState("");
   const [toast, setToast] = useState<{
     message: string;
     type: "error" | "success" | "info";
@@ -98,6 +136,44 @@ export const LoadSetupModal: React.FC<Props> = ({
     setUsers(coUsers);
   };
 
+  /** R-P4-17 — Phone Order Submit is disabled until all 8 required fields are filled. */
+  const isPhoneOrderComplete = (): boolean =>
+    selectedBrokerId !== "" &&
+    phonePickupCity.trim() !== "" &&
+    phonePickupState.trim() !== "" &&
+    phonePickupDate.trim() !== "" &&
+    phoneDropoffCity.trim() !== "" &&
+    phoneDropoffState.trim() !== "" &&
+    phoneDropoffDate.trim() !== "" &&
+    phoneRate.trim() !== "" &&
+    phoneEquipmentId.trim() !== "";
+
+  const buildPhoneOrderPayload = (): PhoneOrderPayload => ({
+    pickupCity: phonePickupCity,
+    pickupState: phonePickupState,
+    pickupDate: phonePickupDate,
+    dropoffCity: phoneDropoffCity,
+    dropoffState: phoneDropoffState,
+    dropoffDate: phoneDropoffDate,
+    rate: phoneRate,
+    equipmentId: phoneEquipmentId,
+    // R-P4-18 — legs array has exactly one Pickup + one Dropoff entry
+    legs: [
+      {
+        type: "Pickup",
+        city: phonePickupCity,
+        state: phonePickupState,
+        date: phonePickupDate,
+      },
+      {
+        type: "Dropoff",
+        city: phoneDropoffCity,
+        state: phoneDropoffState,
+        date: phoneDropoffDate,
+      },
+    ],
+  });
+
   const handleContinue = async (forcePhoneOrder: boolean = false) => {
     if (selectedBrokerId) {
       setIsSubmitting(true);
@@ -109,6 +185,7 @@ export const LoadSetupModal: React.FC<Props> = ({
         if (forcePhoneOrder || isPhoneOrder) {
           const company = await getCompany(currentUser.companyId);
           const broker = brokers.find((b) => b.id === resolvedBrokerId);
+          const phonePayload = buildPhoneOrderPayload();
           if (company && broker) {
             const newLoadNumber = generateNextLoadNumber(company, broker.name);
             onContinue(
@@ -116,6 +193,10 @@ export const LoadSetupModal: React.FC<Props> = ({
               resolvedDriverId,
               newLoadNumber,
               callNotes,
+              undefined,
+              undefined,
+              undefined,
+              phonePayload,
             );
           } else {
             onContinue(
@@ -123,6 +204,10 @@ export const LoadSetupModal: React.FC<Props> = ({
               resolvedDriverId,
               undefined,
               callNotes,
+              undefined,
+              undefined,
+              undefined,
+              phonePayload,
             );
           }
         } else {
@@ -138,6 +223,26 @@ export const LoadSetupModal: React.FC<Props> = ({
         errs.callNotes = "Call notes must be 500 characters or fewer";
       setFormErrors(errs);
     }
+  };
+
+  /** R-P4-19 — Scan Doc click fires onContinue with autoTrigger='upload'. */
+  const handleScanDoc = () => {
+    if (!selectedBrokerId) {
+      setFormErrors({ broker: "Broker or Direct is required" });
+      return;
+    }
+    const resolvedBrokerId =
+      selectedBrokerId === DIRECT_BROKER_ID ? "" : selectedBrokerId;
+    const resolvedDriverId = selectedDriverId || "";
+    onContinue(
+      resolvedBrokerId,
+      resolvedDriverId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "upload",
+    );
   };
 
   // ── Quick Add Broker ───────────────────────────────────────────────────────
@@ -192,9 +297,7 @@ export const LoadSetupModal: React.FC<Props> = ({
       const refreshed = await getBrokers();
       setBrokers(refreshed);
       // Try to find the saved broker by name (server may assign a real id)
-      const saved = refreshed.find(
-        (b) => b.name === newBroker.name,
-      );
+      const saved = refreshed.find((b) => b.name === newBroker.name);
       setSelectedBrokerId(saved?.id ?? newBroker.id);
       if (formErrors.broker) {
         setFormErrors((prev) => {
@@ -204,9 +307,15 @@ export const LoadSetupModal: React.FC<Props> = ({
         });
       }
       setShowQuickAddBroker(false);
-      setToast({ message: `Broker "${newBroker.name}" created`, type: "success" });
+      setToast({
+        message: `Broker "${newBroker.name}" created`,
+        type: "success",
+      });
     } catch (err) {
-      setToast({ message: "Failed to create broker. Please try again.", type: "error" });
+      setToast({
+        message: "Failed to create broker. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsSavingBroker(false);
     }
@@ -253,7 +362,9 @@ export const LoadSetupModal: React.FC<Props> = ({
       const newDriver: User = {
         id: `driver-${Date.now()}`,
         companyId: currentUser.companyId,
-        email: quickAddDriverForm.email.trim() || `driver-${Date.now()}@placeholder.local`,
+        email:
+          quickAddDriverForm.email.trim() ||
+          `driver-${Date.now()}@placeholder.local`,
         name: quickAddDriverForm.name.trim(),
         role: "driver",
         onboardingStatus: "Pending",
@@ -276,9 +387,15 @@ export const LoadSetupModal: React.FC<Props> = ({
         });
       }
       setShowQuickAddDriver(false);
-      setToast({ message: `Driver "${newDriver.name}" created`, type: "success" });
+      setToast({
+        message: `Driver "${newDriver.name}" created`,
+        type: "success",
+      });
     } catch (err) {
-      setToast({ message: "Failed to create driver. Please try again.", type: "error" });
+      setToast({
+        message: "Failed to create driver. Please try again.",
+        type: "error",
+      });
     } finally {
       setIsSavingDriver(false);
     }
@@ -333,8 +450,14 @@ export const LoadSetupModal: React.FC<Props> = ({
               {!preSelectedBrokerId && (
                 <button
                   type="button"
-                  onClick={showQuickAddBroker ? cancelQuickAddBroker : openQuickAddBroker}
-                  aria-label={showQuickAddBroker ? "Cancel add broker" : "Add new broker"}
+                  onClick={
+                    showQuickAddBroker
+                      ? cancelQuickAddBroker
+                      : openQuickAddBroker
+                  }
+                  aria-label={
+                    showQuickAddBroker ? "Cancel add broker" : "Add new broker"
+                  }
                   className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
                 >
                   {showQuickAddBroker ? (
@@ -386,7 +509,8 @@ export const LoadSetupModal: React.FC<Props> = ({
                 </select>
                 {brokers.length === 0 && (
                   <p className="text-slate-500 text-xs mt-1">
-                    No brokers found. Use "Add New" to create one, or select "Direct / No Broker".
+                    No brokers found. Use "Add New" to create one, or select
+                    "Direct / No Broker".
                   </p>
                 )}
               </div>
@@ -503,8 +627,12 @@ export const LoadSetupModal: React.FC<Props> = ({
               </label>
               <button
                 type="button"
-                onClick={showQuickAddDriver ? cancelQuickAddDriver : openQuickAddDriver}
-                aria-label={showQuickAddDriver ? "Cancel add driver" : "Add new driver"}
+                onClick={
+                  showQuickAddDriver ? cancelQuickAddDriver : openQuickAddDriver
+                }
+                aria-label={
+                  showQuickAddDriver ? "Cancel add driver" : "Add new driver"
+                }
                 className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
               >
                 {showQuickAddDriver ? (
@@ -637,12 +765,134 @@ export const LoadSetupModal: React.FC<Props> = ({
             )}
           </div>
 
-          {/* Phone Order Notes */}
+          {/* Phone Order: 8-field minimum-dispatchable sub-form (R-P4-16/17/18) */}
           {isPhoneOrder && (
-            <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+            <div className="space-y-3 animate-in slide-in-from-top-2 duration-200">
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label
+                    htmlFor="phonePickupCity"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Pickup City
+                  </label>
+                  <input
+                    id="phonePickupCity"
+                    type="text"
+                    value={phonePickupCity}
+                    onChange={(e) => setPhonePickupCity(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phonePickupState"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Pickup State
+                  </label>
+                  <input
+                    id="phonePickupState"
+                    type="text"
+                    value={phonePickupState}
+                    onChange={(e) => setPhonePickupState(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phonePickupDate"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Pickup Date
+                  </label>
+                  <input
+                    id="phonePickupDate"
+                    type="date"
+                    value={phonePickupDate}
+                    onChange={(e) => setPhonePickupDate(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneDropoffCity"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Dropoff City
+                  </label>
+                  <input
+                    id="phoneDropoffCity"
+                    type="text"
+                    value={phoneDropoffCity}
+                    onChange={(e) => setPhoneDropoffCity(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneDropoffState"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Dropoff State
+                  </label>
+                  <input
+                    id="phoneDropoffState"
+                    type="text"
+                    value={phoneDropoffState}
+                    onChange={(e) => setPhoneDropoffState(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneDropoffDate"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Dropoff Date
+                  </label>
+                  <input
+                    id="phoneDropoffDate"
+                    type="date"
+                    value={phoneDropoffDate}
+                    onChange={(e) => setPhoneDropoffDate(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneRate"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Rate
+                  </label>
+                  <input
+                    id="phoneRate"
+                    type="number"
+                    value={phoneRate}
+                    onChange={(e) => setPhoneRate(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="phoneEquipmentId"
+                    className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                  >
+                    Equipment Id
+                  </label>
+                  <input
+                    id="phoneEquipmentId"
+                    type="text"
+                    value={phoneEquipmentId}
+                    onChange={(e) => setPhoneEquipmentId(e.target.value)}
+                    className="w-full bg-[#0a0f18] border border-slate-800 rounded-lg p-2 text-xs text-white"
+                  />
+                </div>
+              </div>
               <label
                 htmlFor="lsmInitialCallNotes"
-                className="text-[10px] font-black text-yellow-500 uppercase tracking-widest"
+                className="text-[10px] font-black text-yellow-500 uppercase tracking-widest block pt-2"
               >
                 Initial Call Notes
               </label>
@@ -671,7 +921,7 @@ export const LoadSetupModal: React.FC<Props> = ({
           {/* Actions */}
           <div className="flex gap-4 pt-4">
             <button
-              onClick={() => handleContinue(false)}
+              onClick={handleScanDoc}
               disabled={isSubmitting || !selectedBrokerId}
               className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             >
@@ -683,7 +933,9 @@ export const LoadSetupModal: React.FC<Props> = ({
               onClick={() =>
                 isPhoneOrder ? handleContinue(true) : setIsPhoneOrder(true)
               }
-              disabled={isSubmitting}
+              disabled={
+                isSubmitting || (isPhoneOrder && !isPhoneOrderComplete())
+              }
               className="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <PhoneCall className="w-4 h-4" />{" "}

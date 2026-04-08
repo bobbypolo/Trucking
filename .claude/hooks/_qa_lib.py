@@ -1779,15 +1779,17 @@ def read_verification_log(log_path: Path, plan_hash: str | None = None) -> dict:
 # ── Plan Utilities ────────────────────────────────────────────────────────────
 
 _PLAN_CRITERIA_RE = re.compile(
-    r"^-\s+(R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?):", re.MULTILINE
+    r"^\s*-\s+(R-P\d+-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\r\n]+\])*\s*:",
+    re.MULTILINE,
 )
 
 
 def extract_plan_r_markers(plan_path: Path) -> set[str]:
     """Extract R-PN-NN markers from bullet-format criteria lines in a PLAN.md file.
 
-    Only matches lines formatted as ``- R-Pn-nn: ...`` (Done When bullets).
-    Markers appearing in tables, prose, or other contexts are ignored.
+    Matches criteria bullets formatted as ``- R-Pn-nn: ...`` and
+    ``- R-Pn-nn [annotation]: ...``. Markers appearing in tables, prose, or
+    other contexts are ignored.
     """
     try:
         content = plan_path.read_text(encoding="utf-8")
@@ -1799,15 +1801,17 @@ def extract_plan_r_markers(plan_path: Path) -> set[str]:
 
 # Regex to capture full bullet-format R-marker lines for hashing
 _PLAN_CRITERIA_LINE_RE = re.compile(
-    r"^-\s+R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?:.*$", re.MULTILINE
+    r"^\s*-\s+R-P\d+-\d{2}(?:-AC\d+)?(?:\s+\[[^\]\r\n]+\])*\s*:.*$",
+    re.MULTILINE,
 )
 
 
 def compute_plan_hash(plan_path: Path) -> str:
     """Compute a normalized hash of PLAN.md based on criteria bullet lines only.
 
-    Extracts only ``- R-Pn-nn: ...`` bullet lines, strips whitespace,
-    sorts them, and returns the SHA-256 hex digest.  This makes the hash
+    Extracts only ``- R-Pn-nn: ...`` / ``- R-Pn-nn [annotation]: ...`` bullet
+    lines, strips whitespace, sorts them, and returns the SHA-256 hex digest.
+    This makes the hash
     insensitive to formatting, prose, table content, or whitespace changes
     that don't affect the acceptance criteria contract.
 
@@ -2932,9 +2936,7 @@ def apply_auto_detected_project_commands(
             return _default
 
         workflow["commands"] = commands
-        workflow_path.write_text(
-            json.dumps(workflow, indent=2) + "\n", encoding="utf-8"
-        )
+        workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
         _default["applied"] = applied
         _default["updated"] = True
         return _default

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { usePollingEffect } from "../services/usePollingEffect";
 import {
   Users,
   Plus,
@@ -219,15 +220,11 @@ export const NetworkPortal: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [companyId]);
-
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await getParties(companyId);
+      const data = await getParties(companyId, signal);
       setParties(data);
     } catch (err) {
       console.error("[NetworkPortal] Failed to load parties:", err);
@@ -236,6 +233,8 @@ export const NetworkPortal: React.FC<Props> = ({
       setIsLoading(false);
     }
   };
+
+  usePollingEffect((signal) => loadData(signal), 5000, [companyId]);
 
   /** Derive the effective entity class for a party (supports legacy type values) */
   const getEntityClass = (party: NetworkParty): EntityClass => {
@@ -343,7 +342,10 @@ export const NetworkPortal: React.FC<Props> = ({
       setToast({ message: "Entity onboarded successfully.", type: "success" });
     } catch (e) {
       console.error("[NetworkPortal] Save party failed:", e);
-      setToast({ message: "Failed to save entity", type: "error" });
+      setToast({
+        message: e instanceof Error ? e.message : "Failed to save entity",
+        type: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -392,7 +394,10 @@ export const NetworkPortal: React.FC<Props> = ({
       await loadData();
     } catch (err) {
       console.error("[NetworkPortal] Failed to add contact:", err);
-      setToast({ message: "Failed to add contact", type: "error" });
+      setToast({
+        message: err instanceof Error ? err.message : "Failed to add contact",
+        type: "error",
+      });
     } finally {
       setSavingContact(false);
     }

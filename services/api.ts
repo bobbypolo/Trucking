@@ -64,7 +64,10 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
           ...(signal ? { signal } : {}),
         });
       } catch (retryErr: unknown) {
-        if (retryErr instanceof DOMException && retryErr.name === "AbortError") {
+        if (
+          retryErr instanceof DOMException &&
+          retryErr.name === "AbortError"
+        ) {
           return undefined;
         }
         throw retryErr;
@@ -92,13 +95,17 @@ export const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
 
     if (response.status === 403) {
       const errorData = await response.json().catch(() => ({}));
-      throw new ForbiddenError(errorData.error || "Forbidden");
+      const forbiddenMsg = errorData.details
+        ? `${errorData.error || "Forbidden"}: ${errorData.details}`
+        : errorData.error || "Forbidden";
+      throw new ForbiddenError(forbiddenMsg);
     }
 
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(
-      errorData.error || `API Request failed: ${response.status}`,
-    );
+    const msg = errorData.details
+      ? `${errorData.error || "Request failed"}: ${errorData.details}`
+      : errorData.error || `API Request failed: ${response.status}`;
+    throw new Error(msg);
   }
 
   return response.json();

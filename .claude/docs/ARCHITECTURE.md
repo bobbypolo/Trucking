@@ -80,7 +80,7 @@ User captures image/screenshot
 
 ## ADE Workflow (`.claude/`)
 
-A portable workflow framework for Claude Code that enforces structured development via 6 agents, 10 slash-command skills, Python hook-based quality gates, and a V-Model orchestrator (Ralph v5) that drives autonomous Plan-Build-Verify loops with persistent worktree-isolated sub-agents. All workflow state is unified in `.workflow-state.json`.
+A portable workflow framework for Claude Code that enforces structured development via 5 agents, 10 slash-command skills, Python hook-based quality gates, and a V-Model orchestrator (Ralph v5) that drives autonomous Plan-Build-Verify loops with persistent worktree-isolated sub-agents. All workflow state is unified in `.workflow-state.json`.
 
 ## System Diagram
 
@@ -126,26 +126,24 @@ Quality utilities:
 | ----------------- | -------------------- | -------------------------------------------------------------------------- |
 | `architect.md`    | Planning             | Produces PLAN.md, no code                                                  |
 | `builder.md`      | Implementation       | Follows plan, TDD, selective staging                                       |
-| `/verify` skill   | Verification         | 12-step pipeline via qa_runner.py incl. acceptance tests + prod-grade scan |
 | `librarian.md`    | Documentation        | Updates knowledge, decisions, handoffs                                     |
-| `ralph-story.md`  | Story orchestration  | Per-story agent: checkpoint, plan check, worker dispatch, QA, merge        |
+| `qa-reviewer.md`  | Peer review          | Read-only validator; parses QA receipt, emits `REVIEWER_RESULT` block      |
 | `ralph-worker.md` | Story implementation | Worktree-isolated worker: Build + QA with fix loop, persists until pass    |
 
 ### Skills (`.claude/skills/`)
 
-| Skill          | Purpose                                                                                                     |
-| -------------- | ----------------------------------------------------------------------------------------------------------- |
-| `ralph`        | V-Model orchestrator v5 — autonomous Plan-Build-Verify per story                                            |
-| `plan`         | Create PLAN.md + auto-generate prd.json v2                                                                  |
-| `audit`        | 9-section end-to-end workflow integrity audit (incl. error handling resilience via `silent-failure-hunter`) |
-| `verify`       | Run phase verification commands                                                                             |
-| `health`       | Environment readiness check                                                                                 |
-| `refresh`      | Re-sync context mid-session                                                                                 |
-| `build-system` | Unified plan-build-audit-handoff pipeline                                                                   |
-| `brainstorm`   | Structured idea generation with build strategy                                                              |
-| `learn`        | Capture lessons learned                                                                                     |
-| `decision`     | Record architecture decisions (ADRs)                                                                        |
-| `handoff`      | Session handoff with state detection                                                                        |
+| Skill            | Purpose                                                                                                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| `ralph`          | V-Model orchestrator v5 — autonomous Plan-Build-Verify per story                                            |
+| `plan`           | Create PLAN.md + auto-generate prd.json v2                                                                  |
+| `audit`          | End-to-end workflow integrity audit (plan, PRD, tests, verification logs, architecture, hooks, test quality)|
+| `verify`         | Run 12-step QA pipeline via qa_runner.py                                                                    |
+| `health`         | Environment readiness check                                                                                 |
+| `cleanup`        | Post-sprint housekeeping: prune branches/worktrees/receipts, rotate logs, reset workflow state              |
+| `build-system`   | Unified plan-build-audit-handoff pipeline                                                                   |
+| `brainstorm`     | Structured idea generation with build strategy                                                              |
+| `security-audit` | On-demand security audit: pattern inventory, SCA deep scan, DAST (ZAP), remediation matrix                  |
+| `librarian`      | Knowledge management — lessons (`/librarian learn`), decisions (`/librarian decision`), handoffs            |
 
 ### Hooks (`.claude/hooks/`)
 
@@ -158,7 +156,7 @@ Quality utilities:
 | `stop_verify_gate.py`     | Stop                   | Block stop if `needs_verify` or `prod_violations` set in `.workflow-state.json`. Force-stop clears all (escape after 3)       |
 | `post_compact_restore.py` | SessionStart           | Remind about workflow rules, read current state from `.workflow-state.json`                                                   |
 | `_lib.py`                 | Shared                 | Common utilities (audit_log, parse_hook_stdin, quality scanning, verification log)                                            |
-| `_prod_patterns.py`       | Shared                 | 43 production violation regex patterns (7 BLOCK, 6 WARN) + `scan_file_violations()`                                           |
+| `_prod_patterns.py`       | Shared                 | 43 production violation regex patterns (30 BLOCK, 13 WARN) + `scan_file_violations()`                                         |
 | `_qa_lib.py`              | Shared                 | QA helpers (prd schema validation, R-marker validation, plan hash, story complexity estimation)                               |
 
 ### Quality Utilities (`.claude/hooks/`)
@@ -246,6 +244,46 @@ Stop session → stop_verify_gate.py reads .workflow-state.json → allowed if a
 | /build-system pipeline  | Unified plan-build meta-command                                      | Chains full lifecycle with user approval gates                                     |
 | Cherry-pick plugins     | Optional plugins (code-review, pr-review-toolkit) with graceful skip | Don't integrate plugins into inner QA loop; workflow degrades gracefully if absent |
 
+## Product Design Rationale
+
+> Rationale for non-obvious product shape decisions. The "why" behind what's built — extracted from the 2026-03-24 post-rework product audit before that audit doc was removed from the repo.
+
+### Map Capability Placement
+
+**Decision (2026-03-24):** Keep fleet-location capability, but remove the standalone `Fleet Map` destination from production nav. Treat the map as an *embedded* operational capability, not a first-class destination.
+
+**Why:**
+
+- A standalone Fleet Map page plus an embedded map inside Operations Center / Load Detail creates two parallel surfaces where dispatchers can watch trucks, which duplicates KPIs and confuses where live monitoring "belongs."
+- The real product value is live truck location inside the workflow the dispatcher is already using (Ops Center, load detail, optional split view on load board) — not a dedicated page visited out of context.
+- Tracking capability itself must remain real: live pings, provider setup, per-truck provider vehicle-ID mapping, connection health, fallback state when configured but no pings are arriving. Deletion is about *nav placement*, not the underlying feature.
+
+**How to apply:**
+
+- Map component (`components/GlobalMapViewEnhanced.tsx` or successors) stays — but only as an embedded widget inside Ops Center, load detail, and the load board split view. No top-level `Fleet Map` nav entry.
+- `/api/tracking/live` and `/api/tracking/webhook` remain the canonical live-tracking pipeline. A real admin surface for telematics setup (provider + credentials + vehicle mapping) must exist — do not require engineering to hand-wire new providers.
+- When adding a new "look at the map" entry point: ask whether the user is inside an operational workflow. If yes, embed. If no, reconsider whether the entry point should exist.
+
+### Load Intake Model
+
+**Decision (2026-03-24):** Support two clearly different load-creation flows, with driver-submitted intake treated as a first-class operational workflow, not a side feature.
+
+1. **Dispatcher-created load** — dispatcher picks broker/customer + driver, then builds the load. This is the current `LoadSetupModal` path.
+2. **Driver-submitted load intake** — driver arrives, uploads paperwork (BOL / rate con / scale ticket / POD), OCR drafts a load record, dispatch approves, and the load auto-appears in schedule + load board.
+
+**Why:**
+
+- The stakeholder expectation is that drivers do the first keystroke — they receive paperwork on the road, upload it, and the load *materializes* in the system without dispatch having to pre-stage broker/customer/driver selections.
+- The old flow assumed dispatch already knew broker/customer/driver before any document-driven intake could finish. That's the inverse of how the business actually operates.
+- Document-upload-for-existing-loads (current behavior) is not the same thing as driver-first intake. Having only the former means drivers can attach paperwork but cannot *originate* a load from paperwork, which breaks the primary operational motion.
+
+**How to apply:**
+
+- Driver app must have a `Driver Load Intake` entry point: scan/upload → OCR draft → prompt only for missing required fields → submit for dispatch review.
+- OCR output lands as either a new load directly OR a `Pending Intake` record requiring dispatch approval (choose based on confidence / policy).
+- After approval, the load must automatically appear in schedule + load board with no further dispatcher data entry.
+- When touching load-creation code: preserve both flows. Do not regress driver-intake by assuming a pre-selected broker/driver context.
+
 ## File Organization
 
 ```
@@ -256,9 +294,9 @@ Stop session → stop_verify_gate.py reads .workflow-state.json → allowed if a
 ├── .mcp.json.example      # Per-project MCP server template
 ├── .gitignore             # Includes runtime state exclusions
 └── .claude/
-    ├── agents/            # 4 role-based agents (incl. ralph-worker)
-    ├── rules/             # Path-specific rules (code-quality.md)
-    ├── skills/            # 11 slash commands (incl. build-system)
+    ├── agents/            # 5 role-based agents (incl. ralph-worker, qa-reviewer)
+    ├── rules/             # Path-specific rules (code-quality.md, production-standards.md, build-conventions.md)
+    ├── skills/            # 10 slash commands (incl. build-system, cleanup, security-audit)
     ├── hooks/             # 6 Python hooks + shared libs (_lib, _prod_patterns, _qa_lib) + CLI tools (qa_runner, test_quality, plan_validator)
     ├── scripts/           # Deployment (new-ade.ps1, update-ade.ps1)
     ├── templates/         # config.yaml, qa_receipt_fallback.json

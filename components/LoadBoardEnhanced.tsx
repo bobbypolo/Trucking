@@ -20,6 +20,7 @@ import {
   Plus,
 } from "lucide-react";
 import { LoadList } from "./LoadList";
+import { PendingDriverIntakeQueue } from "./PendingDriverIntakeQueue";
 import { LoadSetupModal } from "./LoadSetupModal";
 import { LoadData, User, Broker } from "../types";
 import { EmptyState } from "./EmptyState";
@@ -54,6 +55,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isGridViewOpen, setIsGridViewOpen] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showPendingIntake, setShowPendingIntake] = useState(false);
 
   const handleCreateLoad = () => {
     if (currentUser) {
@@ -211,7 +213,29 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
       <div className="flex-1 flex overflow-hidden">
         {/* Main Card View (Original Component) */}
         <div className="flex-1 overflow-hidden flex flex-col">
-          {loads.length === 0 ? (
+          {/* Pending Driver Intake tab toggle (R-P5-17) */}
+          <div className="flex items-center gap-2 px-4 pt-4 pb-2 border-b border-white/5">
+            <button
+              onClick={() => setShowPendingIntake(false)}
+              className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${!showPendingIntake ? "bg-blue-600/20 text-blue-400" : "text-slate-500 hover:text-white"}`}
+              data-testid="tab-all-loads"
+            >
+              All Loads
+            </button>
+            <button
+              onClick={() => setShowPendingIntake(true)}
+              className={`text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${showPendingIntake ? "bg-emerald-600/20 text-emerald-400" : "text-slate-500 hover:text-white"}`}
+              data-testid="tab-pending-intake"
+            >
+              Pending Driver Intake
+            </button>
+          </div>
+
+          {showPendingIntake ? (
+            <div className="flex-1 overflow-y-auto p-4">
+              <PendingDriverIntakeQueue />
+            </div>
+          ) : loads.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <EmptyState
                 icon={<Truck className="w-16 h-16" />}

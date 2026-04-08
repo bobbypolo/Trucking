@@ -38,6 +38,7 @@ import {
   Fuel,
 } from "lucide-react";
 import { GlobalMapViewEnhanced } from "./GlobalMapViewEnhanced";
+import { DriverLoadIntakePanel } from "./driver/DriverLoadIntakePanel";
 import { Scanner, IntakeAccumulatedData } from "./Scanner";
 import { Toast } from "./Toast";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
@@ -155,6 +156,9 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [loadOverrides, setLoadOverrides] = useState<
     Record<string, Partial<LoadData>>
   >({});
+  // Driver Load Intake Panel (new driver-intake flow via POST /api/loads/driver-intake)
+  const [showIntakePanel, setShowIntakePanel] = useState(false);
+
   // Breakdown modal flow state
   const [breakdownStep, setBreakdownStep] = useState<
     "idle" | "notes" | "tow" | "cargo"
@@ -302,7 +306,9 @@ export const DriverMobileHome: React.FC<Props> = ({
     Promise.all(
       ids.map((loadId) =>
         api
-          .get(`/loads/${loadId}/change-requests`, { signal: controller.signal })
+          .get(`/loads/${loadId}/change-requests`, {
+            signal: controller.signal,
+          })
           .then((data: any) => data?.changeRequests || [])
           .catch(() => []),
       ),
@@ -350,7 +356,9 @@ export const DriverMobileHome: React.FC<Props> = ({
     if (!selectedLoadId) return;
     const controller = new AbortController();
     api
-      .get(`/documents?load_id=${selectedLoadId}`, { signal: controller.signal })
+      .get(`/documents?load_id=${selectedLoadId}`, {
+        signal: controller.signal,
+      })
       .then((data: any) => {
         if (!controller.signal.aborted && data?.documents) {
           setLoadDocuments(data.documents);
@@ -444,7 +452,9 @@ export const DriverMobileHome: React.FC<Props> = ({
       normalizedReference;
     const normalizedPickupDate = extracted.pickupDate?.trim() || undefined;
     const normalizedNotes =
-      extracted.specialInstructions?.trim() || extracted.notes?.trim() || undefined;
+      extracted.specialInstructions?.trim() ||
+      extracted.notes?.trim() ||
+      undefined;
 
     if (
       normalizedWeight === undefined &&
@@ -719,7 +729,8 @@ export const DriverMobileHome: React.FC<Props> = ({
       gallons: data?.gallons?.toString() || "",
       pricePerGallon: data?.pricePerGallon?.toString() || "",
       totalCost: data?.totalCost?.toString() || "",
-      transactionDate: data?.transactionDate || new Date().toISOString().split("T")[0],
+      transactionDate:
+        data?.transactionDate || new Date().toISOString().split("T")[0],
       stateCode: data?.stateCode || "",
       truckId: data?.truckId || "",
     });
@@ -729,8 +740,16 @@ export const DriverMobileHome: React.FC<Props> = ({
   /** Submit reviewed fuel receipt data */
   const submitFuelReceipt = useCallback(async () => {
     if (!fuelReviewData) return;
-    if (!fuelReviewData.vendorName || !fuelReviewData.gallons || !fuelReviewData.totalCost || !fuelReviewData.stateCode) {
-      setToast({ message: "Vendor, gallons, total cost, and state are required", type: "error" });
+    if (
+      !fuelReviewData.vendorName ||
+      !fuelReviewData.gallons ||
+      !fuelReviewData.totalCost ||
+      !fuelReviewData.stateCode
+    ) {
+      setToast({
+        message: "Vendor, gallons, total cost, and state are required",
+        type: "error",
+      });
       return;
     }
     setFuelSubmitting(true);
@@ -747,7 +766,10 @@ export const DriverMobileHome: React.FC<Props> = ({
       setToast({ message: "Fuel receipt saved successfully", type: "success" });
       setFuelReviewData(null);
     } catch (err: any) {
-      setToast({ message: err?.message || "Failed to save fuel receipt", type: "error" });
+      setToast({
+        message: err?.message || "Failed to save fuel receipt",
+        type: "error",
+      });
     } finally {
       setFuelSubmitting(false);
     }
@@ -1198,70 +1220,119 @@ export const DriverMobileHome: React.FC<Props> = ({
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Vendor *</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Vendor *
+                  </label>
                   <input
                     type="text"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                     value={fuelReviewData.vendorName}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, vendorName: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        vendorName: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Gallons *</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Gallons *
+                  </label>
                   <input
                     type="number"
                     step="0.001"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                     value={fuelReviewData.gallons}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, gallons: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        gallons: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Price/Gal</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Price/Gal
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                     value={fuelReviewData.pricePerGallon}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, pricePerGallon: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        pricePerGallon: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Total Cost *</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Total Cost *
+                  </label>
                   <input
                     type="number"
                     step="0.01"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                     value={fuelReviewData.totalCost}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, totalCost: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        totalCost: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">State *</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    State *
+                  </label>
                   <input
                     type="text"
                     maxLength={2}
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
                     value={fuelReviewData.stateCode}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, stateCode: e.target.value.toUpperCase() })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        stateCode: e.target.value.toUpperCase(),
+                      })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Date *</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Date *
+                  </label>
                   <input
                     type="date"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                     value={fuelReviewData.transactionDate}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, transactionDate: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        transactionDate: e.target.value,
+                      })
+                    }
                   />
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">Truck ID</label>
+                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                    Truck ID
+                  </label>
                   <input
                     type="text"
                     className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
                     value={fuelReviewData.truckId}
-                    onChange={(e) => setFuelReviewData({ ...fuelReviewData, truckId: e.target.value })}
+                    onChange={(e) =>
+                      setFuelReviewData({
+                        ...fuelReviewData,
+                        truckId: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -1411,7 +1482,17 @@ export const DriverMobileHome: React.FC<Props> = ({
               New Load Intake — Scan Documents
             </button>
 
-            {/* Scan Fuel Receipt CTA */}
+            {/* Submit Load Intake tile — driver-intake flow (R-P5-16) */}
+            <button
+              data-testid="submit-load-intake-tile"
+              onClick={() => setShowIntakePanel(true)}
+              className="w-full py-4 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+            >
+              <Camera className="w-5 h-5" />
+              Submit Load Intake
+            </button>
+
+            {/* Scan Fuel Receipt CTA (from PR #44 IFTA fuel pipeline) */}
             <button
               onClick={() => setScannerIntent("fuel")}
               className="flex items-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all active:scale-95"
@@ -1818,6 +1899,24 @@ export const DriverMobileHome: React.FC<Props> = ({
         }}
       />
 
+      {/* Driver Load Intake Panel Overlay (R-P5-16) */}
+      {showIntakePanel && (
+        <div className="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <DriverLoadIntakePanel
+              onComplete={() => {
+                setShowIntakePanel(false);
+                setToast({
+                  message: "Load submitted for dispatcher review",
+                  type: "success",
+                });
+              }}
+              onCancel={() => setShowIntakePanel(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Intake Scanner Overlay */}
       {intakeStep === "scanning" && (
         <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
@@ -2110,70 +2209,119 @@ export const DriverMobileHome: React.FC<Props> = ({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Vendor *</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Vendor *
+                </label>
                 <input
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                   value={fuelReviewData.vendorName}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, vendorName: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      vendorName: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Gallons *</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Gallons *
+                </label>
                 <input
                   type="number"
                   step="0.001"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                   value={fuelReviewData.gallons}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, gallons: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      gallons: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Price/Gal</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Price/Gal
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                   value={fuelReviewData.pricePerGallon}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, pricePerGallon: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      pricePerGallon: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Total Cost *</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Total Cost *
+                </label>
                 <input
                   type="number"
                   step="0.01"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                   value={fuelReviewData.totalCost}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, totalCost: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      totalCost: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">State *</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  State *
+                </label>
                 <input
                   type="text"
                   maxLength={2}
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
                   value={fuelReviewData.stateCode}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, stateCode: e.target.value.toUpperCase() })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      stateCode: e.target.value.toUpperCase(),
+                    })
+                  }
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Date *</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Date *
+                </label>
                 <input
                   type="date"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none"
                   value={fuelReviewData.transactionDate}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, transactionDate: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      transactionDate: e.target.value,
+                    })
+                  }
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">Truck ID</label>
+                <label className="text-[10px] font-black text-slate-600 uppercase">
+                  Truck ID
+                </label>
                 <input
                   type="text"
                   className="w-full bg-slate-900 border border-white/5 rounded-xl p-3 text-xs font-bold text-white uppercase outline-none"
                   value={fuelReviewData.truckId}
-                  onChange={(e) => setFuelReviewData({ ...fuelReviewData, truckId: e.target.value })}
+                  onChange={(e) =>
+                    setFuelReviewData({
+                      ...fuelReviewData,
+                      truckId: e.target.value,
+                    })
+                  }
                 />
               </div>
             </div>

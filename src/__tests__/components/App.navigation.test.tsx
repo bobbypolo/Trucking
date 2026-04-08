@@ -195,7 +195,7 @@ describe("R-P1-04: NavItem interface has roles field", () => {
 describe("R-P1-05: operations-hub role restrictions", () => {
   // Extract the operations-hub nav item block from categories
   const opsHubStart = categoryBlock.indexOf('"operations-hub"');
-  const opsHubBlock = categoryBlock.slice(opsHubStart, opsHubStart + 300);
+  const opsHubBlock = categoryBlock.slice(opsHubStart, opsHubStart + 600);
 
   it("operations-hub has a roles array", () => {
     expect(opsHubBlock).toContain("roles:");

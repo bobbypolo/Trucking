@@ -16,8 +16,15 @@ export const getExceptions = async (
 export const createException = async (
   exception: Partial<Exception>,
 ): Promise<string> => {
-  const data = await api.post("/exceptions", exception);
-  return data.id;
+  try {
+    const data = await api.post("/exceptions", exception);
+    return data.id;
+  } catch (e) {
+    throw new Error(
+      `Failed to create exception: ${e instanceof Error ? e.message : String(e)}`,
+      { cause: e },
+    );
+  }
 };
 
 export const updateException = async (

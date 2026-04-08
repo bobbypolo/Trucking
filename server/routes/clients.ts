@@ -1,7 +1,10 @@
 import { Router, Response, NextFunction } from "express";
 import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 import { v4 as uuidv4 } from "uuid";
-import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import {
@@ -30,7 +33,15 @@ const isMissingTableError = (error: unknown, tableName?: string) => {
     err.code === "ER_NO_SUCH_TABLE" || err.code === "ER_BAD_FIELD_ERROR";
   if (!codeMatches) return false;
   if (!tableName) return true;
-  return (err.message || "").includes(tableName);
+  const message = err.message || "";
+  // Widened matcher: ER_BAD_FIELD_ERROR for a named table also matches when
+  // the message says "Unknown column ..." without mentioning the table name.
+  // This surfaces schema drift (e.g. parties table missing entity_class) as a
+  // 503 to the caller instead of a silent 500.
+  if (err.code === "ER_BAD_FIELD_ERROR" && message.includes("Unknown column")) {
+    return true;
+  }
+  return message.includes(tableName);
 };
 
 // Clients / Brokers Routes
@@ -80,7 +91,9 @@ router.get(
       const sql = includeArchived
         ? "SELECT * FROM customers WHERE company_id = ? ORDER BY name ASC"
         : "SELECT * FROM customers WHERE company_id = ? AND archived_at IS NULL ORDER BY name ASC";
-      const [rows] = await pool.query<RowDataPacket[]>(sql, [req.params.companyId]);
+      const [rows] = await pool.query<RowDataPacket[]>(sql, [
+        req.params.companyId,
+      ]);
       const settings = await getVisibilitySettings(req.params.companyId);
       res.json(redactData(rows, req.user!.role, settings));
     } catch (error) {
@@ -289,9 +302,7 @@ router.get(
       }
 
       // Self-heal missing company rows so settings can still render and save.
-      const displayName = (req.user?.email || "Company")
-        .split("@")[0]
-        .trim();
+      const displayName = (req.user?.email || "Company").split("@")[0].trim();
       const safeDisplayName = displayName
         ? displayName.charAt(0).toUpperCase() + displayName.slice(1)
         : "Company";
@@ -538,12 +549,14 @@ router.get(
         [allConstraintRules],
         [allCatalogLinks],
       ] = await Promise.all([
-        pool.query<RowDataPacket[]>("SELECT * FROM party_contacts WHERE party_id IN (?)", [
-          partyIds,
-        ]),
-        pool.query<RowDataPacket[]>("SELECT * FROM party_documents WHERE party_id IN (?)", [
-          partyIds,
-        ]),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_contacts WHERE party_id IN (?)",
+          [partyIds],
+        ),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_documents WHERE party_id IN (?)",
+          [partyIds],
+        ),
         pool.query<RowDataPacket[]>(
           `SELECT r.*, t.id as tier_id, t.tier_start, t.tier_end,
                   t.unit_amount as tier_unit_amount, t.base_amount as tier_base_amount
@@ -552,9 +565,10 @@ router.get(
            WHERE r.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query<RowDataPacket[]>("SELECT * FROM constraint_sets WHERE party_id IN (?)", [
-          partyIds,
-        ]),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM constraint_sets WHERE party_id IN (?)",
+          [partyIds],
+        ),
         pool.query<RowDataPacket[]>(
           `SELECT cr.*, cs.party_id
            FROM constraint_rules cr
@@ -562,9 +576,10 @@ router.get(
            WHERE cs.party_id IN (?)`,
           [partyIds],
         ),
-        pool.query<RowDataPacket[]>("SELECT * FROM party_catalog_links WHERE party_id IN (?)", [
-          partyIds,
-        ]),
+        pool.query<RowDataPacket[]>(
+          "SELECT * FROM party_catalog_links WHERE party_id IN (?)",
+          [partyIds],
+        ),
       ]);
 
       // Group results by party_id into Maps for O(1) lookup
@@ -1012,7 +1027,8 @@ router.post(
         res.status(503).json({
           error: "Party registry unavailable",
           details:
-            "The parties table is not available. Please run database migrations.",
+            "The parties table or required columns are not available. Please run database migrations.",
+          code: "SCHEMA_DRIFT",
         });
         return;
       }
