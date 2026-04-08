@@ -27,6 +27,8 @@ import * as fs from "fs";
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 
+import { seedSalesDemoIfta } from "./seed-sales-demo-ifta";
+
 // SINGLE ENV CONTRACT: .env.local is the ONLY env file consumed by
 // seed, reset, and certify scripts. .env (without .local) is reserved
 // for the existing SaaS dev workflow and is NOT touched.
@@ -475,6 +477,9 @@ export async function seedSalesDemo(
   await seedUsers(conn, companyId, fixture.users, env);
   await seedGlAccounts(conn, companyId, fixture.gl_accounts);
   await seedSalesDemoLoads(conn, env);
+  // Phase 3: trip-based IFTA Q4 2025 evidence seed. Depends on the hero
+  // load row from Phase 2 existing first.
+  await seedSalesDemoIfta(conn);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────

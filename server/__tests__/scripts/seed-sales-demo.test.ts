@@ -117,14 +117,25 @@ describe("seed-sales-demo — Phase 1 seed pipeline", () => {
     expect(glIds).toContain("GL-6900");
     expect(glIds).toContain("GL-2200");
 
-    // Phase 1 does not seed IFTA evidence (that is Phase 3). Assert that
-    // no ifta_trip_evidence INSERT statement has been issued anywhere in
-    // the captured SQL — which proves the "before any IFTA evidence
-    // insert" ordering constraint for Phase 1 by absence.
-    const iftaInserts = conn.calls.filter((c) =>
-      /INSERT.*INTO\s+ifta_trip_evidence/i.test(c.sql),
-    );
-    expect(iftaInserts.length).toBe(0);
+    // Phase 3 chains seedSalesDemoIfta after the Phase 1 accounts seed;
+    // assert the ordering constraint via the call-index of the last
+    // gl_accounts INSERT vs the first ifta_trip_evidence INSERT — GL
+    // rows must land before any IFTA evidence row (Phase 1 precedes
+    // Phase 3 in the seed pipeline).
+    const glIndexes = conn.calls
+      .map((c, i) =>
+        /INSERT\s+IGNORE\s+INTO\s+gl_accounts/i.test(c.sql) ? i : -1,
+      )
+      .filter((i) => i >= 0);
+    const iftaIndexes = conn.calls
+      .map((c, i) =>
+        /INSERT.*INTO\s+ifta_trip_evidence/i.test(c.sql) ? i : -1,
+      )
+      .filter((i) => i >= 0);
+    const lastGlIndex = glIndexes[glIndexes.length - 1];
+    const firstIftaIndex = iftaIndexes[0];
+    expect(lastGlIndex).toBeGreaterThanOrEqual(0);
+    expect(firstIftaIndex).toBeGreaterThan(lastGlIndex);
   });
 
   // Tests R-P1-07 — 100% of seedSalesDemo insert statements use INSERT IGNORE.
