@@ -2,545 +2,121 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "665928e2418f2855819cade266352117b9e96cf30d3febf52af5b05041125d4c",
+  "plan_hash": "507693d790859074bceff5d227928d67bc62f4023e640053b3bdcef1181243f0",
   "stories": [
     {
       "id": "STORY-001",
-      "description": "Parties Schema Fix + Error Surfacing (foundation)",
+      "description": "IFTA Audit Packet Export MVP (module)",
       "phase": 1,
-      "phase_type": "foundation",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "services/",
+        "src/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": 1,
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "Migration `048_parties_entity_class.sql` exists and contains literal strings",
-          "testType": "manual",
+          "criterion": "`server/migrations/051_ifta_audit_packets.sql` creates exactly `1` table named `ifta_audit_packets` with at least the `9` named columns `id`, `company_id`, `quarter`, `tax_year`, `status`, `packet_hash`, `download_url`, `created_by`, and `created_at`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-02",
-          "criterion": "Migration 048 DOWN section contains `DROP COLUMN entity_class` and",
-          "testType": "manual",
+          "criterion": "the DOWN section of `server/migrations/051_ifta_audit_packets.sql` drops exactly `1` table, `ifta_audit_packets`, and does not drop or rename any pre-existing table.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-03",
-          "criterion": "`POST /api/parties` with body",
-          "testType": "manual",
+          "criterion": "`server/migrations/052_invoices_aging_tracking.sql` adds exactly `2` columns, `days_since_issued` and `last_aging_snapshot_at`, to the invoice-aging source table and the DOWN section removes only those `2` columns.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-04",
-          "criterion": "`POST /api/parties` against a mock mysql that throws",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with body `{ \"quarter\": 4, \"taxYear\": 2025, \"includeDocuments\": true }` returns `201` and a JSON body containing `packetId`, `status: \"generated\"`, a 64-character `packetHash`, and a non-empty `downloadUrl`.",
+          "testType": "integration",
           "testFile": null
         },
         {
           "id": "R-P1-05",
-          "criterion": "`isMissingTableError(error, \"parties\")` in isolation returns `true` when given",
-          "testType": "manual",
+          "criterion": "`POST /api/accounting/ifta-audit-packets` with invalid body `{ \"quarter\": 5, \"taxYear\": 2025 }` returns `400` and an error message containing the quoted field name `\"quarter\"`.",
+          "testType": "integration",
           "testFile": null
         },
         {
           "id": "R-P1-06",
-          "criterion": "`components/NetworkPortal.tsx` line 346 toast expression matches",
-          "testType": "manual",
+          "criterion": "`bundleAuditPacket()` produces a ZIP buffer containing exactly `4` top-level entries: `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `manifest.json`.",
+          "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-07",
-          "criterion": "End-to-end POST /api/parties with all 8 contractor vendorProfile fields",
+          "criterion": "`computePacketHash()` returns the same 64-character SHA-256 hex string for the same packet bytes across 2 consecutive calls.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-08",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `200 { \"verified\": true }` when the stored packet bytes match the saved `packet_hash`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-09",
+          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `409 { \"error\": \"HASH_MISMATCH\" }` when the stored packet bytes are modified after generation.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-10",
+          "criterion": "running `server/jobs/invoice-aging-nightly.ts` against 3 seeded invoices updates `days_since_issued` to values greater than `0` and writes a non-null `last_aging_snapshot_at`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-11",
+          "criterion": "`services/financialService.ts` exports the 4 methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-12",
+          "criterion": "`components/IFTAManager.tsx` renders a button labeled `\"Generate Audit Packet\"`, a quarter selector with values `1` through `4`, and a tax-year selector seeded to the current year.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-13",
+          "criterion": "clicking `\"Generate Audit Packet\"` with selected values `Q4` and `2025` calls `generateIftaAuditPacket({ quarter: 4, taxYear: 2025, includeDocuments: true })` exactly once.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-14",
+          "criterion": "after a successful packet generation response, `IFTAManager.tsx` renders the returned 64-character `packetHash` and a clickable download action pointing at `downloadUrl`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-15",
+          "criterion": "in the current web app, generating a `Q4 2025` packet for a seeded company downloads a `.zip` file that opens successfully and contains at least 4 files, including `cover-letter.pdf` and `jurisdiction-summary.csv`.",
           "testType": "manual",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/parties-entity-class.test.ts __tests__/migrations/048_parties_entity_class.test.ts __tests__/routes/clients.test.ts\""
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/051_ifta_audit_packets.test.ts __tests__/migrations/052_invoices_aging_tracking.test.ts __tests__/services/ifta-audit-packet.service.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/jobs/invoice-aging-nightly.test.ts && cd .. && npx vitest run src/__tests__/components/IFTAManager.audit-packet.test.tsx src/__tests__/services/financialService.ifta-audit-packet.test.ts\""
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-002",
-      "description": "Polling Layer for Stale Panels (module)",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [
-        "STORY-001"
-      ],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P2-01",
-          "criterion": "`services/usePollingEffect.ts` exists and exports a function `usePollingEffect`",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-02",
-          "criterion": "`usePollingEffect(fn, 1000, [])` calls `fn` exactly once immediately on mount.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-03",
-          "criterion": "After advancing fake timers by 4500ms, `fn` has been called 5 times (1 immediate",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-04",
-          "criterion": "Unmount clears the interval AND fires the `AbortController.abort()` on the last",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-05",
-          "criterion": "`NetworkPortal.tsx` source does NOT contain the literal substring",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-06",
-          "criterion": "`NetworkPortal.tsx` imports `usePollingEffect` and passes `5000` as the interval",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-07",
-          "criterion": "`IntelligenceHub.tsx` calls `usePollingEffect` with interval `10000` near line",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-08",
-          "criterion": "`App.tsx` source contains `setInterval` with `10000` AND references",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-09",
-          "criterion": "`App.tsx` cleanup return function (at the end of the useEffect around line 285)",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-10",
-          "criterion": "`ExceptionConsole.tsx` imports `usePollingEffect` and passes `10000` \u00e2\u20ac\u201d grep",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-11",
-          "criterion": "`services/networkService.ts` `getParties` signature accepts an optional",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-12",
-          "criterion": "Render `<App />` with a mock `onUserChange` that fires with a non-null",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"npx vitest run src/__tests__/services/usePollingEffect.test.tsx\""
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-003",
-      "description": "Issue Board Create Handler Fix (module)",
-      "phase": 3,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-002"
-      ],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P3-01",
-          "criterion": "`handleCreateIssue` happy path \u00e2\u20ac\u201d mock `createException` to resolve with",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-02",
-          "criterion": "Validation error path \u00e2\u20ac\u201d mock rejection with",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-03",
-          "criterion": "Network error path \u00e2\u20ac\u201d mock rejection with `new Error(\"Network request failed\")`;",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-04",
-          "criterion": "`ExceptionConsole.tsx` source contains `finally` followed (within 100 chars) by",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-05",
-          "criterion": "`services/exceptionService.ts` `createException` body contains",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-06",
-          "criterion": "Full-component render test with `@testing-library/react`: render",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"npx vitest run src/__tests__/components/ExceptionConsole.handleCreateIssue.test.tsx\""
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-004",
-      "description": "Load Equipment Persistence + Dispatcher Intake Flow (module)",
-      "phase": 4,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "STORY-003"
-      ],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-01",
-          "criterion": "Migration `049_loads_equipment_id.sql` UP contains",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-02",
-          "criterion": "Migration `049_loads_equipment_id.sql` DOWN contains `DROP COLUMN equipment_id`",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-03",
-          "criterion": "`server/schemas/loads.ts` `createLoadSchema` includes `equipment_id` as an",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-04",
-          "criterion": "`POST /api/loads` with body containing `equipment_id: \"EQ-001\"` captures",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-05",
-          "criterion": "`POST /api/loads` with no `equipment_id` in the body persists `null` (not",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "`load.service.ts` dispatch transition uses `load.equipment_id` as the first",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-07",
-          "criterion": "`validateDispatchGuards` passes for",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-08",
-          "criterion": "`validateDispatchGuards` FAILS with error message containing `\"equipment\"` when",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-09",
-          "criterion": "`EditLoadForm` renders an equipment selector when given a non-empty equipment",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-10",
-          "criterion": "`EditLoadForm` onSave payload includes `equipment_id` when user picks from the",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-11",
-          "criterion": "`EditLoadForm` displays a warning (`getByText(/equipment required/i)`) when user",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-12",
-          "criterion": "`Scanner.tsx` Props interface includes",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-13",
-          "criterion": "`<Scanner autoTrigger=\"upload\" ... />` fires a programmatic click on its hidden",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-14",
-          "criterion": "`<Scanner autoTrigger=\"camera\" ... />` invokes the camera-activation path on",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-15",
-          "criterion": "`<Scanner />` with no `autoTrigger` prop does NOT fire any click on mount \u00e2\u20ac\u201d",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-16",
-          "criterion": "`LoadSetupModal` Phone Order mode renders all 8 required input controls \u00e2\u20ac\u201d assert",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-17",
-          "criterion": "`LoadSetupModal` Phone Order Submit is disabled when any of the 8 required fields",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-18",
-          "criterion": "`LoadSetupModal` Phone Order save payload `legs` array has exactly one",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-19",
-          "criterion": "`LoadSetupModal` Scan Doc button click path results in `Scanner` being rendered",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-20",
-          "criterion": "`server/schemas/loads.ts` `partialUpdateLoadSchema` includes `equipment_id` as an",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-21",
-          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` against an",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-22",
-          "criterion": "`PATCH /api/loads/:id` with body `{ equipment_id: \"EQ-001\" }` and NO",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/049_loads_equipment_id.test.ts __tests__/routes/loads-equipment-persistence.test.ts __tests__/routes/loads-equipment-partial-update.test.ts __tests__/services/load-service-dispatch-guard.test.ts && cd .. && npx vitest run src/__tests__/components/EditLoadForm.equipment-selector.test.tsx src/__tests__/components/LoadSetupModal.scan-doc.test.tsx src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx\""
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-005",
-      "description": "Load Board Driver Intake Flow (module)",
-      "phase": 5,
-      "phase_type": "module",
-      "component": "",
-      "scope": [],
-      "complexity": "complex",
-      "maxTurns": 200,
-      "dependsOn": [
-        "STORY-004"
-      ],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P5-01",
-          "criterion": "Migration `050_loads_intake_source.sql` UP contains",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-02",
-          "criterion": "Migration 050 DOWN contains `DROP COLUMN intake_source` and NO other DROP COLUMN",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-03",
-          "criterion": "`generateNextLoadNumber('C1', mockPool)` against an empty mock returns a string",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-04",
-          "criterion": "`generateNextLoadNumber` against a mock with `LP-0001` existing returns `LP-0002`.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-05",
-          "criterion": "`createDriverIntakeLoadSchema.safeParse({})` succeeds (empty body valid \u00e2\u20ac\u201d all",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-06",
-          "criterion": "`createDriverIntakeLoadSchema` does NOT have a `load_number` field \u00e2\u20ac\u201d assert via",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-07",
-          "criterion": "`POST /api/loads/driver-intake` with empty body returns 201 with body",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-08",
-          "criterion": "`POST /api/loads/driver-intake` with",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-09",
-          "criterion": "`POST /api/loads/driver-intake` without authentication returns 401.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-10",
-          "criterion": "`DriverLoadIntakePanel` renders `<Scanner autoTrigger=\"camera\" mode=\"intake\" />`",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-11",
-          "criterion": "`DriverLoadIntakePanel` calls fetch with `/api/loads/driver-intake` after the",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-12",
-          "criterion": "`PendingDriverIntakeQueue` filters the fetched loads list to only `status ===",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-13",
-          "criterion": "`PendingDriverIntakeQueue` Approve button is disabled until `equipment_id` is",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-14",
-          "criterion": "`PendingDriverIntakeQueue` Approve button click fires TWO fetches in order: first",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-15",
-          "criterion": "`server/index.ts` source contains an import of `loads-driver-intake` and an",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-16",
-          "criterion": "`DriverMobileHome.tsx` imports `DriverLoadIntakePanel` \u00e2\u20ac\u201d grep assert.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-17",
-          "criterion": "`LoadBoardEnhanced.tsx` imports `PendingDriverIntakeQueue` \u00e2\u20ac\u201d grep assert.",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/050_loads_intake_source.test.ts __tests__/lib/loadNumberGenerator.test.ts __tests__/routes/loads-driver-intake.test.ts && cd .. && npx vitest run src/__tests__/components/DriverLoadIntakePanel.test.tsx src/__tests__/components/PendingDriverIntakeQueue.test.tsx\""
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-006",
-      "description": "End-to-End Regression Suite (integration)",
-      "phase": 6,
-      "phase_type": "integration",
-      "component": "",
-      "scope": [],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-005"
-      ],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-01",
-          "criterion": "Onboarding multi-user spec \u00e2\u20ac\u201d User A creates party; User B sees it within 7 seconds.",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-02",
-          "criterion": "Dispatcher flow spec \u00e2\u20ac\u201d Scan Doc click \u00e2\u2020\u2019 file picker visible on screen within 1",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-03",
-          "criterion": "Driver intake spec \u00e2\u20ac\u201d driver-submitted load appears in dispatcher's Pending Driver",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-04",
-          "criterion": "Issue board create spec \u00e2\u20ac\u201d invalid submission surfaces error toast and re-enables",
-          "testType": "manual",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-05",
-          "criterion": "All 4 specs under `e2e/pre-demo-remediation/` are auto-discovered by",
-          "testType": "manual",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"npx playwright test e2e/pre-demo-remediation/ --reporter=list\""
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     }
   ]
 }
