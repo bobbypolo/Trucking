@@ -1,3 +1,91 @@
+# Session Handoff — 2026-04-08 (Pre-Demo Remediation Sprint Execution, Day 2)
+
+## Session Type: Sprint Execution — Stories 1-3 done, STORY-004 partial WIP, 5/6 deferred
+
+## Sprint Snapshot
+
+| Story | Phase | R-markers | Status | Commit |
+|---|---|---|---|---|
+| STORY-001 | Parties Schema Fix | R-P1-01..07 | ✅ PASS | `bcb8a6f` (+ verification `6335e16`) |
+| STORY-002 | Polling Layer | R-P2-01..12 | ✅ PASS | `8564ccb` (+ verification `fb3925e`) |
+| STORY-003 | Issue Board Create Handler | R-P3-01..06 | ✅ PASS | `f3019ba` (+ verification `b1f5bc2`) |
+| STORY-004 | Load Equipment + Dispatcher Intake | R-P4-01..22 | 🟨 WIP (10/22 done) | `e3e838c` (wip) |
+| STORY-005 | Driver Intake Flow | R-P5-01..17 | ⏳ DEFERRED | — |
+| STORY-006 | E2E Regression Suite | R-P6-01..05 | ⏳ DEFERRED | — |
+
+Current branch: `ralph/pre-demo-remediation` at HEAD `e3e838c` (clean working tree).
+
+## STORY-004 — what is done, what is missing
+
+**Done (in commit `e3e838c`, 31/31 backend tests pass, frontend tsc clean):**
+- Migration `049_loads_equipment_id.sql` (additive, FK + index)
+- `server/__tests__/migrations/049_loads_equipment_id.test.ts`
+- `server/schemas/loads.ts` — `createLoadSchema.equipment_id` + `partialUpdateLoadSchema.equipment_id` + `.refine()` extension
+- `server/routes/loads.ts` — POST INSERT and PATCH UPDATE handlers wire `equipment_id`
+- `server/services/load.service.ts` — dispatch guard preference order
+- `server/__tests__/routes/loads-equipment-persistence.test.ts`
+- `server/__tests__/routes/loads-equipment-partial-update.test.ts`
+- `server/__tests__/services/load-service-dispatch-guard.test.ts`
+- `components/Scanner.tsx` — `autoTrigger?: 'upload' | 'camera'` prop (R-P4-12; behaviour R-P4-13..15 needs tests to verify)
+- `components/EditLoadForm.tsx` — equipment selector + handleSave wiring (partial; R-P4-09..11 need tests)
+
+**R-markers landed (production code in place, test files in place):** R-P4-01, R-P4-02, R-P4-03, R-P4-04, R-P4-05, R-P4-06, R-P4-07, R-P4-08, R-P4-20, R-P4-21, R-P4-22 — 11 of 22.
+
+**R-markers landed (production code in place, tests still missing):** R-P4-12 (Scanner Props grep can verify, but R-P4-13/14/15 behaviour tests not written yet).
+
+**R-markers NOT landed (production code missing):**
+- R-P4-09, R-P4-10, R-P4-11 — EditLoadForm tests against the existing code
+- R-P4-13, R-P4-14, R-P4-15 — Scanner autoTrigger behaviour tests
+- R-P4-16, R-P4-17, R-P4-18 — LoadSetupModal Phone Order 8-field form (NOT YET WRITTEN — production code missing)
+- R-P4-19 — LoadSetupModal Scan Doc → Scanner autoTrigger='upload' wiring (NOT YET WRITTEN)
+- App.tsx prop drilling for `autoTrigger` (3-5 lines, NOT YET WRITTEN)
+
+## Next-session resumption plan
+
+1. Read `e3e838c` commit body for full context.
+2. Re-dispatch ralph-worker for STORY-004 with checkpoint = `e3e838c`. Tell the worker the backend + Scanner + EditLoadForm are already on the branch — its job is ONLY to:
+   - Write `components/LoadSetupModal.tsx` Phone Order 8-field sub-form + Scan Doc autoTrigger wiring (~80 lines).
+   - Add `App.tsx` autoTrigger prop drilling (~5 lines).
+   - Write `src/__tests__/components/EditLoadForm.equipment-selector.test.tsx` (R-P4-09..11).
+   - Write `src/__tests__/components/LoadSetupModal.scan-doc.test.tsx` (R-P4-19).
+   - Write `src/__tests__/components/LoadSetupModal.phone-order-fields.test.tsx` (R-P4-16..18).
+   - Write Scanner autoTrigger behaviour test inside one of the above (R-P4-13/14/15).
+3. Run the full STORY-004 gate: 4 server tests + 3 frontend tests + tsc both sides + prod scan.
+4. Commit as `feat(P4): complete frontend (R-P4-09..R-P4-19)` and update prd.json STORY-004.passed = true + verification log.
+5. Then sequentially dispatch STORY-005 (depends on the PATCH endpoint that IS already in `e3e838c`) and STORY-006.
+6. Finally `/audit`, then `gh pr create`.
+
+## Lessons learned this session (durable, non-obvious)
+
+- **Worktree dispatch is broken for this repo.** `git worktree add` only inherits tracked files; 15 of 17 `.claude/hooks/*.py` files are gitignored. The worktree workers fail on the first Write because `post_format.py` and `post_write_prod_scan.py` don't exist. Until the gitignore is fixed, **only branch-inline dispatch works**, which means **strictly sequential** (the workflow rule from `ced501d` forbids async branch-inline). The user's "parallel where possible" intent is forced to sequential by this infrastructure gap. Fixing the gitignore is out of scope per orchestrator hard rule "Does NOT modify .claude/rules/, .claude/hooks/, or .claude/workflow.json".
+- **Workers consistently stop before their verification gate** in this harness. Every story this session needed orchestrator manual recovery: re-run the gate, fix bugs, commit. Plan for ~10-15 min orchestrator recovery time per story.
+- **Common worker test bugs to watch for** when reviewing future ralph-worker output:
+  1. Missing `createChildLogger` in `lib/logger` mock (errorHandler uses it; without it the route returns 500 with empty body).
+  2. Wrong relative path in grep tests — from `src/__tests__/components/<file>.test.tsx`, project root is `../../../` (3 levels), NOT `../../../../`. Same applies to server tests.
+  3. Capitalized status enum values — `LoadStatus` enum uses lowercase ("planned", "dispatched"), tests must too.
+  4. Stale assertions for old behaviour after a prior story changed a literal — STORY-001's R-P1-06 toast change broke 2 tests in NetworkPortal.test.tsx + NetworkPortal.deep.test.tsx, fixed during STORY-002's regression run.
+- **`vi.clearAllMocks()` does NOT clear `mockResolvedValueOnce` queues.** Use `mockReset()` or `vi.resetAllMocks()` if your test sets up per-call queues across multiple tests.
+- **Pre-existing failures still on baseline HEAD `e3e838c`:**
+  - `src/__tests__/services/storageService.enhanced.test.ts` (saveLoad mock arg drift)
+  - `src/__tests__/components/EditLoadForm.deep.test.tsx` (leg date editing)
+  - `server/__tests__/routes/clients.test.ts` (28 auth-mock failures from STORY-001's commit message)
+  - `server/__tests__/helpers/test-env.ts` + `server/__tests__/load/single-node-baseline.test.ts` (tsc `import.meta` errors — pre-existing tsconfig drift, NOT caused by STORY-004)
+
+## Workflow state at session end
+
+- `.claude/.workflow-state.json` ralph section:
+  - `stories_passed: 3`
+  - `current_story_id: "STORY-004"`
+  - `current_attempt: 3` (of 4 max)
+  - `checkpoint_hash: "e3e838cf093dfbc236b98318af2e24d672179177"`
+  - `prior_failure_summary` documents all 3 attempts
+  - `current_step: STEP_4_DISPATCH`
+- `.claude/prd.json`: STORY-004.passed remains `false`. Stories 005/006 untouched.
+- `.claude/docs/verification-log.jsonl`: 3 new PASS rows appended (STORY-001..003).
+- Branch ahead of origin by 8 commits (the entire sprint's work, ready to push when STORY-004 completes).
+
+---
+
 # Session Handoff — 2026-04-07
 
 ## Session Type: Pre-Sprint Cleanup + New Sprint Setup (Bulletproof Sales Demo)
