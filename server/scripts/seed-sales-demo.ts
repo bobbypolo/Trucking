@@ -84,6 +84,8 @@ export interface SqlExecutor {
 }
 
 export const SALES_DEMO_COMPANY_ID = "SALES-DEMO-001";
+export const SALES_DEMO_BROKER_ID = "SALES-DEMO-CUST-001";
+export const SALES_DEMO_HERO_LOAD_ID = "LP-DEMO-RC-001";
 
 // ─── Fixture loader ───────────────────────────────────────────────────────────
 
@@ -217,6 +219,242 @@ export async function seedGlAccounts(
   }
 }
 
+// ─── Phase 2: hero load + broker + documents + artifact copy ────────────────
+//
+// Continuity objects (must match PLAN.md Continuity Objects table verbatim):
+//   - Broker: SALES-DEMO-CUST-001 / ACME Logistics LLC
+//   - Hero load: LP-DEMO-RC-001
+//   - Commodity: Frozen Beef, weight 42500 lbs
+//   - Route: Houston TX -> Chicago IL
+//   - Rate: $3,250 carrier rate
+//   - Driver: SALES-DEMO-DRIVER-001 (seeded by Phase 1)
+//   - Document artifacts: rate-con.pdf, bol.pdf, lumper-receipt.pdf
+
+interface HeroDocumentRecord {
+  readonly id: string;
+  readonly fixture_filename: string;
+  readonly sanitized_filename: string;
+  readonly document_type: string;
+  readonly mime_type: string;
+  readonly description: string;
+}
+
+const HERO_BROKER_NAME = "ACME Logistics LLC";
+const HERO_COMMODITY = "Frozen Beef";
+const HERO_WEIGHT_LBS = 42500;
+const HERO_CARRIER_RATE = 3250;
+const HERO_DRIVER_PAY = 2100;
+const HERO_PICKUP_CITY = "Houston";
+const HERO_PICKUP_STATE = "TX";
+const HERO_PICKUP_FACILITY = "Gulf Coast Meatpacking";
+const HERO_DROPOFF_CITY = "Chicago";
+const HERO_DROPOFF_STATE = "IL";
+const HERO_DROPOFF_FACILITY = "Midwest Cold Storage";
+const HERO_DRIVER_ID = "SALES-DEMO-DRIVER-001";
+const HERO_PICKUP_DATE = "2025-11-10";
+const HERO_DROPOFF_DATE = "2025-11-12";
+
+const HERO_DOCUMENTS: ReadonlyArray<HeroDocumentRecord> = [
+  {
+    id: "SALES-DEMO-DOC-RATECON-001",
+    fixture_filename: "rate-con.pdf",
+    sanitized_filename: "rate-con.pdf",
+    document_type: "rate_confirmation",
+    mime_type: "application/pdf",
+    description: "Rate confirmation for LP-DEMO-RC-001",
+  },
+  {
+    id: "SALES-DEMO-DOC-BOL-001",
+    fixture_filename: "bol.pdf",
+    sanitized_filename: "bol.pdf",
+    document_type: "bill_of_lading",
+    mime_type: "application/pdf",
+    description: "Signed BOL for LP-DEMO-RC-001",
+  },
+  {
+    id: "SALES-DEMO-DOC-LUMPER-001",
+    fixture_filename: "lumper-receipt.pdf",
+    sanitized_filename: "lumper-receipt.pdf",
+    document_type: "lumper_receipt",
+    mime_type: "application/pdf",
+    description: "Lumper receipt for LP-DEMO-RC-001",
+  },
+];
+
+/**
+ * Returns the absolute path to the sales-demo artifact upload directory
+ * that the live document download handler reads from. Mirrors the path
+ * shape used by server/routes/documents.ts: UPLOAD_DIR + storage_path.
+ */
+function heroUploadDir(env: NodeJS.ProcessEnv): string {
+  const baseDir = env.UPLOAD_DIR || "./uploads";
+  return path.resolve(baseDir, "sales-demo", SALES_DEMO_HERO_LOAD_ID);
+}
+
+/**
+ * Copies the 3 canonical hero PDF artifacts from the fixtures directory
+ * into the live upload directory. Idempotent: skips the copy when the
+ * destination file already exists with the same byte size.
+ */
+export async function copyHeroArtifacts(
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  const sourceDir = path.resolve(__dirname, "sales-demo-fixtures");
+  const destDir = heroUploadDir(env);
+  await fs.promises.mkdir(destDir, { recursive: true });
+
+  for (const doc of HERO_DOCUMENTS) {
+    const src = path.join(sourceDir, doc.fixture_filename);
+    const dst = path.join(destDir, doc.fixture_filename);
+    const srcStat = await fs.promises.stat(src);
+
+    let destExists = false;
+    try {
+      const dstStat = await fs.promises.stat(dst);
+      destExists = dstStat.size === srcStat.size;
+    } catch {
+      destExists = false;
+    }
+
+    if (!destExists) {
+      await fs.promises.copyFile(src, dst);
+    }
+  }
+}
+
+/**
+ * Phase 2 seed — inserts exactly 1 customers row (broker), 1 loads row
+ * (hero load LP-DEMO-RC-001), 2 load_legs rows, and 3 documents rows into
+ * the sales-demo tenant using only INSERT IGNORE. Additionally copies the
+ * 3 hero PDF fixtures into the live upload directory so the unmodified
+ * production GET /api/documents/:id/download handler can return them.
+ */
+export async function seedSalesDemoLoads(
+  conn: SqlExecutor,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  // Step 1: customers (broker) — resolved by getBrokers → /api/clients.
+  await conn.execute(
+    `INSERT IGNORE INTO customers
+       (id, company_id, name, type, mc_number, dot_number, email, phone,
+        address, payment_terms)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_BROKER_ID,
+      companyId,
+      HERO_BROKER_NAME,
+      "Broker",
+      "MC-ACME-4421",
+      "DOT-ACME-8891",
+      "dispatch@acme-logistics.invalid",
+      "555-0199",
+      "1200 Freight Way, Chicago, IL 60601",
+      "Net 30",
+    ],
+  );
+
+  // Step 2: loads — hero load LP-DEMO-RC-001 wired to the broker via
+  // customer_id. load_number is the column name in migration 001; the
+  // columns carrier_rate, driver_pay, pickup_date, freight_type,
+  // commodity, and weight are what LoadDetailView renders.
+  await conn.execute(
+    `INSERT IGNORE INTO loads
+       (id, company_id, customer_id, driver_id, load_number, status,
+        carrier_rate, driver_pay, pickup_date, freight_type, commodity,
+        weight, bol_number)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_HERO_LOAD_ID,
+      companyId,
+      SALES_DEMO_BROKER_ID,
+      HERO_DRIVER_ID,
+      SALES_DEMO_HERO_LOAD_ID,
+      "delivered",
+      HERO_CARRIER_RATE,
+      HERO_DRIVER_PAY,
+      HERO_PICKUP_DATE,
+      "Reefer",
+      HERO_COMMODITY,
+      HERO_WEIGHT_LBS,
+      "BOL-DEMO-0001",
+    ],
+  );
+
+  // Step 3: load_legs — 2 rows (Pickup then Dropoff), canonical Houston
+  // -> Chicago route.
+  await conn.execute(
+    `INSERT IGNORE INTO load_legs
+       (id, load_id, type, facility_name, city, state, date,
+        appointment_time, completed, sequence_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      "SALES-DEMO-LEG-PICKUP-001",
+      SALES_DEMO_HERO_LOAD_ID,
+      "Pickup",
+      HERO_PICKUP_FACILITY,
+      HERO_PICKUP_CITY,
+      HERO_PICKUP_STATE,
+      HERO_PICKUP_DATE,
+      "08:00",
+      1,
+      1,
+    ],
+  );
+  await conn.execute(
+    `INSERT IGNORE INTO load_legs
+       (id, load_id, type, facility_name, city, state, date,
+        appointment_time, completed, sequence_order)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      "SALES-DEMO-LEG-DROPOFF-001",
+      SALES_DEMO_HERO_LOAD_ID,
+      "Dropoff",
+      HERO_DROPOFF_FACILITY,
+      HERO_DROPOFF_CITY,
+      HERO_DROPOFF_STATE,
+      HERO_DROPOFF_DATE,
+      "14:00",
+      1,
+      2,
+    ],
+  );
+
+  // Step 4: documents — 3 rows linked to the hero load. storage_path
+  // uses the same shape the live disk download handler expects
+  // (UPLOAD_DIR + storage_path joined). status 'ready' so the UI does
+  // not show a "processing" spinner on stage.
+  for (const doc of HERO_DOCUMENTS) {
+    const storagePath = `sales-demo/${SALES_DEMO_HERO_LOAD_ID}/${doc.fixture_filename}`;
+    await conn.execute(
+      `INSERT IGNORE INTO documents
+         (id, company_id, load_id, original_filename, sanitized_filename,
+          mime_type, file_size_bytes, storage_path, document_type, status,
+          description, uploaded_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        doc.id,
+        companyId,
+        SALES_DEMO_HERO_LOAD_ID,
+        doc.fixture_filename,
+        doc.sanitized_filename,
+        doc.mime_type,
+        1400,
+        storagePath,
+        doc.document_type,
+        "ready",
+        doc.description,
+        "SALES-DEMO-ADMIN-001",
+      ],
+    );
+  }
+
+  // Step 5: copy artifact files into the live upload directory so the
+  // unmodified production download handler can stream real bytes.
+  await copyHeroArtifacts(env);
+}
+
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function seedSalesDemo(
@@ -236,6 +474,7 @@ export async function seedSalesDemo(
   await seedCompany(conn, fixture.company);
   await seedUsers(conn, companyId, fixture.users, env);
   await seedGlAccounts(conn, companyId, fixture.gl_accounts);
+  await seedSalesDemoLoads(conn, env);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────

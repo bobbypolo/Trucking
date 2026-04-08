@@ -1,6 +1,10 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket, ResultSetHeader, PoolConnection } from "mysql2/promise";
+import type {
+  RowDataPacket,
+  ResultSetHeader,
+  PoolConnection,
+} from "mysql2/promise";
 import { DocumentStatus } from "../services/document-state-machine";
 
 /**
@@ -21,6 +25,8 @@ export interface DocumentRow extends RowDataPacket {
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+  filename?: string;
+  type?: string;
 }
 
 /**
@@ -106,7 +112,10 @@ export const documentRepository = {
       "SELECT * FROM documents WHERE id = ? AND company_id = ?",
       [id, companyId],
     );
-    return rows.length > 0 ? rows[0] : null;
+    if (rows.length === 0) return null;
+    rows[0].filename = rows[0].original_filename; // R-P2-12
+    rows[0].type = rows[0].document_type; // R-P2-12
+    return rows[0];
   },
 
   /**
@@ -171,6 +180,10 @@ export const documentRepository = {
     sql += " ORDER BY created_at DESC";
 
     const [rows] = await pool.query<DocumentRow[]>(sql, params);
+    for (const r of rows) {
+      r.filename = r.original_filename;
+      r.type = r.document_type;
+    } // R-P2-12
     return rows;
   },
 
