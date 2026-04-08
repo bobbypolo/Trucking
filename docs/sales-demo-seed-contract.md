@@ -105,3 +105,41 @@ captured here as follow-ups, not touched by Phase 1-7:
   post endpoint. The independent `seed-sales-demo.ts` fixes this for
   the sales demo tenant; the SaaS fix (extending `seed-demo.ts`) is
   deliberately deferred.
+
+## Quotes route disposition
+
+The `/quotes` route (Quotes & Booking) is **hidden** from the
+`VITE_DEMO_NAV_MODE=sales` nav allowlist (see Phase 6), NOT deleted.
+Production tenants still see the route normally. The allowlist keys
+that remain visible in sales-demo mode are exactly:
+
+```
+['operations-hub', 'loads', 'calendar', 'network', 'accounting', 'exceptions']
+```
+
+**Why hide instead of fix?** The 403 response that previously blocked
+Quotes in the stale demo fixture was **environment-specific**, not a
+code bug. Root cause: the prior demo tenant's user-to-tenant mapping
+in the `tenant_users` bridge table was out of sync with the Firebase
+UID claimed by the admin session, so `requireTenant` middleware
+correctly rejected the cross-tenant access. The canonical
+quote-to-load path itself is healthy (verified in commit `b735d48`
+feat: complete hybrid load workflow remediation) and continues to be
+covered by the pre-existing quotes regression tests.
+
+**Sprint scope decision.** Re-provisioning a Firebase admin user for
+the new `SALES-DEMO-001` tenant and re-seeding the `tenant_users`
+bridge for that user is a Phase 1 seed concern, not a Phase 5
+regression concern. Phase 5 locks down the **other two** demo-blocker
+concerns (SafetyView fake KPI + Fleet Map env-var leak) with
+component-level regression tests. The Quotes route is removed from
+the salesperson's view entirely by the Phase 6 nav allowlist so the
+403 path cannot be exercised during a live demo. If a salesperson
+reaches the route via a direct URL, the existing `requireTenant`
+middleware's 403 response is the correct production behavior.
+
+**Follow-up (out of scope this sprint).** Fixing the environment-
+specific `tenant_users` mapping so Quotes works inside the sales-demo
+tenant as a live hero path is a separate story; it would require a
+new seed helper plus a Firebase user provisioning step, and was
+deliberately descoped to keep this sprint live-functions-only.
