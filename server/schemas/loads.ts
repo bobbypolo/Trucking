@@ -20,6 +20,7 @@ export const createLoadSchema = z.object({
   weight: z.number().optional(),
   container_number: z.string().optional(),
   chassis_number: z.string().optional(),
+  equipment_id: z.string().optional(),
   bol_number: z.string().optional(),
   legs: z
     .array(
@@ -93,6 +94,7 @@ export const partialUpdateLoadSchema = z
     reference_numbers: z.array(z.string().trim().min(1)).optional(),
     pickup_date: z.string().trim().min(1).optional(),
     notes: z.string().trim().min(1).max(2000).optional(),
+    equipment_id: z.string().trim().min(1).optional(),
   })
   .refine(
     (data) =>
@@ -103,7 +105,8 @@ export const partialUpdateLoadSchema = z
       (data.reference_numbers !== undefined &&
         data.reference_numbers.length > 0) ||
       data.pickup_date !== undefined ||
-      data.notes !== undefined,
+      data.notes !== undefined ||
+      data.equipment_id !== undefined,
     {
       message:
         "At least one supported partial-update field is required for PATCH /api/loads/:id",

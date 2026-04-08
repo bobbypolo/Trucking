@@ -182,6 +182,7 @@ router.post(
       quoted_commodity,
       container_number,
       chassis_number,
+      equipment_id,
       bol_number,
       legs,
       notification_emails,
@@ -206,7 +207,7 @@ router.post(
     try {
       await connection.beginTransaction();
       await connection.query(
-        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, quoted_weight, quoted_commodity, container_number, chassis_number, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO loads (id, company_id, customer_id, driver_id, dispatcher_id, load_number, status, carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, quoted_weight, quoted_commodity, container_number, chassis_number, equipment_id, bol_number, notification_emails, contract_id, gps_history, pod_urls, customer_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [
           id,
           company_id,
@@ -225,6 +226,7 @@ router.post(
           quoted_commodity ?? commodity ?? null,
           container_number,
           chassis_number,
+          equipment_id || null,
           bol_number,
           JSON.stringify(notification_emails),
           contract_id,
@@ -362,6 +364,7 @@ router.patch(
       reference_numbers,
       pickup_date,
       notes,
+      equipment_id,
     } = req.body;
 
     const normalizedReference =
@@ -408,6 +411,11 @@ router.patch(
           updates.push(`${notesColumn} = ?`);
           params.push(notes);
         }
+      }
+
+      if (equipment_id !== undefined) {
+        updates.push("equipment_id = ?");
+        params.push(equipment_id);
       }
 
       if (updates.length === 0) {

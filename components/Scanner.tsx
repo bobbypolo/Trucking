@@ -81,6 +81,9 @@ interface Props {
    *  creation flow. If not provided, falls back to onCancel for backward compatibility. */
   onDismiss?: () => void;
   mode?: "load" | "broker" | "equipment" | "training" | "intake";
+  /** autoTrigger: if 'upload', programmatically clicks the hidden file input on mount.
+   *  If 'camera', activates the camera on mount. Default undefined = no auto-trigger. */
+  autoTrigger?: "upload" | "camera";
 }
 
 export const Scanner: React.FC<Props> = ({
@@ -88,6 +91,7 @@ export const Scanner: React.FC<Props> = ({
   onCancel,
   onDismiss,
   mode = "load",
+  autoTrigger,
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +171,17 @@ export const Scanner: React.FC<Props> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Auto-trigger effect: fires once on mount if autoTrigger prop is provided
+  useEffect(() => {
+    if (autoTrigger === "upload") {
+      uploadInputRef.current?.click();
+    } else if (autoTrigger === "camera") {
+      setCameraActive(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Stop all tracks on the active media stream */
   const stopCamera = useCallback(() => {
@@ -508,6 +523,7 @@ export const Scanner: React.FC<Props> = ({
             </label>
             <label className="relative cursor-pointer group">
               <input
+                ref={uploadInputRef}
                 data-testid="scanner-upload-file"
                 type="file"
                 accept="image/*,application/pdf"
