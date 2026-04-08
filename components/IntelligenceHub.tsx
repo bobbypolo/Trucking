@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { usePollingEffect } from "../services/usePollingEffect";
 import { useAutoFeedback } from "../hooks/useAutoFeedback";
 import {
   PhoneCall,
@@ -251,13 +252,7 @@ const IntelligenceHub: React.FC<{
     }
   };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    loadOpsDashboardData(controller.signal);
-    return () => {
-      controller.abort();
-    };
-  }, []);
+  usePollingEffect((signal) => loadOpsDashboardData(signal), 10000, []);
 
   // Ops Dashboard computed stats
   // Intelligent Space Detection

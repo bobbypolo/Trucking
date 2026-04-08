@@ -20,6 +20,7 @@ import {
 } from "../services/exceptionService";
 import { ConfirmDialog } from "./ui/ConfirmDialog";
 import { useFocusTrap } from "../hooks/useFocusTrap";
+import { usePollingEffect } from "../services/usePollingEffect";
 import {
   AlertCircle,
   Clock,
@@ -218,9 +219,7 @@ export const ExceptionConsole: React.FC<Props> = ({
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  usePollingEffect(() => loadData(), 10000, [loadData]);
 
   useEffect(() => {
     if (initialView) setActiveCategory(initialView as CategoryTab);

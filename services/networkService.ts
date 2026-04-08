@@ -3,9 +3,10 @@ import { NetworkParty } from "../types";
 
 export const getParties = async (
   companyId: string,
+  signal?: AbortSignal,
 ): Promise<NetworkParty[]> => {
   try {
-    const data = await api.get(`/parties`);
+    const data = await api.get(`/parties`, { signal });
     return data ?? [];
   } catch (e) {
     console.error("[networkService] getParties failed:", e);

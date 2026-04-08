@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
+import { usePollingEffect } from "../services/usePollingEffect";
 import {
   Users,
   Plus,
@@ -219,15 +220,11 @@ export const NetworkPortal: React.FC<Props> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadData();
-  }, [companyId]);
-
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await getParties(companyId);
+      const data = await getParties(companyId, signal);
       setParties(data);
     } catch (err) {
       console.error("[NetworkPortal] Failed to load parties:", err);
@@ -236,6 +233,8 @@ export const NetworkPortal: React.FC<Props> = ({
       setIsLoading(false);
     }
   };
+
+  usePollingEffect((signal) => loadData(signal), 5000, [companyId]);
 
   /** Derive the effective entity class for a party (supports legacy type values) */
   const getEntityClass = (party: NetworkParty): EntityClass => {

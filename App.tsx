@@ -1,6 +1,15 @@
-import React, { useState, useEffect, useCallback, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  Suspense,
+} from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ErrorBoundary, ComponentErrorBoundary } from "./components/ErrorBoundary";
+import {
+  ErrorBoundary,
+  ComponentErrorBoundary,
+} from "./components/ErrorBoundary";
 import ConnectionBanner from "./components/ui/ConnectionBanner";
 import { Toast } from "./components/Toast";
 import {
@@ -253,6 +262,7 @@ export default function App() {
   // A ref guards against multiple rapid 401s showing the modal more than once.
   const sessionExpiredFiredRef = React.useRef(false);
   const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const unsubscribe = onUserChange(async (updatedUser) => {
@@ -260,8 +270,15 @@ export default function App() {
       if (updatedUser) {
         await refreshData(updatedUser);
         setIsAuthReady(true);
+        pollIntervalRef.current = setInterval(() => {
+          refreshData(updatedUser);
+        }, 10000);
       } else {
         setIsAuthReady(false);
+        if (pollIntervalRef.current !== null) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
       }
     });
 
@@ -286,6 +303,10 @@ export default function App() {
       unsubscribe();
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("auth:session-expired", handleSessionExpired);
+      if (pollIntervalRef.current !== null) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
   }, []);
 
@@ -552,7 +573,18 @@ export default function App() {
           label: "Operations Center",
           icon: Zap,
           permission: "LOAD_DISPATCH",
-          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
+          roles: [
+            "admin",
+            "dispatcher",
+            "owner_operator",
+            "safety_manager",
+            "payroll_manager",
+            "OPS",
+            "OPS_MANAGER",
+            "ORG_OWNER_SUPER_ADMIN",
+            "OWNER_ADMIN",
+            "DISPATCHER",
+          ],
         },
         {
           id: "loads",
@@ -568,13 +600,40 @@ export default function App() {
           permission: "LOAD_DISPATCH",
           capability: "LOAD_TRACK",
         },
-        { id: "network", label: "Onboarding", icon: Globe, roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"] },
+        {
+          id: "network",
+          label: "Onboarding",
+          icon: Globe,
+          roles: [
+            "admin",
+            "dispatcher",
+            "owner_operator",
+            "safety_manager",
+            "payroll_manager",
+            "OPS",
+            "OPS_MANAGER",
+            "ORG_OWNER_SUPER_ADMIN",
+            "OWNER_ADMIN",
+            "DISPATCHER",
+          ],
+        },
         {
           id: "telematics-setup",
           label: "Telematics",
           icon: Radio,
           permission: "ORG_SETTINGS_VIEW",
-          roles: ["admin", "dispatcher", "owner_operator", "safety_manager", "payroll_manager", "OPS", "OPS_MANAGER", "ORG_OWNER_SUPER_ADMIN", "OWNER_ADMIN", "DISPATCHER"],
+          roles: [
+            "admin",
+            "dispatcher",
+            "owner_operator",
+            "safety_manager",
+            "payroll_manager",
+            "OPS",
+            "OPS_MANAGER",
+            "ORG_OWNER_SUPER_ADMIN",
+            "OWNER_ADMIN",
+            "DISPATCHER",
+          ],
         },
       ],
     },
@@ -693,34 +752,34 @@ export default function App() {
         <div className="fixed inset-0 z-[150] bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full h-full max-w-7xl">
             <ComponentErrorBoundary>
-            <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
-              <EditLoadForm
-                initialData={editingLoad || {}}
-                onSave={handleSaveLoad}
-                onCancel={() => {
-                  setIsAdding(false);
-                  setEditingLoad(null);
-                }}
-                currentUser={user}
-                users={companyUsers}
-                existingLoads={loads}
-                canViewRates={permissions.showRates}
-                canManageLegs={permissions.manageLegs}
-                showBrokerDetails={permissions.showBrokerDetails}
-                canCreateBroker={permissions.createBrokers}
-                isRestrictedDriver={
-                  !permissions.editCompletedLoads &&
-                  (editingLoad?.status === "delivered" ||
-                    editingLoad?.status === "completed")
-                }
-                potentialBroker={potentialBroker}
-                onOpenHub={(tab, call) => {
-                  setHubInitialTab(tab);
-                  setHubInitialShowCallForm(!!call);
-                  setShowIntelligenceHub(true);
-                }}
-              />
-            </Suspense>
+              <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
+                <EditLoadForm
+                  initialData={editingLoad || {}}
+                  onSave={handleSaveLoad}
+                  onCancel={() => {
+                    setIsAdding(false);
+                    setEditingLoad(null);
+                  }}
+                  currentUser={user}
+                  users={companyUsers}
+                  existingLoads={loads}
+                  canViewRates={permissions.showRates}
+                  canManageLegs={permissions.manageLegs}
+                  showBrokerDetails={permissions.showBrokerDetails}
+                  canCreateBroker={permissions.createBrokers}
+                  isRestrictedDriver={
+                    !permissions.editCompletedLoads &&
+                    (editingLoad?.status === "delivered" ||
+                      editingLoad?.status === "completed")
+                  }
+                  potentialBroker={potentialBroker}
+                  onOpenHub={(tab, call) => {
+                    setHubInitialTab(tab);
+                    setHubInitialShowCallForm(!!call);
+                    setShowIntelligenceHub(true);
+                  }}
+                />
+              </Suspense>
             </ComponentErrorBoundary>
           </div>
         </div>
@@ -728,28 +787,28 @@ export default function App() {
 
       {viewingLoad && (
         <ComponentErrorBoundary>
-        <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
-          <LoadDetailView
-            load={viewingLoad}
-            onClose={() => setViewingLoad(null)}
-            onEdit={(l) => {
-              setViewingLoad(null);
-              setEditingLoad(l);
-              setIsAdding(false);
-            }}
-            users={companyUsers}
-            brokers={brokers}
-            canViewRates={permissions.showRates}
-            onOpenHub={(tab) => {
-              setHubInitialTab(tab);
-              setShowIntelligenceHub(true);
-            }}
-            onNavigate={(tab, context) => {
-              setViewingLoad(null);
-              handleNavigate(tab);
-            }}
-          />
-        </Suspense>
+          <Suspense fallback={<LoadingSkeleton variant="card" count={3} />}>
+            <LoadDetailView
+              load={viewingLoad}
+              onClose={() => setViewingLoad(null)}
+              onEdit={(l) => {
+                setViewingLoad(null);
+                setEditingLoad(l);
+                setIsAdding(false);
+              }}
+              users={companyUsers}
+              brokers={brokers}
+              canViewRates={permissions.showRates}
+              onOpenHub={(tab) => {
+                setHubInitialTab(tab);
+                setShowIntelligenceHub(true);
+              }}
+              onNavigate={(tab, context) => {
+                setViewingLoad(null);
+                handleNavigate(tab);
+              }}
+            />
+          </Suspense>
         </ComponentErrorBoundary>
       )}
     </>
@@ -958,58 +1017,58 @@ export default function App() {
                     />
                   )}
                   <ComponentErrorBoundary>
-                  <Suspense
-                    fallback={<LoadingSkeleton variant="card" count={3} />}
-                  >
-                    <IntelligenceHub
-                      show={true}
-                      user={user}
-                      company={company || undefined}
-                      loads={loads}
-                      incidents={incidents}
-                      users={companyUsers}
-                      brokers={brokers}
-                      session={session}
-                      setSession={setSession}
-                      onClose={() => handleNavigate("loads")}
-                      onRecordAction={handleRecordAction}
-                      initialTab={hubInitialTab}
-                      initialShowCallForm={hubInitialShowCallForm}
-                      initialCallSession={activeCallSession}
-                      initialOverlayState={overlayState}
-                      onNavigate={handleNavigate}
-                      openRecordWorkspace={openRecordWorkspace}
-                      onCloseContext={handleCloseContext}
-                      onLinkSessionToRecord={handleLinkSessionToRecord}
-                    />
-                  </Suspense>
+                    <Suspense
+                      fallback={<LoadingSkeleton variant="card" count={3} />}
+                    >
+                      <IntelligenceHub
+                        show={true}
+                        user={user}
+                        company={company || undefined}
+                        loads={loads}
+                        incidents={incidents}
+                        users={companyUsers}
+                        brokers={brokers}
+                        session={session}
+                        setSession={setSession}
+                        onClose={() => handleNavigate("loads")}
+                        onRecordAction={handleRecordAction}
+                        initialTab={hubInitialTab}
+                        initialShowCallForm={hubInitialShowCallForm}
+                        initialCallSession={activeCallSession}
+                        initialOverlayState={overlayState}
+                        onNavigate={handleNavigate}
+                        openRecordWorkspace={openRecordWorkspace}
+                        onCloseContext={handleCloseContext}
+                        onLinkSessionToRecord={handleLinkSessionToRecord}
+                      />
+                    </Suspense>
                   </ComponentErrorBoundary>
                 </div>
               )}
               {activeTab === "exceptions" && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="list" count={3} />}
-                >
-                  <ExceptionConsole
-                    currentUser={user}
-                    initialView={activeSubTab}
-                    onViewDetail={openRecordWorkspace}
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="list" count={3} />}
+                  >
+                    <ExceptionConsole
+                      currentUser={user}
+                      initialView={activeSubTab}
+                      onViewDetail={openRecordWorkspace}
+                    />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "quotes" && user && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <QuoteManager
-                    user={user}
-                    company={company}
-                    onLoadCreated={() => refreshData(user)}
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <QuoteManager
+                      user={user}
+                      company={company}
+                      onLoadCreated={() => refreshData(user)}
+                    />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "loads" && (
@@ -1030,115 +1089,117 @@ export default function App() {
                   </div>
                   <div className="flex-1 min-h-0">
                     <ComponentErrorBoundary>
-                    <Suspense
-                      fallback={<LoadingSkeleton variant="list" count={5} />}
-                    >
-                      <LoadBoardEnhanced
-                        loads={loads}
-                        onView={(l) => {
-                          setViewingLoad(l);
-                          openRecordWorkspace("LOAD", l.id);
-                        }}
-                        onEdit={(load) => {
-                          setEditingLoad(load);
-                          setIsAdding(false);
-                        }}
-                        onDelete={async (id) => {
-                          await deleteLoad(id);
-                          await refreshData(user);
-                        }}
-                        canViewRates={checkCapability(
-                          user,
-                          "QUOTE_VIEW_MARGIN",
-                          undefined,
-                          company,
-                        )}
-                        onOpenHub={(tab, startCall) => {
-                          setHubInitialTab(tab);
-                          setHubInitialShowCallForm(!!startCall);
-                          setShowIntelligenceHub(true);
-                        }}
-                        users={companyUsers}
-                        brokers={brokers}
-                        onCreateLoad={
-                          permissions.createLoads
-                            ? () => setShowLoadSetup({})
-                            : undefined
-                        }
-                        testId="team2-load-board-shell"
-                      />
-                    </Suspense>
+                      <Suspense
+                        fallback={<LoadingSkeleton variant="list" count={5} />}
+                      >
+                        <LoadBoardEnhanced
+                          loads={loads}
+                          onView={(l) => {
+                            setViewingLoad(l);
+                            openRecordWorkspace("LOAD", l.id);
+                          }}
+                          onEdit={(load) => {
+                            setEditingLoad(load);
+                            setIsAdding(false);
+                          }}
+                          onDelete={async (id) => {
+                            await deleteLoad(id);
+                            await refreshData(user);
+                          }}
+                          canViewRates={checkCapability(
+                            user,
+                            "QUOTE_VIEW_MARGIN",
+                            undefined,
+                            company,
+                          )}
+                          onOpenHub={(tab, startCall) => {
+                            setHubInitialTab(tab);
+                            setHubInitialShowCallForm(!!startCall);
+                            setShowIntelligenceHub(true);
+                          }}
+                          users={companyUsers}
+                          brokers={brokers}
+                          onCreateLoad={
+                            permissions.createLoads
+                              ? () => setShowLoadSetup({})
+                              : undefined
+                          }
+                          testId="team2-load-board-shell"
+                        />
+                      </Suspense>
                     </ComponentErrorBoundary>
                   </div>
                 </div>
               )}
               {activeTab === "calendar" && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <CalendarView
-                    loads={loads}
-                    onEdit={(l) => {
-                      setEditingLoad(l);
-                      setIsAdding(false);
-                    }}
-                    users={companyUsers}
-                    selectedDriverId={selectedDriverId}
-                    onSelectDriver={setSelectedDriverId}
-                    onMoveLoad={(id, date) => {
-                      const l = loads.find((x) => x.id === id);
-                      if (l) handleSaveLoad({ ...l, pickupDate: date });
-                    }}
-                    testId="team2-schedule-shell"
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <CalendarView
+                      loads={loads}
+                      onEdit={(l) => {
+                        setEditingLoad(l);
+                        setIsAdding(false);
+                      }}
+                      users={companyUsers}
+                      selectedDriverId={selectedDriverId}
+                      onSelectDriver={setSelectedDriverId}
+                      onMoveLoad={(id, date) => {
+                        const l = loads.find((x) => x.id === id);
+                        if (l) handleSaveLoad({ ...l, pickupDate: date });
+                      }}
+                      testId="team2-schedule-shell"
+                    />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "network" && user && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <NetworkPortal companyId={user.companyId} />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <NetworkPortal companyId={user.companyId} />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "accounting" && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <AccountingPortal
-                    loads={loads}
-                    users={companyUsers}
-                    currentUser={user!}
-                    onUserUpdate={() => refreshData(user!)}
-                    initialTab={activeSubTab as AccountingPortalTab | undefined}
-                    onNavigate={handleNavigate}
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <AccountingPortal
+                      loads={loads}
+                      users={companyUsers}
+                      currentUser={user!}
+                      onUserUpdate={() => refreshData(user!)}
+                      initialTab={
+                        activeSubTab as AccountingPortalTab | undefined
+                      }
+                      onNavigate={handleNavigate}
+                    />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "company" && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <CompanyProfile
-                    user={user}
-                    onUserRegistryChange={() => refreshData(user)}
-                  />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <CompanyProfile
+                      user={user}
+                      onUserRegistryChange={() => refreshData(user)}
+                    />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
               {activeTab === "telematics-setup" && (
                 <ComponentErrorBoundary>
-                <Suspense
-                  fallback={<LoadingSkeleton variant="card" count={3} />}
-                >
-                  <TelematicsSetup />
-                </Suspense>
+                  <Suspense
+                    fallback={<LoadingSkeleton variant="card" count={3} />}
+                  >
+                    <TelematicsSetup />
+                  </Suspense>
                 </ComponentErrorBoundary>
               )}
             </div>
@@ -1164,23 +1225,23 @@ export default function App() {
         {globalOverlays}
         {user && (
           <ComponentErrorBoundary>
-          <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
-            <CommsOverlay
-              session={session}
-              activeCallSession={activeCallSession}
-              setActiveCallSession={setActiveCallSession}
-              onRecordAction={handleRecordAction}
-              openRecordWorkspace={openRecordWorkspace}
-              onNavigate={(tab) => {
-                handleNavigate("operations-hub");
-              }}
-              overlayState={overlayState}
-              setOverlayState={setOverlayState}
-              user={user}
-              allLoads={loads}
-              onLinkSessionToRecord={handleLinkSessionToRecord}
-            />
-          </Suspense>
+            <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
+              <CommsOverlay
+                session={session}
+                activeCallSession={activeCallSession}
+                setActiveCallSession={setActiveCallSession}
+                onRecordAction={handleRecordAction}
+                openRecordWorkspace={openRecordWorkspace}
+                onNavigate={(tab) => {
+                  handleNavigate("operations-hub");
+                }}
+                overlayState={overlayState}
+                setOverlayState={setOverlayState}
+                user={user}
+                allLoads={loads}
+                onLinkSessionToRecord={handleLinkSessionToRecord}
+              />
+            </Suspense>
           </ComponentErrorBoundary>
         )}
         <SessionExpiredModal

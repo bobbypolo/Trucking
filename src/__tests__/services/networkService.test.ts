@@ -32,7 +32,7 @@ describe("networkService", () => {
 
       const result = await getParties("company-123");
       expect(result).toEqual(parties);
-      expect(api.get).toHaveBeenCalledWith("/parties");
+      expect(api.get).toHaveBeenCalledWith("/parties", { signal: undefined });
     });
 
     it("returns empty array when api returns null", async () => {
