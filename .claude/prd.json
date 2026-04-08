@@ -62,8 +62,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/parties-entity-class.test.ts __tests__/migrations/048_parties_entity_class.test.ts __tests__/routes/clients.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
