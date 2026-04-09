@@ -38,7 +38,7 @@ const DEFAULT_LOG_BASENAME = "sales-demo-cert-latest.log";
 const MAX_LOG_TAIL_LINES = 50;
 const SERVER_PORT = 5000;
 const VITE_PORT = 3101;
-const HEALTH_TIMEOUT_MS = 30000;
+const HEALTH_TIMEOUT_MS = 90000;
 const HEALTH_POLL_MS = 1000;
 
 // Load demo env before any child processes spawn so certification picks up the
@@ -163,10 +163,15 @@ function spawnServer(label, cmd, args, opts) {
     detached: false,
   });
   child.stdout.on("data", (d) => {
-    // Suppress server output in normal mode — it goes to the log
+    process.stdout.write("[" + label + "] " + d.toString());
   });
   child.stderr.on("data", (d) => {
-    // Suppress server stderr noise
+    process.stderr.write("[" + label + ":err] " + d.toString());
+  });
+  child.on("exit", (code) => {
+    if (code !== null && code !== 0) {
+      process.stderr.write("[" + label + "] exited with code " + code + "\n");
+    }
   });
   return child;
 }

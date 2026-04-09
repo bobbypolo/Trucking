@@ -60,9 +60,11 @@ async function main() {
     }
     const content = fs.readFileSync(migFile, "utf-8");
     const rawSql = extractUpSection(content);
-    // Strip full-line comments BEFORE splitting by ";" so that
-    // semicolons inside comments (e.g. "does NOT rewrite; GET...")
-    // don't cause false statement splits.
+    // Strip full-line SQL comments BEFORE splitting by ";" so that:
+    //   1. Semicolons inside comments don't cause false statement splits
+    //      (e.g. "does NOT rewrite; GET /api/..." in 048_parties_entity_class.sql)
+    //   2. Comment headers before CREATE TABLE don't discard the statement
+    //      (e.g. "-- 1. Companies\nCREATE TABLE..." in 001_baseline.sql)
     const sql = rawSql
       .split("\n")
       .filter(line => !line.trim().startsWith("--"))
