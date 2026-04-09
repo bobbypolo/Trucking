@@ -2,7 +2,7 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "e6e6aaa7dea8453527fd4126394245d91e0b3a22191891e5aa85bd88a9307c25",
+  "plan_hash": "6b6bc474eddaa5f5b8d55e0686114da647d514b5f3be7e0966df02227de4017d",
   "stories": [
     {
       "id": "STORY-B1-01",

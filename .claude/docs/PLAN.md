@@ -35,10 +35,10 @@ app and all supporting backend, docs, telemetry, and store-launch work.
    that read a file use `fs.readFileSync` + regex — the word "grep"
    does not appear in any R-marker description.**
 
-5. **Migration-number management**: placeholders `<NEXT>` in plan,
-   actual numbers assigned at dispatch via scanning
-   `server/migrations/`. At plan time, max migration = 052, so
-   `<NEXT>` = 053 for the first new migration.
+5. **Migration-number management**: placeholders resolved for B1:
+   053 = `invoices_aging_bucket` (STORY-B1-01),
+   054 = `feature_flags` (STORY-B1-09).
+   Max existing migration at dispatch = 052.
 
 6. **Feature flags consistent from B1**: `feature_flags` table
    migration + minimal read endpoint ship in B1 (so flags are
@@ -119,10 +119,9 @@ Every sprint that touches `server/`, `shared/contracts/`, or root
 
 **STORY-B1-01 — Migration adds `aging_bucket`**
 - Files (new):
-  - `server/migrations/<NEXT>_invoices_aging_bucket.sql` (NEXT = next
-    integer above max in `server/migrations/`; at plan time = 053)
+  - `server/migrations/053_invoices_aging_bucket.sql`
 - Test file (new):
-  - `server/__tests__/migrations/<NEXT>_invoices_aging_bucket.test.ts`
+  - `server/__tests__/migrations/053_invoices_aging_bucket.test.ts`
 - R-markers:
   - `R-B1-01` test reads SQL file via `fs.readFileSync` and asserts UP
     section contains exactly one
@@ -180,8 +179,9 @@ Every sprint that touches `server/`, `shared/contracts/`, or root
     loads without throwing.
 
 **STORY-B1-05 — Master program document + release checklist + sprint history**
+- Files (extended):
+  - `docs/PLAN-trucker-app-master.md` (ensure required sections exist)
 - Files (new):
-  - `docs/PLAN-trucker-app-master.md`
   - `docs/trucker-app-release-checklist.md`
   - `docs/trucker-app-sprint-history.md`
   - `scripts/verify-program-docs.cjs` (Node.js helper reading the 3
@@ -242,14 +242,14 @@ Every sprint that touches `server/`, `shared/contracts/`, or root
 
 **STORY-B1-09 — `feature_flags` DB table + read endpoint**
 - Files (new):
-  - `server/migrations/<NEXT>_feature_flags.sql` (table columns: id,
+  - `server/migrations/054_feature_flags.sql` (table columns: id,
     tenant_id, flag_name, flag_value BOOLEAN, updated_at, updated_by)
   - `server/routes/feature-flags.ts`
 - Files (extended):
   - `server/index.ts`
     (mount: `app.use('/api/feature-flags', featureFlagsRouter)`)
 - Test files (new):
-  - `server/__tests__/migrations/<NEXT>_feature_flags.test.ts`
+  - `server/__tests__/migrations/054_feature_flags.test.ts`
   - `server/__tests__/routes/feature-flags.test.ts`
 - R-markers:
   - `R-B1-21` migration creates `feature_flags` table with 6 columns;
@@ -355,14 +355,14 @@ priority: DB > env > default false.
 
 ## Migration Number Management
 
-Master plan uses placeholders `<NEXT>`. Assignment procedure at each
-sprint dispatch:
+Master plan uses placeholders `<NEXT>`. For B1, all placeholders are
+resolved: 053 (aging_bucket), 054 (feature_flags).
+
+Assignment procedure for future sprints:
 1. Operator runs `node scripts/next-migration-number.cjs`
-2. Helper script reads `server/migrations/` via `fs.readdirSync`,
-   extracts leading integers, returns max+1
-3. Operator updates sprint PLAN.md replacing `<NEXT>` with the actual
-   number
-4. Ralph reads the updated plan; if it sees `<NEXT>` unresolved, halts
+2. Helper reads `server/migrations/` via `fs.readdirSync`, returns max+1
+3. Operator replaces `<NEXT>` in sprint PLAN.md with actual numbers
+4. Ralph halts if it sees unresolved `<NEXT>` in file paths
 
 ## Sprint Handoff
 
