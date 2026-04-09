@@ -282,6 +282,27 @@ async function runFullPipeline() {
 /*  Append-only mode (legacy)                                          */
 /* ------------------------------------------------------------------ */
 
+function runAppendOnlyLegacy(logFilePath, evidenceFilePath) {
+  const logFile = logFilePath || defaultLogPath();
+  const evidenceFile = evidenceFilePath || defaultEvidencePath();
+
+  if (!fs.existsSync(logFile)) {
+    process.stderr.write(
+      "demo-certify: log file not found: " + logFile + "\n",
+    );
+    process.exit(1);
+  }
+
+  const logText = fs.readFileSync(logFile, "utf8");
+  const tail = tailLines(logText, MAX_LOG_TAIL_LINES);
+  const timestamp = new Date().toISOString();
+
+  appendCertificationBlock(evidenceFile, timestamp, tail);
+  process.stdout.write(
+    "demo-certify: appended block dated " + timestamp + " to " + evidenceFile + "\n",
+  );
+}
+
 function runAppendOnly(logFilePath) {
   const logFile = logFilePath || defaultLogPath();
   const evidenceFile = defaultEvidencePath();
@@ -310,16 +331,25 @@ function runAppendOnly(logFilePath) {
 function main() {
   const args = process.argv.slice(2);
 
-  // Legacy append-only mode
+  // Legacy append-only mode (explicit flag)
   if (args[0] === "--append-only") {
     runAppendOnly(args[1]);
     return;
   }
 
-  // Legacy: if positional arg is a file path (backward compat)
+  // Legacy: positional args (backward compat with old API)
+  // Old usage: node demo-certify.cjs <logFile> [evidenceFile]
   if (args[0] && fs.existsSync(args[0])) {
-    runAppendOnly(args[0]);
+    runAppendOnlyLegacy(args[0], args[1]);
     return;
+  }
+
+  // Legacy: non-existent file arg means missing log (old R-P7-02 behavior)
+  if (args[0] && !args[0].startsWith("-")) {
+    process.stderr.write(
+      "demo-certify: log file not found: " + args[0] + "\n",
+    );
+    process.exit(1);
   }
 
   // Full pipeline

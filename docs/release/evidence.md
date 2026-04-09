@@ -302,3 +302,11 @@ hero3: ok
 > to execute the full pipeline: reset → seed → start servers → Playwright → append.
 > The next valid certification block will be produced by `npm run demo:certify:sales`
 > running the full pipeline.
+
+### 2026-04-09T15:30:37.777Z
+
+```
+playwright-start
+passed: 4
+failed: 0
+```
