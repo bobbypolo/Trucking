@@ -62,8 +62,16 @@ async function main() {
     const sql = extractUpSection(content);
     const stmts = sql
       .split(";")
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith("--"));
+      .map(s => {
+        // Strip leading comment lines so statements like
+        // "-- 1. Companies\nCREATE TABLE..." aren't discarded
+        const lines = s.split("\n");
+        while (lines.length > 0 && lines[0].trim().startsWith("--")) {
+          lines.shift();
+        }
+        return lines.join("\n").trim();
+      })
+      .filter(s => s.length > 0);
 
     let errors = 0;
     for (const stmt of stmts) {
