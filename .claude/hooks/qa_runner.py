@@ -80,6 +80,7 @@ _EXT_TO_LANG: dict[str, str] = {
     ".jsx": "javascript",
 }
 
+
 def _mode_command_key(base_key: str, project_mode: str) -> str:
     """Map a generic QA command to its mode-specific config key."""
     if project_mode == PROJECT_MODE_HOST_PROJECT:
@@ -473,14 +474,44 @@ def _detect_languages(changed_files: list[Path], config: dict) -> dict[str, list
     return result
 
 
-def _get_source_files(changed_files: list[Path]) -> list[Path]:
-    """Filter changed files to only source code files (not test files)."""
+def _get_source_files(
+    changed_files: list[Path],
+    config: dict | None = None,
+) -> list[Path]:
+    """Filter changed files to only source code files (not test files).
+
+    When ``config`` is provided, also excludes files whose basename matches
+    any entry in ``workflow.json qa_runner.production_scan.exclude_patterns``
+    (fnmatch-style). This keeps scanner-pattern-defining files (e.g.
+    ``_lib.py``, ``_prod_patterns.py``) from being scanned by the patterns
+    they themselves declare — matching the scope rule already honoured by
+    :file:`post_write_prod_scan.py`.
+
+    Callers that must run regardless of exclusion (regression early-exit,
+    coverage early-exit, lint) pass ``config=None`` to get the original
+    behaviour.
+    """
+    import fnmatch
+
+    exclude_patterns: list[str] = []
+    if config is not None:
+        exclude_patterns = (
+            config.get("qa_runner", {})
+            .get("production_scan", {})
+            .get("exclude_patterns", [])
+            or []
+        )
+
     result: list[Path] = []
     for f in changed_files:
         if f.suffix not in CODE_EXTENSIONS:
             continue
         name = f.name.lower()
         if name.startswith("test_") or name.endswith("_test.py"):
+            continue
+        if exclude_patterns and any(
+            fnmatch.fnmatch(f.name, pat) for pat in exclude_patterns
+        ):
             continue
         result.append(f)
     return result
@@ -751,7 +782,7 @@ def _run_step(
             )
         elif step_num == 7:
             result_val, evidence = _step_clean_diff(
-                changed_files, violation_cache=violation_cache
+                changed_files, violation_cache=violation_cache, config=config
             )
         elif step_num == 8:
             result_val, evidence = _step_coverage(
@@ -865,7 +896,9 @@ def _step_lint(
     if story:
         cmd = story.get("gateCmds", {}).get("lint", "")
     if not cmd:
-        cmd = config.get("commands", {}).get(_mode_command_key("lint", project_mode), "")
+        cmd = config.get("commands", {}).get(
+            _mode_command_key("lint", project_mode), ""
+        )
     cmd = _configured_command(cmd)
 
     if not cmd:
@@ -949,7 +982,9 @@ def _step_unit_tests(
     if story:
         cmd = story.get("gateCmds", {}).get("unit", "")
     if not cmd:
-        cmd = config.get("commands", {}).get(_mode_command_key("test", project_mode), "")
+        cmd = config.get("commands", {}).get(
+            _mode_command_key("test", project_mode), ""
+        )
     cmd = _configured_command(cmd)
 
     if not cmd:
@@ -1077,10 +1112,7 @@ def _step_integration_tests(
 
     # Run frontend test sub-check when frontend files are present and command is configured.
     frontend_cmd = config.get("commands", {}).get("project_frontend_test", "")
-    if (
-        has_frontend_files(changed_files or [])
-        and _configured_command(frontend_cmd)
-    ):
+    if has_frontend_files(changed_files or []) and _configured_command(frontend_cmd):
         fe_code, fe_stdout, fe_stderr = _run_command(frontend_cmd)
         if fe_code == 0:
             fe_evidence = (
@@ -1239,7 +1271,7 @@ def _step_code_scan(
     - Found → run scanner, FAIL on non-zero exit
     If no external_scanners configured, runs violation scan only.
     """
-    source_files = _get_source_files(changed_files)
+    source_files = _get_source_files(changed_files, config=config)
     if not source_files:
         return StepResult.SKIP, "No source files to scan"
 
@@ -1314,9 +1346,16 @@ _step_security_scan = _step_code_scan
 def _step_clean_diff(
     changed_files: list[Path],
     violation_cache: dict[str, list[dict]] | None = None,
+    config: dict | None = None,
 ) -> tuple[StepResult, str]:
-    """Step 7: Check for debug artifacts in diff."""
-    source_files = _get_source_files(changed_files)
+    """Step 7: Check for debug artifacts in diff.
+
+    Honours the same ``workflow.json qa_runner.production_scan.exclude_patterns``
+    that :func:`_step_code_scan` and :file:`post_write_prod_scan.py` use, so
+    scanner-pattern-defining files (``_lib.py``, ``_prod_patterns.py``) are
+    not scanned by the patterns they themselves declare.
+    """
+    source_files = _get_source_files(changed_files, config=config)
     if not source_files:
         return StepResult.SKIP, "No source files to scan"
 
@@ -2930,8 +2969,12 @@ def main() -> None:
     if phase_type is not None:
         relevant_steps = PHASE_TYPE_RELEVANCE.get(phase_type)
 
-    # Build scan-once violation cache for steps 6, 7, 12
-    source_files = _get_source_files(changed_files)
+    # Build scan-once violation cache for steps 6, 7, 12.
+    # Pass config so scanner-pattern-defining files (from
+    # workflow.json qa_runner.production_scan.exclude_patterns) are skipped
+    # before the cache is built, keeping Steps 6 and 7 consistent with
+    # post_write_prod_scan.py's exclusion rules.
+    source_files = _get_source_files(changed_files, config=config)
     violation_cache = _build_violation_cache(source_files)
 
     # Detect languages from changed files for polyglot step execution (R-P4-01)

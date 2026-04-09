@@ -15,12 +15,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 try:
-    from _lib import PROJECT_ROOT, read_workflow_state
+    from _lib import (
+        PROJECT_ROOT,
+        concurrent_root_guard_decision,
+        read_workflow_state,
+    )
 except Exception:
     PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
     def read_workflow_state():  # type: ignore[misc]
         return {}
+
+    def concurrent_root_guard_decision(*_a, **_kw):  # type: ignore[misc]
+        return {"blocked": False, "root_kind": "canonical_root", "active_siblings": []}
 
 
 def _generate_file_manifest() -> None:
@@ -119,6 +126,36 @@ def main() -> None:
     if marker:
         print(f"WARNING: Unverified code changes exist. {marker}")
         print("Run tests or /verify to clear the marker.")
+
+    # Advisory canonical-root concurrency guard (Phase 2 of Interactive Root
+    # Guard plan). Only fires when cwd is the canonical root AND a sibling
+    # linked human worktree has active work. Idle sibling worktrees do not
+    # warn. Helper failures degrade to no-op — this is advisory state.
+    try:
+        decision = concurrent_root_guard_decision()
+        if decision.get("blocked") and decision.get("root_kind") == "canonical_root":
+            active = decision.get("active_siblings", [])
+            print(
+                "CONCURRENCY WARNING: another linked worktree is active. "
+                f"{len(active)} sibling worktree(s) have in-flight Ralph or unverified work."
+            )
+            for entry in active:
+                path = entry.get("path", "?")
+                story = entry.get("current_story_id", "")
+                nv = entry.get("needs_verify", False)
+                detail_parts = []
+                if story:
+                    detail_parts.append(f"story={story}")
+                if nv:
+                    detail_parts.append("needs_verify=True")
+                detail = ", ".join(detail_parts) if detail_parts else "active"
+                print(f"  - {path} ({detail})")
+            print(
+                "Coordinate before running /ralph or edits from this canonical root; "
+                "state is read-only advisory."
+            )
+    except Exception:  # noqa: BLE001 — session-start must never crash
+        pass
 
     # Emit state summary (R-P2-09)
     ralph_attempt = ralph.get("current_attempt", 0)

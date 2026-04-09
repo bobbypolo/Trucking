@@ -41,6 +41,7 @@ layer table.
 | `ralph.prior_failure_summary` | Ralph orchestrator (STEP 5) | Written after a FAIL result; cleared after a PASS. |
 | `ralph.current_step` | Ralph orchestrator | Tracks orchestrator position (e.g., "STEP 4") for compaction recovery. |
 | `ralph.checkpoint_hash` | Ralph orchestrator (STEP 4 pre-dispatch) | Full git hash written before story dispatch; used for `git reset --hard` on merge conflict. |
+| `ralph.current_story_updated_at` | `update_workflow_state()` (auto-managed) | ISO-8601 UTC timestamp; refreshed automatically on **every** ralph-section write while `current_story_id` is non-empty (story start, progress writes for `current_step` / `checkpoint_hash` / `cumulative_drift_warnings`). Forced to `""` when `current_story_id` is empty or cleared by `_sanitize_workflow_state()`. Read-only advisory consumer: the canonical-root concurrency guard's story-activity TTL filter (Phase 2 of parallel-ralph support). The timestamp tracks story **liveness across all ralph writes**, not just story-start writes — this is the load-bearing semantic. Caller-supplied timestamps in the same payload always win, allowing tests to inject deterministic values. |
 
 ---
 
@@ -54,12 +55,6 @@ in isolation. The `is_worktree_path()` guard in `_lib.py` prevents any hook from
 to `.workflow-state.json` when running inside a `.claude/worktrees/` path. Worktree workers
 are read-only consumers of workflow state, identical to branch-inline workers.
 
-**Constraint - branch-inline workers are not async-safe**: A branch-inline worker shares the
-feature branch working tree and `.workflow-state.json` with Ralph. Running a branch-inline
-worker in parallel or leaving it running async can legitimately trip `needs_verify` and the
-Stop hook in the parent session. For concurrent execution, Ralph MUST dispatch with
-`isolation: "worktree"`. Branch-inline dispatch is synchronous-only.
-
 **Merge-back is single-writer**: After all parallel workers return RALPH_WORKER_RESULT,
 the Ralph outer loop (single writer) merges worktree branches in story-ID order. This
 preserves the single-writer invariant for the feature branch during the merge phase.
@@ -67,6 +62,25 @@ preserves the single-writer invariant for the feature branch during the merge ph
 **State isolation during parallel execution**: Each worktree worker gets its own git index
 and working tree. Changes in one worktree do not affect another. The only shared resource
 is the `verification-log.jsonl` file, which uses `_locked_append()` for safe concurrent appends.
+
+---
+
+## Sibling Worktree Discovery (Read-Only Advisory)
+
+The helpers `root_kind()`, `iter_linked_human_worktrees()`, and
+`read_worktree_state_summary()` in `_lib.py` classify the current working directory
+and read other linked worktrees' `.claude/.workflow-state.json` files to compute
+advisory concurrency signals for session-start messaging, `/health` checks, and the
+`/ralph` canonical-root guard. **Sibling linked worktree discovery is read-only
+advisory state, not a new mutable authority source.** Specifically:
+
+- No hook, skill, or helper writes to another worktree's `.workflow-state.json`.
+- Discovery is fail-open: missing, unreadable, empty, or malformed sibling state
+  files are skipped silently. Discovery failures never raise, never block, and
+  never emit warnings beyond the calling surface's own advisory output.
+- The single-writer invariants below remain unchanged — each worktree is still the
+  sole writer of its own `.workflow-state.json`, and `is_worktree_path()` remains
+  the canonical detector for Ralph worker worktrees under `.claude/worktrees/agent-*`.
 
 ---
 

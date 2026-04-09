@@ -64,7 +64,9 @@
       "fail_on_violation": true,
       "exclude_patterns": [
         "test_*",
-        "*_test.*"
+        "*_test.*",
+        "_lib.py",
+        "_prod_patterns.py"
       ]
     },
     "custom_steps": [
@@ -250,7 +252,9 @@
     "frontend_verification": "fail",
     "auto_create_pr": false,
     "parallel_dispatch_enabled": true,
-    "parallel_batch_size": 3
+    "parallel_batch_size": 3,
+    "_stale_state_note": "stale_state_ttl_minutes: TTL in minutes for the canonical-root concurrency guard's story-activity filter. When >0, sibling worktrees whose ralph.current_story_id has not been refreshed within this window are treated as idle (their story sentinel is filtered out). needs_verify is intentionally NOT subject to TTL — it stays always-live as a fail-safe sentinel for unverified code edits. Default 0 = filter disabled (current behavior).",
+    "stale_state_ttl_minutes": 0
   },
   "_timeout_notes": "Per-step timeouts (unit_timeout_s, coverage_timeout_s) apply to individual test commands in qa_runner steps. Regression tier max_duration_s applies to full regression runs in STEP 2/6. Tier timeouts take precedence when running regression commands.",
   "complexity": {

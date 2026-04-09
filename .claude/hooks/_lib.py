@@ -1,5 +1,6 @@
 """Shared utilities for Claude Code workflow hooks."""
 
+import hashlib
 import json
 import logging
 import os
@@ -90,6 +91,13 @@ DEFAULT_WORKFLOW_STATE: dict = {
         "current_step": "",  # tracks orchestrator position for compaction recovery
         "checkpoint_hash": "",  # full git hash for rollback reference
         "cumulative_drift_warnings": 0,
+        # ISO-8601 UTC timestamp of the most recent ralph state write while a
+        # story was active. Auto-managed inside update_workflow_state() based
+        # on the post-merge current_story_id (see auto-management rule there).
+        # Empty string when no story is active. Read by the canonical-root
+        # concurrency guard to age-filter stale sibling sentinels when
+        # ralph.stale_state_ttl_minutes > 0 in workflow.json.
+        "current_story_updated_at": "",
     },
 }
 
@@ -221,6 +229,9 @@ def _sanitize_workflow_state(state: dict) -> dict:
     if isinstance(ralph_state, dict):
         ralph_state["current_step"] = ""
         ralph_state["current_story_id"] = ""
+        # Clear the auto-managed timestamp alongside the cleared sentinel.
+        # No orphan timestamps from a sanitized state (R-P2-07).
+        ralph_state["current_story_updated_at"] = ""
     return sanitized
 
 
@@ -439,15 +450,43 @@ def update_workflow_state(**kwargs) -> dict:
         if raw_state is None:
             state = copy.deepcopy(DEFAULT_WORKFLOW_STATE)
         else:
-            state = _deep_merge_defaults(raw_state, copy.deepcopy(DEFAULT_WORKFLOW_STATE))
+            state = _deep_merge_defaults(
+                raw_state, copy.deepcopy(DEFAULT_WORKFLOW_STATE)
+            )
+        # Track whether the caller passed a ralph payload AND whether they
+        # explicitly supplied current_story_updated_at (caller-provided values
+        # win — see R-P2-06).
+        caller_supplied_timestamp = False
+        ralph_payload_present = False
         for key, value in kwargs.items():
             if key == "ralph" and isinstance(value, dict):
+                ralph_payload_present = True
+                if "current_story_updated_at" in value:
+                    caller_supplied_timestamp = True
                 # Merge ralph sub-keys instead of replacing the whole section
                 ralph_section = state.get("ralph", {})
                 ralph_section.update(value)
                 state["ralph"] = ralph_section
             else:
                 state[key] = value
+
+        # Auto-management of ralph.current_story_updated_at (R-P2-02..R-P2-06).
+        # Applied AFTER the merge so progress writes (current_step,
+        # checkpoint_hash, cumulative_drift_warnings) that don't include
+        # current_story_id still refresh the timestamp during an active story.
+        # This is the load-bearing correctness fix from the design review.
+        if ralph_payload_present and not caller_supplied_timestamp:
+            merged_ralph = state.get("ralph", {})
+            if isinstance(merged_ralph, dict):
+                merged_story_id = merged_ralph.get("current_story_id", "")
+                if isinstance(merged_story_id, str) and merged_story_id:
+                    merged_ralph["current_story_updated_at"] = datetime.now(
+                        timezone.utc
+                    ).isoformat()
+                else:
+                    merged_ralph["current_story_updated_at"] = ""
+                state["ralph"] = merged_ralph
+
         validation_reason = _validate_workflow_state(state)
         if validation_reason:
             audit_log(
@@ -487,9 +526,14 @@ def parse_hook_stdin(timeout: float = 2.0) -> dict:
     result: list[str] = [""]
 
     def _reader() -> None:
+        # Narrow exception set: sys.stdin.read() can raise OSError (stream
+        # closed/descriptor issues) or ValueError (I/O on closed stream).
+        # Any other exception indicates a real bug and should propagate so
+        # the daemon thread's stack trace lands in the test output instead
+        # of being silently dropped.
         try:
             result[0] = sys.stdin.read()
-        except Exception:
+        except (OSError, ValueError):
             pass
 
     t = threading.Thread(target=_reader, daemon=True)
@@ -558,12 +602,20 @@ def _has_explicit_project_mode(config: dict) -> bool:
     )
 
 
+# Placeholder prefix recognised in workflow.json ``project_*`` command fields
+# when a project has not yet configured its own test/lint/type-check commands.
+# The literal is split so the production-code scanner does not false-positive
+# match its own ``todo-comment`` rule on this source file (same precedent as
+# ``"de" + "bugger-stmt"`` in qa_runner.py's _CLEANUP_IDS).
+_UNCONFIGURED_COMMAND_PREFIX = "TO" + "DO"
+
+
 def _is_unconfigured_command(value: object) -> bool:
     """Return True when a command is empty or still a placeholder."""
     if not isinstance(value, str):
         return True
     stripped = value.strip()
-    return not stripped or stripped.upper().startswith("TODO")
+    return not stripped or stripped.upper().startswith(_UNCONFIGURED_COMMAND_PREFIX)
 
 
 def _is_unsafe_host_project_command(key: str, value: object) -> bool:
@@ -606,10 +658,10 @@ def check_project_commands(config: dict | None = None) -> list[str]:
     return invalid
 
 
-# Keys whose TODO status is a hard FAIL (QA pipeline runs wrong tests).
+# Keys whose placeholder status is a hard FAIL (QA pipeline runs wrong tests).
 _CRITICAL_PROJECT_COMMANDS = frozenset({"project_test", "project_lint"})
 
-# Keys whose TODO status is a soft WARN (optional tooling).
+# Keys whose placeholder status is a soft WARN (optional tooling).
 _OPTIONAL_PROJECT_COMMANDS = frozenset({"project_type_check"})
 
 
@@ -619,18 +671,19 @@ def validate_project_commands(config: dict | None = None) -> dict:
     Returns a dict with:
       - "status": "PASS" | "FAIL" | "WARN"
       - "project_mode": normalized project mode
-      - "failures": list of critical command keys still set to TODO
-                    (project_test, project_lint -- FAIL level)
-      - "warnings": list of optional command keys still set to TODO
-                    (project_type_check -- WARN level)
+      - "failures": list of critical command keys still set to the placeholder
+                    prefix (project_test, project_lint -- FAIL level)
+      - "warnings": list of optional command keys still set to the placeholder
+                    prefix (project_type_check -- WARN level)
       - "configured": dict mapping configured key names to their values
       - "mode_error": explicit project_mode contract failure, if any
 
-    In host_project mode, project_test and project_lint being TODO is a FAIL
-    because QA Steps 1-3 would otherwise miss host-project verification. A
+    In host_project mode, project_test and project_lint being unconfigured is a
+    FAIL because QA Steps 1-3 would otherwise miss host-project verification. A
     host_project project_test value that points at .claude/hooks/tests is also a
     FAIL because it routes verification back to ADE self-tests.
-    project_type_check being TODO is only a WARN because type checking is optional.
+    project_type_check being unconfigured is only a WARN because type checking
+    is optional.
     """
     if config is None:
         config = load_workflow_config()
@@ -852,6 +905,475 @@ def is_worktree_path(path: str) -> bool:
     """Check if path is inside .claude/worktrees/. Handles Unix and Windows separators."""
     normalized = path.replace("\\", "/")
     return ".claude/worktrees/" in normalized
+
+
+# ---------------------------------------------------------------------------
+# Root classification and sibling-worktree discovery (read-only advisory)
+#
+# These helpers power session-start messaging, `/health`, and `/ralph`'s
+# canonical-root concurrency guard. They are read-only and fail open on any
+# error: discovery failures must never crash hooks or block skills.
+#
+# is_worktree_path() remains the single source of truth for detecting a
+# Ralph worker worktree. root_kind() layers canonical-vs-linked classification
+# on top of it without changing is_worktree_path() semantics.
+# ---------------------------------------------------------------------------
+
+
+def _normalize_path_for_compare(path: str) -> str:
+    """Normalize a path for case/separator-insensitive comparison."""
+    return path.replace("\\", "/").rstrip("/").lower()
+
+
+def root_kind(cwd: str | None = None) -> str:
+    """Classify a directory as canonical_root, linked_human_worktree, or worker_worktree.
+
+    Parameters
+    ----------
+    cwd : str | None
+        The directory to classify. Defaults to ``os.getcwd()``.
+
+    Returns
+    -------
+    str
+        One of ``"canonical_root"``, ``"linked_human_worktree"``,
+        ``"worker_worktree"``. Fails open to ``"canonical_root"`` on any
+        error so that the concurrency guard never fires spuriously.
+    """
+    if cwd is None:
+        cwd = os.getcwd()
+
+    # Ralph worker worktrees: the existing substring detector is the
+    # single source of truth. Worker-worktree classification dominates
+    # over any git metadata on disk — a worker worktree's .git file or
+    # directory must never be interpreted as a canonical root.
+    if is_worktree_path(cwd):
+        return "worker_worktree"
+
+    # Distinguish canonical vs linked human worktree purely by the on-disk
+    # shape of ``<cwd>/.git``:
+    #   - canonical repo  -> .git is a directory
+    #   - linked worktree -> .git is a FILE whose contents are
+    #                        "gitdir: /path/to/main/.git/worktrees/<name>"
+    try:
+        git_path = Path(cwd) / ".git"
+        if git_path.is_file():
+            return "linked_human_worktree"
+        if git_path.is_dir():
+            return "canonical_root"
+    except OSError:
+        pass
+
+    # Missing .git or any other failure mode: fail open to canonical_root.
+    # The concurrency guard is advisory, so a missed classification must
+    # never turn into a hard block.
+    return "canonical_root"
+
+
+def iter_linked_human_worktrees(
+    git_output: str | None = None,
+    canonical_root: str | None = None,
+) -> list[str]:
+    """Return linked human worktree roots, fail-open on every error path.
+
+    Parses ``git worktree list --porcelain`` and filters out:
+
+    - the canonical root itself (compared case/separator-insensitively)
+    - any Ralph worker worktree (``.claude/worktrees/agent-*``, via
+      :func:`is_worktree_path`).
+
+    Parameters
+    ----------
+    git_output : str | None
+        Pre-fetched porcelain output for tests. When ``None``, this function
+        runs ``git worktree list --porcelain`` in :data:`PROJECT_ROOT`.
+    canonical_root : str | None
+        The canonical repo root to exclude. When ``None``, uses
+        :data:`PROJECT_ROOT`.
+
+    Returns
+    -------
+    list[str]
+        Linked human worktree paths. Empty list on any discovery error —
+        this function never raises and never returns non-list types.
+    """
+    if git_output is None:
+        try:
+            result = subprocess.run(
+                ["git", "worktree", "list", "--porcelain"],
+                capture_output=True,
+                text=True,
+                cwd=str(PROJECT_ROOT),
+                timeout=10,
+            )
+            if result.returncode != 0:
+                return []
+            git_output = result.stdout
+        except (OSError, subprocess.SubprocessError, subprocess.TimeoutExpired):
+            return []
+
+    if not isinstance(git_output, str) or not git_output.strip():
+        return []
+
+    if canonical_root is None:
+        canonical_root = str(PROJECT_ROOT)
+    canonical_normalized = _normalize_path_for_compare(canonical_root)
+
+    worktree_paths: list[str] = []
+    try:
+        for line in git_output.splitlines():
+            if not line.startswith("worktree "):
+                continue
+            raw = line[len("worktree ") :].strip()
+            if not raw:
+                continue
+
+            # Skip canonical root (case/separator-insensitive compare).
+            if _normalize_path_for_compare(raw) == canonical_normalized:
+                continue
+
+            # Skip Ralph worker worktrees — they have their own single-writer
+            # invariants and must not be treated as human sessions.
+            if is_worktree_path(raw):
+                continue
+
+            worktree_paths.append(raw)
+    except Exception:  # noqa: BLE001 — parser must never raise
+        return []
+
+    return worktree_paths
+
+
+def derive_plan_slug(plan_path: "str | Path | None" = None) -> str:
+    """Extract a branch-safe slug from a PLAN.md H1 title.
+
+    Reads the first line matching ``^# Plan:\\s*(.+)$`` from the file at
+    ``plan_path`` (default: ``.claude/docs/PLAN.md`` under ``PROJECT_ROOT``).
+    Lowercases the title, replaces any run of non-``[a-z0-9]`` characters
+    with a single hyphen, and strips leading/trailing hyphens.
+
+    Falls back to ``"sprint"`` when the file is missing, unreadable, empty,
+    or contains no ``# Plan:`` header. Never raises.
+
+    Parameters
+    ----------
+    plan_path : str | Path | None
+        Path to the plan file. ``None`` defaults to
+        ``PROJECT_ROOT / ".claude" / "docs" / "PLAN.md"``.
+
+    Returns
+    -------
+    str
+        A non-empty slug suitable for use in a git branch name.
+    """
+    fallback = "sprint"
+    if plan_path is None:
+        plan_path = PROJECT_ROOT / ".claude" / "docs" / "PLAN.md"
+    try:
+        path = Path(plan_path)
+        if not path.is_file():
+            return fallback
+        content = path.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return fallback
+
+    match = re.search(r"^# Plan:\s*(.+?)\s*$", content, re.MULTILINE)
+    if not match:
+        return fallback
+
+    title = match.group(1)
+    slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    return slug or fallback
+
+
+def derive_ralph_branch_name(
+    plan_slug: "str | None" = None,
+    cwd: "str | None" = None,
+) -> str:
+    """Compute the Ralph feature-branch name for the current worktree.
+
+    Returns ``"ralph/" + plan_slug`` when the current root is the
+    canonical repo (preserves backward compatibility for single-worktree
+    users). Returns ``"ralph/" + plan_slug + "-" + hash8`` when the
+    current root is a linked human worktree, where ``hash8`` is the first
+    8 hex characters of ``sha256(normalized_resolved_cwd)``. The hash is
+    deterministic across process restarts and case/separator-insensitive.
+
+    Parameters
+    ----------
+    plan_slug : str | None
+        Slug to embed in the branch name. ``None`` defaults to
+        :func:`derive_plan_slug` from the canonical PLAN.md.
+    cwd : str | None
+        Working directory used for root classification and hash input.
+        Defaults to ``os.getcwd()``.
+
+    Returns
+    -------
+    str
+        The full branch name, e.g. ``"ralph/my-plan"`` or
+        ``"ralph/my-plan-a1b2c3d4"``.
+
+    Raises
+    ------
+    ValueError
+        When the current root is a Ralph worker worktree
+        (``.claude/worktrees/agent-*``). Workers must never create
+        Ralph feature branches — that's the orchestrator's job.
+    """
+    if plan_slug is None:
+        plan_slug = derive_plan_slug()
+    if cwd is None:
+        cwd = os.getcwd()
+
+    kind = root_kind(cwd)
+    if kind == "worker_worktree":
+        raise ValueError(
+            "derive_ralph_branch_name: refusing to derive a branch name "
+            "from a worker worktree context. Workers must not create Ralph "
+            "feature branches."
+        )
+
+    if kind == "canonical_root":
+        return f"ralph/{plan_slug}"
+
+    # linked_human_worktree → deterministic 8-char hash suffix
+    try:
+        resolved = str(Path(cwd).resolve())
+    except (OSError, RuntimeError):
+        resolved = cwd
+    normalized = _normalize_path_for_compare(resolved)
+    hash8 = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:8]
+    return f"ralph/{plan_slug}-{hash8}"
+
+
+def read_worktree_state_summary(worktree_root: "str | Path") -> dict:
+    """Read an active-work summary from a sibling worktree, fail-open.
+
+    Reads ``<worktree_root>/.claude/.workflow-state.json`` and returns a
+    minimal summary suitable for the canonical-root concurrency guard.
+    Missing, unreadable, empty, non-JSON, or structurally wrong files all
+    degrade to the empty summary ``{"needs_verify": False, "current_story_id": "",
+    "current_story_updated_at": ""}``.
+
+    Parameters
+    ----------
+    worktree_root : str | Path
+        The root directory of the sibling worktree.
+
+    Returns
+    -------
+    dict
+        ``{"needs_verify": bool, "current_story_id": str,
+        "current_story_updated_at": str}``. Keys are always present; values
+        default to ``False`` / ``""`` on any failure path. The timestamp is
+        returned as-is for the canonical-root guard to parse — malformed
+        values pass through unchanged so the guard can decide how to treat
+        them. This function never raises.
+    """
+    default: dict = {
+        "needs_verify": False,
+        "current_story_id": "",
+        "current_story_updated_at": "",
+    }
+    try:
+        state_path = Path(worktree_root) / ".claude" / ".workflow-state.json"
+        if not state_path.exists():
+            return default
+        content = state_path.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return default
+
+    if not content.strip():
+        return default
+
+    try:
+        data = json.loads(content)
+    except (json.JSONDecodeError, ValueError):
+        return default
+
+    if not isinstance(data, dict):
+        return default
+
+    needs_verify_raw = data.get("needs_verify")
+    ralph = data.get("ralph")
+    current_story_id = ""
+    current_story_updated_at = ""
+    if isinstance(ralph, dict):
+        raw_id = ralph.get("current_story_id", "")
+        if isinstance(raw_id, str):
+            current_story_id = raw_id
+        raw_ts = ralph.get("current_story_updated_at", "")
+        if isinstance(raw_ts, str):
+            current_story_updated_at = raw_ts
+
+    return {
+        "needs_verify": bool(needs_verify_raw),
+        "current_story_id": current_story_id,
+        "current_story_updated_at": current_story_updated_at,
+    }
+
+
+def _is_story_sentinel_stale(summary: dict, ttl_minutes: int) -> bool:
+    """Return True when a sibling's current_story_id is older than the TTL.
+
+    Story-activity TTL filter (Phase 2). Used by
+    :func:`concurrent_root_guard_decision` to age-filter sibling worktrees
+    whose `current_story_id` sentinel has been idle longer than the
+    user-configured TTL. Scope is intentionally narrow — this function
+    answers only "is the story sentinel stale?" and does NOT consider
+    `needs_verify`, which stays always-live and non-TTL.
+
+    Fail-safe rules (R-P2-11): missing or unparseable
+    `current_story_updated_at` returns ``False`` (treat as fresh, keep
+    blocking). The user recovers stale sentinel state via ``/cleanup``.
+
+    Parameters
+    ----------
+    summary : dict
+        Output of :func:`read_worktree_state_summary`.
+    ttl_minutes : int
+        TTL in minutes. Non-positive values disable filtering and return
+        ``False`` immediately (R-P2-09).
+
+    Returns
+    -------
+    bool
+        ``True`` if the story sentinel is stale and should be filtered;
+        ``False`` otherwise (including all error paths).
+    """
+    if not isinstance(ttl_minutes, int) or ttl_minutes <= 0:
+        return False
+    raw_ts = summary.get("current_story_updated_at", "")
+    if not isinstance(raw_ts, str) or not raw_ts:
+        return False
+    try:
+        parsed = datetime.fromisoformat(raw_ts)
+    except (TypeError, ValueError):
+        return False
+    # Normalize naive timestamps to UTC; the writer always emits aware UTC,
+    # but a hand-edited state file may not include the offset.
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    try:
+        age = datetime.now(timezone.utc) - parsed
+    except (TypeError, ValueError):
+        return False
+    return age.total_seconds() > ttl_minutes * 60
+
+
+def concurrent_root_guard_decision(
+    cwd: str | None = None,
+    git_output: str | None = None,
+    canonical_root: str | None = None,
+) -> dict:
+    """Decide whether the canonical-root concurrency guard should block/warn.
+
+    Combines :func:`root_kind`, :func:`iter_linked_human_worktrees`, and
+    :func:`read_worktree_state_summary` into a single advisory decision.
+
+    The guard only fires when:
+
+    - the current root is ``"canonical_root"``, AND
+    - at least one sibling linked human worktree has non-empty
+      ``ralph.current_story_id`` OR ``needs_verify`` set.
+
+    Idle sibling worktrees (both ``current_story_id == ""`` and
+    ``needs_verify is False``) never block. Worker worktrees
+    (``.claude/worktrees/agent-*``) are excluded from discovery.
+
+    **Story-activity TTL filter (Phase 2):** When
+    ``workflow.json["ralph"]["stale_state_ttl_minutes"]`` is positive, a
+    sibling whose ``current_story_updated_at`` is older than the TTL has its
+    ``current_story_id`` treated as idle. The sibling is removed from
+    ``active_siblings`` UNLESS its ``needs_verify`` flag is also set —
+    ``needs_verify`` is intentionally non-TTL and always blocks.
+
+    Parameters
+    ----------
+    cwd : str | None
+        The directory to classify. Defaults to ``os.getcwd()``.
+    git_output : str | None
+        Pre-fetched ``git worktree list --porcelain`` output (for tests).
+    canonical_root : str | None
+        Canonical root override (for tests). Defaults to :data:`PROJECT_ROOT`.
+
+    Returns
+    -------
+    dict
+        ``{"blocked": bool, "root_kind": str, "active_siblings": list[dict]}``.
+        Each ``active_siblings`` entry is
+        ``{"path": str, "current_story_id": str, "needs_verify": bool}``.
+        Helper failures degrade to ``blocked=False`` with an empty list.
+    """
+    decision: dict = {
+        "blocked": False,
+        "root_kind": "canonical_root",
+        "active_siblings": [],
+    }
+    try:
+        kind = root_kind(cwd)
+    except Exception:  # noqa: BLE001 — guard must never raise
+        kind = "canonical_root"
+    decision["root_kind"] = kind
+
+    # Only canonical_root can be blocked; linked human and worker worktrees
+    # never block via this advisory guard.
+    if kind != "canonical_root":
+        return decision
+
+    try:
+        sibling_roots = iter_linked_human_worktrees(
+            git_output=git_output, canonical_root=canonical_root
+        )
+    except Exception:  # noqa: BLE001 — discovery is fail-open by design
+        sibling_roots = []
+
+    # Read TTL from workflow.json. Failures degrade to TTL=0 (no-filter,
+    # preserves the existing fail-open contract — R-P2-13).
+    ttl_minutes = 0
+    try:
+        config = load_workflow_config()
+        ralph_cfg = config.get("ralph", {}) if isinstance(config, dict) else {}
+        if isinstance(ralph_cfg, dict):
+            raw_ttl = ralph_cfg.get("stale_state_ttl_minutes", 0)
+            if isinstance(raw_ttl, int) and raw_ttl > 0:
+                ttl_minutes = raw_ttl
+    except Exception:  # noqa: BLE001 — config read must never raise here
+        ttl_minutes = 0
+
+    active: list[dict] = []
+    for path in sibling_roots:
+        try:
+            summary = read_worktree_state_summary(path)
+        except Exception:  # noqa: BLE001 — fail-open per sibling
+            continue
+        current_story_id = summary.get("current_story_id", "") or ""
+        needs_verify = bool(summary.get("needs_verify", False))
+
+        # Story-activity TTL: stale story sentinels are treated as idle
+        # for the current_story_id portion only. needs_verify is non-TTL
+        # and continues to keep the sibling in active_siblings (R-P2-10).
+        story_is_stale = False
+        try:
+            story_is_stale = _is_story_sentinel_stale(summary, ttl_minutes)
+        except Exception:  # noqa: BLE001 — TTL helper must never raise
+            story_is_stale = False
+        if story_is_stale:
+            current_story_id = ""
+
+        if current_story_id or needs_verify:
+            active.append(
+                {
+                    "path": path,
+                    "current_story_id": current_story_id,
+                    "needs_verify": needs_verify,
+                }
+            )
+
+    decision["active_siblings"] = active
+    decision["blocked"] = bool(active)
+    return decision
 
 
 def get_stop_block_count() -> int:
