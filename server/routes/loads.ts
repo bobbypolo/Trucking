@@ -721,6 +721,7 @@ router.post(
   requireTenant,
   async (req: any, res) => {
     const loadId = req.params.id;
+    const companyId = req.user!.tenantId;
     const {
       load_leg_id,
       load_number,
@@ -761,6 +762,7 @@ router.post(
         discrepancyResult = await compareWeights(
           pool,
           loadId,
+          companyId,
           quoted_weight ?? 0,
           scanned_weight,
           scanned_commodity ?? "",
