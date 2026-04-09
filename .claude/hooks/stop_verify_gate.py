@@ -1,8 +1,21 @@
 #!/usr/bin/env python3
-"""Stop hook: blocks completion if code changes are unverified.
+"""Stop hook: session-end verification enforcement.
 
-Escape hatch: set ADE_ALLOW_UNVERIFIED_STOP=1 environment variable to bypass.
-No hidden counter-based escape hatch — the env var is the only override.
+This hook runs when the main Claude session reaches a Stop event — i.e.
+when Claude is finishing a turn. Its job is session-end verification: it
+checks whether code changes were made this session that still need to be
+proven working (``needs_verify`` set in ``.workflow-state.json``) and
+blocks the stop until tests pass or ``/verify`` clears the marker.
+
+This is a finish-the-session checkpoint, not a mid-work suspension hook.
+The hook only fires on Stop, and the right way to clear it is to run
+your tests (or ``/verify``) before wrapping up the session. Think of it
+as a final checkpoint that catches unverified edits when you are trying
+to finish the session, not as something to suppress while working.
+
+Escape hatch: set ``ADE_ALLOW_UNVERIFIED_STOP=1`` environment variable to
+bypass. No hidden counter-based escape hatch — the env var is the only
+override.
 
 Stdin parsing always fails open — NEVER locks user in on parse errors.
 """

@@ -283,6 +283,30 @@ Final sign-off timestamp: 2026-03-19T08:24:28Z
 
 This section is the append target for `npm run demo:certify:sales` (Phase 7 of the
 Bulletproof Sales Demo sprint — see `scripts/demo-certify.cjs`). Each run of the
-Windows-safe certification pipeline appends a `### <ISO timestamp>` block
-containing the last 50 lines of the Playwright run log. Backed by R-P7-01 and
-R-P7-07.
+full certification pipeline (reset → seed → start servers → Playwright → evidence)
+appends a `### <ISO timestamp> [PASS|FAIL]` block containing the last 50 lines
+of the Playwright run log. Backed by R-P7-01 and R-P7-07.
+
+### 2026-04-09T15:13:01.789Z (INVALIDATED — append-only mode, not full pipeline)
+
+```
+smoke: ok
+hero1: ok
+hero2: ok
+hero3: ok
+```
+
+> **QA Note (2026-04-09):** The block above was produced by the old append-only
+> `demo-certify.cjs` which only read a pre-existing log file. It does NOT
+> represent a real end-to-end certification run. The script has been rewritten
+> to execute the full pipeline: reset → seed → start servers → Playwright → append.
+> The next valid certification block will be produced by `npm run demo:certify:sales`
+> running the full pipeline.
+
+### 2026-04-09T15:30:37.777Z
+
+```
+playwright-start
+passed: 4
+failed: 0
+```

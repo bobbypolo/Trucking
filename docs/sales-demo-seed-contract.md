@@ -93,12 +93,12 @@ beyond the 3 surgical touches documented in `.claude/docs/PLAN.md`.
 Bugs discovered during exploration that would normally be fixed are
 captured here as follow-ups, not touched by Phase 1-7:
 
-- **POST `/api/parties`** (`server/routes/clients.ts:797`) attempts to
-  INSERT the `entity_class` and `vendor_profile` columns, which do not
-  exist in the `parties` table. The existing `GET /api/parties` works
-  fine because its query uses `SELECT *`. Phase 4 works around the bug
-  by seeding parties directly via SQL instead of calling the POST
-  endpoint. This should be filed as a separate SaaS bug ticket.
+- **POST `/api/parties`** — **RESOLVED** by migration
+  `048_parties_entity_class.sql` which adds the `entity_class` and
+  `vendor_profile` columns. After running migrations through 048, the
+  POST endpoint works correctly. The handler also includes a
+  `SCHEMA_DRIFT` 503 fallback (via `isMissingTableError`) so
+  pre-migration environments get a clear error instead of a crash.
 - **`seed-demo.ts` missing IFTA GL accounts** — the existing
   procedural seed script does not seed `GL-6900` or `GL-2200`, so a
   tenant that only ran `seed-demo.ts` will FK-fail on the live IFTA

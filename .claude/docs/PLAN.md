@@ -1,149 +1,376 @@
-Trucker App Sprint A - IFTA Audit Packet Export MVP
+# Sprint B1 — Phase 1 gap fix + Sentry + program docs + feature flags DB
 
-Status: Dispatch-ready after the Phase -1 entry gate in `docs/trucker-app-entry-gate.md` is completed and BSD is merged to `main`.
+> **Active sprint plan.** Full program roadmap: `docs/PLAN-trucker-app-master.md`
+>
+> This file contains ONLY the Sprint B1 execution contract. After B1
+> merges, the handoff script replaces this file with Sprint B2's contract.
 
-Branch at dispatch time: `ralph/trucker-app-sprint-a`
+## Context
 
-Scope of this sprint: implement the first executable trucker-app phase from the master plan without waiting for the monorepo move. This sprint is intentionally pre-monorepo and web/backend-only so the highest-ROI owner-operator feature ships before the repo restructure.
+Sprint A shipped Phase 1 IFTA audit packet export (PR #59, SHA `dd8a8f4`).
+B1 is the first sprint of 13 (B1 → M) that delivers the trucker mobile
+app and all supporting backend, docs, telemetry, and store-launch work.
 
----
-## System Context
+## Locked decisions (applicable to B1)
 
-The current web SaaS already contains the underlying IFTA data needed for a first audit-packet feature:
+1. **Package manager**: root stays npm. `apps/trucker/` (created in B2)
+   is an isolated npm subproject. Use `npm ci` (not `npm install`) in
+   all verification and CI commands.
 
-- mileage evidence and jurisdiction splits already exist in the accounting domain
-- fuel purchases and receipt-backed ledger data already exist in the accounting domain
-- the product already has document storage and download primitives
-- the research and strategy memos both locked "audit packet export first" as the lowest-risk, highest-ROI trucker-app feature
+2. **Peer layout** — `apps/trucker/` is a peer directory to root
+   `src/`, `components/`, `services/`. Web app stays exactly where it
+   is.
 
-This sprint must remain compatible with the current pre-monorepo layout:
+3. **Phase 1 gap fix is additive** — Sprint A's `tax_year`,
+   `packet_hash`, DB-blob storage is canonical. B1 adds migration
+   with `aging_bucket` column, updates job, wraps in external scheduler.
+   Bucket contract: `current=0`, `1_30=1..30`, `31_60=31..60`,
+   `61_90=61..90`, `90_plus=>90`.
 
-- frontend paths stay under root `components/`, `services/`, and `src/__tests__/`
-- backend paths stay under `server/`
-- no file move into `apps/web/` or `packages/shared/` occurs in this sprint
+4. **Windows-safe tooling only** — All operator-run scripts are
+   `.cjs`/`.mjs` (Node.js) or `.ps1` (PowerShell). NEVER `.sh`.
+   All verification commands use cross-platform tools: `npx vitest run`,
+   `npx tsc --noEmit`, `node scripts/*.cjs`. NEVER use `grep`, `wc`,
+   `/dev/null`, `/tmp`, or shell pipelines. **All R-marker assertions
+   that read a file use `fs.readFileSync` + regex — the word "grep"
+   does not appear in any R-marker description.**
 
-Dependencies that must already be true before dispatch:
+5. **Migration-number management**: placeholders resolved for B1:
+   053 = `invoices_aging_bucket` (STORY-B1-01),
+   054 = `feature_flags` (STORY-B1-09).
+   Max existing migration at dispatch = 052.
 
-1. `ralph/pre-demo-remediation` is merged to `main`
-2. `ralph/bulletproof-sales-demo` is merged to `main`
-3. the entry gate doc is filled out with actual commit SHAs, CI state, and account owner decisions
+6. **Feature flags consistent from B1**: `feature_flags` table
+   migration + minimal read endpoint ship in B1 (so flags are
+   DB-or-env from the first mobile sprint, not env-only for B2–G).
 
-Discovery evidence:
+7. **Operator gates separated from Ralph R-markers.** Simulator
+   validation, real-device testing, EAS builds, store submissions,
+   legal review are release checklist rows signed by operator,
+   NEVER Ralph R-markers.
 
-```text
-rg -n "IFTAManager|financialService|documents|fuel_ledger|mileage_jurisdiction|ifta" components services server
-components/IFTAManager.tsx:1:import React, { useState, useEffect } from 'react';
-services/financialService.ts:1:import { apiFetch } from './api';
-server/routes/accounting.ts:878:router.get('/ifta/reports', requireAuth, requireTenant, async (req, res) => {
-server/routes/documents.ts:141:router.post('/', requireAuth, upload.single('file'), async (req, res) => {
+8. **Two-layer completion**: Engineering complete (code + targeted
+   tests + SaaS non-regression) vs Launch complete (+ real device
+   validation + legal review + store submission).
+
+## SaaS regression protection strategy
+
+Every sprint that touches `server/`, `shared/contracts/`, or root
+`package.json` runs the SaaS non-regression gate:
+
+1. **Additive backend changes only** — existing routes/services/migrations
+   are FROZEN unless explicitly additively extended.
+2. **No web UI replacement** — web components are NOT touched.
+3. **Role/tenant contract tests** — every new route runs existing
+   `requireAuth` + `requireTenant` middleware tests.
+4. **Existing route regression** — any sprint that touches a route file
+   runs the full existing test file for that route.
+
+## Required documents written by B1
+
+| Doc | Content |
+|---|---|
+| `docs/PLAN-trucker-app-master.md` | Canonical roadmap mirror of full program plan |
+| `docs/trucker-app-release-checklist.md` | All operator-run validation + release gates |
+| `docs/trucker-app-baseline-debt.md` | Populated with REAL baseline failures |
+| `docs/trucker-app-sprint-history.md` | Initial entry = Sprint A SHA `dd8a8f4` |
+| `docs/trucker-app-env-matrix.md` | Env variable table (see content spec below) |
+| `docs/trucker-app-feature-flags.md` | 6 flag inventory + DB read path |
+| `docs/trucker-app-migration-numbering.md` | Placeholder rule |
+
+### Content spec: `docs/trucker-app-env-matrix.md`
+
+- Table with columns: `Variable`, `Category`, `Local`, `Staging`,
+  `Production`, `EAS Build-time`, `Scope`, `Rotation`
+- Categories: Database, Firebase, Stripe, Twilio, Sentry, PostHog,
+  Motive, Gemini, JWT, EXPO_PUBLIC_*
+- Rule: any `EXPO_PUBLIC_*` key is bundled into the mobile binary —
+  server secrets MUST NOT use that prefix
+- Secret rotation procedure
+
+### Content spec: `docs/trucker-app-feature-flags.md`
+
+- Flag inventory:
+  - `FEATURE_TRUCKER_MOBILE_BETA` — gates whole app, default false in prod
+  - `FEATURE_MOTIVE_ELD` — gates ELD integration, default false
+  - `FEATURE_BROKER_CREDIT` — gates broker credit display, default false
+  - `FEATURE_FACILITY_DWELL` — gates dwell export, default false
+  - `FEATURE_FREEMIUM_QUOTA` — gates AI quota enforcement, default false
+  - `FEATURE_FORCE_UPGRADE` — gates force-upgrade modal, default false
+- Read priority: DB > env > default false
+- DB read endpoint: `GET /api/feature-flags` returns merged flag map
+  for current tenant
+- Admin write: `PUT /api/feature-flags/:name` admin-only, tenant-scoped
+- Removal criteria: 100% enabled for 30 days with no rollback → remove
+
+## Sprint B1 Contract
+
+**Branch**: `ralph/trucker-app-sprint-b1`
+**Phases**: 1-gap + 11-partial (Sentry init) + feature-flags foundation
+**Dispatch gate**: Sprint A merged (confirmed — PR #59, SHA `dd8a8f4`)
+**External accounts**: None
+**Story count**: 10 stories / 25 R-markers
+**Operator gates**: None
+**Parallelism**: STORY-01..03 sequential; 04..10 parallel (07, 08 depend on 05 for verify script)
+**SaaS non-regression gate**: YES — touches `server/jobs/`, `server/index.ts`
+**Mobile domain layering rule**: N/A (no mobile code)
+
+### Stories
+
+**STORY-B1-01 — Migration adds `aging_bucket`**
+- Files (new):
+  - `server/migrations/053_invoices_aging_bucket.sql`
+- Test file (new):
+  - `server/__tests__/migrations/053_invoices_aging_bucket.test.ts`
+- R-markers:
+  - `R-B1-01` test reads SQL file via `fs.readFileSync` and asserts UP
+    section contains exactly one
+    `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL`
+    line via regex match.
+  - `R-B1-02` test reads file via `fs.readFileSync` and asserts DOWN
+    section contains exactly one
+    `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other
+    `DROP` occurrences (regex count).
+
+**STORY-B1-02 — Job populates `aging_bucket`**
+- Files (extended):
+  - `server/jobs/invoice-aging-nightly.ts` (~20 line addition)
+- Test file (extended):
+  - `server/__tests__/jobs/invoice-aging-nightly.test.ts` (~30 line addition)
+- R-markers:
+  - `R-B1-03` 5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce
+    bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`;
+    test asserts exact values via `.toBe()`.
+  - `R-B1-04` invoice with null `issued_at` → `aging_bucket` stays null
+    (test asserts `.toBeNull()`).
+
+**STORY-B1-03 — External scheduler wrapper (Windows-safe)**
+- Files (new):
+  - `scripts/invoice-aging-nightly.cjs`
+  - `docs/ops/invoice-aging-nightly.md`
+- Test file (new):
+  - `server/__tests__/scripts/invoice-aging-nightly.test.ts`
+- R-markers:
+  - `R-B1-05` test spawns `node scripts/invoice-aging-nightly.cjs --dry-run`
+    via `child_process.spawnSync`; asserts exit code 0 and stdout
+    contains `"status":"dry-run"`.
+  - `R-B1-06` runbook contains H2 sections `## Dry-run`,
+    `## Production invocation`, `## Idempotency`, `## Failure alerting`,
+    `## Cron example`, `## GitHub Actions example`, `## Rollback`;
+    test reads file via `fs.readFileSync` and asserts each heading via
+    regex.
+  - `R-B1-07` test spawns wrapper with no `DATABASE_URL` env; asserts
+    non-zero exit and stderr JSON contains `"error":"missing_database_url"`.
+
+**STORY-B1-04 — Sentry server-side init**
+- Files (extended):
+  - `server/index.ts` (add `import { initSentry } from './lib/sentry'`
+    + `initSentry()` call before `app.listen`, gated on DSN)
+- Test file (new):
+  - `server/__tests__/index.sentry-init.test.ts`
+- R-markers:
+  - `R-B1-08` test reads `server/index.ts` via `fs.readFileSync` and
+    asserts the import line and conditional `initSentry()` call via
+    regex match.
+  - `R-B1-09` integration test sets `process.env.SENTRY_DSN='test-dsn'`,
+    mocks `initSentry`, imports `server/index`, asserts `initSentry`
+    called exactly once.
+  - `R-B1-10` integration test with `SENTRY_DSN` unset → server module
+    loads without throwing.
+
+**STORY-B1-05 — Master program document + release checklist + sprint history**
+- Files (extended):
+  - `docs/PLAN-trucker-app-master.md` (ensure required sections exist)
+- Files (new):
+  - `docs/trucker-app-release-checklist.md`
+  - `docs/trucker-app-sprint-history.md`
+  - `scripts/verify-program-docs.cjs` (Node.js helper reading the 3
+    docs and asserting required section headings exist via regex)
+- R-markers:
+  - `R-B1-11` master plan contains H2 sections for all 13 sprints
+    (B1..M); verified by `scripts/verify-program-docs.cjs` using regex
+    on file content read via `fs.readFileSync`.
+  - `R-B1-12` master plan contains `## Shipped Baseline (Sprint A)`
+    section; verified by helper script.
+  - `R-B1-13` release checklist contains tables for operator gates
+    `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`,
+    `OP-LEGAL-*`; verified by helper script.
+  - `R-B1-14` sprint-history has initial entry with `dd8a8f4` Sprint A
+    SHA.
+
+**STORY-B1-06 — Baseline debt register populated with REAL entries**
+- Files (new):
+  - `docs/trucker-app-baseline-debt.md`
+  - `scripts/verify-baseline-debt.cjs`
+- Approach: The Ralph worker runs `npx vitest run` (root + server)
+  capturing output via `child_process.spawnSync`, extracts failing
+  test file paths, populates the register with 6-column entries.
+- R-markers:
+  - `R-B1-15` `docs/trucker-app-baseline-debt.md` exists and contains
+    a markdown table with columns `file | failure | owner | first-seen
+    | expiry | justification`; verified via
+    `scripts/verify-baseline-debt.cjs` which parses the markdown
+    table using `fs.readFileSync` + regex.
+  - `R-B1-16` register either contains ≥ 1 real entry OR an explicit
+    `| _(verified clean at <date>)_ |` placeholder row; helper script
+    asserts one of the two.
+
+**STORY-B1-07 — Env matrix doc**
+- Files (new):
+  - `docs/trucker-app-env-matrix.md`
+- Depends on: STORY-B1-05 (verify script)
+- R-markers:
+  - `R-B1-17` doc contains table with columns `Variable`, `Category`,
+    `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`,
+    `Rotation`; verified via helper script reading file with
+    `fs.readFileSync` and matching header via regex.
+  - `R-B1-18` doc contains H2 section `## EXPO_PUBLIC_* rule` stating
+    that mobile public keys MUST use the prefix and server secrets
+    MUST NOT.
+
+**STORY-B1-08 — Feature flags doc + migration numbering rule**
+- Files (new):
+  - `docs/trucker-app-feature-flags.md`
+  - `docs/trucker-app-migration-numbering.md`
+- Depends on: STORY-B1-05 (verify script)
+- R-markers:
+  - `R-B1-19` feature flags doc lists all 6 flags (per spec above);
+    helper script reads file and asserts each flag name via regex.
+  - `R-B1-20` migration-numbering doc contains the placeholder rule
+    and assignment procedure; helper script asserts H2 sections
+    `## Placeholder convention` and `## Assignment procedure`.
+
+**STORY-B1-09 — `feature_flags` DB table + read endpoint**
+- Files (new):
+  - `server/migrations/054_feature_flags.sql` (table columns: id,
+    tenant_id, flag_name, flag_value BOOLEAN, updated_at, updated_by)
+  - `server/routes/feature-flags.ts`
+- Files (extended):
+  - `server/index.ts`
+    (mount: `app.use('/api/feature-flags', featureFlagsRouter)`)
+- Test files (new):
+  - `server/__tests__/migrations/054_feature_flags.test.ts`
+  - `server/__tests__/routes/feature-flags.test.ts`
+- R-markers:
+  - `R-B1-21` migration creates `feature_flags` table with 6 columns;
+    test reads SQL file via `fs.readFileSync`.
+  - `R-B1-22` `GET /api/feature-flags` returns merged flag map (env +
+    DB) for authenticated user's tenant; integration test via supertest.
+  - `R-B1-23` `PUT /api/feature-flags/:name` requires admin role;
+    non-admin → HTTP 403 (auth-negative R-marker per Rule 16).
+  - `R-B1-24` `server/index.ts` mount line
+    `app.use('/api/feature-flags', featureFlagsRouter)` present —
+    test reads file via `fs.readFileSync` and asserts via regex match
+    (no shell `grep`).
+
+**STORY-B1-10 — SaaS non-regression verification**
+- Files (new):
+  - `scripts/verify-saas-regression.cjs`
+- R-markers:
+  - `R-B1-25` helper script runs `npx vitest run src/__tests__/` and
+    `cd server && npx vitest run __tests__/routes/accounting.test.ts
+    __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts`
+    via `child_process.spawnSync`, captures exit codes, asserts all 0
+    (modulo baseline debt exclusions from `baseline-debt.md`).
+
+### Files NOT touched
+- `server/migrations/051_ifta_audit_packets.sql` (FROZEN)
+- `server/migrations/052_invoices_aging_tracking.sql` (FROZEN)
+- `server/routes/ifta-audit-packets.ts` (FROZEN)
+- `server/services/ifta-audit-packet.service.ts` (FROZEN)
+- `components/IFTAManager.tsx` (FROZEN)
+- `services/financialService.ts` (FROZEN)
+- `server/scripts/seed-sales-demo.ts` (FROZEN — BSD contract)
+- `scripts/demo-certify.cjs` (FROZEN — BSD contract)
+- Any file under `apps/` or `packages/`
+
+### Baseline debt exceptions
+Populated during STORY-B1-06 execution. The register is the runtime
+source of truth; this line in the plan is a pointer.
+
+### Targeted verification command (Windows-safe)
+```
+cd server
+npx vitest run __tests__/migrations __tests__/jobs/invoice-aging-nightly.test.ts __tests__/index.sentry-init.test.ts __tests__/routes/feature-flags.test.ts __tests__/scripts/invoice-aging-nightly.test.ts
+npx tsc --noEmit
+cd ..
+node scripts/invoice-aging-nightly.cjs --dry-run
+node scripts/verify-program-docs.cjs
+node scripts/verify-baseline-debt.cjs
+node scripts/verify-saas-regression.cjs
 ```
 
----
-## Prime Directive
+### Exit artifact
+- PR `Sprint B1: Phase 1 gap + Sentry + program docs + feature flags DB`
+- All 25 R-markers green (R-B1-01..R-B1-25)
+- `docs/trucker-app-sprint-history.md` appended with B1 merge SHA
 
-Ship the audit packet feature as a bounded additive capability:
+## V-Model Guarantee
 
-- no monorepo move
-- no React Native app work
-- no new compliance categories beyond IFTA
-- no refactor of the existing accounting domain
-- no new AI prompt work
+Every sprint traverses the full V: requirements (R-markers) →
+design (file inventory + architecture docs) → implementation (Ralph
+stories with 4-checkpoint TDD) → unit tests → integration tests (sprint
+targeted verification) → system tests (`/verify` + `/audit`) →
+acceptance tests (release checklist, operator-signed).
 
-The outcome is simple: a fleet user can generate, verify, list, and download an IFTA audit packet from the existing web app, and the backend starts collecting invoice-aging data needed later for broker credit.
+**R-markers are Ralph-automatable only.** Real-device validation,
+simulator validation, EAS build invocation, store submission, legal
+review, and any other operator-run validation are tracked as **release
+checklist rows** signed off by a human operator, NOT as Ralph R-markers.
 
----
-## Hard Rules
+## Ralph dispatch invariants
 
-1. Only files listed in this sprint plan may be edited.
-2. All backend changes are additive. Existing accounting endpoints must continue to work unchanged.
-3. The packet generator must produce deterministic output for the same seeded input.
-4. The feature must work in the current repo layout. Do not front-run the monorepo migration in this sprint.
-5. Packet verification must fail closed on hash mismatch. A corrupted or modified packet must never report as verified.
+1. Worktree isolation per story worker
+2. Checkpoint hash before each story
+3. Feature branch `ralph/trucker-app-sprint-b1`
+4. 4-checkpoint TDD (Red → Green → Refactor → Gate)
+5. Selective staging (no `git add -A`)
+6. Format before commit
+7. Fixture validation (collect-only)
+8. Circuit breaker (3 consecutive skips → halt)
+9. `needs_verify` cleared before next sprint dispatch
+10. `npm ci` (not `npm install`) in all verifications
+11. All R-marker assertions use `fs.readFileSync` + regex (no shell `grep`)
 
----
-## Phase 1 - IFTA Audit Packet Export MVP (module)
+## SaaS Non-Regression Gate
 
-**Phase Type**: `module`
+| Sprint | Touches SaaS backend? | Gate |
+|---|---|---|
+| **B1** | YES (jobs, index.ts) | accounting/ifta/documents/requireAuth tests |
 
-Goal: after this phase, the existing web app can generate an IFTA audit packet ZIP for a requested quarter and tax year, list previously generated packets, verify packet integrity by hash, and download the packet from the UI. The backend also starts collecting invoice-aging data for later broker-credit work.
+## Feature Flags Strategy (B1 onward)
 
-### Changes
+Feature flags are available from Sprint B1 via DB (`feature_flags`
+table + `/api/feature-flags` endpoint) + env var fallback. Read
+priority: DB > env > default false.
 
-| Action | File | Description | Test File | Test Type |
-| --- | --- | --- | --- | --- |
-| CREATE | `server/migrations/051_ifta_audit_packets.sql` | Add `ifta_audit_packets` table with packet metadata and signed-download fields. | `server/__tests__/migrations/051_ifta_audit_packets.test.ts` | unit |
-| CREATE | `server/migrations/052_invoices_aging_tracking.sql` | Add `days_since_issued` and `last_aging_snapshot_at` columns used by the nightly collection job. | `server/__tests__/migrations/052_invoices_aging_tracking.test.ts` | unit |
-| CREATE | `server/routes/ifta-audit-packets.ts` | Add `POST`, `GET`, and `verify` handlers under `/api/accounting/ifta-audit-packets`. | `server/__tests__/routes/ifta-audit-packets.test.ts` | integration |
-| CREATE | `server/services/ifta-audit-packet.service.ts` | Generate `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `packet_hash`. | `server/__tests__/services/ifta-audit-packet.service.test.ts` | unit |
-| CREATE | `server/jobs/invoice-aging-nightly.ts` | Backfill `days_since_issued` and `last_aging_snapshot_at` for invoices. | `server/__tests__/jobs/invoice-aging-nightly.test.ts` | integration |
-| MODIFY | `server/index.ts` | Mount the new `/api/accounting/ifta-audit-packets` router. | `server/__tests__/routes/ifta-audit-packets.test.ts` | integration |
-| MODIFY | `server/package.json` | Add `jszip` and the chosen PDF helper dependency for `ifta-audit-packet.service.ts`. | `server/__tests__/services/ifta-audit-packet.service.test.ts` | unit |
-| MODIFY | `components/IFTAManager.tsx` | Add `"Generate Audit Packet"` UI, quarter/year selectors, status area, and download action. | `src/__tests__/components/IFTAManager.audit-packet.test.tsx` | integration |
-| MODIFY | `services/financialService.ts` | Add typed methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`. | `src/__tests__/services/financialService.ifta-audit-packet.test.ts` | unit |
-| CREATE | `server/__tests__/migrations/051_ifta_audit_packets.test.ts` | Assert `UP` creates `ifta_audit_packets` and `DOWN` reverses only that table. | `server/__tests__/migrations/051_ifta_audit_packets.test.ts` | unit |
-| CREATE | `server/__tests__/migrations/052_invoices_aging_tracking.test.ts` | Assert `UP` adds exactly `2` invoice-aging columns and `DOWN` removes only those `2` columns. | `server/__tests__/migrations/052_invoices_aging_tracking.test.ts` | unit |
-| CREATE | `server/__tests__/routes/ifta-audit-packets.test.ts` | Assert `201`, `400`, `200`, and `409` flows for create, list, show, and verify. | `server/__tests__/routes/ifta-audit-packets.test.ts` | integration |
-| CREATE | `server/__tests__/services/ifta-audit-packet.service.test.ts` | Assert `bundleAuditPacket()` ZIP entry names, deterministic `computePacketHash()` output, and `cover-letter.pdf` content. | `server/__tests__/services/ifta-audit-packet.service.test.ts` | unit |
-| CREATE | `server/__tests__/jobs/invoice-aging-nightly.test.ts` | Assert seeded invoice rows get non-null `last_aging_snapshot_at` values and positive `days_since_issued` counts. | `server/__tests__/jobs/invoice-aging-nightly.test.ts` | integration |
-| CREATE | `src/__tests__/components/IFTAManager.audit-packet.test.tsx` | Assert `IFTAManager.tsx` calls the packet API and renders the returned `packetHash` and download action. | `src/__tests__/components/IFTAManager.audit-packet.test.tsx` | integration |
-| CREATE | `src/__tests__/services/financialService.ifta-audit-packet.test.ts` | Assert the `4` packet client methods in `services/financialService.ts` hit the documented routes. | `src/__tests__/services/financialService.ifta-audit-packet.test.ts` | unit |
+| Flag | Default | Enabled when | Removal criteria |
+|---|---|---|---|
+| `FEATURE_TRUCKER_MOBILE_BETA` | false | B2 dev, M beta launch | 100% rollout 30d |
+| `FEATURE_MOTIVE_ELD` | false | G stories, M user-facing | 100% rollout 30d |
+| `FEATURE_BROKER_CREDIT` | false | K with MIN_HISTORY_DAYS | 90d data + 100% |
+| `FEATURE_FACILITY_DWELL` | false | K admin-only | admin adoption complete |
+| `FEATURE_FREEMIUM_QUOTA` | false | J enforcement | 100% paid-tier conversion track |
+| `FEATURE_FORCE_UPGRADE` | false | L on, M user-facing | version deprecation cycle |
 
-### Files Not Touched
+## Migration Number Management
 
-- `apps/trucker/`
-- `packages/shared/`
-- `components/Scanner.tsx`
-- `server/routes/ai.ts`
-- `server/routes/loads.ts`
-- `server/routes/driver-compliance.ts`
+Master plan uses placeholders `<NEXT>`. For B1, all placeholders are
+resolved: 053 (aging_bucket), 054 (feature_flags).
 
-### API Contracts
+Assignment procedure for future sprints:
+1. Operator runs `node scripts/next-migration-number.cjs`
+2. Helper reads `server/migrations/` via `fs.readdirSync`, returns max+1
+3. Operator replaces `<NEXT>` in sprint PLAN.md with actual numbers
+4. Ralph halts if it sees unresolved `<NEXT>` in file paths
 
-| Method | Path | Request | Response |
-| --- | --- | --- | --- |
-| POST | `/api/accounting/ifta-audit-packets` | `{ "quarter": 4, "taxYear": 2025, "includeDocuments": true }` | `201 { "packetId": "...", "status": "generated", "packetHash": "<64 hex>", "downloadUrl": "..." }` |
-| GET | `/api/accounting/ifta-audit-packets` | none | `200 { "packets": [ ... ] }` |
-| GET | `/api/accounting/ifta-audit-packets/:packetId` | none | `200 { "packetId": "...", "quarter": 4, "taxYear": 2025, "status": "generated", "packetHash": "<64 hex>", "downloadUrl": "..." }` |
-| POST | `/api/accounting/ifta-audit-packets/:packetId/verify` | none | `200 { "verified": true, "packetHash": "<64 hex>" }` or `409 { "error": "HASH_MISMATCH" }` |
+## Sprint Handoff
 
-### Testing Strategy
-
-| What | Type | Real/Mock | Justification | Test File |
-| --- | --- | --- | --- | --- |
-| Migration structure for `051_ifta_audit_packets.sql` and `052_invoices_aging_tracking.sql` | unit | Real | Assert `UP` contains the named columns and `DOWN` removes only those artifacts. | `server/__tests__/migrations/051_ifta_audit_packets.test.ts` |
-| Packet service ZIP assembly and hash determinism | unit | Real + Mock | Assert `zipEntries == ["cover-letter.pdf", "fuel-ledger.csv", "jurisdiction-summary.csv", "manifest.json"]` and `hash1 == hash2`. | `server/__tests__/services/ifta-audit-packet.service.test.ts` |
-| API create/list/show/verify flows | integration | Real + Mock | Assert `response.status == 201`, invalid quarter returns `400`, verify success returns `200`, and corrupted bytes return `409`. | `server/__tests__/routes/ifta-audit-packets.test.ts` |
-| Invoice-aging nightly job | integration | Real + Mock | Assert `days_since_issued > 0` and `last_aging_snapshot_at is not None` for each seeded invoice row. | `server/__tests__/jobs/invoice-aging-nightly.test.ts` |
-| Existing web UI packet flow in `IFTAManager.tsx` | integration | Mock | Assert the click handler calls `generateIftaAuditPacket(...)` once and the rendered screen includes the returned `packetHash`. | `src/__tests__/components/IFTAManager.audit-packet.test.tsx` |
-| Manual smoke in current web app | manual | Real | Assert a real `Q4 2025` packet downloads as `.zip` and opens with at least `4` files. | `docs/trucker-app-entry-gate.md` |
-
-Acceptance criteria (R-markers):
-
-- R-P1-01 [backend] [unit]: `server/migrations/051_ifta_audit_packets.sql` creates exactly `1` table named `ifta_audit_packets` with at least the `9` named columns `id`, `company_id`, `quarter`, `tax_year`, `status`, `packet_hash`, `download_url`, `created_by`, and `created_at`.
-- R-P1-02 [backend] [unit]: the DOWN section of `server/migrations/051_ifta_audit_packets.sql` drops exactly `1` table, `ifta_audit_packets`, and does not drop or rename any pre-existing table.
-- R-P1-03 [backend] [unit]: `server/migrations/052_invoices_aging_tracking.sql` adds exactly `2` columns, `days_since_issued` and `last_aging_snapshot_at`, to the invoice-aging source table and the DOWN section removes only those `2` columns.
-- R-P1-04 [backend] [integration]: `POST /api/accounting/ifta-audit-packets` with body `{ "quarter": 4, "taxYear": 2025, "includeDocuments": true }` returns `201` and a JSON body containing `packetId`, `status: "generated"`, a 64-character `packetHash`, and a non-empty `downloadUrl`.
-- R-P1-05 [backend] [integration]: `POST /api/accounting/ifta-audit-packets` with invalid body `{ "quarter": 5, "taxYear": 2025 }` returns `400` and an error message containing the quoted field name `"quarter"`.
-- R-P1-06 [backend] [unit]: `bundleAuditPacket()` produces a ZIP buffer containing exactly `4` top-level entries: `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `manifest.json`.
-- R-P1-07 [backend] [unit]: `computePacketHash()` returns the same 64-character SHA-256 hex string for the same packet bytes across 2 consecutive calls.
-- R-P1-08 [backend] [integration]: `POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `200 { "verified": true }` when the stored packet bytes match the saved `packet_hash`.
-- R-P1-09 [backend] [integration]: `POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `409 { "error": "HASH_MISMATCH" }` when the stored packet bytes are modified after generation.
-- R-P1-10 [backend] [integration]: running `server/jobs/invoice-aging-nightly.ts` against 3 seeded invoices updates `days_since_issued` to values greater than `0` and writes a non-null `last_aging_snapshot_at`.
-- R-P1-11 [frontend] [unit]: `services/financialService.ts` exports the 4 methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`.
-- R-P1-12 [frontend] [integration]: `components/IFTAManager.tsx` renders a button labeled `"Generate Audit Packet"`, a quarter selector with values `1` through `4`, and a tax-year selector seeded to the current year.
-- R-P1-13 [frontend] [integration]: clicking `"Generate Audit Packet"` with selected values `Q4` and `2025` calls `generateIftaAuditPacket({ quarter: 4, taxYear: 2025, includeDocuments: true })` exactly once.
-- R-P1-14 [frontend] [integration]: after a successful packet generation response, `IFTAManager.tsx` renders the returned 64-character `packetHash` and a clickable download action pointing at `downloadUrl`.
-- R-P1-15 [manual] [integration]: in the current web app, generating a `Q4 2025` packet for a seeded company downloads a `.zip` file that opens successfully and contains at least 4 files, including `cover-letter.pdf` and `jurisdiction-summary.csv`.
-
-Verification command:
-
-```bash
-bash -c "cd server && npx vitest run __tests__/migrations/051_ifta_audit_packets.test.ts __tests__/migrations/052_invoices_aging_tracking.test.ts __tests__/services/ifta-audit-packet.service.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/jobs/invoice-aging-nightly.test.ts && cd .. && npx vitest run src/__tests__/components/IFTAManager.audit-packet.test.tsx src/__tests__/services/financialService.ifta-audit-packet.test.ts"
-```
-
----
-## Dispatch Notes
-
-1. This sprint intentionally runs before the monorepo move. Do not combine it with Phase 0.
-2. After this sprint merges, the next trucker-app dispatch artifact should be the monorepo/bootstrap sprint, not the mobile document-intake sprint.
-3. At dispatch time, copy this file to `.claude/docs/PLAN.md`, run `python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --output .claude/prd.json`, then run the normal Ralph loop.
+After B1 merges:
+1. Record merge SHA in `docs/trucker-app-sprint-history.md`
+2. Extract Sprint B2 section from `docs/PLAN-trucker-app-master.md`
+3. Replace this file (`.claude/docs/PLAN.md`) with Sprint B2 contract
+4. Regenerate `.claude/prd.json` for Sprint B2
+5. Reset `.claude/.workflow-state.json`
+6. Create branch `ralph/trucker-app-sprint-b2`
+7. Dispatch `/ralph`

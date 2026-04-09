@@ -18,6 +18,7 @@ Delegation to `ralph-worker` via the **Agent tool** is mandatory. Ralph MUST NOT
 ## STEP 1: Initialize
 
 Display: `"RALPH - V-Model Orchestrator v5 — Mode: Autonomous"`
+**Canonical-root concurrency guard (hard stop — narrow):** Call `_lib.concurrent_root_guard_decision()`. Hard-stop ONLY when `root_kind == "canonical_root"` AND `blocked is True` (at least one linked human worktree has a non-empty `ralph.current_story_id` or `needs_verify`). Display `"Ralph stopped — another linked worktree is active (canonical_root + sibling current_story_id/needs_verify)."` and **STOP**. Idle sibling worktrees must never block startup; helper failures degrade to no block (advisory).
 
 Read `.claude/prd.json` and validate:
 
@@ -38,7 +39,7 @@ Startup worktree sweep:
 
 ## STEP 1.5: Feature Branch Setup
 
-Determine branch name: `ralph/{plan-name}` from PLAN.md title (lowercase, hyphens for spaces), or user-specified.
+Determine branch name: run `python .claude/hooks/ralph_branch_name.py` (returns `ralph/{slug}` from canonical roots, `ralph/{slug}-{8hex}` from linked worktrees so concurrent sprints don't collide). User-supplied name takes precedence.
 
 - **Exists**: `git checkout [branch]` — display `"Resuming branch: [branch]"`
 - **New**: `git checkout -b [branch]` — display `"Created branch: [branch] (based on [current-branch])"`
@@ -80,7 +81,7 @@ Update state: `update_workflow_state(ralph={"current_story_id": "[story.id]", "c
 4. Store hash: `update_workflow_state(ralph={"checkpoint_hash": "[full_hash]"})`.
 5. Read `.claude/docs/PLAN.md` — extract all R-PN-NN IDs from Done When sections. Compare against story's `acceptanceCriteria` IDs:
    - If ALL found in PLAN.md: display `"Plan check: OK"` and continue.
-   - If ANY missing: display `"Plan gap: criteria [missing IDs] not covered by PLAN.md. Run /plan to update, then resume /ralph."` and **STOP**.
+   - If ANY missing: display `"Plan gap: criteria [missing IDs] not covered by PLAN.md. Run /ralph-plan to update, then resume /ralph."` and **STOP**.
 6. **Plan-PRD re-sync**: Run `check_plan_prd_sync()` from `_qa_lib.py` on `.claude/docs/PLAN.md` and `.claude/prd.json`. If `added` or `removed` non-empty OR plan_hash mismatch with prd.json: auto-regenerate via `python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --merge .claude/prd.json --output .claude/prd.json`. Display `"Plan-PRD re-sync: updated"`. If in sync: display `"Plan-PRD re-sync: OK"`.
 7. **Cumulative drift gate**: Read `cumulative_drift_warnings` from sprint state. Read `cumulative_drift_threshold` from `workflow.json` `ralph` section (default: 10). If `cumulative_drift_warnings >= cumulative_drift_threshold`: display `"CUMULATIVE DRIFT THRESHOLD EXCEEDED: [count] warnings (threshold: [threshold]). Stopping sprint — review accumulated drift before continuing."` and go to STEP 6.
 
@@ -92,7 +93,7 @@ Read `.claude/docs/progress.md` if it exists. Read sprint state for `current_att
 
 **Dependency check (dependsOn):** Check each story's `dependsOn` list. If any dependency lacks `passed: true`, defer to next loop. Call `validate_dependency_receipt(dep_story_id)` for each; if `valid: False`: display reason and go to STEP 6.
 
-**Conditional dispatch:** Read `parallel_dispatch_enabled` from `workflow.json` (default: `true`). If `true` AND a `parallelGroup` has multiple ready stories: dispatch each with `isolation: "worktree"` via multiple Agent calls; wait for all (max `parallel_batch_size`, default 3). If `false`: sequential branch-inline. Stories with no group dispatch sequentially. **Hard rule:** branch-inline dispatch is synchronous-only. NEVER leave a branch-inline worker running async while Ralph continues or idles; only `isolation: "worktree"` workers may run in parallel/async.
+**Conditional dispatch:** Read `parallel_dispatch_enabled` from `workflow.json` (default: `true`). If `true` AND a `parallelGroup` has multiple ready stories: dispatch each with `isolation: "worktree"` via multiple Agent calls; wait for all (max `parallel_batch_size`, default 3). If `false`: sequential branch-inline. Stories with no group dispatch sequentially.
 
 Launch **`ralph-worker`** agent via Agent tool with `subagent_type: "ralph-worker"`:
 
@@ -196,5 +197,4 @@ Read `auto_create_pr` from `workflow.json` `ralph` section (default: `false`). I
 Run `/librarian handoff` to save session context. **Archive PLAN.md**: copy `.claude/docs/PLAN.md` to `.claude/docs/PLAN-archive-YYYY-MM-DD.md` and keep the active plan intact rather than overwriting it with placeholder text. **Clear sprint state**: `update_workflow_state(ralph={"current_step": "", "current_story_id": "", "feature_branch": "", "checkpoint_hash": "", "consecutive_skips": 0, "stories_passed": 0, "stories_skipped": 0, "current_attempt": 1, "max_attempts": 4, "prior_failure_summary": "", "cumulative_drift_warnings": 0})`. Display next steps: review PR, run `/audit`, run `/health`.
 
 ## Error Recovery
-
-- **prd.json error**: Run `/plan` to regenerate. **Git dirty**: STOP, commit first. **Missing result**: FAIL + retry. **Plan gap**: `/plan` then retry. **Circuit breaker**: Re-read state at STEP 2.
+- **prd.json error**: Run `/ralph-plan` to regenerate. **Git dirty**: STOP, commit first. **Missing result**: FAIL + retry. **Plan gap**: `/ralph-plan` then retry. **Circuit breaker**: Re-read state at STEP 2.
