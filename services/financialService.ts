@@ -142,3 +142,52 @@ export const lockIFTATrip = async (
 ): Promise<void> => {
   await api.post("/accounting/ifta-audit-lock", audit);
 };
+
+// ── IFTA Audit Packet ──────────────────────────────────────────────
+
+export interface IftaAuditPacket {
+  packetId: string;
+  companyId?: string;
+  quarter: number;
+  taxYear: number;
+  status: string;
+  packetHash: string;
+  downloadUrl: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export interface IftaAuditPacketGenerateRequest {
+  quarter: number;
+  taxYear: number;
+  includeDocuments: boolean;
+}
+
+export interface IftaAuditPacketVerifyResult {
+  verified: boolean;
+  packetId: string;
+  packetHash: string;
+}
+
+export const generateIftaAuditPacket = async (
+  body: IftaAuditPacketGenerateRequest,
+): Promise<IftaAuditPacket> => {
+  return api.post("/accounting/ifta-audit-packets", body);
+};
+
+export const listIftaAuditPackets = async (): Promise<IftaAuditPacket[]> => {
+  const res = await api.get("/accounting/ifta-audit-packets");
+  return res?.packets ?? [];
+};
+
+export const getIftaAuditPacket = async (
+  packetId: string,
+): Promise<IftaAuditPacket> => {
+  return api.get(`/accounting/ifta-audit-packets/${packetId}`);
+};
+
+export const verifyIftaAuditPacket = async (
+  packetId: string,
+): Promise<IftaAuditPacketVerifyResult> => {
+  return api.post(`/accounting/ifta-audit-packets/${packetId}/verify`, {});
+};

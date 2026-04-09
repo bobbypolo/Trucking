@@ -56,6 +56,7 @@ import stripeRouter from "./routes/stripe";
 import invitationsRouter from "./routes/invitations";
 import intelligenceRouter from "./routes/intelligence";
 import driverIntakeRouter from "./routes/loads-driver-intake";
+import iftaAuditPacketsRouter from "./routes/ifta-audit-packets";
 import demoRouter from "./routes/demo";
 
 const app = express();
@@ -122,6 +123,7 @@ app.use(geofenceRouter);
 app.use(invitationsRouter);
 app.use(intelligenceRouter);
 app.use(driverIntakeRouter);
+app.use(iftaAuditPacketsRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
 
 app.use(errorHandler);

@@ -25,6 +25,8 @@ import {
   saveMileageEntry,
   postIFTAToLedger,
   saveFuelReceipt,
+  generateIftaAuditPacket,
+  type IftaAuditPacket,
 } from "../services/financialService";
 import { exportToExcel, exportToPDF } from "../services/exportService";
 import { IFTAEvidenceReview } from "./IFTAEvidenceReview";
@@ -78,6 +80,36 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
     truckId: string;
   } | null>(null);
   const [fuelSubmitting, setFuelSubmitting] = useState(false);
+  // ── Audit packet state (R-P1-12, R-P1-13, R-P1-14) ──
+  const [auditPacketQuarter, setAuditPacketQuarter] = useState<number>(4);
+  const [auditPacketYear, setAuditPacketYear] = useState<number>(
+    new Date().getFullYear(),
+  );
+  const [auditPacketLoading, setAuditPacketLoading] = useState(false);
+  const [auditPacketResult, setAuditPacketResult] =
+    useState<IftaAuditPacket | null>(null);
+
+  const handleGenerateAuditPacket = async () => {
+    setAuditPacketLoading(true);
+    try {
+      const result = await generateIftaAuditPacket({
+        quarter: auditPacketQuarter,
+        taxYear: auditPacketYear,
+        includeDocuments: true,
+      });
+      setAuditPacketResult(result);
+      setToast({
+        message: `Audit packet generated for Q${auditPacketQuarter} ${auditPacketYear}`,
+        type: "success",
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to generate audit packet";
+      setToast({ message, type: "error" });
+    } finally {
+      setAuditPacketLoading(false);
+    }
+  };
   const US_STATES = [
     "AL",
     "AK",
@@ -383,6 +415,88 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
         </button>
       </div>
 
+      {/* AUDIT PACKET PANEL (R-P1-12..R-P1-14) */}
+      <div
+        data-testid="audit-packet-panel"
+        className="bg-slate-900 border border-white/5 rounded-2xl p-6 shadow-2xl"
+      >
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-500" />
+              IFTA Audit Packet Export
+            </h3>
+            <p className="text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] mt-1">
+              Deterministic packet • SHA-256 verified • Cover letter +
+              jurisdiction summary + fuel ledger
+            </p>
+          </div>
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Quarter
+              <select
+                aria-label="Audit Packet Quarter"
+                value={auditPacketQuarter}
+                onChange={(e) => setAuditPacketQuarter(Number(e.target.value))}
+                className="ml-2 bg-slate-800 text-white text-[10px] font-black uppercase rounded-lg px-3 py-2 border border-white/5"
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Tax Year
+              <select
+                aria-label="Audit Packet Tax Year"
+                value={auditPacketYear}
+                onChange={(e) => setAuditPacketYear(Number(e.target.value))}
+                className="ml-2 bg-slate-800 text-white text-[10px] font-black uppercase rounded-lg px-3 py-2 border border-white/5"
+              >
+                {Array.from({ length: 6 }, (_, i) => {
+                  const y = new Date().getFullYear() - i;
+                  return (
+                    <option key={y} value={y}>
+                      {`TY ${y}`}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={handleGenerateAuditPacket}
+              disabled={auditPacketLoading}
+              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-500/20 transition-all text-[10px] font-black uppercase tracking-widest disabled:opacity-50"
+            >
+              <Shield className="w-4 h-4" />
+              {auditPacketLoading ? "Generating..." : "Generate Audit Packet"}
+            </button>
+          </div>
+        </div>
+        {auditPacketResult && (
+          <div className="mt-4 pt-4 border-t border-white/5">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">
+              Packet Hash (SHA-256)
+            </p>
+            <code
+              data-testid="audit-packet-hash"
+              className="block text-[11px] font-mono text-emerald-400 break-all"
+            >
+              {auditPacketResult.packetHash}
+            </code>
+            <a
+              href={auditPacketResult.downloadUrl}
+              data-testid="audit-packet-download"
+              className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+            >
+              <Download className="w-4 h-4" /> Download Audit Packet
+            </a>
+          </div>
+        )}
+      </div>
+
       {/* DASHBOARD CARDS */}
       <div className="grid grid-cols-4 gap-6">
         {[
@@ -658,7 +772,10 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
                     {m.type}
                   </div>
                 </div>
-                <button className="text-slate-500 hover:text-red-500 transition-colors" aria-label="Delete entry">
+                <button
+                  className="text-slate-500 hover:text-red-500 transition-colors"
+                  aria-label="Delete entry"
+                >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -669,7 +786,10 @@ export const IFTAManager: React.FC<Props> = ({ loads }) => {
 
       {/* MODAL */}
       {showAddMileage && (
-        <div ref={mileageModalRef} className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10">
+        <div
+          ref={mileageModalRef}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-xl z-[100] flex items-center justify-center p-10"
+        >
           <div className="bg-[#020617] border border-white/10 w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl space-y-8">
             <div>
               <h3 className="text-2xl font-black text-white uppercase tracking-tighter">
