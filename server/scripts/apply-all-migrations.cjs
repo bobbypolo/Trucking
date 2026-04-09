@@ -59,18 +59,19 @@ async function main() {
       continue;
     }
     const content = fs.readFileSync(migFile, "utf-8");
-    const sql = extractUpSection(content);
+    const rawSql = extractUpSection(content);
+    // Strip full-line SQL comments BEFORE splitting by ";" so that:
+    //   1. Semicolons inside comments don't cause false statement splits
+    //      (e.g. "does NOT rewrite; GET /api/..." in 048_parties_entity_class.sql)
+    //   2. Comment headers before CREATE TABLE don't discard the statement
+    //      (e.g. "-- 1. Companies\nCREATE TABLE..." in 001_baseline.sql)
+    const sql = rawSql
+      .split("\n")
+      .filter(line => !line.trim().startsWith("--"))
+      .join("\n");
     const stmts = sql
       .split(";")
-      .map(s => {
-        // Strip leading comment lines so statements like
-        // "-- 1. Companies\nCREATE TABLE..." aren't discarded
-        const lines = s.split("\n");
-        while (lines.length > 0 && lines[0].trim().startsWith("--")) {
-          lines.shift();
-        }
-        return lines.join("\n").trim();
-      })
+      .map(s => s.trim())
       .filter(s => s.length > 0);
 
     let errors = 0;

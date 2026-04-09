@@ -126,7 +126,7 @@ describe("Feature Flags Routes", () => {
 
       // Verify DB was queried with the tenant's ID
       expect(mockQuery).toHaveBeenCalledWith(
-        "SELECT flag_name, flag_value FROM feature_flags WHERE tenant_id = ?",
+        "SELECT flag_name, flag_value FROM feature_flags WHERE company_id = ?",
         ["company-aaa"],
       );
     });

@@ -49,7 +49,7 @@ router.get(
 
       // Overlay DB values for this tenant
       const [rows] = await db.query(
-        "SELECT flag_name, flag_value FROM feature_flags WHERE tenant_id = ?",
+        "SELECT flag_name, flag_value FROM feature_flags WHERE company_id = ?",
         [tenantId],
       );
       for (const row of rows as Array<{
@@ -97,7 +97,7 @@ router.put(
       const flagValue = value ? 1 : 0;
 
       await db.query(
-        `INSERT INTO feature_flags (tenant_id, flag_name, flag_value, updated_by)
+        `INSERT INTO feature_flags (company_id, flag_name, flag_value, updated_by)
          VALUES (?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE flag_value = VALUES(flag_value), updated_by = VALUES(updated_by), updated_at = NOW()`,
         [tenantId, flagName, flagValue, req.user!.email],
