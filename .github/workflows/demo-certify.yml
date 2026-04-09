@@ -1,0 +1,143 @@
+# Demo Certification — CI pipeline for Bulletproof Sales Demo
+#
+# Proves the sales demo works on a clean environment, not just one
+# developer's machine. Runs the full certification pipeline:
+#   reset -> seed -> start servers -> Playwright e2e -> evidence append
+#
+# Triggers:
+#   - workflow_dispatch: manual trigger (requires secrets configured)
+#   - push tags matching demo/*
+#
+# Required GitHub Secrets (configure in Settings > Secrets and variables > Actions):
+#   SALES_DEMO_ADMIN_FIREBASE_UID  - Firebase UID for the demo admin user
+#   SALES_DEMO_DRIVER_FIREBASE_UID - Firebase UID for the demo driver user
+#   SALES_DEMO_ADMIN_EMAIL         - Firebase auth email for demo admin
+#   SALES_DEMO_ADMIN_PASSWORD      - Firebase auth password for demo admin
+#   SALES_DEMO_DRIVER_EMAIL        - Firebase auth email for demo driver
+#   SALES_DEMO_DRIVER_PASSWORD     - Firebase auth password for demo driver
+#   FIREBASE_WEB_API_KEY           - Firebase Web API key
+#   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (optional; certified path is zero-AI)
+#
+# If Firebase secrets are not configured, the E2E specs that require login
+# will skip (they have test.skip() guards checking SALES_DEMO_E2E env var).
+
+name: Demo Certification
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["demo/*"]
+
+env:
+  CI: true
+  NODE_ENV: test
+
+jobs:
+  certify:
+    name: Sales Demo Certification
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: demo
+          MYSQL_DATABASE: loadpilot_demo
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install server dependencies
+        run: cd server && npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Create test fixtures
+        run: |
+          if [ ! -f fixtures/test-users.json ]; then
+            cp fixtures/test-users.example.json fixtures/test-users.json
+          fi
+
+      - name: Create .env.local for demo
+        run: |
+          cat > .env.local << 'ENVEOF'
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_USER=root
+          DB_PASSWORD=demo
+          DB_NAME=loadpilot_demo
+          ALLOW_DEMO_RESET=1
+          VITE_DEMO_NAV_MODE=sales
+          JWT_SECRET=ci-demo-certification-secret
+          FIREBASE_SERVICE_ACCOUNT={}
+          ENVEOF
+
+          # Append secrets line-by-line (values may contain special chars)
+          echo "SALES_DEMO_ADMIN_FIREBASE_UID=${{ secrets.SALES_DEMO_ADMIN_FIREBASE_UID }}" >> .env.local
+          echo "SALES_DEMO_DRIVER_FIREBASE_UID=${{ secrets.SALES_DEMO_DRIVER_FIREBASE_UID }}" >> .env.local
+          echo "SALES_DEMO_ADMIN_EMAIL=${{ secrets.SALES_DEMO_ADMIN_EMAIL }}" >> .env.local
+          echo "SALES_DEMO_ADMIN_PASSWORD=${{ secrets.SALES_DEMO_ADMIN_PASSWORD }}" >> .env.local
+          echo "SALES_DEMO_DRIVER_EMAIL=${{ secrets.SALES_DEMO_DRIVER_EMAIL }}" >> .env.local
+          echo "SALES_DEMO_DRIVER_PASSWORD=${{ secrets.SALES_DEMO_DRIVER_PASSWORD }}" >> .env.local
+          echo "FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" >> .env.local
+          echo "GOOGLE_GENAI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
+
+      - name: Wait for MySQL
+        run: |
+          for i in $(seq 1 30); do
+            if mysqladmin ping -h 127.0.0.1 -u root --password=demo --silent 2>/dev/null; then
+              echo "MySQL is ready"
+              break
+            fi
+            echo "Waiting for MySQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run migrations
+        run: node server/scripts/apply-all-migrations.cjs
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_USER: root
+          DB_PASSWORD: demo
+          DB_NAME: loadpilot_demo
+
+      - name: Run demo certification
+        run: npm run demo:certify:sales
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_USER: root
+          DB_PASSWORD: demo
+          DB_NAME: loadpilot_demo
+          ALLOW_DEMO_RESET: "1"
+          PORT: "5000"
+          VITE_DEMO_NAV_MODE: sales
+          JWT_SECRET: ci-demo-certification-secret
+          FIREBASE_SERVICE_ACCOUNT: "{}"
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: demo-certification-evidence
+          path: |
+            docs/release/evidence.md
+            test-results/
+          retention-days: 30

@@ -192,3 +192,22 @@ customers use. Because Gemini output is non-deterministic, do **not**
 rely on this appendix for the certified flow — keep it as a "wow"
 flourish to use when the room is engaged and the salesperson has
 already nailed the certified script.
+
+## CI certification
+
+The demo certification pipeline runs on GitHub Actions in a clean
+Ubuntu environment with a fresh MySQL 8 service container. This proves
+the demo works outside any single developer's machine.
+
+- **Workflow file:** `.github/workflows/demo-certify.yml`
+- **Trigger:** manual (`workflow_dispatch`) or push a tag matching `demo/*`
+- **Required secrets:** `SALES_DEMO_ADMIN_FIREBASE_UID`,
+  `SALES_DEMO_DRIVER_FIREBASE_UID`, `SALES_DEMO_ADMIN_EMAIL`,
+  `SALES_DEMO_ADMIN_PASSWORD`, `SALES_DEMO_DRIVER_EMAIL`,
+  `SALES_DEMO_DRIVER_PASSWORD`, `FIREBASE_WEB_API_KEY`,
+  `GOOGLE_GENAI_API_KEY` (optional). Configure these in the GitHub
+  repository under Settings > Secrets and variables > Actions.
+- **Artifacts:** The workflow uploads `docs/release/evidence.md` and
+  `test-results/` as downloadable artifacts with 30-day retention.
+- **Without secrets:** E2E specs that require Firebase login will skip
+  gracefully via the `test.skip()` guards in each spec file.

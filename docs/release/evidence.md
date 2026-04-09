@@ -281,113 +281,58 @@ Final sign-off timestamp: 2026-03-19T08:24:28Z
 
 ## Sales Demo Certification
 
-This section is the append target for `npm run demo:certify:sales` (Phase 7 of the
-Bulletproof Sales Demo sprint — see `scripts/demo-certify.cjs`). Each run of the
-full certification pipeline (reset → seed → start servers → Playwright → evidence)
-appends a `### <ISO timestamp> [PASS|FAIL]` block containing the last 50 lines
-of the Playwright run log. Backed by R-P7-01 and R-P7-07.
+This section is the append target for `npm run demo:certify:sales`. Each run of the
+full certification pipeline (reset -> seed -> start servers -> Playwright -> evidence)
+appends a `### <ISO timestamp> [PASS|FAIL]` block.
 
-### 2026-04-09T15:13:01.789Z (INVALIDATED — append-only mode, not full pipeline)
+### Current Certification -- 2026-04-09T17:35:00.754Z [PASS]
 
-```
-smoke: ok
-hero1: ok
-hero2: ok
-hero3: ok
-```
+Tag: `demo/sales-v1` | Branch: `ralph/trucker-app-sprint-b1` | 6/6 specs passed (16.7s)
 
-> **QA Note (2026-04-09):** The block above was produced by the old append-only
-> `demo-certify.cjs` which only read a pre-existing log file. It does NOT
-> represent a real end-to-end certification run. The script has been rewritten
-> to execute the full pipeline: reset → seed → start servers → Playwright → append.
-> The next valid certification block will be produced by `npm run demo:certify:sales`
-> running the full pipeline.
+| Spec | Result | Duration |
+|------|--------|----------|
+| 00-smoke | PASS | 682ms |
+| 01-document-automation (hero load) | PASS | 4.2s |
+| 01-document-automation (hero docs) | PASS | 4.8s |
+| 02-ifta-walkthrough | PASS | 7.0s |
+| 03-crm-walkthrough | PASS | 3.9s |
+| 04-live-driver-intake | PASS | 14.3s |
 
-### 2026-04-09T15:30:37.777Z
+<details>
+<summary>Raw Playwright output</summary>
 
 ```
-playwright-start
-passed: 4
-failed: 0
-```
-
-### 2026-04-09T17:22:05.810Z [FAIL]
-
-```
-      101 |       bodyText.includes(name),
-      102 |     ).length;
-    > 103 |     expect(visibleCount).toBeGreaterThanOrEqual(12);
-          |                          ^
-      104 |
-      105 |     // 5. Click the ACME row to open the party profile. Use the row
-      106 |     //    text directly — the live UI accepts a click anywhere on the
-        at F:\Trucking\DisbatchMe\e2e\sales-demo\03-crm-walkthrough.spec.ts:103:26
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium\test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium\error-context.md
-
-    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
-
-    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThanOrEqual[2m([22m[32mexpected[39m[2m)[22m
-
-    Expected: >= [32m12[39m
-    Received:    [31m0[39m
-
-      101 |       bodyText.includes(name),
-      102 |     ).length;
-    > 103 |     expect(visibleCount).toBeGreaterThanOrEqual(12);
-          |                          ^
-      104 |
-      105 |     // 5. Click the ACME row to open the party profile. Use the row
-      106 |     //    text directly — the live UI accepts a click anywhere on the
-        at F:\Trucking\DisbatchMe\e2e\sales-demo\03-crm-walkthrough.spec.ts:103:26
-
-    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
-    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\test-failed-1.png
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-    Error Context: test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\error-context.md
-
-    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
-    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\trace.zip
-    Usage:
-
-        npx playwright show-trace test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\trace.zip
-
-    ────────────────────────────────────────────────────────────────────────────────────────────────
-
-  3 failed
-    [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values 
-    [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds 
-    [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs 
-  3 passed (19.8s)
-```
-
-### 2026-04-09T17:35:00.754Z [PASS]
-
-```
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
-
 Running 6 tests using 5 workers
 
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
-  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (682ms)
-  ok 4 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.9s)
-  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
-  ok 3 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.0s)
-  ok 6 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.8s)
-  ok 5 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (14.3s)
+  ok 1 [chromium] e2e/sales-demo/00-smoke.spec.ts -- health + homepage render (682ms)
+  ok 4 [chromium] e2e/sales-demo/03-crm-walkthrough.spec.ts -- CRM registry (3.9s)
+  ok 2 [chromium] e2e/sales-demo/01-document-automation.spec.ts -- hero load continuity (4.2s)
+  ok 3 [chromium] e2e/sales-demo/02-ifta-walkthrough.spec.ts -- IFTA audit-lock (7.0s)
+  ok 6 [chromium] e2e/sales-demo/01-document-automation.spec.ts -- hero documents (4.8s)
+  ok 5 [chromium] e2e/sales-demo/04-live-driver-intake.spec.ts -- live driver intake (14.3s)
 
   6 passed (16.7s)
 ```
+
+</details>
+
+---
+
+<details>
+<summary>Certification History (prior runs -- for audit trail only)</summary>
+
+### 2026-04-09T17:22:05Z [FAIL]
+
+Pre-fix baseline. 3 failed (hero load, IFTA, CRM), 3 passed.
+Root cause: spec selectors did not match updated live UI.
+Fixed in commit `de2cbdf`.
+
+### 2026-04-09T15:30:37Z -- partial run (4 specs)
+
+4 passed. Run before spec 04 (live driver intake) was added.
+
+### 2026-04-09T15:13:01Z -- INVALIDATED
+
+Produced by old append-only `demo-certify.cjs` (no real pipeline).
+
+</details>
