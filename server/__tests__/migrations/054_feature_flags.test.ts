@@ -3,7 +3,7 @@
  *
  * Validates migration `054_feature_flags.sql`:
  *  - UP creates `feature_flags` table with 6 columns:
- *    id, tenant_id, flag_name, flag_value, updated_at, updated_by
+ *    id, company_id, flag_name, flag_value, updated_at, updated_by
  *  - DOWN drops only the `feature_flags` table
  *  - Test reads SQL file via `fs.readFileSync`
  */
@@ -64,9 +64,9 @@ describe("Migration 054: Feature Flags", () => {
     expect(up).toMatch(/id\s+INT\s+AUTO_INCREMENT\s+PRIMARY\s+KEY/i);
   });
 
-  it("Tests R-B1-21 — UP section contains column: tenant_id (VARCHAR)", () => {
+  it("Tests R-B1-21 — UP section contains column: company_id (VARCHAR)", () => {
     const up = getUpSection(readMigration());
-    expect(up).toMatch(/tenant_id\s+VARCHAR\(\d+\)/i);
+    expect(up).toMatch(/company_id\s+VARCHAR\(\d+\)/i);
   });
 
   it("Tests R-B1-21 — UP section contains column: flag_name (VARCHAR)", () => {
@@ -94,7 +94,7 @@ describe("Migration 054: Feature Flags", () => {
     // Count column definitions (lines starting with a column name after CREATE TABLE)
     const expectedColumns = [
       "id",
-      "tenant_id",
+      "company_id",
       "flag_name",
       "flag_value",
       "updated_at",
