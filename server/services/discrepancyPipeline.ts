@@ -25,6 +25,7 @@ const DISCREPANCY_THRESHOLD_PCT = 5.0;
 export async function compareWeights(
     db: DbQueryable,
     loadId: string,
+    companyId: string,
     quotedWeight: number,
     scannedWeight: number,
     scannedCommodity: string,
@@ -34,8 +35,8 @@ export async function compareWeights(
     if (!quotedWeight || quotedWeight === 0) {
         // No quoted weight on record — store scanned values but don't flag
         await db.query(
-            `UPDATE loads SET scanned_weight = ?, scanned_commodity = ? WHERE id = ?`,
-            [scannedWeight, scannedCommodity, loadId]
+            `UPDATE loads SET scanned_weight = ?, scanned_commodity = ? WHERE id = ? AND company_id = ?`,
+            [scannedWeight, scannedCommodity, loadId, companyId]
         );
         return { flagged: false, discrepancyPct: 0 };
     }
@@ -49,8 +50,8 @@ export async function compareWeights(
              scanned_commodity      = ?,
              weight_discrepancy_pct = ?,
              discrepancy_flagged    = ?
-         WHERE id = ?`,
-        [scannedWeight, scannedCommodity, discrepancyPct.toFixed(2), flagged, loadId]
+         WHERE id = ? AND company_id = ?`,
+        [scannedWeight, scannedCommodity, discrepancyPct.toFixed(2), flagged, loadId, companyId]
     );
 
     if (flagged) {

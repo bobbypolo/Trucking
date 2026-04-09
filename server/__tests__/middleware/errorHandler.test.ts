@@ -111,6 +111,18 @@ describe("R-P1-04: Global Error Handler Middleware", () => {
       expect(body.error_code).toBe("INTERNAL_001");
       expect(body.message).toBe("Internal server error");
     });
+
+    it("maps body-parser payload-too-large errors to 413", () => {
+      const err = { type: "entity.too.large", status: 413 };
+      const req = mockReq();
+      const res = mockRes();
+      const next = mockNext();
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(413);
+      expect(res.json).toHaveBeenCalledWith({ error: "Payload too large" });
+    });
   });
 
   describe("AC2: No stack traces in response body", () => {

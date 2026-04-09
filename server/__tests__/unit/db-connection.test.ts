@@ -25,6 +25,8 @@ vi.mock('mysql2/promise', () => ({
   },
 }));
 
+vi.unmock('../../db');
+
 // Helper: reset module registry so db.ts re-evaluates with new env vars.
 async function loadDb(env: Record<string, string | undefined>) {
   // Save original env
@@ -38,9 +40,9 @@ async function loadDb(env: Record<string, string | undefined>) {
     }
   }
 
-  // Force re-import of db module
+  // Force re-import of the real db module
   vi.resetModules();
-  const mod = await import('../../db.js');
+  const mod = await import('../../db');
 
   // Restore env
   for (const [k, v] of Object.entries(saved)) {

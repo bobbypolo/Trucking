@@ -2,11 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response, NextFunction } from "express";
 import { AuthError, InternalError } from "../../errors/AppError";
 
-const { mockVerifyIdToken, mockResolveSqlPrincipalByFirebaseUid, mockApp } =
+const {
+  mockVerifyIdToken,
+  mockResolveSqlPrincipalByFirebaseUid,
+  mockApp,
+  mockIsTokenRevoked,
+} =
   vi.hoisted(() => ({
     mockVerifyIdToken: vi.fn(),
     mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
     mockApp: vi.fn(),
+    mockIsTokenRevoked: vi.fn(),
   }));
 
 vi.mock("firebase-admin", () => ({
@@ -20,6 +26,16 @@ vi.mock("firebase-admin", () => ({
 
 vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolveSqlPrincipalByFirebaseUid,
+}));
+
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: mockIsTokenRevoked,
+}));
+
+vi.mock("../../db", () => ({
+  default: {
+    execute: vi.fn(),
+  },
 }));
 
 import { requireAuth, AuthenticatedRequest } from "../../middleware/requireAuth";
@@ -45,6 +61,8 @@ describe("R-P1-05: requireAuth middleware", () => {
   beforeEach(() => {
     nextFn = vi.fn() as NextFunction & ReturnType<typeof vi.fn>;
     vi.clearAllMocks();
+    mockApp.mockReturnValue(true);
+    mockIsTokenRevoked.mockResolvedValue(false);
   });
 
   describe("AC1: Firebase Admin SDK validation only", () => {
