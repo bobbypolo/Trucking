@@ -2,382 +2,368 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "6b6bc474eddaa5f5b8d55e0686114da647d514b5f3be7e0966df02227de4017d",
+  "plan_hash": "c6bed60d51714b6fd643269114a31829f1c791e7277792665262f1efa2dbcc02",
   "stories": [
     {
-      "id": "STORY-B1-01",
-      "description": "Migration adds aging_bucket column to ar_invoices",
+      "id": "STORY-001",
+      "description": "- Shared Types Package Extraction (foundation)",
       "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
+      "phase_type": null,
+      "component": "packages/",
       "scope": [
-        "server/migrations/",
-        "server/__tests__/migrations/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 80,
-      "dependsOn": [],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-01",
-          "criterion": "test reads SQL file via `fs.readFileSync` and asserts UP section contains exactly one `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL` line via regex match.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-02",
-          "criterion": "test reads file via `fs.readFileSync` and asserts DOWN section contains exactly one `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other `DROP` occurrences (regex count).",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-02",
-      "description": "Job populates aging_bucket with 5-bucket assignment",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/jobs/",
-        "server/__tests__/jobs/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-01"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-03",
-          "criterion": "5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`; test asserts exact values via `.toBe()`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-04",
-          "criterion": "invoice with null `issued_at` results in `aging_bucket` staying null (test asserts `.toBeNull()`).",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/jobs/invoice-aging-nightly.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-03",
-      "description": "External scheduler wrapper (Windows-safe .cjs)",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "scripts/",
-      "scope": [
+        "package.json",
+        "packages/",
         "scripts/",
-        "server/__tests__/scripts/",
-        "docs/ops/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-02"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-05",
-          "criterion": "test spawns `node scripts/invoice-aging-nightly.cjs --dry-run` via `child_process.spawnSync`; asserts exit code 0 and stdout contains `\"status\":\"dry-run\"`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-06",
-          "criterion": "runbook `docs/ops/invoice-aging-nightly.md` contains H2 sections `## Dry-run`, `## Production invocation`, `## Idempotency`, `## Failure alerting`, `## Cron example`, `## GitHub Actions example`, `## Rollback`; test reads file via `fs.readFileSync` and asserts each heading via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-07",
-          "criterion": "test spawns wrapper with no `DATABASE_URL` env; asserts non-zero exit and stderr JSON contains `\"error\":\"missing_database_url\"`.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/invoice-aging-nightly.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-04",
-      "description": "Sentry server-side init (gated on SENTRY_DSN)",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/index.ts",
-        "server/__tests__/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 80,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-08",
-          "criterion": "test reads `server/index.ts` via `fs.readFileSync` and asserts the import line and conditional `initSentry()` call via regex match.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-09",
-          "criterion": "integration test sets `process.env.SENTRY_DSN = 'test-dsn'`, mocks `initSentry`, imports `server/index`, asserts `initSentry` called exactly once.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-10",
-          "criterion": "integration test with `SENTRY_DSN` unset -> server module loads without throwing.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/index.sentry-init.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-05",
-      "description": "Master program document + release checklist + sprint history",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/",
-        "scripts/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-11",
-          "criterion": "master plan contains H2 sections for all 13 sprints (B1..M); verified by `scripts/verify-program-docs.cjs` reading file via `fs.readFileSync` and asserting each heading via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-12",
-          "criterion": "master plan contains `## Shipped Baseline (Sprint A)` section; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-13",
-          "criterion": "release checklist contains tables for operator gates `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`, `OP-LEGAL-*`; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-14",
-          "criterion": "sprint-history has initial entry with `dd8a8f4` Sprint A SHA.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-06",
-      "description": "Baseline debt register populated with REAL entries",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/",
-        "scripts/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 120,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-15",
-          "criterion": "`docs/trucker-app-baseline-debt.md` exists and contains a markdown table with columns `file | failure | owner | first-seen | expiry | justification`; verified via `scripts/verify-baseline-debt.cjs` parsing the markdown table using `fs.readFileSync` + regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-16",
-          "criterion": "register either contains >= 1 real entry OR an explicit `| _(verified clean at <date>)_ |` placeholder row; helper script asserts one of the two.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-baseline-debt.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-07",
-      "description": "Env matrix doc",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-17",
-          "criterion": "doc contains table with columns `Variable`, `Category`, `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`, `Rotation`; verified via helper script reading file with `fs.readFileSync` and matching header via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-18",
-          "criterion": "doc contains H2 section `## EXPO_PUBLIC_* rule` stating that mobile public keys MUST use the prefix and server secrets MUST NOT.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-08",
-      "description": "Feature flags doc + migration numbering rule",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-19",
-          "criterion": "feature flags doc lists all 6 flags (`FEATURE_TRUCKER_MOBILE_BETA`, `FEATURE_MOTIVE_ELD`, `FEATURE_BROKER_CREDIT`, `FEATURE_FACILITY_DWELL`, `FEATURE_FREEMIUM_QUOTA`, `FEATURE_FORCE_UPGRADE`); helper script reads file and asserts each flag name via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-20",
-          "criterion": "migration-numbering doc contains the placeholder rule and assignment procedure; helper script asserts H2 sections `## Placeholder convention` and `## Assignment procedure`.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-09",
-      "description": "feature_flags DB table + read/write endpoint + server/index.ts mount",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/migrations/",
-        "server/routes/",
-        "server/index.ts",
-        "server/__tests__/"
+        "tsconfig.json",
+        "types.ts"
       ],
       "complexity": "complex",
-      "maxTurns": 150,
+      "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-21",
-          "criterion": "migration creates `feature_flags` table with 6 columns (id, tenant_id, flag_name, flag_value, updated_at, updated_by); test reads SQL file via `fs.readFileSync`.",
+          "id": "R-P1-01",
+          "criterion": "`packages/shared/package.json` exists with `\"name\": \"@loadpilot/shared\"` and `\"version\": \"0.0.1\"`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting via JSON.parse",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-22",
-          "criterion": "`GET /api/feature-flags` returns merged flag map (env + DB) for authenticated user's tenant; integration test via supertest.",
+          "id": "R-P1-02",
+          "criterion": "`packages/shared/src/types.ts` contains all 150 exported symbols from the original `types.ts`; verified by `scripts/verify-shared-package.cjs` reading both files via `fs.readFileSync` and comparing export counts via regex `export (type|interface|const|enum|function)` match count",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-23",
-          "criterion": "`PUT /api/feature-flags/:name` requires admin role; non-admin returns HTTP 403 (auth-negative Rule 16).",
+          "id": "R-P1-03",
+          "criterion": "`packages/shared/src/index.ts` contains barrel re-export `export * from './types'`; verified by `scripts/verify-shared-package.cjs` reading file and matching regex",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-24",
-          "criterion": "`server/index.ts` mount line `app.use('/api/feature-flags', featureFlagsRouter)` present; test reads file via `fs.readFileSync` and asserts via regex match (no shell grep).",
+          "id": "R-P1-04",
+          "criterion": "Root `types.ts` contains exactly one line: re-export shim `export * from '@loadpilot/shared'`; verified by `scripts/verify-shared-package.cjs` reading file and asserting line count equals 1 and content matches regex",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "Root `package.json` contains `\"workspaces\": [\"packages/*\"]`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting JSON.parse result",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-06",
+          "criterion": "Root `tsconfig.json` contains path alias `\"@loadpilot/shared\"` pointing to `\"./packages/shared/src\"`; verified by `scripts/verify-shared-package.cjs` reading file and asserting paths entry exists",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "`npx tsc --noEmit` exits with code 0 from project root (existing frontend types resolve through shim); verified by `scripts/verify-shared-package.cjs` spawning process via `child_process.spawnSync` and asserting exit code",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/ __tests__/routes/feature-flags.test.ts\""
+        "unit": "packages/shared/src/types.ts (canonical source, 2130 lines)"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-10",
-      "description": "SaaS non-regression verification",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "scripts/",
+      "id": "STORY-002",
+      "description": "- Expo Project Initialization (foundation)",
+      "phase": 2,
+      "phase_type": null,
+      "component": "apps/",
       "scope": [
+        ".gitignore",
+        "apps/",
         "scripts/"
       ],
-      "complexity": "moderate",
-      "maxTurns": 100,
+      "complexity": "medium",
+      "maxTurns": 150,
       "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-25",
-          "criterion": "helper script `scripts/verify-saas-regression.cjs` runs `npx vitest run src/__tests__/` and `cd server && npx vitest run __tests__/routes/accounting.test.ts __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts` via `child_process.spawnSync`, captures exit codes, asserts all 0 (modulo baseline debt exclusions).",
+          "id": "R-P2-01",
+          "criterion": "`apps/trucker/package.json` exists with `\"expo\"`, `\"react-native\"`, and `\"expo-router\"` as 3 required keys in `dependencies`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and asserting all 3 keys present in `JSON.parse(content).dependencies`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-02",
+          "criterion": "`apps/trucker/app.json` contains `expo.name`, `expo.slug`, `expo.scheme`, and `expo.platforms` including both `\"ios\"` and `\"android\"`; verified by `scripts/verify-expo-project.cjs` reading file and asserting JSON structure",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-03",
+          "criterion": "`apps/trucker/eas.json` contains `build.development`, `build.preview`, and `build.production` profiles; verified by `scripts/verify-expo-project.cjs` reading file and asserting all 3 keys exist",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-04",
+          "criterion": "`apps/trucker/src/app/_layout.tsx` exports `export default function RootLayout` that renders Expo Router `Slot` or `Stack`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and matching `/export default function RootLayout/` regex returning exactly 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-05",
+          "criterion": "`apps/trucker/src/app/index.tsx` exists and contains `export default` matching `/export default/` regex with exactly 1 match; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-06",
+          "criterion": "`.gitignore` contains entries for `apps/trucker/node_modules/` and `apps/trucker/.expo/`; verified by `scripts/verify-expo-project.cjs` reading `.gitignore` via `fs.readFileSync` and asserting both patterns present via regex (at minimum these 2, additional entries allowed)",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-saas-regression.cjs\""
+        "unit": "apps/trucker/package.json"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-003",
+      "description": "- Mobile Navigation Shell (module)",
+      "phase": 3,
+      "phase_type": null,
+      "component": "apps/",
+      "scope": [
+        "apps/",
+        "scripts/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-002"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P3-01",
+          "criterion": "`apps/trucker/src/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth` hook; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/export.*AuthProvider/` and `/export.*useAuth/` regexes each return >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-02",
+          "criterion": "`AuthContext.tsx` defines `isAuthenticated` state with default `false` and exposes `login` and `logout` functions; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/isAuthenticated.*false/` and both `/login/` and `/logout/` patterns present",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-03",
+          "criterion": "Tab layout at `apps/trucker/src/app/(tabs)/_layout.tsx` renders `Tabs` component with screen entries for `index`, `loads`, and `profile`; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/Tabs/` regex returns >= 1 match and file contains all 3 screen name strings",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "Auth group contains exactly 2 route files: `(auth)/login.tsx` and `(auth)/signup.tsx`; verified by `scripts/verify-mobile-nav.cjs` asserting `fs.existsSync` returns `true` for both paths under `apps/trucker/src/app/`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-05",
+          "criterion": "Root layout at `apps/trucker/src/app/_layout.tsx` wraps content with `<AuthProvider>` and contains redirect logic for unauthenticated users; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/AuthProvider/` regex returns >= 1 match and `/Redirect|router\\.replace/` returns >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-06",
+          "criterion": "Login screen at `apps/trucker/src/app/(auth)/login.tsx` contains at least 2 `TextInput` components and 1 submit button (`Pressable` or `TouchableOpacity`); verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P3-07",
+          "criterion": "Signup screen at `apps/trucker/src/app/(auth)/signup.tsx` contains at least 2 `TextInput` components and 1 submit button; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-mobile-nav.cjs"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-004",
+      "description": "- Mobile Auth Integration (module)",
+      "phase": 4,
+      "phase_type": null,
+      "component": "apps/",
+      "scope": [
+        "apps/",
+        "scripts/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-003"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-01",
+          "criterion": "`AuthContext.tsx` imports `signInWithEmailAndPassword` from Firebase Auth and calls it in the `login` function; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/signInWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "`AuthContext.tsx` contains error handling that maps Firebase error codes to user-friendly messages (at least `auth/wrong-password` and `auth/user-not-found`); verified by `scripts/verify-mobile-auth.cjs` asserting `/auth\\/wrong-password|auth\\/user-not-found/` regex returns >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "`AuthContext.tsx` imports `createUserWithEmailAndPassword` from Firebase Auth and calls it in the `signup` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/createUserWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "`AuthContext.tsx` imports `signOut` from Firebase Auth and calls it in the `logout` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/signOut/` regex returns >= 2 matches (import + call)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "`apps/trucker/src/services/api.ts` attaches `Authorization: Bearer` header using Firebase ID token; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/Authorization.*Bearer/` regex returns >= 1 match and `/getIdToken/` returns >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-06",
+          "criterion": "`api.ts` handles HTTP 401 responses by triggering logout or auth state clearing; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/401/` and `/logout|signOut|clearAuth/` regexes each return >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "`api.ts` catches network errors (TypeError from fetch) and wraps them in user-friendly messages; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/catch/` and `/network|Network|TypeError/` regexes each return >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "Firebase config at `apps/trucker/src/config/firebase.ts` reads all 6 Firebase config values from `EXPO_PUBLIC_FIREBASE_*` env vars and contains 0 hardcoded API key strings; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/EXPO_PUBLIC_FIREBASE/g` returns >= 6 matches and `/AIza[a-zA-Z0-9_-]{35}/` returns 0 matches",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-mobile-auth.cjs"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-005",
+      "description": "- Baseline Debt Cleanup (foundation)",
+      "phase": 5,
+      "phase_type": null,
+      "component": "server/",
+      "scope": [
+        ".claude/",
+        "docs/",
+        "scripts/",
+        "server/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P5-01",
+          "criterion": "`e2e/ifta-audit-packet-smoke.spec.ts` can resolve JSZip import without TS2307 error; verified by `scripts/verify-baseline-debt-resolved.cjs` checking that `@types/jszip` is in devDependencies or that a type declaration exists for jszip",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-02",
+          "criterion": "`server/__tests__/helpers/port-env.ts` exists and sets `process.env.PORT` to a test port value via JavaScript (not shell `PORT=5000` syntax); verified by `scripts/verify-baseline-debt-resolved.cjs` reading file via `fs.readFileSync` and asserting `process.env.PORT` assignment pattern",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-03",
+          "criterion": "`.claude/hooks/tests/` directory exists (created locally); verified by `scripts/verify-baseline-debt-resolved.cjs` asserting `fs.existsSync('.claude/hooks/tests/')` returns true. NOTE: directory is gitignored — worker creates it locally but does NOT stage it",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-04",
+          "criterion": "`docs/trucker-app-baseline-debt.md` contains resolution annotations for all 3 debt entries; verified by `scripts/verify-baseline-debt-resolved.cjs` reading file and asserting each original failure description has an adjacent resolution note",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-baseline-debt-resolved.cjs"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-006",
+      "description": "- SaaS Non-Regression Verification (e2e)",
+      "phase": 6,
+      "phase_type": null,
+      "component": "docs/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P6-01",
+          "criterion": "`npx vitest run` from project root exits with code 0, confirming all existing frontend tests pass after shared types extraction; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
+          "testType": "e2e",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-02",
+          "criterion": "`cd server && npx vitest run --exclude=__tests__/integration/** --exclude=__tests__/regression/** --exclude=__tests__/performance/**` exits with code 0, confirming all existing server tests pass; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
+          "testType": "e2e",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-03",
+          "criterion": "`docs/trucker-app-sprint-history.md` contains a `## Sprint B2` section with `Stories` row showing \"6\" and `Status` showing \"Engineering Complete\"; verified by `scripts/verify-b2-completion.cjs` reading file via `fs.readFileSync` and asserting `/## Sprint B2/` heading exists and `/Stories.*6/` pattern matches",
+          "testType": "e2e",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-04",
+          "criterion": "All 5 Phase 1-5 verification scripts (`verify-shared-package.cjs`, `verify-expo-project.cjs`, `verify-mobile-nav.cjs`, `verify-mobile-auth.cjs`, `verify-baseline-debt-resolved.cjs`) exit with code 0; verified by `scripts/verify-b2-completion.cjs` spawning each and asserting all 5 exit codes equal 0",
+          "testType": "e2e",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-05",
+          "criterion": "If any existing test fails during regression run, `verify-b2-completion.cjs` returns non-zero exit code and reports the failing test name in stdout; verified by the script's error-path logic that captures stderr from vitest and includes it in the failure message",
+          "testType": "e2e",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-b2-completion.cjs"
       },
       "passed": false,
       "verificationRef": null
