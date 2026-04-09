@@ -14,7 +14,12 @@ import {
 // against a fixture that mirrors the nav categories defined in
 // App.tsx. This is effectively the same evidence a render-based test
 // would produce for R-P6-03 and R-P6-04, without the dependency drag.
-const appSource = fs.readFileSync(path.resolve("App.tsx"), "utf-8");
+//
+// Normalize CRLF -> LF so the file-content assertions are stable
+// across Windows (core.autocrlf=true) and Unix checkouts.
+const appSource = fs
+  .readFileSync(path.resolve("App.tsx"), "utf-8")
+  .replace(/\r\n/g, "\n");
 
 // Snapshot the nav items that App.tsx renders in the default
 // (production / demo-mode-off) path. These must match what the

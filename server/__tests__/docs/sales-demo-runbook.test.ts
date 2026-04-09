@@ -83,10 +83,30 @@ function gitDiffNumstat(file: string): { added: number; removed: number } {
   return { added: Number(added), removed: Number(removed) };
 }
 
-describe("server/index.ts diff line-cap — R-P6-09 (exactly 2 added lines)", () => {
-  it("R-P6-09: server/index.ts has exactly 2 added lines and 0 removed lines vs merge-base", () => {
-    const stat = gitDiffNumstat("server/index.ts");
-    expect(stat.added).toBe(2);
-    expect(stat.removed).toBe(0);
+describe("server/index.ts demo router contract — R-P6-09 (BSD touch invariant)", () => {
+  // R-P6-09 contract: the BSD demo router import + conditional mount
+  // are present in server/index.ts and the conditional mount remains
+  // env-flag-gated. After BSD merged, this is a presence-and-shape
+  // check on the source rather than a numstat compare against the
+  // (now-moving) merge-base. The original BSD branch contract was
+  // "exactly 2 added lines vs main"; that branch-time invariant has
+  // been promoted to a permanent source-shape invariant so subsequent
+  // sprints (e.g. Sprint A's iftaAuditPacketsRouter mount) cannot
+  // accidentally remove the demo router or relax the env-flag gate.
+  const REPO_ROOT_PATH = REPO_ROOT;
+  const SERVER_INDEX_PATH = path.join(REPO_ROOT_PATH, "server", "index.ts");
+
+  it("R-P6-09: server/index.ts contains the BSD demo router import line", () => {
+    const src = fs.readFileSync(SERVER_INDEX_PATH, "utf-8");
+    expect(src).toMatch(
+      /^import\s+demoRouter\s+from\s+["']\.\/routes\/demo["']\s*;?\s*$/m,
+    );
+  });
+
+  it("R-P6-09: server/index.ts mounts the demo router only when ALLOW_DEMO_RESET=1", () => {
+    const src = fs.readFileSync(SERVER_INDEX_PATH, "utf-8");
+    expect(src).toMatch(
+      /process\.env\.ALLOW_DEMO_RESET\s*===\s*["']1["'][\s\S]{0,100}app\.use\([^)]*demoRouter/,
+    );
   });
 });
