@@ -17,10 +17,8 @@
 #   SALES_DEMO_DRIVER_PASSWORD     - Firebase auth password for demo driver
 #   FIREBASE_WEB_API_KEY           - Firebase Web API key
 #   FIREBASE_PROJECT_ID            - Firebase project ID (required for server boot)
+#   FIREBASE_SERVICE_ACCOUNT       - Full service account JSON (for token verification)
 #   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (optional; certified path is zero-AI)
-#
-# If Firebase secrets are not configured, the E2E specs that require login
-# will skip (they have test.skip() guards checking SALES_DEMO_E2E env var).
 
 name: Demo Certification
 
@@ -76,6 +74,9 @@ jobs:
             cp fixtures/test-users.example.json fixtures/test-users.json
           fi
 
+      - name: Write Firebase service account file
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > server/serviceAccount.json
+
       - name: Create .env.local for demo
         run: |
           cat > .env.local << 'ENVEOF'
@@ -87,7 +88,6 @@ jobs:
           ALLOW_DEMO_RESET=1
           VITE_DEMO_NAV_MODE=sales
           JWT_SECRET=ci-demo-certification-secret
-          FIREBASE_SERVICE_ACCOUNT={}
           ENVEOF
           # Strip leading whitespace from heredoc (YAML indentation leaks into content)
           sed -i 's/^[[:space:]]*//' .env.local
@@ -134,8 +134,8 @@ jobs:
           PORT: "5000"
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
-          FIREBASE_SERVICE_ACCOUNT: "{}"
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Upload certification evidence
         if: always()
