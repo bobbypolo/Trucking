@@ -13,7 +13,8 @@
     "allowJs": true,
     "jsx": "react-jsx",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@loadpilot/shared": ["./packages/shared/src"]
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
