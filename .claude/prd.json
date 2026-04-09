@@ -2,7 +2,7 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "7f38760750c726d76801f85d245525cdbc9e0906e0d9dc750f617c8516206024",
+  "plan_hash": "28effef85acb3d87754f1cf8062f8fa65f3734079c99b9d7c9a36c66de87cfd3",
   "stories": [
     {
       "id": "STORY-B1-01",
@@ -248,7 +248,9 @@
       ],
       "complexity": "simple",
       "maxTurns": 60,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-B1-05"
+      ],
       "parallelGroup": "B1-parallel",
       "acceptanceCriteria": [
         {
@@ -281,7 +283,9 @@
       ],
       "complexity": "simple",
       "maxTurns": 60,
-      "dependsOn": [],
+      "dependsOn": [
+        "STORY-B1-05"
+      ],
       "parallelGroup": "B1-parallel",
       "acceptanceCriteria": [
         {

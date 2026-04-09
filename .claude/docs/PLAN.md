@@ -813,7 +813,7 @@ Exit artifact: PR + /verify PASS + /audit ≥7/9 + sprint-history appended
 **External accounts**: None
 **Story count**: 10 stories / 25 R-markers
 **Operator gates**: None
-**Parallelism**: STORY-01..03 sequential; 04..10 parallel after 03
+**Parallelism**: STORY-01..03 sequential; 04..10 parallel (07, 08 depend on 05 for verify script)
 **SaaS non-regression gate**: YES — touches `server/jobs/`, `server/index.ts`
 **Mobile domain layering rule**: N/A (no mobile code)
 
@@ -1443,6 +1443,7 @@ __tests__/middleware/requireTenant.test.ts __tests__/routes/auth.test.ts`
 ### Targeted verification command
 ```
 cd apps/trucker
+npm ci
 npm test
 npx tsc --noEmit
 cd ../..
@@ -1681,6 +1682,7 @@ cd server
 npx vitest run __tests__/routes/driver-invitations.test.ts __tests__/routes/owner-operator-signup.test.ts __tests__/routes/driver-password-reset.test.ts __tests__/routes/user-sessions.test.ts __tests__/routes/user-notification-preferences.test.ts __tests__/services/tenant-provisioning.service.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- auth invite signup sessions
 cd ../..
 npx vitest run src/__tests__/components/driver/DriverInvitationPanel.test.tsx
@@ -1861,6 +1863,7 @@ cd server
 npx vitest run __tests__/routes/driver-trip.test.ts __tests__/routes/driver-pending-actions.test.ts __tests__/routes/loads.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- trip home offline-cache
 cd ../..
 node scripts/verify-offline-sync-arch.cjs
@@ -2089,6 +2092,7 @@ cd server
 npx vitest run __tests__/migrations __tests__/routes/driver-expenses.test.ts __tests__/routes/documents.idempotency.test.ts __tests__/services/eld/ __tests__/services/expense-accounting-bridge.service.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- documents expenses capture lib/document-queue lib/document-hash lib/background-sync
 cd ../..
 node scripts/verify-eld-contract.cjs
@@ -2252,6 +2256,7 @@ cd server
 npx vitest run __tests__/migrations __tests__/services/eld/ __tests__/routes/eld-integration.test.ts __tests__/jobs/eld-sync-nightly.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- hos
 cd ../..
 npx vitest run src/__tests__/components/EldIntegration.test.tsx
@@ -2455,6 +2460,7 @@ cd server
 npx vitest run __tests__/routes/driver-compliance.test.ts __tests__/routes/driver-compliance.empty-state.test.ts __tests__/services/compliance-aggregator.service.test.ts __tests__/routes/safety.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- compliance
 cd ../..
 node scripts/verify-saas-regression.cjs
@@ -2628,6 +2634,7 @@ cd server
 npx vitest run __tests__/routes/driver-settlements.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/migrations
 cd ..
 cd apps/trucker
+npm ci
 npm test -- compliance settlements audit-packet
 cd ../..
 node scripts/verify-billing-policy.cjs
@@ -2811,6 +2818,7 @@ cd server
 npx vitest run __tests__/migrations __tests__/middleware/aiQuota.test.ts __tests__/routes/subscription.test.ts __tests__/routes/stripe-webhook.test.ts __tests__/routes/ai.test.ts __tests__/services/tenant-provisioning.tier.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- subscription upgrade browser
 cd ../..
 node scripts/verify-billing-policy.cjs
@@ -2978,6 +2986,7 @@ cd server
 npx vitest run __tests__/migrations __tests__/jobs/broker-credit-nightly.test.ts __tests__/jobs/facility-dwell-nightly.test.ts __tests__/routes/broker-credit.test.ts __tests__/routes/facility-dwell.test.ts __tests__/lib/k-anonymity.test.ts __tests__/lib/data-maturity.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- broker-credit
 cd ../..
 node scripts/verify-saas-regression.cjs
@@ -3185,6 +3194,7 @@ cd server
 npx vitest run __tests__/migrations __tests__/routes/app-version.test.ts __tests__/routes/user-notifications.test.ts __tests__/routes/support-tickets.test.ts
 cd ..
 cd apps/trucker
+npm ci
 npm test -- notifications support conflict-resolver hlc sentry analytics
 cd ../..
 node scripts/verify-release-ops.cjs
@@ -3506,8 +3516,8 @@ No shell pipes, no `grep`, no `wc`, no `/tmp`.
 9. Commit placeholder PNGs `apps/trucker/assets/icon.png`,
    `splash.png`, `adaptive-icon.png` (1024×1024 solid color;
    committed here so B2 doesn't need to generate binary files)
-10. Copy `docs/PLAN-trucker-app-sprint-b1.md` → `.claude/docs/PLAN.md`
-    (OR put full master plan there if operator prefers)
+10. `.claude/docs/PLAN.md` retains the full program plan (this file).
+    Ralph workers read stories from `prd.json`, not PLAN.md directly.
 11. Regenerate `.claude/prd.json` for Sprint B1
 12. Reset `.claude/.workflow-state.json` ralph block
 13. Commit: `chore: install trucker-app program plan (Sprints B1..M, v4)`
@@ -3598,8 +3608,8 @@ via handoff script, then Ralph, then merge, then next)
 
 ### This plan (program plan) exit verification
 - All scripts in "To create on exit" list exist on disk
-- `.claude/docs/PLAN.md` contains either the full program plan or
-  Sprint B1 extract (operator choice)
+- `.claude/docs/PLAN.md` contains the full program plan (canonical;
+  Ralph workers read `prd.json` for per-story dispatch)
 - `.claude/prd.json` validates v2 schema with Sprint B1 stories
 - Workflow state reset to sprint B1 defaults
 - Root `npm run test` unchanged from baseline
