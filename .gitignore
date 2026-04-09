@@ -113,3 +113,6 @@ handoff/
 # Local dev PowerShell scripts Ã¢â‚¬â€ keep local-only for now
 scripts/dev/*.ps1
 
+# Mobile app (Expo / React Native)
+apps/trucker/node_modules/
+apps/trucker/.expo/
