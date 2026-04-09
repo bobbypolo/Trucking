@@ -45,6 +45,7 @@
     "@testing-library/user-event": "^14.6.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jszip": "^3.4.4",
     "@types/node": "^22.19.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
