@@ -16,6 +16,7 @@
 #   SALES_DEMO_DRIVER_EMAIL        - Firebase auth email for demo driver
 #   SALES_DEMO_DRIVER_PASSWORD     - Firebase auth password for demo driver
 #   FIREBASE_WEB_API_KEY           - Firebase Web API key
+#   FIREBASE_PROJECT_ID            - Firebase project ID (required for server boot)
 #   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (optional; certified path is zero-AI)
 #
 # If Firebase secrets are not configured, the E2E specs that require login
@@ -99,6 +100,7 @@ jobs:
           echo "SALES_DEMO_DRIVER_PASSWORD=${{ secrets.SALES_DEMO_DRIVER_PASSWORD }}" >> .env.local
           echo "FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" >> .env.local
           echo "GOOGLE_GENAI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
+          echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.local
 
       - name: Wait for MySQL
         run: |
@@ -133,6 +135,7 @@ jobs:
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
           FIREBASE_SERVICE_ACCOUNT: "{}"
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: Upload certification evidence
         if: always()
