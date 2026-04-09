@@ -124,6 +124,13 @@ If the buyer asks "is this live or pre-seeded?", the honest answer is
 **pre-seeded by the same code path that runs in production**. The seeded
 row is byte-for-byte the shape the live AI extraction would produce.
 
+**Important:** Do NOT present the certified demo as a "live AI demo."
+The certified path is deterministic and reproducible because it uses
+pre-seeded data. Present it as: "This is our production software running
+against real data — the same code and UI your drivers and dispatchers
+will use." The optional Wow Appendix below covers live AI extraction
+for situations where the salesperson wants to demonstrate that capability.
+
 A separate optional path (see Wow Appendix) lets the salesperson run a
 real Gemini extraction live if they want — but the certified script
 never depends on it.

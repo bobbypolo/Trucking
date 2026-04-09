@@ -1,69 +1,59 @@
 #!/usr/bin/env node
 /**
- * scripts/demo-certify.cjs — Windows-safe Sales Demo Certification appender.
+ * scripts/demo-certify.cjs — Windows-safe Sales Demo Certification pipeline.
  *
- * Usage: node scripts/demo-certify.cjs [logFilePath] [evidenceFilePath]
+ * Usage: node scripts/demo-certify.cjs [--append-only logFilePath]
  *
- * Defaults:
- *   logFilePath:      <os.tmpdir()>/sales-demo-cert-latest.log
- *   evidenceFilePath: docs/release/evidence.md   (relative to process.cwd())
+ * Full pipeline (default):
+ *   1. Runs demo:reset:sales (resets the SALES-DEMO-001 tenant)
+ *   2. Runs demo:seed:sales  (seeds the hero load + supporting rows)
+ *   3. Starts the backend server (server/) on port 5000
+ *   4. Starts the frontend dev server (vite) on port 3101
+ *   5. Waits for both to be healthy
+ *   6. Runs Playwright against e2e/sales-demo/ specs
+ *   7. Captures Playwright stdout to a temp log
+ *   8. Appends the last 50 lines of the log to docs/release/evidence.md
+ *   9. Kills both servers
+ *  10. Exits with the Playwright exit code
  *
- * Behavior (R-P7-01..R-P7-03):
- *   - Reads the log file from argv[2] or falls back to the default location
- *     under os.tmpdir(). Never references the literal Unix temp directory —
- *     all temp-dir resolution flows through os.tmpdir() so the script works
- *     unchanged on Windows.
- *   - If the log file does not exist the script prints a clear error and
- *     exits with code 1 (R-P7-02).
- *   - Otherwise it appends an ISO-timestamped "### <timestamp>" block under
- *     the "## Sales Demo Certification" H2 section of the evidence file and
- *     writes the last 50 lines of the log into that block (R-P7-01).
+ * Append-only mode (--append-only <logFile>):
+ *   Legacy behavior — reads an existing log file and appends to evidence.
+ *   Kept for backward compatibility with manual workflows.
  *
- * This script is invoked by the root npm script "demo:certify:sales":
- *     node scripts/demo-certify.cjs
+ * Environment:
+ *   All temp files use os.tmpdir() so the script works on Windows unchanged.
+ *   The script sets SALES_DEMO_E2E=1 and E2E_SERVER_RUNNING=1 for Playwright.
  */
 "use strict";
 
+const { execSync, spawn } = require("child_process");
 const fs = require("fs");
+const http = require("http");
 const os = require("os");
 const path = require("path");
 
 const EVIDENCE_H2 = "## Sales Demo Certification";
 const DEFAULT_LOG_BASENAME = "sales-demo-cert-latest.log";
 const MAX_LOG_TAIL_LINES = 50;
+const SERVER_PORT = 5000;
+const VITE_PORT = 3101;
+const HEALTH_TIMEOUT_MS = 30000;
+const HEALTH_POLL_MS = 1000;
 
-/**
- * Resolve the default log path under the OS temp directory. This is the
- * canonical Windows-safe temp location (uses os.tmpdir() rather than a
- * hardcoded Unix path).
- *
- * @returns {string} Absolute path to the default log file.
- */
+/* ------------------------------------------------------------------ */
+/*  Utility helpers (also exported for unit tests)                     */
+/* ------------------------------------------------------------------ */
+
 function defaultLogPath() {
   return path.join(os.tmpdir(), DEFAULT_LOG_BASENAME);
 }
 
-/**
- * Resolve the default evidence markdown file path relative to the current
- * working directory. Uses path.join so the separator matches the host OS.
- *
- * @returns {string} Absolute path to docs/release/evidence.md under cwd.
- */
 function defaultEvidencePath() {
   return path.join(process.cwd(), "docs", "release", "evidence.md");
 }
 
-/**
- * Take the last N lines of a string. Preserves trailing whitespace-free
- * output so the appended block does not introduce spurious blank lines.
- *
- * @param {string} text - Full log contents.
- * @param {number} maxLines - Maximum number of trailing lines to keep.
- * @returns {string} The trailing slice joined with "\n".
- */
 function tailLines(text, maxLines) {
   const lines = text.split(/\r?\n/);
-  // Drop a single trailing empty line that comes from a terminal newline.
   if (lines.length > 0 && lines[lines.length - 1] === "") {
     lines.pop();
   }
@@ -71,17 +61,6 @@ function tailLines(text, maxLines) {
   return lines.slice(start).join("\n");
 }
 
-/**
- * Append a timestamped certification block to the evidence file. If the
- * evidence file does not yet contain the H2 section heading, the heading
- * is created before the block is appended so the file remains a valid
- * structured markdown artifact.
- *
- * @param {string} evidenceFile - Absolute path to evidence markdown.
- * @param {string} timestamp - ISO timestamp used as the H3 heading.
- * @param {string} tailText - Last N lines of the certification log.
- * @returns {void}
- */
 function appendCertificationBlock(evidenceFile, timestamp, tailText) {
   let current = "";
   if (fs.existsSync(evidenceFile)) {
@@ -110,15 +89,202 @@ function appendCertificationBlock(evidenceFile, timestamp, tailText) {
   fs.appendFileSync(evidenceFile, parts.join(""), "utf8");
 }
 
-/**
- * Entry point. Parses argv, validates the log file, and appends a block.
- * Exits 1 on any failure so the npm script fails loudly.
- *
- * @returns {void}
- */
-function main() {
-  const logFile = process.argv[2] || defaultLogPath();
-  const evidenceFile = process.argv[3] || defaultEvidencePath();
+/* ------------------------------------------------------------------ */
+/*  Health check — polls HTTP until 200 or timeout                     */
+/* ------------------------------------------------------------------ */
+
+function waitForHealthy(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const deadline = Date.now() + timeoutMs;
+    function poll() {
+      if (Date.now() > deadline) {
+        reject(new Error("Health check timed out: " + url));
+        return;
+      }
+      const req = http.get(url, (res) => {
+        if (res.statusCode >= 200 && res.statusCode < 400) {
+          res.resume();
+          resolve();
+        } else {
+          res.resume();
+          setTimeout(poll, HEALTH_POLL_MS);
+        }
+      });
+      req.on("error", () => {
+        setTimeout(poll, HEALTH_POLL_MS);
+      });
+      req.setTimeout(3000, () => {
+        req.destroy();
+        setTimeout(poll, HEALTH_POLL_MS);
+      });
+    }
+    poll();
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sync command runner with logging                                    */
+/* ------------------------------------------------------------------ */
+
+function runSync(label, cmd, opts) {
+  process.stdout.write("[certify] " + label + ": " + cmd + "\n");
+  try {
+    execSync(cmd, {
+      cwd: process.cwd(),
+      stdio: "inherit",
+      timeout: 120000,
+      ...opts,
+    });
+  } catch (err) {
+    process.stderr.write("[certify] FAILED: " + label + "\n");
+    throw err;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Spawn a background server, return the ChildProcess                 */
+/* ------------------------------------------------------------------ */
+
+function spawnServer(label, cmd, args, opts) {
+  process.stdout.write(
+    "[certify] Starting " + label + ": " + cmd + " " + args.join(" ") + "\n",
+  );
+  const child = spawn(cmd, args, {
+    cwd: opts.cwd || process.cwd(),
+    stdio: ["ignore", "pipe", "pipe"],
+    shell: true,
+    env: { ...process.env, ...(opts.env || {}) },
+    detached: false,
+  });
+  child.stdout.on("data", (d) => {
+    // Suppress server output in normal mode — it goes to the log
+  });
+  child.stderr.on("data", (d) => {
+    // Suppress server stderr noise
+  });
+  return child;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Kill helper (Windows-safe)                                         */
+/* ------------------------------------------------------------------ */
+
+function killProcess(child, label) {
+  if (!child || child.killed) return;
+  try {
+    // On Windows, child.kill() may not kill the tree. Use taskkill.
+    if (process.platform === "win32") {
+      try {
+        execSync("taskkill /pid " + child.pid + " /T /F", {
+          stdio: "ignore",
+          timeout: 5000,
+        });
+      } catch {
+        child.kill("SIGKILL");
+      }
+    } else {
+      child.kill("SIGTERM");
+    }
+    process.stdout.write("[certify] Stopped " + label + "\n");
+  } catch {
+    // Already dead — that's fine
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Full certification pipeline                                        */
+/* ------------------------------------------------------------------ */
+
+async function runFullPipeline() {
+  const logFile = defaultLogPath();
+  const evidenceFile = defaultEvidencePath();
+  let backendChild = null;
+  let viteChild = null;
+  let exitCode = 1;
+
+  try {
+    // Step 1: Reset
+    process.stdout.write("\n[certify] === Step 1/6: Reset demo tenant ===\n");
+    runSync("reset", "npx ts-node --transpile-only server/scripts/reset-sales-demo.ts");
+
+    // Step 2: Seed
+    process.stdout.write("\n[certify] === Step 2/6: Seed demo tenant ===\n");
+    runSync("seed", "npx ts-node --transpile-only server/scripts/seed-sales-demo.ts");
+
+    // Step 3: Start backend
+    process.stdout.write("\n[certify] === Step 3/6: Start backend server ===\n");
+    backendChild = spawnServer("backend", "npx", ["ts-node", "--transpile-only", "server/index.ts"], {
+      env: { ALLOW_DEMO_RESET: "1", PORT: String(SERVER_PORT) },
+    });
+
+    // Step 4: Start Vite dev server on port 3101
+    process.stdout.write("\n[certify] === Step 4/6: Start Vite dev server ===\n");
+    const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
+    viteChild = spawnServer("vite", npmCmd, ["run", "dev", "--", "--port", String(VITE_PORT)], {
+      env: { VITE_DEMO_NAV_MODE: "sales" },
+    });
+
+    // Step 5: Wait for both servers to be healthy
+    process.stdout.write("\n[certify] === Step 5/6: Waiting for servers ===\n");
+    await Promise.all([
+      waitForHealthy("http://localhost:" + SERVER_PORT + "/api/health", HEALTH_TIMEOUT_MS),
+      waitForHealthy("http://localhost:" + VITE_PORT + "/", HEALTH_TIMEOUT_MS),
+    ]);
+    process.stdout.write("[certify] Both servers healthy.\n");
+
+    // Step 6: Run Playwright
+    process.stdout.write("\n[certify] === Step 6/6: Run Playwright e2e/sales-demo ===\n");
+    const playwrightCmd =
+      "npx playwright test e2e/sales-demo/ --reporter=list 2>&1";
+    try {
+      const output = execSync(playwrightCmd, {
+        cwd: process.cwd(),
+        encoding: "utf8",
+        timeout: 300000, // 5 min max for e2e
+        env: {
+          ...process.env,
+          SALES_DEMO_E2E: "1",
+          E2E_SERVER_RUNNING: "1",
+          E2E_APP_URL: "http://localhost:" + VITE_PORT,
+          E2E_API_URL: "http://localhost:" + SERVER_PORT,
+          VITE_DEMO_NAV_MODE: "sales",
+        },
+      });
+      fs.writeFileSync(logFile, output, "utf8");
+      exitCode = 0;
+      process.stdout.write("[certify] Playwright PASSED.\n");
+    } catch (playwrightErr) {
+      const output = playwrightErr.stdout || playwrightErr.stderr || String(playwrightErr);
+      fs.writeFileSync(logFile, output, "utf8");
+      exitCode = 1;
+      process.stderr.write("[certify] Playwright FAILED.\n");
+    }
+
+    // Append to evidence regardless of pass/fail
+    const logText = fs.readFileSync(logFile, "utf8");
+    const tail = tailLines(logText, MAX_LOG_TAIL_LINES);
+    const passLabel = exitCode === 0 ? "PASS" : "FAIL";
+    const timestamp = new Date().toISOString() + " [" + passLabel + "]";
+    appendCertificationBlock(evidenceFile, timestamp, tail);
+    process.stdout.write(
+      "[certify] Appended " + passLabel + " block to " + evidenceFile + "\n",
+    );
+  } finally {
+    // Cleanup: kill servers
+    killProcess(backendChild, "backend");
+    killProcess(viteChild, "vite");
+  }
+
+  return exitCode;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Append-only mode (legacy)                                          */
+/* ------------------------------------------------------------------ */
+
+function runAppendOnly(logFilePath) {
+  const logFile = logFilePath || defaultLogPath();
+  const evidenceFile = defaultEvidencePath();
 
   if (!fs.existsSync(logFile)) {
     process.stderr.write(
@@ -132,22 +298,47 @@ function main() {
   const timestamp = new Date().toISOString();
 
   appendCertificationBlock(evidenceFile, timestamp, tail);
-
   process.stdout.write(
-    "demo-certify: appended block dated " +
-      timestamp +
-      " to " +
-      evidenceFile +
-      "\n",
+    "demo-certify: appended block dated " + timestamp + " to " + evidenceFile + "\n",
   );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Entry point                                                        */
+/* ------------------------------------------------------------------ */
+
+function main() {
+  const args = process.argv.slice(2);
+
+  // Legacy append-only mode
+  if (args[0] === "--append-only") {
+    runAppendOnly(args[1]);
+    return;
+  }
+
+  // Legacy: if positional arg is a file path (backward compat)
+  if (args[0] && fs.existsSync(args[0])) {
+    runAppendOnly(args[0]);
+    return;
+  }
+
+  // Full pipeline
+  runFullPipeline()
+    .then((code) => {
+      process.exit(code);
+    })
+    .catch((err) => {
+      process.stderr.write("[certify] Pipeline error: " + err.message + "\n");
+      process.exit(1);
+    });
 }
 
 // Export for unit tests; run main only when executed directly.
 module.exports = {
-  defaultLogPath: defaultLogPath,
-  defaultEvidencePath: defaultEvidencePath,
-  tailLines: tailLines,
-  appendCertificationBlock: appendCertificationBlock,
+  defaultLogPath,
+  defaultEvidencePath,
+  tailLines,
+  appendCertificationBlock,
 };
 
 if (require.main === module) {
