@@ -10,13 +10,26 @@ dotenv.config();
 // 1. Go to Firebase Console -> Project Settings -> Service Accounts
 // 2. Click "Generate new private key"
 // 3. Save the JSON file as 'server/serviceAccount.json' (DO NOT COMMIT THIS FILE)
+// Or set FIREBASE_SERVICE_ACCOUNT env var to the JSON contents.
 
 let authReady = false;
 let serviceAccount: admin.ServiceAccount | undefined;
 try {
     serviceAccount = require('./serviceAccount.json');
 } catch (e) {
-    logger.warn('Firebase Service Account not found at server/serviceAccount.json. Falling back to application default credentials if available.');
+    // Not found on disk — check FIREBASE_SERVICE_ACCOUNT env var (JSON string)
+    const envSA = process.env.FIREBASE_SERVICE_ACCOUNT;
+    if (envSA && envSA.trim() !== '{}' && envSA.trim().startsWith('{')) {
+        try {
+            serviceAccount = JSON.parse(envSA) as admin.ServiceAccount;
+            logger.info('Loaded Firebase service account from FIREBASE_SERVICE_ACCOUNT env var.');
+        } catch (parseErr) {
+            logger.warn('FIREBASE_SERVICE_ACCOUNT env var is not valid JSON, ignoring.');
+        }
+    }
+    if (!serviceAccount) {
+        logger.warn('Firebase Service Account not found at server/serviceAccount.json or FIREBASE_SERVICE_ACCOUNT env. Falling back to application default credentials if available.');
+    }
 }
 
 try {
@@ -25,7 +38,7 @@ try {
             credential: admin.credential.cert(serviceAccount)
         });
         authReady = true;
-        logger.info('Firebase Admin initialized successfully from serviceAccount.json.');
+        logger.info('Firebase Admin initialized successfully from service account.');
     } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.FIREBASE_PROJECT_ID) {
         admin.initializeApp({
             credential: admin.credential.applicationDefault(),
