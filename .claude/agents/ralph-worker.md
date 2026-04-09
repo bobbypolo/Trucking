@@ -8,7 +8,7 @@ model: sonnet
 
 # Ralph Worker -- V-Model Story Agent (Self-Contained)
 
-You are a **ralph-worker** -- an autonomous sub-agent dispatched by the Ralph orchestrator to implement and verify a single story from `prd.json`. You work on the Ralph feature branch. In branch-inline mode, Ralph waits synchronously for you; parallel or async execution is reserved for `isolation: "worktree"` dispatch only.
+You are a **ralph-worker** -- an autonomous sub-agent dispatched by the Ralph orchestrator to implement and verify a single story from `prd.json`. You work directly on the Ralph feature branch.
 
 Follow all build conventions in `.claude/rules/build-conventions.md`. You do NOT read builder.md at startup.
 
@@ -65,7 +65,7 @@ If they do not match:
 
 Read `.claude/docs/PLAN.md` and verify all acceptance criteria IDs from the dispatch appear in the plan's Done When sections.
 
-- If PLAN.md does not exist: return RALPH_WORKER_RESULT with `passed: false`, `summary: "No plan found. Run /plan first."`
+- If PLAN.md does not exist: return RALPH_WORKER_RESULT with `passed: false`, `summary: "No plan found. Run /ralph-plan first."`
 - If ALL criteria IDs found in PLAN.md: display `"Plan check: OK"` and proceed.
 - If ANY criteria ID missing: return RALPH_WORKER_RESULT with `passed: false`, `summary: "Plan gap: criteria [missing IDs] not covered by PLAN.md"`
 

@@ -586,10 +586,6 @@ export const DriverMobileHome: React.FC<Props> = ({
 
     setIntakeSubmitting(true);
     try {
-      // Build canonical LoadData WITH legs — the canonical source of
-      // route/location truth.  Without legs the load loses its pickup/dropoff
-      // after a server round-trip because mapRowToLoadData derives
-      // pickup/dropoff from the legs array.
       const loadId = uuidv4();
       const pickupLegId = uuidv4();
       const dropoffLegId = uuidv4();
@@ -598,65 +594,44 @@ export const DriverMobileHome: React.FC<Props> = ({
       const pickupLeg = {
         id: pickupLegId,
         type: "Pickup" as const,
-        location: {
-          city: intakeFormData.pickupCity,
-          state: intakeFormData.pickupState,
-          facilityName: intakeFormData.pickupFacility || "",
-        },
+        facility_name: intakeFormData.pickupFacility || "",
+        city: intakeFormData.pickupCity,
+        state: intakeFormData.pickupState,
         date: intakeFormData.pickupDate,
-        appointmentTime: "",
+        appointment_time: "",
         completed: false,
+        sequence_order: 0,
       };
 
       const dropoffLeg = {
         id: dropoffLegId,
         type: "Dropoff" as const,
-        location: {
-          city: intakeFormData.dropoffCity,
-          state: intakeFormData.dropoffState,
-          facilityName: intakeFormData.dropoffFacility || "",
-        },
+        facility_name: intakeFormData.dropoffFacility || "",
+        city: intakeFormData.dropoffCity,
+        state: intakeFormData.dropoffState,
         date: "",
-        appointmentTime: "",
+        appointment_time: "",
         completed: false,
+        sequence_order: 1,
       };
 
-      const newLoad: LoadData = {
+      await api.post("/loads", {
         id: loadId,
-        companyId: user.companyId || "",
-        driverId: user.id,
-        loadNumber,
-        status: LOAD_STATUS.Draft as LoadStatus,
-        carrierRate: 0,
-        driverPay: 0,
-        pickupDate: intakeFormData.pickupDate,
-        pickup: {
-          city: intakeFormData.pickupCity,
-          state: intakeFormData.pickupState,
-          facilityName: intakeFormData.pickupFacility || undefined,
-        },
-        dropoff: {
-          city: intakeFormData.dropoffCity,
-          state: intakeFormData.dropoffState,
-          facilityName: intakeFormData.dropoffFacility || undefined,
-        },
-        legs: [pickupLeg, dropoffLeg],
+        load_number: loadNumber,
+        driver_id: user.id,
+        status: "draft",
+        pickup_date: intakeFormData.pickupDate,
         commodity: intakeFormData.commodity || undefined,
         weight: intakeFormData.weight
           ? parseFloat(intakeFormData.weight) || undefined
           : undefined,
-        bolNumber: intakeFormData.referenceNumber || undefined,
-        specialInstructions: intakeFormData.specialInstructions || undefined,
-        dispatchNotes: `Driver intake via document scan. Docs: ${intakeFormData.scannedDocTypes.join(", ")}`,
-      };
-
-      // Save via the canonical onSaveLoad path (storageService.saveLoad ->
-      // loadService.createLoad -> POST /api/loads) which calls
-      // mapLoadDataToPayload and writes legs to load_legs table.  The
-      // handleSaveLoad wrapper in App.tsx then calls refreshData() to reload
-      // from server truth so the load board, schedule, and this component all
-      // see the same canonical shape.
-      await onSaveLoad(newLoad);
+        bol_number: intakeFormData.referenceNumber || undefined,
+        notification_emails: [],
+        gpsHistory: [],
+        podUrls: [],
+        intake_source: "driver",
+        legs: [pickupLeg, dropoffLeg],
+      });
 
       // Upload scanned document artifacts to the canonical document domain
       // (POST /api/documents).  Uses the same loadId so documents are linked.

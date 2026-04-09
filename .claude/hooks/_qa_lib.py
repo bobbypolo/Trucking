@@ -116,6 +116,18 @@ _VALIDATION_KEYWORDS: frozenset[str] = frozenset(
 #          pytest.raises, assertRaises.
 # Does NOT match: assert isinstance(), assert x is not None, assert len(x) > 0,
 #                 assertTrue(x) — these are structural/existence checks only.
+#
+# re.DOTALL is set so that ``.`` matches newlines. This lets the regex recognise
+# Python's natural multi-line assertion style::
+#
+#     assert (
+#         computed_value()
+#         == expected_value
+#     )
+#
+# without treating the wrapped form as a missing behavioural assertion. The
+# ``.+?`` alternatives are already non-greedy, so DOTALL does not over-match
+# across unrelated statements in a function body.
 _BEHAVIORAL_ASSERT_RE = re.compile(
     r"\bassertEqual\s*\("  # assertEqual(a, b)
     r"|\bassertRaises\s*\("  # assertRaises(Exc, ...) / self.assertRaises(...)
@@ -134,7 +146,8 @@ _BEHAVIORAL_ASSERT_RE = re.compile(
     r"|\bassert\s+not\s+\w[\w.]*\s*\("
     # Specific boolean: assert expr is True / assert expr is False / assert expr is None
     # Matches any assert statement ending with specific value comparisons (behavioral result checks)
-    r"|\bassert\s+.+?\s+is\s+(?:True|False|None)\b"
+    r"|\bassert\s+.+?\s+is\s+(?:True|False|None)\b",
+    re.DOTALL,
 )
 
 # Regex to extract public function definitions from a Python source file.
@@ -1779,7 +1792,7 @@ def read_verification_log(log_path: Path, plan_hash: str | None = None) -> dict:
 # ── Plan Utilities ────────────────────────────────────────────────────────────
 
 _PLAN_CRITERIA_RE = re.compile(
-    r"^\s*-\s+(R-P\d+-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\r\n]+\])*\s*:",
+    r"^\s*-\s+`?(R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?)`?(?:\s+\[[^\]\r\n]+\])*\s*[: ]",
     re.MULTILINE,
 )
 
@@ -1801,7 +1814,7 @@ def extract_plan_r_markers(plan_path: Path) -> set[str]:
 
 # Regex to capture full bullet-format R-marker lines for hashing
 _PLAN_CRITERIA_LINE_RE = re.compile(
-    r"^\s*-\s+R-P\d+-\d{2}(?:-AC\d+)?(?:\s+\[[^\]\r\n]+\])*\s*:.*$",
+    r"^\s*-\s+`?R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?`?(?:\s+\[[^\]\r\n]+\])*\s*[: ].*$",
     re.MULTILINE,
 )
 
@@ -2936,7 +2949,9 @@ def apply_auto_detected_project_commands(
             return _default
 
         workflow["commands"] = commands
-        workflow_path.write_text(json.dumps(workflow, indent=2) + "\n", encoding="utf-8")
+        workflow_path.write_text(
+            json.dumps(workflow, indent=2) + "\n", encoding="utf-8"
+        )
         _default["applied"] = applied
         _default["updated"] = True
         return _default

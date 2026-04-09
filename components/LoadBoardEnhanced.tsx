@@ -233,7 +233,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
 
           {showPendingIntake ? (
             <div className="flex-1 overflow-y-auto p-4">
-              <PendingDriverIntakeQueue />
+              <PendingDriverIntakeQueue sourceLoads={loads} />
             </div>
           ) : loads.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">

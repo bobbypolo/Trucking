@@ -45,6 +45,11 @@ SALES_DEMO_ADMIN_FIREBASE_UID=<provisioned admin uid>
 SALES_DEMO_DRIVER_FIREBASE_UID=<provisioned driver uid>
 VITE_DEMO_NAV_MODE=sales
 ALLOW_DEMO_RESET=1
+FIREBASE_WEB_API_KEY=<firebase web api key>
+SALES_DEMO_ADMIN_EMAIL=<firebase admin email>
+SALES_DEMO_ADMIN_PASSWORD=<firebase admin password>
+SALES_DEMO_DRIVER_EMAIL=<firebase driver email>
+SALES_DEMO_DRIVER_PASSWORD=<firebase driver password>
 ```
 
 Restart `npm run dev` after editing `.env.local`. The Vite client will
@@ -62,6 +67,11 @@ which is gated by all four of:
 2. `user.role === "admin"` (403 otherwise)
 3. `user.tenantId === "SALES-DEMO-001"` (403 otherwise)
 4. `process.env.ALLOW_DEMO_RESET === "1"` (403 otherwise)
+
+> **Important:** The server MUST be started with `ALLOW_DEMO_RESET=1` in
+> the environment for the reset button to work. Without this variable the
+> `/api/demo` route is never mounted and the button will return a 404.
+> Add `ALLOW_DEMO_RESET=1` to your `.env.local` and restart the server.
 
 A successful reset takes 1-3 seconds and returns `{ ok: true }`. The UI
 reloads the load board to pick up the freshly re-seeded hero load
@@ -123,6 +133,13 @@ the row the seed wrote.
 If the buyer asks "is this live or pre-seeded?", the honest answer is
 **pre-seeded by the same code path that runs in production**. The seeded
 row is byte-for-byte the shape the live AI extraction would produce.
+
+**Important:** Do NOT present the certified demo as a "live AI demo."
+The certified path is deterministic and reproducible because it uses
+pre-seeded data. Present it as: "This is our production software running
+against real data — the same code and UI your drivers and dispatchers
+will use." The optional Wow Appendix below covers live AI extraction
+for situations where the salesperson wants to demonstrate that capability.
 
 A separate optional path (see Wow Appendix) lets the salesperson run a
 real Gemini extraction live if they want — but the certified script

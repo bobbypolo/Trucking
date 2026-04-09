@@ -1,9 +1,8 @@
 /**
- * Tests R-P1-10: Invoice Aging Nightly Job
+ * Tests for Invoice Aging Nightly Job
  *
- * Validates `server/jobs/invoice-aging-nightly.ts`:
- *  - Running the job against 3 seeded invoices updates days_since_issued > 0
- *  - And writes a non-null last_aging_snapshot_at for each row.
+ * Tests R-B1-03: 5 invoice fixtures produce correct aging bucket assignments
+ * Tests R-B1-04: null issued_at results in null aging_bucket
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -31,74 +30,108 @@ vi.mock("../../lib/logger", () => ({
   }),
 }));
 
-import { runInvoiceAgingNightly } from "../../jobs/invoice-aging-nightly";
+import {
+  computeAgingBucket,
+  runInvoiceAgingNightly,
+} from "../../jobs/invoice-aging-nightly";
 
-describe("invoice-aging-nightly job", () => {
+describe("computeAgingBucket", () => {
+  const now = new Date("2026-04-09T00:00:00.000Z");
+
+  // Tests R-B1-03
+  it("assigns 'current' for age 0 days", () => {
+    const issuedAt = new Date("2026-04-09T00:00:00.000Z"); // 0 days ago
+    const result = computeAgingBucket(issuedAt, now);
+    expect(result).toBe("current");
+  });
+
+  // Tests R-B1-03
+  it("assigns '1_30' for age 15 days", () => {
+    const issuedAt = new Date("2026-03-25T00:00:00.000Z"); // 15 days ago
+    const result = computeAgingBucket(issuedAt, now);
+    expect(result).toBe("1_30");
+  });
+
+  // Tests R-B1-03
+  it("assigns '31_60' for age 45 days", () => {
+    const issuedAt = new Date("2026-02-23T00:00:00.000Z"); // 45 days ago
+    const result = computeAgingBucket(issuedAt, now);
+    expect(result).toBe("31_60");
+  });
+
+  // Tests R-B1-03
+  it("assigns '61_90' for age 75 days", () => {
+    const issuedAt = new Date("2026-01-24T00:00:00.000Z"); // 75 days ago
+    const result = computeAgingBucket(issuedAt, now);
+    expect(result).toBe("61_90");
+  });
+
+  // Tests R-B1-03
+  it("assigns '90_plus' for age 120 days", () => {
+    const issuedAt = new Date("2025-12-11T00:00:00.000Z"); // 120 days ago
+    const result = computeAgingBucket(issuedAt, now);
+    expect(result).toBe("90_plus");
+  });
+
+  // Tests R-B1-04
+  it("returns null when issued_at is null", () => {
+    const result = computeAgingBucket(null, now);
+    expect(result).toBeNull();
+  });
+});
+
+describe("runInvoiceAgingNightly", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("Tests R-P1-10 — updates days_since_issued > 0 and non-null last_aging_snapshot_at for 3 seeded invoices", async () => {
-    // Three invoices with different issue dates (all in the past).
-    const now = new Date("2025-12-31T00:00:00.000Z");
+  // Tests R-B1-03
+  it("persists correct aging_bucket for 5 invoices with different ages", async () => {
+    const now = new Date("2026-04-09T00:00:00.000Z");
     const seededInvoices = [
-      { id: "inv-001", issued_at: new Date("2025-12-01T00:00:00.000Z") },
-      { id: "inv-002", issued_at: new Date("2025-11-15T00:00:00.000Z") },
-      { id: "inv-003", issued_at: new Date("2025-10-01T00:00:00.000Z") },
+      { id: "inv-0d", issued_at: new Date("2026-04-09T00:00:00.000Z") },
+      { id: "inv-15d", issued_at: new Date("2026-03-25T00:00:00.000Z") },
+      { id: "inv-45d", issued_at: new Date("2026-02-23T00:00:00.000Z") },
+      { id: "inv-75d", issued_at: new Date("2026-01-24T00:00:00.000Z") },
+      { id: "inv-120d", issued_at: new Date("2025-12-11T00:00:00.000Z") },
     ];
 
-    // First query: SELECT id, issued_at FROM ar_invoices
-    mockQuery.mockResolvedValueOnce([seededInvoices]);
-    // Subsequent queries: UPDATE per invoice (3 calls)
-    mockQuery.mockResolvedValue([{ affectedRows: 1 }]);
-
-    const result = await runInvoiceAgingNightly(now);
-
-    // The job must report 3 updated invoices.
-    expect(result.updated).toBe(3);
-    // Each captured update payload must have days_since_issued > 0
-    // and a non-null last_aging_snapshot_at.
-    expect(result.snapshots.length).toBe(3);
-    for (const snap of result.snapshots) {
-      expect(snap.daysSinceIssued).toBeGreaterThan(0);
-      expect(snap.lastAgingSnapshotAt).not.toBeNull();
-      expect(snap.lastAgingSnapshotAt).toBeDefined();
-    }
-
-    // Verify the actual SQL UPDATEs were issued (3 UPDATE calls + 1 SELECT).
-    expect(mockQuery).toHaveBeenCalledTimes(4);
-    // First call must be a SELECT against ar_invoices
-    expect(mockQuery.mock.calls[0][0]).toMatch(/SELECT/i);
-    expect(mockQuery.mock.calls[0][0]).toMatch(/ar_invoices/i);
-    // The remaining 3 calls must be UPDATEs against ar_invoices
-    for (let i = 1; i <= 3; i++) {
-      expect(mockQuery.mock.calls[i][0]).toMatch(/UPDATE\s+ar_invoices/i);
-      expect(mockQuery.mock.calls[i][0]).toMatch(/days_since_issued/i);
-      expect(mockQuery.mock.calls[i][0]).toMatch(/last_aging_snapshot_at/i);
-    }
-  });
-
-  it("Tests R-P1-10 — computes correct days_since_issued for each row", async () => {
-    const now = new Date("2025-12-31T00:00:00.000Z");
-    const seededInvoices = [
-      { id: "inv-30", issued_at: new Date("2025-12-01T00:00:00.000Z") }, // 30 days
-      { id: "inv-46", issued_at: new Date("2025-11-15T00:00:00.000Z") }, // 46 days
-      { id: "inv-91", issued_at: new Date("2025-10-01T00:00:00.000Z") }, // 91 days
-    ];
     mockQuery.mockResolvedValueOnce([seededInvoices]);
     mockQuery.mockResolvedValue([{ affectedRows: 1 }]);
 
     const result = await runInvoiceAgingNightly(now);
-    const days = result.snapshots
-      .map((s) => s.daysSinceIssued)
-      .sort((a, b) => a - b);
-    expect(days).toEqual([30, 46, 91]);
+
+    expect(result.updated).toBe(5);
+    expect(result.snapshots.length).toBe(5);
+
+    const bucketMap = new Map(
+      result.snapshots.map((s) => [s.invoiceId, s.agingBucket]),
+    );
+    expect(bucketMap.get("inv-0d")).toBe("current");
+    expect(bucketMap.get("inv-15d")).toBe("1_30");
+    expect(bucketMap.get("inv-45d")).toBe("31_60");
+    expect(bucketMap.get("inv-75d")).toBe("61_90");
+    expect(bucketMap.get("inv-120d")).toBe("90_plus");
   });
 
-  it("Tests R-P1-10 — returns updated:0 when no invoices exist", async () => {
+  // Tests R-B1-04
+  it("sets aging_bucket to null for invoice with null issued_at", async () => {
+    const now = new Date("2026-04-09T00:00:00.000Z");
+    const seededInvoices = [{ id: "inv-null", issued_at: null }];
+
+    mockQuery.mockResolvedValueOnce([seededInvoices]);
+    mockQuery.mockResolvedValue([{ affectedRows: 1 }]);
+
+    const result = await runInvoiceAgingNightly(now);
+
+    expect(result.updated).toBe(1);
+    expect(result.snapshots[0].agingBucket).toBeNull();
+  });
+
+  it("returns updated:0 when no invoices exist", async () => {
     mockQuery.mockResolvedValueOnce([[]]);
     const result = await runInvoiceAgingNightly(
-      new Date("2025-12-31T00:00:00.000Z"),
+      new Date("2026-04-09T00:00:00.000Z"),
     );
     expect(result.updated).toBe(0);
     expect(result.snapshots).toEqual([]);

@@ -1,5 +1,8 @@
 import { Router, Response, NextFunction } from "express";
-import { requireAuth, type AuthenticatedRequest } from "../middleware/requireAuth";
+import {
+  requireAuth,
+  type AuthenticatedRequest,
+} from "../middleware/requireAuth";
 import { requireTenant } from "../middleware/requireTenant";
 import { validateBody } from "../middleware/validate";
 import { createSettlementSchema } from "../schemas/settlements";
@@ -33,7 +36,9 @@ router.get(
   requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-      const rows = await accountingService.getChartOfAccounts(req.user!.tenantId);
+      const rows = await accountingService.getChartOfAccounts(
+        req.user!.tenantId,
+      );
       res.json(rows);
     } catch (error) {
       const log = createRequestLogger(req, "GET /api/accounting/accounts");
@@ -277,7 +282,20 @@ router.get(
         req.user!.tenantId,
         req.params.loadId,
       );
-      res.json(rows);
+      const mapped = (rows as any[]).map((r: any) => ({
+        id: r.id,
+        truckId: r.truck_id ?? r.truckId,
+        loadId: r.load_id ?? r.loadId,
+        timestamp: r.timestamp,
+        eventType: r.event_type ?? r.eventType,
+        lat: Number(r.lat),
+        lng: Number(r.lng),
+        odometer: r.odometer,
+        stateCode: r.state_code ?? r.stateCode,
+        source: r.source,
+        rawPayload: r.raw_payload ?? r.rawPayload,
+      }));
+      res.json(mapped);
     } catch (e) {
       const log = createRequestLogger(req, "GET /api/accounting/ifta-evidence");
       log.error({ err: e }, "SERVER ERROR [GET /api/accounting/ifta-evidence]");
@@ -300,10 +318,7 @@ router.post(
       res.json(result);
     } catch (e) {
       const log = createRequestLogger(req, "POST /api/accounting/ifta-analyze");
-      log.error(
-        { err: e },
-        "SERVER ERROR [POST /api/accounting/ifta-analyze]",
-      );
+      log.error({ err: e }, "SERVER ERROR [POST /api/accounting/ifta-analyze]");
       next(e);
     }
   },
@@ -409,14 +424,8 @@ router.post(
       );
       res.status(201).json({ id, message: "Fuel receipt recorded" });
     } catch (e) {
-      const log = createRequestLogger(
-        req,
-        "POST /api/accounting/fuel-receipt",
-      );
-      log.error(
-        { err: e },
-        "SERVER ERROR [POST /api/accounting/fuel-receipt]",
-      );
+      const log = createRequestLogger(req, "POST /api/accounting/fuel-receipt");
+      log.error({ err: e }, "SERVER ERROR [POST /api/accounting/fuel-receipt]");
       next(e);
     }
   },

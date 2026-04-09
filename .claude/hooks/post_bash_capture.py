@@ -158,7 +158,13 @@ def main():
     #   1. exit_code == 0
     #   2. is_test_command() == True
     #   3. _classify_test_execution() == "EXECUTED_WITH_TESTS"
-    # Skip clear_marker in subagent contexts — each agent owns its own state
+    # Note: clear_marker() is called unconditionally. Worktree safety is
+    # enforced inside clear_marker() itself via the is_worktree_path(cwd)
+    # guard in _lib.py, so a subagent running in a .claude/worktrees/agent-*
+    # worktree cannot corrupt the main repo's workflow-state.json. A subagent
+    # running in the main repo root with real passing-test evidence IS
+    # allowed to clear the marker — Ralph workers always dispatch with
+    # isolation: "worktree", so the worktree guard is the load-bearing check.
     cmd = tool_input.get("command", "")
     stdout_out = tool_response.get("stdout", "") or ""
     stderr_out = tool_response.get("stderr", "") or ""

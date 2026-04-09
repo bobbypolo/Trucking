@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { CheckCircle2, X, Loader2 } from "lucide-react";
 import { getIdTokenAsync } from "../services/authService";
+import { LoadData } from "../types";
 
 const API_BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
 
@@ -24,7 +25,55 @@ interface Equipment {
 
 interface Props {
   onLoadApproved?: (loadId: string) => void;
+  sourceLoads?: LoadData[];
 }
+
+const normalizePendingLoad = (load: LoadData | LoadRow): LoadRow => {
+  const typedLoad = load as LoadData;
+  const pickupLeg = typedLoad.legs?.find((leg) => leg.type === "Pickup");
+  const dropoffLeg = typedLoad.legs?.find((leg) => leg.type === "Dropoff");
+
+  return {
+    id: load.id,
+    load_number:
+      "load_number" in load && typeof load.load_number === "string"
+        ? load.load_number
+        : (typedLoad.loadNumber ?? ""),
+    status: load.status,
+    intake_source:
+      "intake_source" in load && typeof load.intake_source === "string"
+        ? load.intake_source
+        : (typedLoad.intakeSource ?? ""),
+    driver_id:
+      "driver_id" in load && typeof load.driver_id === "string"
+        ? load.driver_id
+        : typedLoad.driverId,
+    pickup_city:
+      "pickup_city" in load && typeof load.pickup_city === "string"
+        ? load.pickup_city
+        : (typedLoad.pickup?.city ?? pickupLeg?.location?.city),
+    pickup_state:
+      "pickup_state" in load && typeof load.pickup_state === "string"
+        ? load.pickup_state
+        : (typedLoad.pickup?.state ?? pickupLeg?.location?.state),
+    dropoff_city:
+      "dropoff_city" in load && typeof load.dropoff_city === "string"
+        ? load.dropoff_city
+        : (typedLoad.dropoff?.city ?? dropoffLeg?.location?.city),
+    dropoff_state:
+      "dropoff_state" in load && typeof load.dropoff_state === "string"
+        ? load.dropoff_state
+        : (typedLoad.dropoff?.state ?? dropoffLeg?.location?.state),
+  };
+};
+
+const isPendingDriverIntake = (load: LoadRow): boolean => {
+  const normalizedLoadNumber = load.load_number?.toUpperCase?.() ?? "";
+  return (
+    load.status === "draft" &&
+    (load.intake_source === "driver" || normalizedLoadNumber.startsWith("INT-"))
+  );
+};
 
 /**
  * PendingDriverIntakeQueue — dispatcher view of loads submitted by drivers
@@ -33,6 +82,7 @@ interface Props {
  */
 export const PendingDriverIntakeQueue: React.FC<Props> = ({
   onLoadApproved,
+  sourceLoads,
 }) => {
   const [loads, setLoads] = useState<LoadRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,31 +93,62 @@ export const PendingDriverIntakeQueue: React.FC<Props> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
+    if (sourceLoads) {
+      setLoads(
+        sourceLoads
+          .map((load) => normalizePendingLoad(load))
+          .filter((load) => isPendingDriverIntake(load)),
+      );
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
-    const fetchLoads = async () => {
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleRetry = (attempt: number) => {
+      if (cancelled || attempt >= 10) {
+        setLoading(false);
+        return;
+      }
+      retryTimer = setTimeout(() => {
+        void fetchLoads(attempt + 1);
+      }, 300);
+    };
+
+    const fetchLoads = async (attempt = 0) => {
       try {
         const token = (await getIdTokenAsync()) ?? "";
+        if (!token) {
+          scheduleRetry(attempt);
+          return;
+        }
+
         const res = await fetch(`${API_BASE}/loads`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        if (res.status === 401) {
+          scheduleRetry(attempt);
+          return;
+        }
         if (!res.ok) return;
+
         const data: LoadRow[] = await res.json();
         if (!cancelled) {
-          setLoads(
-            data.filter(
-              (l) => l.status === "draft" && l.intake_source === "driver",
-            ),
-          );
+          setLoads(data.filter((load) => isPendingDriverIntake(load)));
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-    fetchLoads();
+    void fetchLoads();
     return () => {
       cancelled = true;
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
     };
-  }, []);
+  }, [sourceLoads]);
 
   const openApprovalModal = async (loadId: string) => {
     setApprovalLoadId(loadId);

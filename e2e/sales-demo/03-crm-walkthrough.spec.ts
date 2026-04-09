@@ -27,6 +27,10 @@
 import "dotenv/config";
 import { test, expect } from "@playwright/test";
 import { APP_BASE } from "../fixtures/urls";
+import {
+  loginAsSalesDemoAdmin,
+  requireSalesDemoGuards,
+} from "./helpers";
 
 const HERO_BROKER_NAME = "ACME Logistics LLC";
 
@@ -41,14 +45,16 @@ const PROFILE_TAB_LABELS = [
 
 test.describe("Sales Demo — CRM registry walkthrough (R-P4-06)", () => {
   test.skip(
-    !process.env.SALES_DEMO_E2E,
-    "SALES_DEMO_E2E env var not set — spec runs only under STORY-007 certification",
+    !requireSalesDemoGuards(),
+    "sales-demo CRM walkthrough requires SALES_DEMO_E2E=1 and E2E_SERVER_RUNNING=1",
   );
 
   // Tests R-P4-06
   test("R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs", async ({
     page,
   }) => {
+    await loginAsSalesDemoAdmin(page);
+
     // 1. Land on the app shell and click the Network nav entry. The
     //    nav id is `network` (App.tsx:613) and the live testid is
     //    `nav-network` (App.tsx:940 — `nav-${item.id}`).
@@ -75,7 +81,9 @@ test.describe("Sales Demo — CRM registry walkthrough (R-P4-06)", () => {
     //    visible. We count occurrences of any of the 12 seeded party
     //    names by checking the page body text for the expected
     //    breadth — either via row count or by name presence.
-    const bodyText = await page.locator("body").innerText();
+    const portalText = (
+      await page.locator('[data-testid="onboarding-portal"]').innerText()
+    ).toUpperCase();
 
     const seededPartyNames = [
       "Lone Star Distribution Co",
@@ -92,7 +100,7 @@ test.describe("Sales Demo — CRM registry walkthrough (R-P4-06)", () => {
       "Lone Wolf Hauling LLC",
     ];
     const visibleCount = seededPartyNames.filter((name) =>
-      bodyText.includes(name),
+      portalText.includes(name.toUpperCase()),
     ).length;
     expect(visibleCount).toBeGreaterThanOrEqual(12);
 
@@ -120,11 +128,11 @@ test.describe("Sales Demo — CRM registry walkthrough (R-P4-06)", () => {
       // The most reliable assertion is that the tab body is not empty
       // (innerText length > 0) and contains either the broker name or
       // the tab's signature content (rate, contact, etc.).
-      const tabBody = await page.locator("body").innerText();
+      const tabBody = (await page.locator("body").innerText()).toUpperCase();
       expect(tabBody.length).toBeGreaterThan(0);
       // Sanity: ACME broker name remains visible while the profile is
       // open across all 6 tabs (the page header retains it).
-      expect(tabBody).toContain(HERO_BROKER_NAME);
+      expect(tabBody).toContain(HERO_BROKER_NAME.toUpperCase());
     }
   });
 });

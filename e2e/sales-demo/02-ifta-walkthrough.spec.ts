@@ -23,19 +23,25 @@
 import "dotenv/config";
 import { test, expect } from "@playwright/test";
 import { APP_BASE } from "../fixtures/urls";
+import {
+  loginAsSalesDemoAdmin,
+  requireSalesDemoGuards,
+} from "./helpers";
 
 const HERO_LOAD_ID = "LP-DEMO-RC-001";
 
 test.describe("Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05)", () => {
   test.skip(
-    !process.env.SALES_DEMO_E2E,
-    "SALES_DEMO_E2E env var not set — spec runs only under STORY-007 certification",
+    !requireSalesDemoGuards(),
+    "sales-demo IFTA walkthrough requires SALES_DEMO_E2E=1 and E2E_SERVER_RUNNING=1",
   );
 
   // Tests R-P3-05
   test("R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds", async ({
     page,
   }) => {
+    await loginAsSalesDemoAdmin(page);
+
     // 1. Land on the app shell and click the Accounting nav entry.
     //    nav-accounting is the real route key from App.tsx line 653
     //    (App.tsx owns the nav tabs — Phase 3 never touches it).
@@ -44,7 +50,7 @@ test.describe("Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05)", ()
 
     // 2. Open the Fuel & IFTA tab inside AccountingPortal. The label is
     //    verified at components/AccountingPortal.tsx:175 — "Fuel & IFTA".
-    await page.getByRole("button", { name: /Fuel & IFTA/i }).click();
+    await page.getByRole("button", { name: /^Fuel & IFTA$/i }).click();
 
     // 3. Select quarter Q4 and year 2025 using the real selectors the
     //    production UI exposes — text button Q4 plus the year <select>

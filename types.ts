@@ -781,6 +781,7 @@ export interface LoadData {
   revisions?: RevisionSnapshot[];
   notificationEmails?: string[];
   contractId?: string;
+  intakeSource?: string;
 
   // Tactical Depth & Workflow Locking
   isLocked?: boolean;

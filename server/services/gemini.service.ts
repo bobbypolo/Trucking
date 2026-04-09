@@ -7,6 +7,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { v4 as uuidv4 } from "uuid";
+import { GEMINI_COMPLEX_MODEL, GEMINI_FAST_MODEL } from "../lib/gemini-models";
 
 function getClient(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -25,7 +26,7 @@ export const extractLoadInfo = async (
   mimeType: string,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-flash-preview";
+  const model = GEMINI_FAST_MODEL;
   const prompt =
     "Extract comprehensive load and broker information from this document. Ensure you capture the 'Carrier Total' or 'Rate' and the 'Broker Name'. Itemize pickup and dropoff locations.";
   const schema = {
@@ -88,7 +89,7 @@ export const extractBrokerFromImage = async (
   mimeType: string,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-flash-preview";
+  const model = GEMINI_FAST_MODEL;
   const prompt =
     "Extract broker or customer profile information from this document.";
   const schema = {
@@ -117,7 +118,7 @@ export const extractEquipmentFromImage = async (
   mimeType: string,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-flash-preview";
+  const model = GEMINI_FAST_MODEL;
   const prompt =
     "Identify the unit number and type of equipment in this photo.";
   const schema = {
@@ -146,7 +147,7 @@ export const generateTrainingFromImage = async (
   mimeType: string,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-pro-preview";
+  const model = GEMINI_COMPLEX_MODEL;
   const prompt =
     "Analyze the technical safety content, regulatory requirements, or operational procedures in this document. Generate a comprehensive safety training quiz for a fleet driver. Ensure questions are challenging and technical.";
   const schema = {
@@ -192,7 +193,7 @@ export const analyzeSafetyCompliance = async (
   performance: unknown,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-pro-preview";
+  const model = GEMINI_COMPLEX_MODEL;
   const prompt = `Perform a deep safety and compliance audit for a driver with these metrics: ${JSON.stringify(performance)}. Activity history: ${JSON.stringify(activityHistory)}`;
   const schema = {
     type: Type.OBJECT,
@@ -218,7 +219,7 @@ export const extractFuelReceipt = async (
   mimeType: string,
 ) => {
   const ai = getClient();
-  const model = "gemini-3-flash-preview";
+  const model = GEMINI_FAST_MODEL;
   const prompt =
     "Extract fuel purchase details from this receipt. Capture the vendor or gas station name, fuel quantity in gallons, price per gallon, total transaction cost, transaction date, the US state where purchased, and the truck or unit number if visible on the receipt.";
   const schema = {

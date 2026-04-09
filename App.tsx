@@ -159,6 +159,7 @@ const TelematicsSetup = React.lazy(
 import { getRecord360Data } from "./services/storageService";
 import { features } from "./config/features";
 import {
+  DEMO_NAV_ALLOWLIST,
   applyDemoNavFilter,
   isDemoNavMode,
   resetDemo,
@@ -212,6 +213,19 @@ export default function App() {
     const seg = location.pathname.replace(/^\//, "") || "operations-hub";
     return LEGACY_TAB_ALIASES[seg] ?? seg;
   })();
+
+  // Demo route guard: redirect non-allowlisted routes to /operations-hub
+  // when in sales-demo mode. Catches direct URL navigation that bypasses
+  // the sidebar nav filter.
+  useEffect(() => {
+    if (
+      isDemoNavMode() &&
+      activeTab !== "operations-hub" &&
+      !(DEMO_NAV_ALLOWLIST as readonly string[]).includes(activeTab)
+    ) {
+      navigate("/operations-hub", { replace: true });
+    }
+  }, [activeTab, navigate]);
 
   const [activeSubTab, setActiveSubTab] = useState<
     AccountingPortalTab | string | undefined
@@ -374,9 +388,10 @@ export default function App() {
         setCompanyUsers([currentUser]);
       }
 
-      // Show toast if any calls failed
+      // Show toast if any calls failed (suppress in demo mode — non-critical
+      // endpoints may 404 for the demo tenant without affecting the certified path)
       const failures = results.filter((r) => r.status === "rejected");
-      if (failures.length > 0) {
+      if (failures.length > 0 && !isDemoNavMode()) {
         setRefreshToast({
           message: "Some data could not be loaded. Please retry.",
           type: "error",

@@ -53,7 +53,10 @@ function mapRowToLoadData(row: any): LoadData {
     dropoffDate,
     freightType: row.freight_type || row.freightType,
     commodity: row.commodity,
-    weight: row.weight,
+    weight:
+      row.weight === null || row.weight === undefined
+        ? undefined
+        : Number(row.weight),
     containerNumber: row.container_number || row.containerNumber,
     containerSize: row.container_size || row.containerSize,
     chassisNumber: row.chassis_number || row.chassisNumber,
@@ -73,6 +76,7 @@ function mapRowToLoadData(row: any): LoadData {
           : row.notification_emails
         : []),
     contractId: row.contract_id || row.contractId,
+    intakeSource: row.intake_source || row.intakeSource,
     legs: (row.legs || []).map((leg: any) => ({
       id: leg.id,
       type: leg.type,
@@ -144,6 +148,7 @@ function mapLoadDataToPayload(load: LoadData): Record<string, unknown> {
     gpsHistory: [],
     podUrls: [],
     customerUserId: load.customerUserId,
+    intake_source: load.intakeSource,
     legs: (load.legs || []).map((leg, i) => ({
       id: leg.id,
       type: leg.type,
