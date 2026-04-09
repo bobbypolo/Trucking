@@ -31,22 +31,24 @@ The SaaS baseline is the foundation upon which all trucker-app sprints build.
 
 ---
 
-## Sprint B1
+## Sprint B1 — COMPLETE
 
 **Theme**: Infrastructure hardening and first trucker-app feature
+
+**Status**: Shipped | Merge SHA: `8a1e9b2` | Date: 2026-04-09 | PR: #60
+**Stories**: 10/10 passed | **Criteria**: 25/25 verified | **Skipped**: 0
 
 **Goal**: Ship the IFTA audit packet export MVP, stand up Sentry error tracking, create program documentation, establish the feature-flag framework, and capture the baseline debt register.
 
 Key deliverables:
-- IFTA audit packet generate/list/verify/download flow
-- Invoice aging bucket migration and nightly job
+- Invoice aging bucket migration (053) and nightly 5-bucket assignment job
+- External scheduler wrapper (Windows-safe .cjs) with ops runbook
 - Sentry server-side integration (gated on SENTRY_DSN)
-- External scheduler wrapper (Windows-safe .cjs)
 - Master program documentation (this file), release checklist, sprint history
 - Environment matrix, feature flags doc, migration numbering rules
-- Baseline debt register with real entries
-- Feature flags DB table and read/write endpoint
-- SaaS non-regression verification
+- Baseline debt register with 3 real entries
+- Feature flags DB table (054) and read/write endpoint with admin-role enforcement
+- SaaS non-regression verification script
 
 ---
 
