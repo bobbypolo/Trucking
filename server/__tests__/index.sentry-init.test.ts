@@ -71,7 +71,7 @@ vi.mock("express", () => {
       static: vi.fn(() => vi.fn()),
     },
   );
-  return { default: expressFn };
+  return { default: expressFn, Router: expressFn.Router };
 });
 
 vi.mock("cors", () => ({ default: vi.fn(() => vi.fn()) }));
@@ -132,6 +132,11 @@ vi.mock("../routes/intelligence", () => ({ default: vi.fn() }));
 vi.mock("../routes/loads-driver-intake", () => ({ default: vi.fn() }));
 vi.mock("../routes/ifta-audit-packets", () => ({ default: vi.fn() }));
 vi.mock("../routes/demo", () => ({ default: vi.fn() }));
+vi.mock("../routes/feature-flags", () => ({ default: vi.fn() }));
+vi.mock("../db", () => ({ default: { query: vi.fn(), execute: vi.fn() } }));
+vi.mock("../errors/AppError", () => ({
+  ForbiddenError: class extends Error {},
+}));
 
 // Tests R-B1-09
 describe("R-B1-09: initSentry called when SENTRY_DSN is set", () => {
