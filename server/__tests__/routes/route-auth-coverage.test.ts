@@ -30,10 +30,10 @@ vi.mock("../../db", () => ({
 
 vi.mock("../../lib/logger", () => ({
   logger: {
-    info: () => {},
-    error: () => {},
-    warn: () => {},
-    debug: () => {},
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
     child() {
       return this;
     },
@@ -45,10 +45,10 @@ vi.mock("../../lib/logger", () => ({
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
-    info: () => {},
-    error: () => {},
-    warn: () => {},
-    debug: () => {},
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
   }),
 }));
 
@@ -359,6 +359,7 @@ vi.mock("../../schemas/exceptions", () => ({
 
 vi.mock("../../schemas/loads", () => ({
   createLoadSchema: { parse: (v: any) => v },
+  partialUpdateLoadSchema: { parse: (v: any) => v },
   updateLoadStatusSchema: { parse: (v: any) => v },
 }));
 
@@ -373,6 +374,12 @@ vi.mock("../../schemas/accounting", () => ({
   createDocumentVaultSchema: { parse: (v: any) => v },
   batchImportSchema: { parse: (v: any) => v },
   batchUpdateSettlementsSchema: { parse: (v: any) => v },
+  fuelReceiptSchema: { parse: (v: any) => v },
+  iftaAnalyzeSchema: { parse: (v: any) => v },
+  iftaAuditLockSchema: { parse: (v: any) => v },
+  mileageSchema: { parse: (v: any) => v },
+  iftaPostSchema: { parse: (v: any) => v },
+  adjustmentSchema: { parse: (v: any) => v },
 }));
 
 vi.mock("../../schemas/users", () => ({
