@@ -36,6 +36,7 @@ jobs:
   certify:
     name: Sales Demo Certification
     runs-on: ubuntu-latest
+    environment: Demo
 
     services:
       mysql:
