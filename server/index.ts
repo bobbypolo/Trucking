@@ -13,8 +13,13 @@ import { correlationId } from "./middleware/correlationId";
 import { metricsMiddleware } from "./middleware/metrics";
 import { logger } from "./lib/logger";
 import { registerShutdownHandlers } from "./lib/graceful-shutdown";
+import { initSentry } from "./lib/sentry";
 
 validateEnv();
+
+if (process.env.SENTRY_DSN) {
+  initSentry();
+}
 
 if (!process.env.GEMINI_API_KEY) {
   logger.warn("GEMINI_API_KEY is not set — AI endpoints will be unavailable");
