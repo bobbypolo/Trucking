@@ -2,6 +2,385 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "d0f5e50313c8014e4610617f4985eb466774b51e6554e39ed1c20b411fac6166",
-  "stories": []
+  "plan_hash": "6b6bc474eddaa5f5b8d55e0686114da647d514b5f3be7e0966df02227de4017d",
+  "stories": [
+    {
+      "id": "STORY-B1-01",
+      "description": "Migration adds aging_bucket column to ar_invoices",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/migrations/",
+        "server/__tests__/migrations/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 80,
+      "dependsOn": [],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-01",
+          "criterion": "test reads SQL file via `fs.readFileSync` and asserts UP section contains exactly one `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL` line via regex match.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-02",
+          "criterion": "test reads file via `fs.readFileSync` and asserts DOWN section contains exactly one `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other `DROP` occurrences (regex count).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-02",
+      "description": "Job populates aging_bucket with 5-bucket assignment",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/jobs/",
+        "server/__tests__/jobs/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-B1-01"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-03",
+          "criterion": "5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`; test asserts exact values via `.toBe()`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-04",
+          "criterion": "invoice with null `issued_at` results in `aging_bucket` staying null (test asserts `.toBeNull()`).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/jobs/invoice-aging-nightly.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-03",
+      "description": "External scheduler wrapper (Windows-safe .cjs)",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "scripts/",
+        "server/__tests__/scripts/",
+        "docs/ops/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-B1-02"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-05",
+          "criterion": "test spawns `node scripts/invoice-aging-nightly.cjs --dry-run` via `child_process.spawnSync`; asserts exit code 0 and stdout contains `\"status\":\"dry-run\"`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-06",
+          "criterion": "runbook `docs/ops/invoice-aging-nightly.md` contains H2 sections `## Dry-run`, `## Production invocation`, `## Idempotency`, `## Failure alerting`, `## Cron example`, `## GitHub Actions example`, `## Rollback`; test reads file via `fs.readFileSync` and asserts each heading via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-07",
+          "criterion": "test spawns wrapper with no `DATABASE_URL` env; asserts non-zero exit and stderr JSON contains `\"error\":\"missing_database_url\"`.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/invoice-aging-nightly.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-04",
+      "description": "Sentry server-side init (gated on SENTRY_DSN)",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/index.ts",
+        "server/__tests__/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 80,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-08",
+          "criterion": "test reads `server/index.ts` via `fs.readFileSync` and asserts the import line and conditional `initSentry()` call via regex match.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-09",
+          "criterion": "integration test sets `process.env.SENTRY_DSN = 'test-dsn'`, mocks `initSentry`, imports `server/index`, asserts `initSentry` called exactly once.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-10",
+          "criterion": "integration test with `SENTRY_DSN` unset -> server module loads without throwing.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/index.sentry-init.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-05",
+      "description": "Master program document + release checklist + sprint history",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-11",
+          "criterion": "master plan contains H2 sections for all 13 sprints (B1..M); verified by `scripts/verify-program-docs.cjs` reading file via `fs.readFileSync` and asserting each heading via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-12",
+          "criterion": "master plan contains `## Shipped Baseline (Sprint A)` section; verified by helper script.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-13",
+          "criterion": "release checklist contains tables for operator gates `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`, `OP-LEGAL-*`; verified by helper script.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-14",
+          "criterion": "sprint-history has initial entry with `dd8a8f4` Sprint A SHA.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-06",
+      "description": "Baseline debt register populated with REAL entries",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 120,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-15",
+          "criterion": "`docs/trucker-app-baseline-debt.md` exists and contains a markdown table with columns `file | failure | owner | first-seen | expiry | justification`; verified via `scripts/verify-baseline-debt.cjs` parsing the markdown table using `fs.readFileSync` + regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-16",
+          "criterion": "register either contains >= 1 real entry OR an explicit `| _(verified clean at <date>)_ |` placeholder row; helper script asserts one of the two.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-baseline-debt.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-07",
+      "description": "Env matrix doc",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 60,
+      "dependsOn": [
+        "STORY-B1-05"
+      ],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-17",
+          "criterion": "doc contains table with columns `Variable`, `Category`, `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`, `Rotation`; verified via helper script reading file with `fs.readFileSync` and matching header via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-18",
+          "criterion": "doc contains H2 section `## EXPO_PUBLIC_* rule` stating that mobile public keys MUST use the prefix and server secrets MUST NOT.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-08",
+      "description": "Feature flags doc + migration numbering rule",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 60,
+      "dependsOn": [
+        "STORY-B1-05"
+      ],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-19",
+          "criterion": "feature flags doc lists all 6 flags (`FEATURE_TRUCKER_MOBILE_BETA`, `FEATURE_MOTIVE_ELD`, `FEATURE_BROKER_CREDIT`, `FEATURE_FACILITY_DWELL`, `FEATURE_FREEMIUM_QUOTA`, `FEATURE_FORCE_UPGRADE`); helper script reads file and asserts each flag name via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-20",
+          "criterion": "migration-numbering doc contains the placeholder rule and assignment procedure; helper script asserts H2 sections `## Placeholder convention` and `## Assignment procedure`.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-09",
+      "description": "feature_flags DB table + read/write endpoint + server/index.ts mount",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/migrations/",
+        "server/routes/",
+        "server/index.ts",
+        "server/__tests__/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-21",
+          "criterion": "migration creates `feature_flags` table with 6 columns (id, tenant_id, flag_name, flag_value, updated_at, updated_by); test reads SQL file via `fs.readFileSync`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-22",
+          "criterion": "`GET /api/feature-flags` returns merged flag map (env + DB) for authenticated user's tenant; integration test via supertest.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-23",
+          "criterion": "`PUT /api/feature-flags/:name` requires admin role; non-admin returns HTTP 403 (auth-negative Rule 16).",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-24",
+          "criterion": "`server/index.ts` mount line `app.use('/api/feature-flags', featureFlagsRouter)` present; test reads file via `fs.readFileSync` and asserts via regex match (no shell grep).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/ __tests__/routes/feature-flags.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-10",
+      "description": "SaaS non-regression verification",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-25",
+          "criterion": "helper script `scripts/verify-saas-regression.cjs` runs `npx vitest run src/__tests__/` and `cd server && npx vitest run __tests__/routes/accounting.test.ts __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts` via `child_process.spawnSync`, captures exit codes, asserts all 0 (modulo baseline debt exclusions).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-saas-regression.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    }
+  ]
 }
