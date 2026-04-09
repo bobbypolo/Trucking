@@ -74,8 +74,19 @@ jobs:
             cp fixtures/test-users.example.json fixtures/test-users.json
           fi
 
-      - name: Write Firebase service account file
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > server/serviceAccount.json
+      - name: Write Firebase credentials
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          # Write service account JSON to file (standard Firebase Admin SDK path)
+          echo "$FIREBASE_SA_JSON" > server/serviceAccount.json
+          # Validate the file was written and is valid JSON
+          if [ ! -s server/serviceAccount.json ]; then
+            echo "ERROR: serviceAccount.json is empty — FIREBASE_SERVICE_ACCOUNT secret may not be set"
+            exit 1
+          fi
+          node -e "JSON.parse(require('fs').readFileSync('server/serviceAccount.json','utf8')); console.log('serviceAccount.json: valid JSON')"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/server/serviceAccount.json" >> "$GITHUB_ENV"
 
       - name: Create .env.local for demo
         run: |
@@ -89,9 +100,7 @@ jobs:
           VITE_DEMO_NAV_MODE=sales
           JWT_SECRET=ci-demo-certification-secret
           ENVEOF
-          # Strip leading whitespace from heredoc (YAML indentation leaks into content)
           sed -i 's/^[[:space:]]*//' .env.local
-          # Append secrets line-by-line (values may contain special chars)
           echo "SALES_DEMO_ADMIN_FIREBASE_UID=${{ secrets.SALES_DEMO_ADMIN_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_DRIVER_FIREBASE_UID=${{ secrets.SALES_DEMO_DRIVER_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_ADMIN_EMAIL=${{ secrets.SALES_DEMO_ADMIN_EMAIL }}" >> .env.local
@@ -135,7 +144,6 @@ jobs:
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Upload certification evidence
         if: always()
