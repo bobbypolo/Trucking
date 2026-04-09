@@ -17,6 +17,10 @@
 import "dotenv/config";
 import { test, expect } from "@playwright/test";
 import { APP_BASE } from "../fixtures/urls";
+import {
+  loginAsSalesDemoAdmin,
+  requireSalesDemoGuards,
+} from "./helpers";
 
 const HERO_LOAD_ID = "LP-DEMO-RC-001";
 const HERO_BROKER_NAME = "ACME Logistics LLC";
@@ -35,32 +39,38 @@ const HERO_DOCUMENT_FILENAMES = [
 // Tests R-P2-07
 test.describe("Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13)", () => {
   test.skip(
-    !process.env.SALES_DEMO_E2E,
-    "SALES_DEMO_E2E env var not set — spec runs only under STORY-007 certification",
+    !requireSalesDemoGuards(),
+    "sales-demo document walkthrough requires SALES_DEMO_E2E=1 and E2E_SERVER_RUNNING=1",
   );
 
   test("R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values", async ({
     page,
   }) => {
+    await loginAsSalesDemoAdmin(page);
     await page.goto(`${APP_BASE}/loads`);
 
-    // Locate the hero load row by its load number text and click it.
-    const heroRow = page.getByText(HERO_LOAD_ID, { exact: false }).first();
+    // The live board opens the detail workspace from the bottom SQL-style
+    // table's row action, not from the manifest text itself.
+    await page.getByText(/Detailed Load Table/i).click();
+    const heroRow = page.locator("tr").filter({ hasText: HERO_LOAD_ID }).first();
     await expect(heroRow).toBeVisible();
-    await heroRow.click();
+    await heroRow.getByRole("button").click();
+    await expect(page.getByText(/Manifest Workspace:/i)).toBeVisible();
 
     // Wait for the load detail view to render. The continuity values must
     // appear in the visible DOM (live UI reads from the seeded rows — no
     // mocks, no shims).
-    await expect(page.getByText(HERO_BROKER_NAME)).toBeVisible();
-    await expect(page.getByText(HERO_COMMODITY)).toBeVisible();
-    await expect(page.getByText(HERO_WEIGHT, { exact: false })).toBeVisible();
-    await expect(page.getByText(HERO_RATE, { exact: false })).toBeVisible();
+    await expect(page.getByText(HERO_BROKER_NAME).first()).toBeVisible();
+    await expect(page.getByText(HERO_COMMODITY).first()).toBeVisible();
     await expect(
-      page.getByText(HERO_PICKUP_CITY, { exact: false }),
+      page.getByText(HERO_WEIGHT, { exact: false }).first(),
+    ).toBeVisible();
+    await expect(page.getByText(HERO_RATE, { exact: false }).first()).toBeVisible();
+    await expect(
+      page.getByText(/Houston,\s*TX/i).first(),
     ).toBeVisible();
     await expect(
-      page.getByText(HERO_DROPOFF_CITY, { exact: false }),
+      page.getByText(/Chicago,\s*IL/i).first(),
     ).toBeVisible();
   });
 
@@ -68,11 +78,14 @@ test.describe("Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13)", () => {
   test("R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type", async ({
     page,
   }) => {
+    await loginAsSalesDemoAdmin(page);
     await page.goto(`${APP_BASE}/loads`);
 
-    const heroRow = page.getByText(HERO_LOAD_ID, { exact: false }).first();
+    await page.getByText(/Detailed Load Table/i).click();
+    const heroRow = page.locator("tr").filter({ hasText: HERO_LOAD_ID }).first();
     await expect(heroRow).toBeVisible();
-    await heroRow.click();
+    await heroRow.getByRole("button").click();
+    await expect(page.getByText(/Digital Artifacts Matrix/i)).toBeVisible();
 
     // Wait for the documents panel to render at least 3 cards.
     for (const filename of HERO_DOCUMENT_FILENAMES) {

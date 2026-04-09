@@ -23,6 +23,12 @@ const MIGRATIONS = [
   "server/migrations/013_ifta_intelligence.sql",
   "server/migrations/015_add_users_phone.sql",
   "server/migrations/016_exception_management.sql",
+  "server/migrations/048_parties_entity_class.sql",
+  "server/migrations/049_loads_equipment_id.sql",
+  "server/migrations/050_loads_intake_source.sql",
+  "server/migrations/051_ifta_audit_packets.sql",
+  "server/migrations/052_invoices_aging_tracking.sql",
+  "server/migrations/053_invoices_aging_bucket.sql",
 ];
 
 const IGNORABLE_CODES = new Set([

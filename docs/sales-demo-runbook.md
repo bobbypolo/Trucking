@@ -45,6 +45,11 @@ SALES_DEMO_ADMIN_FIREBASE_UID=<provisioned admin uid>
 SALES_DEMO_DRIVER_FIREBASE_UID=<provisioned driver uid>
 VITE_DEMO_NAV_MODE=sales
 ALLOW_DEMO_RESET=1
+FIREBASE_WEB_API_KEY=<firebase web api key>
+SALES_DEMO_ADMIN_EMAIL=<firebase admin email>
+SALES_DEMO_ADMIN_PASSWORD=<firebase admin password>
+SALES_DEMO_DRIVER_EMAIL=<firebase driver email>
+SALES_DEMO_DRIVER_PASSWORD=<firebase driver password>
 ```
 
 Restart `npm run dev` after editing `.env.local`. The Vite client will

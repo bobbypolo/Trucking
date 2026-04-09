@@ -310,3 +310,84 @@ playwright-start
 passed: 4
 failed: 0
 ```
+
+### 2026-04-09T17:22:05.810Z [FAIL]
+
+```
+      101 |       bodyText.includes(name),
+      102 |     ).length;
+    > 103 |     expect(visibleCount).toBeGreaterThanOrEqual(12);
+          |                          ^
+      104 |
+      105 |     // 5. Click the ACME row to open the party profile. Use the row
+      106 |     //    text directly — the live UI accepts a click anywhere on the
+        at F:\Trucking\DisbatchMe\e2e\sales-demo\03-crm-walkthrough.spec.ts:103:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium\error-context.md
+
+    Retry #1 ───────────────────────────────────────────────────────────────────────────────────────
+
+    Error: [2mexpect([22m[31mreceived[39m[2m).[22mtoBeGreaterThanOrEqual[2m([22m[32mexpected[39m[2m)[22m
+
+    Expected: >= [32m12[39m
+    Received:    [31m0[39m
+
+      101 |       bodyText.includes(name),
+      102 |     ).length;
+    > 103 |     expect(visibleCount).toBeGreaterThanOrEqual(12);
+          |                          ^
+      104 |
+      105 |     // 5. Click the ACME row to open the party profile. Use the row
+      106 |     //    text directly — the live UI accepts a click anywhere on the
+        at F:\Trucking\DisbatchMe\e2e\sales-demo\03-crm-walkthrough.spec.ts:103:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\sales-demo-03-crm-walkthro-f535f-ntent-in-all-6-profile-tabs-chromium-retry1\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values 
+    [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds 
+    [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs 
+  3 passed (19.8s)
+```
+
+### 2026-04-09T17:35:00.754Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+
+Running 6 tests using 5 workers
+
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (682ms)
+  ok 4 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.9s)
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
+  ok 3 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.0s)
+  ok 6 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.8s)
+  ok 5 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (14.3s)
+
+  6 passed (16.7s)
+```

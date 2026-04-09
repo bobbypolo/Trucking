@@ -10,6 +10,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import type { OcrAdapter, OcrExtractionOutput } from "./ocr.service";
 import type { StorageAdapter } from "./document.service";
 import { createChildLogger } from "../lib/logger";
+import { GEMINI_FAST_MODEL } from "../lib/gemini-models";
 
 const log = createChildLogger({ module: "gemini-ocr-adapter" });
 
@@ -113,7 +114,7 @@ export function createGeminiOcrAdapter(storage: StorageAdapter): OcrAdapter {
       };
 
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: GEMINI_FAST_MODEL,
         contents: {
           parts: [
             { inlineData: { data: base64, mimeType } },

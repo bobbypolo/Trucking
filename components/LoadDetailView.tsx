@@ -440,12 +440,24 @@ export const LoadDetailView: React.FC<Props> = ({
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
-                  Commodity
-                </label>
-                <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner truncate">
-                  {load.commodity || "---"}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
+                    Commodity
+                  </label>
+                  <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner truncate">
+                    {load.commodity || "---"}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
+                    Weight
+                  </label>
+                  <div className="w-full bg-[#0a0f18] border border-slate-800 rounded-xl p-3 text-sm text-white uppercase shadow-inner">
+                    {typeof load.weight === "number"
+                      ? `${load.weight.toLocaleString()} LBS`
+                      : "---"}
+                  </div>
                 </div>
               </div>
               <div className="space-y-2">

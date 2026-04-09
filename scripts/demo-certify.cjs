@@ -27,6 +27,7 @@
 "use strict";
 
 const { execSync, spawn } = require("child_process");
+const dotenv = require("dotenv");
 const fs = require("fs");
 const http = require("http");
 const os = require("os");
@@ -39,6 +40,11 @@ const SERVER_PORT = 5000;
 const VITE_PORT = 3101;
 const HEALTH_TIMEOUT_MS = 30000;
 const HEALTH_POLL_MS = 1000;
+
+// Load demo env before any child processes spawn so certification picks up the
+// same credentials and feature flags used by reset/seed/runtime scripts.
+dotenv.config({ path: path.join(process.cwd(), ".env.local"), override: false });
+dotenv.config({ path: path.join(process.cwd(), ".env"), override: false });
 
 /* ------------------------------------------------------------------ */
 /*  Utility helpers (also exported for unit tests)                     */
