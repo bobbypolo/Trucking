@@ -40,7 +40,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
       if (parsed.message) {
         message = parsed.message;
       }
-    } catch {
+    } catch (_parseError: unknown) {
       // body is not JSON, use default message
     }
     throw createApiError(message, response.status);
@@ -52,7 +52,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 async function clearAuth(): Promise<void> {
   try {
     await auth.signOut();
-  } catch {
+  } catch (_signOutError: unknown) {
     // signOut failure during 401 handling is non-critical
   }
 }
