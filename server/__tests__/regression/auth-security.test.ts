@@ -17,10 +17,18 @@ import { Request, Response, NextFunction } from "express";
  */
 
 // --- Mock Firebase Admin ---
-const { mockVerifyIdToken, mockResolvePrincipal, mockApp } = vi.hoisted(() => ({
+const {
+  mockVerifyIdToken,
+  mockResolvePrincipal,
+  mockApp,
+  mockIsTokenRevoked,
+  mockDbExecute,
+} = vi.hoisted(() => ({
   mockVerifyIdToken: vi.fn(),
   mockResolvePrincipal: vi.fn(),
   mockApp: vi.fn(),
+  mockIsTokenRevoked: vi.fn(),
+  mockDbExecute: vi.fn(),
 }));
 
 vi.mock("firebase-admin", () => ({
@@ -34,6 +42,16 @@ vi.mock("firebase-admin", () => ({
 
 vi.mock("../../lib/sql-auth", () => ({
   resolveSqlPrincipalByFirebaseUid: mockResolvePrincipal,
+}));
+
+vi.mock("../../lib/token-revocation", () => ({
+  isTokenRevoked: mockIsTokenRevoked,
+}));
+
+vi.mock("../../db", () => ({
+  default: {
+    execute: mockDbExecute,
+  },
 }));
 
 import {
@@ -68,6 +86,8 @@ describe("R-P5-01-AC2: Auth Security Regression", () => {
   beforeEach(() => {
     nextFn = vi.fn() as NextFunction & ReturnType<typeof vi.fn>;
     vi.clearAllMocks();
+    mockApp.mockReturnValue(true);
+    mockIsTokenRevoked.mockResolvedValue(false);
   });
 
   describe("Unauthenticated requests are rejected (401)", () => {

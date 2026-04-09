@@ -144,7 +144,7 @@ vi.mock("../../lib/logger", () => ({
     error: vi.fn(),
     warn: vi.fn(),
     debug: vi.fn(),
-    child: function () {
+    child() {
       return this;
     },
   },

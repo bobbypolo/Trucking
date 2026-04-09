@@ -64,7 +64,7 @@ router.patch(
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
-      const existing = await taskRepository.findById(req.params.id);
+      const existing = await taskRepository.findById(req.params.id, companyId);
       if (!existing || existing.company_id !== companyId) {
         res.status(404).json({ error: "Task not found" });
         return;
@@ -72,6 +72,7 @@ router.patch(
       const updated = await taskRepository.update(
         req.params.id,
         req.body,
+        companyId,
         userId,
       );
       res.json(updated);
@@ -133,7 +134,10 @@ router.patch(
     const companyId = req.user!.tenantId;
     const userId = req.user!.uid;
     try {
-      const existing = await workItemRepository.findById(req.params.id);
+      const existing = await workItemRepository.findById(
+        req.params.id,
+        companyId,
+      );
       if (!existing || existing.company_id !== companyId) {
         res.status(404).json({ error: "Work item not found" });
         return;
@@ -141,6 +145,7 @@ router.patch(
       const updated = await workItemRepository.update(
         req.params.id,
         req.body,
+        companyId,
         userId,
       );
       res.json(updated);

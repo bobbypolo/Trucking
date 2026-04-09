@@ -9,6 +9,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { vi } from "vitest";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.resolve(__dirname, "../../");
@@ -28,3 +29,23 @@ if (!process.env.ALLOW_AUTO_PROVISION) {
 if (!process.env.DEBUG_TESTS) {
   process.env.LOG_LEVEL = "silent";
 }
+
+vi.mock("../db", () => ({
+  default: {
+    query: vi.fn().mockResolvedValue([[], []]),
+    execute: vi.fn().mockResolvedValue([[], []]),
+    getConnection: vi.fn().mockResolvedValue({
+      query: vi.fn().mockResolvedValue([[], []]),
+      execute: vi.fn().mockResolvedValue([[], []]),
+      beginTransaction: vi.fn().mockResolvedValue(undefined),
+      commit: vi.fn().mockResolvedValue(undefined),
+      rollback: vi.fn().mockResolvedValue(undefined),
+      release: vi.fn(),
+    }),
+  },
+}));
+
+vi.mock("../lib/token-revocation", () => ({
+  isTokenRevoked: vi.fn().mockResolvedValue(false),
+  revokeUserTokens: vi.fn().mockResolvedValue(undefined),
+}));

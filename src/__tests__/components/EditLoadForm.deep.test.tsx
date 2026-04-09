@@ -274,13 +274,13 @@ describe("EditLoadForm deep coverage — lines 553-664, 691-726", () => {
       const user = userEvent.setup();
       render(<EditLoadForm {...defaultProps} onSave={onSave} />);
       const dateInput = screen.getByDisplayValue("2025-12-01");
-      // userEvent.type on date inputs replaces the value
+      // Keep the pickup date valid relative to the dropoff leg so the form can save.
       await user.clear(dateInput);
-      await user.type(dateInput, "2025-12-15");
+      await user.type(dateInput, "2025-11-30");
 
       await user.click(screen.getByText("Save Changes"));
       const savedData = onSave.mock.calls[0][0];
-      expect(savedData.legs[0].date).toBe("2025-12-15");
+      expect(savedData.legs[0].date).toBe("2025-11-30");
     });
 
     it("updates appointment time via handleUpdateLeg", async () => {
