@@ -88,7 +88,8 @@ jobs:
           JWT_SECRET=ci-demo-certification-secret
           FIREBASE_SERVICE_ACCOUNT={}
           ENVEOF
-
+          # Strip leading whitespace from heredoc (YAML indentation leaks into content)
+          sed -i 's/^[[:space:]]*//' .env.local
           # Append secrets line-by-line (values may contain special chars)
           echo "SALES_DEMO_ADMIN_FIREBASE_UID=${{ secrets.SALES_DEMO_ADMIN_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_DRIVER_FIREBASE_UID=${{ secrets.SALES_DEMO_DRIVER_FIREBASE_UID }}" >> .env.local
