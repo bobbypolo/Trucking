@@ -207,6 +207,7 @@ jobs:
   smoke-test:
     name: Smoke Test
     runs-on: ubuntu-latest
+    environment: DEMO
     services:
       mysql:
         image: mysql:8.0
@@ -251,7 +252,8 @@ jobs:
           DB_NAME: loadpilot_test
           NODE_ENV: test
           JWT_SECRET: ci-test-secret
-          FIREBASE_SERVICE_ACCOUNT: "{}"
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
           # Start server in background
           cd server

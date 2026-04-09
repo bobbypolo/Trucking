@@ -56,16 +56,18 @@ const {
 
 vi.mock("../../lib/logger", () => ({
   logger: {
-    info: vi.fn(),
+    info: mockLogInfo,
     error: vi.fn(),
-    warn: vi.fn(),
+    warn: mockLogWarn,
     debug: vi.fn(),
-    child: vi.fn().mockReturnThis(),
+    child() {
+      return this;
+    },
   },
   createChildLogger: () => ({
-    info: vi.fn(),
+    info: mockLogInfo,
     error: vi.fn(),
-    warn: vi.fn(),
+    warn: mockLogWarn,
     debug: vi.fn(),
   }),
   createRequestLogger: () => ({
