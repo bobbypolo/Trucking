@@ -8,7 +8,7 @@
 #   - workflow_dispatch: manual trigger (requires secrets configured)
 #   - push tags matching demo/*
 #
-# Required GitHub Secrets (configure in Settings > Secrets and variables > Actions):
+# Required GitHub Secrets (in Demo environment):
 #   SALES_DEMO_ADMIN_FIREBASE_UID  - Firebase UID for the demo admin user
 #   SALES_DEMO_DRIVER_FIREBASE_UID - Firebase UID for the demo driver user
 #   SALES_DEMO_ADMIN_EMAIL         - Firebase auth email for demo admin
@@ -16,9 +16,14 @@
 #   SALES_DEMO_DRIVER_EMAIL        - Firebase auth email for demo driver
 #   SALES_DEMO_DRIVER_PASSWORD     - Firebase auth password for demo driver
 #   FIREBASE_WEB_API_KEY           - Firebase Web API key
-#   FIREBASE_PROJECT_ID            - Firebase project ID (required for server boot)
-#   FIREBASE_SERVICE_ACCOUNT       - Full service account JSON (for token verification)
-#   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (maps to GEMINI_API_KEY for server)
+#   FIREBASE_PROJECT_ID            - Firebase project ID
+#   FIREBASE_SERVICE_ACCOUNT       - Full service account JSON
+#   VITE_FIREBASE_API_KEY          - Browser Firebase API key
+#   VITE_FIREBASE_AUTH_DOMAIN      - Browser Firebase auth domain
+#   VITE_FIREBASE_PROJECT_ID       - Browser Firebase project ID
+#   VITE_FIREBASE_STORAGE_BUCKET   - Browser Firebase storage bucket
+#   VITE_FIREBASE_APP_ID           - Browser Firebase app ID
+#   GEMINI_API_KEY                 - Google Gemini AI key
 
 name: Demo Certification
 
@@ -99,6 +104,7 @@ jobs:
           JWT_SECRET=ci-demo-certification-secret
           ENVEOF
           sed -i 's/^[[:space:]]*//' .env.local
+          # Firebase server secrets
           echo "SALES_DEMO_ADMIN_FIREBASE_UID=${{ secrets.SALES_DEMO_ADMIN_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_DRIVER_FIREBASE_UID=${{ secrets.SALES_DEMO_DRIVER_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_ADMIN_EMAIL=${{ secrets.SALES_DEMO_ADMIN_EMAIL }}" >> .env.local
@@ -107,7 +113,13 @@ jobs:
           echo "SALES_DEMO_DRIVER_PASSWORD=${{ secrets.SALES_DEMO_DRIVER_PASSWORD }}" >> .env.local
           echo "FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" >> .env.local
           echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.local
-          echo "GEMINI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env.local
+          # Browser-side Firebase config (Vite reads VITE_* at dev server startup)
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env.local
+          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env.local
+          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env.local
+          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env.local
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env.local
 
       - name: Wait for MySQL
         run: |
@@ -142,7 +154,7 @@ jobs:
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          GEMINI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CORS_ORIGIN: "http://localhost:3101,http://localhost:3000,http://localhost:5000"
 
       - name: Upload certification evidence
