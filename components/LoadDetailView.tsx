@@ -119,7 +119,11 @@ export const LoadDetailView: React.FC<Props> = ({
         setVaultDocs(docs);
       } catch (e) {
         if (e instanceof Error && e.name === "AbortError") return;
-        // Vault docs unavailable — non-blocking, UI shows empty state
+        console.warn(
+          "[LoadDetailView] vault docs fetch failed for load",
+          load.id,
+          e,
+        );
       }
     };
     fetchVault();
@@ -1078,7 +1082,17 @@ export const LoadDetailView: React.FC<Props> = ({
               ))}
               <button
                 type="button"
-                onClick={() => setShowDocuments(true)}
+                onClick={async () => {
+                  try {
+                    const data = await api.get(`/documents?load_id=${load.id}`);
+                    setDocuments(
+                      Array.isArray(data?.documents) ? data.documents : [],
+                    );
+                  } catch {
+                    // Documents unavailable — panel will show empty state
+                  }
+                  setShowDocuments(true);
+                }}
                 className="bg-slate-900/10 border-2 border-dashed border-slate-800/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-500/30 transition-all hover:bg-blue-600/5"
               >
                 <div className="w-12 h-12 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-inner">
@@ -1111,30 +1125,32 @@ export const LoadDetailView: React.FC<Props> = ({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              {documents.length === 0 ? (
+              {documents.length === 0 && vaultDocs.length === 0 ? (
                 <p className="text-[10px] text-slate-500 uppercase tracking-widest">
                   No documents found for this load.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {documents.map((doc: any) => (
-                    <div
-                      key={doc.id}
-                      className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 space-y-2"
-                    >
-                      <div className="text-[11px] font-black text-white uppercase truncate">
-                        {doc.filename}
+                  {(documents.length > 0 ? documents : vaultDocs).map(
+                    (doc: any) => (
+                      <div
+                        key={doc.id}
+                        className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 space-y-2"
+                      >
+                        <div className="text-[11px] font-black text-white uppercase truncate">
+                          {doc.filename}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
+                            {doc.type}
+                          </span>
+                          <span className="text-[11px] text-slate-400">
+                            {doc.status}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
-                          {doc.type}
-                        </span>
-                        <span className="text-[11px] text-slate-400">
-                          {doc.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
               )}
             </div>

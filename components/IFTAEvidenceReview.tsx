@@ -139,21 +139,26 @@ export const IFTAEvidenceReview: React.FC<Props> = ({
                 <div key={ev.id} className="relative">
                   <div className="absolute -left-10 top-0 w-4 h-4 rounded-full bg-slate-800 border-2 border-slate-950 flex items-center justify-center">
                     <div
-                      className={`w-1.5 h-1.5 rounded-full ${ev.eventType === "GPS_PING" ? "bg-blue-500" : "bg-emerald-500"}`}
+                      className={`w-1.5 h-1.5 rounded-full ${ev?.eventType === "GPS_PING" ? "bg-blue-500" : "bg-emerald-500"}`}
                     />
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-black text-white uppercase">
-                        {ev.eventType.replace("_", " ")}
+                        {(
+                          ev.eventType ??
+                          (ev as any).event_type ??
+                          "UNKNOWN"
+                        ).replace("_", " ")}
                       </span>
                       <span className="text-[11px] font-bold text-slate-600">
                         {new Date(ev.timestamp).toLocaleTimeString()}
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 font-mono">
-                      {ev.lat.toFixed(4)}, {ev.lng.toFixed(4)}
-                      {ev.stateCode && ` • ${ev.stateCode}`}
+                      {(ev.lat ?? 0).toFixed(4)}, {(ev.lng ?? 0).toFixed(4)}
+                      {(ev.stateCode ?? (ev as any).state_code) &&
+                        ` • ${ev.stateCode ?? (ev as any).state_code}`}
                     </div>
                     <div className="text-[10px] text-slate-500 uppercase font-black">
                       {ev.source}

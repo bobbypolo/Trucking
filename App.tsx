@@ -388,9 +388,10 @@ export default function App() {
         setCompanyUsers([currentUser]);
       }
 
-      // Show toast if any calls failed
+      // Show toast if any calls failed (suppress in demo mode — non-critical
+      // endpoints may 404 for the demo tenant without affecting the certified path)
       const failures = results.filter((r) => r.status === "rejected");
-      if (failures.length > 0) {
+      if (failures.length > 0 && !isDemoNavMode()) {
         setRefreshToast({
           message: "Some data could not be loaded. Please retry.",
           type: "error",

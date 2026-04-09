@@ -32,18 +32,17 @@ export type DemoNavKey = (typeof DEMO_NAV_ALLOWLIST)[number];
  * 'SALES', 'production') returns false.
  */
 export function isDemoNavMode(): boolean {
-  // Vite replaces import.meta.env.VITE_* at build time with the literal
-  // value. In Node test envs, vitest stubs into process.env via
-  // vi.stubEnv, so we check both sources to keep the helper testable
-  // without leaking the Vite-specific mechanism into the call sites.
-  const viteEnv = (import.meta as unknown as { env?: Record<string, string> })
-    .env;
-  const viteValue = viteEnv?.VITE_DEMO_NAV_MODE;
-  if (viteValue === "sales") return true;
+  // Check process.env first so vi.stubEnv() in tests takes precedence
+  // over import.meta.env (which Vitest populates from .env.local at
+  // transform time and cannot be overridden by vi.stubEnv).
   if (typeof process !== "undefined" && process.env) {
+    // process.env is authoritative when available (Node / Vitest)
     return process.env.VITE_DEMO_NAV_MODE === "sales";
   }
-  return false;
+  // Browser fallback: Vite replaces import.meta.env.VITE_* at build time.
+  const viteEnv = (import.meta as unknown as { env?: Record<string, string> })
+    .env;
+  return viteEnv?.VITE_DEMO_NAV_MODE === "sales";
 }
 
 /**
@@ -84,14 +83,20 @@ export async function resetDemo(): Promise<{
   type: "success" | "error";
 }> {
   try {
-    const r = await fetch("/api/demo/reset", { method: "POST" });
-    const j = (await r.json().catch(() => ({}))) as { error?: string };
-    if (r.ok) return { message: "Reset Demo OK", type: "success" };
-    return {
-      message: `Reset Demo failed: ${j.error || r.status}`,
-      type: "error",
-    };
-  } catch {
-    return { message: "Reset Demo failed", type: "error" };
+    // Dynamic import to avoid pulling api module (and its side effects)
+    // into this pure-config file at load time — preserves test isolation.
+    const { api } = await import("./api");
+    await api.post("/demo/reset", {});
+    return { message: "Reset Demo OK", type: "success" };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("404")) {
+      return {
+        message:
+          "Reset Demo failed: route not available — ensure ALLOW_DEMO_RESET=1 is set in server env",
+        type: "error",
+      };
+    }
+    return { message: `Reset Demo failed: ${msg}`, type: "error" };
   }
 }

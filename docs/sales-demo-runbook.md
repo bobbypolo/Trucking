@@ -63,6 +63,11 @@ which is gated by all four of:
 3. `user.tenantId === "SALES-DEMO-001"` (403 otherwise)
 4. `process.env.ALLOW_DEMO_RESET === "1"` (403 otherwise)
 
+> **Important:** The server MUST be started with `ALLOW_DEMO_RESET=1` in
+> the environment for the reset button to work. Without this variable the
+> `/api/demo` route is never mounted and the button will return a 404.
+> Add `ALLOW_DEMO_RESET=1` to your `.env.local` and restart the server.
+
 A successful reset takes 1-3 seconds and returns `{ ok: true }`. The UI
 reloads the load board to pick up the freshly re-seeded hero load
 `LP-DEMO-RC-001` and broker `SALES-DEMO-CUST-001`.

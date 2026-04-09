@@ -5,6 +5,13 @@ import {
   isDemoNavMode,
   resetDemo,
 } from "../../../services/demoNavConfig";
+import { api } from "../../../services/api";
+
+vi.mock("../../../services/api", () => ({
+  api: {
+    post: vi.fn(),
+  },
+}));
 
 describe("demoNavConfig", () => {
   afterEach(() => {
@@ -105,37 +112,34 @@ describe("applyDemoNavFilter", () => {
 });
 
 describe("resetDemo", () => {
-  const origFetch = globalThis.fetch;
+  const mockPost = api.post as ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
-    globalThis.fetch = vi.fn();
-  });
-  afterEach(() => {
-    globalThis.fetch = origFetch;
+    mockPost.mockReset();
   });
 
   // Tests R-P6-04
   it("returns success toast payload on 200 OK", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-      {
-        ok: true,
-        status: 200,
-        json: async () => ({ ok: true }),
-      } as Response,
-    );
+    mockPost.mockResolvedValue({ ok: true });
     const r = await resetDemo();
     expect(r).toEqual({ message: "Reset Demo OK", type: "success" });
+    expect(mockPost).toHaveBeenCalledWith("/demo/reset", {});
   });
 
   // Tests R-P6-04
-  it("returns error toast payload on non-200 with error field", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-      {
-        ok: false,
-        status: 403,
-        json: async () => ({ error: "forbidden" }),
-      } as Response,
-    );
+  it("returns specific 404 message when route is not mounted", async () => {
+    mockPost.mockRejectedValue(new Error("API Request failed: 404"));
+    const r = await resetDemo();
+    expect(r).toEqual({
+      message:
+        "Reset Demo failed: route not available — ensure ALLOW_DEMO_RESET=1 is set in server env",
+      type: "error",
+    });
+  });
+
+  // Tests R-P6-04
+  it("returns error toast payload on non-200 with error message", async () => {
+    mockPost.mockRejectedValue(new Error("forbidden"));
     const r = await resetDemo();
     expect(r).toEqual({
       message: "Reset Demo failed: forbidden",
@@ -144,11 +148,12 @@ describe("resetDemo", () => {
   });
 
   // Tests R-P6-04
-  it("returns error toast when fetch throws", async () => {
-    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error("network down"),
-    );
+  it("returns error toast when api.post throws non-Error", async () => {
+    mockPost.mockRejectedValue("network down");
     const r = await resetDemo();
-    expect(r).toEqual({ message: "Reset Demo failed", type: "error" });
+    expect(r).toEqual({
+      message: "Reset Demo failed: network down",
+      type: "error",
+    });
   });
 });
