@@ -2,118 +2,378 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "507693d790859074bceff5d227928d67bc62f4023e640053b3bdcef1181243f0",
+  "plan_hash": "7f38760750c726d76801f85d245525cdbc9e0906e0d9dc750f617c8516206024",
   "stories": [
     {
-      "id": "STORY-001",
-      "description": "IFTA Audit Packet Export MVP (module)",
+      "id": "STORY-B1-01",
+      "description": "Migration adds aging_bucket column to ar_invoices",
       "phase": 1,
       "phase_type": "module",
       "component": "server/",
       "scope": [
-        "components/",
-        "server/",
-        "services/",
-        "src/"
+        "server/migrations/",
+        "server/__tests__/migrations/"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
+      "complexity": "simple",
+      "maxTurns": 80,
       "dependsOn": [],
       "parallelGroup": null,
       "acceptanceCriteria": [
         {
-          "id": "R-P1-01",
-          "criterion": "`server/migrations/051_ifta_audit_packets.sql` creates exactly `1` table named `ifta_audit_packets` with at least the `9` named columns `id`, `company_id`, `quarter`, `tax_year`, `status`, `packet_hash`, `download_url`, `created_by`, and `created_at`.",
+          "id": "R-B1-01",
+          "criterion": "test reads SQL file via `fs.readFileSync` and asserts UP section contains exactly one `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL` line via regex match.",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-P1-02",
-          "criterion": "the DOWN section of `server/migrations/051_ifta_audit_packets.sql` drops exactly `1` table, `ifta_audit_packets`, and does not drop or rename any pre-existing table.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-03",
-          "criterion": "`server/migrations/052_invoices_aging_tracking.sql` adds exactly `2` columns, `days_since_issued` and `last_aging_snapshot_at`, to the invoice-aging source table and the DOWN section removes only those `2` columns.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-04",
-          "criterion": "`POST /api/accounting/ifta-audit-packets` with body `{ \"quarter\": 4, \"taxYear\": 2025, \"includeDocuments\": true }` returns `201` and a JSON body containing `packetId`, `status: \"generated\"`, a 64-character `packetHash`, and a non-empty `downloadUrl`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-05",
-          "criterion": "`POST /api/accounting/ifta-audit-packets` with invalid body `{ \"quarter\": 5, \"taxYear\": 2025 }` returns `400` and an error message containing the quoted field name `\"quarter\"`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-06",
-          "criterion": "`bundleAuditPacket()` produces a ZIP buffer containing exactly `4` top-level entries: `cover-letter.pdf`, `jurisdiction-summary.csv`, `fuel-ledger.csv`, and `manifest.json`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-07",
-          "criterion": "`computePacketHash()` returns the same 64-character SHA-256 hex string for the same packet bytes across 2 consecutive calls.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-08",
-          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `200 { \"verified\": true }` when the stored packet bytes match the saved `packet_hash`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-09",
-          "criterion": "`POST /api/accounting/ifta-audit-packets/:packetId/verify` returns `409 { \"error\": \"HASH_MISMATCH\" }` when the stored packet bytes are modified after generation.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-10",
-          "criterion": "running `server/jobs/invoice-aging-nightly.ts` against 3 seeded invoices updates `days_since_issued` to values greater than `0` and writes a non-null `last_aging_snapshot_at`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-11",
-          "criterion": "`services/financialService.ts` exports the 4 methods `generateIftaAuditPacket`, `listIftaAuditPackets`, `getIftaAuditPacket`, and `verifyIftaAuditPacket`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-12",
-          "criterion": "`components/IFTAManager.tsx` renders a button labeled `\"Generate Audit Packet\"`, a quarter selector with values `1` through `4`, and a tax-year selector seeded to the current year.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-13",
-          "criterion": "clicking `\"Generate Audit Packet\"` with selected values `Q4` and `2025` calls `generateIftaAuditPacket({ quarter: 4, taxYear: 2025, includeDocuments: true })` exactly once.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-14",
-          "criterion": "after a successful packet generation response, `IFTAManager.tsx` renders the returned 64-character `packetHash` and a clickable download action pointing at `downloadUrl`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-15",
-          "criterion": "in the current web app, generating a `Q4 2025` packet for a seeded company downloads a `.zip` file that opens successfully and contains at least 4 files, including `cover-letter.pdf` and `jurisdiction-summary.csv`.",
+          "id": "R-B1-02",
+          "criterion": "test reads file via `fs.readFileSync` and asserts DOWN section contains exactly one `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other `DROP` occurrences (regex count).",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/051_ifta_audit_packets.test.ts __tests__/migrations/052_invoices_aging_tracking.test.ts __tests__/services/ifta-audit-packet.service.test.ts __tests__/routes/ifta-audit-packets.test.ts __tests__/jobs/invoice-aging-nightly.test.ts && cd .. && npx vitest run src/__tests__/components/IFTAManager.audit-packet.test.tsx src/__tests__/services/financialService.ifta-audit-packet.test.ts\""
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-02",
+      "description": "Job populates aging_bucket with 5-bucket assignment",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/jobs/",
+        "server/__tests__/jobs/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-B1-01"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-03",
+          "criterion": "5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`; test asserts exact values via `.toBe()`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-04",
+          "criterion": "invoice with null `issued_at` results in `aging_bucket` staying null (test asserts `.toBeNull()`).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/jobs/invoice-aging-nightly.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-03",
+      "description": "External scheduler wrapper (Windows-safe .cjs)",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "scripts/",
+        "server/__tests__/scripts/",
+        "docs/ops/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-B1-02"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-05",
+          "criterion": "test spawns `node scripts/invoice-aging-nightly.cjs --dry-run` via `child_process.spawnSync`; asserts exit code 0 and stdout contains `\"status\":\"dry-run\"`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-06",
+          "criterion": "runbook `docs/ops/invoice-aging-nightly.md` contains H2 sections `## Dry-run`, `## Production invocation`, `## Idempotency`, `## Failure alerting`, `## Cron example`, `## GitHub Actions example`, `## Rollback`; test reads file via `fs.readFileSync` and asserts each heading via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-07",
+          "criterion": "test spawns wrapper with no `DATABASE_URL` env; asserts non-zero exit and stderr JSON contains `\"error\":\"missing_database_url\"`.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/invoice-aging-nightly.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-04",
+      "description": "Sentry server-side init (gated on SENTRY_DSN)",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/index.ts",
+        "server/__tests__/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 80,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-08",
+          "criterion": "test reads `server/index.ts` via `fs.readFileSync` and asserts the import line and conditional `initSentry()` call via regex match.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-09",
+          "criterion": "integration test sets `process.env.SENTRY_DSN = 'test-dsn'`, mocks `initSentry`, imports `server/index`, asserts `initSentry` called exactly once.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-10",
+          "criterion": "integration test with `SENTRY_DSN` unset -> server module loads without throwing.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/index.sentry-init.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-05",
+      "description": "Master program document + release checklist + sprint history",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-11",
+          "criterion": "master plan contains H2 sections for all 13 sprints (B1..M); verified by `scripts/verify-program-docs.cjs` reading file via `fs.readFileSync` and asserting each heading via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-12",
+          "criterion": "master plan contains `## Shipped Baseline (Sprint A)` section; verified by helper script.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-13",
+          "criterion": "release checklist contains tables for operator gates `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`, `OP-LEGAL-*`; verified by helper script.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-14",
+          "criterion": "sprint-history has initial entry with `dd8a8f4` Sprint A SHA.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-06",
+      "description": "Baseline debt register populated with REAL entries",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 120,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-15",
+          "criterion": "`docs/trucker-app-baseline-debt.md` exists and contains a markdown table with columns `file | failure | owner | first-seen | expiry | justification`; verified via `scripts/verify-baseline-debt.cjs` parsing the markdown table using `fs.readFileSync` + regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-16",
+          "criterion": "register either contains >= 1 real entry OR an explicit `| _(verified clean at <date>)_ |` placeholder row; helper script asserts one of the two.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-baseline-debt.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-07",
+      "description": "Env matrix doc",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 60,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-17",
+          "criterion": "doc contains table with columns `Variable`, `Category`, `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`, `Rotation`; verified via helper script reading file with `fs.readFileSync` and matching header via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-18",
+          "criterion": "doc contains H2 section `## EXPO_PUBLIC_* rule` stating that mobile public keys MUST use the prefix and server secrets MUST NOT.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-08",
+      "description": "Feature flags doc + migration numbering rule",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "docs/",
+      "scope": [
+        "docs/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 60,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-19",
+          "criterion": "feature flags doc lists all 6 flags (`FEATURE_TRUCKER_MOBILE_BETA`, `FEATURE_MOTIVE_ELD`, `FEATURE_BROKER_CREDIT`, `FEATURE_FACILITY_DWELL`, `FEATURE_FREEMIUM_QUOTA`, `FEATURE_FORCE_UPGRADE`); helper script reads file and asserts each flag name via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-20",
+          "criterion": "migration-numbering doc contains the placeholder rule and assignment procedure; helper script asserts H2 sections `## Placeholder convention` and `## Assignment procedure`.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-09",
+      "description": "feature_flags DB table + read/write endpoint + server/index.ts mount",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/migrations/",
+        "server/routes/",
+        "server/index.ts",
+        "server/__tests__/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-21",
+          "criterion": "migration creates `feature_flags` table with 6 columns (id, tenant_id, flag_name, flag_value, updated_at, updated_by); test reads SQL file via `fs.readFileSync`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-22",
+          "criterion": "`GET /api/feature-flags` returns merged flag map (env + DB) for authenticated user's tenant; integration test via supertest.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-23",
+          "criterion": "`PUT /api/feature-flags/:name` requires admin role; non-admin returns HTTP 403 (auth-negative Rule 16).",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-B1-24",
+          "criterion": "`server/index.ts` mount line `app.use('/api/feature-flags', featureFlagsRouter)` present; test reads file via `fs.readFileSync` and asserts via regex match (no shell grep).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/ __tests__/routes/feature-flags.test.ts\""
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-B1-10",
+      "description": "SaaS non-regression verification",
+      "phase": 1,
+      "phase_type": "module",
+      "component": "scripts/",
+      "scope": [
+        "scripts/"
+      ],
+      "complexity": "moderate",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": "B1-parallel",
+      "acceptanceCriteria": [
+        {
+          "id": "R-B1-25",
+          "criterion": "helper script `scripts/verify-saas-regression.cjs` runs `npx vitest run src/__tests__/` and `cd server && npx vitest run __tests__/routes/accounting.test.ts __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts` via `child_process.spawnSync`, captures exit codes, asserts all 0 (modulo baseline debt exclusions).",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"node scripts/verify-saas-regression.cjs\""
       },
       "passed": false,
       "verificationRef": null
