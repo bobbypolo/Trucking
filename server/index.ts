@@ -57,6 +57,7 @@ import invitationsRouter from "./routes/invitations";
 import intelligenceRouter from "./routes/intelligence";
 import driverIntakeRouter from "./routes/loads-driver-intake";
 import iftaAuditPacketsRouter from "./routes/ifta-audit-packets";
+import featureFlagsRouter from "./routes/feature-flags";
 import demoRouter from "./routes/demo";
 
 const app = express();
@@ -124,6 +125,7 @@ app.use(invitationsRouter);
 app.use(intelligenceRouter);
 app.use(driverIntakeRouter);
 app.use(iftaAuditPacketsRouter);
+app.use("/api/feature-flags", featureFlagsRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
 
 app.use(errorHandler);
