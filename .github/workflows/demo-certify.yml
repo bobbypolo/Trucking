@@ -18,7 +18,7 @@
 #   FIREBASE_WEB_API_KEY           - Firebase Web API key
 #   FIREBASE_PROJECT_ID            - Firebase project ID (required for server boot)
 #   FIREBASE_SERVICE_ACCOUNT       - Full service account JSON (for token verification)
-#   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (optional; certified path is zero-AI)
+#   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (maps to GEMINI_API_KEY for server)
 
 name: Demo Certification
 
@@ -78,9 +78,7 @@ jobs:
         env:
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          # Write service account JSON to file (standard Firebase Admin SDK path)
           echo "$FIREBASE_SA_JSON" > server/serviceAccount.json
-          # Validate the file was written and is valid JSON
           if [ ! -s server/serviceAccount.json ]; then
             echo "ERROR: serviceAccount.json is empty — FIREBASE_SERVICE_ACCOUNT secret may not be set"
             exit 1
@@ -108,8 +106,8 @@ jobs:
           echo "SALES_DEMO_DRIVER_EMAIL=${{ secrets.SALES_DEMO_DRIVER_EMAIL }}" >> .env.local
           echo "SALES_DEMO_DRIVER_PASSWORD=${{ secrets.SALES_DEMO_DRIVER_PASSWORD }}" >> .env.local
           echo "FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" >> .env.local
-          echo "GOOGLE_GENAI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
           echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.local
+          echo "GEMINI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
 
       - name: Wait for MySQL
         run: |
@@ -144,6 +142,8 @@ jobs:
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GOOGLE_GENAI_API_KEY }}
+          CORS_ORIGIN: "http://localhost:3101,http://localhost:3000,http://localhost:5000"
 
       - name: Upload certification evidence
         if: always()
