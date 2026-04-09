@@ -16,7 +16,7 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { signup } = useAuth();
   const router = useRouter();
 
   async function handleSignup() {
@@ -26,7 +26,7 @@ export default function SignupScreen() {
       return;
     }
     try {
-      await login(email, password);
+      await signup(email, password);
       router.replace("/(tabs)");
     } catch (err: unknown) {
       if (err instanceof Error) {
