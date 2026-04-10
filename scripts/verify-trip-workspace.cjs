@@ -47,7 +47,7 @@ const loadCardContent = fs.readFileSync(loadCardPath, "utf-8");
 
 const loadsScreenPath = path.join(
   ROOT,
-  "apps/trucker/src/app/(tabs)/loads.tsx"
+  "apps/trucker/src/app/(tabs)/loads/index.tsx"
 );
 const loadsScreenContent = fs.readFileSync(loadsScreenPath, "utf-8");
 
