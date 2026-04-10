@@ -1780,22 +1780,34 @@ export const CommandCenterView: React.FC<Props> = ({
               <div className="absolute bottom-6 left-6 right-6 h-12 bg-slate-950/80 backdrop-blur-xl border border-white/10 rounded-2xl px-6 flex items-center justify-between shadow-2xl">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <Activity className="w-3.5 h-3.5 text-blue-500" />
+                    <Activity
+                      className={`w-3.5 h-3.5 ${incidents.some((i) => i.severity === "Critical") ? "text-red-500" : incidents.some((i) => i.severity === "High") ? "text-amber-500" : "text-blue-500"}`}
+                    />
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">
-                      Global Operational Stream: Nominal
+                      {incidents.some((i) => i.severity === "Critical")
+                        ? "Operational Stream: Alert"
+                        : incidents.some((i) => i.severity === "High")
+                          ? "Operational Stream: Elevated"
+                          : "Operational Stream: Nominal"}
                     </span>
                   </div>
                   <div className="w-px h-4 bg-white/10" />
                   <div className="flex items-center gap-2">
                     <Wifi className="w-3.5 h-3.5 text-green-500" />
                     <span className="text-[10px] font-black text-slate-500 uppercase">
-                      92% Units Connected
+                      {loads.length} Active Load{loads.length !== 1 ? "s" : ""}{" "}
+                      &middot; {incidents.length} Incident
+                      {incidents.length !== 1 ? "s" : ""}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-black text-slate-600 uppercase italic">
-                    Last Sync: Just Now
+                    Last Sync:{" "}
+                    {new Date().toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                 </div>
               </div>

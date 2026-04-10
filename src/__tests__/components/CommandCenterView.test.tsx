@@ -196,11 +196,9 @@ describe("CommandCenterView", () => {
 
   it("renders bottom alert strip with operational status", async () => {
     render(<CommandCenterView {...defaultProps} />);
-    expect(
-      screen.getByText(/Global Operational Stream: Nominal/),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/92% Units Connected/)).toBeInTheDocument();
-    expect(screen.getByText(/Last Sync: Just Now/)).toBeInTheDocument();
+    expect(screen.getByText(/Operational Stream: Nominal/)).toBeInTheDocument();
+    expect(screen.getByText(/Active Load/)).toBeInTheDocument();
+    expect(screen.getByText(/Last Sync:/)).toBeInTheDocument();
   });
 
   /* ---- EMPTY STATE ---- */

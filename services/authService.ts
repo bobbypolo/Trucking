@@ -498,6 +498,17 @@ export const login = async (
     if (error instanceof Error && error.message.includes("verify your email")) {
       throw error;
     }
+    // Propagate network errors so the UI shows "Network error" not "Invalid credentials"
+    if (error instanceof Error) {
+      const code = "code" in error ? (error as { code: string }).code : "";
+      if (
+        code === "auth/network-request-failed" ||
+        error.message.includes("Failed to fetch") ||
+        error.message.includes("network-request-failed")
+      ) {
+        throw error;
+      }
+    }
     // Fail-closed: never fall back to local/fixture credentials.
     // Firebase authentication is the only accepted auth path.
     console.error("[authService] Firebase sign-in failed:", error);
