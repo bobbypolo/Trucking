@@ -49,12 +49,13 @@ test.describe("Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13)", () => {
     await loginAsSalesDemoAdmin(page);
     await page.goto(`${APP_BASE}/loads`);
 
-    // The live board opens the detail workspace from the bottom SQL-style
-    // table's row action, not from the manifest text itself.
-    await page.getByText(/Detailed Load Table/i).click();
-    const heroRow = page.locator("tr").filter({ hasText: HERO_LOAD_ID }).first();
-    await expect(heroRow).toBeVisible();
-    await heroRow.getByRole("button").click();
+    // Drive the explicit row-view control instead of relying on row/button
+    // ordering inside the SQL-style table.
+    await page.getByTestId("load-board-detail-table-toggle").click();
+    const heroOpenButton = page.getByTestId(`load-board-open-${HERO_LOAD_ID}`);
+    await expect(heroOpenButton).toBeVisible();
+    await heroOpenButton.click();
+    await expect(page.getByTestId("team2-load-detail-view")).toBeVisible();
     await expect(page.getByText(/Manifest Workspace:/i)).toBeVisible();
 
     // Wait for the load detail view to render. The continuity values must
@@ -81,10 +82,11 @@ test.describe("Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13)", () => {
     await loginAsSalesDemoAdmin(page);
     await page.goto(`${APP_BASE}/loads`);
 
-    await page.getByText(/Detailed Load Table/i).click();
-    const heroRow = page.locator("tr").filter({ hasText: HERO_LOAD_ID }).first();
-    await expect(heroRow).toBeVisible();
-    await heroRow.getByRole("button").click();
+    await page.getByTestId("load-board-detail-table-toggle").click();
+    const heroOpenButton = page.getByTestId(`load-board-open-${HERO_LOAD_ID}`);
+    await expect(heroOpenButton).toBeVisible();
+    await heroOpenButton.click();
+    await expect(page.getByTestId("team2-load-detail-view")).toBeVisible();
     await expect(page.getByText(/Digital Artifacts Matrix/i)).toBeVisible();
 
     // Wait for the documents panel to render at least 3 cards.

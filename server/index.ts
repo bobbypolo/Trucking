@@ -4,6 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -132,6 +133,22 @@ app.use(driverIntakeRouter);
 app.use(iftaAuditPacketsRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
+
+// Serve built frontend from dist/ when it exists (demo + production mode).
+// This allows the backend to serve both API and UI on a single port,
+// which is required for Cloudflare tunnel (one URL, one port).
+const distPath = path.resolve(__dirname, "../dist");
+const fs = require("fs");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  // SPA fallback: any non-API GET that doesn't match a static file
+  // returns index.html so React Router handles client-side routing.
+  app.get(/^(?!\/api).*/, (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+  logger.info({ distPath }, "Serving static frontend from dist/");
+}
 
 app.use(errorHandler);
 

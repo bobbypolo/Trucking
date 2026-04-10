@@ -46,6 +46,13 @@ SALES_DEMO_DRIVER_FIREBASE_UID=<provisioned driver uid>
 VITE_DEMO_NAV_MODE=sales
 ALLOW_DEMO_RESET=1
 FIREBASE_WEB_API_KEY=<firebase web api key>
+VITE_FIREBASE_API_KEY=<firebase api key>
+VITE_FIREBASE_AUTH_DOMAIN=<firebase auth domain>
+VITE_FIREBASE_PROJECT_ID=<firebase project id>
+VITE_FIREBASE_STORAGE_BUCKET=<firebase storage bucket>
+VITE_FIREBASE_MESSAGING_SENDER_ID=<firebase sender id>
+VITE_FIREBASE_APP_ID=<firebase app id>
+GEMINI_API_KEY=<gemini api key>
 SALES_DEMO_ADMIN_EMAIL=<firebase admin email>
 SALES_DEMO_ADMIN_PASSWORD=<firebase admin password>
 SALES_DEMO_DRIVER_EMAIL=<firebase driver email>
@@ -55,6 +62,39 @@ SALES_DEMO_DRIVER_PASSWORD=<firebase driver password>
 Restart `npm run dev` after editing `.env.local`. The Vite client will
 re-read `VITE_DEMO_NAV_MODE` and the React sidebar will collapse to the
 demo allowlist on next mount.
+
+The same `.env.local` file is the runtime contract for `npm run
+demo:setup`, `npm run demo:host:sales`, and GitHub Actions
+certification. GitHub Actions secrets populate the CI runner only; they
+do not configure your local machine or demo VM. The actual demo host
+launch contract requires `GEMINI_API_KEY` and the `VITE_FIREBASE_*`
+values in `.env.local` before launch so the live AI wow path is always
+ready.
+
+## Launching the demo host
+
+Use one command to start the actual host once `.env.local` is ready:
+
+```bash
+npm run demo:host:sales
+```
+
+This command validates `.env.local`, refreshes the seeded demo data via
+`npm run demo:setup`, starts the backend on port `5000`, starts Vite on
+port `3000`, waits for both services to become healthy, and then keeps
+both processes running until you stop them with `Ctrl+C`. If any
+required runtime variable is missing, the launch fails before the host
+starts.
+
+If you need to create or refresh the seed data manually before launch,
+run:
+
+```bash
+npm run demo:setup
+```
+
+The host launcher will invoke the same provisioning command
+automatically before it starts the long-running processes.
 
 ## Resetting between demos
 
@@ -179,11 +219,11 @@ through a real Gemini call.
 
 1. Switch to the driver Chrome profile.
 2. Open the driver mobile shell at `/drive`.
-3. Click the **Scan Doc** button.
+3. Tap **New Load Intake — Scan Documents**.
 4. Upload the seeded `rate-con.pdf` from
    `server/scripts/sales-demo-fixtures/rate-con.pdf`.
 5. Wait for the live Gemini extraction (3-7 seconds).
-6. Review the extracted fields and tap **Save Load**.
+6. Review the extracted fields, complete any required blanks, and tap **Submit Intake**.
 7. Return to the dispatcher profile, refresh the Load Board, and show
    the buyer the new live-extracted load alongside `LP-DEMO-RC-001`.
 
@@ -205,8 +245,13 @@ the demo works outside any single developer's machine.
   `SALES_DEMO_DRIVER_FIREBASE_UID`, `SALES_DEMO_ADMIN_EMAIL`,
   `SALES_DEMO_ADMIN_PASSWORD`, `SALES_DEMO_DRIVER_EMAIL`,
   `SALES_DEMO_DRIVER_PASSWORD`, `FIREBASE_WEB_API_KEY`,
-  `GOOGLE_GENAI_API_KEY` (optional). Configure these in the GitHub
-  repository under Settings > Secrets and variables > Actions.
+  `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+  `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`,
+  `VITE_FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`,
+  `FIREBASE_SERVICE_ACCOUNT`, and `GEMINI_API_KEY`. Configure these in
+  the GitHub repository under Settings > Secrets and variables > Actions.
+- **Important:** those secrets only populate the GitHub Actions runner.
+  The local demo host still needs the same runtime values in `.env.local`.
 - **Artifacts:** The workflow uploads `docs/release/evidence.md` and
   `test-results/` as downloadable artifacts with 30-day retention.
 - **Without secrets:** E2E specs that require Firebase login will skip

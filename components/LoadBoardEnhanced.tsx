@@ -422,6 +422,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
               <div
                 className="flex items-center gap-2 cursor-pointer group"
                 onClick={() => setIsGridViewOpen(!isGridViewOpen)}
+                data-testid="load-board-detail-table-toggle"
               >
                 <Database className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" />
                 <h3 className="text-[10px] font-black text-white uppercase tracking-widest">
@@ -605,6 +606,7 @@ export const LoadBoardEnhanced: React.FC<LoadBoardExpandedProps> = ({
                         <td className="p-4 text-right">
                           <button
                             onClick={() => onView(load)}
+                            data-testid={`load-board-open-${load.loadNumber}`}
                             className="p-2 hover:bg-white/10 rounded-lg text-slate-500 hover:text-blue-500 transition-all"
                           >
                             <Maximize2 className="w-3.5 h-3.5" />

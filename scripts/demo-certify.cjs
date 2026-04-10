@@ -27,11 +27,18 @@
 "use strict";
 
 const { execSync, spawn } = require("child_process");
-const dotenv = require("dotenv");
 const fs = require("fs");
 const http = require("http");
+const net = require("net");
 const os = require("os");
 const path = require("path");
+const {
+  ENV_LOCAL,
+  ensureEnvLocalFile,
+  formatDemoEnvProblems,
+  loadEnvFileIntoProcess,
+  validateDemoEnvFile,
+} = require("./demo-env.cjs");
 
 const EVIDENCE_H2 = "## Sales Demo Certification";
 const DEFAULT_LOG_BASENAME = "sales-demo-cert-latest.log";
@@ -41,10 +48,21 @@ const VITE_PORT = 3101;
 const HEALTH_TIMEOUT_MS = 90000;
 const HEALTH_POLL_MS = 1000;
 
-// Load demo env before any child processes spawn so certification picks up the
-// same credentials and feature flags used by reset/seed/runtime scripts.
-dotenv.config({ path: path.join(process.cwd(), ".env.local"), override: false });
-dotenv.config({ path: path.join(process.cwd(), ".env"), override: false });
+function preflightDemoEnv() {
+  if (!ensureEnvLocalFile()) {
+    throw new Error(
+      ".env.local is missing. Copy .env.example.sales-demo to .env.local and fill in the required values.",
+    );
+  }
+
+  loadEnvFileIntoProcess(ENV_LOCAL);
+  const { problems } = validateDemoEnvFile(ENV_LOCAL, {
+    requireGemini: true,
+  });
+  if (problems.length > 0) {
+    throw new Error(formatDemoEnvProblems(problems, ENV_LOCAL));
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Utility helpers (also exported for unit tests)                     */
@@ -128,6 +146,33 @@ function waitForHealthy(url, timeoutMs) {
   });
 }
 
+function assertPortAvailable(port, label) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+
+    server.once("error", (error) => {
+      if (error && error.code === "EADDRINUSE") {
+        reject(
+          new Error(
+            label +
+              " port " +
+              port +
+              " is already in use. Stop the stale process and retry certification.",
+          ),
+        );
+        return;
+      }
+      reject(error);
+    });
+
+    server.once("listening", () => {
+      server.close(() => resolve());
+    });
+
+    server.listen(port, "127.0.0.1");
+  });
+}
+
 /* ------------------------------------------------------------------ */
 /*  Sync command runner with logging                                    */
 /* ------------------------------------------------------------------ */
@@ -207,6 +252,8 @@ function killProcess(child, label) {
 /* ------------------------------------------------------------------ */
 
 async function runFullPipeline() {
+  preflightDemoEnv();
+
   const logFile = defaultLogPath();
   const evidenceFile = defaultEvidencePath();
   let backendChild = null;
@@ -224,14 +271,16 @@ async function runFullPipeline() {
 
     // Step 3: Start backend
     process.stdout.write("\n[certify] === Step 3/6: Start backend server ===\n");
+    await assertPortAvailable(SERVER_PORT, "backend");
     backendChild = spawnServer("backend", "npx", ["ts-node", "--transpile-only", "server/index.ts"], {
       env: { ALLOW_DEMO_RESET: "1", PORT: String(SERVER_PORT) },
     });
 
     // Step 4: Start Vite dev server on port 3101
     process.stdout.write("\n[certify] === Step 4/6: Start Vite dev server ===\n");
+    await assertPortAvailable(VITE_PORT, "vite");
     const npmCmd = process.platform === "win32" ? "npm.cmd" : "npm";
-    viteChild = spawnServer("vite", npmCmd, ["run", "dev", "--", "--port", String(VITE_PORT)], {
+    viteChild = spawnServer("vite", npmCmd, ["run", "dev", "--", "--port", String(VITE_PORT), "--strictPort"], {
       env: { VITE_DEMO_NAV_MODE: "sales" },
     });
 
@@ -284,8 +333,8 @@ async function runFullPipeline() {
     );
   } finally {
     // Cleanup: kill servers
-    killProcess(backendChild, "backend");
     killProcess(viteChild, "vite");
+    killProcess(backendChild, "backend");
   }
 
   return exitCode;

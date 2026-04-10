@@ -336,3 +336,163 @@ Fixed in commit `de2cbdf`.
 Produced by old append-only `demo-certify.cjs` (no real pipeline).
 
 </details>
+
+### 2026-04-10T01:59:42.893Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (642ms)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.3s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (8.0s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.6s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (16.2s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (5.0s)
+
+  7 passed (43.9s)
+```
+
+### 2026-04-10T04:19:21.323Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (828ms)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (5.6s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.8s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.2s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.6s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (15.8s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (5.1s)
+
+  7 passed (45.2s)
+```
+
+### 2026-04-10T04:23:31.403Z [FAIL]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (635ms)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.4s)
+  x  3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (8.7s)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  write to custom object with { processEnv: myObject }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.3s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (4.1s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (18.8s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (4.9s)
+
+
+  1) [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type 
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeVisible[2m([22m[2m)[22m failed
+
+    Locator: getByText('rate-con.pdf')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+    [2m  - Expect "toBeVisible" with timeout 5000ms[22m
+    [2m  - waiting for getByText('rate-con.pdf')[22m
+
+
+      91 |     for (const filename of HERO_DOCUMENT_FILENAMES) {
+      92 |       const card = page.getByText(filename, { exact: false });
+    > 93 |       await expect(card).toBeVisible();
+         |                          ^
+      94 |     }
+      95 |
+      96 |     // Critical: assert the literal substring "undefined undefined" never
+        at F:\Trucking\DisbatchMe\e2e\sales-demo\01-document-automation.spec.ts:93:26
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\sales-demo-01-document-aut-70283-name-and-non-undefined-type-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\sales-demo-01-document-aut-70283-name-and-non-undefined-type-chromium\error-context.md
+
+  1 failed
+    [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type 
+  6 passed (59.9s)
+```
+
+### 2026-04-10T04:28:02.212Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (668ms)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  suppress all logs with { quiet: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:79:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.1s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.2s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.6s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (20.5s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (4.8s)
+
+  7 passed (54.2s)
+```
+
+### 2026-04-10T04:29:20.680Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ✅ audit secrets and track compliance: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (637ms)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🛠️  run anywhere with `dotenvx run -- yourcommand`
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:79:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.7s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (6.9s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.6s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (13.4s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (3.8s)
+
+  7 passed (45.8s)
+```
+
+### 2026-04-10T05:06:17.304Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  enable debug logging with { debug: true }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (1.4s)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🗂️ backup and recover secrets: https://dotenvx.com/ops
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (13.0s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:79:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.5s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (6.5s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.5s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (18.0s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (5.2s)
+
+  7 passed (54.2s)
+```

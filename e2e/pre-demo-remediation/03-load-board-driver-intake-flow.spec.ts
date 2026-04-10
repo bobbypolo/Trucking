@@ -1,7 +1,7 @@
 /**
  * R-P6-03: Driver intake flow spec
  *
- * Driver context: taps Submit Load Intake tile (DriverMobileHome),
+ * Driver context: taps the certified New Load Intake CTA (DriverMobileHome),
  * uploads bol-sample.png through the Scanner, fills review fields,
  * submits via POST /api/loads/driver-intake.
  * Asserts load appears with status='Draft' and intake_source='driver'.
@@ -58,8 +58,8 @@ test.describe("Pre-Demo Remediation — Driver Intake Flow (R-P6-03)", () => {
       timeout: 30_000,
     });
 
-    // Tap the Submit Load Intake tile (R-P5-16)
-    await driverPage.getByTestId("submit-load-intake-tile").click();
+    // Tap the certified New Load Intake CTA
+    await driverPage.getByTestId("new-intake-today").click();
 
     // Scanner appears — upload BOL fixture
     const fileInput = driverPage.getByTestId("scanner-upload-file");
