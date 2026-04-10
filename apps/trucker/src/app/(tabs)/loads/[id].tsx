@@ -4,6 +4,7 @@
  * Tests R-P2-01: Calls fetchLoadById(id) on mount via useEffect.
  * Tests R-P2-02: Renders origin, destination, pickup_date, and delivery date.
  * Tests R-P2-03: Renders status badge with color-coded background per LoadStatus.
+ * Tests R-P3-04: Renders StatusUpdateButton with currentStatus and onStatusChange={transitionTo}.
  */
 
 import { useEffect, useState } from "react";
@@ -18,6 +19,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { fetchLoadById } from "../../../services/loads";
 import { getOrigin, getDestination } from "../../../types/load";
+import { StatusUpdateButton } from "../../../components/StatusUpdateButton";
+import { useLoadStatus } from "../../../hooks/useLoadStatus";
 import type { Load, LoadStatus } from "../../../types/load";
 
 const STATUS_COLORS: Record<LoadStatus, string> = {
@@ -45,6 +48,13 @@ export default function LoadDetailScreen() {
   const [load, setLoad] = useState<Load | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    status: currentStatus,
+    updating,
+    error: statusError,
+    transitionTo,
+  } = useLoadStatus(id || "", load?.status || "pending");
 
   useEffect(() => {
     if (!id) return;
@@ -123,14 +133,15 @@ export default function LoadDetailScreen() {
   const origin = getOrigin(load);
   const destination = getDestination(load);
   const deliveryDate = getDeliveryDate(load);
-  const statusColor = STATUS_COLORS[load.status] || "#9CA3AF";
+  const displayStatus = load ? currentStatus : "pending";
+  const statusColor = STATUS_COLORS[displayStatus] || "#9CA3AF";
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.loadId}>Load #{load.id}</Text>
         <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-          <Text style={styles.statusText}>{load.status}</Text>
+          <Text style={styles.statusText}>{displayStatus}</Text>
         </View>
       </View>
 
@@ -153,6 +164,17 @@ export default function LoadDetailScreen() {
         <Text style={styles.sectionLabel}>Delivery Date</Text>
         <Text style={styles.sectionValue}>{deliveryDate}</Text>
       </View>
+
+      <StatusUpdateButton
+        currentStatus={currentStatus}
+        onStatusChange={transitionTo}
+      />
+
+      {statusError ? (
+        <View style={styles.statusErrorContainer}>
+          <Text style={styles.statusErrorText}>{statusError}</Text>
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -234,5 +256,19 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "600",
+  },
+  statusErrorContainer: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 12,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#FECACA",
+  },
+  statusErrorText: {
+    fontSize: 14,
+    color: "#DC2626",
+    textAlign: "center",
   },
 });
