@@ -16,6 +16,7 @@ const http = require("http");
 const net = require("net");
 const path = require("path");
 const {
+  buildDemoRuntimeEnv,
   ENV_LOCAL,
   PROJECT_ROOT,
   ensureEnvLocalFile,
@@ -154,7 +155,7 @@ function runSetup() {
   execSync("npm run demo:setup", {
     cwd: PROJECT_ROOT,
     stdio: "inherit",
-    env: { ...process.env },
+    env: buildDemoRuntimeEnv(process.env),
   });
 }
 
@@ -164,7 +165,7 @@ function spawnServer(label, cmd, args, env) {
     cwd: PROJECT_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
     shell: true,
-    env: { ...process.env, ...env },
+    env: buildDemoRuntimeEnv({ ...process.env, ...env }),
   });
 
   child.stdout.on("data", (data) => {

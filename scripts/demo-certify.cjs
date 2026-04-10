@@ -33,6 +33,7 @@ const net = require("net");
 const os = require("os");
 const path = require("path");
 const {
+  buildDemoRuntimeEnv,
   ENV_LOCAL,
   ensureEnvLocalFile,
   formatDemoEnvProblems,
@@ -184,6 +185,7 @@ function runSync(label, cmd, opts) {
       cwd: process.cwd(),
       stdio: "inherit",
       timeout: 120000,
+      env: buildDemoRuntimeEnv(process.env),
       ...opts,
     });
   } catch (err) {
@@ -273,7 +275,11 @@ async function runFullPipeline() {
     process.stdout.write("\n[certify] === Step 3/6: Start backend server ===\n");
     await assertPortAvailable(SERVER_PORT, "backend");
     backendChild = spawnServer("backend", "npx", ["ts-node", "--transpile-only", "server/index.ts"], {
-      env: { ALLOW_DEMO_RESET: "1", PORT: String(SERVER_PORT) },
+      env: buildDemoRuntimeEnv({
+        ...process.env,
+        ALLOW_DEMO_RESET: "1",
+        PORT: String(SERVER_PORT),
+      }),
     });
 
     // Step 4: Start Vite dev server on port 3101

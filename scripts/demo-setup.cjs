@@ -19,6 +19,7 @@ const { execSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
 const {
+  buildDemoRuntimeEnv,
   ENV_LOCAL,
   ENV_TEMPLATE,
   PLACEHOLDER_PATTERN,
@@ -110,7 +111,7 @@ function runStep(stepNum, totalSteps, label, cmd) {
       cwd: PROJECT_ROOT,
       stdio: "inherit",
       timeout: 180000,
-      env: { ...process.env },
+      env: buildDemoRuntimeEnv(process.env),
     });
   } catch (err) {
     fail(label + " failed (exit code " + (err.status || "unknown") + ").");

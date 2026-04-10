@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import {
+  buildDemoRuntimeEnv,
   collectDemoEnvProblems,
   parseEnvFile,
   validateDemoEnvFile,
@@ -74,5 +75,18 @@ describe("scripts/demo-env.cjs", () => {
         p.includes("FIREBASE_WEB_API_KEY and VITE_FIREBASE_API_KEY must match"),
       ),
     ).toBe(true);
+  });
+
+  it("hydrates GOOGLE_APPLICATION_CREDENTIALS from a local service account file", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "demo-env-runtime-"));
+    const serviceAccountPath = path.join(dir, "serviceAccount.json");
+    fs.writeFileSync(serviceAccountPath, '{"project_id":"demo"}', "utf8");
+
+    const runtimeEnv = buildDemoRuntimeEnv(
+      { DB_HOST: "127.0.0.1" } as NodeJS.ProcessEnv,
+      { serviceAccountPath },
+    );
+
+    expect(runtimeEnv.GOOGLE_APPLICATION_CREDENTIALS).toBe(serviceAccountPath);
   });
 });

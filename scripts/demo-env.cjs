@@ -6,6 +6,11 @@ const path = require("path");
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const ENV_LOCAL = path.join(PROJECT_ROOT, ".env.local");
 const ENV_TEMPLATE = path.join(PROJECT_ROOT, ".env.example.sales-demo");
+const LOCAL_SERVICE_ACCOUNT = path.join(
+  PROJECT_ROOT,
+  "server",
+  "serviceAccount.json",
+);
 
 const PLACEHOLDER_PATTERN = /<fill[- ]?in>/i;
 
@@ -164,10 +169,35 @@ function formatDemoEnvProblems(problems, filePath) {
   );
 }
 
+function buildDemoRuntimeEnv(
+  baseEnv = process.env,
+  { serviceAccountPath = LOCAL_SERVICE_ACCOUNT } = {},
+) {
+  const env = { ...baseEnv };
+
+  const hasInlineServiceAccount =
+    typeof env.FIREBASE_SERVICE_ACCOUNT === "string" &&
+    env.FIREBASE_SERVICE_ACCOUNT.trim() !== "";
+  const hasGoogleApplicationCredentials =
+    typeof env.GOOGLE_APPLICATION_CREDENTIALS === "string" &&
+    env.GOOGLE_APPLICATION_CREDENTIALS.trim() !== "";
+
+  if (
+    !hasInlineServiceAccount &&
+    !hasGoogleApplicationCredentials &&
+    fs.existsSync(serviceAccountPath)
+  ) {
+    env.GOOGLE_APPLICATION_CREDENTIALS = serviceAccountPath;
+  }
+
+  return env;
+}
+
 module.exports = {
   PROJECT_ROOT,
   ENV_LOCAL,
   ENV_TEMPLATE,
+  LOCAL_SERVICE_ACCOUNT,
   PLACEHOLDER_PATTERN,
   REQUIRED_DEMO_VARS,
   REQUIRED_MATCHES,
@@ -177,4 +207,5 @@ module.exports = {
   collectDemoEnvProblems,
   validateDemoEnvFile,
   formatDemoEnvProblems,
+  buildDemoRuntimeEnv,
 };
