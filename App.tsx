@@ -1278,7 +1278,7 @@ export default function App() {
         )}
         {mainContent}
         {globalOverlays}
-        {user && (
+        {user && !isDemoNavMode() && (
           <ComponentErrorBoundary>
             <Suspense fallback={<LoadingSkeleton variant="card" count={2} />}>
               <CommsOverlay

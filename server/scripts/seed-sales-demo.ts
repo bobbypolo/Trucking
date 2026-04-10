@@ -1034,6 +1034,150 @@ export async function seedSalesDemoParties(conn: SqlExecutor): Promise<void> {
   }
 }
 
+// ─── Phase 5: Demo exceptions + future-dated load ────────────────────────────
+//
+// Seeds 3 exceptions (Issues & Alerts page) and 1 future-dated load with
+// load_legs (Schedule / Calendar page) so neither page is empty during the
+// sales demo.
+
+export const SALES_DEMO_FUTURE_LOAD_ID = "LP-DEMO-FUT-001";
+
+export const SALES_DEMO_EXCEPTION_IDS = [
+  "SALES-DEMO-EXC-001",
+  "SALES-DEMO-EXC-002",
+  "SALES-DEMO-EXC-003",
+] as const;
+
+export async function seedSalesDemoExceptionsAndFutureLoad(
+  conn: SqlExecutor,
+): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  // ── 3 demo exceptions linked to company_id = SALES-DEMO-001 ──────────────
+
+  await conn.execute(
+    `INSERT IGNORE INTO exceptions
+       (id, company_id, type, status, severity, entity_type, entity_id,
+        team, workflow_step, financial_impact_est, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_EXCEPTION_IDS[0],
+      companyId,
+      "DELAY_REPORTED",
+      "OPEN",
+      3,
+      "LOAD",
+      SALES_DEMO_HERO_LOAD_ID,
+      "Dispatch",
+      "triage",
+      250.0,
+      "Late delivery warning — LP-DEMO-RC-001 approaching deadline",
+    ],
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO exceptions
+       (id, company_id, type, status, severity, entity_type, entity_id,
+        team, workflow_step, financial_impact_est, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_EXCEPTION_IDS[1],
+      companyId,
+      "COMPLIANCE_RESTRICTED",
+      "TRIAGED",
+      2,
+      "DRIVER",
+      HERO_DRIVER_ID,
+      "Safety",
+      "triage",
+      0.0,
+      "Driver HOS approaching limit — Demo Driver",
+    ],
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO exceptions
+       (id, company_id, type, status, severity, entity_type, entity_id,
+        team, workflow_step, financial_impact_est, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_EXCEPTION_IDS[2],
+      companyId,
+      "BREAKDOWN",
+      "OPEN",
+      1,
+      "LOAD",
+      SALES_DEMO_HERO_LOAD_ID,
+      "Fleet/Maint",
+      "triage",
+      150.0,
+      "Temperature variance on reefer load",
+    ],
+  );
+
+  // ── 1 future-dated load for the Schedule / Calendar page ──────────────────
+
+  await conn.execute(
+    `INSERT IGNORE INTO loads
+       (id, company_id, customer_id, driver_id, load_number, status,
+        carrier_rate, driver_pay, pickup_date, freight_type, commodity,
+        weight, bol_number)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 3 DAY), ?, ?, ?, ?)`,
+    [
+      SALES_DEMO_FUTURE_LOAD_ID,
+      companyId,
+      SALES_DEMO_BROKER_ID,
+      HERO_DRIVER_ID,
+      SALES_DEMO_FUTURE_LOAD_ID,
+      "Planned",
+      2800,
+      1800,
+      "Dry Van",
+      "Electronics",
+      38000,
+      "BOL-DEMO-0002",
+    ],
+  );
+
+  // ── load_legs for the future load (pickup + dropoff) ──────────────────────
+
+  await conn.execute(
+    `INSERT IGNORE INTO load_legs
+       (id, load_id, type, facility_name, city, state, date,
+        appointment_time, completed, sequence_order)
+     VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 3 DAY), ?, ?, ?)`,
+    [
+      "SALES-DEMO-LEG-PICKUP-FUT",
+      SALES_DEMO_FUTURE_LOAD_ID,
+      "Pickup",
+      "Southwest Electronics Depot",
+      "Dallas",
+      "TX",
+      "10:00",
+      0,
+      1,
+    ],
+  );
+
+  await conn.execute(
+    `INSERT IGNORE INTO load_legs
+       (id, load_id, type, facility_name, city, state, date,
+        appointment_time, completed, sequence_order)
+     VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL 5 DAY), ?, ?, ?)`,
+    [
+      "SALES-DEMO-LEG-DROPOFF-FUT",
+      SALES_DEMO_FUTURE_LOAD_ID,
+      "Dropoff",
+      "Memphis Distribution Center",
+      "Memphis",
+      "TN",
+      "14:00",
+      0,
+      2,
+    ],
+  );
+}
+
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function seedSalesDemo(
@@ -1061,6 +1205,8 @@ export async function seedSalesDemo(
   // ACME Logistics LLC reuses SALES_DEMO_BROKER_ID from Phase 2 so the
   // INSERT IGNORE is a no-op for that row and the rest seed cleanly.
   await seedSalesDemoParties(conn);
+  // Phase 5: Demo exceptions + future-dated load for Issues & Schedule pages.
+  await seedSalesDemoExceptionsAndFutureLoad(conn);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────
