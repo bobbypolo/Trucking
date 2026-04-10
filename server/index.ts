@@ -143,7 +143,8 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   // SPA fallback: any non-API GET that doesn't match a static file
   // returns index.html so React Router handles client-side routing.
-  app.get("*", (req, res, next) => {
+  // Express 5 requires named wildcard params: {*path} instead of bare *.
+  app.get("/{*path}", (req, res, next) => {
     if (req.path.startsWith("/api")) return next();
     res.sendFile(path.join(distPath, "index.html"));
   });
