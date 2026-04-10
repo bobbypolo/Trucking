@@ -13,16 +13,28 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "LoadPilot Trucker needs camera access to capture documents such as BOL, Rate Confirmations, and Proof of Delivery photos."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.loadpilot.trucker"
+      "bundleIdentifier": "com.loadpilot.trucker",
+      "infoPlist": {
+        "NSCameraUsageDescription": "LoadPilot Trucker needs camera access to capture documents such as BOL, Rate Confirmations, and Proof of Delivery photos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.loadpilot.trucker"
+      "package": "com.loadpilot.trucker",
+      "permissions": ["android.permission.CAMERA"]
     }
   }
 }
