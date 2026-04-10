@@ -3,7 +3,7 @@
  *
  * Required env vars (all environments):
  *   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
- *   FIREBASE_PROJECT_ID  OR  GOOGLE_APPLICATION_CREDENTIALS OR FIREBASE_SERVICE_ACCOUNT
+ *   FIREBASE_PROJECT_ID  OR  GOOGLE_APPLICATION_CREDENTIALS
  *
  * Fail-closed in staging/prod (NODE_ENV=staging|production):
  *   CORS_ORIGIN must be set — missing causes startup THROW (not just warn)
@@ -56,10 +56,10 @@ const DEV_ALLOWED_ORIGINS = [
  * - In staging/production: uses CORS_ORIGIN from env (validated by validateEnv).
  *   If CORS_ORIGIN contains commas, splits into an array.
  * - In development/test/undefined: if CORS_ORIGIN is set, uses it;
- *   otherwise restricts to localhost origins only.
+ *   otherwise allows localhost origins + *.trycloudflare.com for tunnel access.
  * - Never returns "*" when credentials are enabled (CORS spec violation).
  */
-export function getCorsOrigin(): string | string[] {
+export function getCorsOrigin(): string | string[] | ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void) {
   const corsOrigin = process.env.CORS_ORIGIN;
   const nodeEnv = process.env.NODE_ENV;
   const isStrict = nodeEnv !== undefined && STRICT_ENVIRONMENTS.has(nodeEnv);
@@ -76,20 +76,28 @@ export function getCorsOrigin(): string | string[] {
   }
 
   if (isStrict) {
-    // This should not be reached because validateEnv() throws first,
-    // but defend in depth.
     throw new Error(
       `CORS_ORIGIN is required in ${nodeEnv} but was not set. ` +
         "Cannot start server without explicit CORS origin.",
     );
   }
 
-  // Development/test: allow only localhost origins
+  // Development/test: allow localhost origins + Cloudflare tunnel origins
   logger.info(
     { origins: DEV_ALLOWED_ORIGINS },
-    "CORS_ORIGIN not set — restricting to localhost origins for development",
+    "CORS_ORIGIN not set — allowing localhost + *.trycloudflare.com origins",
   );
-  return DEV_ALLOWED_ORIGINS;
+  const allowedSet = new Set(DEV_ALLOWED_ORIGINS);
+  return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (e.g. server-to-server, curl)
+    if (!origin) return callback(null, true);
+    // Allow all localhost origins
+    if (allowedSet.has(origin)) return callback(null, true);
+    // Allow Cloudflare Quick Tunnel origins
+    if (origin.endsWith(".trycloudflare.com")) return callback(null, true);
+    // Block everything else
+    callback(new Error("CORS: origin not allowed: " + origin));
+  };
 }
 
 /**
@@ -109,21 +117,16 @@ export function validateEnv(): void {
     }
   }
 
-  // Firebase: allow either project ID, ADC path, or inline service account JSON.
+  // Firebase: need at least one of FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS
   const hasProjectId =
     process.env.FIREBASE_PROJECT_ID &&
     process.env.FIREBASE_PROJECT_ID.trim() !== "";
   const hasCredentials =
     process.env.GOOGLE_APPLICATION_CREDENTIALS &&
     process.env.GOOGLE_APPLICATION_CREDENTIALS.trim() !== "";
-  const hasInlineServiceAccount =
-    process.env.FIREBASE_SERVICE_ACCOUNT &&
-    process.env.FIREBASE_SERVICE_ACCOUNT.trim() !== "";
 
-  if (!hasProjectId && !hasCredentials && !hasInlineServiceAccount) {
-    missing.push(
-      "FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS or FIREBASE_SERVICE_ACCOUNT",
-    );
+  if (!hasProjectId && !hasCredentials) {
+    missing.push("FIREBASE_PROJECT_ID or GOOGLE_APPLICATION_CREDENTIALS");
   }
 
   if (missing.length > 0) {
@@ -138,7 +141,6 @@ export function validateEnv(): void {
   const isStrict = nodeEnv !== undefined && STRICT_ENVIRONMENTS.has(nodeEnv);
 
   if (isStrict) {
-    // Fail-closed: staging/prod must have CORS_ORIGIN configured
     const corsOrigin = process.env.CORS_ORIGIN;
     if (!corsOrigin || corsOrigin.trim() === "") {
       throw new Error(
@@ -148,7 +150,6 @@ export function validateEnv(): void {
       );
     }
   } else {
-    // Warn-only in development/test/undefined
     if (!nodeEnv || nodeEnv.trim() === "") {
       logger.warn(
         "NODE_ENV is not set — defaulting to development behavior. " +
@@ -159,7 +160,7 @@ export function validateEnv(): void {
     const corsOrigin = process.env.CORS_ORIGIN;
     if (!corsOrigin || corsOrigin.trim() === "") {
       logger.warn(
-        "CORS_ORIGIN is not set — restricting to localhost origins only. " +
+        "CORS_ORIGIN is not set — restricting to localhost + tunnel origins only. " +
           "Configure CORS_ORIGIN before staging/production deployment.",
       );
     }
