@@ -246,15 +246,17 @@ async function runFullPipeline() {
     // Step 6: Run Playwright
     process.stdout.write("\n[certify] === Step 6/6: Run Playwright e2e/sales-demo ===\n");
     const playwrightCmd =
-      "npx playwright test e2e/sales-demo/ --reporter=list 2>&1";
+      "npx playwright test e2e/sales-demo/ --reporter=list";
     try {
       const output = execSync(playwrightCmd, {
         cwd: process.cwd(),
         encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
         timeout: 300000, // 5 min max for e2e
         env: {
           ...process.env,
           SALES_DEMO_E2E: "1",
+          // Servers are already running — tell Playwright to reuse them
           E2E_SERVER_RUNNING: "1",
           E2E_APP_URL: "http://localhost:" + VITE_PORT,
           E2E_API_URL: "http://localhost:" + SERVER_PORT,
