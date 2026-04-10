@@ -256,6 +256,11 @@ export const Auth: React.FC<Props> = ({ onLogin }) => {
       if (message.includes("verify your email")) {
         setError(message);
       } else if (
+        message.toLowerCase().includes("too many") ||
+        message.toLowerCase().includes("rate")
+      ) {
+        setError("Demo service is busy. Please retry in a moment.");
+      } else if (
         code === "auth/wrong-password" ||
         code === "auth/user-not-found" ||
         code === "auth/invalid-credential"

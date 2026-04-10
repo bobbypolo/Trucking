@@ -249,6 +249,28 @@ describe("Auth component", () => {
       });
       expect(onLogin).not.toHaveBeenCalled();
     });
+
+    it("shows a busy-service message when upstream auth bootstrap is rate-limited", async () => {
+      mockLogin.mockRejectedValue(
+        new Error("Too many requests, please try again later."),
+      );
+      const user = userEvent.setup();
+      render(<Auth onLogin={onLogin} />);
+
+      await user.type(
+        screen.getByPlaceholderText("you@company.com"),
+        "test@test.com",
+      );
+      await user.type(screen.getByLabelText("Password"), "pass");
+      await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Demo service is busy. Please retry in a moment."),
+        ).toBeInTheDocument();
+      });
+      expect(onLogin).not.toHaveBeenCalled();
+    });
   });
 
   // =========================================================================

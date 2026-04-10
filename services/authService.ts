@@ -110,7 +110,12 @@ const hydrateSessionFromApi = async (): Promise<User | null> => {
     },
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    const fallbackMessage =
+      errorData.error || `Session hydration failed with status ${res.status}.`;
+    throw new Error(fallbackMessage);
+  }
 
   const user = (await res.json()) as User;
   _sessionCache = user;
@@ -488,6 +493,14 @@ export const login = async (
       return data.user;
     }
 
+    const errorData = await res.json().catch(() => ({}));
+    const message =
+      errorData.error || `Sign-in bootstrap failed with status ${res.status}.`;
+
+    if (res.status === 429) {
+      throw new Error(message);
+    }
+
     const hydratedUser = await hydrateSessionFromApi();
     if (hydratedUser) {
       notifyUserChange(hydratedUser);
@@ -495,7 +508,12 @@ export const login = async (
     }
   } catch (error) {
     // Re-throw email verification errors so the UI can display them
-    if (error instanceof Error && error.message.includes("verify your email")) {
+    if (
+      error instanceof Error &&
+      (error.message.includes("verify your email") ||
+        error.message.toLowerCase().includes("too many") ||
+        error.message.toLowerCase().includes("rate"))
+    ) {
       throw error;
     }
     // Fail-closed: never fall back to local/fixture credentials.

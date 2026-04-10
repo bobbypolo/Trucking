@@ -2,7 +2,6 @@ import { Router } from "express";
 import type { Request } from "express";
 import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
-import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import admin from "../auth";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
@@ -17,6 +16,10 @@ import {
 } from "../schemas/users";
 import { createRequestLogger } from "../lib/logger";
 import { isAutoProvisionEnabled } from "../lib/env";
+import {
+  createLoginLimiter,
+  createResetPasswordLimiter,
+} from "../lib/rate-limit";
 import { revokeUserTokens } from "../lib/token-revocation";
 import {
   ensureMySqlCompany,
@@ -32,31 +35,8 @@ import {
 
 const router = Router();
 
-// Rate limiter for login endpoint: 10 requests per 15-minute window per IP
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  keyGenerator: (req) =>
-    ipKeyGenerator(
-      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
-    ),
-  message: { error: "Too many login attempts. Try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limiter for password reset endpoint: 3 requests per 15-minute window per IP
-const resetPasswordLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 3,
-  keyGenerator: (req) =>
-    ipKeyGenerator(
-      req.ip || (req.headers["x-forwarded-for"] as string) || "unknown",
-    ),
-  message: { error: "Too many password reset requests. Try again later." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const loginLimiter = createLoginLimiter();
+const resetPasswordLimiter = createResetPasswordLimiter();
 
 function getBearerToken(req: Request): string | null {
   const authHeader = req.headers?.authorization;

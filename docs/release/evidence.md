@@ -496,3 +496,24 @@ Running 7 tests using 1 worker
 
   7 passed (54.2s)
 ```
+
+### 2026-04-10T14:49:50.629Z [PASS]
+
+```
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔄 add secrets lifecycle management: https://dotenvx.com/ops
+
+Running 7 tests using 1 worker
+
+  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (1.1s)
+[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 prevent building .env in docker: https://dotenvx.com/prebuild
+  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
+  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:79:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.8s)
+  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (7.9s)
+  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.5s)
+  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (19.3s)
+  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (4.8s)
+
+  7 passed (47.7s)
+```

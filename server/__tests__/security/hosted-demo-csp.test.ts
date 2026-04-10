@@ -26,6 +26,8 @@ const cspDirectives = {
     "https://firebase.googleapis.com",
     "https://www.googleapis.com",
     "https://*.googleapis.com",
+    "https://www.google-analytics.com",
+    "https://www.google.com",
     "https://maps.googleapis.com",
     "https://maps.gstatic.com",
     "https://*.firebaseio.com",
@@ -60,5 +62,7 @@ describe("hosted demo CSP", () => {
     expect(cspHeader).toContain("https://firebaseinstallations.googleapis.com");
     expect(cspHeader).toContain("https://firebase.googleapis.com");
     expect(cspHeader).toContain("https://www.googleapis.com");
+    expect(cspHeader).toContain("https://www.google-analytics.com");
+    expect(cspHeader).toContain("https://www.google.com");
   });
 });

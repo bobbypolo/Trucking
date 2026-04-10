@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import compression from "compression";
 import dotenv from "dotenv";
 import path from "path";
@@ -9,6 +8,7 @@ import path from "path";
 dotenv.config();
 
 import { validateEnv, getCorsOrigin } from "./lib/env";
+import { createApiLimiter } from "./lib/rate-limit";
 import { errorHandler } from "./middleware/errorHandler";
 import { correlationId } from "./middleware/correlationId";
 import { metricsMiddleware } from "./middleware/metrics";
@@ -91,6 +91,8 @@ const cspDirectives = {
     "https://firebase.googleapis.com",
     "https://www.googleapis.com",
     "https://*.googleapis.com",
+    "https://www.google-analytics.com",
+    "https://www.google.com",
     "https://maps.googleapis.com",
     "https://maps.gstatic.com",
     "https://*.firebaseio.com",
@@ -124,13 +126,7 @@ app.use(correlationId);
 app.use(metricsMiddleware);
 app.use(healthRouter); // Unauthenticated, before rate limiter
 
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: "Too many requests, please try again later." },
-});
+const apiLimiter = createApiLimiter();
 app.use("/api", apiLimiter);
 
 app.use(usersRouter);

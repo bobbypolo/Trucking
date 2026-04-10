@@ -437,6 +437,11 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
     });
   }, [loads, loadFilter]);
 
+  const forwardArrowPath =
+    typeof window !== "undefined"
+      ? window.google?.maps?.SymbolPath?.FORWARD_CLOSED_ARROW
+      : undefined;
+
   const filteredVehicles = useMemo(() => {
     return activeVehicles.filter((v) => {
       const matchesSearch =
@@ -756,9 +761,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                   key={vehicle.driver.id}
                   position={vehicle.coords}
                   icon={
-                    typeof google !== "undefined"
+                    forwardArrowPath
                       ? {
-                          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                          path: forwardArrowPath,
                           fillColor: vehicle.hasIncident
                             ? "#ef4444"
                             : vehicle.isOnline
@@ -783,9 +788,9 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
                 position={{ lat: pos.latitude, lng: pos.longitude }}
                 data-is-live="true"
                 icon={
-                  typeof google !== "undefined"
+                  forwardArrowPath
                     ? {
-                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        path: forwardArrowPath,
                         fillColor: "#22c55e",
                         fillOpacity: 1,
                         strokeColor: "#ffffff",

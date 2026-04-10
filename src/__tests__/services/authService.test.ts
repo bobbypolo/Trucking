@@ -700,6 +700,29 @@ describe("authService", () => {
       const result = await login("test@test.com", "password123");
       expect(result).toEqual(mockUser);
     });
+
+    it("re-throws rate-limit errors so the UI does not mislabel them as bad credentials", async () => {
+      const mockFbUser = {
+        uid: "fb-uid",
+        email: "test@test.com",
+        emailVerified: true,
+      };
+      (signInWithEmailAndPassword as any).mockResolvedValue({
+        user: mockFbUser,
+      });
+      (getIdToken as any).mockResolvedValue("mock-token");
+
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: false,
+        status: 429,
+        json: () =>
+          Promise.resolve({ error: "Too many requests, please try again later." }),
+      } as any);
+
+      await expect(login("test@test.com", "password123")).rejects.toThrow(
+        /too many requests/i,
+      );
+    });
   });
 
   // ─── logout ──────────────────────────────────────────────────────────
