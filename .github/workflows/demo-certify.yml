@@ -8,7 +8,7 @@
 #   - workflow_dispatch: manual trigger (requires secrets configured)
 #   - push tags matching demo/*
 #
-# Required GitHub Secrets (configure in Settings > Secrets and variables > Actions):
+# Required GitHub Secrets (in Demo environment):
 #   SALES_DEMO_ADMIN_FIREBASE_UID  - Firebase UID for the demo admin user
 #   SALES_DEMO_DRIVER_FIREBASE_UID - Firebase UID for the demo driver user
 #   SALES_DEMO_ADMIN_EMAIL         - Firebase auth email for demo admin
@@ -16,10 +16,14 @@
 #   SALES_DEMO_DRIVER_EMAIL        - Firebase auth email for demo driver
 #   SALES_DEMO_DRIVER_PASSWORD     - Firebase auth password for demo driver
 #   FIREBASE_WEB_API_KEY           - Firebase Web API key
-#   GOOGLE_GENAI_API_KEY           - Google Gemini AI key (optional; certified path is zero-AI)
-#
-# If Firebase secrets are not configured, the E2E specs that require login
-# will skip (they have test.skip() guards checking SALES_DEMO_E2E env var).
+#   FIREBASE_PROJECT_ID            - Firebase project ID
+#   FIREBASE_SERVICE_ACCOUNT       - Full service account JSON
+#   VITE_FIREBASE_API_KEY          - Browser Firebase API key
+#   VITE_FIREBASE_AUTH_DOMAIN      - Browser Firebase auth domain
+#   VITE_FIREBASE_PROJECT_ID       - Browser Firebase project ID
+#   VITE_FIREBASE_STORAGE_BUCKET   - Browser Firebase storage bucket
+#   VITE_FIREBASE_APP_ID           - Browser Firebase app ID
+#   GEMINI_API_KEY                 - Google Gemini AI key
 
 name: Demo Certification
 
@@ -75,6 +79,18 @@ jobs:
             cp fixtures/test-users.example.json fixtures/test-users.json
           fi
 
+      - name: Write Firebase credentials
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SA_JSON" > server/serviceAccount.json
+          if [ ! -s server/serviceAccount.json ]; then
+            echo "ERROR: serviceAccount.json is empty — FIREBASE_SERVICE_ACCOUNT secret may not be set"
+            exit 1
+          fi
+          node -e "JSON.parse(require('fs').readFileSync('server/serviceAccount.json','utf8')); console.log('serviceAccount.json: valid JSON')"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=${{ github.workspace }}/server/serviceAccount.json" >> "$GITHUB_ENV"
+
       - name: Create .env.local for demo
         run: |
           cat > .env.local << 'ENVEOF'
@@ -86,12 +102,9 @@ jobs:
           ALLOW_DEMO_RESET=1
           VITE_DEMO_NAV_MODE=sales
           JWT_SECRET=ci-demo-certification-secret
-          FIREBASE_SERVICE_ACCOUNT={}
-          FIREBASE_PROJECT_ID=placeholder
           ENVEOF
-          # Strip leading whitespace from heredoc (YAML indentation leaks into content)
           sed -i 's/^[[:space:]]*//' .env.local
-          # Append secrets line-by-line (values may contain special chars)
+          # Firebase server secrets
           echo "SALES_DEMO_ADMIN_FIREBASE_UID=${{ secrets.SALES_DEMO_ADMIN_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_DRIVER_FIREBASE_UID=${{ secrets.SALES_DEMO_DRIVER_FIREBASE_UID }}" >> .env.local
           echo "SALES_DEMO_ADMIN_EMAIL=${{ secrets.SALES_DEMO_ADMIN_EMAIL }}" >> .env.local
@@ -99,8 +112,14 @@ jobs:
           echo "SALES_DEMO_DRIVER_EMAIL=${{ secrets.SALES_DEMO_DRIVER_EMAIL }}" >> .env.local
           echo "SALES_DEMO_DRIVER_PASSWORD=${{ secrets.SALES_DEMO_DRIVER_PASSWORD }}" >> .env.local
           echo "FIREBASE_WEB_API_KEY=${{ secrets.FIREBASE_WEB_API_KEY }}" >> .env.local
-          echo "GOOGLE_GENAI_API_KEY=${{ secrets.GOOGLE_GENAI_API_KEY }}" >> .env.local
           echo "FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}" >> .env.local
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env.local
+          # Browser-side Firebase config (Vite reads VITE_* at dev server startup)
+          echo "VITE_FIREBASE_API_KEY=${{ secrets.VITE_FIREBASE_API_KEY }}" >> .env.local
+          echo "VITE_FIREBASE_AUTH_DOMAIN=${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}" >> .env.local
+          echo "VITE_FIREBASE_PROJECT_ID=${{ secrets.VITE_FIREBASE_PROJECT_ID }}" >> .env.local
+          echo "VITE_FIREBASE_STORAGE_BUCKET=${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}" >> .env.local
+          echo "VITE_FIREBASE_APP_ID=${{ secrets.VITE_FIREBASE_APP_ID }}" >> .env.local
 
       - name: Wait for MySQL
         run: |
@@ -134,8 +153,9 @@ jobs:
           PORT: "5000"
           VITE_DEMO_NAV_MODE: sales
           JWT_SECRET: ci-demo-certification-secret
-          FIREBASE_SERVICE_ACCOUNT: "{}"
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CORS_ORIGIN: "http://localhost:3101,http://localhost:3000,http://localhost:5000"
 
       - name: Upload certification evidence
         if: always()

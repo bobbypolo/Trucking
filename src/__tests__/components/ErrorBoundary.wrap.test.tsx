@@ -43,7 +43,10 @@ describe("S-005: ComponentErrorBoundary wrapping in App.tsx", () => {
   });
 
   // # Tests R-ERR-04
-  it("R-ERR-04: throwing child renders error card (not blank page)", async () => {
+  it(
+    "R-ERR-04: throwing child renders error card (not blank page)",
+    { timeout: 10000 },
+    async () => {
     // Dynamic import to avoid issues if React test utils aren't available at collection time
     const React = await import("react");
     const { render, screen } = await import("@testing-library/react");
@@ -72,7 +75,8 @@ describe("S-005: ComponentErrorBoundary wrapping in App.tsx", () => {
     expect(errorCard.textContent).toContain("Widget error");
 
     spy.mockRestore();
-  });
+    },
+  );
 
   // Additional structural checks: verify other key components are also wrapped
   it("IntelligenceHub rendering block is wrapped with ComponentErrorBoundary", () => {

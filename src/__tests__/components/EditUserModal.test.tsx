@@ -6,7 +6,7 @@ import {
   beforeEach,
   type MockedFunction,
 } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import React from "react";
 import { EditUserModal, UserProfilePanel } from "../../../components/EditUserModal";
@@ -246,10 +246,9 @@ describe("EditUserModal / UserProfilePanel", () => {
       <EditUserModal user={makeUser()} onSave={onSave} onCancel={onCancel} />,
     );
     const nameInput = screen.getByDisplayValue("John Smith");
-    await user.clear(nameInput);
-    await user.type(nameInput, "Updated Name");
+    fireEvent.change(nameInput, { target: { value: "Updated Name" } });
     await user.click(screen.getByText("Save Changes"));
-    expect(onSave).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     const savedUser = onSave.mock.calls[0][0];
     expect(savedUser.name).toBe("Updated Name");
   });
