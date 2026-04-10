@@ -215,7 +215,8 @@ describe("seed-sales-demo — Phase 1 seed pipeline", () => {
     const userInserts = conn.calls.filter((c) =>
       /INSERT\s+IGNORE\s+INTO\s+users/i.test(c.sql),
     );
-    expect(userInserts.length).toBe(2);
+    // 2 original users (admin + driver) + 4 fleet drivers from Phase 6
+    expect(userInserts.length).toBe(6);
 
     // params index 3 is firebase_uid in the users INSERT template
     const firebaseUids = userInserts.map((c) => c.params[3] as string);

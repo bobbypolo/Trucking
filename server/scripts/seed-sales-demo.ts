@@ -1178,6 +1178,1406 @@ export async function seedSalesDemoExceptionsAndFutureLoad(
   );
 }
 
+// ─── Phase 6: Fleet richness data ────────────────────────────────────────────
+//
+// Adds 10 loads across all 8 statuses, 4 drivers, 6 equipment, 8 AR invoices,
+// 5 AP bills, journal entries, 6 incidents with timelines, 8 GPS positions,
+// 12 exceptions, and 6 compliance records.
+
+export async function seedFleetLoadsAndEquipment(
+  conn: SqlExecutor,
+): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  // ── 4 additional drivers ───────────────────────────────────────────────────
+
+  const fleetDrivers = [
+    {
+      id: "DEMO-DRV-003",
+      email: "demo.driver.3@salesdemo-loadpilot.invalid",
+      name: "Marcus Johnson",
+      firebase_uid: "demo-firebase-uid-driver-3",
+      pay_model: "Per Load",
+      pay_rate: 1900,
+    },
+    {
+      id: "DEMO-DRV-004",
+      email: "demo.driver.4@salesdemo-loadpilot.invalid",
+      name: "Sarah Chen",
+      firebase_uid: "demo-firebase-uid-driver-4",
+      pay_model: "Per Load",
+      pay_rate: 2100,
+    },
+    {
+      id: "DEMO-DRV-005",
+      email: "demo.driver.5@salesdemo-loadpilot.invalid",
+      name: "James Williams",
+      firebase_uid: "demo-firebase-uid-driver-5",
+      pay_model: "Per Mile",
+      pay_rate: 0.58,
+    },
+    {
+      id: "DEMO-DRV-006",
+      email: "demo.driver.6@salesdemo-loadpilot.invalid",
+      name: "Elena Rodriguez",
+      firebase_uid: "demo-firebase-uid-driver-6",
+      pay_model: "Per Mile",
+      pay_rate: 0.55,
+    },
+  ] as const;
+
+  for (const drv of fleetDrivers) {
+    await conn.execute(
+      `INSERT IGNORE INTO users
+         (id, company_id, email, name, role, firebase_uid, pay_model, pay_rate, onboarding_status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        drv.id,
+        companyId,
+        drv.email,
+        drv.name,
+        "driver",
+        drv.firebase_uid,
+        drv.pay_model,
+        drv.pay_rate,
+        "complete",
+      ],
+    );
+  }
+
+  // ── 6 equipment rows ───────────────────────────────────────────────────────
+
+  const equipment = [
+    {
+      id: "DEMO-EQ-001",
+      unit_number: "T-001",
+      type: "Truck",
+      status: "Active",
+      ownership_type: "Company Owned",
+      provider_name: "Volvo VNL 860",
+      daily_cost: 185.0,
+    },
+    {
+      id: "DEMO-EQ-002",
+      unit_number: "T-002",
+      type: "Truck",
+      status: "Active",
+      ownership_type: "Company Owned",
+      provider_name: "Freightliner Cascadia",
+      daily_cost: 175.0,
+    },
+    {
+      id: "DEMO-EQ-003",
+      unit_number: "T-003",
+      type: "Truck",
+      status: "Active",
+      ownership_type: "Lease-to-Own",
+      provider_name: "Kenworth T680",
+      daily_cost: 195.0,
+    },
+    {
+      id: "DEMO-EQ-004",
+      unit_number: "T-004",
+      type: "Truck",
+      status: "Out of Service",
+      ownership_type: "Company Owned",
+      provider_name: "Peterbilt 579",
+      daily_cost: 0,
+    },
+    {
+      id: "DEMO-EQ-005",
+      unit_number: "TR-001",
+      type: "Trailer",
+      status: "Active",
+      ownership_type: "Company Owned",
+      provider_name: "Wabash DuraPlate",
+      daily_cost: 85.0,
+    },
+    {
+      id: "DEMO-EQ-006",
+      unit_number: "TR-002",
+      type: "Trailer",
+      status: "Active",
+      ownership_type: "Rental",
+      provider_name: "Utility 3000R Reefer",
+      daily_cost: 125.0,
+    },
+  ] as const;
+
+  for (const eq of equipment) {
+    await conn.execute(
+      `INSERT IGNORE INTO equipment
+         (id, company_id, unit_number, type, status, ownership_type, provider_name, daily_cost)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        eq.id,
+        companyId,
+        eq.unit_number,
+        eq.type,
+        eq.status,
+        eq.ownership_type,
+        eq.provider_name,
+        eq.daily_cost,
+      ],
+    );
+  }
+
+  // ── 10 fleet loads ─────────────────────────────────────────────────────────
+
+  const fleetLoads = [
+    {
+      id: "LP-DEMO-FLT-001",
+      driver_id: "DEMO-DRV-003",
+      status: "planned",
+      carrier_rate: 2800,
+      driver_pay: 1900,
+      date_offset: 7,
+      freight_type: "Flatbed",
+      commodity: "Structural Steel Beams",
+      weight: 44000,
+      bol_number: "BOL-FLT-0001",
+    },
+    {
+      id: "LP-DEMO-FLT-002",
+      driver_id: "DEMO-DRV-004",
+      status: "planned",
+      carrier_rate: 3100,
+      driver_pay: 2100,
+      date_offset: 10,
+      freight_type: "Dry Van",
+      commodity: "Consumer Electronics",
+      weight: 36000,
+      bol_number: "BOL-FLT-0002",
+    },
+    {
+      id: "LP-DEMO-FLT-003",
+      driver_id: "DEMO-DRV-005",
+      status: "dispatched",
+      carrier_rate: 1950,
+      driver_pay: 1200,
+      date_offset: 1,
+      freight_type: "Intermodal",
+      commodity: "Auto Parts",
+      weight: 32000,
+      bol_number: "BOL-FLT-0003",
+    },
+    {
+      id: "LP-DEMO-FLT-004",
+      driver_id: "DEMO-DRV-006",
+      status: "dispatched",
+      carrier_rate: 2600,
+      driver_pay: 1800,
+      date_offset: 0,
+      freight_type: "Reefer",
+      commodity: "Fresh Produce",
+      weight: 41000,
+      bol_number: "BOL-FLT-0004",
+    },
+    {
+      id: "LP-DEMO-FLT-005",
+      driver_id: "DEMO-DRV-003",
+      status: "in_transit",
+      carrier_rate: 1800,
+      driver_pay: 1100,
+      date_offset: -1,
+      freight_type: "Dry Van",
+      commodity: "Packaged Foods",
+      weight: 38000,
+      bol_number: "BOL-FLT-0005",
+    },
+    {
+      id: "LP-DEMO-FLT-006",
+      driver_id: "DEMO-DRV-004",
+      status: "in_transit",
+      carrier_rate: 3400,
+      driver_pay: 2200,
+      date_offset: -1,
+      freight_type: "Flatbed",
+      commodity: "Wind Turbine Components",
+      weight: 47000,
+      bol_number: "BOL-FLT-0006",
+    },
+    {
+      id: "LP-DEMO-FLT-007",
+      driver_id: "DEMO-DRV-005",
+      status: "arrived",
+      carrier_rate: 2200,
+      driver_pay: 1500,
+      date_offset: -2,
+      freight_type: "Reefer",
+      commodity: "Pharmaceutical Supplies",
+      weight: 28000,
+      bol_number: "BOL-FLT-0007",
+    },
+    {
+      id: "LP-DEMO-FLT-008",
+      driver_id: "DEMO-DRV-006",
+      status: "delivered",
+      carrier_rate: 1600,
+      driver_pay: 1000,
+      date_offset: -5,
+      freight_type: "Dry Van",
+      commodity: "Retail Merchandise",
+      weight: 35000,
+      bol_number: "BOL-FLT-0008",
+    },
+    {
+      id: "LP-DEMO-FLT-009",
+      driver_id: "SALES-DEMO-DRIVER",
+      status: "delivered",
+      carrier_rate: 2900,
+      driver_pay: 1900,
+      date_offset: -7,
+      freight_type: "Intermodal",
+      commodity: "Industrial Machinery",
+      weight: 43000,
+      bol_number: "BOL-FLT-0009",
+    },
+    {
+      id: "LP-DEMO-FLT-010",
+      driver_id: "DEMO-DRV-003",
+      status: "completed",
+      carrier_rate: 1400,
+      driver_pay: 900,
+      date_offset: -14,
+      freight_type: "Dry Van",
+      commodity: "Paper Products",
+      weight: 30000,
+      bol_number: "BOL-FLT-0010",
+    },
+  ] as const;
+
+  for (const load of fleetLoads) {
+    await conn.execute(
+      `INSERT IGNORE INTO loads
+         (id, company_id, customer_id, driver_id, load_number, status,
+          carrier_rate, driver_pay, pickup_date, freight_type, commodity, weight, bol_number)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?)`,
+      [
+        load.id,
+        companyId,
+        SALES_DEMO_BROKER_ID,
+        load.driver_id,
+        load.id,
+        load.status,
+        load.carrier_rate,
+        load.driver_pay,
+        load.date_offset,
+        load.freight_type,
+        load.commodity,
+        load.weight,
+        load.bol_number,
+      ],
+    );
+  }
+
+  // ── 20 load legs (pickup + dropoff per load) ──────────────────────────────
+
+  const legPairs = [
+    {
+      load_id: "LP-DEMO-FLT-001",
+      p_off: 7,
+      d_off: 9,
+      p_fac: "Atlanta Freight Terminal",
+      p_city: "Atlanta",
+      p_st: "GA",
+      d_fac: "Miami Port Warehouse",
+      d_city: "Miami",
+      d_st: "FL",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-002",
+      p_off: 10,
+      d_off: 12,
+      p_fac: "Los Angeles Intermodal Yard",
+      p_city: "Los Angeles",
+      p_st: "CA",
+      d_fac: "Phoenix Distribution Hub",
+      d_city: "Phoenix",
+      d_st: "AZ",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-003",
+      p_off: 1,
+      d_off: 2,
+      p_fac: "Detroit Intermodal Yard",
+      p_city: "Detroit",
+      p_st: "MI",
+      d_fac: "Indianapolis Cross-Dock",
+      d_city: "Indianapolis",
+      d_st: "IN",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-004",
+      p_off: 0,
+      d_off: 1,
+      p_fac: "Seattle Cold Storage Facility",
+      p_city: "Seattle",
+      p_st: "WA",
+      d_fac: "Portland Reefer Terminal",
+      d_city: "Portland",
+      d_st: "OR",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-005",
+      p_off: -1,
+      d_off: 0,
+      p_fac: "Nashville Consolidation Center",
+      p_city: "Nashville",
+      p_st: "TN",
+      d_fac: "Louisville Distribution Park",
+      d_city: "Louisville",
+      d_st: "KY",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-006",
+      p_off: -1,
+      d_off: 1,
+      p_fac: "Denver Industrial Complex",
+      p_city: "Denver",
+      p_st: "CO",
+      d_fac: "Kansas City Freight Hub",
+      d_city: "Kansas City",
+      d_st: "MO",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-007",
+      p_off: -2,
+      d_off: -1,
+      p_fac: "Boston Harbor Terminal",
+      p_city: "Boston",
+      p_st: "MA",
+      d_fac: "New York Metro Warehouse",
+      d_city: "New York",
+      d_st: "NY",
+      done: 0,
+    },
+    {
+      load_id: "LP-DEMO-FLT-008",
+      p_off: -5,
+      d_off: -3,
+      p_fac: "Jacksonville Port Authority",
+      p_city: "Jacksonville",
+      p_st: "FL",
+      d_fac: "Charlotte Regional Depot",
+      d_city: "Charlotte",
+      d_st: "NC",
+      done: 1,
+    },
+    {
+      load_id: "LP-DEMO-FLT-009",
+      p_off: -7,
+      d_off: -5,
+      p_fac: "Minneapolis Rail Terminal",
+      p_city: "Minneapolis",
+      p_st: "MN",
+      d_fac: "Milwaukee Transfer Station",
+      d_city: "Milwaukee",
+      d_st: "WI",
+      done: 1,
+    },
+    {
+      load_id: "LP-DEMO-FLT-010",
+      p_off: -14,
+      d_off: -13,
+      p_fac: "San Antonio Logistics Park",
+      p_city: "San Antonio",
+      p_st: "TX",
+      d_fac: "El Paso Border Crossing Depot",
+      d_city: "El Paso",
+      d_st: "TX",
+      done: 1,
+    },
+  ] as const;
+
+  for (let i = 0; i < legPairs.length; i++) {
+    const leg = legPairs[i];
+    const idx = String(i + 1).padStart(3, "0");
+    await conn.execute(
+      `INSERT IGNORE INTO load_legs (id, load_id, type, facility_name, city, state, date, appointment_time, completed, sequence_order)
+       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?)`,
+      [
+        `DEMO-LEG-P-FLT-${idx}`,
+        leg.load_id,
+        "Pickup",
+        leg.p_fac,
+        leg.p_city,
+        leg.p_st,
+        leg.p_off,
+        "08:00",
+        leg.done,
+        1,
+      ],
+    );
+    await conn.execute(
+      `INSERT IGNORE INTO load_legs (id, load_id, type, facility_name, city, state, date, appointment_time, completed, sequence_order)
+       VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?)`,
+      [
+        `DEMO-LEG-D-FLT-${idx}`,
+        leg.load_id,
+        "Dropoff",
+        leg.d_fac,
+        leg.d_city,
+        leg.d_st,
+        leg.d_off,
+        "14:00",
+        leg.done,
+        2,
+      ],
+    );
+  }
+}
+
+export async function seedFinancialData(conn: SqlExecutor): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+  const customerId = SALES_DEMO_BROKER_ID;
+
+  // ── AR Invoices ────────────────────────────────────────────────────────────
+
+  const arInvoices = [
+    {
+      id: "DEMO-INV-001",
+      num: "INV-2026-001",
+      loadId: "LP-DEMO-RC-001",
+      status: "Paid",
+      total: 3250.0,
+      balance: 0.0,
+      dateOff: -30,
+      dueOff: 0,
+      notes: "Hero load — Frozen Beef Houston to Chicago",
+    },
+    {
+      id: "DEMO-INV-002",
+      num: "INV-2026-002",
+      loadId: "LP-DEMO-FLT-010",
+      status: "Paid",
+      total: 1400.0,
+      balance: 0.0,
+      dateOff: -20,
+      dueOff: 10,
+      notes: "Fleet load FLT-010",
+    },
+    {
+      id: "DEMO-INV-003",
+      num: "INV-2026-003",
+      loadId: "LP-DEMO-FLT-009",
+      status: "Partial",
+      total: 2900.0,
+      balance: 1450.0,
+      dateOff: -12,
+      dueOff: 18,
+      notes: "Fleet load FLT-009 — partial payment received",
+    },
+    {
+      id: "DEMO-INV-004",
+      num: "INV-2026-004",
+      loadId: "LP-DEMO-FLT-008",
+      status: "Sent",
+      total: 1600.0,
+      balance: 1600.0,
+      dateOff: -8,
+      dueOff: 22,
+      notes: "Fleet load FLT-008",
+    },
+    {
+      id: "DEMO-INV-005",
+      num: "INV-2026-005",
+      loadId: "LP-DEMO-FLT-007",
+      status: "Sent",
+      total: 2200.0,
+      balance: 2200.0,
+      dateOff: -5,
+      dueOff: 25,
+      notes: "Fleet load FLT-007",
+    },
+    {
+      id: "DEMO-INV-006",
+      num: "INV-2026-006",
+      loadId: "LP-DEMO-FLT-006",
+      status: "Sent",
+      total: 3400.0,
+      balance: 3400.0,
+      dateOff: -3,
+      dueOff: 27,
+      notes: "Fleet load FLT-006",
+    },
+    {
+      id: "DEMO-INV-007",
+      num: "INV-2026-007",
+      loadId: "LP-DEMO-FLT-005",
+      status: "Overdue",
+      total: 1800.0,
+      balance: 1800.0,
+      dateOff: -15,
+      dueOff: -5,
+      notes: "Fleet load FLT-005 — OVERDUE",
+    },
+    {
+      id: "DEMO-INV-008",
+      num: "INV-2026-008",
+      loadId: "LP-DEMO-FLT-003",
+      status: "Draft",
+      total: 1950.0,
+      balance: 1950.0,
+      dateOff: 0,
+      dueOff: 30,
+      notes: "Fleet load FLT-003 — draft",
+    },
+  ] as const;
+
+  for (const inv of arInvoices) {
+    await conn.execute(
+      `INSERT IGNORE INTO ar_invoices
+         (id, company_id, customer_id, load_id, invoice_number, invoice_date, due_date, status, total_amount, balance_due, notes)
+       VALUES (?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?)`,
+      [
+        inv.id,
+        companyId,
+        customerId,
+        inv.loadId,
+        inv.num,
+        inv.dateOff,
+        inv.dueOff,
+        inv.status,
+        inv.total,
+        inv.balance,
+        inv.notes,
+      ],
+    );
+  }
+
+  // ── AP Bills ───────────────────────────────────────────────────────────────
+
+  const apBills = [
+    {
+      id: "DEMO-BILL-001",
+      num: "BILL-F-001",
+      status: "Paid",
+      total: 1875.5,
+      balance: 0.0,
+      dateOff: -25,
+      notes: "Fuel — 500 gal diesel",
+    },
+    {
+      id: "DEMO-BILL-002",
+      num: "BILL-M-001",
+      status: "Paid",
+      total: 2340.0,
+      balance: 0.0,
+      dateOff: -18,
+      notes: "Maintenance — brake replacement T-004",
+    },
+    {
+      id: "DEMO-BILL-003",
+      num: "BILL-F-002",
+      status: "Pending",
+      total: 2156.75,
+      balance: 2156.75,
+      dateOff: -5,
+      notes: "Fuel — 575 gal diesel",
+    },
+    {
+      id: "DEMO-BILL-004",
+      num: "BILL-T-001",
+      status: "Approved",
+      total: 1680.0,
+      balance: 1680.0,
+      dateOff: -3,
+      notes: "Tire replacement — 4 steer tires T-001",
+    },
+    {
+      id: "DEMO-BILL-005",
+      num: "BILL-P-001",
+      status: "Pending",
+      total: 945.0,
+      balance: 945.0,
+      dateOff: -1,
+      notes: "Parts — air compressor rebuild TR-001",
+    },
+  ] as const;
+
+  for (const bill of apBills) {
+    await conn.execute(
+      `INSERT IGNORE INTO ap_bills
+         (id, company_id, vendor_id, bill_number, bill_date, due_date, status, total_amount, balance_due, notes)
+       VALUES (?, ?, NULL, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?)`,
+      [
+        bill.id,
+        companyId,
+        bill.num,
+        bill.dateOff,
+        bill.dateOff + 30,
+        bill.status,
+        bill.total,
+        bill.balance,
+        bill.notes,
+      ],
+    );
+  }
+
+  // ── Journal Entries + Lines ────────────────────────────────────────────────
+
+  const journalEntries = [
+    {
+      id: "DEMO-JE-001",
+      dateOff: -30,
+      ref: "INV-2026-001",
+      desc: "Invoice INV-2026-001 — AR recognition",
+      srcType: "Invoice",
+      srcId: "DEMO-INV-001",
+    },
+    {
+      id: "DEMO-JE-002",
+      dateOff: -20,
+      ref: "INV-2026-002",
+      desc: "Invoice INV-2026-002 — AR recognition",
+      srcType: "Invoice",
+      srcId: "DEMO-INV-002",
+    },
+    {
+      id: "DEMO-JE-003",
+      dateOff: -12,
+      ref: "INV-2026-003",
+      desc: "Invoice INV-2026-003 — AR recognition",
+      srcType: "Invoice",
+      srcId: "DEMO-INV-003",
+    },
+    {
+      id: "DEMO-JE-004",
+      dateOff: -20,
+      ref: "PMT-INV-001",
+      desc: "Payment received for INV-2026-001",
+      srcType: "Payment",
+      srcId: "DEMO-INV-001",
+    },
+    {
+      id: "DEMO-JE-005",
+      dateOff: -10,
+      ref: "PMT-INV-002",
+      desc: "Payment received for INV-2026-002",
+      srcType: "Payment",
+      srcId: "DEMO-INV-002",
+    },
+    {
+      id: "DEMO-JE-006",
+      dateOff: -7,
+      ref: "PMT-INV-003",
+      desc: "Partial payment for INV-2026-003",
+      srcType: "Payment",
+      srcId: "DEMO-INV-003",
+    },
+    {
+      id: "DEMO-JE-007",
+      dateOff: -25,
+      ref: "BILL-F-001",
+      desc: "Bill BILL-F-001 — fuel expense",
+      srcType: "Bill",
+      srcId: "DEMO-BILL-001",
+    },
+    {
+      id: "DEMO-JE-008",
+      dateOff: -18,
+      ref: "BILL-M-001",
+      desc: "Bill BILL-M-001 — maintenance expense",
+      srcType: "Bill",
+      srcId: "DEMO-BILL-002",
+    },
+    {
+      id: "DEMO-JE-009",
+      dateOff: -15,
+      ref: "PMT-BILL-F-001",
+      desc: "Payment for BILL-F-001",
+      srcType: "Payment",
+      srcId: "DEMO-BILL-001",
+    },
+    {
+      id: "DEMO-JE-010",
+      dateOff: -10,
+      ref: "PMT-BILL-M-001",
+      desc: "Payment for BILL-M-001",
+      srcType: "Payment",
+      srcId: "DEMO-BILL-002",
+    },
+  ] as const;
+
+  for (const je of journalEntries) {
+    await conn.execute(
+      `INSERT IGNORE INTO journal_entries
+         (id, company_id, entry_date, reference_number, description, source_document_type, source_document_id, posted_at, created_by)
+       VALUES (?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, ?, ?, ?, NOW(), 'DEMO-SEED')`,
+      [je.id, companyId, je.dateOff, je.ref, je.desc, je.srcType, je.srcId],
+    );
+  }
+
+  // Journal lines: 2 per entry (debit + credit)
+  const lines: Array<[string, string, string, number, number, string]> = [
+    ["DEMO-JL-001", "DEMO-JE-001", "GL-1200", 3250, 0, "AR: INV-001"],
+    ["DEMO-JL-002", "DEMO-JE-001", "GL-4000", 0, 3250, "Revenue: INV-001"],
+    ["DEMO-JL-003", "DEMO-JE-002", "GL-1200", 1400, 0, "AR: INV-002"],
+    ["DEMO-JL-004", "DEMO-JE-002", "GL-4000", 0, 1400, "Revenue: INV-002"],
+    ["DEMO-JL-005", "DEMO-JE-003", "GL-1200", 2900, 0, "AR: INV-003"],
+    ["DEMO-JL-006", "DEMO-JE-003", "GL-4000", 0, 2900, "Revenue: INV-003"],
+    ["DEMO-JL-007", "DEMO-JE-004", "GL-4000", 3250, 0, "Cash receipt: INV-001"],
+    ["DEMO-JL-008", "DEMO-JE-004", "GL-1200", 0, 3250, "Clear AR: INV-001"],
+    ["DEMO-JL-009", "DEMO-JE-005", "GL-4000", 1400, 0, "Cash receipt: INV-002"],
+    ["DEMO-JL-010", "DEMO-JE-005", "GL-1200", 0, 1400, "Clear AR: INV-002"],
+    [
+      "DEMO-JL-011",
+      "DEMO-JE-006",
+      "GL-4000",
+      1450,
+      0,
+      "Partial receipt: INV-003",
+    ],
+    [
+      "DEMO-JL-012",
+      "DEMO-JE-006",
+      "GL-1200",
+      0,
+      1450,
+      "Partial clear AR: INV-003",
+    ],
+    [
+      "DEMO-JL-013",
+      "DEMO-JE-007",
+      "GL-6200",
+      1875.5,
+      0,
+      "Fuel expense: BILL-F-001",
+    ],
+    ["DEMO-JL-014", "DEMO-JE-007", "GL-2000", 0, 1875.5, "AP: BILL-F-001"],
+    [
+      "DEMO-JL-015",
+      "DEMO-JE-008",
+      "GL-6100",
+      2340,
+      0,
+      "Maintenance: BILL-M-001",
+    ],
+    ["DEMO-JL-016", "DEMO-JE-008", "GL-2000", 0, 2340, "AP: BILL-M-001"],
+    [
+      "DEMO-JL-017",
+      "DEMO-JE-009",
+      "GL-2000",
+      1875.5,
+      0,
+      "Clear AP: BILL-F-001",
+    ],
+    [
+      "DEMO-JL-018",
+      "DEMO-JE-009",
+      "GL-6200",
+      0,
+      1875.5,
+      "Cash paid: BILL-F-001",
+    ],
+    ["DEMO-JL-019", "DEMO-JE-010", "GL-2000", 2340, 0, "Clear AP: BILL-M-001"],
+    ["DEMO-JL-020", "DEMO-JE-010", "GL-6100", 0, 2340, "Cash paid: BILL-M-001"],
+  ];
+
+  for (const [id, jeId, glId, debit, credit, notes] of lines) {
+    await conn.execute(
+      `INSERT IGNORE INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, notes)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, jeId, glId, debit, credit, notes],
+    );
+  }
+}
+
+export async function seedIncidentsAndGps(conn: SqlExecutor): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  // ── 6 Incidents ────────────────────────────────────────────────────────────
+
+  const incidents = [
+    {
+      id: "DEMO-INC-001",
+      load_id: "LP-DEMO-FLT-005",
+      type: "Breakdown",
+      severity: "Critical",
+      status: "Open",
+      hrs_ago: 3,
+      sla_hrs: 1,
+      desc: "Engine overheating — driver pulled over I-65 southbound mile marker 89",
+      lat: 36.1627,
+      lng: -86.7816,
+      plan: "Mobile mechanic dispatched. Backup truck staged in Nashville yard.",
+    },
+    {
+      id: "DEMO-INC-002",
+      load_id: "LP-DEMO-FLT-006",
+      type: "Accident",
+      severity: "Critical",
+      status: "In_Progress",
+      hrs_ago: 2,
+      sla_hrs: 1,
+      desc: "Minor fender bender at truck stop — no injuries, documenting damage",
+      lat: 38.8339,
+      lng: -104.8214,
+      plan: "Police report filed. Insurance adjuster reviewing photos.",
+    },
+    {
+      id: "DEMO-INC-003",
+      load_id: "LP-DEMO-FLT-004",
+      type: "Reefer Temp",
+      severity: "High",
+      status: "Open",
+      hrs_ago: 1,
+      sla_hrs: 6,
+      desc: "Reefer unit reading 38F — set point 32F, rising 1F per hour",
+      lat: 47.6062,
+      lng: -122.3321,
+      plan: "Driver inspecting unit. Reefer maintenance vendor on standby.",
+    },
+    {
+      id: "DEMO-INC-004",
+      load_id: "LP-DEMO-FLT-005",
+      type: "HOS Risk",
+      severity: "High",
+      status: "Open",
+      hrs_ago: 1,
+      sla_hrs: 6,
+      desc: "Driver approaching 10.5 hours on duty — 30 minutes remaining",
+      lat: 36.1627,
+      lng: -86.7816,
+      plan: "Relay driver pre-positioned at Nashville terminal.",
+    },
+    {
+      id: "DEMO-INC-005",
+      load_id: "LP-DEMO-FLT-007",
+      type: "Cargo Issue",
+      severity: "Medium",
+      status: "Open",
+      hrs_ago: 4,
+      sla_hrs: 24,
+      desc: "Customer reports 2 pallets short — 48 received of 50 ordered",
+      lat: 40.7128,
+      lng: -74.006,
+      plan: "Cross-referencing BOL with warehouse load-out records.",
+    },
+    {
+      id: "DEMO-INC-006",
+      load_id: "LP-DEMO-FLT-003",
+      type: "Weather Shutdown",
+      severity: "Medium",
+      status: "In_Progress",
+      hrs_ago: 6,
+      sla_hrs: 24,
+      desc: "Severe thunderstorm warning — driver holding at rest area",
+      lat: 42.3314,
+      lng: -83.0458,
+      plan: "Monitoring NWS radar. Driver safe at rest area.",
+    },
+  ] as const;
+
+  for (const inc of incidents) {
+    await conn.execute(
+      `INSERT IGNORE INTO incidents
+         (id, load_id, type, severity, status, reported_at, sla_deadline, description, location_lat, location_lng, recovery_plan)
+       VALUES (?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? HOUR), DATE_ADD(DATE_SUB(NOW(), INTERVAL ? HOUR), INTERVAL ? HOUR), ?, ?, ?, ?)`,
+      [
+        inc.id,
+        inc.load_id,
+        inc.type,
+        inc.severity,
+        inc.status,
+        inc.hrs_ago,
+        inc.hrs_ago,
+        inc.sla_hrs,
+        inc.desc,
+        inc.lat,
+        inc.lng,
+        inc.plan,
+      ],
+    );
+  }
+
+  // ── Incident Actions (15 total) ────────────────────────────────────────────
+
+  const actions: Array<[string, string, string, string, string, number]> = [
+    [
+      "DEMO-IA-001",
+      "DEMO-INC-001",
+      "System",
+      "ALERT_GENERATED",
+      "Engine temp critical alert triggered",
+      180,
+    ],
+    [
+      "DEMO-IA-002",
+      "DEMO-INC-001",
+      "Demo Driver",
+      "DRIVER_REPORTED",
+      "Pulled over safely, engine smoking",
+      150,
+    ],
+    [
+      "DEMO-IA-003",
+      "DEMO-INC-001",
+      "Dispatch Admin",
+      "ROADSIDE_DISPATCHED",
+      "Mobile mechanic dispatched — ETA 45 min",
+      120,
+    ],
+    [
+      "DEMO-IA-004",
+      "DEMO-INC-002",
+      "System",
+      "ALERT_GENERATED",
+      "Impact event detected",
+      120,
+    ],
+    [
+      "DEMO-IA-005",
+      "DEMO-INC-002",
+      "Sarah Chen",
+      "DRIVER_REPORTED",
+      "Low speed parking lot contact, other driver at fault",
+      90,
+    ],
+    [
+      "DEMO-IA-006",
+      "DEMO-INC-002",
+      "Dispatch Admin",
+      "STAKEHOLDERS_NOTIFIED",
+      "Insurance notified, police report #CR-2026-4412",
+      60,
+    ],
+    [
+      "DEMO-IA-007",
+      "DEMO-INC-003",
+      "System",
+      "ALERT_GENERATED",
+      "Reefer temperature deviation +6F above set point",
+      60,
+    ],
+    [
+      "DEMO-IA-008",
+      "DEMO-INC-003",
+      "Dispatch Admin",
+      "ACKNOWLEDGED",
+      "Monitoring — driver instructed to check unit",
+      30,
+    ],
+    [
+      "DEMO-IA-009",
+      "DEMO-INC-004",
+      "System",
+      "ALERT_GENERATED",
+      "HOS violation risk — driver at 10.5 of 11 hours",
+      55,
+    ],
+    [
+      "DEMO-IA-010",
+      "DEMO-INC-004",
+      "Dispatch Admin",
+      "ACKNOWLEDGED",
+      "Relay driver confirmed en route to Nashville terminal",
+      40,
+    ],
+    [
+      "DEMO-IA-011",
+      "DEMO-INC-005",
+      "System",
+      "ALERT_GENERATED",
+      "Customer shortage claim — 2 pallets",
+      240,
+    ],
+    [
+      "DEMO-IA-012",
+      "DEMO-INC-005",
+      "Dispatch Admin",
+      "ACKNOWLEDGED",
+      "Requested BOL photos and warehouse manifest",
+      200,
+    ],
+    [
+      "DEMO-IA-013",
+      "DEMO-INC-005",
+      "Dispatch Admin",
+      "STAKEHOLDERS_NOTIFIED",
+      "Shipper contacted for recount at origin",
+      160,
+    ],
+    [
+      "DEMO-IA-014",
+      "DEMO-INC-006",
+      "System",
+      "ALERT_GENERATED",
+      "NWS severe thunderstorm warning Wayne County MI",
+      360,
+    ],
+    [
+      "DEMO-IA-015",
+      "DEMO-INC-006",
+      "Dispatch Admin",
+      "ACKNOWLEDGED",
+      "Driver holding at rest area until warning expires",
+      330,
+    ],
+  ];
+
+  for (const [id, incId, actor, action, notes, minsAgo] of actions) {
+    await conn.execute(
+      `INSERT IGNORE INTO incident_actions (id, incident_id, actor_name, action, notes, timestamp)
+       VALUES (?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? MINUTE))`,
+      [id, incId, actor, action, notes, minsAgo],
+    );
+  }
+
+  // ── 8 GPS Positions ────────────────────────────────────────────────────────
+
+  const gps: Array<
+    [string, string, string, number, number, number, number, number, string]
+  > = [
+    [
+      "DEMO-GPS-001",
+      "DEMO-EQ-001",
+      "DEMO-DRV-003",
+      36.1627,
+      -86.7816,
+      0,
+      180,
+      5,
+      "001",
+    ],
+    [
+      "DEMO-GPS-002",
+      "DEMO-EQ-002",
+      "DEMO-DRV-004",
+      38.8339,
+      -104.8214,
+      0,
+      270,
+      10,
+      "002",
+    ],
+    [
+      "DEMO-GPS-003",
+      "DEMO-EQ-003",
+      "DEMO-DRV-005",
+      40.7128,
+      -74.006,
+      0,
+      90,
+      15,
+      "003",
+    ],
+    [
+      "DEMO-GPS-004",
+      "DEMO-EQ-004",
+      "DEMO-DRV-006",
+      47.6062,
+      -122.3321,
+      0,
+      180,
+      8,
+      "004",
+    ],
+    [
+      "DEMO-GPS-005",
+      "DEMO-EQ-005",
+      "SALES-DEMO-DRIVER",
+      44.9778,
+      -93.265,
+      62,
+      90,
+      20,
+      "005",
+    ],
+    [
+      "DEMO-GPS-006",
+      "DEMO-EQ-001",
+      "DEMO-DRV-003",
+      38.2527,
+      -85.7585,
+      58,
+      45,
+      30,
+      "006",
+    ],
+    [
+      "DEMO-GPS-007",
+      "DEMO-EQ-002",
+      "DEMO-DRV-004",
+      39.7392,
+      -104.9903,
+      65,
+      180,
+      45,
+      "007",
+    ],
+    [
+      "DEMO-GPS-008",
+      "DEMO-EQ-003",
+      "DEMO-DRV-005",
+      42.3314,
+      -83.0458,
+      0,
+      0,
+      60,
+      "008",
+    ],
+  ];
+
+  for (const [
+    id,
+    vehId,
+    drvId,
+    lat,
+    lng,
+    speed,
+    heading,
+    minsAgo,
+    num,
+  ] of gps) {
+    await conn.execute(
+      `INSERT IGNORE INTO gps_positions
+         (id, company_id, vehicle_id, driver_id, latitude, longitude, speed, heading, recorded_at, provider, provider_vehicle_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? MINUTE), ?, ?)`,
+      [
+        id,
+        companyId,
+        vehId,
+        drvId,
+        lat,
+        lng,
+        speed,
+        heading,
+        minsAgo,
+        "Samsara",
+        `samsara-demo-${num}`,
+      ],
+    );
+  }
+}
+
+export async function seedExceptionsAndSafety(
+  conn: SqlExecutor,
+): Promise<void> {
+  const companyId = SALES_DEMO_COMPANY_ID;
+
+  // ── 12 Exceptions ──────────────────────────────────────────────────────────
+
+  const exceptions = [
+    {
+      id: "DEMO-EXC-004",
+      type: "SAFETY_INCIDENT",
+      status: "OPEN",
+      severity: 4,
+      eType: "DRIVER",
+      eId: "DEMO-DRV-003",
+      team: "Safety",
+      impact: 500,
+      desc: "Speeding alert — 78mph in 65mph zone on I-40",
+    },
+    {
+      id: "DEMO-EXC-005",
+      type: "SAFETY_INCIDENT",
+      status: "TRIAGED",
+      severity: 3,
+      eType: "DRIVER",
+      eId: "DEMO-DRV-005",
+      team: "Safety",
+      impact: 0,
+      desc: "Hard braking event detected — investigating",
+    },
+    {
+      id: "DEMO-EXC-006",
+      type: "SAFETY_INCIDENT",
+      status: "OPEN",
+      severity: 3,
+      eType: "DRIVER",
+      eId: "DEMO-DRV-004",
+      team: "Safety",
+      impact: 250,
+      desc: "Near-miss report filed by driver — merging incident",
+    },
+    {
+      id: "DEMO-EXC-007",
+      type: "MAINTENANCE_REQUEST",
+      status: "OPEN",
+      severity: 3,
+      eType: "TRUCK",
+      eId: "DEMO-EQ-001",
+      team: "Fleet/Maint",
+      impact: 1200,
+      desc: "Brake pad replacement due — 85% wear detected",
+    },
+    {
+      id: "DEMO-EXC-008",
+      type: "MAINTENANCE_REQUEST",
+      status: "TRIAGED",
+      severity: 2,
+      eType: "TRUCK",
+      eId: "DEMO-EQ-003",
+      team: "Fleet/Maint",
+      impact: 500,
+      desc: "Tire pressure low — right rear steer 85 PSI (spec: 105)",
+    },
+    {
+      id: "DEMO-EXC-009",
+      type: "BREAKDOWN",
+      status: "ESCALATED",
+      severity: 3,
+      eType: "TRUCK",
+      eId: "DEMO-EQ-004",
+      team: "Fleet/Maint",
+      impact: 3000,
+      desc: "Reefer compressor intermittent failure — unit out of service",
+    },
+    {
+      id: "DEMO-EXC-010",
+      type: "COMPLIANCE_RESTRICTED",
+      status: "OPEN",
+      severity: 3,
+      eType: "DRIVER",
+      eId: "DEMO-DRV-006",
+      team: "Safety",
+      impact: 0,
+      desc: "Medical card expires in 25 days — renewal required",
+    },
+    {
+      id: "DEMO-EXC-011",
+      type: "COMPLIANCE_RESTRICTED",
+      status: "TRIAGED",
+      severity: 2,
+      eType: "DRIVER",
+      eId: "DEMO-DRV-003",
+      team: "Safety",
+      impact: 0,
+      desc: "Annual insurance verification pending",
+    },
+    {
+      id: "DEMO-EXC-012",
+      type: "BILLING_DISPUTE",
+      status: "OPEN",
+      severity: 2,
+      eType: "LOAD",
+      eId: "LP-DEMO-FLT-008",
+      team: "Accounting",
+      impact: 350,
+      desc: "Customer disputing $350 detention charge",
+    },
+    {
+      id: "DEMO-EXC-013",
+      type: "DETENTION_ALERT",
+      status: "OPEN",
+      severity: 1,
+      eType: "LOAD",
+      eId: "LP-DEMO-FLT-007",
+      team: "Dispatch",
+      impact: 100,
+      desc: "4.5 hours at facility — approaching detention threshold",
+    },
+    {
+      id: "DEMO-EXC-014",
+      type: "DOCUMENT_MISSING",
+      status: "OPEN",
+      severity: 2,
+      eType: "LOAD",
+      eId: "LP-DEMO-FLT-008",
+      team: "Accounting",
+      impact: 200,
+      desc: "POD not yet received from consignee",
+    },
+    {
+      id: "DEMO-EXC-015",
+      type: "DOCUMENT_MISSING",
+      status: "TRIAGED",
+      severity: 1,
+      eType: "LOAD",
+      eId: "LP-DEMO-FLT-009",
+      team: "Accounting",
+      impact: 0,
+      desc: "Lumper receipt scan needed for reimbursement",
+    },
+  ] as const;
+
+  for (const exc of exceptions) {
+    await conn.execute(
+      `INSERT IGNORE INTO exceptions
+         (id, company_id, type, status, severity, entity_type, entity_id, team, workflow_step, financial_impact_est, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        exc.id,
+        companyId,
+        exc.type,
+        exc.status,
+        exc.severity,
+        exc.eType,
+        exc.eId,
+        exc.team,
+        "triage",
+        exc.impact,
+        exc.desc,
+      ],
+    );
+  }
+
+  // ── 6 Compliance Records ───────────────────────────────────────────────────
+
+  const complianceRecords = [
+    {
+      id: "DEMO-CR-001",
+      userId: "SALES-DEMO-DRIVER",
+      type: "CDL",
+      offsetDays: 365,
+      status: "Valid",
+    },
+    {
+      id: "DEMO-CR-002",
+      userId: "DEMO-DRV-003",
+      type: "CDL",
+      offsetDays: 180,
+      status: "Valid",
+    },
+    {
+      id: "DEMO-CR-003",
+      userId: "DEMO-DRV-004",
+      type: "Medical_Card",
+      offsetDays: 25,
+      status: "Valid",
+    },
+    {
+      id: "DEMO-CR-004",
+      userId: "DEMO-DRV-005",
+      type: "Medical_Card",
+      offsetDays: -10,
+      status: "Expired",
+    },
+    {
+      id: "DEMO-CR-005",
+      userId: "DEMO-DRV-006",
+      type: "Drug_Test",
+      offsetDays: 300,
+      status: "Valid",
+    },
+    {
+      id: "DEMO-CR-006",
+      userId: "DEMO-DRV-003",
+      type: "Drug_Test",
+      offsetDays: 250,
+      status: "Valid",
+    },
+  ] as const;
+
+  for (const cr of complianceRecords) {
+    await conn.execute(
+      `INSERT IGNORE INTO compliance_records
+         (id, user_id, type, expiry_date, status, document_url, is_mandatory)
+       VALUES (?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?, NULL, 1)`,
+      [cr.id, cr.userId, cr.type, cr.offsetDays, cr.status],
+    );
+  }
+}
+
 // ─── Main entry point ─────────────────────────────────────────────────────────
 
 export async function seedSalesDemo(
@@ -1198,15 +2598,17 @@ export async function seedSalesDemo(
   await seedUsers(conn, companyId, fixture.users, env);
   await seedGlAccounts(conn, companyId, fixture.gl_accounts);
   await seedSalesDemoLoads(conn, env);
-  // Phase 3: trip-based IFTA Q4 2025 evidence seed. Depends on the hero
-  // load row from Phase 2 existing first.
+  // Phase 3: trip-based IFTA Q4 2025 evidence seed.
   await seedSalesDemoIfta(conn);
   // Phase 4: CRM registry depth seed — 12 parties + sub-records.
-  // ACME Logistics LLC reuses SALES_DEMO_BROKER_ID from Phase 2 so the
-  // INSERT IGNORE is a no-op for that row and the rest seed cleanly.
   await seedSalesDemoParties(conn);
-  // Phase 5: Demo exceptions + future-dated load for Issues & Schedule pages.
+  // Phase 5: Demo exceptions + future-dated load.
   await seedSalesDemoExceptionsAndFutureLoad(conn);
+  // Phase 6: Fleet richness data — loads, financials, incidents, safety.
+  await seedFleetLoadsAndEquipment(conn);
+  await seedFinancialData(conn);
+  await seedIncidentsAndGps(conn);
+  await seedExceptionsAndSafety(conn);
 }
 
 // ─── CLI entry point ──────────────────────────────────────────────────────────

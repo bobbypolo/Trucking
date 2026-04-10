@@ -112,6 +112,28 @@ export const SALES_DEMO_DELETE_SEQUENCE: ReadonlyArray<{
     label: "exceptions",
     sql: "DELETE FROM exceptions WHERE company_id = ?",
   },
+  // Phase 6 richness data: incidents + GPS + compliance (no company_id on
+  // incidents — FK via load_id, so subquery through loads).
+  {
+    label: "incident_actions",
+    sql: "DELETE FROM incident_actions WHERE incident_id IN (SELECT id FROM incidents WHERE load_id IN (SELECT id FROM loads WHERE company_id = ?))",
+  },
+  {
+    label: "emergency_charges",
+    sql: "DELETE FROM emergency_charges WHERE incident_id IN (SELECT id FROM incidents WHERE load_id IN (SELECT id FROM loads WHERE company_id = ?))",
+  },
+  {
+    label: "incidents",
+    sql: "DELETE FROM incidents WHERE load_id IN (SELECT id FROM loads WHERE company_id = ?)",
+  },
+  {
+    label: "gps_positions",
+    sql: "DELETE FROM gps_positions WHERE company_id = ?",
+  },
+  {
+    label: "compliance_records",
+    sql: "DELETE FROM compliance_records WHERE user_id IN (SELECT id FROM users WHERE company_id = ?)",
+  },
   // The final DELETE against companies must be LAST — it cascades to
   // users, customers, parties (after migration 037), party_contacts,
   // party_documents, rate_rows, rate_tiers, constraint_sets,
