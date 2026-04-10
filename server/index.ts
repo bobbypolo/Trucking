@@ -68,10 +68,47 @@ import demoRouter from "./routes/demo";
 
 const app = express();
 const port = process.env.PORT || 5000;
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  baseUri: ["'self'"],
+  objectSrc: ["'none'"],
+  imgSrc: ["'self'", "data:", "blob:", "https:"],
+  styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+  scriptSrc: [
+    "'self'",
+    "'unsafe-inline'",
+    "https://www.googletagmanager.com",
+    "https://www.gstatic.com",
+    "https://maps.googleapis.com",
+    "https://js.stripe.com",
+  ],
+  fontSrc: ["'self'", "data:", "https:"],
+  connectSrc: [
+    "'self'",
+    "https://identitytoolkit.googleapis.com",
+    "https://securetoken.googleapis.com",
+    "https://firebaseinstallations.googleapis.com",
+    "https://firebase.googleapis.com",
+    "https://www.googleapis.com",
+    "https://*.googleapis.com",
+    "https://maps.googleapis.com",
+    "https://maps.gstatic.com",
+    "https://*.firebaseio.com",
+    "wss://*.firebaseio.com",
+    "https://*.cloudfunctions.net",
+    "https://api.stripe.com",
+  ],
+  frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+  workerSrc: ["'self'", "blob:"],
+  manifestSrc: ["'self'"],
+};
 
 app.set("trust proxy", 1); // Trust proxy headers behind reverse proxies
 app.use(
   helmet({
+    contentSecurityPolicy: {
+      directives: cspDirectives,
+    },
     hsts: {
       maxAge: 31536000, // 1 year
       includeSubDomains: true,
