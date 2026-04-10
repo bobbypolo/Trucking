@@ -11,8 +11,8 @@ export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
 
-  /* Maximum time one test can run */
-  timeout: 30_000,
+  /* Maximum time one test can run — 60s for Firebase Auth login latency */
+  timeout: 60_000,
 
   /* Run tests in files in parallel */
   fullyParallel: false,
@@ -20,11 +20,12 @@ export default defineConfig({
   /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
 
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 1,
+  /* No retries in certification mode — flakes must be real failures.
+   * Regular CI gets 2 retries; local dev gets 1. */
+  retries: process.env.SALES_DEMO_E2E ? 0 : process.env.CI ? 2 : 1,
 
-  /* Opt out of parallel tests on CI */
-  workers: process.env.CI ? 1 : undefined,
+  /* Single worker for deterministic serial execution */
+  workers: 1,
 
   /* Reporter to use */
   reporter: "list",
