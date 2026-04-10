@@ -6,23 +6,27 @@ context: fork
 
 ## Verification Process
 
-1. **Read the Plan**
-   - Open `.claude/docs/PLAN.md`
+1. **Resolve Sprint Paths**
+   - Call `_lib.active_sprint_paths()` to get `plan_path`, `prd_path`, `progress_path`, `verification_log_path`
+   - Falls back to legacy singleton paths when no `active_sprint_id` is set
+
+2. **Read the Plan**
+   - Open the resolved `plan_path`
    - Identify the current phase (first phase not marked Complete)
    - Extract the "Done When" criteria, "Verification Command", and story ID
-   - Identify the prd.json story corresponding to the current phase
+   - Identify the prd.json story corresponding to the current phase (from resolved `prd_path`)
 
-2. **Run Automated QA Steps via qa_runner.py**
+3. **Run Automated QA Steps via qa_runner.py**
 
    Run the automated QA runner to execute all 12 steps programmatically:
 
    ```bash
    python .claude/hooks/qa_runner.py \
      --story [STORY-ID] \
-     --prd .claude/prd.json \
+     --prd [resolved prd_path] \
      --changed-files [comma-separated list from git diff] \
      --checkpoint [base-commit-hash] \
-     --plan .claude/docs/PLAN.md
+     --plan [resolved plan_path]
    ```
 
    - Parse the JSON output from qa_runner.py
@@ -30,23 +34,23 @@ context: fork
    - All 12 steps are fully automated (no manual review steps)
    - If qa_runner.py is not available, fall back to running verification commands manually
 
-3. **Run Plan Verification Command**
+4. **Run Plan Verification Command**
    - Execute the verification command from the plan
    - Capture full output including any errors
    - Note exit codes
 
-4. **Check Each Criterion**
+5. **Check Each Criterion**
    - Go through each "Done When" item
    - Mark as PASS or FAIL with evidence
    - For subjective criteria, provide reasoning
 
-5. **UI Verification (if applicable)**
+6. **UI Verification (if applicable)**
    - If the phase involves UI changes, use Playwright/Stagehand
    - Navigate to relevant pages
    - Verify visual and functional requirements
    - Capture screenshots as evidence
 
-6. **Generate Human-Readable Report**
+7. **Generate Human-Readable Report**
 
    Display the report in the following format (preserves existing human-readable output):
 
@@ -78,9 +82,9 @@ context: fork
 
    ***
 
-7. **Reference the qa_runner.py Receipt**
+8. **Reference the qa_runner.py Receipt**
 
-   qa_runner.py automatically writes a structured receipt to `.claude/receipts/` after each run. The receipt file path is printed in the qa_runner.py output (look for `receipt_path` in the JSON output).
+   qa_runner.py automatically writes a structured receipt to `.claude/runtime/receipts/` after each run. The receipt file path is printed in the qa_runner.py output (look for `receipt_path` in the JSON output).
 
    Do not duplicate the receipt by writing a separate JSONL log — reference the receipt path from the qa_runner.py output when reporting results. If no receipt path is present in the output, note that the receipt was not written (e.g., qa_runner.py was not available).
 

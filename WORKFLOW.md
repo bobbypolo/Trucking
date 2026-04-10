@@ -55,13 +55,81 @@ You describe what you want
 
 ---
 
+## Session Setup Rule
+
+For issue implementation, use one linked git worktree per human Claude session.
+
+- One session works one issue from one linked worktree.
+- `/ralph-plan` and `/ralph` auto-enter a worktree via `EnterWorktree` when invoked from the canonical repo root — no manual setup needed.
+- For external session bootstrapping (pre-creating worktrees from a terminal), use `python .claude/scripts/start-ralph-session.py --name <issue-name>`.
+- Run `/health` first to verify the environment.
+- Do not start concurrent Ralph issue work from the canonical repo root.
+- Ralph worker subagents are internal and continue to use `.claude/worktrees/agent-*`.
+- To switch issues within a single session: `ExitWorktree` (keep), then run `/ralph-plan` for the next issue.
+
+Every Ralph sprint must map to one issue, one feature branch, and one pull request.
+
+For issue implementation:
+1. Start Claude in the project root.
+2. Run `/health`.
+3. Run `/ralph-plan #123` (auto-enters a worktree).
+4. Run `/ralph` (builds the feature).
+5. Let Ralph push the branch and open the PR.
+6. Run `/audit` before merging.
+
+### Stop Hook During Ralph
+
+When Ralph has background workers running, the Stop hook is advisory only. It warns about unverified edits but does not block the main session from yielding. Hard blocking resumes when Ralph is idle or the sprint has ended. At that point, run tests or `/verify` before finishing the session.
+
+### Parallel Issue Workflow (In-Session — Recommended)
+
+Issue A:
+1. `claude` (start in project root)
+2. `/ralph-plan #123` (auto-enters worktree, plans the feature)
+3. `/ralph` (builds the feature)
+
+Issue B (separate Claude session):
+1. `claude` (start in project root)
+2. `/ralph-plan #456` (auto-enters worktree, plans the feature)
+3. `/ralph` (builds the feature)
+
+### Parallel Issue Workflow (External Bootstrapping)
+
+Issue A:
+1. `python .claude/scripts/start-ralph-session.py --name issue-a`
+2. `cd <printed-session-path>`
+3. `claude`
+4. `/health`
+5. `/ralph-plan`
+6. `/ralph`
+
+Issue B:
+1. `python .claude/scripts/start-ralph-session.py --name issue-b`
+2. `cd <printed-session-path>`
+3. `claude`
+4. `/health`
+5. `/ralph-plan`
+6. `/ralph`
+
+---
+
 ## Step-by-Step: Building a Feature with Ralph
 
 ### Step 1: Start Your Session
 
 ```
-/health          # Verify environment (git, Python, gh CLI)
-# If resuming, re-read PLAN.md, ARCHITECTURE.md, HANDOFF.md, and workflow.json.project_mode
+claude                   # Start in project root
+/health                  # Verify environment (git, Python, workspace type)
+/ralph-plan #123         # Auto-enters worktree, plans the feature
+/ralph                   # Builds the feature
+```
+
+Alternative (pre-create worktree externally):
+```
+python .claude/scripts/start-ralph-session.py --name issue-123
+cd <printed-session-path>
+claude
+/health
 ```
 
 Check `.claude/docs/HANDOFF.md` if resuming from a prior session.
@@ -443,6 +511,8 @@ Every requirement is tracked end-to-end: PLAN.md requirement -> prd.json story -
 
 You can run more than one Ralph sprint against the same project at the same time, provided each sprint runs from its own linked git worktree. The workflow is designed for this:
 
+- **Session bootstrap**: Run `python .claude/scripts/start-ralph-session.py --name issue-123` to create a linked worktree at `../sessions/<repo>/issue-123` on branch `session/issue-123`. Each session works one issue.
+- **Sprint-namespaced artifacts**: Each sprint stores its plan, prd, progress, and verification log under `.claude/sprints/<sprint-id>/` instead of the singleton `.claude/docs/PLAN.md` and `.claude/prd.json`. This means two issue branches never conflict on plan/prd files at merge time. Sprint paths are resolved via `_lib.active_sprint_paths()` from workflow state (falls back to legacy singleton paths when no `active_sprint_id` is set).
 - **Branch-name disambiguation (default ON)**: From a canonical repo root, Ralph still uses `ralph/[plan-slug]`. From a linked human worktree (`git worktree add`), Ralph appends a deterministic 8-character SHA-256 suffix derived from the worktree path: `ralph/[plan-slug]-[8hex]`. Two concurrent sprints in different worktrees never collide on the same feature branch. Run `python .claude/hooks/ralph_branch_name.py` from any worktree to see the resolved name.
 - **Canonical-root concurrency guard (narrow hard-stop)**: When you start `/ralph` from the canonical root and a sibling linked worktree has active Ralph work (non-empty `ralph.current_story_id` or `needs_verify` set), Ralph stops with a clear message. Sibling worktrees running their own Ralph never block each other — only the canonical root is gated.
 - **Story-activity TTL (opt-in)**: If a sibling Ralph crashes without clearing state, the canonical-root guard would normally stay blocked. Set `ralph.stale_state_ttl_minutes` in `.claude/workflow.json` to a positive value (e.g., 240 for 4 hours) and the guard will treat sibling story sentinels older than the TTL as idle. Default is `0` (filter disabled, behavior unchanged). The TTL filter is intentionally narrow — it only ages out `current_story_id`. The `needs_verify` flag stays always-live as a fail-safe sentinel for unverified code edits and is never aged out. Manual recovery path remains `/cleanup state` from the affected worktree.

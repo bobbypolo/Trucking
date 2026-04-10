@@ -5,9 +5,11 @@ Runs after Edit/Write tool use on code files. Scans for production
 violations using scan_file_violations() from _lib.py. Two-tier enforcement:
 security violations (severity=block) exit 2 to block the action, hygiene
 violations (severity=warn) exit 0 with warnings. Skips test files and
-non-code files. Stateless: scan-and-print only, no state writes.
+non-code files. Also warns when code references env vars not found in
+the project's .env file. Stateless: scan-and-print only, no state writes.
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -43,6 +45,14 @@ except Exception:
 
     def scan_file_violations(p):  # type: ignore[misc]
         return []
+
+
+# Env var reference patterns (used in env consistency check)
+_ENV_REF_RE = re.compile(
+    r"""os\.(?:getenv|environ\.get|environ\[)\s*\(\s*['"]([A-Za-z_][A-Za-z0-9_]*)['"]"""
+    r"""|os\.environ\[['"]([A-Za-z_][A-Za-z0-9_]*)['"]\]"""
+)
+_ENV_KEY_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=", re.MULTILINE)
 
 
 def _is_test_file(filepath: Path) -> bool:
@@ -171,6 +181,41 @@ def main() -> None:
             )
     else:
         audit_log("post_write_prod_scan", "clean", file_path)
+
+    # --- Env var reference consistency check ---
+    # Warn when code references env vars that don't exist in .env
+    try:
+        from _lib import PROJECT_ROOT as _pr
+
+        env_path = _pr / ".env"
+    except Exception:
+        env_path = Path.cwd() / ".env"
+    if env_path.exists() and p.suffix in {".py"}:
+        try:
+            code_content = p.read_text(encoding="utf-8", errors="replace")
+            referenced_keys = {
+                m.group(1) or m.group(2) for m in _ENV_REF_RE.finditer(code_content)
+            }
+            if referenced_keys:
+                env_content = env_path.read_text(encoding="utf-8", errors="replace")
+                env_keys = set(_ENV_KEY_RE.findall(env_content))
+                missing = referenced_keys - env_keys
+                if missing:
+                    missing_list = ", ".join(sorted(missing))
+                    sys.stdout.write(
+                        f"[ENV WARN] {file_path} references env var(s) not in .env: "
+                        f"{missing_list}\n"
+                        "  Check .env for the correct key names before "
+                        "inventing new ones.\n"
+                    )
+                    sys.stdout.flush()
+                    audit_log(
+                        "post_write_prod_scan",
+                        "env_warn",
+                        f"Missing env vars in {file_path}: {missing_list}",
+                    )
+        except Exception:
+            pass  # env check is advisory, never block
 
     sys.exit(0)
 

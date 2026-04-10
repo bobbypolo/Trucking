@@ -15,18 +15,23 @@ You are now operating in **Ralph Mode** — a lean outer loop that dispatches on
 
 Delegation to `ralph-worker` via the **Agent tool** is mandatory. Ralph MUST NOT attempt to implement stories directly. Every story is dispatched to a `ralph-worker` sub-agent with `subagent_type: "ralph-worker"`. The ralph-worker agent handles Phase 0 through Phase 2 internally and returns `RALPH_WORKER_RESULT`.
 
-## STEP 1: Initialize
+## STEP 0: Auto-Worktree Guard
 
+Check `root_kind()`. If `canonical_root`: call `EnterWorktree` with name `issue-{ref}` (from user input or `ralph.issue_ref` in state) or plan slug. Name must NOT start with `agent-`. On name collision, append 4-char random suffix and retry once. Display: `"Auto-entered worktree: {name}"`. If `linked_human_worktree`: display `"Session root OK"`. If `worker_worktree`: display error and STOP.
+
+## STEP 1: Initialize
 Display: `"RALPH - V-Model Orchestrator v5 — Mode: Autonomous"`
 **Canonical-root concurrency guard (hard stop — narrow):** Call `_lib.concurrent_root_guard_decision()`. Hard-stop ONLY when `root_kind == "canonical_root"` AND `blocked is True` (at least one linked human worktree has a non-empty `ralph.current_story_id` or `needs_verify`). Display `"Ralph stopped — another linked worktree is active (canonical_root + sibling current_story_id/needs_verify)."` and **STOP**. Idle sibling worktrees must never block startup; helper failures degrade to no block (advisory).
 
-Read `.claude/prd.json` and validate:
+**Resolve sprint paths:** Call `_lib.active_sprint_paths()` to get `plan_path`, `prd_path`, `progress_path`, `verification_log_path`. Falls back to legacy singleton paths when no `active_sprint_id` is set. Display: `"Sprint: [sprint-id or 'legacy']"`. Use these resolved paths for ALL file references below.
+
+Read prd.json from `prd_path` and validate:
 
 1. Check `version` field exists and equals `"2.0"`. If not: display deprecation warning and **STOP**.
 2. Validate each story has: `id`, `description`, `phase`, `acceptanceCriteria` (array), `gateCmds` (object), `passed` (boolean), `verificationRef`. If any missing: display errors and **STOP**.
-3. **Plan-PRD drift detection**: Run `check_plan_prd_sync()` from `_qa_lib.py` on `.claude/docs/PLAN.md` and `.claude/prd.json`:
-   - If `added` or `removed` non-empty: display drift details, then auto-regenerate via `python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --merge .claude/prd.json --output .claude/prd.json`. Display `"Plan-PRD drift detected — auto-regenerated prd.json with --merge (passed state preserved)."`. Continue.
-   - Compare `plan_hash` from sync result against `prd.json["plan_hash"]`. If mismatch: re-run `prd_generator.py --plan .claude/docs/PLAN.md --merge .claude/prd.json --output .claude/prd.json` to resync. Display `"Plan hash updated."`. Continue.
+3. **Plan-PRD drift detection**: Run `check_plan_prd_sync()` from `_qa_lib.py` on the resolved `plan_path` and `prd_path`:
+   - If `added` or `removed` non-empty: display drift details, then auto-regenerate via `python .claude/hooks/prd_generator.py --plan [plan_path] --merge [prd_path] --output [prd_path]`. Display `"Plan-PRD drift detected — auto-regenerated prd.json with --merge (passed state preserved)."`. Continue.
+   - Compare `plan_hash` from sync result against `prd.json["plan_hash"]`. If mismatch: re-run `prd_generator.py --plan [plan_path] --merge [prd_path] --output [prd_path]` to resync. Display `"Plan hash updated."`. Continue.
    - If in sync: display `"Plan-PRD sync: OK"` and `"Plan hash: OK"`.
 4. Display: `"Found [total] stories, [passed] completed, [remaining] remaining"`
 5. Initialize sprint state via `update_workflow_state(ralph={...})` from `_lib.py`. Fields: `consecutive_skips: 0`, `stories_passed: 0`, `stories_skipped: 0`, `feature_branch: ""`, `current_story_id: ""`, `current_attempt: 1`, `max_attempts: 4`, `prior_failure_summary: ""`, `checkpoint_hash: ""`, `cumulative_drift_warnings: 0`.
@@ -46,7 +51,7 @@ Determine branch name: run `python .claude/hooks/ralph_branch_name.py` (returns 
 
 Record branch in state: `update_workflow_state(ralph={"feature_branch": "[branch]"})`.
 
-Ensure prd.json and PLAN.md are on the feature branch: `git add .claude/prd.json .claude/docs/PLAN.md && git diff --cached --quiet || git commit -m "chore: sync prd.json and PLAN.md to feature branch"`.
+Ensure prd.json and PLAN.md are on the feature branch: `git add [prd_path] [plan_path] && git diff --cached --quiet || git commit -m "chore: sync prd.json and PLAN.md to feature branch"`. Use the resolved sprint paths, not hardcoded singleton paths.
 
 All story commits go to THIS branch. **NEVER commit directly to main or master.**
 
@@ -79,21 +84,18 @@ Update state: `update_workflow_state(ralph={"current_story_id": "[story.id]", "c
 2. Record full hash: `git rev-parse HEAD` (NOT `--short`).
 3. Display: `"Checkpoint: [short-hash] ([branch-name]) — full: [full-hash]"`
 4. Store hash: `update_workflow_state(ralph={"checkpoint_hash": "[full_hash]"})`.
-5. Read `.claude/docs/PLAN.md` — extract all R-PN-NN IDs from Done When sections. Compare against story's `acceptanceCriteria` IDs:
+5. Read the resolved `plan_path` — extract all R-PN-NN IDs from Done When sections. Compare against story's `acceptanceCriteria` IDs:
    - If ALL found in PLAN.md: display `"Plan check: OK"` and continue.
    - If ANY missing: display `"Plan gap: criteria [missing IDs] not covered by PLAN.md. Run /ralph-plan to update, then resume /ralph."` and **STOP**.
-6. **Plan-PRD re-sync**: Run `check_plan_prd_sync()` from `_qa_lib.py` on `.claude/docs/PLAN.md` and `.claude/prd.json`. If `added` or `removed` non-empty OR plan_hash mismatch with prd.json: auto-regenerate via `python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --merge .claude/prd.json --output .claude/prd.json`. Display `"Plan-PRD re-sync: updated"`. If in sync: display `"Plan-PRD re-sync: OK"`.
+6. **Plan-PRD re-sync**: Run `check_plan_prd_sync()` from `_qa_lib.py` on the resolved `plan_path` and `prd_path`. If `added` or `removed` non-empty OR plan_hash mismatch with prd.json: auto-regenerate via `python .claude/hooks/prd_generator.py --plan [plan_path] --merge [prd_path] --output [prd_path]`. Display `"Plan-PRD re-sync: updated"`. If in sync: display `"Plan-PRD re-sync: OK"`.
 7. **Cumulative drift gate**: Read `cumulative_drift_warnings` from sprint state. Read `cumulative_drift_threshold` from `workflow.json` `ralph` section (default: 10). If `cumulative_drift_warnings >= cumulative_drift_threshold`: display `"CUMULATIVE DRIFT THRESHOLD EXCEEDED: [count] warnings (threshold: [threshold]). Stopping sprint — review accumulated drift before continuing."` and go to STEP 6.
 
 ## STEP 4: Dispatch ralph-worker Agent
-
 Update step: `update_workflow_state(ralph={"current_step": "STEP_4_DISPATCH"})`.
-
-Read `.claude/docs/progress.md` if it exists. Read sprint state for `current_attempt`, `prior_failure_summary`, `feature_branch`, `checkpoint_hash`.
+Read the resolved `progress_path` if it exists. Read sprint state for `current_attempt`, `prior_failure_summary`, `feature_branch`, `checkpoint_hash`.
 
 **Dependency check (dependsOn):** Check each story's `dependsOn` list. If any dependency lacks `passed: true`, defer to next loop. Call `validate_dependency_receipt(dep_story_id)` for each; if `valid: False`: display reason and go to STEP 6.
-
-**Conditional dispatch:** Read `parallel_dispatch_enabled` from `workflow.json` (default: `true`). If `true` AND a `parallelGroup` has multiple ready stories: dispatch each with `isolation: "worktree"` via multiple Agent calls; wait for all (max `parallel_batch_size`, default 3). If `false`: sequential branch-inline. Stories with no group dispatch sequentially.
+**Conditional dispatch + isolation invariant:** Read `parallel_dispatch_enabled` from `workflow.json` (default: `true`). If `true` AND a `parallelGroup` has multiple ready stories: dispatch each with `isolation: "worktree"` via multiple Agent calls; wait for all (max `parallel_batch_size`, default 3). **Hard invariant: if more than one worker will be active, ALL workers must use `isolation: "worktree"`. Branch-inline is only permitted when exactly one worker runs at a time.** If `false`: sequential branch-inline. Before dispatch, set `update_workflow_state(ralph={"active_dispatch_count": [count], "active_worker_story_ids": [ids]})`.
 
 Launch **`ralph-worker`** agent via Agent tool with `subagent_type: "ralph-worker"`:
 
@@ -111,7 +113,9 @@ RALPH_WORKER_DISPATCH:
   "attempt": [current_attempt],
   "max_attempts": 4,
   "prior_failure_summary": "[prior_failure_summary or First attempt — no prior failures]  (may contain enriched fix-log content from prior attempts)",
-  "sprint_progress": "[relevant lines from progress.md or First story in sprint]",
+  "plan_path": "[resolved plan_path]",
+  "prd_path": "[resolved prd_path]",
+  "sprint_progress": "[relevant lines from progress_path or First story in sprint]",
   "scope": [story.scope],
   "component": "[story.component]",
   "dependsOn": [story.dependsOn],
@@ -129,7 +133,7 @@ Receive result(s) from ralph-worker agent(s). For parallel groups, collect all r
 
 ## STEP 5: Handle RALPH_WORKER_RESULT
 
-Update step: `update_workflow_state(ralph={"current_step": "STEP_5_HANDLE_RESULT"})`.
+Update step: `update_workflow_state(ralph={"current_step": "STEP_5_HANDLE_RESULT", "active_dispatch_count": 0, "active_worker_story_ids": []})`.
 
 Parse result(s) with graceful error handling — look for `RALPH_WORKER_RESULT:` in each agent output and extract JSON. If missing or malformed for any dispatched story, treat that story as FAIL with summary `"Missing or malformed RALPH_WORKER_RESULT from ralph-worker agent."`. Other parallel stories' results are still processed.
 
@@ -144,11 +148,11 @@ Parse result(s) with graceful error handling — look for `RALPH_WORKER_RESULT:`
 1. Read `drift_threshold` from `workflow.json` `ralph.drift_threshold` (default: 3) and `frontend_gate_severity` from `ralph.frontend_verification` (default: `"warn"`) via `load_workflow_config()`.
 2. Dispatch `qa-reviewer` explicitly with `receipt_path`, `checkpoint_hash`, `feature_branch`, and `acceptanceCriteria`; parse the returned `REVIEWER_RESULT` block into `reviewer_result`, then call `validate_story_promotion(receipt_path, reviewer_result, drift_threshold=drift_threshold, frontend_verified=result.get("frontend_verified"), frontend_gate_severity=frontend_gate_severity)` from `_qa_lib.py`. If parsing fails or the call returns `(False, reason)`: treat as FAIL with summary `"Promotion gate blocked: [reason]"`. On success, read `receipt_drift_count` from the `PromotionDecision`.
 3. **Update cumulative drift**: Add `receipt_drift_count` to current `cumulative_drift_warnings` in sprint state: `update_workflow_state(ralph={"cumulative_drift_warnings": current + receipt_drift_count})`. Read `cumulative_drift_threshold` from `workflow.json` `ralph` section (default: 10). Display `"Cumulative drift: [new_total] / [threshold]"`.
-4. Append verification log entry: compute `plan_hash` via `compute_plan_hash()` from `_qa_lib.py`, then call `append_verification_entry()` with: `story_id`, `timestamp` (ISO 8601 now), `attempt`, `overall_result` ("PASS"), `criteria_verified` (from qa_receipt), `files_changed` (from result), `plan_hash`, `production_violations` (from qa_receipt), `receipt_hash` (from qa_receipt).
-5. Update prd.json: set `passed: true`, `verificationRef: "verification-log.jsonl"` for this story.
+4. Append verification log: `compute_plan_hash(plan_path)` then `append_verification_entry(verification_log_path, ...)` with story_id, timestamp, attempt, overall_result, criteria_verified, files_changed, plan_hash, production_violations, receipt_hash.
+5. Update prd.json at `prd_path`: set `passed: true`, `verificationRef: "verification-log.jsonl"`.
 6. Update state: set `consecutive_skips` to 0, increment `stories_passed`.
 7. Display: `"PASSED: [story.id] — Files: [files_changed] — Progress: [stories_passed]/[total]"`
-8. Append to `.claude/docs/progress.md`: `### [story.id] — PASS ([date])` with files, criteria count, summary.
+8. Append to the resolved `progress_path`: `### [story.id] — PASS ([date])` with files, criteria count, summary.
 9. Auto-continue to STEP 2.
 
 ### If FAILED (`result.passed == false`):
@@ -166,7 +170,7 @@ Read state for `current_attempt` and `max_attempts`.
 
 - Auto-skip: increment `stories_skipped` and `consecutive_skips` in state.
 - Display: `"EXHAUSTED: [story.id] after [max_attempts] attempts — [summary]. Skipping."`
-- Append to `.claude/docs/progress.md`: `### [story.id] — SKIPPED ([date])` with attempts and last failure.
+- Append to the resolved `progress_path`: `### [story.id] — SKIPPED ([date])` with attempts and last failure.
 
 **Circuit breaker**: Read `circuit_breaker_threshold` from workflow.json `ralph` section (default: 3). If `consecutive_skips` >= `circuit_breaker_threshold`: display `"CIRCUIT BREAKER: [threshold] consecutive stories exhausted. Stopping sprint."` and go to **STEP 6**.
 
@@ -184,17 +188,13 @@ If any stories were skipped, list each with failure summary and attempt count.
 2. If found: run the command. If it fails: display `"Sprint-end full regression FAILED — fix before creating PR."` and skip PR creation.
 3. If not found: skip (no tiers configured).
 
+If ANY stories passed: read `auto_create_pr` from `workflow.json` `ralph` section (default: `false`). Use `github_protocol.py` for PR creation (Create Pull Request): `python .claude/hooks/github_protocol.py --branch [feature_branch] --issue-ref [ralph.issue_ref] --title [plan_title] --stories-passed [n] --stories-skipped [n] --draft`. If `auto_create_pr` is `true` AND regression passed: run automatically. If `false`: ask user first. Read `github.default_reviewers` and `github.default_labels` from workflow.json and apply to the PR. Store PR number: `update_workflow_state(ralph={"pull_request_number": [pr_number]})`.
+
 ### STEP 7: Post-Sprint Cleanup (silent, non-blocking)
 
-`_lib.py` calls — failures logged silently, never block sprint or PR: `prune_worktrees()`, `prune_receipts(receipts_dir, story_ids)`, `rotate_log(verification_log, 500)`, `rotate_log(audit_log, 500)`, `rotate_log(error_history, 100)`.
+`_lib.py` calls — failures logged silently, never block sprint or PR: `prune_worktrees()`, `prune_receipts(receipts_dir, story_ids)`, `rotate_log(verification_log_path, 500)`, `rotate_log(audit_log, 500)`, `rotate_log(error_history, 100)`, `strip_orphan_markers(tests_dir, prd_path)`. Use resolved sprint paths. If markers removed, run `pytest --collect-only -q`.
 
-Also call `strip_orphan_markers(Path(".claude/hooks/tests"), Path(".claude/prd.json"))` from `_lib`; log results; non-blocking. If markers removed, run `pytest --collect-only -q` to verify no corruption.
-
-If ANY stories passed:
-
-Read `auto_create_pr` from `workflow.json` `ralph` section (default: `false`). If `true` AND sprint-end regression passed: auto-push + `gh pr create` without prompting. If `false`: ask user `"Create Pull Request? (Yes / No)"` and push + create on Yes.
-
-Run `/librarian handoff` to save session context. **Archive PLAN.md**: copy `.claude/docs/PLAN.md` to `.claude/docs/PLAN-archive-YYYY-MM-DD.md` and keep the active plan intact rather than overwriting it with placeholder text. **Clear sprint state**: `update_workflow_state(ralph={"current_step": "", "current_story_id": "", "feature_branch": "", "checkpoint_hash": "", "consecutive_skips": 0, "stories_passed": 0, "stories_skipped": 0, "current_attempt": 1, "max_attempts": 4, "prior_failure_summary": "", "cumulative_drift_warnings": 0})`. Display next steps: review PR, run `/audit`, run `/health`.
+Run `/librarian handoff`. **Archive PLAN.md**: copy `plan_path` to sibling `PLAN-archive-YYYY-MM-DD.md`. **Clear sprint state**: `update_workflow_state(ralph={"current_step": "", "current_story_id": "", "feature_branch": "", "checkpoint_hash": "", "consecutive_skips": 0, "stories_passed": 0, "stories_skipped": 0, "current_attempt": 1, "max_attempts": 4, "prior_failure_summary": "", "cumulative_drift_warnings": 0, "active_sprint_id": "", "plan_path": "", "prd_path": "", "issue_ref": "", "base_branch": "", "pull_request_number": 0, "active_dispatch_count": 0, "active_worker_story_ids": []})`. Display next steps: review PR, `/audit`, `/health`.
 
 ## Error Recovery
 - **prd.json error**: Run `/ralph-plan` to regenerate. **Git dirty**: STOP, commit first. **Missing result**: FAIL + retry. **Plan gap**: `/ralph-plan` then retry. **Circuit breaker**: Re-read state at STEP 2.

@@ -18,6 +18,7 @@ Run environment health checks by executing actual commands and reporting results
 9. **Workflow config**: Check if `.claude/workflow.json` exists — report configured commands (test, lint, format)
 10. **Project commands configured**: Run the validator and report results at the correct severity level (FAIL for critical commands, WARN for optional ones).
 11. **Root kind and concurrent activity**: Classify the current working directory via `_lib.root_kind()` (one of `canonical_root`, `linked_human_worktree`, or `worker_worktree`) and run `_lib.concurrent_root_guard_decision()`. Report `FAIL` only when the current root is `canonical_root` and at least one linked human worktree has a non-empty `ralph.current_story_id` or `needs_verify` set. Otherwise report `PASS` (solo canonical root, linked human worktree, or worker worktree) or `WARN` when helper discovery fails. Idle sibling worktrees must never fail this check.
+12. **Sprint artifacts**: Check whether sprint-namespaced paths exist. Read `ralph.active_sprint_id` from `.workflow-state.json`. If set, verify the sprint directory `.claude/sprints/<sprint-id>/` exists and report contents (PLAN.md, prd.json present or missing). If not set, check legacy singleton paths (`.claude/docs/PLAN.md`, `.claude/prd.json`). Report PASS if artifacts found, INFO if none (fresh session).
 
 ## Critical Check: Project Commands
 
@@ -102,6 +103,40 @@ Set check #10 to **PASS** in the table.
 | 9   | Workflow config  | PASS/WARN      | [configured commands]                                                            |
 | 10  | Project commands | PASS/FAIL/WARN | [FAIL if project_mode is missing/invalid or host_project points at TODO/ADE self-tests; WARN if only project_type_check is TODO] |
 | 11  | Root activity    | PASS/FAIL/WARN | [FAIL only for canonical root + active sibling (current_story_id or needs_verify); PASS for solo canonical root, linked human worktree, or worker worktree; WARN on discovery error] |
+| 12  | Sprint artifacts | PASS/INFO      | [sprint-id and available artifacts, or "no active sprint"] |
+
+### Workspace Banner
+
+After the health table, display a workspace banner based on `root_kind`:
+
+- **`canonical_root`**: Display warning:
+  ```
+  WARNING: Canonical repo root — for inspection, admin, and recovery only.
+  For issue work, run /ralph-plan or /ralph (auto-enters a worktree).
+  Alternative: python .claude/scripts/start-ralph-session.py --name <issue-name>
+  ```
+
+- **`linked_human_worktree`**: Display confirmation:
+  ```
+  Session root OK for Ralph work.
+  ```
+
+- **`worker_worktree`**: Display:
+  ```
+  Worker worktree — internal Ralph agent context.
+  ```
+
+### Sibling Sessions
+
+If sibling linked worktrees exist (discovered via `git worktree list --porcelain`), list them:
+
+```
+Active sessions:
+  session/issue-a  ->  C:\...\sessions\myrepo\issue-a  [ralph active: STORY-003]
+  session/issue-b  ->  C:\...\sessions\myrepo\issue-b  [idle]
+```
+
+For each sibling, check its `.claude/.workflow-state.json` for `ralph.current_story_id` to determine activity status.
 
 ### Ready to Develop: YES / NO
 

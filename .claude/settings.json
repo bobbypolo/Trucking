@@ -19,6 +19,15 @@
             "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/pre_bash_guard.py\""
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"$(git rev-parse --show-toplevel)/.claude/hooks/pre_env_guard.py\""
+          }
+        ]
       }
     ],
     "PostToolUse": [

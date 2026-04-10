@@ -60,6 +60,13 @@ AUDIT_LOG_PATH = _CLAUDE_DIR / "errors" / "hook_audit.jsonl"
 ERROR_DIR = _CLAUDE_DIR / "errors"
 WORKFLOW_CONFIG_PATH = _CLAUDE_DIR / "workflow.json"
 WORKFLOW_STATE_PATH = _CLAUDE_DIR / ".workflow-state.json"
+SPRINTS_DIR = _CLAUDE_DIR / "sprints"
+
+# Legacy singleton paths (used when no active_sprint_id is set)
+LEGACY_PLAN_PATH = _CLAUDE_DIR / "docs" / "PLAN.md"
+LEGACY_PRD_PATH = _CLAUDE_DIR / "prd.json"
+LEGACY_PROGRESS_PATH = _CLAUDE_DIR / "docs" / "progress.md"
+LEGACY_VERIFICATION_LOG_PATH = _CLAUDE_DIR / "docs" / "verification-log.jsonl"
 
 # State mutation rules are canonically documented in
 # .claude/docs/knowledge/state-ownership.md
@@ -98,6 +105,20 @@ DEFAULT_WORKFLOW_STATE: dict = {
         # concurrency guard to age-filter stale sibling sentinels when
         # ralph.stale_state_ttl_minutes > 0 in workflow.json.
         "current_story_updated_at": "",
+        # Sprint namespacing — per-session artifact isolation.
+        # When set, plan/prd/progress/verification-log are read from
+        # .claude/sprints/<active_sprint_id>/ instead of singleton paths.
+        # Owner: /ralph-plan (set), /ralph (read), /cleanup (clear).
+        "active_sprint_id": "",
+        "plan_path": "",
+        "prd_path": "",
+        # GitHub issue linkage — set by /ralph-plan, read by Ralph and PR helper.
+        "issue_ref": "",
+        "base_branch": "",
+        "pull_request_number": 0,
+        # Worker dispatch tracking — set/cleared by Ralph Steps 4/5.
+        "active_dispatch_count": 0,
+        "active_worker_story_ids": [],
     },
 }
 
@@ -156,6 +177,90 @@ RUNTIME_ARTIFACT_RETENTION: dict[str, int] = {
     "audit_log": AUDIT_LOG_RETENTION,
     "error_history": ERROR_HISTORY_RETENTION,
 }
+
+
+# ---------------------------------------------------------------------------
+# Sprint path resolution — per-session artifact isolation
+# ---------------------------------------------------------------------------
+
+
+def sprint_dir(sprint_id: str) -> Path:
+    """Return the sprint directory: .claude/sprints/<sprint-id>/."""
+    return SPRINTS_DIR / sprint_id
+
+
+def sprint_paths(sprint_id: str) -> dict[str, Path]:
+    """Return all artifact paths for a named sprint.
+
+    Keys: plan_path, prd_path, progress_path, verification_log_path.
+    """
+    base = sprint_dir(sprint_id)
+    return {
+        "plan_path": base / "PLAN.md",
+        "prd_path": base / "prd.json",
+        "progress_path": base / "progress.md",
+        "verification_log_path": base / "verification-log.jsonl",
+    }
+
+
+def active_sprint_paths() -> dict[str, Path]:
+    """Resolve artifact paths from workflow state.
+
+    Resolution order:
+
+    1. If ``ralph.plan_path`` and ``ralph.prd_path`` are stored in state
+       (written by :func:`init_sprint`), use them directly. This avoids
+       re-deriving from ``active_sprint_id`` and ensures the dispatch prompt
+       and the resolution function agree on exactly the same paths.
+    2. If only ``ralph.active_sprint_id`` is set, derive paths via
+       :func:`sprint_paths`.
+    3. Otherwise falls back to legacy singleton paths for backward
+       compatibility.
+    """
+    state = read_workflow_state()
+    ralph = state.get("ralph", {})
+
+    # Prefer explicit stored paths (written by init_sprint)
+    stored_plan = ralph.get("plan_path", "")
+    stored_prd = ralph.get("prd_path", "")
+    if stored_plan and stored_prd:
+        plan_p = Path(stored_plan)
+        prd_p = Path(stored_prd)
+        return {
+            "plan_path": plan_p,
+            "prd_path": prd_p,
+            "progress_path": plan_p.parent / "progress.md",
+            "verification_log_path": plan_p.parent / "verification-log.jsonl",
+        }
+
+    # Fall back to deriving from sprint ID
+    sid = ralph.get("active_sprint_id", "")
+    if sid:
+        return sprint_paths(sid)
+
+    return {
+        "plan_path": LEGACY_PLAN_PATH,
+        "prd_path": LEGACY_PRD_PATH,
+        "progress_path": LEGACY_PROGRESS_PATH,
+        "verification_log_path": LEGACY_VERIFICATION_LOG_PATH,
+    }
+
+
+def init_sprint(sprint_id: str) -> dict[str, Path]:
+    """Create a sprint directory and register it in workflow state.
+
+    Returns the resolved paths dict (same shape as :func:`sprint_paths`).
+    """
+    paths = sprint_paths(sprint_id)
+    sprint_dir(sprint_id).mkdir(parents=True, exist_ok=True)
+    update_workflow_state(
+        ralph={
+            "active_sprint_id": sprint_id,
+            "plan_path": str(paths["plan_path"]),
+            "prd_path": str(paths["prd_path"]),
+        }
+    )
+    return paths
 
 
 def _deep_merge_defaults(state: dict, defaults: dict) -> dict:
@@ -902,9 +1007,14 @@ def is_subagent(data: dict) -> bool:
 
 
 def is_worktree_path(path: str) -> bool:
-    """Check if path is inside .claude/worktrees/. Handles Unix and Windows separators."""
+    """Check if path is inside a Ralph worker worktree (.claude/worktrees/agent-*).
+
+    Returns False for non-agent worktrees (e.g. EnterWorktree session
+    worktrees), which are treated as linked human worktrees by root_kind().
+    Handles Unix and Windows separators.
+    """
     normalized = path.replace("\\", "/")
-    return ".claude/worktrees/" in normalized
+    return ".claude/worktrees/agent-" in normalized
 
 
 # ---------------------------------------------------------------------------
@@ -915,8 +1025,10 @@ def is_worktree_path(path: str) -> bool:
 # error: discovery failures must never crash hooks or block skills.
 #
 # is_worktree_path() remains the single source of truth for detecting a
-# Ralph worker worktree. root_kind() layers canonical-vs-linked classification
-# on top of it without changing is_worktree_path() semantics.
+# Ralph worker worktree (agent-* prefixed paths under .claude/worktrees/).
+# root_kind() layers canonical-vs-linked classification on top of it.
+# Non-agent worktrees (e.g. EnterWorktree sessions) fall through to the
+# .git file/directory check and are classified as linked_human_worktree.
 # ---------------------------------------------------------------------------
 
 
@@ -1068,7 +1180,7 @@ def derive_plan_slug(plan_path: "str | Path | None" = None) -> str:
     """
     fallback = "sprint"
     if plan_path is None:
-        plan_path = PROJECT_ROOT / ".claude" / "docs" / "PLAN.md"
+        plan_path = active_sprint_paths()["plan_path"]
     try:
         path = Path(plan_path)
         if not path.is_file():
@@ -1089,15 +1201,14 @@ def derive_plan_slug(plan_path: "str | Path | None" = None) -> str:
 def derive_ralph_branch_name(
     plan_slug: "str | None" = None,
     cwd: "str | None" = None,
+    issue_ref: "str | None" = None,
 ) -> str:
     """Compute the Ralph feature-branch name for the current worktree.
 
-    Returns ``"ralph/" + plan_slug`` when the current root is the
-    canonical repo (preserves backward compatibility for single-worktree
-    users). Returns ``"ralph/" + plan_slug + "-" + hash8`` when the
-    current root is a linked human worktree, where ``hash8`` is the first
-    8 hex characters of ``sha256(normalized_resolved_cwd)``. The hash is
-    deterministic across process restarts and case/separator-insensitive.
+    When *issue_ref* is provided (e.g. ``"123"``), the branch is
+    ``ralph/<issue_ref>-<plan_slug>`` (canonical root) or
+    ``ralph/<issue_ref>-<plan_slug>-<hash8>`` (linked worktree).
+    Falls back to the issue-free format when *issue_ref* is absent.
 
     Parameters
     ----------
@@ -1107,24 +1218,37 @@ def derive_ralph_branch_name(
     cwd : str | None
         Working directory used for root classification and hash input.
         Defaults to ``os.getcwd()``.
+    issue_ref : str | None
+        GitHub issue number or reference (e.g. ``"123"``). When provided,
+        prefixed before the plan slug for GitHub traceability. ``None``
+        falls back to ``ralph.issue_ref`` from workflow state, then omits.
 
     Returns
     -------
     str
-        The full branch name, e.g. ``"ralph/my-plan"`` or
-        ``"ralph/my-plan-a1b2c3d4"``.
+        The full branch name, e.g. ``"ralph/123-my-plan"`` or
+        ``"ralph/123-my-plan-a1b2c3d4"``.
 
     Raises
     ------
     ValueError
-        When the current root is a Ralph worker worktree
-        (``.claude/worktrees/agent-*``). Workers must never create
-        Ralph feature branches — that's the orchestrator's job.
+        When the current root is a Ralph worker worktree.
     """
     if plan_slug is None:
         plan_slug = derive_plan_slug()
     if cwd is None:
         cwd = os.getcwd()
+
+    # Resolve issue_ref from state if not provided
+    if issue_ref is None:
+        state = read_workflow_state()
+        issue_ref = state.get("ralph", {}).get("issue_ref", "")
+
+    # Build the slug component: <issue_ref>-<plan_slug> or just <plan_slug>
+    if issue_ref:
+        slug = f"{issue_ref}-{plan_slug}"
+    else:
+        slug = plan_slug
 
     kind = root_kind(cwd)
     if kind == "worker_worktree":
@@ -1135,7 +1259,7 @@ def derive_ralph_branch_name(
         )
 
     if kind == "canonical_root":
-        return f"ralph/{plan_slug}"
+        return f"ralph/{slug}"
 
     # linked_human_worktree → deterministic 8-char hash suffix
     try:
@@ -1144,7 +1268,7 @@ def derive_ralph_branch_name(
         resolved = cwd
     normalized = _normalize_path_for_compare(resolved)
     hash8 = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:8]
-    return f"ralph/{plan_slug}-{hash8}"
+    return f"ralph/{slug}-{hash8}"
 
 
 def read_worktree_state_summary(worktree_root: "str | Path") -> dict:

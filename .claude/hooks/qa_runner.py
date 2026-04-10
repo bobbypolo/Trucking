@@ -16,7 +16,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from _lib import (
     CODE_EXTENSIONS,
+    LEGACY_PRD_PATH,  # noqa: F401 — used in main() prd fallback
     PROJECT_MODE_HOST_PROJECT,
+    active_sprint_paths,
     audit_log,
     clear_marker,
     get_project_mode,
@@ -382,7 +384,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "Path to verification-log.jsonl. "
-            "Defaults to VERIFICATION_LOG_PATH (.claude/docs/verification-log.jsonl)."
+            "Defaults to sprint-resolved path or .claude/docs/verification-log.jsonl."
         ),
     )
     return parser
@@ -2749,7 +2751,14 @@ def _log_plan_replacement(
     Returns:
         True on success, False on write error (OSError).
     """
-    target = log_path if log_path is not None else VERIFICATION_LOG_PATH
+    if log_path is not None:
+        target = log_path
+    else:
+        try:
+            target = active_sprint_paths()["verification_log_path"]
+        except Exception as _sp_exc:
+            audit_log("_log_plan_replacement", "sprint_path_fallback", str(_sp_exc))
+            target = VERIFICATION_LOG_PATH
     entry: dict = {
         "type": "plan_replacement",
         "old_plan_hash": old_hash,
@@ -2794,7 +2803,14 @@ def inject_verification_entry(
     Returns:
         True on success, False on write error (OSError).
     """
-    target = log_path if log_path is not None else VERIFICATION_LOG_PATH
+    if log_path is not None:
+        target = log_path
+    else:
+        try:
+            target = active_sprint_paths()["verification_log_path"]
+        except Exception as _sp_exc:
+            audit_log("inject_verification_entry", "sprint_path_fallback", str(_sp_exc))
+            target = VERIFICATION_LOG_PATH
     entry: dict = {
         "story_id": story_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -2835,7 +2851,11 @@ def main() -> None:
     if args.prd:
         prd_path = Path(args.prd)
     else:
-        default_prd = Path(".claude/prd.json")
+        try:
+            default_prd = active_sprint_paths()["prd_path"]
+        except Exception as _sp_exc:
+            audit_log("main", "sprint_path_fallback", str(_sp_exc))
+            default_prd = LEGACY_PRD_PATH
         if default_prd.is_file():
             prd_path = default_prd
 

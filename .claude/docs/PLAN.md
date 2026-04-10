@@ -1,13 +1,8 @@
-# Sprint B2 -- Mobile App Bootstrap + Shared Types + Baseline Debt Cleanup
-
-> **Active sprint plan.** Full program roadmap: `docs/PLAN-trucker-app-master.md`
->
-> This file contains ONLY the Sprint B2 execution contract. After B2
-> merges, the handoff script replaces this file with Sprint C's contract.
+# Plan: Mobile Sprints C+D+E — Trip Workspace, Document Capture, Offline Queue
 
 ## Goal
 
-Establish the Expo + React Native mobile app project structure under `apps/trucker/`, extract shared TypeScript types into `packages/shared/` for dual consumption by web and mobile, stand up the mobile navigation shell with tab-based routing and authentication screens, configure EAS Build for development and preview profiles, and resolve the 3 baseline technical debt items from the B1 debt register.
+Deliver three sprints of driver-facing mobile functionality in a single Ralph session: (C) Trip Workspace with real load data, status updates, and pull-to-refresh; (D) Document Capture with camera, preview, upload, OCR trigger, and results viewing; (E) Offline Queue with local file storage, upload retry, background sync, connectivity state, and offline indicators. All work is mobile-only under `apps/trucker/` on the `mobile/trucker-app` branch. No server changes needed — all endpoints already exist.
 
 ## System Context
 
@@ -15,717 +10,900 @@ Establish the Expo + React Native mobile app project structure under `apps/truck
 
 | File | Key Findings |
 |------|-------------|
-| `types.ts` (2130 lines) | 150 exports (types, interfaces, consts). Consumed by ~130 frontend files via `from '../types'` or `from '../../types'`. Zero server imports -- server has its own inline types. |
-| `tsconfig.json` | Target ES2022, module ESNext, moduleResolution bundler, jsx react-jsx, paths `@/*: ["./*"]`. Excludes `server/`, `node_modules/`, `scripts/dev/`. |
-| `server/tsconfig.json` | Target ES2020, module CommonJS, moduleResolution node, strict true. Includes `types/**/*.d.ts`. Server does NOT import root `types.ts`. |
-| `package.json` | Root package `loadpilot`, type module, React 19.2, Vite 6.2, TS 5.8, Vitest 4.0. |
-| `server/package.json` | `loadpilot-server`, type commonjs, Express 5.2, TS 5.9, Vitest 4.0, Zod 4.3. |
-| `vite.config.ts` | Path alias `@: .`, proxy `/api` to backend. Manual chunks for vendor, maps, pdf, xlsx, charts, firebase. |
-| `apps/trucker/` | 3 asset PNGs only (adaptive-icon, icon, splash). Zero code files. |
-| `packages/` | Does not exist. |
-| `.gitignore` | `.claude/` tracked via negation allowlist. `node_modules/`, `dist/`, coverage patterns. |
-| `server/index.ts` | 39 route imports, Sentry init, helmet, cors, compression, rate-limit. Feature flags route mounted. |
-| `e2e/ifta-audit-packet-smoke.spec.ts` | Uses `jszip` import -- TS2307 error (baseline debt item 1). |
-| `docs/trucker-app-baseline-debt.md` | 3 entries: jszip types, Windows PORT env, missing hooks tests dir. |
-| `.claude/workflow.json` | `project_test`: vitest both sides. `project_mode: host_project`. |
+| `apps/trucker/src/services/api.ts` | Generic REST client with `get/post/put/patch/delete`, Bearer token via `getIdToken()`, 401 auto-signout, network error handling. Base URL from `EXPO_PUBLIC_API_URL`. No multipart support yet. |
+| `apps/trucker/src/app/(tabs)/loads.tsx` | Placeholder screen: static "My Loads" / "No loads assigned yet" text. No API calls. |
+| `apps/trucker/src/app/(tabs)/index.tsx` | Placeholder Home screen. |
+| `apps/trucker/src/app/(tabs)/profile.tsx` | Placeholder Profile screen. |
+| `apps/trucker/src/app/(tabs)/_layout.tsx` | 3-tab layout: Home / Loads / Profile. Uses `expo-router` Tabs. |
+| `apps/trucker/src/app/_layout.tsx` | Root layout: AuthProvider wrapper, auth redirect logic via `useSegments()`. |
+| `apps/trucker/src/contexts/AuthContext.tsx` | Firebase Auth context: login, signup, logout, onAuthStateChanged listener, error mapping. Exports `AuthProvider` and `useAuth`. |
+| `apps/trucker/src/config/firebase.ts` | Firebase init from `EXPO_PUBLIC_FIREBASE_*` env vars. Exports `auth`. |
+| `apps/trucker/package.json` | Expo 55, React 18.3.1, RN 0.76.9, expo-router 5. No camera/file-system/task-manager deps yet. |
+| `apps/trucker/tsconfig.json` | Strict mode, `@/*` path alias to `./src/*`. |
+| `apps/trucker/app.json` | SDK 55, portrait only, iOS+Android. No camera permission entries yet. |
+| `packages/shared/src/types.ts` | `LoadStatus` type (8 values), `LOAD_STATUS` const with legacy aliases. |
+| `server/routes/loads.ts` | `GET /api/loads` (list), `GET /api/loads/:id` (detail implied), `PATCH /api/loads/:id` (partial update), `PATCH /api/loads/:id/status` (status transition with state machine + idempotency). |
+| `server/routes/documents.ts` | `GET /api/documents` (list with filters), `POST /api/documents` (multipart upload, field `file` + `document_type` + optional `load_id`), `GET /api/documents/:id`, `PATCH /api/documents/:id`, `GET /api/documents/:id/download`, `POST /api/documents/:id/process-ocr`, `GET /api/documents/:id/ocr`. |
+| `server/services/load-state-machine.ts` | 8-state enum, 8 valid transitions. Driver-relevant: dispatched->in_transit, in_transit->arrived, arrived->delivered. |
+| `scripts/verify-mobile-auth.cjs` | CJS verification pattern: `fs.readFileSync` + regex, `check(id, desc, condition)` helper, exit(1) on failures. |
 
 ### Data Flow Diagram
 
 ```
-[types.ts (root)]
-  |
-  |-- (extracted to) --> [packages/shared/src/types.ts]
-  |                         |
-  |                         |-- re-exported via --> [packages/shared/index.ts]
-  |                         |
-  |-- (consumed by) ------> [~130 frontend files via '../types']
-  |                         (updated to '@loadpilot/shared')
-  |
-  |-- NOT consumed by ----> [server/] (has own inline types)
+Sprint C: Trip Workspace
+  Driver opens Loads tab
+    -> GET /api/loads (with auth token)
+    -> Render FlatList of LoadCard components
+    -> Tap card -> navigate to LoadDetail screen
+    -> GET /api/loads/:id (fetch full detail)
+    -> Driver taps status button
+    -> PATCH /api/loads/:id/status { status: "in_transit" }
+    -> Optimistic UI update + error rollback
+    -> Pull-to-refresh -> re-fetch GET /api/loads
 
-[apps/trucker/]
-  |
-  |-- package.json (new, depends on @loadpilot/shared)
-  |-- app.json / app.config.ts (Expo config)
-  |-- eas.json (EAS Build profiles)
-  |-- src/
-  |     |-- app/ (Expo Router file-based routing)
-  |     |     |-- _layout.tsx (root layout with auth gate)
-  |     |     |-- (auth)/ (login, signup screens)
-  |     |     |-- (tabs)/ (home, loads, profile)
-  |     |-- services/
-  |     |     |-- api.ts (Express API client)
-  |     |     |-- auth.ts (Firebase Auth wrapper)
-  |     |-- components/ (shared mobile components)
+Sprint D: Document Capture
+  Driver on LoadDetail taps "Capture Document"
+    -> expo-camera launches CameraScreen
+    -> Driver takes photo -> preview screen
+    -> Accept: compress via expo-image-manipulator
+    -> POST /api/documents (multipart: file + document_type + load_id)
+    -> POST /api/documents/:id/process-ocr (trigger OCR)
+    -> Poll GET /api/documents/:id/ocr (view results)
+    -> GET /api/documents?load_id=X (document list per load)
+    Error: camera permission denied -> show permission prompt
+    Error: upload fails -> show retry button (Sprint E queues it)
+
+Sprint E: Offline Queue
+  Network goes offline (NetInfo detects)
+    -> Offline banner shown on all screens
+    -> Photo captured -> saved to expo-file-system local path
+    -> Upload queued in AsyncStorage queue
+    -> Network returns -> expo-task-manager background task fires
+    -> Queue processes: read file, upload, delete local copy
+    -> Retry with exponential backoff on failure
+    -> Queue status UI shows pending/failed/completed counts
+    Error: background task killed by OS -> resumes on next app open
+    Error: file read fails -> mark item as failed in queue
 ```
 
 ### Existing Patterns
 
-- **Import convention**: Frontend uses relative `../types` or `../../types`. Path alias `@/` resolves to project root.
-- **Auth pattern**: `server/auth.ts` uses Firebase Admin `verifyIdToken` + SQL principal lookup. Frontend uses Firebase client SDK.
-- **Test pattern**: Vitest + Testing Library (frontend), Vitest + supertest (server). Test files under `src/__tests__/` (frontend) and `server/__tests__/` (server).
-- **Module system**: Root is ESM (`"type": "module"`), server is CJS (`"type": "commonjs"`).
+- **API client**: `api.get<T>()` / `api.post<T>()` etc. in `apps/trucker/src/services/api.ts`. Needs multipart extension for file upload.
+- **Navigation**: expo-router file-based routing. Tabs under `(tabs)/`, auth under `(auth)/`. New screens go under `(tabs)/` or as stack routes.
+- **Styling**: StyleSheet.create with inline styles. Blue primary (#2563eb), white background.
+- **Auth**: `useAuth()` hook provides `user`, `isAuthenticated`. All API calls auto-attach Bearer token.
+- **CJS verification**: `check(id, desc, condition)` pattern from Sprint B2. Read files, regex match, exit(1) on any failure.
+- **Shared types**: `@loadpilot/shared` exports `LoadStatus`, `LOAD_STATUS`, used across frontend and server.
 
 ### Blast Radius Assessment
 
 | Area | Impact | Risk |
 |------|--------|------|
-| `types.ts` | MOVED to `packages/shared/src/types.ts`, original replaced with re-export barrel | HIGH -- 130+ files import this. Mitigated by keeping root `types.ts` as a re-export shim. |
-| Root `tsconfig.json` | ADD path alias for `@loadpilot/shared` | LOW -- additive change only. |
-| Root `package.json` | ADD workspace config + `@loadpilot/shared` dep | MEDIUM -- npm workspaces changes npm install behavior. |
-| `apps/trucker/` | NEW directory, isolated npm project | LOW -- completely new, no existing code affected. |
-| `packages/shared/` | NEW directory, new package | LOW -- new package, no existing code affected. |
-| Frontend test files | May need import path adjustment if shim re-export breaks | MEDIUM -- mitigated by keeping original `types.ts` as pass-through. |
-| `.gitignore` | May need `apps/trucker/node_modules/` + `packages/shared/dist/` | LOW -- additive. |
-| `e2e/ifta-audit-packet-smoke.spec.ts` | Debt fix: add `@types/jszip` or fix import | LOW -- isolated. |
-
-## Locked Decisions (applicable to B2)
-
-1. **Package manager**: Root stays npm. `apps/trucker/` is an isolated npm
-   subproject with its own `package.json`. Use `npm ci` (not `npm install`)
-   in all verification and CI commands.
-
-2. **Peer layout** -- `apps/trucker/` is a peer directory to root `src/`,
-   `components/`, `services/`. Web app stays exactly where it is. No
-   Turborepo. The master plan says "Turborepo monorepo restructure" but
-   locked decision #2 from B1 supersedes: peer layout, npm workspaces for
-   `packages/shared/` only.
-
-3. **Shared types via npm workspace** -- `packages/shared/` is an npm
-   workspace package (`@loadpilot/shared`). Root `types.ts` becomes a
-   re-export shim (`export * from '@loadpilot/shared'`) so existing 130+
-   imports continue working with zero changes to consuming files.
-
-4. **Expo Router** -- File-based routing via `expo-router` (not React
-   Navigation manually configured). Aligns with Expo SDK 55 defaults.
-
-5. **Windows-safe tooling only** -- Same as B1. All verification commands
-   use cross-platform tools. All R-marker assertions that read a file use
-   `fs.readFileSync` + regex.
-
-6. **Migration-number management**: B2 has no new SQL migrations. Max
-   existing = 054.
-
-7. **SaaS non-regression gate**: YES -- `packages/shared/` extraction
-   touches the type system consumed by all frontend code. Must verify
-   existing tests still pass after extraction.
-
-## SaaS Regression Protection Strategy
-
-The shared types extraction replaces the root `types.ts` content with a
-re-export shim. This ensures:
-1. All existing `import { X } from '../types'` paths continue resolving.
-2. No behavioral changes to any frontend component.
-3. Server code is unaffected (does not import root `types.ts`).
-4. Existing test suite runs identically before and after extraction.
+| `apps/trucker/src/` | PRIMARY — all new screens, services, hooks | Low (isolated from web app) |
+| `apps/trucker/package.json` | ADD dependencies (expo-camera, expo-image-manipulator, expo-file-system, expo-task-manager, @react-native-community/netinfo) | Low (isolated package.json) |
+| `apps/trucker/app.json` | ADD camera permission descriptions | Low |
+| `scripts/` | ADD CJS verification scripts | None (additive) |
+| `packages/shared/` | No changes | None |
+| `server/` | No changes | None |
+| Web frontend (`components/`, `services/`) | No changes | None |
 
 ---
 
-## Phase 1 -- Shared Types Package Extraction (foundation)
+## Phase 1: Load List Service + Load List Screen (Sprint C Foundation)
 
-Extract the 2130-line `types.ts` into `packages/shared/` as an npm workspace
-package. Root `types.ts` becomes a re-export shim. All existing imports
-continue working unchanged.
+**Phase Type**: `module`
 
 ### Changes
 
 | Action | File | Description | Test File | Test Type |
 |--------|------|-------------|-----------|-----------|
-| ADD | `packages/shared/package.json` | npm package `@loadpilot/shared`, version 0.0.1, main/types entry | `scripts/verify-shared-package.cjs` | unit |
-| ADD | `packages/shared/tsconfig.json` | TS config for shared package (ES2022, declaration, composite) | N/A | N/A |
-| ADD | `packages/shared/src/types.ts` | Full content moved from root `types.ts` (2130 lines) | `scripts/verify-shared-package.cjs` | unit |
-| ADD | `packages/shared/src/index.ts` | Barrel re-export: `export * from './types'` | `scripts/verify-shared-package.cjs` | unit |
-| MODIFY | `types.ts` | Replace content with `export * from '@loadpilot/shared'` re-export shim (1 line) | `scripts/verify-shared-package.cjs` | unit |
-| MODIFY | `package.json` | Add `"workspaces": ["packages/*"]` and `@loadpilot/shared` dependency | `scripts/verify-shared-package.cjs` | unit |
-| MODIFY | `tsconfig.json` | Add path alias `"@loadpilot/shared": ["./packages/shared/src"]` | `scripts/verify-shared-package.cjs` | unit |
-| ADD | `scripts/verify-shared-package.cjs` | Verification script: reads files, asserts structure, re-export shim, workspace config | `scripts/verify-shared-package.cjs` | unit |
+| ADD | `apps/trucker/src/services/loads.ts` | Add `fetchLoads()`, `fetchLoadById()`, `updateLoadStatus()` calling `api.get`/`api.patch` | `scripts/verify-trip-workspace.cjs` | unit |
+| ADD | `apps/trucker/src/types/load.ts` | Define `Load` interface with `id`, `status`, `origin_city`, `destination_city`, `pickup_date` fields | `scripts/verify-trip-workspace.cjs` | unit |
+| ADD | `apps/trucker/src/components/LoadCard.tsx` | Add `LoadCard` component rendering load reference, origin, destination, `StatusBadge` | `scripts/verify-trip-workspace.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/loads.tsx` | Replace placeholder with `FlatList` of `LoadCard`, `ActivityIndicator`, error state, `onRefresh` | `scripts/verify-trip-workspace.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `fetchLoads()` | `() => Promise<Load[]>` | none | `Load[]` array (server returns raw array, not wrapped) | ApiError (network, 401, 500) | `loads.tsx` | `api.get('/loads')` |
+| `fetchLoadById(id)` | `(id: string) => Promise<Load>` | load ID string | single `Load` filtered from list | ApiError (not-found if no match, network) | Phase 2 `LoadDetailScreen` | `fetchLoads()` then `.find(l => l.id === id)` (no GET /loads/:id endpoint exists) |
+| `updateLoadStatus(id, status)` | `(id: string, status: LoadStatus) => Promise<Load>` | load ID, target status | updated `Load` | ApiError (422 invalid transition, network) | Phase 3 `StatusUpdateFlow` | `api.patch('/loads/${id}/status', { status })` |
+| `LoadCard` | `(props: { load: Load; onPress: (id: string) => void }) => JSX.Element` | Load object + press handler | Rendered card | none (pure component) | `loads.tsx` FlatList | none |
+
+### Data Flow
+
+```
+loads.tsx mount -> useEffect calls fetchLoads()
+  -> api.get('/loads') -> server GET /api/loads
+  -> success: setLoads(data), setLoading(false)
+  -> error: setError(message), setLoading(false)
+  -> 401: api client auto-signout, redirect to login
+Pull-to-refresh: onRefresh -> setRefreshing(true) -> fetchLoads() -> setRefreshing(false)
+Empty state: loads.length === 0 && !loading -> "No loads assigned" message
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| loads.ts exports fetchLoads, fetchLoadById, updateLoadStatus | unit | Real | Verify function signatures exist via regex on source | `scripts/verify-trip-workspace.cjs` | `check('R-P1-01', '...', countMatches(content, /export.*function fetchLoads/) >= 1)` |
+| Load type has required fields | unit | Real | Type definition must include id, status, origin, destination | `scripts/verify-trip-workspace.cjs` | `check('R-P1-02', '...', /id.*string/.test(content) && /status.*LoadStatus/.test(content))` |
+| LoadCard component renders load data | unit | Real | Component must accept load prop and render origin/destination | `scripts/verify-trip-workspace.cjs` | `check('R-P1-03', '...', /load\.origin/.test(content) || /origin_city/.test(content))` |
+| loads.tsx uses FlatList with LoadCard | unit | Real | Screen must import FlatList and LoadCard | `scripts/verify-trip-workspace.cjs` | `check('R-P1-04', '...', /FlatList/.test(content) && /LoadCard/.test(content))` |
+| loads.tsx has pull-to-refresh | unit | Real | FlatList must have refreshing prop and onRefresh handler | `scripts/verify-trip-workspace.cjs` | `check('R-P1-05', '...', /refreshing/.test(content) && /onRefresh/.test(content))` |
+| loads.tsx has loading state | unit | Real | Must show ActivityIndicator or loading indicator when loading | `scripts/verify-trip-workspace.cjs` | `check('R-P1-06', '...', /ActivityIndicator/.test(content) || /loading/.test(content))` |
+| loads.tsx has error state | unit | Real | Must display error message when fetch fails | `scripts/verify-trip-workspace.cjs` | `check('R-P1-07', '...', /error/.test(content))` |
+
+### Done When
+
+- R-P1-01 [frontend]: `loads.ts` exports 3 functions: `fetchLoads()` calling `api.get("/loads")` returning the raw array, `fetchLoadById(id)` calling `fetchLoads()` then filtering by `id`, and `updateLoadStatus(id, status)` calling `api.patch`
+- R-P1-02 [frontend]: `load.ts` defines a `Load` interface with `id`, `status`, `pickup_date`, and a `legs` array of `LoadLeg` objects (each with `type`, `city`, `state`, `facility_name`, `date`, `sequence_order`). Also exports `getOrigin(load)` and `getDestination(load)` helpers that extract the first Pickup and last Dropoff leg's city+state
+- R-P1-03 [frontend]: `LoadCard.tsx` renders a `Pressable` card showing origin (from `getOrigin(load)`), destination (from `getDestination(load)`), and a color-coded status badge
+- R-P1-04 [frontend]: `loads.tsx` renders 1 `FlatList` of `LoadCard` components with `renderItem` fed by `fetchLoads()` response data array
+- R-P1-05 [frontend]: `loads.tsx` passes 2 refresh props (`refreshing={refreshing}` and `onRefresh`) to `FlatList` that re-call `fetchLoads()`
+- R-P1-06 [frontend]: `loads.tsx` renders `<ActivityIndicator />` when `loading` state is `true` during initial fetch
+- R-P1-07 [frontend]: `loads.tsx` renders an error `<Text>` and a "Retry" `<Pressable>` when `fetchLoads()` returns an error
+
+### Verification Command
+
+```bash
+node scripts/verify-trip-workspace.cjs
+```
+
+---
+
+## Phase 2: Load Detail Screen + Navigation
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| MOVE | `apps/trucker/src/app/(tabs)/loads/index.tsx` | Move ALL content from Phase 1's `(tabs)/loads.tsx` into `(tabs)/loads/index.tsx` (delete `loads.tsx` after move). The FlatList, fetchLoads, LoadCard rendering, and pull-to-refresh from Phase 1 must be preserved exactly. | `scripts/verify-load-detail.cjs` | unit |
+| ADD | `apps/trucker/src/app/(tabs)/loads/[id].tsx` | Add `LoadDetailScreen` calling `fetchLoadById` to render origin, destination, dates, `StatusBadge` | `scripts/verify-load-detail.cjs` | unit |
+| ADD | `apps/trucker/src/app/(tabs)/loads/_layout.tsx` | Add `Stack` navigator layout with `index` and `[id]` screen routes | `scripts/verify-load-detail.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/_layout.tsx` | Update Loads `Tabs.Screen` to point to nested `loads/` `Stack` layout | `scripts/verify-load-detail.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `LoadDetailScreen` | `() => JSX.Element` (route component) | `id` from route params via `useLocalSearchParams()` | Rendered detail view | ApiError display on fetch failure | loads list navigation | `fetchLoadById(id)` from Phase 1 |
+| `loads/_layout.tsx` | Stack navigator layout | none | Stack with `index` and `[id]` routes | none | tabs layout | none |
+
+### Data Flow
+
+```
+LoadCard press -> router.push(`/loads/${load.id}`)
+  -> loads/[id].tsx mounts -> useLocalSearchParams() gets id
+  -> fetchLoadById(id) -> api.get(`/loads/${id}`)
+  -> success: render detail sections (origin, destination, stops, dates, status)
+  -> error: show error with back button
+  -> 404: "Load not found" message
+Back button -> router.back() -> returns to load list
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| [id].tsx calls fetchLoadById | unit | Real | Detail screen must fetch by ID | `scripts/verify-load-detail.cjs` | `check('R-P2-01', ..., countMatches(content, /fetchLoadById/) >= 1)` |
+| [id].tsx renders origin and destination | unit | Real | Must display both addresses | `scripts/verify-load-detail.cjs` | `check('R-P2-02', ..., /origin/.test(content) && /destination/.test(content))` |
+| [id].tsx renders load status | unit | Real | Status badge visible on detail | `scripts/verify-load-detail.cjs` | `check('R-P2-03', ..., /status/.test(content) && /LoadStatus/.test(content))` |
+| _layout.tsx defines Stack with index and [id] | unit | Real | Stack navigator must have both routes | `scripts/verify-load-detail.cjs` | `check('R-P2-04', ..., /Stack/.test(content) && /index/.test(content))` |
+| LoadCard navigates to detail on press | unit | Real | LoadCard must use router.push to loads/id | `scripts/verify-load-detail.cjs` | `check('R-P2-05', ..., /router\.push.*loads/.test(content))` |
+
+### Done When
+
+- R-P2-01 [frontend]: `loads/[id].tsx` calls `fetchLoadById(id)` on mount via `useEffect` and renders 1 `Load` object (fetched by filtering the full loads list since no GET /loads/:id endpoint exists)
+- R-P2-02 [frontend]: `loads/[id].tsx` renders 4 labeled sections: origin (via `getOrigin(load)` from first Pickup leg), destination (via `getDestination(load)` from last Dropoff leg), `pickup_date`, and delivery date (from last Dropoff leg's `date` field)
+- R-P2-03 [frontend]: `loads/[id].tsx` renders 1 status badge component with the `load.status` value mapped to a distinct background color per status
+- R-P2-04 [frontend]: `loads/_layout.tsx` defines a `Stack` navigator with 2 screens: `index` (list) and `[id]` (detail)
+- R-P2-05 [frontend]: `LoadCard` calls `router.push("/loads/${load.id}")` on `Pressable` press to navigate to detail
+
+### Verification Command
+
+```bash
+node scripts/verify-load-detail.cjs
+```
+
+---
+
+## Phase 3: Status Update Flow
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| ADD | `apps/trucker/src/components/StatusUpdateButton.tsx` | Add `StatusUpdateButton` component accepting `currentStatus` and `onStatusChange` props | `scripts/verify-status-update.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/loads/[id].tsx` | Integrate `StatusUpdateButton` with `useLoadStatus` hook for optimistic status transition | `scripts/verify-status-update.cjs` | unit |
+| ADD | `apps/trucker/src/hooks/useLoadStatus.ts` | Add `useLoadStatus` hook with `transitionTo()` calling `updateLoadStatus()`, optimistic rollback on error | `scripts/verify-status-update.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `StatusUpdateButton` | `(props: { loadId: string; currentStatus: LoadStatus; onStatusChange: (newStatus: LoadStatus) => void }) => JSX.Element` | load ID, current status, callback | Rendered button(s) for valid transitions | none (delegates errors to hook) | `loads/[id].tsx` | none (calls onStatusChange) |
+| `useLoadStatus` | `(loadId: string, initialStatus: LoadStatus) => { status, updating, error, transitionTo }` | load ID, initial status | status state + transition function | ApiError (422 invalid, network) | `loads/[id].tsx` | `updateLoadStatus()` from Phase 1 |
+
+### Data Flow
+
+```
+LoadDetail renders StatusUpdateButton with currentStatus
+  -> StatusUpdateButton shows valid next states (e.g., "Start Trip", "Arrive", "Deliver")
+  -> Driver taps button -> calls onStatusChange(nextStatus)
+  -> useLoadStatus.transitionTo(nextStatus):
+    -> Optimistic: set status locally
+    -> PATCH /api/loads/:id/status { status: nextStatus }
+    -> Success: status stays at new value, show success toast/feedback
+    -> Error 422 (invalid transition): rollback to previous status, show error
+    -> Network error: rollback, show retry prompt
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| StatusUpdateButton renders transition buttons | unit | Real | Must show buttons based on current status | `scripts/verify-status-update.cjs` | `check('R-P3-01', ..., /StatusUpdateButton/.test(content) && countMatches(content, /onStatusChange/) >= 1)` |
+| useLoadStatus hook exports transitionTo | unit | Real | Hook must provide transition function | `scripts/verify-status-update.cjs` | `check('R-P3-02', ..., /export.*useLoadStatus/.test(content) && /transitionTo/.test(content))` |
+| useLoadStatus implements optimistic update | unit | Real | Must set status before API call and rollback on error | `scripts/verify-status-update.cjs` | `check('R-P3-03', ..., /setStatus/.test(content) && /catch|rollback|previous/.test(content))` |
+| [id].tsx integrates StatusUpdateButton | unit | Real | Detail screen imports and renders the button | `scripts/verify-status-update.cjs` | `check('R-P3-04', ..., countMatches(detailContent, /StatusUpdateButton/) >= 2)` |
+| StatusUpdateButton shows driver-relevant transitions only | unit | Real | Must filter to dispatched->in_transit, in_transit->arrived, arrived->delivered | `scripts/verify-status-update.cjs` | `check('R-P3-05', ..., /in_transit/.test(content) && /arrived/.test(content) && /delivered/.test(content))` |
+| Error feedback displayed on failed transition | unit | Real | Must show error state to user | `scripts/verify-status-update.cjs` | `check('R-P3-06', ..., /error/.test(hookContent) && /Text.*error/.test(hookContent))` |
+
+### Done When
+
+- R-P3-01 [frontend]: `StatusUpdateButton` accepts 2 props (`currentStatus: LoadStatus`, `onStatusChange`) and renders 1+ `Pressable` buttons for valid next statuses
+- R-P3-02 [frontend]: `useLoadStatus` hook exports 1 function `transitionTo(status)` that calls `updateLoadStatus(loadId, status)` from `loads.ts`
+- R-P3-03 [frontend]: `useLoadStatus` sets status optimistically before the API call and reverts to `previousStatus` in the `catch` block on error
+- R-P3-04 [frontend]: `loads/[id].tsx` renders 1 `StatusUpdateButton` with 2 props: `currentStatus={status}` and `onStatusChange={transitionTo}`
+- R-P3-05 [frontend]: `StatusUpdateButton` filters to 3 driver transitions: "dispatched" to "in_transit", "in_transit" to "arrived", "arrived" to "delivered"
+- R-P3-06 [frontend]: A failed transition renders an error `<Text>` showing the server's `message` field from the 422 response body
+- R-P3-07 [frontend]: `useLoadStatus` rejects an invalid transition by rolling back optimistic state and displaying the "Invalid load transition" 422 error
+
+### Verification Command
+
+```bash
+node scripts/verify-status-update.cjs
+```
+
+---
+
+## Phase 4: Camera Capture + Image Preview (Sprint D Foundation)
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| MODIFY | `apps/trucker/package.json` | Add `expo-camera` and `expo-image-manipulator` to `dependencies` | `scripts/verify-camera-capture.cjs` | unit |
+| MODIFY | `apps/trucker/app.json` | Add `NSCameraUsageDescription` plugin entry and Android `CAMERA` permission | `scripts/verify-camera-capture.cjs` | unit |
+| ADD | `apps/trucker/src/app/(camera)/_layout.tsx` | Add `Stack` navigator layout for camera flow with `camera`, `preview`, `upload`, and `ocr-result` screens | `scripts/verify-camera-capture.cjs` | unit |
+| ADD | `apps/trucker/src/app/(camera)/camera.tsx` | Add `CameraScreen` with viewfinder using `CameraView`, capture via `takePictureAsync()` | `scripts/verify-camera-capture.cjs` | unit |
+| ADD | `apps/trucker/src/app/(camera)/preview.tsx` | Add `PreviewScreen` with captured photo display, `Retake` and `Use Photo` buttons | `scripts/verify-camera-capture.cjs` | unit |
+| ADD | `apps/trucker/src/services/imageService.ts` | Add `compressImage()` using `manipulateAsync` to `resize` and JPEG compress | `scripts/verify-camera-capture.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `(camera)/_layout.tsx` | Stack navigator layout | none | Stack with camera, preview, upload, ocr-result routes | none | LoadDetail "Capture" nav | none |
+| `CameraScreen` | Route component at `(camera)/camera.tsx` | `loadId` from navigation params | Navigates to preview with photo URI | Camera permission denied -> show settings prompt | LoadDetail "Capture" button | expo-camera `takePictureAsync()` |
+| `PreviewScreen` | Route component at `(camera)/preview.tsx` | `photoUri`, `loadId` from navigation params | Navigates to upload flow (Phase 5) or back to camera | none | CameraScreen after capture | `compressImage()` |
+| `compressImage(uri)` | `(uri: string) => Promise<string>` | local file URI | compressed file URI | ImageManipulatorError | PreviewScreen | expo-image-manipulator |
+
+### Data Flow
+
+```
+LoadDetail -> "Capture Document" button -> navigate to CameraScreen({ loadId })
+  -> Request camera permission (expo-camera)
+    -> Denied: show "Camera permission required" with link to settings
+    -> Granted: show camera viewfinder
+  -> Driver taps capture button -> camera.takePictureAsync({ quality: 1 })
+    -> Photo saved to temp URI
+  -> Navigate to PreviewScreen({ photoUri, loadId })
+  -> Driver sees preview:
+    -> "Retake" -> navigate back to CameraScreen
+    -> "Use Photo" -> compressImage(photoUri) -> compressed URI
+    -> Navigate to upload step (Phase 5)
+  Error: takePictureAsync fails -> show "Capture failed, please try again"
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| expo-camera in package.json | unit | Real | Dependency must be declared | `scripts/verify-camera-capture.cjs` | `check('R-P4-01', '...', pkgJson.dependencies['expo-camera'] !== undefined)` |
+| app.json has camera permission | unit | Real | iOS Info.plist entry required | `scripts/verify-camera-capture.cjs` | `check('R-P4-02', '...', /NSCameraUsageDescription/.test(appJsonContent) || /usesPermissions.*CAMERA/.test(appJsonContent))` |
+| CameraScreen uses expo-camera | unit | Real | Must import and render Camera component | `scripts/verify-camera-capture.cjs` | `check('R-P4-03', '...', /expo-camera/.test(content) && /takePictureAsync/.test(content))` |
+| PreviewScreen shows retake/accept | unit | Real | Must have both action buttons | `scripts/verify-camera-capture.cjs` | `check('R-P4-04', '...', /[Rr]etake/.test(content) && /[Uu]se|[Aa]ccept/.test(content))` |
+| imageService compresses images | unit | Real | Must call manipulateAsync with resize/compress | `scripts/verify-camera-capture.cjs` | `check('R-P4-05', '...', /manipulateAsync/.test(content) && /resize/.test(content))` |
+| CameraScreen handles permission denial | unit | Real | Must check permission and show prompt | `scripts/verify-camera-capture.cjs` | `check('R-P4-06', '...', /permission/.test(content) && /denied|settings/.test(content))` |
+
+### Done When
+
+- R-P4-01 [frontend]: `package.json` declares 2 new dependencies: `"expo-camera"` and `"expo-image-manipulator"` in the `dependencies` object
+- R-P4-02 [frontend]: `app.json` includes `"NSCameraUsageDescription"` string and Android `"CAMERA"` permission in the `plugins` or `permissions` section
+- R-P4-03 [frontend]: `CameraScreen.tsx` imports `CameraView` from `expo-camera` and calls `takePictureAsync()` on a "Capture" `Pressable` press
+- R-P4-04 [frontend]: `PreviewScreen.tsx` renders the photo via `<Image source={{ uri }}>` with 2 buttons: "Retake" (navigates back) and "Use Photo" (proceeds)
+- R-P4-05 [frontend]: `imageService.ts` exports `compressImage(uri)` calling `manipulateAsync` with `resize` action (max 1920px) and `compress: 0.7`
+- R-P4-06 [frontend]: `CameraScreen.tsx` calls `useCameraPermissions()` and renders a "Grant Permission" prompt when `status` is "denied"
+
+### Verification Command
+
+```bash
+node scripts/verify-camera-capture.cjs
+```
+
+---
+
+## Phase 5: Document Upload + OCR Integration
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| ADD | `apps/trucker/src/services/documents.ts` | Add `uploadDocument()`, `triggerOcr()`, `getOcrResult()`, `listDocuments()` service functions | `scripts/verify-doc-upload.cjs` | unit |
+| MODIFY | `apps/trucker/src/services/api.ts` | Add `uploadFile(urlPath, formData)` method sending `FormData` via `fetch()` without manual `Content-Type` | `scripts/verify-doc-upload.cjs` | unit |
+| ADD | `apps/trucker/src/app/(camera)/upload.tsx` | Add `UploadScreen` with document type picker, `uploadDocument()` call, auto `triggerOcr()` | `scripts/verify-doc-upload.cjs` | unit |
+| ADD | `apps/trucker/src/app/(camera)/ocr-result.tsx` | Add `OcrResultScreen` calling `getOcrResult()` to render extracted fields from dynamic `fields[]` array | `scripts/verify-doc-upload.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `uploadDocument(params)` | `(params: { uri: string; loadId: string; documentType: string }) => Promise<{ id: string }>` | file URI, load ID, doc type | document ID | ApiError (413 too large, 400 bad type, network) | `UploadScreen` | `api.uploadFile()` |
+| `triggerOcr(docId)` | `(docId: string) => Promise<OcrResult>` | document ID | OCR processing result | ApiError (404, 500) | `UploadScreen` | `api.post('/documents/${docId}/process-ocr')` |
+| `getOcrResult(docId)` | `(docId: string) => Promise<OcrResult>` | document ID | OCR extracted data | ApiError (404) | `OcrResultScreen` | `api.get('/documents/${docId}/ocr')` |
+| `listDocuments(loadId)` | `(loadId: string) => Promise<Document[]>` | load ID | array of documents | ApiError (network) | Phase 6 `DocumentList` | `api.get('/documents?load_id=${loadId}')` |
+| `api.uploadFile(path, formData)` | `(urlPath: string, formData: FormData) => Promise<T>` | URL path, FormData object | server response | ApiError (network, 401, 413) | `uploadDocument()` | `fetch()` with multipart headers |
+| `UploadScreen` | Route component at `(camera)/upload.tsx` | `photoUri`, `loadId` from params | Navigates to OcrResultScreen or back to load detail | Upload/OCR errors shown inline | PreviewScreen "Use Photo" | `uploadDocument()`, `triggerOcr()` |
+| `OcrResultScreen` | Route component at `(camera)/ocr-result.tsx` | `documentId` from params | Renders dynamic `fields[]` array from server OCR response | Fetch error shown | UploadScreen after OCR | `getOcrResult()` |
+
+### Data Flow
+
+```
+PreviewScreen "Use Photo" -> navigate to UploadScreen({ photoUri, loadId })
+  -> Driver selects document type (BOL, Rate Con, POD, Scale Ticket)
+  -> Driver taps "Upload"
+  -> Compress image (if not already done) via compressImage()
+  -> Build FormData: file blob + document_type + load_id
+  -> api.uploadFile('/documents', formData)
+    -> Success: receive { id: documentId }
+    -> Auto-trigger: triggerOcr(documentId)
+      -> Success: navigate to OcrResultScreen({ documentId })
+      -> Error: show "OCR failed" with option to view document without OCR
+    -> Error 413: "File too large, please retake at lower quality"
+    -> Network error: "Upload failed" with retry button
+OcrResultScreen mount -> getOcrResult(documentId)
+  -> Display extracted fields (shipper, consignee, weight, reference numbers)
+  -> "Done" button -> navigate back to load detail
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| documents.ts exports uploadDocument, triggerOcr, getOcrResult, listDocuments | unit | Real | All document service functions must exist | `scripts/verify-doc-upload.cjs` | `check('R-P5-01', ..., countMatches(content, /export.*function/) >= 4)` |
+| api.ts has uploadFile method | unit | Real | Multipart support required for file upload | `scripts/verify-doc-upload.cjs` | `check('R-P5-02', ..., /uploadFile/.test(content) && /FormData/.test(content))` |
+| UploadScreen has document type selector | unit | Real | Driver must select BOL/RateCon/POD type | `scripts/verify-doc-upload.cjs` | `check('R-P5-03', ..., /BOL/.test(content) && /Rate.*Con/.test(content) && /POD/.test(content))` |
+| UploadScreen calls uploadDocument | unit | Real | Must invoke the upload service | `scripts/verify-doc-upload.cjs` | `check('R-P5-04', ..., countMatches(content, /uploadDocument/) >= 1)` |
+| UploadScreen triggers OCR after upload | unit | Real | Must call triggerOcr after successful upload | `scripts/verify-doc-upload.cjs` | `check('R-P5-05', ..., countMatches(content, /triggerOcr/) >= 1)` |
+| OcrResultScreen displays extracted data | unit | Real | Must call getOcrResult and render fields | `scripts/verify-doc-upload.cjs` | `check('R-P5-06', ..., countMatches(content, /getOcrResult/) >= 1)` |
+| UploadScreen has error handling for upload failure | unit | Real | Must show error and retry option | `scripts/verify-doc-upload.cjs` | `check('R-P5-07', ..., /error/.test(content) && /[Rr]etry/.test(content))` |
+| api.ts uploadFile omits Content-Type | unit | Real | RN sets multipart boundary automatically | `scripts/verify-doc-upload.cjs` | `check('R-P5-08', ..., !/Content-Type.*multipart/.test(content))` |
+
+### Done When
+
+- R-P5-01 [frontend]: `documents.ts` exports 4 functions: `uploadDocument`, `triggerOcr`, `getOcrResult`, `listDocuments`
+- R-P5-02 [frontend]: `api.ts` exports `uploadFile(urlPath, formData)` that sends `FormData` via `fetch()` without setting "Content-Type" header
+- R-P5-03 [frontend]: `upload.tsx` renders a picker with 5 document types: "BOL", "Rate Confirmation", "POD", "Fuel Receipt", "Scale Ticket" (matching server's supported document types)
+- R-P5-04 [frontend]: `UploadScreen.tsx` calls `uploadDocument()` with 3 params: compressed photo `uri`, `loadId`, and selected `documentType`
+- R-P5-05 [frontend]: `upload.tsx` calls `triggerOcr(documentId)` using the `documentId` field from the upload response (NOT `document.id`) and navigates to `ocr-result` screen. Note: server also auto-fires OCR for eligible types, so this is a redundant-but-safe explicit trigger
+- R-P5-06 [frontend]: `ocr-result.tsx` calls `getOcrResult(documentId)` on mount and renders the server's `fields[]` array using a `FlatList` or `map()` showing each item's `field_name`, `extracted_value`, and `confidence` score
+- R-P5-07 [frontend]: `UploadScreen.tsx` renders an error `<Text>` and a "Retry" `<Pressable>` when `uploadDocument()` returns an error
+- R-P5-08 [frontend]: `api.ts` `uploadFile` deletes the "Content-Type" key from headers so the runtime sets the multipart boundary automatically
+- R-P5-09 [frontend]: `UploadScreen.tsx` renders "File too large" error text when the server returns status code 413
+
+### Verification Command
+
+```bash
+node scripts/verify-doc-upload.cjs
+```
+
+---
+
+## Phase 6: Document List per Load
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| ADD | `apps/trucker/src/components/DocumentList.tsx` | Add `DocumentList` component calling `listDocuments(loadId)` with `FlatList` of document items | `scripts/verify-doc-list.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/loads/[id].tsx` | Add `DocumentList` section and "Capture Document" `Pressable` navigating to `CameraScreen` | `scripts/verify-doc-list.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `DocumentList` | `(props: { loadId: string }) => JSX.Element` | load ID | Rendered list of documents | ApiError displayed inline | `loads/[id].tsx` | `listDocuments(loadId)` from Phase 5 |
+
+### Data Flow
+
+```
+LoadDetail mounts/refreshes -> DocumentList receives loadId
+  -> listDocuments(loadId) -> api.get('/documents?load_id=${loadId}')
+  -> success: render FlatList of document items (name, type, status, date)
+  -> empty: "No documents yet" message
+  -> error: show error inline
+"Capture Document" button -> navigate to CameraScreen({ loadId })
+  -> After upload completes -> return to LoadDetail -> DocumentList refreshes
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| DocumentList component calls listDocuments | unit | Real | Must fetch documents for the load | `scripts/verify-doc-list.cjs` | `check('R-P6-01', ..., countMatches(content, /listDocuments/) >= 1)` |
+| DocumentList renders document items | unit | Real | Must display document type and name | `scripts/verify-doc-list.cjs` | `check('R-P6-02', ..., /FlatList/.test(content) && /document_type/.test(content))` |
+| LoadDetail has Capture Document button | unit | Real | Button must navigate to camera screen | `scripts/verify-doc-list.cjs` | `check('R-P6-03', ..., /[Cc]apture/.test(detailContent) && /[Cc]amera/.test(detailContent))` |
+| DocumentList shows empty state | unit | Real | Must handle empty document list gracefully | `scripts/verify-doc-list.cjs` | `check('R-P6-04', ..., /[Nn]o documents/.test(content))` |
+
+### Done When
+
+- R-P6-01 [frontend]: `DocumentList.tsx` calls `listDocuments(loadId)` on mount via `useEffect` and re-fetches on screen focus using `useFocusEffect` from `expo-router` (so new documents appear after camera capture flow returns)
+- R-P6-02 [frontend]: `DocumentList.tsx` renders each document in a `FlatList` showing 3 fields: `document_type`, `filename`, `created_at`
+- R-P6-03 [frontend]: `loads/[id].tsx` renders a "Capture Document" `Pressable` that navigates to `CameraScreen` with `loadId` param
+- R-P6-04 [frontend]: `DocumentList.tsx` renders "No documents yet" `<Text>` when the documents array has length 0
+
+### Verification Command
+
+```bash
+node scripts/verify-doc-list.cjs
+```
+
+---
+
+## Phase 7: Connectivity Service + Offline Banner (Sprint E Foundation)
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| MODIFY | `apps/trucker/package.json` | Add `@react-native-community/netinfo` to `dependencies` | `scripts/verify-offline-core.cjs` | unit |
+| ADD | `apps/trucker/src/services/connectivity.ts` | Add connectivity service subscribing to `NetInfo.addEventListener` exposing `isOnline` state | `scripts/verify-offline-core.cjs` | unit |
+| ADD | `apps/trucker/src/contexts/ConnectivityContext.tsx` | Add `ConnectivityProvider` context and `useConnectivity` hook returning `{ isOnline }` | `scripts/verify-offline-core.cjs` | unit |
+| ADD | `apps/trucker/src/components/OfflineBanner.tsx` | Add `OfflineBanner` rendering "You are offline" banner when `useConnectivity().isOnline` is false | `scripts/verify-offline-core.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/_layout.tsx` | Wrap app tree in `ConnectivityProvider`, render `OfflineBanner` at top level | `scripts/verify-offline-core.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `connectivityService` | `{ isOnline(): boolean; subscribe(cb): unsubscribe }` | none | boolean connectivity state | none | `ConnectivityContext` | `@react-native-community/netinfo` |
+| `ConnectivityProvider` | `({ children }) => JSX.Element` | React children | Context with `isOnline` value | none | `_layout.tsx` | `connectivityService` |
+| `useConnectivity` | `() => { isOnline: boolean }` | none | `{ isOnline }` | throws if outside provider | Any screen/component | none |
+| `OfflineBanner` | `() => JSX.Element \| null` | none (reads context) | Banner or null | none | `_layout.tsx` | `useConnectivity()` |
+
+### Data Flow
+
+```
+App starts -> ConnectivityProvider mounts
+  -> connectivityService subscribes to NetInfo
+  -> NetInfo reports connectivity state changes
+  -> isOnline updates in context
+  -> All screens re-render based on isOnline
+  -> OfflineBanner shows/hides based on isOnline
+
+Network drops:
+  -> NetInfo fires event -> isOnline = false
+  -> OfflineBanner appears with "You are offline" message
+  -> Upload attempts queue locally (Phase 9)
+
+Network returns:
+  -> NetInfo fires event -> isOnline = true
+  -> OfflineBanner hides
+  -> Background sync triggers (Phase 9)
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| @react-native-community/netinfo in dependencies | unit | Real | Dependency must be declared | `scripts/verify-offline-core.cjs` | `check('R-P7-01', '...', pkgJson.dependencies['@react-native-community/netinfo'] !== undefined)` |
+| connectivity.ts uses NetInfo | unit | Real | Must import and subscribe to NetInfo | `scripts/verify-offline-core.cjs` | `check('R-P7-02', '...', /NetInfo/.test(content) && /addEventListener/.test(content))` |
+| ConnectivityContext exports provider and hook | unit | Real | Must export ConnectivityProvider and useConnectivity | `scripts/verify-offline-core.cjs` | `check('R-P7-03', '...', /ConnectivityProvider/.test(content) && /useConnectivity/.test(content))` |
+| OfflineBanner reads connectivity context | unit | Real | Must call useConnectivity and conditionally render | `scripts/verify-offline-core.cjs` | `check('R-P7-04', '...', /useConnectivity/.test(content) && /offline|Offline/.test(content))` |
+| Root layout wraps with ConnectivityProvider | unit | Real | _layout.tsx must include ConnectivityProvider | `scripts/verify-offline-core.cjs` | `check('R-P7-05', '...', /ConnectivityProvider/.test(content))` |
+
+### Done When
+
+- R-P7-01 [frontend]: `package.json` declares `"@react-native-community/netinfo"` in the `dependencies` object
+- R-P7-02 [frontend]: `connectivity.ts` calls `NetInfo.addEventListener` and exports 1 boolean `isOnline` tracking connectivity state changes
+- R-P7-03 [frontend]: `ConnectivityContext.tsx` exports 2 items: `ConnectivityProvider` component and `useConnectivity` hook returning `{ isOnline: boolean }`
+- R-P7-04 [frontend]: `OfflineBanner.tsx` calls `useConnectivity()` and renders "You are offline" `<Text>` only when `isOnline === false`
+- R-P7-05 [frontend]: Root `_layout.tsx` wraps app tree with 1 `<ConnectivityProvider>` wrapper and renders 1 `<OfflineBanner />` at top level
+
+### Verification Command
+
+```bash
+node scripts/verify-offline-core.cjs
+```
+
+---
+
+## Phase 8: Local File Storage + Upload Queue
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| MODIFY | `apps/trucker/package.json` | Add `expo-file-system` and `@react-native-async-storage/async-storage` to `dependencies` | `scripts/verify-upload-queue.cjs` | unit |
+| ADD | `apps/trucker/src/services/fileStorage.ts` | Add `saveFileLocally()` using `FileSystem.copyAsync` and `deleteLocalFile()` using `deleteAsync` | `scripts/verify-upload-queue.cjs` | unit |
+| ADD | `apps/trucker/src/services/uploadQueue.ts` | Add `addToQueue()`, `processQueue()`, `getQueueItems()` with `AsyncStorage` persistence and exponential backoff | `scripts/verify-upload-queue.cjs` | unit |
+| ADD | `apps/trucker/src/types/queue.ts` | Define `QueueItem` interface with `id`, `filePath`, `status`, `retryCount`, `createdAt` fields | `scripts/verify-upload-queue.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `saveFileLocally(uri)` | `(uri: string) => Promise<string>` | temp photo URI | permanent local path | FileSystemError | Upload flow (when offline) | `expo-file-system.copyAsync()` |
+| `deleteLocalFile(path)` | `(path: string) => Promise<void>` | local file path | void | FileSystemError (silent) | Queue after successful upload | `expo-file-system.deleteAsync()` |
+| `addToQueue(item)` | `(item: Omit<QueueItem, 'id' \| 'status' \| 'retryCount' \| 'createdAt'>) => Promise<QueueItem>` | file path, load ID, doc type | queued item with ID | AsyncStorage write error | Upload flow (offline fallback) | `AsyncStorage.setItem()` |
+| `processQueue()` | `() => Promise<void>` | none | processes all pending items | individual item errors caught internally | Background task, app foreground | `uploadDocument()`, `deleteLocalFile()` |
+| `getQueueItems()` | `() => Promise<QueueItem[]>` | none | all queue items | AsyncStorage read error | Phase 10 QueueStatusUI | `AsyncStorage.getItem()` |
+
+### Data Flow
+
+```
+Online upload attempt fails OR device is offline:
+  -> saveFileLocally(compressedPhotoUri) -> permanent path in documentDirectory
+  -> addToQueue({ filePath, loadId, documentType })
+  -> QueueItem saved to AsyncStorage with status: 'pending'
+
+processQueue() runs (triggered by network return or background task):
+  -> getQueueItems() -> filter status === 'pending' or (status === 'failed' && retryCount < maxRetries)
+  -> For each item:
+    -> Update status to 'uploading'
+    -> uploadDocument({ uri: item.filePath, loadId: item.loadId, documentType: item.documentType })
+      -> Success: deleteLocalFile(item.filePath), update status to 'completed'
+      -> Failure: increment retryCount, set status to 'failed'
+        -> retryCount >= maxRetries (5): leave as 'failed' permanently
+        -> retryCount < 5: will be retried on next processQueue() call
+  -> Exponential backoff between retries: 2^retryCount * 1000ms (1s, 2s, 4s, 8s, 16s)
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| expo-file-system in dependencies | unit | Real | Dependency must be declared | `scripts/verify-upload-queue.cjs` | `check('R-P8-01', '...', pkgJson.dependencies['expo-file-system'] !== undefined)` |
+| fileStorage.ts exports save/delete functions | unit | Real | Must provide local file management | `scripts/verify-upload-queue.cjs` | `check('R-P8-02', '...', /saveFileLocally/.test(content) && /deleteLocalFile/.test(content))` |
+| uploadQueue.ts exports addToQueue and processQueue | unit | Real | Queue management functions must exist | `scripts/verify-upload-queue.cjs` | `check('R-P8-03', '...', /addToQueue/.test(content) && /processQueue/.test(content))` |
+| uploadQueue.ts implements retry with backoff | unit | Real | Must have retry count logic and exponential delay | `scripts/verify-upload-queue.cjs` | `check('R-P8-04', '...', /retryCount/.test(content) && /backoff|Math\.pow|2.*retryCount/.test(content))` |
+| QueueItem type has required fields | unit | Real | Type must include status, retryCount, filePath | `scripts/verify-upload-queue.cjs` | `check('R-P8-05', '...', /status.*pending.*uploading.*failed.*completed/.test(content))` |
+| uploadQueue.ts uses AsyncStorage for persistence | unit | Real | Queue must persist across app restarts | `scripts/verify-upload-queue.cjs` | `check('R-P8-06', '...', /AsyncStorage/.test(content))` |
+| fileStorage.ts uses expo-file-system | unit | Real | Must use FileSystem API for file operations | `scripts/verify-upload-queue.cjs` | `check('R-P8-07', '...', /expo-file-system/.test(content) && /copyAsync|moveAsync/.test(content))` |
+
+### Done When
+
+- R-P8-01 [frontend]: `package.json` declares both `"expo-file-system"` and `"@react-native-async-storage/async-storage"` in the `dependencies` object
+- R-P8-02 [frontend]: `fileStorage.ts` exports 2 functions: `saveFileLocally(uri)` returning the permanent path and `deleteLocalFile(path)` removing the file
+- R-P8-03 [frontend]: `uploadQueue.ts` exports 3 functions: `addToQueue()`, `processQueue()`, and `getQueueItems()`
+- R-P8-04 [frontend]: `uploadQueue.ts` computes retry delay as `Math.pow(2, retryCount) * 1000` ms (exponential backoff: 1s, 2s, 4s, 8s, 16s)
+- R-P8-05 [frontend]: `queue.ts` defines `QueueItem` with 7 fields: `id`, `filePath`, `loadId`, `documentType`, `status`, `retryCount`, `createdAt`
+- R-P8-06 [frontend]: `uploadQueue.ts` calls `AsyncStorage.setItem("uploadQueue", JSON.stringify(items))` to persist queue state
+- R-P8-07 [frontend]: `fileStorage.ts` calls `FileSystem.copyAsync` with 2 params `{ from: uri, to: permanentPath }` to save files from temp storage
+- R-P8-08 [frontend]: `processQueue()` marks items with `retryCount >= 5` as `status: "failed"` permanently and skips them
+
+### Verification Command
+
+```bash
+node scripts/verify-upload-queue.cjs
+```
+
+---
+
+## Phase 9: Background Sync Task
+
+**Phase Type**: `module`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| MODIFY | `apps/trucker/package.json` | Add `expo-task-manager` to `dependencies` | `scripts/verify-background-sync.cjs` | unit |
+| ADD | `apps/trucker/src/services/backgroundSync.ts` | Add `registerBackgroundSync()` calling `TaskManager.defineTask` with `processQueue()` handler | `scripts/verify-background-sync.cjs` | unit |
+| MODIFY | `apps/trucker/src/services/connectivity.ts` | Add `processQueue()` call on offline-to-online transition in `NetInfo` listener | `scripts/verify-background-sync.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/_layout.tsx` | Call `registerBackgroundSync()` in root layout `useEffect` on mount | `scripts/verify-background-sync.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `registerBackgroundSync()` | `() => Promise<void>` | none | void (task registered) | TaskManager registration error (logged, not thrown) | `_layout.tsx` on mount | `expo-task-manager.defineTask()`, `TaskManager.registerTaskAsync()` |
+| `UPLOAD_TASK_NAME` | `const string` | none | `'loadpilot-upload-sync'` | none | `backgroundSync.ts`, `_layout.tsx` | none |
+| Network restore listener | internal | connectivity change event | triggers `processQueue()` | processQueue errors caught internally | `connectivity.ts` NetInfo callback | `processQueue()` from Phase 8 |
+
+### Data Flow
+
+```
+App startup -> _layout.tsx mounts
+  -> registerBackgroundSync() called
+  -> TaskManager.defineTask(UPLOAD_TASK_NAME, async () => {
+       await processQueue();
+       return BackgroundFetch.BackgroundFetchResult.NewData;
+     })
+  -> TaskManager.registerTaskAsync(UPLOAD_TASK_NAME, { minimumInterval: 15*60 })
+  -> Task fires every ~15 minutes when app is backgrounded
+
+Network connectivity restored (NetInfo event):
+  -> connectivity.ts detects online transition (was offline, now online)
+  -> Immediately calls processQueue()
+  -> Queue items uploaded in order
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| expo-task-manager in dependencies | unit | Real | Dependency must be declared | `scripts/verify-background-sync.cjs` | `check('R-P9-01', '...', pkgJson.dependencies['expo-task-manager'] !== undefined)` |
+| backgroundSync.ts defines task | unit | Real | Must use TaskManager.defineTask | `scripts/verify-background-sync.cjs` | `check('R-P9-02', '...', /defineTask/.test(content) && /UPLOAD/.test(content))` |
+| backgroundSync.ts calls processQueue | unit | Real | Background task must invoke queue processing | `scripts/verify-background-sync.cjs` | `check('R-P9-03', '...', /processQueue/.test(content))` |
+| connectivity.ts triggers processQueue on reconnect | unit | Real | Must call processQueue when going from offline to online | `scripts/verify-background-sync.cjs` | `check('R-P9-04', '...', /processQueue/.test(connContent))` |
+| _layout.tsx registers background task | unit | Real | Must call registerBackgroundSync on mount | `scripts/verify-background-sync.cjs` | `check('R-P9-05', '...', /registerBackgroundSync/.test(layoutContent))` |
+
+### Done When
+
+- R-P9-01 [frontend]: `package.json` declares `"expo-task-manager"` in the `dependencies` object
+- R-P9-02 [frontend]: `backgroundSync.ts` calls `TaskManager.defineTask("loadpilot-upload-sync", handler)` with a handler that runs `processQueue()`
+- R-P9-03 [frontend]: The background task handler calls 1 function `processQueue()` and returns `BackgroundFetch.BackgroundFetchResult.NewData`
+- R-P9-04 [frontend]: `connectivity.ts` calls `processQueue()` when `NetInfo` transitions from `isConnected === false` to `isConnected === true`
+- R-P9-05 [frontend]: Root `_layout.tsx` calls `registerBackgroundSync()` inside 1 `useEffect` hook with empty dependency array `[]` during mount
+
+### Verification Command
+
+```bash
+node scripts/verify-background-sync.cjs
+```
+
+---
+
+## Phase 10: Queue Status UI + Offline Upload Integration
+
+**Phase Type**: `integration`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| ADD | `apps/trucker/src/components/QueueStatusBadge.tsx` | Add `QueueStatusBadge` calling `getQueueItems()` to display pending+failed count | `scripts/verify-queue-ui.cjs` | unit |
+| ADD | `apps/trucker/src/app/(tabs)/queue.tsx` | Add `QueueScreen` as a tab with `FlatList` of queue items, `Retry` button for failed, status per item | `scripts/verify-queue-ui.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(camera)/upload.tsx` | Add `isOnline` check via `useConnectivity()`; when offline OR when direct upload fails with network error, call `saveFileLocally()` then `addToQueue()` as fallback | `scripts/verify-queue-ui.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/_layout.tsx` | Add `QueueStatusBadge` to tab bar or add Queue `Tabs.Screen` | `scripts/verify-queue-ui.cjs` | unit |
+
+### Interface Contracts
+
+| Component | Signature | Input | Output | Errors | Called By | Calls |
+|-----------|-----------|-------|--------|--------|-----------|-------|
+| `QueueStatusBadge` | `() => JSX.Element \| null` | none (reads queue) | Badge with pending count or null | none | tabs layout | `getQueueItems()` from Phase 8 |
+| `QueueScreen` | Route component | none | List of queue items with actions | AsyncStorage read error | Tab bar or navigation | `getQueueItems()`, `processQueue()` |
+
+### Data Flow
+
+```
+UploadScreen detects offline state (useConnectivity):
+  -> Instead of direct upload:
+    -> compressImage(photoUri) -> compressed URI
+    -> saveFileLocally(compressedUri) -> permanent path
+    -> addToQueue({ filePath: permanentPath, loadId, documentType })
+    -> Show "Document queued for upload when online" toast
+    -> Navigate back to load detail
+
+QueueScreen mount:
+  -> getQueueItems() -> display list grouped by status
+  -> Pending: show "Waiting for connection"
+  -> Uploading: show progress
+  -> Failed: show "Retry" button -> retries single item
+  -> Completed: show "Clear" button -> removes from list
+
+QueueStatusBadge:
+  -> getQueueItems() -> count pending + failed
+  -> count > 0: show red badge with count
+  -> count === 0: render null (no badge)
+```
+
+### Testing Strategy
+
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| QueueStatusBadge reads queue items | unit | Real | Must access queue to show count | `scripts/verify-queue-ui.cjs` | `check('R-P10-01', ..., countMatches(content, /getQueueItems/) >= 1)` |
+| QueueScreen displays queue items | unit | Real | Must list items with status | `scripts/verify-queue-ui.cjs` | `check('R-P10-02', ..., /getQueueItems/.test(content) && /FlatList/.test(content))` |
+| QueueScreen has retry button for failed items | unit | Real | Failed items must have manual retry | `scripts/verify-queue-ui.cjs` | `check('R-P10-03', ..., /[Rr]etry/.test(content) && /failed/.test(content))` |
+| UploadScreen uses offline fallback | unit | Real | Must check connectivity and queue when offline | `scripts/verify-queue-ui.cjs` | `check('R-P10-04', ..., /useConnectivity/.test(uploadContent) && /addToQueue/.test(uploadContent))` |
+| Tab layout shows queue indicator | unit | Real | Must integrate QueueStatusBadge or queue visibility | `scripts/verify-queue-ui.cjs` | `check('R-P10-05', ..., countMatches(tabContent, /[Qq]ueue/) >= 1)` |
+
+### Done When
+
+- R-P10-01 [frontend]: `QueueStatusBadge.tsx` calls `getQueueItems()` and renders a red badge with the count of items where `status === "pending"` or `status === "failed"`
+- R-P10-02 [frontend]: `QueueScreen.tsx` renders all queue items in a `FlatList` showing 4 fields: filename, `documentType`, `status`, `retryCount`
+- R-P10-03 [frontend]: `QueueScreen.tsx` renders a "Retry" `<Pressable>` for each item with `status === "failed"` that re-triggers upload
+- R-P10-04 [frontend]: `upload.tsx` checks `useConnectivity().isOnline`; when `isOnline === false`, calls `saveFileLocally()` then `addToQueue()` instead of direct upload; when online upload fails with a network error, falls back to the same queue path
+- R-P10-05 [frontend]: Tab `_layout.tsx` adds a 4th `Tabs.Screen` for `queue` with `QueueStatusBadge` rendering the pending count as a tab badge number (visible when count > 0)
+
+### Verification Command
+
+```bash
+node scripts/verify-queue-ui.cjs
+```
+
+---
+
+## Phase 11: Combined Verification + Home Screen Dashboard
+
+**Phase Type**: `e2e`
+
+### Changes
+
+| Action | File | Description | Test File | Test Type |
+|--------|------|-------------|-----------|-----------|
+| ADD | `scripts/verify-sprint-cde.cjs` | Add combined verification script that runs all phase `verify-*.cjs` scripts and reports aggregate pass/fail | `scripts/verify-sprint-cde.cjs` | e2e |
+| MODIFY | `apps/trucker/src/app/(tabs)/index.tsx` | Replace placeholder with dashboard calling `fetchLoads()` for active count and `getQueueItems()` for pending uploads | `scripts/verify-sprint-cde.cjs` | unit |
+| MODIFY | `apps/trucker/src/app/(tabs)/profile.tsx` | Add queue status section calling `getQueueItems()` to show pending upload count | `scripts/verify-sprint-cde.cjs` | unit |
 
 ### Untested Files
 
 | File | Reason | Tested Via |
-|------|--------|------------|
-| `packages/shared/tsconfig.json` | Config-only JSON | TypeScript compilation via `npx tsc --noEmit` in verification command |
+|------|--------|-----------|
+| `scripts/verify-sprint-cde.cjs` | Verification script itself | Manual execution (self-testing) |
 
 ### Interface Contracts
 
-| Component | Signature | Input | Output | Errors | Called By | Calls |
-|-----------|-----------|-------|--------|--------|-----------|-------|
-| `packages/shared/src/index.ts` | `export * from './types'` | N/A (barrel re-export) | All 150 type/interface/const exports from types.ts | TS compilation errors if types.ts has syntax errors | All frontend files via shim, `apps/trucker/` directly | `./types` |
-| `types.ts` (root, modified) | `export * from '@loadpilot/shared'` | N/A (re-export shim) | All 150 type/interface/const exports | Module resolution error if workspace not linked | ~130 frontend files | `@loadpilot/shared` |
+N/A -- This phase wires existing components together and adds a combined verification script. No new function signatures.
 
 ### Data Flow
 
 ```
-packages/shared/src/types.ts (canonical source, 2130 lines)
-  --> packages/shared/src/index.ts (barrel: export *)
-    --> types.ts (root shim: export * from '@loadpilot/shared')
-      --> ~130 frontend files (unchanged import paths)
-    --> apps/trucker/ (direct: import { X } from '@loadpilot/shared')
+Home screen mount:
+  -> fetchLoads() -> count active loads (status in dispatched/in_transit/arrived)
+  -> Find next upcoming pickup by pickup_date
+  -> getQueueItems() -> count pending uploads
+  -> Display dashboard cards: Active Loads (count), Next Pickup (date+destination), Pending Uploads (count)
 
-Error paths:
-  - npm workspace not linked: `npm install` fails to resolve @loadpilot/shared
-    --> Fix: run `npm install` from root after adding workspaces
-  - TypeScript path alias missing: tsc cannot find module
-    --> Fix: tsconfig.json paths entry required
-  - Circular re-export: if shim imports from itself
-    --> Prevention: shim imports package name, not relative path
+Profile screen:
+  -> getQueueItems() -> show "N documents pending upload" summary
+  -> If queue has failed items, show warning
+
+Combined verification (verify-sprint-cde.cjs):
+  -> Runs all 11 phase verification checks sequentially
+  -> Reports total pass/fail count
+  -> Exit 0 if all pass, exit 1 if any fail
 ```
 
 ### Testing Strategy
 
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| Shared package structure exists | unit | Real | Pure file assertions via fs.readFileSync, no mocking needed | `scripts/verify-shared-package.cjs` |
-| Re-export shim content correct | unit | Real | Regex assertion on single-line shim via fs.readFileSync | `scripts/verify-shared-package.cjs` |
-| Workspace config in root package.json | unit | Real | Structural assertion via JSON.parse + fs.readFileSync | `scripts/verify-shared-package.cjs` |
-| TypeScript compilation succeeds | unit | Real | Must compile with new paths via npx tsc --noEmit | verification command |
-| Existing frontend tests still pass | integration | Real | SaaS non-regression via npx vitest run | verification command |
+| What | Type | Real/Mock | Justification | Test File | Assertion Blueprint |
+|------|------|-----------|---------------|-----------|-------------------|
+| Home screen shows load counts | e2e | Real | Dashboard must display active load data | `scripts/verify-sprint-cde.cjs` | `check('R-P11-01', ..., /fetchLoads/.test(homeContent) && countMatches(homeContent, /active/) >= 1)` |
+| Home screen shows pending queue | e2e | Real | Dashboard must show upload queue status | `scripts/verify-sprint-cde.cjs` | `check('R-P11-02', ..., /getQueueItems/.test(homeContent))` |
+| All phase verification scripts exist | e2e | Real | All CJS scripts must be present | `scripts/verify-sprint-cde.cjs` | `check('R-P11-03', ..., fs.existsSync(path.join(ROOT, 'scripts/verify-trip-workspace.cjs')) === true)` |
+| Combined script exits with correct code | e2e | Real | Aggregated pass/fail must match | `scripts/verify-sprint-cde.cjs` | `assert(process.exitCode === (failures > 0 ? 1 : 0))` |
 
-**Assertion blueprints:**
-- `assert(JSON.parse(rootPkg).workspaces.includes('packages/*'))` -- workspace config present
-- `assert(/^export \* from ['"]@loadpilot\/shared['"]/.test(shimContent))` -- re-export shim correct
-- `assert(fs.existsSync('packages/shared/src/types.ts'))` -- canonical types file exists
-- `assert(JSON.parse(sharedPkg).name === '@loadpilot/shared')` -- package name correct
+### Done When
 
-### Acceptance Criteria (R-markers)
-
-- R-P1-01 [frontend]: `packages/shared/package.json` exists with `"name": "@loadpilot/shared"` and `"version": "0.0.1"`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting via JSON.parse
-- R-P1-02 [frontend]: `packages/shared/src/types.ts` contains all 150 exported symbols from the original `types.ts`; verified by `scripts/verify-shared-package.cjs` reading both files via `fs.readFileSync` and comparing export counts via regex `export (type|interface|const|enum|function)` match count
-- R-P1-03 [frontend]: `packages/shared/src/index.ts` contains barrel re-export `export * from './types'`; verified by `scripts/verify-shared-package.cjs` reading file and matching regex
-- R-P1-04 [frontend]: Root `types.ts` contains exactly one line: re-export shim `export * from '@loadpilot/shared'`; verified by `scripts/verify-shared-package.cjs` reading file and asserting line count equals 1 and content matches regex
-- R-P1-05 [frontend]: Root `package.json` contains `"workspaces": ["packages/*"]`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting JSON.parse result
-- R-P1-06 [frontend]: Root `tsconfig.json` contains path alias `"@loadpilot/shared"` pointing to `"./packages/shared/src"`; verified by `scripts/verify-shared-package.cjs` reading file and asserting paths entry exists
-- R-P1-07 [integration]: `npx tsc --noEmit` exits with code 0 from project root (existing frontend types resolve through shim); verified by `scripts/verify-shared-package.cjs` spawning process via `child_process.spawnSync` and asserting exit code
+- R-P11-01 [frontend]: `index.tsx` calls `fetchLoads()` and renders an "Active Loads" card counting loads with status in `["dispatched", "in_transit", "arrived"]`
+- R-P11-02 [frontend]: `index.tsx` calls `getQueueItems()` and renders a "Pending Uploads" card showing the count when count > 0
+- R-P11-03 [frontend]: `scripts/verify-sprint-cde.cjs` exists and invokes all 10 phase `verify-*.cjs` scripts, reporting aggregated pass/fail totals
+- R-P11-04 [frontend]: `scripts/verify-sprint-cde.cjs` calls `process.exit(1)` when `failures > 0` and `process.exit(0)` when all checks pass
 
 ### Verification Command
 
 ```bash
-npm install --ignore-scripts
-node scripts/verify-shared-package.cjs
+node scripts/verify-sprint-cde.cjs
 ```
 
 ---
 
-## Phase 2 -- Expo Project Initialization (foundation)
-
-Initialize the Expo + React Native project under `apps/trucker/` using
-`create-expo-app` defaults. Configure `app.json`, `eas.json`, and basic
-project structure. This phase creates a buildable Expo project with no
-navigation or auth yet.
-
-### Changes
-
-| Action | File | Description | Test File | Test Type |
-|--------|------|-------------|-----------|-----------|
-| ADD | `apps/trucker/package.json` | Expo project package.json with expo, react-native, expo-router deps | `scripts/verify-expo-project.cjs` | unit |
-| ADD | `apps/trucker/tsconfig.json` | TypeScript config extending Expo defaults | N/A | N/A |
-| ADD | `apps/trucker/app.json` | Expo app config: name, slug, scheme, sdkVersion, platforms | `scripts/verify-expo-project.cjs` | unit |
-| ADD | `apps/trucker/eas.json` | EAS Build profiles: development (internal), preview (internal), production | `scripts/verify-expo-project.cjs` | unit |
-| ADD | `apps/trucker/babel.config.js` | Babel config with expo preset | N/A | N/A |
-| ADD | `apps/trucker/src/app/_layout.tsx` | Root layout placeholder (Slot from expo-router) | `scripts/verify-expo-project.cjs` | unit |
-| ADD | `apps/trucker/src/app/index.tsx` | Root screen placeholder (welcome text) | `scripts/verify-expo-project.cjs` | unit |
-| MODIFY | `.gitignore` | Add `apps/trucker/node_modules/`, `apps/trucker/.expo/`, `packages/shared/dist/` | `scripts/verify-expo-project.cjs` | unit |
-| ADD | `scripts/verify-expo-project.cjs` | Verification script: asserts Expo project structure, app.json fields, eas.json profiles | `scripts/verify-expo-project.cjs` | unit |
-
-### Untested Files
-
-| File | Reason | Tested Via |
-|------|--------|------------|
-| `apps/trucker/tsconfig.json` | Config-only JSON | TypeScript compilation via verification command |
-| `apps/trucker/babel.config.js` | Config-only JS | Expo project loads correctly |
-
-### Interface Contracts
-
-| Component | Signature | Input | Output | Errors | Called By | Calls |
-|-----------|-----------|-------|--------|--------|-----------|-------|
-| `apps/trucker/app.json` | Expo config object | N/A | `{ expo: { name, slug, scheme, sdkVersion, platforms, ... } }` | Invalid config: Expo CLI errors on build | EAS Build, expo start | N/A |
-| `apps/trucker/eas.json` | EAS config object | N/A | `{ build: { development, preview, production } }` | Invalid profile: EAS Build errors | EAS Build CLI | N/A |
-| `apps/trucker/src/app/_layout.tsx` | `export default function RootLayout()` | N/A | JSX: `<Slot />` | Import errors if expo-router not installed | Expo Router | `expo-router` |
-
-### Data Flow
-
-```
-apps/trucker/package.json
-  --> npm install (isolated project, own node_modules)
-  --> app.json (Expo SDK config: name, scheme, platforms)
-  --> eas.json (build profiles: dev/preview/prod)
-  --> src/app/_layout.tsx (Expo Router root layout)
-    --> src/app/index.tsx (root screen)
-
-Error paths:
-  - npm install fails: missing peer deps for Expo SDK
-    --> Fix: use exact Expo SDK 55 compatible versions
-  - Expo Router not found: missing expo-router in deps
-    --> Fix: included in package.json dependencies
-  - EAS Build fails: invalid eas.json schema
-    --> Fix: use documented default structure from Expo docs
-```
-
-### Testing Strategy
-
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| Expo project files exist | unit | Real | File existence and content assertions via fs.readFileSync | `scripts/verify-expo-project.cjs` |
-| app.json has required fields | unit | Real | Structural assertion via JSON.parse on config | `scripts/verify-expo-project.cjs` |
-| eas.json has 3 build profiles | unit | Real | Structural assertion via JSON.parse | `scripts/verify-expo-project.cjs` |
-| Root layout exports default function | unit | Real | Code structure assertion via fs.readFileSync + regex | `scripts/verify-expo-project.cjs` |
-| .gitignore updated | unit | Real | Pattern presence check via fs.readFileSync + regex | `scripts/verify-expo-project.cjs` |
-
-**Assertion blueprints:**
-- `assert(expo.name === 'LoadPilot Trucker')` -- app name correct
-- `assert(expo.sdkVersion === '55.0.0' || expo.sdkVersion.startsWith('55'))` -- SDK version
-- `assert(Object.keys(easBuild).includes('development'))` -- dev profile exists
-- `assert(Object.keys(easBuild).includes('preview'))` -- preview profile exists
-- `assert(Object.keys(easBuild).includes('production'))` -- production profile exists
-- `assert(/export default function RootLayout/.test(layoutContent))` -- root layout exists
-
-### Acceptance Criteria (R-markers)
-
-- R-P2-01 [frontend]: `apps/trucker/package.json` exists with `"expo"`, `"react-native"`, and `"expo-router"` as 3 required keys in `dependencies`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and asserting all 3 keys present in `JSON.parse(content).dependencies`
-- R-P2-02 [frontend]: `apps/trucker/app.json` contains `expo.name`, `expo.slug`, `expo.scheme`, and `expo.platforms` including both `"ios"` and `"android"`; verified by `scripts/verify-expo-project.cjs` reading file and asserting JSON structure
-- R-P2-03 [frontend]: `apps/trucker/eas.json` contains `build.development`, `build.preview`, and `build.production` profiles; verified by `scripts/verify-expo-project.cjs` reading file and asserting all 3 keys exist
-- R-P2-04 [frontend]: `apps/trucker/src/app/_layout.tsx` exports `export default function RootLayout` that renders Expo Router `Slot` or `Stack`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and matching `/export default function RootLayout/` regex returning exactly 1 match
-- R-P2-05 [frontend]: `apps/trucker/src/app/index.tsx` exists and contains `export default` matching `/export default/` regex with exactly 1 match; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync`
-- R-P2-06 [frontend]: `.gitignore` contains entries for `apps/trucker/node_modules/` and `apps/trucker/.expo/`; verified by `scripts/verify-expo-project.cjs` reading `.gitignore` via `fs.readFileSync` and asserting both patterns present via regex (at minimum these 2, additional entries allowed)
-
-### Verification Command
-
-```bash
-node scripts/verify-expo-project.cjs
-```
-
----
-
-## Phase 3 -- Mobile Navigation Shell (module)
-
-Build the tab-based navigation shell with Expo Router. Three tabs: Home,
-Loads, Profile. Add an auth gate in the root layout that redirects
-unauthenticated users to the (auth) group. No actual Firebase Auth yet --
-just the navigation structure with a mock auth context.
-
-### Changes
-
-| Action | File | Description | Test File | Test Type |
-|--------|------|-------------|-----------|-----------|
-| ADD | `apps/trucker/src/contexts/AuthContext.tsx` | React context with `isAuthenticated`, `user`, `login`, `logout` stubs | `scripts/verify-mobile-nav.cjs` | unit |
-| MODIFY | `apps/trucker/src/app/_layout.tsx` | Wrap with AuthProvider, redirect to (auth) when not authenticated. NOTE: file created in Phase 2 | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(tabs)/_layout.tsx` | Tab navigator layout with Home, Loads, Profile tabs | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(tabs)/index.tsx` | Home tab screen placeholder | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(tabs)/loads.tsx` | Loads tab screen placeholder | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(tabs)/profile.tsx` | Profile tab screen placeholder | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(auth)/_layout.tsx` | Auth group layout (Stack navigator for login/signup) | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(auth)/login.tsx` | Login screen placeholder (form shell, no Firebase yet) | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `apps/trucker/src/app/(auth)/signup.tsx` | Signup screen placeholder (form shell, no Firebase yet) | `scripts/verify-mobile-nav.cjs` | unit |
-| ADD | `scripts/verify-mobile-nav.cjs` | Verification script: asserts all route files exist, tab layout has 3 tabs, auth group has login/signup, AuthContext structure | `scripts/verify-mobile-nav.cjs` | unit |
-
-### Untested Files
-
-None -- all files have test coverage.
-
-### Interface Contracts
-
-| Component | Signature | Input | Output | Errors | Called By | Calls |
-|-----------|-----------|-------|--------|--------|-----------|-------|
-| `AuthContext` | `{ isAuthenticated: boolean, user: null \| AuthUser, login: (email, pw) => Promise<void>, logout: () => Promise<void> }` | Provider wraps app tree | Context value accessible via `useAuth()` hook | None (stub -- always succeeds) | `_layout.tsx` (root), all screens | React Context API |
-| `(tabs)/_layout.tsx` | `export default function TabLayout()` | N/A | JSX: `<Tabs>` with 3 `<Tabs.Screen>` entries (index, loads, profile) | N/A | Expo Router (auto-detected from file path) | `expo-router/Tabs` |
-| `(auth)/_layout.tsx` | `export default function AuthLayout()` | N/A | JSX: `<Stack>` with login/signup screens | N/A | Expo Router | `expo-router/Stack` |
-| `login.tsx` | `export default function LoginScreen()` | N/A | JSX: form with email/password inputs + submit button | N/A | Expo Router (file-based) | `AuthContext.login()` |
-
-### Data Flow
-
-```
-App launches
-  --> _layout.tsx checks AuthContext.isAuthenticated
-    --> false: redirect to (auth)/login
-      --> login.tsx: user fills form, calls login()
-        --> AuthContext sets isAuthenticated = true
-          --> redirect to (tabs)/index (Home)
-    --> true: render (tabs)/_layout.tsx
-      --> Tab navigator: Home | Loads | Profile
-
-Error paths:
-  - AuthContext not wrapped: useAuth() throws "Must be within AuthProvider"
-    --> Prevention: root _layout.tsx wraps entire tree
-  - Missing tab route file: Expo Router shows 404 screen
-    --> Prevention: all 3 tab files created in this phase
-```
-
-### Testing Strategy
-
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| AuthContext provides default state | unit | Real | Pure React context, no external deps; renderHook | `apps/trucker/__tests__/contexts/AuthContext.test.tsx` |
-| AuthContext login/logout toggles state | unit | Real | State management test via renderHook + act | `apps/trucker/__tests__/contexts/AuthContext.test.tsx` |
-| Route files exist with correct exports | unit | Real | File structure assertions via fs.readFileSync | `scripts/verify-mobile-nav.cjs` |
-| Tab layout has 3 tabs | unit | Real | Structural assertion via fs.readFileSync + regex | `scripts/verify-mobile-nav.cjs` |
-| Auth group has login + signup | unit | Real | Structural assertion via fs.readFileSync + regex | `scripts/verify-mobile-nav.cjs` |
-
-**Assertion blueprints:**
-- `expect(result.current.isAuthenticated).toBe(false)` -- default unauthenticated
-- `act(() => { result.current.login('test@test.com', 'pass') })` then `expect(result.current.isAuthenticated).toBe(true)` -- login works
-- `assert(fs.existsSync('apps/trucker/src/app/(tabs)/loads.tsx'))` -- loads tab exists
-- `assert(/Tabs\.Screen.*name.*index/.test(tabLayoutContent))` -- tab layout has index screen
-- `assert(/Tabs\.Screen.*name.*loads/.test(tabLayoutContent))` -- tab layout has loads screen
-
-### Acceptance Criteria (R-markers)
-
-- R-P3-01 [frontend]: `apps/trucker/src/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth` hook; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/export.*AuthProvider/` and `/export.*useAuth/` regexes each return >= 1 match
-- R-P3-02 [frontend]: `AuthContext.tsx` defines `isAuthenticated` state with default `false` and exposes `login` and `logout` functions; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/isAuthenticated.*false/` and both `/login/` and `/logout/` patterns present
-- R-P3-03 [frontend]: Tab layout at `apps/trucker/src/app/(tabs)/_layout.tsx` renders `Tabs` component with screen entries for `index`, `loads`, and `profile`; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/Tabs/` regex returns >= 1 match and file contains all 3 screen name strings
-- R-P3-04 [frontend]: Auth group contains exactly 2 route files: `(auth)/login.tsx` and `(auth)/signup.tsx`; verified by `scripts/verify-mobile-nav.cjs` asserting `fs.existsSync` returns `true` for both paths under `apps/trucker/src/app/`
-- R-P3-05 [frontend]: Root layout at `apps/trucker/src/app/_layout.tsx` wraps content with `<AuthProvider>` and contains redirect logic for unauthenticated users; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/AuthProvider/` regex returns >= 1 match and `/Redirect|router\.replace/` returns >= 1 match
-- R-P3-06 [frontend]: Login screen at `apps/trucker/src/app/(auth)/login.tsx` contains at least 2 `TextInput` components and 1 submit button (`Pressable` or `TouchableOpacity`); verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match
-- R-P3-07 [frontend]: Signup screen at `apps/trucker/src/app/(auth)/signup.tsx` contains at least 2 `TextInput` components and 1 submit button; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match
-
-### Verification Command
-
-```bash
-node scripts/verify-mobile-nav.cjs
-cd apps/trucker && npx tsc --noEmit && cd ../..
-```
-
----
-
-## Phase 4 -- Mobile Auth Integration (module)
-
-Wire Firebase Auth into the mobile app's AuthContext. Create an API client
-service for communicating with the Express backend. Login and signup screens
-call Firebase Auth SDK and then validate the JWT against the existing
-`server/auth.ts` middleware.
-
-### Changes
-
-| Action | File | Description | Test File | Test Type |
-|--------|------|-------------|-----------|-----------|
-| MODIFY | `apps/trucker/src/contexts/AuthContext.tsx` | Replace stubs with real Firebase Auth calls (signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut). NOTE: file created in Phase 3 | `scripts/verify-mobile-auth.cjs` | unit |
-| ADD | `apps/trucker/src/services/api.ts` | Fetch wrapper: base URL from env, auto-attach Firebase ID token to Authorization header, error interceptor | `scripts/verify-mobile-auth.cjs` | unit |
-| ADD | `apps/trucker/src/services/auth.ts` | Firebase Auth wrapper: initializeApp from env, getAuth, onAuthStateChanged listener | `scripts/verify-mobile-auth.cjs` | unit |
-| ADD | `apps/trucker/src/config/firebase.ts` | Firebase config from `EXPO_PUBLIC_*` env vars (no hardcoded keys) | `scripts/verify-mobile-auth.cjs` | unit |
-| ADD | `scripts/verify-mobile-auth.cjs` | Verification: AuthContext imports Firebase, api.ts attaches token, firebase config uses EXPO_PUBLIC_ prefix, 401 handling, network error wrapping | `scripts/verify-mobile-auth.cjs` | unit |
-
-### Untested Files
-
-| File | Reason | Tested Via |
-|------|--------|------------|
-| `apps/trucker/src/config/firebase.ts` | Config-only file, reads env vars | Integration: AuthContext.firebase.test.tsx mocks Firebase, which validates the config is consumed correctly |
-
-### Interface Contracts
-
-| Component | Signature | Input | Output | Errors | Called By | Calls |
-|-----------|-----------|-------|--------|--------|-----------|-------|
-| `AuthContext.login` | `(email: string, password: string) => Promise<void>` | email, password strings | Sets `user` and `isAuthenticated: true` | `FirebaseError` with `code` (auth/wrong-password, auth/user-not-found, etc.) -- propagated to UI | `login.tsx` | `signInWithEmailAndPassword` (Firebase) |
-| `AuthContext.signup` | `(email: string, password: string) => Promise<void>` | email, password strings | Sets `user` and `isAuthenticated: true` | `FirebaseError` with `code` (auth/email-already-in-use, auth/weak-password) | `signup.tsx` | `createUserWithEmailAndPassword` (Firebase) |
-| `AuthContext.logout` | `() => Promise<void>` | None | Clears `user`, sets `isAuthenticated: false` | None expected | Profile tab, any screen | `signOut` (Firebase) |
-| `api.ts` (default export) | `{ get, post, put, patch, delete }` | URL path, optional body/params | Response data (JSON parsed) | 401: triggers logout + redirect. Network error: throws with message. 4xx/5xx: throws with status + message | All mobile screens/services | `fetch` with Firebase ID token |
-| `auth.ts` service | `{ initAuth, onAuthStateChanged, getCurrentUser }` | N/A | Auth state listener | Firebase init failure if config missing | `AuthContext` | Firebase Auth SDK |
-
-### Data Flow
-
-```
-User taps Login button
-  --> login.tsx calls AuthContext.login(email, password)
-    --> AuthContext calls signInWithEmailAndPassword(auth, email, password)
-      --> Firebase Auth returns UserCredential
-        --> AuthContext stores user, sets isAuthenticated = true
-          --> Root layout detects auth state change, navigates to (tabs)
-    --> Error: Firebase returns auth/wrong-password
-      --> AuthContext catches, sets error state
-        --> login.tsx displays error message
-
-API call from authenticated screen:
-  --> Screen calls api.get('/api/loads')
-    --> api.ts gets current user's ID token via getIdToken()
-      --> Attaches as Authorization: Bearer <token>
-        --> Express server verifyFirebaseToken middleware validates
-          --> 200: returns data
-          --> 401: api.ts calls AuthContext.logout(), redirect to login
-          --> 500: api.ts throws error with message
-
-Error paths:
-  - Firebase config missing EXPO_PUBLIC_ vars: initializeApp fails
-    --> Error boundary shows "Configuration error" screen
-  - Network offline: fetch throws TypeError
-    --> api.ts wraps in user-friendly "Network unavailable" error
-  - Token expired: server returns 401
-    --> api.ts auto-refreshes token (Firebase handles this), retries once
-```
-
-### Testing Strategy
-
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| AuthContext.login calls Firebase | unit | Mock | External service: mock signInWithEmailAndPassword | `apps/trucker/__tests__/contexts/AuthContext.firebase.test.tsx` |
-| AuthContext.login error propagation | unit | Mock | Simulate auth/wrong-password error from Firebase | `apps/trucker/__tests__/contexts/AuthContext.firebase.test.tsx` |
-| AuthContext.signup calls Firebase | unit | Mock | External service: mock createUserWithEmailAndPassword | `apps/trucker/__tests__/contexts/AuthContext.firebase.test.tsx` |
-| AuthContext.logout calls signOut | unit | Mock | External service: mock signOut | `apps/trucker/__tests__/contexts/AuthContext.firebase.test.tsx` |
-| api.ts attaches auth header | unit | Mock | Network + external service: mock fetch + getIdToken | `apps/trucker/__tests__/services/api.test.ts` |
-| api.ts intercepts 401 with logout | unit | Mock | Simulated error response: mock fetch returns 401 | `apps/trucker/__tests__/services/api.test.ts` |
-| api.ts wraps network error | unit | Mock | Simulated network failure: mock fetch throws TypeError | `apps/trucker/__tests__/services/api.test.ts` |
-| auth service initializes Firebase | unit | Mock | External service: mock Firebase SDK | `apps/trucker/__tests__/services/auth.test.ts` |
-| Firebase config uses EXPO_PUBLIC_ prefix | unit | Real | Security requirement: fs.readFileSync + regex on config file | `scripts/verify-mobile-auth.cjs` |
-
-**Assertion blueprints:**
-- `expect(signInWithEmailAndPassword).toHaveBeenCalledWith(auth, 'test@test.com', 'password')` -- login calls Firebase
-- `expect(result.current.error).toBe('Invalid email or password')` -- error mapped
-- `expect(mockFetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ headers: { Authorization: 'Bearer mock-token' } }))` -- token attached
-- `expect(result.current.isAuthenticated).toBe(false)` -- logout clears state
-- `assert(/EXPO_PUBLIC_FIREBASE/.test(configContent))` -- env var prefix correct
-
-### Acceptance Criteria (R-markers)
-
-- R-P4-01 [frontend]: `AuthContext.tsx` imports `signInWithEmailAndPassword` from Firebase Auth and calls it in the `login` function; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/signInWithEmailAndPassword/` regex returns >= 2 matches (import + call)
-- R-P4-02 [frontend]: `AuthContext.tsx` contains error handling that maps Firebase error codes to user-friendly messages (at least `auth/wrong-password` and `auth/user-not-found`); verified by `scripts/verify-mobile-auth.cjs` asserting `/auth\/wrong-password|auth\/user-not-found/` regex returns >= 1 match
-- R-P4-03 [frontend]: `AuthContext.tsx` imports `createUserWithEmailAndPassword` from Firebase Auth and calls it in the `signup` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/createUserWithEmailAndPassword/` regex returns >= 2 matches (import + call)
-- R-P4-04 [frontend]: `AuthContext.tsx` imports `signOut` from Firebase Auth and calls it in the `logout` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/signOut/` regex returns >= 2 matches (import + call)
-- R-P4-05 [frontend]: `apps/trucker/src/services/api.ts` attaches `Authorization: Bearer` header using Firebase ID token; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/Authorization.*Bearer/` regex returns >= 1 match and `/getIdToken/` returns >= 1 match
-- R-P4-06 [frontend]: `api.ts` handles HTTP 401 responses by triggering logout or auth state clearing; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/401/` and `/logout|signOut|clearAuth/` regexes each return >= 1 match
-- R-P4-07 [frontend]: `api.ts` catches network errors (TypeError from fetch) and wraps them in user-friendly messages; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/catch/` and `/network|Network|TypeError/` regexes each return >= 1 match
-- R-P4-08 [frontend]: Firebase config at `apps/trucker/src/config/firebase.ts` reads all 6 Firebase config values from `EXPO_PUBLIC_FIREBASE_*` env vars and contains 0 hardcoded API key strings; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/EXPO_PUBLIC_FIREBASE/g` returns >= 6 matches and `/AIza[a-zA-Z0-9_-]{35}/` returns 0 matches
-
-### Verification Command
-
-```bash
-node scripts/verify-mobile-auth.cjs
-cd apps/trucker && npx tsc --noEmit && cd ../..
-```
-
----
-
-## Phase 5 -- Baseline Debt Cleanup (foundation)
-
-Resolve the 3 baseline technical debt items from `docs/trucker-app-baseline-debt.md`:
-1. jszip types for e2e spec
-2. Windows PORT env compatibility
-3. Missing `.claude/hooks/tests/` directory
-
-### Changes
-
-| Action | File | Description | Test File | Test Type |
-|--------|------|-------------|-----------|-----------|
-| MODIFY | `e2e/tsconfig.json` or Playwright config | Add `@types/jszip` to e2e TypeScript compilation so `e2e/ifta-audit-packet-smoke.spec.ts` resolves JSZip import | `scripts/verify-baseline-debt-resolved.cjs` | unit |
-| ADD | `server/__tests__/helpers/port-env.ts` | Helper that sets PORT env var cross-platform for integration tests (uses `process.env.PORT = '5000'` in JS, not shell syntax) | `scripts/verify-baseline-debt-resolved.cjs` | unit |
-| ADD | `.claude/hooks/tests/__init__.py` | Create hooks tests directory with init file so pytest collection does not fail on absent directory | `scripts/verify-baseline-debt-resolved.cjs` | unit |
-| MODIFY | `docs/trucker-app-baseline-debt.md` | Mark all 3 entries as resolved with resolution date and method | `scripts/verify-baseline-debt-resolved.cjs` | unit |
-| ADD | `scripts/verify-baseline-debt-resolved.cjs` | Verification script: asserts each debt item is resolved | `scripts/verify-baseline-debt-resolved.cjs` | unit |
-
-### Untested Files
-
-None -- all files have test coverage via verification script.
-
-### Interface Contracts
-
-N/A -- Debt cleanup changes are isolated fixes with no new public interfaces.
-
-### Data Flow
-
-N/A -- No new data flows. Each fix is an isolated correction.
-
-### Testing Strategy
-
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| jszip types resolve in e2e | unit | Real | Compilation must succeed; fs.existsSync + tsc check | `scripts/verify-baseline-debt-resolved.cjs` |
-| PORT env helper exists | unit | Real | File content assertion via fs.readFileSync + regex | `scripts/verify-baseline-debt-resolved.cjs` |
-| hooks/tests/ directory exists | unit | Real | Directory existence check via fs.existsSync | `scripts/verify-baseline-debt-resolved.cjs` |
-| Debt register updated | unit | Real | Content assertion via fs.readFileSync + regex | `scripts/verify-baseline-debt-resolved.cjs` |
-
-**Assertion blueprints:**
-- `assert(fs.existsSync('.claude/hooks/tests/__init__.py'))` -- hooks tests dir created
-- `assert(fs.existsSync('server/__tests__/helpers/port-env.ts'))` -- port helper exists
-- `assert(/resolved|closed|fixed/i.test(debtContent))` -- debt register shows resolution
-
-### Acceptance Criteria (R-markers)
-
-- R-P5-01 [integration]: `e2e/ifta-audit-packet-smoke.spec.ts` can resolve JSZip import without TS2307 error; verified by `scripts/verify-baseline-debt-resolved.cjs` checking that `@types/jszip` is in devDependencies or that a type declaration exists for jszip
-- R-P5-02 [backend]: `server/__tests__/helpers/port-env.ts` exists and sets `process.env.PORT` to a test port value via JavaScript (not shell `PORT=5000` syntax); verified by `scripts/verify-baseline-debt-resolved.cjs` reading file via `fs.readFileSync` and asserting `process.env.PORT` assignment pattern
-- R-P5-03 [integration]: `.claude/hooks/tests/` directory exists (created locally); verified by `scripts/verify-baseline-debt-resolved.cjs` asserting `fs.existsSync('.claude/hooks/tests/')` returns true. NOTE: directory is gitignored — worker creates it locally but does NOT stage it
-- R-P5-04 [integration]: `docs/trucker-app-baseline-debt.md` contains resolution annotations for all 3 debt entries; verified by `scripts/verify-baseline-debt-resolved.cjs` reading file and asserting each original failure description has an adjacent resolution note
-
-### Verification Command
-
-```bash
-node scripts/verify-baseline-debt-resolved.cjs
-```
-
----
-
-## Phase 6 -- SaaS Non-Regression Verification (e2e)
-
-Run the full existing test suite to confirm the shared types extraction
-(Phase 1) and workspace changes did not break any existing functionality.
-Update sprint history and program docs.
-
-### Changes
-
-| Action | File | Description | Test File | Test Type |
-|--------|------|-------------|-----------|-----------|
-| MODIFY | `docs/trucker-app-sprint-history.md` | Append B2 entry with merge SHA, story count, summary | `scripts/verify-b2-completion.cjs` | unit |
-| ADD | `scripts/verify-b2-completion.cjs` | Final verification: runs SaaS non-regression (existing vitest suites), confirms sprint history updated, validates all Phase 1-5 verification scripts pass | `scripts/verify-b2-completion.cjs` | unit |
-
-### Untested Files
-
-None.
-
-### Interface Contracts
-
-N/A -- This phase creates no new interfaces. It validates existing ones work.
-
-### Data Flow
-
-```
-verify-b2-completion.cjs
-  --> Spawns: npx vitest run (root frontend tests)
-    --> Exit 0: PASS
-    --> Exit non-0: FAIL (regression detected)
-  --> Spawns: cd server && npx vitest run (server tests, excluding integration/regression/performance)
-    --> Exit 0: PASS
-    --> Exit non-0: FAIL (regression detected)
-  --> Reads: docs/trucker-app-sprint-history.md
-    --> Asserts: B2 entry present
-  --> Runs: all verify-*.cjs scripts from Phases 1-5
-    --> All exit 0: PASS
-    --> Any exit non-0: FAIL
-
-Error paths:
-  - Regression found: test reports which test(s) failed
-    --> Fix required before B2 can merge
-  - Sprint history not updated: verification fails
-    --> Must add B2 entry before final verification
-```
-
-### Testing Strategy
-
-| What | Type | Real vs Mock | Justification | Test File |
-|------|------|-------------|---------------|-----------|
-| Existing frontend tests pass | e2e | Real | SaaS non-regression requirement via npx vitest run | `scripts/verify-b2-completion.cjs` |
-| Existing server tests pass | e2e | Real | SaaS non-regression requirement via server vitest | `scripts/verify-b2-completion.cjs` |
-| Sprint history has B2 entry | unit | Real | Documentation requirement via fs.readFileSync + regex | `scripts/verify-b2-completion.cjs` |
-| All phase verify scripts pass | e2e | Real | End-to-end validation via child_process.spawnSync | `scripts/verify-b2-completion.cjs` |
-
-**Assertion blueprints:**
-- `assert(vitestFrontend.status === 0, 'Frontend tests failed')` -- non-regression
-- `assert(vitestServer.status === 0, 'Server tests failed')` -- non-regression
-- `assert(/## Sprint B2/.test(historyContent))` -- sprint history updated
-- `assert(/Shipped|Complete/i.test(b2Section))` -- status recorded
-
-### Acceptance Criteria (R-markers)
-
-- R-P6-01 [frontend]: `npx vitest run` from project root exits with code 0, confirming all existing frontend tests pass after shared types extraction; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code
-- R-P6-02 [backend]: `cd server && npx vitest run --exclude=__tests__/integration/** --exclude=__tests__/regression/** --exclude=__tests__/performance/**` exits with code 0, confirming all existing server tests pass; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code
-- R-P6-03 [integration]: `docs/trucker-app-sprint-history.md` contains a `## Sprint B2` section with `Stories` row showing "6" and `Status` showing "Engineering Complete"; verified by `scripts/verify-b2-completion.cjs` reading file via `fs.readFileSync` and asserting `/## Sprint B2/` heading exists and `/Stories.*6/` pattern matches
-- R-P6-04 [integration]: All 5 Phase 1-5 verification scripts (`verify-shared-package.cjs`, `verify-expo-project.cjs`, `verify-mobile-nav.cjs`, `verify-mobile-auth.cjs`, `verify-baseline-debt-resolved.cjs`) exit with code 0; verified by `scripts/verify-b2-completion.cjs` spawning each and asserting all 5 exit codes equal 0
-- R-P6-05 [integration]: If any existing test fails during regression run, `verify-b2-completion.cjs` returns non-zero exit code and reports the failing test name in stdout; verified by the script's error-path logic that captures stderr from vitest and includes it in the failure message
-
-### Verification Command
-
-```bash
-node scripts/verify-b2-completion.cjs
-```
-
----
+### API Contracts
+
+All endpoints already exist on the server. The mobile app is a pure consumer. No server changes required.
+
+| Method | Endpoint | Request Schema | Response Schema | Auth | Status Codes |
+|--------|----------|---------------|-----------------|------|-------------|
+| GET | `/api/loads` | Query: `?for=schedule&start=DATE&end=DATE` (optional) | Raw `Load[]` array (NOT wrapped — server returns `res.json(result)` directly). Each load includes `legs[]` array of `LoadLeg` objects and derived `dropoff_date`. | Bearer JWT | 200, 401, 500 |
+| ~~GET~~ | ~~`/api/loads/:id`~~ | ~~N/A~~ | **DOES NOT EXIST** — use client-side filter from `GET /api/loads` response: `loads.find(l => l.id === id)` | N/A | N/A |
+| PATCH | `/api/loads/:id/status` | Body: `{ status: LoadStatus }` | Updated load object directly (NOT wrapped in `{ load }`) | Bearer JWT | 200, 401, 404, 422 (invalid transition), 500 |
+| GET | `/api/documents` | Query: `?load_id=X&document_type=Y` (optional filters) | `{ documents: Document[] }` | Bearer JWT | 200, 401, 500 |
+| POST | `/api/documents` | Multipart: field `file` (binary) + `document_type` (string) + `load_id` (string, optional) | `{ message, documentId, storagePath, status, sanitizedFilename }` (note: uses `documentId` NOT `document.id`) | Bearer JWT | 201, 400 (missing fields), 401, 413 (too large), 500 |
+| POST | `/api/documents/:id/process-ocr` | Path param: `id` (string) | `{ status: string, result?: OcrData }` | Bearer JWT | 200, 202 (processing), 401, 404, 500 |
+| GET | `/api/documents/:id/ocr` | Path param: `id` (string) | `{ result: OcrData }` | Bearer JWT | 200, 401, 404 (no result), 500 |
+
+**Note on MODIFY files**: All files marked MODIFY in Changes tables exist on the `mobile/trucker-app` branch, not on `main`. Ralph will base work on that branch.
 
 ## Risks & Mitigations
 
 | Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Shared types extraction breaks existing frontend imports | Medium | High | Root `types.ts` becomes re-export shim; zero import changes needed in consuming files. Phase 6 runs full test suite. |
-| npm workspaces change `npm install` behavior for existing devs | Low | Medium | Workspace scope is `packages/*` only. Root and server `npm install` unchanged. |
-| Expo SDK version conflicts with React 19 | Low | High | `apps/trucker/` has its own `package.json` with own React Native version. Completely isolated from web app. |
-| EAS Build requires paid Expo account | Low | Low | EAS config is file-only (eas.json). Local dev build works without account. EAS cloud is an operator gate, not an R-marker. |
-| React Native version mismatch with Expo SDK | Low | Medium | Use `create-expo-app` for version-locked initialization. Pin to Expo SDK 55. |
-| Firebase Auth in mobile differs from web Firebase SDK | Low | Medium | Both use `firebase/auth` package. Mobile uses same signInWithEmailAndPassword API. |
-| jszip types fix may need new devDependency | Very Low | Low | `@types/jszip` already available on npm; additive devDep change only. |
+|------|-----------|--------|-----------|
+| expo-camera permission flow differs between iOS simulator and real device | Medium | Medium | CJS tests verify source patterns only; manual device testing for permissions |
+| Large image uploads fail on cellular | Medium | High | Image compression in Phase 4 (max 1920px, 0.7 quality). Offline queue in Phase 8 provides retry. |
+| Background task killed by OS before completing upload | High | Medium | expo-task-manager re-registers on app open. Queue persists in AsyncStorage. processQueue() resumes on foreground. |
+| expo-file-system storage fills up with queued images | Low | Medium | deleteLocalFile() removes files after successful upload. QueueScreen allows manual clearing. |
+| 14 stories exceeds Ralph comfort zone | Medium | Medium | Stories are small (4-8 criteria each). CJS static analysis tests are fast. Circuit breaker at 3 consecutive failures. |
+| multipart upload FormData may differ between Expo/RN and browser | Medium | High | Use standard FormData API without manually setting Content-Type header. Test on device. |
 
 ## Dependencies
 
 ### Internal
-- Sprint B1 complete (confirmed -- PR #60, SHA `8a1e9b2`)
-- `types.ts` (root) -- canonical source for shared types
-- `server/auth.ts` -- Firebase Admin token verification (consumed by mobile via API)
-- `.gitignore` -- must be updated for new directories
+- `apps/trucker/src/services/api.ts` (Phase 1 uses, Phase 5 extends)
+- `apps/trucker/src/contexts/AuthContext.tsx` (all phases use for auth state)
+- `packages/shared/src/types.ts` (Phase 1 uses LoadStatus type)
 
-### External
-- Expo SDK 55 (latest stable)
-- `expo-router` v4+ (file-based routing)
-- Firebase JS SDK (same version as web: `^12.7.0`)
-- `@types/jszip` (for baseline debt fix)
+### External (new dependencies to add)
+- `expo-camera` (Phase 4)
+- `expo-image-manipulator` (Phase 4)
+- `expo-file-system` (Phase 8)
+- `expo-task-manager` (Phase 9)
+- `@react-native-community/netinfo` (Phase 7)
+- `@react-native-async-storage/async-storage` (Phase 8, may already be transitive)
+
+### Existing server endpoints (no changes needed)
+- `GET /api/loads` -- list loads
+- `GET /api/loads/:id` -- load detail
+- `PATCH /api/loads/:id/status` -- status transition
+- `POST /api/documents` -- upload document (multipart)
+- `POST /api/documents/:id/process-ocr` -- trigger OCR
+- `GET /api/documents/:id/ocr` -- get OCR results
+- `GET /api/documents?load_id=X` -- list documents per load
 
 ## Rollback Plan
 
-1. **Shared types extraction**: Restore original `types.ts` content from git, remove `packages/shared/`, remove workspace config from root `package.json`, remove path alias from `tsconfig.json`.
-2. **Expo project**: Delete `apps/trucker/` directory entirely. No other files affected.
-3. **Baseline debt**: Revert individual file changes. Debt items return to open status.
-4. **Full rollback**: `git revert` the merge commit. All changes are on a feature branch; main is untouched until merge.
+Each phase is additive (new files under `apps/trucker/`) with minimal modifications to existing files. Rollback for any phase:
+1. `git revert` the phase's commit
+2. No server-side changes to roll back
+3. No database migrations to reverse
+4. Dependencies added to `apps/trucker/package.json` only (isolated from root)
+
+Full sprint rollback: `git reset --hard` to the pre-sprint commit on `mobile/trucker-app` branch.
+
+## Explicitly Out of Scope (Deferred)
+
+These items from the v1 product plan and strategy decisions are intentionally NOT in this sprint. They are acknowledged here to prevent scope confusion:
+
+| Item | v1 Phase | Why Deferred |
+|------|----------|-------------|
+| **i18n (Spanish + English)** | Phase 2 | i18n infrastructure (i18next, translation files, language picker) is foundational work that should be done once for all screens. Adding it mid-sprint to 15+ screens is scope creep. Deferred to a dedicated i18n sprint. |
+| **Offline load cache (SQLite)** | Phase 4 | Trip workspace offline mode requires SQLite cache + sync. Sprint E covers document upload offline only. Full offline-first loads will come in a hardening sprint. |
+| **Biometric auth + offline session** | Phase 3 | Requires expo-local-authentication + secure token caching. Auth works via Firebase cached state for now. |
+| **Stop sequence UI** | Phase 4 | Multi-stop visualization is enhancement over basic load detail. Deferred. |
+| **Navigation handoff (Maps)** | Phase 4 | expo-linking to Apple/Google Maps. Enhancement. Deferred. |
+| **OCR result editing** | Phase 5 | v1 has ExtractionConfirmation with edit controls. Our OCR screen is read-only display. Editing deferred. |
+| **Crop/rotate in preview** | Phase 5 | v1 specifies crop/rotate controls. We do resize+compress only. Enhancement. Deferred. |
+| **Document duplicate detection** | Phase 5 | Perceptual hashing to detect re-captures. Enhancement. Deferred. |
+| **SQLite upload queue** | Phase 5 | v1 uses SQLite. We use AsyncStorage (simpler, adequate for MVP queue sizes). May upgrade later. |
+| **requireTier handling for OCR** | Phase 5 | `POST /api/documents/:id/process-ocr` has `requireTier` middleware. Free-tier users get auto-OCR from server's fire-and-forget but cannot manually trigger. The mobile app should handle 403 gracefully — deferred to tier enforcement sprint (master plan Sprint K). |
+
+## Master Plan Alignment Note
+
+The master plan's Sprint C is titled "Mobile document intake and camera integration." This sprint plan resequences the work:
+- Our **Sprint C** = Trip Workspace (master plan has no explicit sprint for this — it's embedded in v1 Phase 4)
+- Our **Sprint D** = Document Capture (= master plan's Sprint C core deliverable)
+- Our **Sprint E** = Offline Queue (= master plan's Sprint C offline support)
+
+The master plan (`docs/PLAN-trucker-app-master.md`) should be updated after this sprint to reflect the actual sprint naming and sequencing. This does NOT block execution.
 
 ## Open Questions
 
-None -- all decisions are locked from B1 (peer layout, npm, no Turborepo) and brainstorm analysis confirmed Option 1 (B2 alone) as the recommended approach.
-
-## Parallelism Strategy
-
-```
-Phase 1 (Shared Types)  |  Phase 2 (Expo Init)  |  Phase 5 (Baseline Debt)
-         |                        |
-         v                        v
-Phase 3 (Nav Shell) -- depends on Phase 2
-         |
-         v
-Phase 4 (Mobile Auth) -- depends on Phase 3
-         |
-         v
-Phase 6 (SaaS Non-Regression) -- depends on ALL above
-```
-
-**Parallel group A**: Phases 1, 2, 5 (independent, no shared files)
-**Sequential after A**: Phase 3 depends on Phase 2
-**Sequential after 3**: Phase 4 depends on Phase 3
-**Final gate**: Phase 6 depends on all phases
-
-## Sprint B2 Contract
-
-**Branch**: `ralph/trucker-app-sprint-b2`
-**Phases**: 6
-**Story count**: 6 stories / 37 R-markers
-**Dispatch gate**: Sprint B1 merged (confirmed -- PR #60, SHA `8a1e9b2`)
-**External accounts**: None required for R-markers (EAS Build is operator gate)
-**Parallelism**: STORY-001, STORY-002, STORY-005 parallel; STORY-003 depends on 002; STORY-004 depends on 003; STORY-006 depends on all
-**SaaS non-regression gate**: YES -- Phase 1 touches type system
-**Mobile domain layering rule**: `apps/trucker/` is peer to root web app
-
-### Files NOT touched
-- `server/index.ts` (FROZEN for B2)
-- `server/routes/*` (FROZEN)
-- `server/services/*` (FROZEN)
-- `server/migrations/*` (FROZEN)
-- `components/*` (FROZEN -- web UI untouched)
-- `services/*` (FROZEN -- web services untouched)
-- `App.tsx` (FROZEN)
-
-### Targeted verification command (Windows-safe)
-```bash
-node scripts/verify-shared-package.cjs
-node scripts/verify-expo-project.cjs
-node scripts/verify-mobile-nav.cjs
-node scripts/verify-mobile-auth.cjs
-node scripts/verify-baseline-debt-resolved.cjs
-node scripts/verify-b2-completion.cjs
-```
-
-### Exit artifact
-- PR `Sprint B2: Mobile app bootstrap + shared types + baseline debt`
-- All 31 R-markers green (R-P1-01..R-P6-05)
-- `docs/trucker-app-sprint-history.md` appended with B2 merge SHA
-
-## Ralph dispatch invariants
-
-1. Worktree isolation per story worker
-2. Checkpoint hash before each story
-3. Feature branch `ralph/trucker-app-sprint-b2`
-4. 4-checkpoint TDD (Red -> Green -> Refactor -> Gate)
-5. Selective staging (no `git add -A`)
-6. Format before commit
-7. Fixture validation (collect-only)
-8. Circuit breaker (3 consecutive skips -> halt)
-9. `needs_verify` cleared before next sprint dispatch
-10. `npm ci` (not `npm install`) in all verifications
-11. All R-marker assertions use `fs.readFileSync` + regex (no shell `grep`)
+None. All critical issues resolved. API response shapes verified against source code. Field names corrected to match database schema (legs-based origin/destination). File paths use expo-router conventions.

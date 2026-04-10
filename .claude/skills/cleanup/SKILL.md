@@ -134,15 +134,16 @@ print(f"Task 2: Pruned {result_t2['pruned_count']} worktrees. Errors: {result_t2
 
 **Skip check**: If `should_run(3)` is False, skip this task entirely and print `"Task 3: Skipped (not selected)"`.
 
-Remove QA receipt directories for story IDs that no longer appear in `prd.json`.
+Remove QA receipt directories for story IDs that no longer appear in prd.json.
 
 ```python
 import json, sys
 sys.path.insert(0, ".claude/hooks")
 from pathlib import Path
-from _lib import prune_receipts
+from _lib import prune_receipts, active_sprint_paths
 
-prd_path = Path(".claude/prd.json")
+sprint = active_sprint_paths()
+prd_path = sprint["prd_path"]
 receipts_dir = Path(".claude/runtime/receipts")
 valid_ids = set()
 if prd_path.exists():
@@ -191,15 +192,15 @@ else:
 
 **Skip check**: If `should_run(5)` is False, skip this task entirely and print `"Task 5: Skipped (not selected)"`.
 
-Trim `.claude/docs/verification-log.jsonl` to the 500 most recent entries.
+Trim the verification log to the 500 most recent entries. Uses sprint-resolved path (falls back to legacy `.claude/docs/verification-log.jsonl`).
 
 ```python
 import sys
 sys.path.insert(0, ".claude/hooks")
 from pathlib import Path
-from _lib import rotate_log
+from _lib import rotate_log, active_sprint_paths
 
-path = Path(".claude/docs/verification-log.jsonl")
+path = active_sprint_paths()["verification_log_path"]
 result_t5 = rotate_log(path, max_entries=500)
 print(f"Task 5: Verification log -- original: {result_t5['original_count']}, "
       f"retained: {result_t5['retained_count']}, removed: {result_t5['removed_count']}")
@@ -257,16 +258,16 @@ print(f"Task 7: Error history -- original: {result_t7['original_count']}, "
 
 **Skip check**: If `should_run(8)` is False, skip this task entirely and print `"Task 8: Skipped (not selected)"`.
 
-Scan test files for R-marker IDs that no longer appear in `prd.json` and remove them.
+Scan test files for R-marker IDs that no longer appear in prd.json and remove them. Uses sprint-resolved prd path.
 
 ```python
 import sys
 sys.path.insert(0, ".claude/hooks")
 from pathlib import Path
-from _lib import strip_orphan_markers
+from _lib import strip_orphan_markers, active_sprint_paths
 
 test_dir = Path(".claude/hooks/tests")
-prd_path = Path(".claude/prd.json")
+prd_path = active_sprint_paths()["prd_path"]
 result_t8 = strip_orphan_markers(test_dir, prd_path)
 print(f"Task 8: Stripped {result_t8['markers_removed']} orphan R-marker(s) from "
       f"{result_t8['files_modified']} file(s). ")
