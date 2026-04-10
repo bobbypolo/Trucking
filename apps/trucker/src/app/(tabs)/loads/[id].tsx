@@ -5,6 +5,7 @@
  * Tests R-P2-02: Renders origin, destination, pickup_date, and delivery date.
  * Tests R-P2-03: Renders status badge with color-coded background per LoadStatus.
  * Tests R-P3-04: Renders StatusUpdateButton with currentStatus and onStatusChange={transitionTo}.
+ * Tests R-P6-03: Renders "Capture Document" Pressable that navigates to CameraScreen with loadId param.
  */
 
 import { useEffect, useState } from "react";
@@ -20,6 +21,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { fetchLoadById } from "../../../services/loads";
 import { getOrigin, getDestination } from "../../../types/load";
 import { StatusUpdateButton } from "../../../components/StatusUpdateButton";
+import { DocumentList } from "../../../components/DocumentList";
 import { useLoadStatus } from "../../../hooks/useLoadStatus";
 import type { Load, LoadStatus } from "../../../types/load";
 
@@ -175,6 +177,28 @@ export default function LoadDetailScreen() {
           <Text style={styles.statusErrorText}>{statusError}</Text>
         </View>
       ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Documents</Text>
+      </View>
+
+      <DocumentList loadId={id || ""} />
+
+      <View style={styles.captureContainer}>
+        <Pressable
+          style={styles.captureButton}
+          onPress={() =>
+            router.push({
+              pathname: "/(camera)/camera",
+              params: { loadId: id },
+            })
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Capture Document"
+        >
+          <Text style={styles.captureButtonText}>Capture Document</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 }
@@ -270,5 +294,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#DC2626",
     textAlign: "center",
+  },
+  captureContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  captureButton: {
+    backgroundColor: "#10B981",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  captureButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
   },
 });
