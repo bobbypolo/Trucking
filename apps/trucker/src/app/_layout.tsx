@@ -1,5 +1,7 @@
 import { Slot, Redirect, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import { ConnectivityProvider } from "../contexts/ConnectivityContext";
+import OfflineBanner from "../components/OfflineBanner";
 
 function RootLayoutNav() {
   const { isAuthenticated } = useAuth();
@@ -16,8 +18,11 @@ function RootLayoutNav() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ConnectivityProvider>
+      <AuthProvider>
+        <OfflineBanner />
+        <RootLayoutNav />
+      </AuthProvider>
+    </ConnectivityProvider>
   );
 }
