@@ -89,6 +89,39 @@ async function request<T>(
   return handleResponse<T>(response);
 }
 
+// # Tests R-P5-02, R-P5-08
+async function uploadFile<T>(urlPath: string, formData: FormData): Promise<T> {
+  const url = `${BASE_URL}${urlPath}`;
+  const headers: Record<string, string> = {};
+
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    const token = await currentUser.getIdToken();
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  // Explicitly delete Content-Type so the runtime sets the multipart boundary automatically
+  delete headers["Content-Type"];
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch (err: unknown) {
+    if (err instanceof TypeError) {
+      throw createApiError(
+        "Network error: please check your internet connection and try again.",
+      );
+    }
+    throw err;
+  }
+
+  return handleResponse<T>(response);
+}
+
 const api = {
   get<T>(urlPath: string): Promise<T> {
     return request<T>("GET", urlPath);
@@ -108,6 +141,10 @@ const api = {
 
   delete<T>(urlPath: string): Promise<T> {
     return request<T>("DELETE", urlPath);
+  },
+
+  uploadFile<T>(urlPath: string, formData: FormData): Promise<T> {
+    return uploadFile<T>(urlPath, formData);
   },
 };
 
