@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { Slot, Redirect, useSegments } from "expo-router";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ConnectivityProvider } from "../contexts/ConnectivityContext";
 import OfflineBanner from "../components/OfflineBanner";
+import { registerBackgroundSync } from "../services/backgroundSync";
 
 function RootLayoutNav() {
   const { isAuthenticated } = useAuth();
@@ -16,7 +18,12 @@ function RootLayoutNav() {
   return <Slot />;
 }
 
+// # Tests R-P9-05
 export default function RootLayout() {
+  useEffect(() => {
+    registerBackgroundSync();
+  }, []);
+
   return (
     <ConnectivityProvider>
       <AuthProvider>
