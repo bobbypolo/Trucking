@@ -1,5 +1,7 @@
 import { Tabs } from "expo-router";
+import QueueStatusBadge from "../../components/QueueStatusBadge";
 
+// # Tests R-P10-05
 export default function TabLayout() {
   return (
     <Tabs>
@@ -12,6 +14,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen
+        name="queue"
+        options={{
+          title: "Queue",
+          tabBarBadge: undefined,
+          tabBarIcon: () => <QueueStatusBadge />,
+        }}
+      />
     </Tabs>
   );
 }

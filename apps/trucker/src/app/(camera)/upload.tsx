@@ -9,6 +9,9 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { uploadDocument, triggerOcr } from "../../services/documents";
+import { useConnectivity } from "../../contexts/ConnectivityContext";
+import { saveFileLocally } from "../../services/fileStorage";
+import { addToQueue } from "../../services/uploadQueue";
 
 const DOCUMENT_TYPES = [
   "BOL",
@@ -18,21 +21,47 @@ const DOCUMENT_TYPES = [
   "Scale Ticket",
 ] as const;
 
-// # Tests R-P5-03, R-P5-04, R-P5-05, R-P5-07, R-P5-09
+// # Tests R-P5-03, R-P5-04, R-P5-05, R-P5-07, R-P5-09, R-P10-04
 export default function UploadScreen() {
   const router = useRouter();
   const { photoUri, loadId } = useLocalSearchParams<{
     photoUri: string;
     loadId: string;
   }>();
+  const { isOnline } = useConnectivity();
 
   const [selectedType, setSelectedType] = useState<string>(DOCUMENT_TYPES[0]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  async function queueForLater() {
+    if (!photoUri || !loadId) return;
+    const localPath = await saveFileLocally(photoUri);
+    await addToQueue({
+      filePath: localPath,
+      loadId: loadId,
+      documentType: selectedType,
+    });
+    router.back();
+  }
+
   async function handleUpload() {
     if (!photoUri || !loadId) {
       setError("Missing photo or load information");
+      return;
+    }
+
+    if (!isOnline) {
+      setUploading(true);
+      setError(null);
+      try {
+        await queueForLater();
+      } catch (err: unknown) {
+        const queueError = err as { message?: string };
+        setError(queueError.message || "Failed to queue document");
+      } finally {
+        setUploading(false);
+      }
       return;
     }
 
@@ -63,9 +92,15 @@ export default function UploadScreen() {
       if (apiError.status === 413) {
         setError("File too large");
       } else {
-        setError(
-          apiError.message || "Upload failed. Please check your connection.",
-        );
+        // Network error fallback: queue locally
+        try {
+          await queueForLater();
+          return;
+        } catch (_queueErr: unknown) {
+          setError(
+            apiError.message || "Upload failed. Please check your connection.",
+          );
+        }
       }
     } finally {
       setUploading(false);
@@ -82,6 +117,14 @@ export default function UploadScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.title}>Upload Document</Text>
         <Text style={styles.subtitle}>Select document type</Text>
+
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <Text style={styles.offlineText}>
+              You are offline. Document will be queued for upload.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.typeList}>
           {DOCUMENT_TYPES.map((docType) => (
@@ -122,7 +165,9 @@ export default function UploadScreen() {
             onPress={handleUpload}
             disabled={uploading}
           >
-            <Text style={styles.uploadButtonText}>Upload</Text>
+            <Text style={styles.uploadButtonText}>
+              {isOnline ? "Upload" : "Queue for Upload"}
+            </Text>
           </Pressable>
         )}
       </ScrollView>
@@ -149,6 +194,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#666",
     marginBottom: 20,
+  },
+  offlineBanner: {
+    backgroundColor: "#fef3c7",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+  },
+  offlineText: {
+    color: "#92400e",
+    fontSize: 14,
+    textAlign: "center",
   },
   typeList: {
     gap: 10,
