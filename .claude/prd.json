@@ -64,8 +64,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-trip-workspace.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
@@ -115,8 +115,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-load-detail.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-003",
@@ -180,8 +180,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-status-update.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",
@@ -237,8 +237,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-camera-capture.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-005",
@@ -312,8 +312,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-doc-upload.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-006",
@@ -360,8 +360,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-doc-list.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-007",
@@ -413,8 +413,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-offline-core.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-008",
@@ -485,8 +485,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-upload-queue.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-009",
@@ -540,8 +540,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-background-sync.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-010",
@@ -594,8 +594,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-queue-ui.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-011",
@@ -640,8 +640,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-sprint-cde.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
