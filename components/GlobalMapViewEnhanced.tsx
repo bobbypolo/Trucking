@@ -42,6 +42,7 @@ import { User, LoadData, LOAD_STATUS, LoadStatus, Incident } from "../types";
 import { getDirections } from "../services/directionsService";
 import { validateCoordinates } from "../services/validationGuards";
 import { api } from "../services/api";
+import { isDemoNavMode } from "../services/demoNavConfig";
 
 /** Live GPS position from /api/tracking/live endpoint */
 interface LiveGpsPosition {
@@ -308,27 +309,33 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   const showMockIndicators = (import.meta as any).env.DEV;
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchLivePositions = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const data = await api.get("/tracking/live", signal ? { signal } : undefined);
-      if (!data) return; // request was aborted
-      setLivePositions(data.positions ?? []);
-      setTrackingState(data.trackingState ?? "not-configured");
-      setProviderName(data.providerDisplayName ?? data.providerName ?? null);
-      setHasLiveData(
-        (data.positions?.length ?? 0) > 0 &&
-          data.positions?.some((p: any) => !p.isMock),
-      );
-      setHasMockPositions(
-        showMockIndicators && data.positions?.some((p: any) => p.isMock),
-      );
-    } catch {
-      setTrackingState("provider-error");
-      setLivePositions([]);
-      setHasLiveData(false);
-      setHasMockPositions(false);
-    }
-  }, [showMockIndicators]);
+  const fetchLivePositions = useCallback(
+    async (signal?: AbortSignal) => {
+      try {
+        const data = await api.get(
+          "/tracking/live",
+          signal ? { signal } : undefined,
+        );
+        if (!data) return; // request was aborted
+        setLivePositions(data.positions ?? []);
+        setTrackingState(data.trackingState ?? "not-configured");
+        setProviderName(data.providerDisplayName ?? data.providerName ?? null);
+        setHasLiveData(
+          (data.positions?.length ?? 0) > 0 &&
+            data.positions?.some((p: any) => !p.isMock),
+        );
+        setHasMockPositions(
+          showMockIndicators && data.positions?.some((p: any) => p.isMock),
+        );
+      } catch {
+        setTrackingState("provider-error");
+        setLivePositions([]);
+        setHasLiveData(false);
+        setHasMockPositions(false);
+      }
+    },
+    [showMockIndicators],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -600,6 +607,7 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
       );
     }
     if (trackingState === "not-configured") {
+      if (isDemoNavMode()) return null;
       return (
         <div
           className="flex items-center gap-2 bg-slate-800/90 border border-slate-600/50 rounded-lg px-3 py-2"
@@ -635,6 +643,27 @@ export const GlobalMapViewEnhanced: React.FC<Props> = ({
   };
 
   if (!hasValidApiKey) {
+    // In demo mode, show a clean placeholder instead of configuration errors
+    if (isDemoNavMode()) {
+      return (
+        <div
+          className="flex-1 relative overflow-hidden w-full h-full"
+          data-testid="map-fallback"
+        >
+          <div className="absolute inset-0 bg-slate-950 flex items-center justify-center">
+            <div className="text-center p-8">
+              <MapPin className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+              <h2 className="text-lg font-bold text-slate-300 mb-2">
+                Fleet Map
+              </h2>
+              <p className="text-sm text-slate-500">
+                Available when GPS provider is configured
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div
         className="flex-1 relative overflow-hidden w-full h-full"

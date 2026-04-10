@@ -54,6 +54,7 @@ const EXPECTED_DELETE_TABLES = [
   "ap_bills",
   "gl_accounts",
   "documents",
+  "exceptions",
 ];
 
 describe("reset-sales-demo — Phase 1 reset pipeline", () => {
@@ -96,8 +97,8 @@ describe("reset-sales-demo — Phase 1 reset pipeline", () => {
     const deleteCalls = conn.calls.filter((c) =>
       /^\s*DELETE\s+FROM/i.test(c.sql),
     );
-    // 10 non-cascading tables + final companies row = 11 total DELETE steps.
-    expect(deleteCalls.length).toBeGreaterThanOrEqual(11);
+    // 11 non-cascading tables + final companies row = 12 total DELETE steps.
+    expect(deleteCalls.length).toBeGreaterThanOrEqual(12);
     expect(deleteCalls.length).toBe(SALES_DEMO_DELETE_SEQUENCE.length);
 
     // Every expected table appears in order.

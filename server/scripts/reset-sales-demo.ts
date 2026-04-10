@@ -108,6 +108,10 @@ export const SALES_DEMO_DELETE_SEQUENCE: ReadonlyArray<{
     label: "documents",
     sql: "DELETE FROM documents WHERE company_id = ?",
   },
+  {
+    label: "exceptions",
+    sql: "DELETE FROM exceptions WHERE company_id = ?",
+  },
   // The final DELETE against companies must be LAST — it cascades to
   // users, customers, parties (after migration 037), party_contacts,
   // party_documents, rate_rows, rate_tiers, constraint_sets,
