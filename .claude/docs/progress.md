@@ -942,3 +942,76 @@
 ---
 
 ## SPRINT COMPLETE: 10/10 stories passed (0 skipped)
+
+---
+
+# Mobile Sprints C+D+E — Trip Workspace, Document Capture, Offline Queue
+
+> Branch: `ralph/mobile-sprints-cde` → PR #69 (targeting `mobile/trucker-app`)
+> Date: 2026-04-10
+> Result: 11/11 stories PASS, 0 skipped, 0 retries
+
+## Sprint C: Trip Workspace
+
+### STORY-001 — PASS (2026-04-10)
+- **Files**: loads.ts, load.ts, LoadCard.tsx, loads/index.tsx, verify-trip-workspace.cjs
+- **Criteria**: 7/7 (R-P1-01 through R-P1-07)
+- **Summary**: Load list service (fetchLoads, fetchLoadById, updateLoadStatus), Load/LoadLeg types with getOrigin/getDestination helpers, LoadCard component with status badge, FlatList screen with pull-to-refresh, loading indicator, error+retry.
+
+### STORY-002 — PASS (2026-04-10)
+- **Files**: loads/[id].tsx, loads/_layout.tsx, loads/index.tsx, LoadCard.tsx, verify-load-detail.cjs
+- **Criteria**: 5/5 (R-P2-01 through R-P2-05)
+- **Summary**: Load detail screen with origin/destination/dates/status sections, Stack navigator with index+[id] routes, LoadCard navigation via router.push.
+
+### STORY-003 — PASS (2026-04-10)
+- **Files**: StatusUpdateButton.tsx, useLoadStatus.ts, loads/[id].tsx, verify-status-update.cjs
+- **Criteria**: 7/7 (R-P3-01 through R-P3-07)
+- **Summary**: StatusUpdateButton with 3 driver transitions (dispatched→in_transit→arrived→delivered), useLoadStatus hook with optimistic update + 422 rollback, error display.
+
+## Sprint D: Document Capture
+
+### STORY-004 — PASS (2026-04-10)
+- **Files**: package.json, app.json, camera.tsx, preview.tsx, _layout.tsx, imageService.ts, verify-camera-capture.cjs
+- **Criteria**: 6/6 (R-P4-01 through R-P4-06)
+- **Summary**: expo-camera + expo-image-manipulator dependencies, camera permissions, CameraScreen with CameraView + permission prompt, PreviewScreen with retake/accept, compressImage (1920px, 0.7 quality).
+
+### STORY-005 — PASS (2026-04-10)
+- **Files**: documents.ts, api.ts, upload.tsx, ocr-result.tsx, verify-doc-upload.cjs
+- **Criteria**: 9/9 (R-P5-01 through R-P5-09)
+- **Summary**: Document service (upload, triggerOcr, getOcrResult, listDocuments), uploadFile multipart support in api.ts, UploadScreen with 5 doc type picker + error/retry + 413 handling, OcrResultScreen with fields display.
+
+### STORY-006 — PASS (2026-04-10)
+- **Files**: DocumentList.tsx, loads/[id].tsx, verify-doc-list.cjs
+- **Criteria**: 4/4 (R-P6-01 through R-P6-04)
+- **Summary**: DocumentList component with listDocuments + useFocusEffect refresh, FlatList showing doc_type/filename/created_at, "No documents yet" empty state, "Capture Document" button on load detail.
+
+## Sprint E: Offline Queue
+
+### STORY-007 — PASS (2026-04-10)
+- **Files**: package.json, connectivity.ts, ConnectivityContext.tsx, OfflineBanner.tsx, _layout.tsx, verify-offline-core.cjs
+- **Criteria**: 5/5 (R-P7-01 through R-P7-05)
+- **Summary**: @react-native-community/netinfo dependency, connectivity service with NetInfo listener, ConnectivityProvider + useConnectivity hook, OfflineBanner ("You are offline"), root layout wrapping.
+
+### STORY-008 — PASS (2026-04-10)
+- **Files**: package.json, fileStorage.ts, uploadQueue.ts, queue.ts, verify-upload-queue.cjs
+- **Criteria**: 8/8 (R-P8-01 through R-P8-08)
+- **Summary**: expo-file-system + async-storage dependencies, saveFileLocally/deleteLocalFile via copyAsync, upload queue with addToQueue/processQueue/getQueueItems, AsyncStorage persistence, exponential backoff (Math.pow(2,retryCount)*1000), max 5 retries.
+
+### STORY-009 — PASS (2026-04-10)
+- **Files**: package.json, backgroundSync.ts, connectivity.ts, _layout.tsx, verify-background-sync.cjs
+- **Criteria**: 5/5 (R-P9-01 through R-P9-05)
+- **Summary**: expo-task-manager dependency, background task "loadpilot-upload-sync" calling processQueue, BackgroundFetchResult.NewData return, connectivity offline→online processQueue trigger, registerBackgroundSync in root layout useEffect.
+
+### STORY-010 — PASS (2026-04-10)
+- **Files**: QueueStatusBadge.tsx, queue.tsx, _layout.tsx, upload.tsx, verify-queue-ui.cjs
+- **Criteria**: 5/5 (R-P10-01 through R-P10-05)
+- **Summary**: QueueStatusBadge with pending+failed count badge, QueueScreen FlatList with retry for failed items, upload.tsx offline detection + queue fallback, 4th tab for queue with badge.
+
+### STORY-011 — PASS (2026-04-10)
+- **Files**: index.tsx, verify-sprint-cde.cjs
+- **Criteria**: 4/4 (R-P11-01 through R-P11-04)
+- **Summary**: Home dashboard with Active Loads card (dispatched/in_transit/arrived count) and Pending Uploads card, combined verification aggregator invoking all phase scripts (34/34 pass).
+
+---
+
+## SPRINT COMPLETE: 11/11 stories passed (0 skipped) — Mobile Sprints C+D+E
