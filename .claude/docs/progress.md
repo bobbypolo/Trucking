@@ -979,3 +979,8 @@
 - **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.notify-partners.test.tsx
 - **Criteria**: 5/5 (R-P4-01..R-P4-05)
 - **Summary**: Notify Partners button + inline modal with broker/driver/customerContact checkboxes, POSTs to /api/notification-jobs with channel:Multi, success/error toasts. 5 tests pass + 48 regression tests. Commit 1a5f7b1 → merge ca845df.
+
+### STORY-006 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.tag-event.test.tsx
+- **Criteria**: 3/3 (R-P6-01..R-P6-03)
+- **Summary**: Tag for Action button now fires fire-and-forget POST /api/dispatch-events with ACTION_TAGGED/ACTION_UNTAGGED; failures silently swallowed (no error toast). 3 tests pass + 93 regression. Commit e89a6d7.
