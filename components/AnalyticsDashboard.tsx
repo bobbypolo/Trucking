@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   TrendingUp,
   BarChart3,
@@ -42,6 +42,41 @@ const CHART_COLORS = [
   "#84cc16",
 ];
 
+type QuarterKey = "Q1" | "Q2" | "Q3" | "Q4";
+const QUARTER_OPTIONS: QuarterKey[] = ["Q1", "Q2", "Q3", "Q4"];
+
+/**
+ * Map a month index (0-11) to its fiscal quarter.
+ * Jan-Mar → Q1, Apr-Jun → Q2, Jul-Sep → Q3, Oct-Dec → Q4.
+ */
+function monthToQuarter(month: number): QuarterKey {
+  if (month <= 2) return "Q1";
+  if (month <= 5) return "Q2";
+  if (month <= 8) return "Q3";
+  return "Q4";
+}
+
+/**
+ * Compute the fiscal quarter of a LoadData entry from its pickupDate.
+ * Returns null when pickupDate is missing or unparseable.
+ */
+function loadQuarter(pickupDate?: string): QuarterKey | null {
+  if (!pickupDate) return null;
+  const d = new Date(pickupDate);
+  if (Number.isNaN(d.getTime())) return null;
+  return monthToQuarter(d.getMonth());
+}
+
+interface FinancialObjective {
+  id: string;
+  company_id: string;
+  quarter: string;
+  revenue_target: number;
+  expense_budget: number;
+  profit_target: number;
+  notes: string | null;
+}
+
 interface Props {
   user: User;
   loads: LoadData[];
@@ -55,6 +90,46 @@ export const AnalyticsDashboard: React.FC<Props> = ({
   brokers = [],
   onNavigate,
 }) => {
+  // R-P10-04: quarter selector state (defaults to current quarter for nicer UX)
+  const [selectedQuarter, setSelectedQuarter] = useState<QuarterKey>(() =>
+    monthToQuarter(new Date().getMonth()),
+  );
+
+  // R-P10-05 / R-P10-06: objectives fetched per selected quarter
+  const currentYear = useMemo(() => new Date().getFullYear(), []);
+  const quarterKey = `${currentYear}-${selectedQuarter}`;
+  const [objectives, setObjectives] = useState<FinancialObjective[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const res = await fetch(
+          `/api/financial-objectives?quarter=${encodeURIComponent(quarterKey)}`,
+        );
+        if (!res.ok) {
+          if (!cancelled) setObjectives([]);
+          return;
+        }
+        const data = (await res.json()) as FinancialObjective[];
+        if (!cancelled) setObjectives(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setObjectives([]);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [quarterKey]);
+
+  // R-P10-04: only loads whose pickupDate falls in the selected quarter feed
+  // the lane analytics. When no loads match, topLanes degrades gracefully.
+  const filteredLoads = useMemo(
+    () => loads.filter((l) => loadQuarter(l.pickupDate) === selectedQuarter),
+    [loads, selectedQuarter],
+  );
+
   const historicalStats = useMemo(() => {
     const totalRevenue = loads.reduce((s, l) => s + (l.carrierRate || 0), 0);
     const totalMiles = loads.reduce((s, l) => s + (l.miles || 0), 0);
@@ -86,16 +161,26 @@ export const AnalyticsDashboard: React.FC<Props> = ({
     });
   }, [brokers, loads]);
 
-  // Derive lane data from real loads
+  // Derive lane data from real loads (filtered by selected quarter, R-P10-04)
   const topLanes = useMemo(() => {
     const laneMap: Record<
       string,
-      { vol: number; totalProfit: number; totalMiles: number; totalRevenue: number }
+      {
+        vol: number;
+        totalProfit: number;
+        totalMiles: number;
+        totalRevenue: number;
+      }
     > = {};
-    loads.forEach((l) => {
+    filteredLoads.forEach((l) => {
       const key = `${l.pickup?.city ?? ""}, ${l.pickup?.state ?? ""} \u2192 ${l.dropoff?.city ?? ""}, ${l.dropoff?.state ?? ""}`;
       if (!laneMap[key])
-        laneMap[key] = { vol: 0, totalProfit: 0, totalMiles: 0, totalRevenue: 0 };
+        laneMap[key] = {
+          vol: 0,
+          totalProfit: 0,
+          totalMiles: 0,
+          totalRevenue: 0,
+        };
       laneMap[key].vol += 1;
       laneMap[key].totalProfit += (l.carrierRate || 0) - (l.driverPay || 0);
       laneMap[key].totalMiles += l.miles || 0;
@@ -111,7 +196,26 @@ export const AnalyticsDashboard: React.FC<Props> = ({
       }))
       .sort((a, b) => b.avgProfit - a.avgProfit)
       .slice(0, 5);
-  }, [loads]);
+  }, [filteredLoads]);
+
+  // R-P10-05: compute actual totals from the filtered (quarter-scoped) loads.
+  const quarterActuals = useMemo(() => {
+    const actualRevenue = filteredLoads.reduce(
+      (s, l) => s + (l.carrierRate || 0),
+      0,
+    );
+    const actualExpense = filteredLoads.reduce(
+      (s, l) => s + (l.driverPay || 0),
+      0,
+    );
+    return {
+      revenue: actualRevenue,
+      expense: actualExpense,
+      profit: actualRevenue - actualExpense,
+    };
+  }, [filteredLoads]);
+
+  const hasObjectives = objectives.length > 0;
 
   if (loads.length === 0) {
     return (
@@ -156,11 +260,119 @@ export const AnalyticsDashboard: React.FC<Props> = ({
           </p>
         </div>
         <div className="flex gap-3">
+          <label htmlFor="analytics-quarter-selector" className="sr-only">
+            Quarter
+          </label>
           <div className="px-4 py-2.5 bg-slate-900 border border-white/5 rounded-xl text-slate-300 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-            <Calendar className="w-4 h-4" /> All Time
+            <Calendar className="w-4 h-4" />
+            <select
+              id="analytics-quarter-selector"
+              data-testid="quarter-selector"
+              value={selectedQuarter}
+              onChange={(e) => setSelectedQuarter(e.target.value as QuarterKey)}
+              className="bg-transparent text-slate-300 text-xs font-bold uppercase tracking-widest outline-none"
+            >
+              {QUARTER_OPTIONS.map((q) => (
+                <option key={q} value={q}>
+                  {q}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
+
+      {/* QUARTERLY OBJECTIVES (R-P10-05 / R-P10-06) */}
+      {hasObjectives ? (
+        <div
+          data-testid="actual-vs-target"
+          className="bg-[#0a0f1e] rounded-[2rem] border border-white/5 p-8 shadow-2xl"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-sm font-black text-white uppercase tracking-widest">
+                Actual vs Target
+              </h2>
+              <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-0.5">
+                {quarterKey} Progress
+              </p>
+            </div>
+          </div>
+          {(() => {
+            const obj = objectives[0];
+            const rows: Array<{
+              key: string;
+              label: string;
+              actual: number;
+              target: number;
+            }> = [
+              {
+                key: "revenue",
+                label: "Revenue",
+                actual: quarterActuals.revenue,
+                target: obj.revenue_target,
+              },
+              {
+                key: "expense",
+                label: "Expense",
+                actual: quarterActuals.expense,
+                target: obj.expense_budget,
+              },
+              {
+                key: "profit",
+                label: "Profit",
+                actual: quarterActuals.profit,
+                target: obj.profit_target,
+              },
+            ];
+            return (
+              <div className="space-y-4">
+                {rows.map((r) => {
+                  const pct =
+                    r.target > 0
+                      ? Math.min(100, Math.round((r.actual / r.target) * 100))
+                      : 0;
+                  return (
+                    <div key={r.key}>
+                      <div className="flex justify-between text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        <span>{r.label}</span>
+                        <span className="font-mono text-blue-400">
+                          ${r.actual.toLocaleString()} / $
+                          {r.target.toLocaleString()}
+                        </span>
+                      </div>
+                      <div
+                        data-testid={`progress-bar-${r.key}`}
+                        className="w-full h-2 bg-slate-900 rounded-full overflow-hidden"
+                      >
+                        <div
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
+      ) : (
+        <div
+          data-testid="set-quarterly-targets"
+          className="bg-[#0a0f1e] rounded-[2rem] border border-white/5 p-8 shadow-2xl flex items-center justify-between"
+        >
+          <div>
+            <h2 className="text-sm font-black text-white uppercase tracking-widest">
+              Set quarterly targets
+            </h2>
+            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mt-1">
+              No revenue / expense / profit targets for {quarterKey}. Add
+              objectives to track Actual vs Target.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* HIGH-LEVEL TRENDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -215,7 +427,10 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                 </p>
               </div>
             </div>
-            <button aria-label="Broker scorecard options" className="p-2 text-slate-600 hover:text-white transition-colors">
+            <button
+              aria-label="Broker scorecard options"
+              className="p-2 text-slate-600 hover:text-white transition-colors"
+            >
               <MoreVertical className="w-4 h-4" />
             </button>
           </div>
@@ -307,7 +522,10 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                 </p>
               </div>
             </div>
-            <button aria-label="Lane profitability options" className="p-2 text-slate-600 hover:text-white transition-colors">
+            <button
+              aria-label="Lane profitability options"
+              className="p-2 text-slate-600 hover:text-white transition-colors"
+            >
               <MoreVertical className="w-4 h-4" />
             </button>
           </div>
@@ -355,7 +573,9 @@ export const AnalyticsDashboard: React.FC<Props> = ({
                   <div className="flex items-center gap-4">
                     <div
                       className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
+                      style={{
+                        backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                      }}
                     />
                     <div>
                       <div className="text-xs font-bold text-white uppercase">
