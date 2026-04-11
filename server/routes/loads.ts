@@ -619,6 +619,48 @@ router.patch(
         exportLoadToBigQuery(pool, loadId);
       }
 
+      // ── Push notification trigger (STORY-007 R-P7-01..04) ────────────
+      // Fire a push to the assigned driver when a dispatcher transitions
+      // the load's status. Skipped when caller IS the driver or when the
+      // load has no assigned driver. Push failures must NEVER block the
+      // PATCH response.
+      try {
+        const [loadRows] = await pool.query<RowDataPacket[]>(
+          "SELECT id, driver_id, load_number FROM loads WHERE id = ? AND company_id = ?",
+          [loadId, companyId],
+        );
+        const loadRow = (loadRows as RowDataPacket[])[0];
+        const assignedDriverId =
+          (loadRow?.driver_id as string | null | undefined) ?? null;
+        const loadNumber =
+          (loadRow?.load_number as string | null | undefined) ?? loadId;
+
+        if (assignedDriverId && assignedDriverId !== req.user!.id) {
+          const [tokenRows] = await pool.query<RowDataPacket[]>(
+            "SELECT expo_push_token FROM push_tokens WHERE user_id = ? AND enabled = 1",
+            [assignedDriverId],
+          );
+          const tokens = (tokenRows as RowDataPacket[])
+            .map((r) => r.expo_push_token)
+            .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+          if (tokens.length > 0) {
+            await sendPush(
+              tokens,
+              "Load status changed",
+              `${loadNumber} is now ${status}`,
+              { loadId: loadId },
+            );
+          }
+        }
+      } catch (pushErr) {
+        const log = createRequestLogger(req, "PATCH /api/loads/:id/status");
+        log.error(
+          { err: pushErr },
+          "push notification on load status change failed",
+        );
+      }
+
       res.json(result);
     } catch (error) {
       next(error);
