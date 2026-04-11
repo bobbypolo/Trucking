@@ -15,7 +15,10 @@ import {
 import pool from "../db";
 import { createRequestLogger } from "../lib/logger";
 import { getSafetyScore } from "../services/fmcsa.service";
-import { checkExpiring } from "../services/cert-expiry-checker";
+import {
+  checkExpiring,
+  createExpiryAlerts,
+} from "../services/cert-expiry-checker";
 import { syncDomainToException } from "../lib/exception-sync";
 
 const router = Router();
@@ -262,7 +265,10 @@ router.post(
           [uuidv4(), exceptionId, req.user!.uid || "System"],
         );
       } catch (linkErr) {
-        const linkLog = createRequestLogger(req, "POST /api/safety/maintenance");
+        const linkLog = createRequestLogger(
+          req,
+          "POST /api/safety/maintenance",
+        );
         linkLog.warn(
           { err: linkErr, maintenanceId: id },
           "Failed to create linked exception for maintenance (non-blocking)",
@@ -287,7 +293,10 @@ router.patch(
   async (req: Request, res, next) => {
     const companyId = req.user!.tenantId;
     const { id } = req.params;
-    const patchLog = createRequestLogger(req, "PATCH /api/safety/maintenance/:id");
+    const patchLog = createRequestLogger(
+      req,
+      "PATCH /api/safety/maintenance/:id",
+    );
 
     try {
       // Verify record exists and belongs to tenant
@@ -525,6 +534,23 @@ router.get(
     try {
       const certs = await checkExpiring(companyId, daysAhead);
       res.json(certs);
+    } catch (error) {
+      next(error);
+    }
+  },
+);
+
+// POST /api/safety/check-expiring-certs — trigger expiry check + create notification alerts
+router.post(
+  "/api/safety/check-expiring-certs",
+  requireAuth,
+  requireTenant,
+  async (req: Request, res, next) => {
+    const companyId = req.user!.tenantId;
+    const daysAhead = req.body?.days ? parseInt(req.body.days, 10) : 30;
+    try {
+      const result = await createExpiryAlerts(companyId, daysAhead);
+      res.json(result);
     } catch (error) {
       next(error);
     }

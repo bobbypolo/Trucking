@@ -9,6 +9,7 @@ import {
   Plus,
   Check,
   Loader2,
+  Layers,
 } from "lucide-react";
 import { getBrokers, saveBroker } from "../services/brokerService";
 import {
@@ -66,7 +67,7 @@ interface Props {
     callNotes?: string,
     overrideFreightType?: FreightType,
     intermodalData?: any,
-    autoTrigger?: "upload" | "camera",
+    autoTrigger?: "upload" | "camera" | "intake",
     phoneOrderData?: PhoneOrderPayload,
   ) => void;
   onCancel: () => void;
@@ -242,6 +243,26 @@ export const LoadSetupModal: React.FC<Props> = ({
       undefined,
       undefined,
       "upload",
+    );
+  };
+
+  /** Multi-Doc Intake — opens Scanner in intake mode for accumulating data across multiple scans. */
+  const handleIntake = () => {
+    if (!selectedBrokerId) {
+      setFormErrors({ broker: "Broker or Direct is required" });
+      return;
+    }
+    const resolvedBrokerId =
+      selectedBrokerId === DIRECT_BROKER_ID ? "" : selectedBrokerId;
+    const resolvedDriverId = selectedDriverId || "";
+    onContinue(
+      resolvedBrokerId,
+      resolvedDriverId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "intake",
     );
   };
 
@@ -927,6 +948,15 @@ export const LoadSetupModal: React.FC<Props> = ({
             >
               {isSubmitting ? "Loading..." : "Scan Doc"}{" "}
               <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={handleIntake}
+              disabled={isSubmitting || !selectedBrokerId}
+              className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Layers className="w-4 h-4" />{" "}
+              {isSubmitting ? "Loading..." : "Multi-Doc Intake"}
             </button>
 
             <button

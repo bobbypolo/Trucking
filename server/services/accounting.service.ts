@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { detectState, calculateDistance } from "../geoUtils";
 import {
   accountingRepository,
+  type JournalPeriodAggRow,
   type JournalEntryInput,
   type InvoiceInput,
   type BillInput,
@@ -144,6 +145,98 @@ export const accountingService = {
       marginPercent: revenue > 0 ? ((revenue - costs) / revenue) * 100 : 0,
       details,
     };
+  },
+
+  // --- Financial Reports ---
+
+  async getProfitLoss(companyId: string, startDate: string, endDate: string) {
+    const rows = await accountingRepository.getJournalAggregationsByPeriod(
+      companyId,
+      startDate,
+      endDate,
+      ["Income", "Expense", "COGS"],
+    );
+    let revenue = 0;
+    let expenses = 0;
+    const details = rows.map((row) => {
+      const amount =
+        row.account_type === "Income"
+          ? Number(row.total_credit) - Number(row.total_debit)
+          : Number(row.total_debit) - Number(row.total_credit);
+      if (row.account_type === "Income") revenue += amount;
+      else expenses += amount;
+      return {
+        accountNumber: row.account_number,
+        accountName: row.account_name,
+        type: row.account_type,
+        amount,
+      };
+    });
+    return {
+      revenue,
+      expenses,
+      netIncome: revenue - expenses,
+      startDate,
+      endDate,
+      details,
+    };
+  },
+
+  async getBalanceSheet(companyId: string, asOfDate: string) {
+    const rows = await accountingRepository.getJournalAggregationsByPeriod(
+      companyId,
+      undefined,
+      asOfDate,
+    );
+    let assets = 0;
+    let liabilities = 0;
+    let equity = 0;
+    const details = rows.map((row) => {
+      let amount: number;
+      if (row.account_type === "Asset") {
+        amount = Number(row.total_debit) - Number(row.total_credit);
+        assets += amount;
+      } else if (row.account_type === "Liability") {
+        amount = Number(row.total_credit) - Number(row.total_debit);
+        liabilities += amount;
+      } else if (row.account_type === "Equity") {
+        amount = Number(row.total_credit) - Number(row.total_debit);
+        equity += amount;
+      } else {
+        amount =
+          row.account_type === "Income"
+            ? Number(row.total_credit) - Number(row.total_debit)
+            : Number(row.total_debit) - Number(row.total_credit);
+      }
+      return {
+        accountNumber: row.account_number,
+        accountName: row.account_name,
+        type: row.account_type,
+        amount,
+      };
+    });
+    return { assets, liabilities, equity, asOfDate, details };
+  },
+
+  async getTrialBalance(companyId: string) {
+    const rows =
+      await accountingRepository.getJournalAggregationsByPeriod(companyId);
+    let totalDebits = 0;
+    let totalCredits = 0;
+    const accounts = rows.map((row) => {
+      const debit = Number(row.total_debit);
+      const credit = Number(row.total_credit);
+      totalDebits += debit;
+      totalCredits += credit;
+      return {
+        accountNumber: row.account_number,
+        accountName: row.account_name,
+        type: row.account_type,
+        debit,
+        credit,
+      };
+    });
+    return { accounts, totalDebits, totalCredits };
   },
 
   // --- Journal Entry ---
@@ -352,10 +445,7 @@ export const accountingService = {
     return SETTLEMENT_APPROVE_ROLES.includes(userRole);
   },
 
-  async listSettlementsWithLines(
-    tenantId: string,
-    driverId?: string,
-  ) {
+  async listSettlementsWithLines(tenantId: string, driverId?: string) {
     const settlements = await accountingRepository.listSettlements(
       tenantId,
       driverId,
@@ -516,9 +606,7 @@ export const accountingService = {
       const p2 = pings[i];
       const dist = calculateDistance(p1.lat, p1.lng, p2.lat, p2.lng);
       const state =
-        p2.state_code ||
-        p2.stateCode ||
-        (await detectState(p2.lat, p2.lng));
+        p2.state_code || p2.stateCode || (await detectState(p2.lat, p2.lng));
       if (state) {
         jurisdictionMiles[state] = (jurisdictionMiles[state] || 0) + dist;
       }
@@ -530,10 +618,7 @@ export const accountingService = {
     };
   },
 
-  async lockIftaAudit(
-    tenantId: string,
-    audit: IftaAuditInput,
-  ): Promise<void> {
+  async lockIftaAudit(tenantId: string, audit: IftaAuditInput): Promise<void> {
     await accountingRepository.createIftaAudit(tenantId, audit);
 
     // Sync to legacy mileage_jurisdiction for backward compatibility
@@ -710,7 +795,11 @@ export const accountingService = {
         } else if (type === "Invoices") {
           await accountingRepository.batchImportInvoice(tenantId, item, conn);
         } else if (type === "Settlements") {
-          await accountingRepository.batchImportSettlement(tenantId, item, conn);
+          await accountingRepository.batchImportSettlement(
+            tenantId,
+            item,
+            conn,
+          );
         }
       }
       await conn.commit();

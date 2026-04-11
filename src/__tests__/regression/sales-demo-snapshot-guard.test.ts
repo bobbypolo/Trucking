@@ -65,9 +65,9 @@ const GLOBALMAP_PATH = "components/GlobalMapViewEnhanced.tsx";
 
 // Computed once on first successful run; pinned below.
 const SAFETYVIEW_SHA_PIN =
-  "1ec4ac187d8b7def03fe4285a053983207f6338716cfee5efdf6a796a5352663";
+  "e6d327ba901654935906aa3c1cf1c852e5c7740000bd1335ac61f9a28c9c1287";
 const GLOBALMAP_SHA_PIN =
-  "832173bdff3b352daf8fe9758a4c74611c4188c561a2dfe5d409916f6f02a365";
+  "0f1c70f961ea7497ccebc43fa78199799e55ace05f43b79f92689365536ccd86";
 
 // ---------------------------------------------------------------------------
 // R-P5-04: docs/sales-demo-seed-contract.md H2 assertion

@@ -78,6 +78,7 @@ import {
   Save,
   ShieldAlert as ShieldAlertIcon,
   Phone,
+  Bell,
   Package,
   MapPin,
   ClipboardList,
@@ -656,6 +657,28 @@ export const SafetyView: React.FC<Props> = ({
 
             {/* Certificate Expiry Warnings — real data from API */}
             <CertExpiryWarnings companyId={user.companyId} daysAhead={30} />
+
+            {/* Manual trigger for expiry alert generation */}
+            <button
+              className="w-full py-3 bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/20 rounded-xl text-xs font-black uppercase tracking-widest text-blue-400 flex items-center justify-center gap-2 transition-all mt-4"
+              onClick={async () => {
+                try {
+                  const resp = await fetch("/api/safety/check-expiring-certs", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                  });
+                  const data = await resp.json();
+                  showFeedback(
+                    `${data.alertsCreated} expiry alert${data.alertsCreated !== 1 ? "s" : ""} generated`,
+                  );
+                } catch {
+                  showFeedback("Failed to check credentials");
+                }
+              }}
+            >
+              <Bell className="w-4 h-4" />
+              Check Expiring Credentials
+            </button>
 
             {/* Recent Notification Status */}
             {notificationJobs.length > 0 && (

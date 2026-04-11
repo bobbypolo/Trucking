@@ -237,7 +237,7 @@ export default function App() {
   const [scanMode, setScanMode] = useState(false);
   // R-P4-19 — autoTrigger flows from LoadSetupModal Scan Doc through onContinue
   const [pendingScannerAutoTrigger, setPendingScannerAutoTrigger] = useState<
-    "upload" | "camera" | undefined
+    "upload" | "camera" | "intake" | undefined
   >(undefined);
   const [editingLoad, setEditingLoad] = useState<Partial<LoadData> | null>(
     null,
@@ -753,7 +753,9 @@ export default function App() {
                 ...(phoneData ?? {}),
               });
               setIsAdding(true);
-              setScanMode(!ln || autoTrigger === "upload");
+              setScanMode(
+                !ln || autoTrigger === "upload" || autoTrigger === "intake",
+              );
             }}
             onCancel={() => setShowLoadSetup(null)}
           />
@@ -765,54 +767,113 @@ export default function App() {
           <div className="w-full max-w-lg relative">
             <Suspense fallback={<LoadingSkeleton variant="card" count={1} />}>
               <Scanner
-                autoTrigger={pendingScannerAutoTrigger}
+                mode={
+                  pendingScannerAutoTrigger === "intake" ? "intake" : "load"
+                }
+                autoTrigger={
+                  pendingScannerAutoTrigger === "intake"
+                    ? undefined
+                    : pendingScannerAutoTrigger
+                }
                 onDataExtracted={(d, b) => {
                   setScanMode(false);
                   setPendingScannerAutoTrigger(undefined);
-                  const legs: LoadLeg[] = [];
-                  if (d.pickup?.city) {
-                    legs.push({
-                      id: crypto.randomUUID(),
-                      type: "Pickup",
-                      location: {
-                        facilityName: d.pickup.facilityName || "",
-                        city: d.pickup.city,
-                        state: d.pickup.state || "",
-                        address: "",
-                        zip: "",
-                      },
-                      date:
-                        d.pickupDate || new Date().toISOString().split("T")[0],
-                      completed: false,
-                      pallets: 0,
-                      weight: d.weight || 0,
-                    });
+                  const isIntake = Array.isArray((d as any).scannedDocTypes);
+
+                  if (isIntake) {
+                    const ida = d as any;
+                    const legs: LoadLeg[] = [];
+                    if (ida.pickupCity) {
+                      legs.push({
+                        id: crypto.randomUUID(),
+                        type: "Pickup",
+                        location: {
+                          facilityName: ida.pickupFacility || "",
+                          city: ida.pickupCity,
+                          state: ida.pickupState || "",
+                          address: "",
+                          zip: "",
+                        },
+                        date:
+                          ida.pickupDate ||
+                          new Date().toISOString().split("T")[0],
+                        completed: false,
+                        pallets: 0,
+                        weight: parseInt(ida.weight) || 0,
+                      });
+                    }
+                    if (ida.dropoffCity) {
+                      legs.push({
+                        id: crypto.randomUUID(),
+                        type: "Dropoff",
+                        location: {
+                          facilityName: ida.dropoffFacility || "",
+                          city: ida.dropoffCity,
+                          state: ida.dropoffState || "",
+                          address: "",
+                          zip: "",
+                        },
+                        date: "",
+                        completed: false,
+                        pallets: 0,
+                        weight: 0,
+                      });
+                    }
+                    setEditingLoad((prev) => ({
+                      ...prev,
+                      commodity: ida.commodity || prev?.commodity,
+                      weight: parseInt(ida.weight) || prev?.weight,
+                      legs: legs.length > 0 ? legs : prev?.legs || [],
+                      brokerId: prev?.brokerId,
+                    }));
+                    if (b) setPotentialBroker(b);
+                  } else {
+                    const legs: LoadLeg[] = [];
+                    if (d.pickup?.city) {
+                      legs.push({
+                        id: crypto.randomUUID(),
+                        type: "Pickup",
+                        location: {
+                          facilityName: d.pickup.facilityName || "",
+                          city: d.pickup.city,
+                          state: d.pickup.state || "",
+                          address: "",
+                          zip: "",
+                        },
+                        date:
+                          d.pickupDate ||
+                          new Date().toISOString().split("T")[0],
+                        completed: false,
+                        pallets: 0,
+                        weight: d.weight || 0,
+                      });
+                    }
+                    if (d.dropoff?.city) {
+                      legs.push({
+                        id: crypto.randomUUID(),
+                        type: "Dropoff",
+                        location: {
+                          facilityName: d.dropoff.facilityName || "",
+                          city: d.dropoff.city,
+                          state: d.dropoff.state || "",
+                          address: "",
+                          zip: "",
+                        },
+                        date: "",
+                        completed: false,
+                        pallets: 0,
+                        weight: 0,
+                      });
+                    }
+                    setEditingLoad((prev) => ({
+                      ...prev,
+                      ...d,
+                      legs: legs.length > 0 ? legs : prev?.legs || [],
+                      weight: d.weight || prev?.weight,
+                      brokerId: prev?.brokerId || d.brokerId,
+                    }));
+                    setPotentialBroker(b);
                   }
-                  if (d.dropoff?.city) {
-                    legs.push({
-                      id: crypto.randomUUID(),
-                      type: "Dropoff",
-                      location: {
-                        facilityName: d.dropoff.facilityName || "",
-                        city: d.dropoff.city,
-                        state: d.dropoff.state || "",
-                        address: "",
-                        zip: "",
-                      },
-                      date: "",
-                      completed: false,
-                      pallets: 0,
-                      weight: 0,
-                    });
-                  }
-                  setEditingLoad((prev) => ({
-                    ...prev,
-                    ...d,
-                    legs: legs.length > 0 ? legs : prev?.legs || [],
-                    weight: d.weight || prev?.weight,
-                    brokerId: prev?.brokerId || d.brokerId,
-                  }));
-                  setPotentialBroker(b);
                 }}
                 onCancel={() => {
                   setScanMode(false);

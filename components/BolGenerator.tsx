@@ -10,8 +10,10 @@ import {
   Clock,
   Lock,
   User,
+  Download,
 } from "lucide-react";
 import { Toast } from "./Toast";
+import { generateBolPdf } from "../services/bolPdfService";
 
 interface Props {
   load: LoadData;
@@ -164,6 +166,7 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
 
   const [terms, setTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [bolErrors, setBolErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{
     message: string;
@@ -183,9 +186,12 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
   const validateBol = (): Record<string, string> => {
     const errs: Record<string, string> = {};
     if (!driverSig) errs.driverSig = "Driver signature is required";
-    if (timeArrived && !timeRegex.test(timeArrived)) errs.timeArrived = "Time must be HH:MM format";
-    if (timeStart && !timeRegex.test(timeStart)) errs.timeStart = "Time must be HH:MM format";
-    if (timeEnd && !timeRegex.test(timeEnd)) errs.timeEnd = "Time must be HH:MM format";
+    if (timeArrived && !timeRegex.test(timeArrived))
+      errs.timeArrived = "Time must be HH:MM format";
+    if (timeStart && !timeRegex.test(timeStart))
+      errs.timeStart = "Time must be HH:MM format";
+    if (timeEnd && !timeRegex.test(timeEnd))
+      errs.timeEnd = "Time must be HH:MM format";
     return errs;
   };
 
@@ -219,6 +225,31 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
       await Promise.resolve(onSave(bolData));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    const bolData: BolData = {
+      generatedAt: new Date().toISOString(),
+      type,
+      driverSignature: driverSig,
+      shipperSignature: type === "Pickup" ? custSig : undefined,
+      receiverSignature: type === "Delivery" ? custSig : undefined,
+      signatoryTitle,
+      sealNumber,
+      timeArrived,
+      timeLoadingStart: timeStart,
+      timeLoadingEnd: timeEnd,
+      termsAccepted: terms,
+    };
+    setIsDownloading(true);
+    try {
+      await generateBolPdf(load, bolData);
+      setToast({ message: "BOL PDF downloaded.", type: "success" });
+    } catch {
+      setToast({ message: "Failed to generate PDF.", type: "error" });
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -292,16 +323,24 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label htmlFor="bolArrivalTimeHitDock" className="text-[10px] text-slate-500 block">
+                      <label
+                        htmlFor="bolArrivalTimeHitDock"
+                        className="text-[10px] text-slate-500 block"
+                      >
                         Arrival Time (Hit Dock)
                       </label>
-                      <input id="bolArrivalTimeHitDock"
+                      <input
+                        id="bolArrivalTimeHitDock"
                         type="time"
                         className={`input-field py-1 ${bolErrors.timeArrived ? "border-red-500" : ""}`}
                         value={timeArrived}
                         onChange={(e) => setTimeArrived(e.target.value)}
                       />
-                      {bolErrors.timeArrived && <p className="text-red-400 text-xs mt-1">{bolErrors.timeArrived}</p>}
+                      {bolErrors.timeArrived && (
+                        <p className="text-red-400 text-xs mt-1">
+                          {bolErrors.timeArrived}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => markTime(setTimeArrived)}
@@ -312,16 +351,24 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label htmlFor="bolStartLoadingUnloading" className="text-[10px] text-slate-500 block">
+                      <label
+                        htmlFor="bolStartLoadingUnloading"
+                        className="text-[10px] text-slate-500 block"
+                      >
                         Start Loading/Unloading
                       </label>
-                      <input id="bolStartLoadingUnloading"
+                      <input
+                        id="bolStartLoadingUnloading"
                         type="time"
                         className={`input-field py-1 ${bolErrors.timeStart ? "border-red-500" : ""}`}
                         value={timeStart}
                         onChange={(e) => setTimeStart(e.target.value)}
                       />
-                      {bolErrors.timeStart && <p className="text-red-400 text-xs mt-1">{bolErrors.timeStart}</p>}
+                      {bolErrors.timeStart && (
+                        <p className="text-red-400 text-xs mt-1">
+                          {bolErrors.timeStart}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => markTime(setTimeStart)}
@@ -332,16 +379,24 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
-                      <label htmlFor="bolFinishLoadingUnloading" className="text-[10px] text-slate-500 block">
+                      <label
+                        htmlFor="bolFinishLoadingUnloading"
+                        className="text-[10px] text-slate-500 block"
+                      >
                         Finish Loading/Unloading
                       </label>
-                      <input id="bolFinishLoadingUnloading"
+                      <input
+                        id="bolFinishLoadingUnloading"
                         type="time"
                         className={`input-field py-1 ${bolErrors.timeEnd ? "border-red-500" : ""}`}
                         value={timeEnd}
                         onChange={(e) => setTimeEnd(e.target.value)}
                       />
-                      {bolErrors.timeEnd && <p className="text-red-400 text-xs mt-1">{bolErrors.timeEnd}</p>}
+                      {bolErrors.timeEnd && (
+                        <p className="text-red-400 text-xs mt-1">
+                          {bolErrors.timeEnd}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => markTime(setTimeEnd)}
@@ -361,10 +416,14 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                 </h4>
                 <div className="space-y-3">
                   <div>
-                    <label htmlFor="bolDroppedWithSealNumber" className="text-xs text-slate-400 block mb-1">
+                    <label
+                      htmlFor="bolDroppedWithSealNumber"
+                      className="text-xs text-slate-400 block mb-1"
+                    >
                       Dropped with Seal Number
                     </label>
-                    <input id="bolDroppedWithSealNumber"
+                    <input
+                      id="bolDroppedWithSealNumber"
                       className="input-field"
                       placeholder="Enter Seal #"
                       value={sealNumber}
@@ -391,15 +450,23 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                 onSave={setDriverSig}
                 existingSignature={driverSig}
               />
-              {bolErrors.driverSig && <p className="text-red-400 text-xs mt-1">{bolErrors.driverSig}</p>}
+              {bolErrors.driverSig && (
+                <p className="text-red-400 text-xs mt-1">
+                  {bolErrors.driverSig}
+                </p>
+              )}
 
               <div className="pt-4 border-t border-slate-700">
-                <label htmlFor="bolRepresentative" className="block text-xs font-bold text-slate-400 mb-1 uppercase">
+                <label
+                  htmlFor="bolRepresentative"
+                  className="block text-xs font-bold text-slate-400 mb-1 uppercase"
+                >
                   {type === "Pickup" ? "Shipper" : "Consignee"} Representative
                 </label>
                 <div className="flex items-center gap-2 mb-3">
                   <User className="w-4 h-4 text-slate-500" />
-                  <input id="bolRepresentative"
+                  <input
+                    id="bolRepresentative"
                     className="input-field"
                     placeholder="Signatory Name / Title (e.g. John Doe, Supervisor)"
                     value={signatoryTitle}
@@ -477,6 +544,15 @@ export const BolGenerator: React.FC<Props> = ({ load, onSave, onCancel }) => {
                   official {type === "Pickup" ? "Origin" : "POD"} record.
                 </span>
               </label>
+
+              <button
+                onClick={handleDownloadPdf}
+                disabled={isDownloading}
+                className="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                {isDownloading ? "Generating PDF..." : "Download BOL PDF"}
+              </button>
             </div>
           )}
         </div>

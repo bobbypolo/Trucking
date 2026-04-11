@@ -143,6 +143,59 @@ export const lockIFTATrip = async (
   await api.post("/accounting/ifta-audit-lock", audit);
 };
 
+// Financial Reports
+export const getProfitLoss = async (
+  startDate: string,
+  endDate: string,
+): Promise<{
+  revenue: number;
+  expenses: number;
+  netIncome: number;
+  startDate: string;
+  endDate: string;
+  details: Array<{
+    accountNumber: string;
+    accountName: string;
+    type: string;
+    amount: number;
+  }>;
+}> => {
+  return api.get(
+    `/accounting/reports/profit-loss?startDate=${startDate}&endDate=${endDate}`,
+  );
+};
+
+export const getBalanceSheet = async (
+  asOfDate: string,
+): Promise<{
+  assets: number;
+  liabilities: number;
+  equity: number;
+  asOfDate: string;
+  details: Array<{
+    accountNumber: string;
+    accountName: string;
+    type: string;
+    amount: number;
+  }>;
+}> => {
+  return api.get(`/accounting/reports/balance-sheet?asOfDate=${asOfDate}`);
+};
+
+export const getTrialBalance = async (): Promise<{
+  accounts: Array<{
+    accountNumber: string;
+    accountName: string;
+    type: string;
+    debit: number;
+    credit: number;
+  }>;
+  totalDebits: number;
+  totalCredits: number;
+}> => {
+  return api.get("/accounting/reports/trial-balance");
+};
+
 // ── IFTA Audit Packet ──────────────────────────────────────────────
 
 export interface IftaAuditPacket {

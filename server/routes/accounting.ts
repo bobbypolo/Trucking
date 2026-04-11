@@ -496,4 +496,93 @@ router.post(
   },
 );
 
+// --- FINANCIAL REPORTS ---
+
+// Profit & Loss
+router.get(
+  "/api/accounting/reports/profit-loss",
+  requireAuth,
+  requireTenant,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { startDate, endDate } = req.query;
+      if (!startDate || !endDate) {
+        return res
+          .status(400)
+          .json({ error: "startDate and endDate required" });
+      }
+      const result = await accountingService.getProfitLoss(
+        req.user!.tenantId,
+        startDate as string,
+        endDate as string,
+      );
+      res.json(result);
+    } catch (error) {
+      const log = createRequestLogger(
+        req,
+        "GET /api/accounting/reports/profit-loss",
+      );
+      log.error(
+        { err: error },
+        "SERVER ERROR [GET /api/accounting/reports/profit-loss]",
+      );
+      next(error);
+    }
+  },
+);
+
+// Balance Sheet
+router.get(
+  "/api/accounting/reports/balance-sheet",
+  requireAuth,
+  requireTenant,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const asOfDate =
+        (req.query.asOfDate as string) ||
+        new Date().toISOString().split("T")[0];
+      const result = await accountingService.getBalanceSheet(
+        req.user!.tenantId,
+        asOfDate,
+      );
+      res.json(result);
+    } catch (error) {
+      const log = createRequestLogger(
+        req,
+        "GET /api/accounting/reports/balance-sheet",
+      );
+      log.error(
+        { err: error },
+        "SERVER ERROR [GET /api/accounting/reports/balance-sheet]",
+      );
+      next(error);
+    }
+  },
+);
+
+// Trial Balance
+router.get(
+  "/api/accounting/reports/trial-balance",
+  requireAuth,
+  requireTenant,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const result = await accountingService.getTrialBalance(
+        req.user!.tenantId,
+      );
+      res.json(result);
+    } catch (error) {
+      const log = createRequestLogger(
+        req,
+        "GET /api/accounting/reports/trial-balance",
+      );
+      log.error(
+        { err: error },
+        "SERVER ERROR [GET /api/accounting/reports/trial-balance]",
+      );
+      next(error);
+    }
+  },
+);
+
 export default router;

@@ -24,6 +24,14 @@ export interface JournalLineAggRow extends RowDataPacket {
   total_credit: number;
 }
 
+export interface JournalPeriodAggRow extends RowDataPacket {
+  account_number: string;
+  account_name: string;
+  account_type: string;
+  total_debit: number;
+  total_credit: number;
+}
+
 export interface InvoiceRow extends RowDataPacket {
   id: string;
   company_id: string;
@@ -295,6 +303,43 @@ export const accountingRepository = {
     return rows;
   },
 
+  async getJournalAggregationsByPeriod(
+    companyId: string,
+    startDate?: string,
+    endDate?: string,
+    accountTypes?: string[],
+  ): Promise<JournalPeriodAggRow[]> {
+    const conditions: string[] = ["je.company_id = ?"];
+    const params: (string | string[])[] = [companyId];
+
+    if (startDate) {
+      conditions.push("je.entry_date >= ?");
+      params.push(startDate);
+    }
+    if (endDate) {
+      conditions.push("je.entry_date <= ?");
+      params.push(endDate);
+    }
+    if (accountTypes && accountTypes.length > 0) {
+      conditions.push(`a.type IN (${accountTypes.map(() => "?").join(",")})`);
+      params.push(...accountTypes);
+    }
+
+    const [rows] = await pool.query<JournalPeriodAggRow[]>(
+      `SELECT
+          a.account_number, a.name AS account_name, a.type AS account_type,
+          SUM(jl.debit) as total_debit, SUM(jl.credit) as total_credit
+       FROM journal_lines jl
+       JOIN journal_entries je ON jl.journal_entry_id = je.id
+       JOIN gl_accounts a ON jl.gl_account_id = a.id
+       WHERE ${conditions.join(" AND ")}
+       GROUP BY a.id, a.account_number, a.name, a.type
+       ORDER BY a.account_number`,
+      params,
+    );
+    return rows;
+  },
+
   // --- Journal Entries ---
 
   async createJournalEntry(
@@ -347,7 +392,15 @@ export const accountingRepository = {
   ): Promise<void> {
     await conn.query(
       "INSERT INTO journal_lines (id, journal_entry_id, gl_account_id, debit, credit, allocation_type, allocation_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [uuidv4(), entryId, glAccountId, debit, credit, allocationType, allocationId],
+      [
+        uuidv4(),
+        entryId,
+        glAccountId,
+        debit,
+        credit,
+        allocationType,
+        allocationId,
+      ],
     );
   },
 

@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   Phone,
   Clock,
+  BarChart3,
 } from "lucide-react";
 import {
   getGLAccounts,
@@ -27,6 +28,9 @@ import {
   getInvoices,
   getBills,
   getIFTASummary,
+  getProfitLoss,
+  getBalanceSheet,
+  getTrialBalance,
 } from "../services/financialService";
 import {
   GLAccount,
@@ -52,6 +56,296 @@ const DataImportWizard = React.lazy(() =>
 );
 import { exportToExcel, exportToPDF } from "../services/exportService";
 
+// ─── Reports Tab (inline) ────────────────────────────────────────────────────
+
+const ReportsTab: React.FC<{ companyId: string }> = ({ companyId }) => {
+  const [reportType, setReportType] = useState<"PL" | "BS" | "TB">("PL");
+  const [startDate, setStartDate] = useState(
+    new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+      .toISOString()
+      .split("T")[0],
+  );
+  const [endDate, setEndDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [reportData, setReportData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchReport = async () => {
+    setLoading(true);
+    try {
+      if (reportType === "PL") {
+        setReportData(await getProfitLoss(startDate, endDate));
+      } else if (reportType === "BS") {
+        setReportData(await getBalanceSheet(endDate));
+      } else {
+        setReportData(await getTrialBalance());
+      }
+    } catch {
+      setReportData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReport();
+  }, [reportType]);
+
+  const formatCurrency = (n: number) =>
+    `$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex justify-between items-end">
+        <div>
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
+            Financial Reports
+          </h2>
+          <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest">
+            P&L, Balance Sheet, Trial Balance
+          </p>
+        </div>
+        <button
+          onClick={() => {
+            if (!reportData?.details && !reportData?.accounts) return;
+            const rows = (reportData.details || reportData.accounts).map(
+              (r: any) => [
+                r.accountNumber,
+                r.accountName || r.name,
+                r.type,
+                r.amount != null
+                  ? formatCurrency(r.amount)
+                  : `${formatCurrency(r.debit)} / ${formatCurrency(r.credit)}`,
+              ],
+            );
+            exportToPDF(
+              ["Account #", "Name", "Type", "Amount"],
+              rows,
+              reportType === "PL"
+                ? "Profit & Loss"
+                : reportType === "BS"
+                  ? "Balance Sheet"
+                  : "Trial Balance",
+              `report-${reportType.toLowerCase()}`,
+            );
+          }}
+          className="px-4 py-2 bg-blue-600/10 text-blue-400 border border-blue-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-600/20 transition-all"
+        >
+          Export PDF
+        </button>
+      </div>
+
+      {/* Report Type Selector + Date Range */}
+      <div className="flex items-center gap-4">
+        {(
+          [
+            { id: "PL", label: "Profit & Loss" },
+            { id: "BS", label: "Balance Sheet" },
+            { id: "TB", label: "Trial Balance" },
+          ] as const
+        ).map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setReportType(t.id)}
+            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reportType === t.id ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+          >
+            {t.label}
+          </button>
+        ))}
+        <div className="flex-1" />
+        {reportType !== "TB" && (
+          <>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+            />
+            <span className="text-slate-600 text-xs">to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white"
+            />
+            <button
+              onClick={fetchReport}
+              className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-500 transition-all"
+            >
+              Run
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Report Content */}
+      <div className="bg-[#0a0f1e]/50 border border-white/10 rounded-2xl p-8 backdrop-blur-md">
+        {loading ? (
+          <div className="text-center py-12 text-slate-500 text-xs uppercase tracking-widest">
+            Loading report...
+          </div>
+        ) : !reportData ? (
+          <div className="text-center py-12 text-slate-600 text-xs uppercase tracking-widest">
+            No data available
+          </div>
+        ) : (
+          <>
+            {/* Summary Cards */}
+            {reportType === "PL" && (
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-green-600/10 border border-green-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">
+                    Revenue
+                  </div>
+                  <div className="text-xl font-black text-green-400">
+                    {formatCurrency(reportData.revenue)}
+                  </div>
+                </div>
+                <div className="bg-red-600/10 border border-red-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">
+                    Expenses
+                  </div>
+                  <div className="text-xl font-black text-red-400">
+                    {formatCurrency(reportData.expenses)}
+                  </div>
+                </div>
+                <div className="bg-blue-600/10 border border-blue-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">
+                    Net Income
+                  </div>
+                  <div
+                    className={`text-xl font-black ${reportData.netIncome >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {reportData.netIncome >= 0 ? "" : "-"}
+                    {formatCurrency(reportData.netIncome)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {reportType === "BS" && (
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <div className="bg-blue-600/10 border border-blue-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">
+                    Assets
+                  </div>
+                  <div className="text-xl font-black text-blue-400">
+                    {formatCurrency(reportData.assets)}
+                  </div>
+                </div>
+                <div className="bg-amber-600/10 border border-amber-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">
+                    Liabilities
+                  </div>
+                  <div className="text-xl font-black text-amber-400">
+                    {formatCurrency(reportData.liabilities)}
+                  </div>
+                </div>
+                <div className="bg-purple-600/10 border border-purple-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">
+                    Equity
+                  </div>
+                  <div className="text-xl font-black text-purple-400">
+                    {formatCurrency(reportData.equity)}
+                  </div>
+                </div>
+              </div>
+            )}
+            {reportType === "TB" && (
+              <div className="grid grid-cols-2 gap-4 mb-8">
+                <div className="bg-green-600/10 border border-green-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">
+                    Total Debits
+                  </div>
+                  <div className="text-xl font-black text-green-400">
+                    {formatCurrency(reportData.totalDebits)}
+                  </div>
+                </div>
+                <div className="bg-red-600/10 border border-red-500/20 rounded-xl p-4 text-center">
+                  <div className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">
+                    Total Credits
+                  </div>
+                  <div className="text-xl font-black text-red-400">
+                    {formatCurrency(reportData.totalCredits)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Detail Table */}
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                    Account #
+                  </th>
+                  <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                    Name
+                  </th>
+                  <th className="text-left text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                    Type
+                  </th>
+                  {reportType === "TB" ? (
+                    <>
+                      <th className="text-right text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                        Debit
+                      </th>
+                      <th className="text-right text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                        Credit
+                      </th>
+                    </>
+                  ) : (
+                    <th className="text-right text-[10px] font-black text-slate-500 uppercase tracking-widest py-3 px-4">
+                      Amount
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {(reportData.details || reportData.accounts || []).map(
+                  (row: any, i: number) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
+                    >
+                      <td className="text-xs text-slate-400 py-3 px-4 font-mono">
+                        {row.accountNumber}
+                      </td>
+                      <td className="text-xs text-white py-3 px-4 font-bold">
+                        {row.accountName}
+                      </td>
+                      <td className="text-xs text-slate-500 py-3 px-4 uppercase">
+                        {row.type}
+                      </td>
+                      {reportType === "TB" ? (
+                        <>
+                          <td className="text-xs text-green-400 py-3 px-4 text-right font-mono">
+                            {formatCurrency(row.debit)}
+                          </td>
+                          <td className="text-xs text-red-400 py-3 px-4 text-right font-mono">
+                            {formatCurrency(row.credit)}
+                          </td>
+                        </>
+                      ) : (
+                        <td
+                          className={`text-xs py-3 px-4 text-right font-mono font-bold ${row.amount >= 0 ? "text-green-400" : "text-red-400"}`}
+                        >
+                          {row.amount >= 0 ? "" : "-"}
+                          {formatCurrency(row.amount)}
+                        </td>
+                      )}
+                    </tr>
+                  ),
+                )}
+              </tbody>
+            </table>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 interface Props {
   loads: LoadData[];
   users: UserType[];
@@ -70,7 +364,7 @@ const AccountingPortal: React.FC<Props> = ({
   onNavigate,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "DASHBOARD" | "AR" | "AP" | "GL" | "IFTA" | "VAULT"
+    "DASHBOARD" | "AR" | "AP" | "GL" | "IFTA" | "VAULT" | "REPORTS"
   >(initialTab || "DASHBOARD");
   const [accounts, setAccounts] = useState<GLAccount[]>([]);
   const [invoices, setInvoices] = useState<ARInvoice[]>([]);
@@ -174,6 +468,7 @@ const AccountingPortal: React.FC<Props> = ({
               { id: "VAULT", icon: HardDrive, label: "File Vault" },
               { id: "IFTA", icon: Fuel, label: "Fuel & IFTA" },
               { id: "GL", icon: FileText, label: "Audit Log" },
+              { id: "REPORTS", icon: BarChart3, label: "Reports" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -658,6 +953,10 @@ const AccountingPortal: React.FC<Props> = ({
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === "REPORTS" && (
+          <ReportsTab companyId={currentUser.companyId} />
         )}
       </div>
 
