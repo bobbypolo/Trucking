@@ -91,7 +91,7 @@ describe("R-P7-09: Server routes have error handlers (zero 500s)", () => {
 
   it("server/index.ts registers the global errorHandler middleware", () => {
     const indexContent = readFile(SERVER_INDEX);
-    expect(indexContent).toContain('import { errorHandler }');
+    expect(indexContent).toContain("import { errorHandler }");
     expect(indexContent).toContain("app.use(errorHandler)");
   });
 
@@ -158,9 +158,7 @@ describe("R-P7-09: Server routes have error handlers (zero 500s)", () => {
       const hasNextError = /next\s*\(\s*(?:err|error|e)\s*\)/.test(content);
       const hasNextNewError = /next\s*\(\s*new\s+\w+Error/.test(content);
 
-      expect(
-        hasTryCatch || hasNextError || hasNextNewError,
-      ).toBeTruthy();
+      expect(hasTryCatch || hasNextError || hasNextNewError).toBeTruthy();
     },
   );
 
@@ -241,7 +239,9 @@ describe("R-P7-10: Frontend api.ts has 401 retry with token refresh (zero 401s)"
 
   it("authService.ts exports forceRefreshToken function", () => {
     expect(authContent).toBeTruthy();
-    expect(authContent).toMatch(/export\s+(async\s+)?function\s+forceRefreshToken|export\s+const\s+forceRefreshToken/);
+    expect(authContent).toMatch(
+      /export\s+(async\s+)?function\s+forceRefreshToken|export\s+const\s+forceRefreshToken/,
+    );
   });
 
   it("server requireAuth returns structured AuthError (not raw 401)", () => {
@@ -325,17 +325,37 @@ describe("R-P7-11: Error reduction patterns (total console errors <= 12)", () =>
 
   it("server index.ts registers all 32 route modules", () => {
     const indexContent = readFile(SERVER_INDEX);
-    // Count app.use() calls for routers
-    const routerPattern = /app\.use\((?:[^)]*Router[^)]*)\)/g;
-    const routerCalls = indexContent.match(routerPattern) || [];
+    // Count explicit `app.use(...Router...)` calls AND router names inside a
+    // for-loop router mount array (the pattern index.ts uses to stay under
+    // the modularization line-count cap).
+    const explicitPattern = /app\.use\((?:[^)]*Router[^)]*)\)/g;
+    const explicitCalls = indexContent.match(explicitPattern) || [];
+    // For-loop array: `for (const r of [routerA, routerB, ...]) app.use(r);`
+    const loopMatch = indexContent.match(
+      /for\s*\(\s*const\s+\w+\s+of\s+\[([^\]]+)\]\s*\)\s*app\.use/,
+    );
+    const loopRouters = loopMatch
+      ? (loopMatch[1].match(/\w+Router\b/g) || []).length
+      : 0;
     // Should have at least 30 route registrations (32 routes total, some combined)
-    expect(routerCalls.length).toBeGreaterThanOrEqual(30);
+    expect(explicitCalls.length + loopRouters).toBeGreaterThanOrEqual(30);
   });
 
   it("health route is registered before rate limiter (avoids false 429s)", () => {
     const indexContent = readFile(SERVER_INDEX);
     const healthPos = indexContent.indexOf("app.use(healthRouter)");
-    const rateLimitPos = indexContent.indexOf('app.use("/api", apiLimiter)');
+    // Rate limiter may be declared as a named variable `apiLimiter` OR
+    // mounted inline via `app.use("/api", rateLimit({...}))`. Accept either.
+    const rateLimitPos = (() => {
+      const named = indexContent.indexOf('app.use("/api", apiLimiter)');
+      if (named >= 0) return named;
+      const inlineMatch = indexContent.match(
+        /app\.use\(\s*["']\/api["']\s*,\s*rateLimit\(/,
+      );
+      if (inlineMatch && inlineMatch.index !== undefined)
+        return inlineMatch.index;
+      return -1;
+    })();
     expect(healthPos).toBeGreaterThan(0);
     expect(rateLimitPos).toBeGreaterThan(0);
     expect(healthPos).toBeLessThan(rateLimitPos);
@@ -391,9 +411,7 @@ describe("R-P7-11: Error reduction patterns (total console errors <= 12)", () =>
 
     // weather.ts is async but delegates to a no-throw service
     // Filter out known safe async-without-trycatch files
-    const trulyUnprotected = unprotectedFiles.filter(
-      (f) => f !== "weather.ts",
-    );
+    const trulyUnprotected = unprotectedFiles.filter((f) => f !== "weather.ts");
     expect(trulyUnprotected).toHaveLength(0);
   });
 });

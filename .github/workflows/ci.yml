@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, ralph/*, recovery/*, fix/*, team*]
+    branches: [main, mobile/trucker-app, ralph/*, recovery/*, fix/*, chore/*, team*]
   pull_request:
-    branches: [main, fix/pr26-production-remediation]
+    branches: [main, mobile/trucker-app, fix/pr26-production-remediation]
 
 env:
   CI: true
