@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Platform } from "react-native";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -7,6 +14,13 @@ import {
   type User,
 } from "firebase/auth";
 import { auth } from "../config/firebase";
+import {
+  requestPushPermissions,
+  getPushToken,
+  registerPushToken,
+  unregisterPushToken,
+  attachTokenRefreshListener,
+} from "../services/pushNotifications";
 
 interface AuthUser {
   email: string;
@@ -50,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(
@@ -68,6 +83,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return unsubscribe;
   }, []);
+
+  // Push-token lifecycle: on login, request permission, fetch an Expo push
+  // token, register it with the backend, and attach a refresh listener so we
+  // re-register whenever the OS rotates the token. Any failure is non-fatal.
+  // # Tests R-P2-01, R-P2-02, R-P2-03, R-P2-04
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    let subscription: { remove: () => void } | null = null;
+    (async () => {
+      try {
+        const granted = await requestPushPermissions();
+        if (!granted) {
+          return;
+        }
+        const token = await getPushToken();
+        if (!token) {
+          return;
+        }
+        currentTokenRef.current = token;
+        await registerPushToken(token, Platform.OS);
+        subscription = attachTokenRefreshListener((newToken: string) => {
+          currentTokenRef.current = newToken;
+          registerPushToken(newToken, Platform.OS).catch(() => {
+            // Non-fatal: rotation re-register failure is logged by the API layer.
+          });
+        });
+      } catch (_err) {
+        // Non-fatal: push registration failure must not block auth.
+      }
+    })();
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [isAuthenticated]);
 
   async function login(email: string, password: string): Promise<void> {
     setError(null);
@@ -93,8 +146,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  // # Tests R-P2-05
   async function logout(): Promise<void> {
     setError(null);
+    if (currentTokenRef.current) {
+      try {
+        await unregisterPushToken(currentTokenRef.current);
+      } catch (_err) {
+        // Non-fatal: unregister failure must not block sign-out.
+      }
+      currentTokenRef.current = null;
+    }
     await signOut(auth);
   }
 
