@@ -12,11 +12,17 @@ import * as fs from "fs";
 import * as path from "path";
 
 const ciYmlPath = path.resolve(__dirname, "../../.github/workflows/ci.yml");
+const validateMigrationsPath = path.resolve(
+  __dirname,
+  "../../scripts/validate-migrations.cjs",
+);
 
 let ciContent: string;
+let validateMigrationsContent: string;
 
 beforeAll(() => {
   ciContent = fs.readFileSync(ciYmlPath, "utf-8");
+  validateMigrationsContent = fs.readFileSync(validateMigrationsPath, "utf-8");
 });
 
 describe("R-P1-06: CI runs npm run build and fails merge if build errors", () => {
@@ -51,37 +57,36 @@ describe("R-P1-07: CI validates migration file integrity", () => {
     expect(ciContent).toContain("migration-validation:");
   });
 
-  it("migration-validation job calls scanMigrationFiles", () => {
+  // The validator logic was extracted from inline JS in ci.yml into
+  // scripts/validate-migrations.cjs so the Windows runner no longer needs
+  // WSL/bash. These tests now verify that (a) the CI job invokes the script
+  // and (b) the script contains the required validation logic.
+  it("migration-validation job invokes validate-migrations.cjs", () => {
     const jobSection = ciContent.slice(
       ciContent.indexOf("migration-validation:"),
       ciContent.indexOf("deployment-readiness:"),
     );
-    expect(jobSection).toContain("scanMigrationFiles");
+    // ci.yml path may use forward or backslash separators depending on
+    // which shell the job runs under (cmd vs bash vs pwsh). Match the
+    // filename only.
+    expect(jobSection).toContain("validate-migrations.cjs");
   });
 
-  it("migration-validation checks for duplicate filenames", () => {
-    const jobSection = ciContent.slice(
-      ciContent.indexOf("migration-validation:"),
-      ciContent.indexOf("deployment-readiness:"),
-    );
-    expect(jobSection).toContain("DUPLICATE");
+  it("validate-migrations.cjs calls scanMigrationFiles", () => {
+    expect(validateMigrationsContent).toContain("scanMigrationFiles");
   });
 
-  it("migration-validation checks for UP and DOWN markers", () => {
-    const jobSection = ciContent.slice(
-      ciContent.indexOf("migration-validation:"),
-      ciContent.indexOf("deployment-readiness:"),
-    );
-    expect(jobSection).toContain("UP");
-    expect(jobSection).toContain("DOWN");
+  it("validate-migrations.cjs checks for duplicate filenames", () => {
+    expect(validateMigrationsContent).toContain("DUPLICATE");
   });
 
-  it("migration-validation exits with error on failures", () => {
-    const jobSection = ciContent.slice(
-      ciContent.indexOf("migration-validation:"),
-      ciContent.indexOf("deployment-readiness:"),
-    );
-    expect(jobSection).toContain("process.exit(1)");
+  it("validate-migrations.cjs checks for UP and DOWN markers", () => {
+    expect(validateMigrationsContent).toContain("UP");
+    expect(validateMigrationsContent).toContain("DOWN");
+  });
+
+  it("validate-migrations.cjs exits with error on failures", () => {
+    expect(validateMigrationsContent).toContain("process.exit(1)");
   });
 });
 

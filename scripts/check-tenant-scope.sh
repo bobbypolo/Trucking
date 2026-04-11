@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
-# check-tenant-scope.sh — CI-enforceable tenant isolation check
+# check-tenant-scope.sh — tenant isolation check (reference / local-dev)
+#
+# NOTE: CI now runs the Node.js port at scripts/check-tenant-scope.cjs.
+# The self-hosted Windows runner has no bash (WSL is not installed), so
+# this script cannot execute under GitHub Actions. The .cjs port is the
+# source of truth for CI; this file is retained for POSIX developers who
+# prefer running the shell version locally. Both implementations must
+# produce byte-identical output — verify with:
+#   diff <(bash scripts/check-tenant-scope.sh) <(node scripts/check-tenant-scope.cjs)
 #
 # Tests R-P3-04: CI grep check fails on unscoped tenant-table queries
 #

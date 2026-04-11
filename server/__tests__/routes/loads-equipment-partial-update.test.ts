@@ -198,11 +198,12 @@ describe("R-P4-21 — PATCH /api/loads/:id with equipment_id executes UPDATE wit
 
   // Tests R-P4-21
   it("Tests R-P4-21 — UPDATE SQL contains equipment_id = ? with correct parameter", async () => {
+    // Body has equipment_id only (no notes), so resolveLoadNotesColumn is NOT called.
+    // Mock sequence matches the 4 real queries executed by the PATCH handler.
     mockQuery
-      .mockResolvedValueOnce([[]]) // resolveLoadNotesColumn cache check
-      .mockResolvedValueOnce([[{ id: "load-123" }]]) // SELECT id to confirm load exists
-      .mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE
-      .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]]) // SELECT *
+      .mockResolvedValueOnce([[{ id: "load-123" }]]) // SELECT id, driver_id, load_number FROM loads (existingRows)
+      .mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE loads SET ...
+      .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]]) // SELECT * FROM loads (response row)
       .mockResolvedValueOnce([[]]); // SELECT load_legs
 
     const app = createApp();
@@ -238,12 +239,13 @@ describe("R-P4-22 — PATCH with only equipment_id succeeds (no 400)", () => {
 
   // Tests R-P4-22
   it("Tests R-P4-22 — PATCH { equipment_id: 'EQ-001' } returns 200 not 400", async () => {
+    // Body has equipment_id only (no notes), so resolveLoadNotesColumn is NOT called.
+    // Mock sequence matches the 4 real queries executed by the PATCH handler.
     mockQuery
-      .mockResolvedValueOnce([[]])
-      .mockResolvedValueOnce([[{ id: "load-123" }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]])
-      .mockResolvedValueOnce([[]]);
+      .mockResolvedValueOnce([[{ id: "load-123" }]]) // SELECT id, driver_id, load_number FROM loads (existingRows)
+      .mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE loads SET ...
+      .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]]) // SELECT * FROM loads (response row)
+      .mockResolvedValueOnce([[]]); // SELECT load_legs
 
     const app = createApp();
     const res = await request(app)

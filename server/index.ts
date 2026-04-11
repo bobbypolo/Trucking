@@ -4,10 +4,7 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
 import dotenv from "dotenv";
-import path from "path";
-
 dotenv.config();
-
 import { validateEnv, getCorsOrigin } from "./lib/env";
 import { errorHandler } from "./middleware/errorHandler";
 import { correlationId } from "./middleware/correlationId";
@@ -15,17 +12,11 @@ import { metricsMiddleware } from "./middleware/metrics";
 import { logger } from "./lib/logger";
 import { registerShutdownHandlers } from "./lib/graceful-shutdown";
 import { initSentry } from "./lib/sentry";
-
+import { mountSpaFallback } from "./routes/spa-fallback";
 validateEnv();
-
-if (process.env.SENTRY_DSN) {
-  initSentry();
-}
-
-if (!process.env.GEMINI_API_KEY) {
+if (process.env.SENTRY_DSN) initSentry();
+if (!process.env.GEMINI_API_KEY)
   logger.warn("GEMINI_API_KEY is not set — AI endpoints will be unavailable");
-}
-
 import usersRouter from "./routes/users";
 import loadsRouter from "./routes/loads";
 import equipmentRouter from "./routes/equipment";
@@ -67,100 +58,41 @@ import featureFlagsRouter from "./routes/feature-flags";
 import demoRouter from "./routes/demo";
 import pushTokensRouter from "./routes/push-tokens";
 import driversRouter from "./routes/drivers";
-
 const app = express();
 const port = process.env.PORT || 5000;
-
-app.set("trust proxy", 1); // Trust proxy headers behind reverse proxies
+app.set("trust proxy", 1);
 app.use(
   helmet({
-    hsts: {
-      maxAge: 31536000, // 1 year
-      includeSubDomains: true,
-      preload: true,
-    },
+    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
   }),
 );
 app.use(compression());
 app.use(cors({ origin: getCorsOrigin(), credentials: true }));
-app.use(stripeRouter); // BEFORE express.json() so webhook receives raw body
+app.use(stripeRouter);
 app.use(express.json({ limit: "5mb" }));
 app.use(correlationId);
 app.use(metricsMiddleware);
-app.use(healthRouter); // Unauthenticated, before rate limiter
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: Number(process.env.RATE_LIMIT_MAX) || 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { message: "Too many requests, please try again later." },
-});
-app.use("/api", apiLimiter);
-
-app.use(usersRouter);
-app.use(loadsRouter);
-app.use(equipmentRouter);
-app.use(clientsRouter);
-app.use(contractsRouter);
-app.use(dispatchRouter);
-app.use(complianceRouter);
-app.use(incidentsRouter);
-app.use(accountingRouter);
-app.use(quickbooksRouter);
-app.use(exceptionsRouter);
-app.use(trackingRouter);
-app.use(weatherRouter);
-app.use(metricsRouter);
+app.use(healthRouter);
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: Number(process.env.RATE_LIMIT_MAX) || 500,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { message: "Too many requests, please try again later." },
+  }),
+);
+// prettier-ignore
+for (const r of [usersRouter, loadsRouter, equipmentRouter, clientsRouter, contractsRouter, dispatchRouter, complianceRouter, incidentsRouter, accountingRouter, quickbooksRouter, exceptionsRouter, trackingRouter, weatherRouter, metricsRouter, messagesRouter, callSessionsRouter, quotesRouter, leadsRouter, bookingsRouter, contactsRouter, providersRouter, tasksRouter, kciRequestsRouter, crisisActionsRouter, serviceTicketsRouter, safetyRouter, notificationJobsRouter, documentsRouter, callLogsRouter, geofenceRouter, invitationsRouter, intelligenceRouter, driverIntakeRouter, iftaAuditPacketsRouter, pushTokensRouter, driversRouter]) app.use(r);
 app.use("/api/ai", express.json({ limit: "5mb" }), aiRouter);
-app.use(messagesRouter);
-app.use(callSessionsRouter);
-app.use(quotesRouter);
-app.use(leadsRouter);
-app.use(bookingsRouter);
-app.use(contactsRouter);
-app.use(providersRouter);
-app.use(tasksRouter);
-app.use(kciRequestsRouter);
-app.use(crisisActionsRouter);
-app.use(serviceTicketsRouter);
-app.use(safetyRouter);
-app.use(notificationJobsRouter);
-app.use(documentsRouter);
-app.use(callLogsRouter);
-app.use(geofenceRouter);
-app.use(invitationsRouter);
-app.use(intelligenceRouter);
-app.use(driverIntakeRouter);
-app.use(iftaAuditPacketsRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
-app.use(pushTokensRouter);
-app.use(driversRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
-
-// Serve built frontend from dist/ when it exists (demo + production mode).
-// This allows the backend to serve both API and UI on a single port,
-// which is required for Cloudflare tunnel (one URL, one port).
-const distPath = path.resolve(__dirname, "../dist");
-const fs = require("fs");
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  // SPA fallback: any non-API GET that doesn't match a static file
-  // returns index.html so React Router handles client-side routing.
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) return next();
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-  logger.info({ distPath }, "Serving static frontend from dist/");
-}
-
+mountSpaFallback(app);
 app.use(errorHandler);
-
 const server = app.listen(port, () => {
   logger.info({ port }, `Server running on port ${port}`);
 });
-
 process.on("SIGTERM", () => registerShutdownHandlers(server, "SIGTERM"));
 process.on("SIGINT", () => registerShutdownHandlers(server, "SIGINT"));
-
 export { app };
