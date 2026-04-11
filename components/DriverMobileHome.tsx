@@ -1189,13 +1189,13 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <h3 className="text-xl font-black text-white uppercase tracking-tighter">
                   Review Fuel Receipt
                 </h3>
-                <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">
+                <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-1">
                   Verify extracted data before saving
                 </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Vendor *
                   </label>
                   <input
@@ -1211,7 +1211,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Gallons *
                   </label>
                   <input
@@ -1228,7 +1228,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Price/Gal
                   </label>
                   <input
@@ -1245,7 +1245,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Total Cost *
                   </label>
                   <input
@@ -1262,7 +1262,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     State *
                   </label>
                   <input
@@ -1279,7 +1279,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Date *
                   </label>
                   <input
@@ -1295,7 +1295,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   />
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-black text-slate-600 uppercase">
+                  <label className="text-xs font-black text-slate-600 uppercase">
                     Truck ID
                   </label>
                   <input
@@ -1314,14 +1314,14 @@ export const DriverMobileHome: React.FC<Props> = ({
               <div className="flex gap-4 pt-2">
                 <button
                   onClick={() => setFuelReviewData(null)}
-                  className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                  className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={submitFuelReceipt}
                   disabled={fuelSubmitting}
-                  className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                  className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest disabled:opacity-60"
                 >
                   {fuelSubmitting ? "Saving..." : "Save Fuel Entry"}
                 </button>
@@ -2178,13 +2178,13 @@ export const DriverMobileHome: React.FC<Props> = ({
               <h3 className="text-xl font-black text-white uppercase tracking-tighter">
                 Review Fuel Receipt
               </h3>
-              <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">
+              <p className="text-slate-500 text-xs font-black uppercase tracking-widest mt-1">
                 Verify extracted data before saving
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Vendor *
                 </label>
                 <input
@@ -2200,7 +2200,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Gallons *
                 </label>
                 <input
@@ -2217,7 +2217,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Price/Gal
                 </label>
                 <input
@@ -2234,7 +2234,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Total Cost *
                 </label>
                 <input
@@ -2251,7 +2251,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   State *
                 </label>
                 <input
@@ -2268,7 +2268,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Date *
                 </label>
                 <input
@@ -2284,7 +2284,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 />
               </div>
               <div className="col-span-2 space-y-1">
-                <label className="text-[10px] font-black text-slate-600 uppercase">
+                <label className="text-xs font-black text-slate-600 uppercase">
                   Truck ID
                 </label>
                 <input
@@ -2303,14 +2303,14 @@ export const DriverMobileHome: React.FC<Props> = ({
             <div className="flex gap-4 pt-2">
               <button
                 onClick={() => setFuelReviewData(null)}
-                className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                className="flex-1 py-3 bg-white/5 text-white border border-white/10 rounded-2xl text-xs font-black uppercase tracking-widest"
               >
                 Cancel
               </button>
               <button
                 onClick={submitFuelReceipt}
                 disabled={fuelSubmitting}
-                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest disabled:opacity-60"
+                className="flex-1 py-3 bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest disabled:opacity-60"
               >
                 {fuelSubmitting ? "Saving..." : "Save Fuel Entry"}
               </button>
