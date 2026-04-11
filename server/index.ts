@@ -66,6 +66,7 @@ import iftaAuditPacketsRouter from "./routes/ifta-audit-packets";
 import featureFlagsRouter from "./routes/feature-flags";
 import demoRouter from "./routes/demo";
 import pushTokensRouter from "./routes/push-tokens";
+import driversRouter from "./routes/drivers";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -134,6 +135,7 @@ app.use(driverIntakeRouter);
 app.use(iftaAuditPacketsRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
 app.use(pushTokensRouter);
+app.use(driversRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
 
 // Serve built frontend from dist/ when it exists (demo + production mode).
