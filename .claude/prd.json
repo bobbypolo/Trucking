@@ -84,8 +84,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/services/dateFormat.test.ts src/__tests__/components/TriageWorkspacePanel.contrast.test.tsx src/__tests__/components/LoadList.dateformat.test.tsx src/__tests__/components/QuoteManager.taborder.test.tsx src/__tests__/components/IntelligenceHub.safety-tab.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
@@ -276,8 +276,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/components/BookingPortal.extraction-mapping.test.tsx && npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/services/gemini-schema.test.ts"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-006",
@@ -365,8 +365,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/services/detentionPipeline.notification.test.ts server/__tests__/services/discrepancyPipeline.notification.test.ts server/__tests__/routes/loads.bol-email.test.ts"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-008",
@@ -422,8 +422,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/055_quote_margin_columns.test.ts server/__tests__/schemas/quote.margin.test.ts server/__tests__/repositories/quote.margin.test.ts"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-009",

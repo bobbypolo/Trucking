@@ -942,3 +942,25 @@
 ---
 
 ## SPRINT COMPLETE: 10/10 stories passed (0 skipped)
+
+## Sprint: saas-ux-remediation (2026-04-11, Issue #72)
+
+### STORY-005 — PASS (2026-04-11)
+- **Files**: server/services/gemini.service.ts, components/BookingPortal.tsx, server/__tests__/services/gemini-schema.test.ts, src/__tests__/components/BookingPortal.extraction-mapping.test.tsx
+- **Criteria**: 4/4 (R-P5-01..R-P5-04)
+- **Summary**: Expanded Gemini extractLoadInfo schema with 10 new fields and updated prompt with extraction keywords. BookingPortal maps dropoffDate and specialInstructions from extraction results. 12 tests pass (8 backend + 4 frontend).
+
+### STORY-007 — PASS (2026-04-11)
+- **Files**: server/services/detentionPipeline.ts, server/services/discrepancyPipeline.ts, server/routes/loads.ts, + 3 test files
+- **Criteria**: 4/4 (R-P7-01..R-P7-04)
+- **Summary**: Wired deliverNotification into detention/discrepancy/BOL pipelines with fire-and-forget error handling. 15 notification tests pass.
+
+### STORY-008 — PASS (2026-04-11)
+- **Files**: server/migrations/055_quote_margin_columns.sql, server/schemas/quote.ts, server/repositories/quote.repository.ts, + 3 test files
+- **Criteria**: 6/6 (R-P8-01..R-P8-06)
+- **Summary**: Migration 055 adds 5 margin columns (margin, discount, commission, estimated_driver_pay, company_cost_factor). Zod schemas and quoteRepository wired. 40 tests pass.
+
+### STORY-001 — PASS (2026-04-11)
+- **Files**: components/IntelligenceHub.tsx, components/LoadList.tsx, components/QuoteManager.tsx, components/operations/TriageWorkspacePanel.tsx, services/dateFormat.ts, + 6 test files
+- **Criteria**: 10/10 (R-P1-01..R-P1-10)
+- **Summary**: UX quick fixes — formatDate/formatDateTime service, TriageWorkspacePanel contrast (text-slate-400, bg-white/[0.08], no opacity-60/70), LoadList uses formatDate for dates, text-[11px] for tabs, QuoteManager defaults to intake, IntelligenceHub adds SAFETY tab. 24 tests pass across 5 gate files. Commit 98e2191.
