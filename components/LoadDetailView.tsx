@@ -290,6 +290,35 @@ export const LoadDetailView: React.FC<Props> = ({
         message: newFlagged ? "Load tagged for action" : "Action tag removed",
         type: "success",
       });
+      // STORY-006 Phase 6 R-P6-01/02/03: fire-and-forget POST to
+      // /api/dispatch-events so the operations event stream records
+      // the tag state change. Dispatch-event failures must NOT surface
+      // as an error toast -- the tag itself already succeeded.
+      try {
+        const response = await fetch("/api/dispatch-events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: uuidv4(),
+            load_id: load.id,
+            dispatcher_id: currentUser.id,
+            event_type: newFlagged ? "ACTION_TAGGED" : "ACTION_UNTAGGED",
+            message: newFlagged
+              ? "Load tagged for action"
+              : "Action tag removed",
+          }),
+        });
+        if (!response.ok) {
+          // Swallow >= 400 responses silently. The outer try/catch below
+          // handles unexpected thrown errors (network, JSON, etc.).
+          console.warn(
+            "dispatch-events POST returned non-OK status",
+            response.status,
+          );
+        }
+      } catch (dispatchErr) {
+        console.warn("dispatch-events POST failed", dispatchErr);
+      }
     } catch {
       setToast({ message: "Failed to update tag", type: "error" });
     } finally {
