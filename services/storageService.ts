@@ -143,16 +143,10 @@ const getRawLoads = (): LoadData[] => {
   return _cachedLoads;
 };
 
-const requireApiData = <T>(
-  data: T | undefined,
-  operation: string,
-): T => {
+const requireApiData = <T>(data: T | undefined, operation: string): T => {
   if (data !== undefined) return data;
 
-  throw new DOMException(
-    `[storageService] ${operation} aborted`,
-    "AbortError",
-  );
+  throw new DOMException(`[storageService] ${operation} aborted`, "AbortError");
 };
 
 export const getLoads = async (user: User): Promise<LoadData[]> => {
@@ -174,7 +168,7 @@ export const saveLoad = async (load: LoadData, user: User) => {
   const loadToSave: LoadData = {
     ...load,
     companyId: load.companyId || user.companyId,
-    driverId: load.driverId || "",
+    driverId: load.driverId || user.id,
   };
 
   await apiCreateLoad(loadToSave);
