@@ -161,11 +161,14 @@ describe("R-P1-05: Route Protection Audit", () => {
 
       // Routes that are intentionally auth-only (no tenant isolation needed):
       // - /api/users/me: returns the calling user's own profile
+      // - /api/drivers/me: returns the calling driver's own profile, scoped by req.user.id
       // - /api/metrics: admin-only cross-tenant operational metrics (uses requireAdmin)
       // - /api/ai/*: AI proxy routes scope output by user identity, not tenant DB rows.
       //   These are mounted at /api/ai in index.ts; route defs use bare paths /extract-* etc.
       const TENANT_EXEMPT_ROUTES = new Set([
         "GET /api/users/me",
+        "GET /api/drivers/me",
+        "PATCH /api/drivers/me",
         "GET /api/metrics",
         "POST /extract-load",
         "POST /extract-broker",

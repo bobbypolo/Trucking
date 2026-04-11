@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const {
-  mockQuery,
-  mockResolveSqlPrincipalByFirebaseUid,
-} = vi.hoisted(() => ({
+const { mockQuery, mockResolveSqlPrincipalByFirebaseUid } = vi.hoisted(() => ({
   mockQuery: vi.fn(),
   mockResolveSqlPrincipalByFirebaseUid: vi.fn(),
 }));
@@ -129,7 +126,9 @@ const loadRow = {
 describe("PATCH /api/loads/:id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(DEFAULT_SQL_PRINCIPAL);
+    mockResolveSqlPrincipalByFirebaseUid.mockResolvedValue(
+      DEFAULT_SQL_PRINCIPAL,
+    );
   });
 
   it("updates scan-extracted fields on an existing tenant-scoped load", async () => {
@@ -164,7 +163,7 @@ describe("PATCH /api/loads/:id", () => {
     expect(res.body.bol_number).toBe("BOL-NEW");
 
     expect(mockQuery.mock.calls[0][0]).toContain(
-      "SELECT id FROM loads WHERE id = ? AND company_id = ?",
+      "SELECT id, driver_id, load_number FROM loads WHERE id = ? AND company_id = ?",
     );
     expect(mockQuery.mock.calls[0][1]).toEqual(["load-123", "company-aaa"]);
 
