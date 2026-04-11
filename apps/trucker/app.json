@@ -19,7 +19,8 @@
         {
           "cameraPermission": "LoadPilot Trucker needs camera access to capture documents such as BOL, Rate Confirmations, and Proof of Delivery photos."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": true,
@@ -35,6 +36,11 @@
       },
       "package": "com.loadpilot.trucker",
       "permissions": ["android.permission.CAMERA"]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "PLACEHOLDER-SET-VIA-EAS"
+      }
     }
   }
 }

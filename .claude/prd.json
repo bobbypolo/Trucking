@@ -2,282 +2,183 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "c6bed60d51714b6fd643269114a31829f1c791e7277792665262f1efa2dbcc02",
+  "plan_hash": "d774d2b49c77428ee3a548589f835c1187ebfa1baae3d4f9a2abd90170ad929c",
   "stories": [
     {
       "id": "STORY-001",
-      "description": "- Shared Types Package Extraction (foundation)",
+      "description": "Expo Notifications service (complete, all 5 functions)",
       "phase": 1,
-      "phase_type": null,
-      "component": "packages/",
+      "phase_type": "foundation",
+      "component": "apps/",
       "scope": [
-        "package.json",
-        "packages/",
-        "scripts/",
-        "tsconfig.json",
-        "types.ts"
+        "apps/"
       ],
-      "complexity": "complex",
-      "maxTurns": 200,
+      "complexity": "medium",
+      "maxTurns": 150,
       "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P1-01",
-          "criterion": "`packages/shared/package.json` exists with `\"name\": \"@loadpilot/shared\"` and `\"version\": \"0.0.1\"`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting via JSON.parse",
+          "criterion": "`apps/trucker/package.json` contains `\"expo-notifications\"` in `dependencies` with a version string starting with `\"~0.31.\"`; verified via `fs.readFileSync` + `JSON.parse` + `deps[\"expo-notifications\"].startsWith(\"~0.31.\")`.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-02",
-          "criterion": "`packages/shared/src/types.ts` contains all 150 exported symbols from the original `types.ts`; verified by `scripts/verify-shared-package.cjs` reading both files via `fs.readFileSync` and comparing export counts via regex `export (type|interface|const|enum|function)` match count",
+          "criterion": "`apps/trucker/app.json` plugins array contains an `\"expo-notifications\"` entry (bare string or array whose first element is the string); verified via `JSON.parse` + `plugins.some` predicate.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-03",
-          "criterion": "`packages/shared/src/index.ts` contains barrel re-export `export * from './types'`; verified by `scripts/verify-shared-package.cjs` reading file and matching regex",
+          "criterion": "`apps/trucker/app.json` contains `extra.eas.projectId` as a non-empty string; verified via `typeof expo.extra.eas.projectId === \"string\" && length > 0`.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-04",
-          "criterion": "Root `types.ts` contains exactly one line: re-export shim `export * from '@loadpilot/shared'`; verified by `scripts/verify-shared-package.cjs` reading file and asserting line count equals 1 and content matches regex",
+          "criterion": "`pushNotifications.ts` exports `async function requestPushPermissions` calling `Notifications.requestPermissionsAsync`; verified via two regex matches.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-05",
-          "criterion": "Root `package.json` contains `\"workspaces\": [\"packages/*\"]`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting JSON.parse result",
+          "criterion": "`pushNotifications.ts` exports `async function getPushToken` that reads `Constants.expoConfig?.extra?.eas?.projectId` AND calls `Notifications.getExpoPushTokenAsync` with an object argument whose `projectId` key is set; verified via regex for both `Constants\\.expoConfig\\?\\.extra\\?\\.eas\\?\\.projectId` and `getExpoPushTokenAsync\\s*\\(\\s*\\{\\s*projectId`.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-06",
-          "criterion": "Root `tsconfig.json` contains path alias `\"@loadpilot/shared\"` pointing to `\"./packages/shared/src\"`; verified by `scripts/verify-shared-package.cjs` reading file and asserting paths entry exists",
+          "criterion": "`pushNotifications.ts` exports `async function registerPushToken(token, platform)` calling `api.post` with the literal path `\"/push-tokens\"` and a body containing `token` and `platform`; verified via regex.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P1-07",
-          "criterion": "`npx tsc --noEmit` exits with code 0 from project root (existing frontend types resolve through shim); verified by `scripts/verify-shared-package.cjs` spawning process via `child_process.spawnSync` and asserting exit code",
+          "criterion": "`pushNotifications.ts` exports `async function unregisterPushToken(token)` calling `api.post` with the literal path `\"/push-tokens/unregister\"` and a body containing `token`; verified via regex `/export\\s+async\\s+function\\s+unregisterPushToken/` and `/api\\.post\\s*<[^>]*>\\s*\\(\\s*[\"']\\/push-tokens\\/unregister[\"']/`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-08",
+          "criterion": "`pushNotifications.ts` exports `attachTokenRefreshListener(callback)` calling `Notifications.addPushTokenListener` and passing the callback through; verified via regex `/export\\s+function\\s+attachTokenRefreshListener/` and `/Notifications\\.addPushTokenListener\\s*\\(/`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-09",
+          "criterion": "`pushNotifications.ts` exports `attachNotificationResponseHandler(router)` calling `Notifications.addNotificationResponseReceivedListener` and, inside the listener callback, reading `response.notification.request.content.data?.loadId` and calling `router.push` with a template literal containing `/loads/`; verified via multiline regex.",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "packages/shared/src/types.ts (canonical source, 2130 lines)"
+        "unit": "node scripts/verify-push-service.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
-      "description": "- Expo Project Initialization (foundation)",
+      "description": "AuthContext wiring (register + rotation + logout cleanup)",
       "phase": 2,
-      "phase_type": null,
+      "phase_type": "module",
       "component": "apps/",
       "scope": [
-        ".gitignore",
-        "apps/",
-        "scripts/"
+        "apps/"
       ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-004"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P2-01",
-          "criterion": "`apps/trucker/package.json` exists with `\"expo\"`, `\"react-native\"`, and `\"expo-router\"` as 3 required keys in `dependencies`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and asserting all 3 keys present in `JSON.parse(content).dependencies`",
+          "criterion": "`AuthContext.tsx` imports `requestPushPermissions`, `getPushToken`, `registerPushToken`, `unregisterPushToken`, and `attachTokenRefreshListener` from `\"../services/pushNotifications\"` in a single import statement; verified via multi-identifier regex.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-02",
-          "criterion": "`apps/trucker/app.json` contains `expo.name`, `expo.slug`, `expo.scheme`, and `expo.platforms` including both `\"ios\"` and `\"android\"`; verified by `scripts/verify-expo-project.cjs` reading file and asserting JSON structure",
+          "criterion": "`AuthContext.tsx` contains a `useEffect` whose callback body calls `requestPushPermissions`, `getPushToken`, `registerPushToken`, and `attachTokenRefreshListener` IN THAT ORDER, and whose dependency array includes `isAuthenticated`; verified via multiline regex matching the ordered sequence.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-03",
-          "criterion": "`apps/trucker/eas.json` contains `build.development`, `build.preview`, and `build.production` profiles; verified by `scripts/verify-expo-project.cjs` reading file and asserting all 3 keys exist",
+          "criterion": "the `registerPushToken` call chain inside `AuthContext.tsx` is wrapped in a `try { ... } catch` block; verified via multiline regex `/try\\s*\\{[\\s\\S]{0,500}registerPushToken[\\s\\S]{0,200}\\}\\s*catch/`.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-04",
-          "criterion": "`apps/trucker/src/app/_layout.tsx` exports `export default function RootLayout` that renders Expo Router `Slot` or `Stack`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and matching `/export default function RootLayout/` regex returning exactly 1 match",
+          "criterion": "the `attachTokenRefreshListener` call inside `AuthContext.tsx` passes a callback that invokes `registerPushToken` with the rotated token; verified via multiline regex matching `attachTokenRefreshListener\\s*\\(\\s*(?:async\\s*)?\\(?[^)]*\\)?\\s*=>\\s*\\{[\\s\\S]{0,200}registerPushToken`.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-05",
-          "criterion": "`apps/trucker/src/app/index.tsx` exists and contains `export default` matching `/export default/` regex with exactly 1 match; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P2-06",
-          "criterion": "`.gitignore` contains entries for `apps/trucker/node_modules/` and `apps/trucker/.expo/`; verified by `scripts/verify-expo-project.cjs` reading `.gitignore` via `fs.readFileSync` and asserting both patterns present via regex (at minimum these 2, additional entries allowed)",
+          "criterion": "the `logout` function in `AuthContext.tsx` calls `unregisterPushToken` BEFORE it calls `signOut(auth)`; verified via multiline regex `/async\\s+function\\s+logout[\\s\\S]*?unregisterPushToken[\\s\\S]*?signOut\\s*\\(\\s*auth\\s*\\)/`.",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "apps/trucker/package.json"
+        "unit": "node scripts/verify-auth-push-wiring.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-003",
-      "description": "- Mobile Navigation Shell (module)",
+      "description": "Migration 055 push_tokens table",
       "phase": 3,
-      "phase_type": null,
-      "component": "apps/",
+      "phase_type": "module",
+      "component": "server/",
       "scope": [
-        "apps/",
-        "scripts/"
+        "server/"
       ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [
-        "STORY-002"
-      ],
-      "parallelGroup": null,
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
           "id": "R-P3-01",
-          "criterion": "`apps/trucker/src/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth` hook; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/export.*AuthProvider/` and `/export.*useAuth/` regexes each return >= 1 match",
+          "criterion": "SQL file contains exactly one `CREATE TABLE IF NOT EXISTS push_tokens` statement AND a `UNIQUE KEY` clause referencing `(user_id, expo_push_token)`; verified via two regex matches.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-02",
-          "criterion": "`AuthContext.tsx` defines `isAuthenticated` state with default `false` and exposes `login` and `logout` functions; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/isAuthenticated.*false/` and both `/login/` and `/logout/` patterns present",
+          "criterion": "DOWN section contains exactly one `DROP TABLE IF EXISTS push_tokens` statement and zero other `DROP TABLE` occurrences; verified via regex count.",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-03",
-          "criterion": "Tab layout at `apps/trucker/src/app/(tabs)/_layout.tsx` renders `Tabs` component with screen entries for `index`, `loads`, and `profile`; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/Tabs/` regex returns >= 1 match and file contains all 3 screen name strings",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-04",
-          "criterion": "Auth group contains exactly 2 route files: `(auth)/login.tsx` and `(auth)/signup.tsx`; verified by `scripts/verify-mobile-nav.cjs` asserting `fs.existsSync` returns `true` for both paths under `apps/trucker/src/app/`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-05",
-          "criterion": "Root layout at `apps/trucker/src/app/_layout.tsx` wraps content with `<AuthProvider>` and contains redirect logic for unauthenticated users; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/AuthProvider/` regex returns >= 1 match and `/Redirect|router\\.replace/` returns >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-06",
-          "criterion": "Login screen at `apps/trucker/src/app/(auth)/login.tsx` contains at least 2 `TextInput` components and 1 submit button (`Pressable` or `TouchableOpacity`); verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P3-07",
-          "criterion": "Signup screen at `apps/trucker/src/app/(auth)/signup.tsx` contains at least 2 `TextInput` components and 1 submit button; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
+          "criterion": "UP section declares the `platform` column as `ENUM('ios','android')` with `NOT NULL`; verified via regex `/platform\\s+ENUM\\s*\\(\\s*'ios'\\s*,\\s*'android'\\s*\\)\\s+NOT\\s+NULL/i`.",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-mobile-nav.cjs"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/055_push_tokens.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",
-      "description": "- Mobile Auth Integration (module)",
+      "description": "push-tokens routes (register + unregister) + Expo Push sender + mount",
       "phase": 4,
-      "phase_type": null,
-      "component": "apps/",
-      "scope": [
-        "apps/",
-        "scripts/"
-      ],
-      "complexity": "medium",
-      "maxTurns": 150,
-      "dependsOn": [
-        "STORY-003"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P4-01",
-          "criterion": "`AuthContext.tsx` imports `signInWithEmailAndPassword` from Firebase Auth and calls it in the `login` function; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/signInWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-02",
-          "criterion": "`AuthContext.tsx` contains error handling that maps Firebase error codes to user-friendly messages (at least `auth/wrong-password` and `auth/user-not-found`); verified by `scripts/verify-mobile-auth.cjs` asserting `/auth\\/wrong-password|auth\\/user-not-found/` regex returns >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-03",
-          "criterion": "`AuthContext.tsx` imports `createUserWithEmailAndPassword` from Firebase Auth and calls it in the `signup` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/createUserWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-04",
-          "criterion": "`AuthContext.tsx` imports `signOut` from Firebase Auth and calls it in the `logout` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/signOut/` regex returns >= 2 matches (import + call)",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-05",
-          "criterion": "`apps/trucker/src/services/api.ts` attaches `Authorization: Bearer` header using Firebase ID token; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/Authorization.*Bearer/` regex returns >= 1 match and `/getIdToken/` returns >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-06",
-          "criterion": "`api.ts` handles HTTP 401 responses by triggering logout or auth state clearing; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/401/` and `/logout|signOut|clearAuth/` regexes each return >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-07",
-          "criterion": "`api.ts` catches network errors (TypeError from fetch) and wraps them in user-friendly messages; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/catch/` and `/network|Network|TypeError/` regexes each return >= 1 match",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P4-08",
-          "criterion": "Firebase config at `apps/trucker/src/config/firebase.ts` reads all 6 Firebase config values from `EXPO_PUBLIC_FIREBASE_*` env vars and contains 0 hardcoded API key strings; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/EXPO_PUBLIC_FIREBASE/g` returns >= 6 matches and `/AIza[a-zA-Z0-9_-]{35}/` returns 0 matches",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-mobile-auth.cjs"
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-005",
-      "description": "- Baseline Debt Cleanup (foundation)",
-      "phase": 5,
-      "phase_type": null,
+      "phase_type": "integration",
       "component": "server/",
       "scope": [
-        ".claude/",
-        "docs/",
-        "scripts/",
         "server/"
       ],
       "complexity": "medium",
@@ -286,87 +187,507 @@
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
+          "id": "R-P4-01",
+          "criterion": "authenticated `POST /api/push-tokens` with body `{token: \"ExponentPushToken[abc]\", platform: \"ios\"}` returns 201 with a JSON body containing an `id` string AND triggers exactly one `pool.query` call whose SQL matches `/INSERT INTO push_tokens/i`; verified via supertest + `vi.mocked(pool.query)` inspection.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "`POST /api/push-tokens` without `Authorization` header returns 401 AND does NOT call `pool.query`; verified via supertest + `expect(pool.query).not.toHaveBeenCalled()`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "`POST /api/push-tokens` with body `{platform: \"ios\"}` (missing `token`) returns 400 AND does NOT call `pool.query`; verified via supertest status + spy assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "authenticated `POST /api/push-tokens/unregister` with body `{token: \"ExponentPushToken[abc]\"}` returns 204 AND triggers exactly one `pool.query` call whose SQL matches `/UPDATE push_tokens SET enabled = 0/i` with params containing `req.user.id` and the token; verified via supertest + spy inspection.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "`POST /api/push-tokens/unregister` without auth returns 401; verified via supertest.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-06",
+          "criterion": "`sendPush([\"t1\",\"t2\"], \"Title\", \"Body\", {foo: \"bar\"})` issues exactly one `fetch` call to `https://exp.host/--/api/v2/push/send`; the parsed request body is a JSON array of 2 objects each with keys `to`, `title`, `body`, `data`; verified via `vi.fn()` replacing global `fetch` and `JSON.parse(fetch.mock.calls[0][1].body)` deep-equal check.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "calling `sendPush` with 150 tokens issues exactly 2 `fetch` calls (chunks of 100 + 50); verified via `expect(fetch.mock.calls.length).toBe(2)`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "when `fetch` is mocked to return a `Response` with status 500, `sendPush` resolves with an `errors` array whose length equals the number of tokens passed, and never throws; verified via `.resolves` assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-09",
+          "criterion": "`server/index.ts` contains both `import pushTokensRouter from \"./routes/push-tokens\"` AND `app.use(pushTokensRouter)`; verified via `fs.readFileSync` + two regex matches.",
+          "testType": "integration",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/push-tokens.test.ts __tests__/lib/expo-push.test.ts __tests__/index.push-tokens-mount.test.ts\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-005",
+      "description": "Server push trigger on new load creation",
+      "phase": 5,
+      "phase_type": "integration",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-003",
+        "STORY-004"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
           "id": "R-P5-01",
-          "criterion": "`e2e/ifta-audit-packet-smoke.spec.ts` can resolve JSZip import without TS2307 error; verified by `scripts/verify-baseline-debt-resolved.cjs` checking that `@types/jszip` is in devDependencies or that a type declaration exists for jszip",
-          "testType": "unit",
+          "criterion": "`POST /api/loads` with body containing `driver_id: \"driver-abc\"` distinct from `req.user.id` fires exactly one `sendPush` call whose first argument is a string array containing the driver's registered token, whose second argument equals `\"New load assigned\"`, and whose fourth argument has `loadId === body.id`; verified via `vi.mocked(sendPush)` inspection after successful POST.",
+          "testType": "integration",
           "testFile": null
         },
         {
           "id": "R-P5-02",
-          "criterion": "`server/__tests__/helpers/port-env.ts` exists and sets `process.env.PORT` to a test port value via JavaScript (not shell `PORT=5000` syntax); verified by `scripts/verify-baseline-debt-resolved.cjs` reading file via `fs.readFileSync` and asserting `process.env.PORT` assignment pattern",
-          "testType": "unit",
+          "criterion": "`POST /api/loads` with `driver_id` equal to the authenticated caller's id does NOT call `sendPush`; verified via `expect(vi.mocked(sendPush)).not.toHaveBeenCalled()`.",
+          "testType": "integration",
           "testFile": null
         },
         {
           "id": "R-P5-03",
-          "criterion": "`.claude/hooks/tests/` directory exists (created locally); verified by `scripts/verify-baseline-debt-resolved.cjs` asserting `fs.existsSync('.claude/hooks/tests/')` returns true. NOTE: directory is gitignored — worker creates it locally but does NOT stage it",
-          "testType": "unit",
+          "criterion": "`POST /api/loads` when the push_tokens query returns `[[], []]` does NOT call `sendPush`; verified via spy assertion.",
+          "testType": "integration",
           "testFile": null
         },
         {
           "id": "R-P5-04",
-          "criterion": "`docs/trucker-app-baseline-debt.md` contains resolution annotations for all 3 debt entries; verified by `scripts/verify-baseline-debt-resolved.cjs` reading file and asserting each original failure description has an adjacent resolution note",
+          "criterion": "when `sendPush` is mocked to reject with `new Error(\"expo down\")`, `POST /api/loads` still returns HTTP 201 and `pool.query` REPLACE INTO loads fired before the push trigger; verified via supertest response + spy ordering.",
+          "testType": "integration",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-create.test.ts\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-006",
+      "description": "Server push trigger on driver reassignment (PATCH)",
+      "phase": 6,
+      "phase_type": "integration",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-005",
+        "STORY-003",
+        "STORY-004"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P6-01",
+          "criterion": "authenticated `PATCH /api/loads/load-123` with body `{driver_id: \"driver-new\"}` triggers a `pool.query` UPDATE whose SQL contains the substring `driver_id = ?` and whose params include `\"driver-new\"`; verified via `vi.mocked(pool.query)` call inspection on the UPDATE call.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-02",
+          "criterion": "the same PATCH where `driver_id` changes from `\"driver-old\"` to `\"driver-new\"` (distinct, non-null, not the caller) fires exactly one `sendPush` call whose second argument equals the exact string `\"Load reassigned to you\"` and whose fourth argument has `loadId === \"load-123\"`; verified via `vi.mocked(sendPush)` inspection.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-03",
+          "criterion": "PATCH where the new `driver_id` equals the pre-existing value (no change) does NOT fire `sendPush`; verified via `expect(vi.mocked(sendPush)).not.toHaveBeenCalled()`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-04",
+          "criterion": "PATCH where the new `driver_id` equals `req.user.id` (the caller assigns themselves) does NOT fire `sendPush`; verified via spy assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-05",
+          "criterion": "PATCH without `driver_id` in the body (e.g. `{weight: 500}`) does NOT modify the `driver_id` column â€” the pool.query UPDATE SQL does not contain the substring `driver_id = ?`; verified via `expect(sqlString.includes(\"driver_id = ?\")).toBe(false)`.",
+          "testType": "integration",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-reassign.test.ts\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-007",
+      "description": "Server push trigger on dispatcher status update",
+      "phase": 7,
+      "phase_type": "integration",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-005",
+        "STORY-006",
+        "STORY-003",
+        "STORY-004"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P7-01",
+          "criterion": "`PATCH /api/loads/load-123/status` with body `{status: \"dispatched\"}` made by user `\"dispatcher-x\"` where the load's `driver_id` is `\"driver-y\"` fires exactly one `sendPush` call whose `data.loadId === \"load-123\"` and whose second argument equals `\"Load status changed\"`; verified via `vi.mocked(sendPush)` inspection.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-02",
+          "criterion": "the same PATCH made by user `\"driver-y\"` (the assigned driver) does NOT fire `sendPush`; verified via spy assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-03",
+          "criterion": "PATCH against a load whose `driver_id` column is NULL does NOT fire `sendPush`; verified via spy assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-04",
+          "criterion": "when `sendPush` is mocked to reject, the PATCH response still returns HTTP 200 with the result of `loadService.transitionLoad`; verified via supertest.",
+          "testType": "integration",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-status.test.ts\""
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-008",
+      "description": "Mobile notification tap handler wiring in _layout.tsx",
+      "phase": 8,
+      "phase_type": "integration",
+      "component": "apps/",
+      "scope": [
+        "apps/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P8-01",
+          "criterion": "`_layout.tsx` imports `useRouter` from `\"expo-router\"`; verified via regex `/import\\s*\\{[^}]*useRouter[^}]*\\}\\s*from\\s*[\"']expo-router[\"']/`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-02",
+          "criterion": "`_layout.tsx` imports `attachNotificationResponseHandler` from `\"../services/pushNotifications\"`; verified via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-03",
+          "criterion": "`_layout.tsx` has a `useEffect` whose body calls `attachNotificationResponseHandler(router)` and whose cleanup function calls `.remove()` on the return value; verified via multiline regex.",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-baseline-debt-resolved.cjs"
+        "unit": "node scripts/verify-push-deep-link.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
-      "id": "STORY-006",
-      "description": "- SaaS Non-Regression Verification (e2e)",
-      "phase": 6,
-      "phase_type": null,
-      "component": "docs/",
+      "id": "STORY-009",
+      "description": "GET/PATCH /api/drivers/me endpoints",
+      "phase": 9,
+      "phase_type": "module",
+      "component": "server/",
       "scope": [
-        "docs/",
-        "scripts/"
+        "server/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "dependsOn": [
+        "STORY-004"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
-          "id": "R-P6-01",
-          "criterion": "`npx vitest run` from project root exits with code 0, confirming all existing frontend tests pass after shared types extraction; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
-          "testType": "e2e",
+          "id": "R-P9-01",
+          "criterion": "authenticated `GET /api/drivers/me` returns 200 with JSON body whose sorted keys deep-equal `[\"companyId\",\"email\",\"id\",\"name\",\"phone\",\"role\"]`; verified via supertest + `Object.keys` check.",
+          "testType": "integration",
           "testFile": null
         },
         {
-          "id": "R-P6-02",
-          "criterion": "`cd server && npx vitest run --exclude=__tests__/integration/** --exclude=__tests__/regression/** --exclude=__tests__/performance/**` exits with code 0, confirming all existing server tests pass; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
-          "testType": "e2e",
+          "id": "R-P9-02",
+          "criterion": "`GET /api/drivers/me` when `pool.query` returns `[[], []]` returns 404; verified via supertest.",
+          "testType": "integration",
           "testFile": null
         },
         {
-          "id": "R-P6-03",
-          "criterion": "`docs/trucker-app-sprint-history.md` contains a `## Sprint B2` section with `Stories` row showing \"6\" and `Status` showing \"Engineering Complete\"; verified by `scripts/verify-b2-completion.cjs` reading file via `fs.readFileSync` and asserting `/## Sprint B2/` heading exists and `/Stories.*6/` pattern matches",
-          "testType": "e2e",
+          "id": "R-P9-03",
+          "criterion": "`GET /api/drivers/me` without `Authorization` â†’ 401; verified via supertest.",
+          "testType": "integration",
           "testFile": null
         },
         {
-          "id": "R-P6-04",
-          "criterion": "All 5 Phase 1-5 verification scripts (`verify-shared-package.cjs`, `verify-expo-project.cjs`, `verify-mobile-nav.cjs`, `verify-mobile-auth.cjs`, `verify-baseline-debt-resolved.cjs`) exit with code 0; verified by `scripts/verify-b2-completion.cjs` spawning each and asserting all 5 exit codes equal 0",
-          "testType": "e2e",
+          "id": "R-P9-04",
+          "criterion": "`PATCH /api/drivers/me` with body `{phone: \"555-123-4567\"}` returns 200 AND triggers exactly one `pool.query` whose SQL matches `/UPDATE users SET phone = \\?/i` with params containing `\"555-123-4567\"`; verified via spy inspection.",
+          "testType": "integration",
           "testFile": null
         },
         {
-          "id": "R-P6-05",
-          "criterion": "If any existing test fails during regression run, `verify-b2-completion.cjs` returns non-zero exit code and reports the failing test name in stdout; verified by the script's error-path logic that captures stderr from vitest and includes it in the failure message",
-          "testType": "e2e",
+          "id": "R-P9-05",
+          "criterion": "`PATCH /api/drivers/me` with body `{phone: \"not-a-phone-!!\"}` rejects with 400 and does NOT call `pool.query`; verified via supertest status + spy assertion.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-06",
+          "criterion": "`PATCH /api/drivers/me` with body `{phone: \"555-1234567\", role: \"admin\"}` returns 200 but the `pool.query` SQL string does NOT contain the substring `role` (case-insensitive); verified via `expect(sql.toLowerCase()).not.toContain(\"role\")`.",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-07",
+          "criterion": "`server/index.ts` contains `import driversRouter from \"./routes/drivers\"` AND `app.use(driversRouter)`; verified via two regex matches.",
+          "testType": "integration",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-b2-completion.cjs"
+        "unit": "bash -c \"cd server && npx vitest run __tests__/routes/drivers.test.ts __tests__/index.drivers-mount.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-010",
+      "description": "Mobile Profile screen",
+      "phase": 10,
+      "phase_type": "module",
+      "component": "apps/",
+      "scope": [
+        "apps/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-008"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P10-01",
+          "criterion": "`profile.tsx` imports `api` from `\"../../services/api\"` AND calls `api.get` with path `\"/drivers/me\"`; verified via two regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-02",
+          "criterion": "`profile.tsx` has a `<TextInput` with both `value={...}` and `onChangeText={...}` in the same element; verified via multiline regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-03",
+          "criterion": "`profile.tsx` calls `api.patch` with path `\"/drivers/me\"` and an object literal containing `phone`; verified via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-04",
+          "criterion": "`profile.tsx` calls `router.push(\"/settings\")` AND imports `useRouter` from `\"expo-router\"`; verified via two regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-05",
+          "criterion": "`profile.tsx` renders a loading branch (conditional on `loading` identifier) AND an error branch (conditional on `error` identifier); verified via two regex matches for `{loading` and `{error` patterns.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-06",
+          "criterion": "`types/driver.ts` declares `interface DriverProfile` with fields `id`, `name`, `email`, `phone`, `role`, `companyId`; verified via one regex for the interface + six field-name regexes.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-profile-screen.cjs"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-011",
+      "description": "Settings screen (complete) + layout registration",
+      "phase": 11,
+      "phase_type": "module",
+      "component": "apps/",
+      "scope": [
+        "apps/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-008",
+        "STORY-002"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P11-01",
+          "criterion": "`settings.tsx` imports `AsyncStorage` from `@react-native-async-storage/async-storage` AND uses the literal key `\"@loadpilot/notification-prefs\"`; verified via two regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-02",
+          "criterion": "`settings.tsx` has a `useEffect` calling `AsyncStorage.getItem(\"@loadpilot/notification-prefs\")`; verified via multiline regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-03",
+          "criterion": "`settings.tsx` calls `AsyncStorage.setItem(\"@loadpilot/notification-prefs\", JSON.stringify(...))`; verified via regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-04",
+          "criterion": "`settings.tsx` renders exactly 3 `<Switch` elements; verified via `(content.match(/<Switch[\\s>]/g) \\|\\| []).length === 3`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-05",
+          "criterion": "`settings.tsx` imports `useAuth` from `\"../contexts/AuthContext\"`, destructures `logout`, and calls `logout(` inside an `onPress` arrow-function body; verified via three regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-06",
+          "criterion": "`settings.tsx` imports `Alert` from `\"react-native\"` AND contains an `Alert.alert` call whose options include an object with `style: \"destructive\"`; verified via multiline regex.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-07",
+          "criterion": "`settings.tsx` imports `Constants` from `\"expo-constants\"` AND reads `Constants.expoConfig?.version` or `.expoConfig.version`; verified via two regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-08",
+          "criterion": "`settings.tsx` contains a `router.replace(\"/\")` call AND imports `useRouter`; verified via two regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-09",
+          "criterion": "`_layout.tsx` contains `<Stack.Screen name=\"settings\"`; verified via regex.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-settings-screen.cjs"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-012",
+      "description": "Sprint F combined verification + sprint history update",
+      "phase": 12,
+      "phase_type": "e2e",
+      "component": "scripts/",
+      "scope": [
+        "docs/",
+        "scripts/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-002",
+        "STORY-008",
+        "STORY-010",
+        "STORY-011"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P12-01",
+          "criterion": "`scripts/verify-sprint-f.cjs` source contains all 5 substrings: `verify-push-service.cjs`, `verify-auth-push-wiring.cjs`, `verify-push-deep-link.cjs`, `verify-profile-screen.cjs`, `verify-settings-screen.cjs`; verified via 5 regex matches.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P12-02",
+          "criterion": "`scripts/verify-sprint-f.cjs` contains a `process.exit` call with a non-zero integer argument; verified via regex `/process\\.exit\\s*\\(\\s*[1-9]\\d*\\s*\\)/`.",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P12-03",
+          "criterion": "`docs/trucker-app-sprint-history.md` contains an H2 heading starting with `## Sprint F`; verified via regex `/^## Sprint F/m`.",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "node scripts/verify-sprint-f.cjs"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }

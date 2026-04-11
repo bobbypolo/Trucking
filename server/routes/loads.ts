@@ -34,6 +34,7 @@ import {
   recordLoadCompletion,
 } from "../services/discrepancyPipeline";
 import { exportLoadToBigQuery } from "../services/bigqueryPipeline";
+import { sendPush } from "../lib/expo-push";
 
 const router = Router();
 let cachedLoadNotesColumn: string | null | undefined;
@@ -301,6 +302,50 @@ router.post(
         );
       }
 
+      // ── Push notification trigger (STORY-005 R-P5-01..04) ────────────
+      // Fire a push to the assigned driver when a dispatcher creates a
+      // load for someone else. Push failures must NEVER block the request.
+      try {
+        if (driver_id && driver_id !== req.user!.id) {
+          const [tokenRows] = await pool.query<RowDataPacket[]>(
+            "SELECT expo_push_token FROM push_tokens WHERE user_id = ? AND enabled = 1",
+            [driver_id],
+          );
+          const tokens = (tokenRows as RowDataPacket[])
+            .map((r) => r.expo_push_token)
+            .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+          if (tokens.length > 0) {
+            const [legRows] = await pool.query<RowDataPacket[]>(
+              "SELECT city, type FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
+              [id],
+            );
+            const legsList = legRows as RowDataPacket[];
+            const pickupRow = legsList.find((r) => r.type === "Pickup");
+            const dropoffRows = legsList.filter((r) => r.type === "Dropoff");
+            const dropoffRow =
+              dropoffRows.length > 0
+                ? dropoffRows[dropoffRows.length - 1]
+                : undefined;
+            const pickupCity = pickupRow?.city ?? "";
+            const dropoffCity = dropoffRow?.city ?? "";
+
+            await sendPush(
+              tokens,
+              "New load assigned",
+              `${load_number} — ${pickupCity} to ${dropoffCity}`,
+              { loadId: id },
+            );
+          }
+        }
+      } catch (pushErr) {
+        const log = createRequestLogger(req, "POST /api/loads");
+        log.error(
+          { err: pushErr },
+          "push notification on new load creation failed",
+        );
+      }
+
       res.status(201).json({ message: "Load saved" });
     } catch (err) {
       await connection.rollback();
@@ -372,6 +417,7 @@ router.patch(
       pickup_date,
       notes,
       equipment_id,
+      driver_id,
     } = req.body;
 
     const normalizedReference =
@@ -381,13 +427,17 @@ router.patch(
 
     try {
       const [existingRows] = await pool.query<RowDataPacket[]>(
-        "SELECT id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+        "SELECT id, driver_id, load_number FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
         [loadId, companyId],
       );
 
       if (!Array.isArray(existingRows) || existingRows.length === 0) {
         return res.status(404).json({ error: "Load not found" });
       }
+
+      const oldDriverId = (existingRows[0] as RowDataPacket).driver_id ?? null;
+      const existingLoadNumber =
+        (existingRows[0] as RowDataPacket).load_number ?? loadId;
 
       const updates: string[] = [];
       const params: (string | number)[] = [];
@@ -425,6 +475,11 @@ router.patch(
         params.push(equipment_id);
       }
 
+      if (driver_id !== undefined) {
+        updates.push("driver_id = ?");
+        params.push(driver_id);
+      }
+
       if (updates.length === 0) {
         return res.status(400).json({
           error:
@@ -436,6 +491,56 @@ router.patch(
         `UPDATE loads SET ${updates.join(", ")} WHERE id = ? AND company_id = ?`,
         [...params, loadId, companyId],
       );
+
+      // ── Push notification trigger (STORY-006 R-P6-01..05) ────────────
+      // Fire a push to the newly-assigned driver when a dispatcher
+      // reassigns a load to a distinct non-self driver. Push failures
+      // must NEVER block the PATCH response.
+      try {
+        if (
+          driver_id !== undefined &&
+          driver_id !== null &&
+          driver_id !== oldDriverId &&
+          driver_id !== req.user!.id
+        ) {
+          const [tokenRows] = await pool.query<RowDataPacket[]>(
+            "SELECT expo_push_token FROM push_tokens WHERE user_id = ? AND enabled = 1",
+            [driver_id],
+          );
+          const tokens = (tokenRows as RowDataPacket[])
+            .map((r) => r.expo_push_token)
+            .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+          if (tokens.length > 0) {
+            const [legRows] = await pool.query<RowDataPacket[]>(
+              "SELECT city, type FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
+              [loadId],
+            );
+            const legsList = legRows as RowDataPacket[];
+            const pickupRow = legsList.find((r) => r.type === "Pickup");
+            const dropoffRows = legsList.filter((r) => r.type === "Dropoff");
+            const dropoffRow =
+              dropoffRows.length > 0
+                ? dropoffRows[dropoffRows.length - 1]
+                : undefined;
+            const pickupCity = pickupRow?.city ?? "";
+            const dropoffCity = dropoffRow?.city ?? "";
+
+            await sendPush(
+              tokens,
+              "Load reassigned to you",
+              `${existingLoadNumber} — ${pickupCity} to ${dropoffCity}`,
+              { loadId: loadId },
+            );
+          }
+        }
+      } catch (pushErr) {
+        const log = createRequestLogger(req, "PATCH /api/loads/:id");
+        log.error(
+          { err: pushErr },
+          "push notification on driver reassignment failed",
+        );
+      }
 
       const [rows] = await pool.query<RowDataPacket[]>(
         "SELECT * FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
@@ -512,6 +617,48 @@ router.patch(
         }
         // Fire-and-forget: export analytics snapshot to BigQuery (never blocks response)
         exportLoadToBigQuery(pool, loadId);
+      }
+
+      // ── Push notification trigger (STORY-007 R-P7-01..04) ────────────
+      // Fire a push to the assigned driver when a dispatcher transitions
+      // the load's status. Skipped when caller IS the driver or when the
+      // load has no assigned driver. Push failures must NEVER block the
+      // PATCH response.
+      try {
+        const [loadRows] = await pool.query<RowDataPacket[]>(
+          "SELECT id, driver_id, load_number FROM loads WHERE id = ? AND company_id = ?",
+          [loadId, companyId],
+        );
+        const loadRow = (loadRows as RowDataPacket[])[0];
+        const assignedDriverId =
+          (loadRow?.driver_id as string | null | undefined) ?? null;
+        const loadNumber =
+          (loadRow?.load_number as string | null | undefined) ?? loadId;
+
+        if (assignedDriverId && assignedDriverId !== req.user!.id) {
+          const [tokenRows] = await pool.query<RowDataPacket[]>(
+            "SELECT expo_push_token FROM push_tokens WHERE user_id = ? AND enabled = 1",
+            [assignedDriverId],
+          );
+          const tokens = (tokenRows as RowDataPacket[])
+            .map((r) => r.expo_push_token)
+            .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+          if (tokens.length > 0) {
+            await sendPush(
+              tokens,
+              "Load status changed",
+              `${loadNumber} is now ${status}`,
+              { loadId: loadId },
+            );
+          }
+        }
+      } catch (pushErr) {
+        const log = createRequestLogger(req, "PATCH /api/loads/:id/status");
+        log.error(
+          { err: pushErr },
+          "push notification on load status change failed",
+        );
       }
 
       res.json(result);

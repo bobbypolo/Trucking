@@ -942,3 +942,98 @@
 ---
 
 ## SPRINT COMPLETE: 10/10 stories passed (0 skipped)
+
+### STORY-001 — PASS (2026-04-11)
+
+- Files: `apps/trucker/package.json`, `apps/trucker/app.json`, `apps/trucker/src/services/pushNotifications.ts`, `scripts/verify-push-service.cjs`
+- Criteria verified: R-P1-01..09 (9 criteria)
+- Merge commit: `08f26f9`
+- Summary: Expo Notifications service with all 6 functions (requestPushPermissions, getPushToken, registerPushToken, unregisterPushToken, attachTokenRefreshListener, attachNotificationResponseHandler) + 23-check verification script.
+
+### STORY-003 — PASS (2026-04-11)
+
+- Files: `server/migrations/055_push_tokens.sql`, `server/__tests__/migrations/055_push_tokens.test.ts`
+- Criteria verified: R-P3-01..03 (3 criteria)
+- Merge commit: `838f371`
+- Summary: Migration 055 push_tokens table with UNIQUE KEY `(user_id, expo_push_token)`, ENUM platform, 14/14 vitest tests green.
+
+### STORY-004 — PASS (2026-04-11)
+
+- Files: `server/routes/push-tokens.ts`, `server/lib/expo-push.ts`, `server/index.ts`, `server/__tests__/routes/push-tokens.test.ts`, `server/__tests__/lib/expo-push.test.ts`, `server/__tests__/index.push-tokens-mount.test.ts`
+- Criteria verified: R-P4-01..09 (9 criteria)
+- Merge commit: `99d1304`
+- Summary: POST /api/push-tokens register + /unregister routes + sendPush utility (100-token batches, never throws) + mount. 17/17 vitest tests green.
+
+### STORY-002 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/contexts/AuthContext.tsx`, `scripts/verify-auth-push-wiring.cjs`
+- Criteria verified: R-P2-01..05 (5 criteria)
+- Merge commit: `fc788a0`
+- Summary: AuthContext wired with requestPushPermissions → getPushToken → registerPushToken → attachTokenRefreshListener on login (in try/catch); logout unregisters token BEFORE signOut. 11/11 verify checks pass.
+
+### STORY-005 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/__tests__/routes/loads.push-on-create.test.ts`
+- Criteria verified: R-P5-01..04 (4 criteria)
+- Merge commit: `8329b84`
+- Summary: POST /api/loads fires sendPush to assigned driver after successful insert. Self-assignment short-circuits; empty tokens no-op; sendPush rejection never blocks 201. 4/4 vitest tests pass.
+
+### STORY-008 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/_layout.tsx`, `scripts/verify-push-deep-link.cjs`
+- Criteria verified: R-P8-01..03 (3 criteria)
+- Merge commit: `e162657`
+- Summary: Root _layout.tsx wires useRouter + attachNotificationResponseHandler(router) inside a useEffect with .remove() cleanup. 5/5 verify checks pass.
+
+### STORY-006 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/schemas/loads.ts`, `server/__tests__/routes/loads.push-on-reassign.test.ts`
+- Criteria verified: R-P6-01..05 (5 criteria)
+- Merge commit: `a0f55b2`
+- Summary: PATCH /api/loads/:id extended to accept driver_id via schema + fires sendPush on reassignment when new driver differs from old and from caller. 5/5 vitest tests green; STORY-005 regression 4/4 still green.
+
+### STORY-009 — PASS (2026-04-11)
+
+- Files: `server/routes/drivers.ts`, `server/index.ts`, `server/__tests__/routes/drivers.test.ts`, `server/__tests__/index.drivers-mount.test.ts`
+- Criteria verified: R-P9-01..07 (7 criteria)
+- Merge commit: `deabc2f`
+- Summary: New `/api/drivers/me` GET + PATCH endpoints. GET returns 6-key profile or 404. PATCH hard-coded to UPDATE users SET phone=? only (role escalation blocked). 10/10 vitest tests green.
+
+### STORY-010 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/(tabs)/profile.tsx`, `apps/trucker/src/types/driver.ts`, `scripts/verify-profile-screen.cjs`
+- Criteria verified: R-P10-01..06 (6 criteria)
+- Merge commit: `07c1c03`
+- Summary: Mobile Profile screen replaces placeholder. Loads driver via api.get('/drivers/me'), loading/error/success branches, editable phone TextInput → api.patch, Settings nav button. 18/18 verify checks pass.
+
+### STORY-007 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/__tests__/routes/loads.push-on-status.test.ts`
+- Criteria verified: R-P7-01..04 (4 criteria)
+- Merge commit: `f6c570c`
+- Summary: PATCH /api/loads/:id/status fires sendPush to assigned driver on status transition. Self-transition / NULL driver_id / sendPush rejection all handled. 4/4 tests green + 9/9 STORY-005/006 regression green.
+
+### STORY-011 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/settings.tsx`, `apps/trucker/src/app/_layout.tsx`, `scripts/verify-settings-screen.cjs`
+- Criteria verified: R-P11-01..09 (9 criteria)
+- Merge commit: `9dda8c5`
+- Summary: Settings screen with 3 Switches (notification prefs via AsyncStorage @loadpilot/notification-prefs), sign-out via Alert.alert destructive button calling logout() + router.replace('/'), version display via Constants.expoConfig. _layout.tsx converted Slot→Stack to register settings route. 17/17 verify checks pass.
+
+### STORY-012 — PASS (2026-04-11)
+
+- Files: `scripts/verify-sprint-f.cjs`, `docs/trucker-app-sprint-history.md`
+- Criteria verified: R-P12-01..03 (3 criteria)
+- Merge commit: `0242a00`
+- Summary: Sprint F combined verification orchestrator (spawnSync for all 5 mobile verify scripts + sprint-history heading check). Exits non-zero on any failure. **74/74 checks green on merged branch** (23 push-svc + 11 auth-wiring + 5 deep-link + 18 profile + 17 settings + history).
+
+---
+
+## Sprint F — COMPLETE (2026-04-11)
+
+- 12/12 stories passed, 0 skipped
+- 67 R-markers across 12 phases all verified
+- Feature branch: `ralph/trucker-app-sprint-f`
+- Final merge HEAD: `0242a00`
+- Base branch for PR: `mobile/trucker-app`
+- Sprint F combined verification: 74/74 checks on merged branch + history heading PASS
