@@ -81,11 +81,7 @@ describe("PendingDriverIntakeQueue", () => {
 
   // Tests R-P5-12
   it("Tests R-P5-12 — filters loads to only status=draft AND intake_source=driver", async () => {
-    global.fetch = makeFetch({
-      "/api/loads": MIXED_LOADS,
-    });
-
-    render(<PendingDriverIntakeQueue />);
+    render(<PendingDriverIntakeQueue sourceLoads={MIXED_LOADS as any} />);
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -105,11 +101,10 @@ describe("PendingDriverIntakeQueue", () => {
   // Tests R-P5-13
   it("Tests R-P5-13 — Approve button is disabled until equipment_id is selected", async () => {
     global.fetch = makeFetch({
-      "/api/loads": MIXED_LOADS,
       "/api/equipment": EQUIPMENT_LIST,
     });
 
-    render(<PendingDriverIntakeQueue />);
+    render(<PendingDriverIntakeQueue sourceLoads={MIXED_LOADS as any} />);
 
     await screen.findByTestId("intake-row-load-d1");
 
@@ -146,13 +141,6 @@ describe("PendingDriverIntakeQueue", () => {
         }
         fetchCalls.push({ url: url.toString(), method, body });
 
-        // Mock load list response
-        if (method === "GET" && url.toString().includes("/api/loads")) {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve(MIXED_LOADS),
-          });
-        }
         // Mock equipment list response
         if (method === "GET" && url.toString().includes("/api/equipment")) {
           return Promise.resolve({
@@ -167,7 +155,7 @@ describe("PendingDriverIntakeQueue", () => {
         });
       });
 
-    render(<PendingDriverIntakeQueue />);
+    render(<PendingDriverIntakeQueue sourceLoads={MIXED_LOADS as any} />);
     await screen.findByTestId("intake-row-load-d1");
 
     // Open approval modal
