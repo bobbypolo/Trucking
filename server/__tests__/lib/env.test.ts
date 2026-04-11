@@ -353,7 +353,11 @@ describe("R-P1-09: Environment Validation on Boot", () => {
         "https://admin.loadpilot.com",
       ]);
       if (Array.isArray(result)) {
-        expect(result.every((o) => o.length > 0)).toBe(true);
+        // Production branch returns string[]; narrow the union type
+        // `Array<string | RegExp>` to strings before checking length.
+        expect(result.every((o) => typeof o === "string" && o.length > 0)).toBe(
+          true,
+        );
       }
     });
 
