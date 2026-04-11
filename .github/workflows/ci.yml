@@ -95,10 +95,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check for unscoped tenant-table queries (R-P3-04)
-        shell: bash
-        run: |
-          chmod +x scripts/check-tenant-scope.sh
-          bash scripts/check-tenant-scope.sh
+        shell: cmd
+        run: node scripts/check-tenant-scope.cjs
 
   # ---- New CI jobs (S-1.2: R-P1-06 through R-P1-10) ----
 
