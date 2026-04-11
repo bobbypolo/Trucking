@@ -11,21 +11,42 @@ vi.mock("recharts", () => {
   const OrigReact = require("react");
   return {
     ResponsiveContainer: ({ children }: { children: React.ReactNode }) =>
-      OrigReact.createElement("div", { "data-testid": "responsive-container" }, children),
-    BarChart: ({ children, data }: { children: React.ReactNode; data: unknown[] }) =>
-      OrigReact.createElement("div", { "data-testid": "bar-chart", "data-count": data?.length ?? 0 }, children),
+      OrigReact.createElement(
+        "div",
+        { "data-testid": "responsive-container" },
+        children,
+      ),
+    BarChart: ({
+      children,
+      data,
+    }: {
+      children: React.ReactNode;
+      data: unknown[];
+    }) =>
+      OrigReact.createElement(
+        "div",
+        { "data-testid": "bar-chart", "data-count": data?.length ?? 0 },
+        children,
+      ),
     PieChart: ({ children }: { children: React.ReactNode }) =>
       OrigReact.createElement("div", { "data-testid": "pie-chart" }, children),
     Bar: ({ dataKey }: { dataKey: string }) =>
       OrigReact.createElement("div", { "data-testid": `bar-${dataKey}` }),
     Pie: ({ dataKey, data }: { dataKey: string; data?: unknown[] }) =>
-      OrigReact.createElement("div", { "data-testid": `pie-${dataKey}`, "data-count": data?.length ?? 0 }),
+      OrigReact.createElement("div", {
+        "data-testid": `pie-${dataKey}`,
+        "data-count": data?.length ?? 0,
+      }),
     XAxis: () => OrigReact.createElement("div", { "data-testid": "x-axis" }),
     YAxis: () => OrigReact.createElement("div", { "data-testid": "y-axis" }),
     Tooltip: () => OrigReact.createElement("div", { "data-testid": "tooltip" }),
     Cell: ({ fill }: { fill: string }) =>
-      OrigReact.createElement("div", { "data-testid": "cell", "data-fill": fill }),
-    CartesianGrid: () => OrigReact.createElement("div", { "data-testid": "cartesian-grid" }),
+      OrigReact.createElement("div", {
+        "data-testid": "cell",
+        "data-fill": fill,
+      }),
+    CartesianGrid: () =>
+      OrigReact.createElement("div", { "data-testid": "cartesian-grid" }),
     Legend: () => OrigReact.createElement("div", { "data-testid": "legend" }),
   };
 });
@@ -40,6 +61,10 @@ const mockUser: User = {
   safetyScore: 100,
 };
 
+// Use today's date so loads always fall in the current quarter
+// (AnalyticsDashboard filters lane data by selectedQuarter, default = current quarter).
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+
 function makeLoad(id: string, overrides: Partial<LoadData> = {}): LoadData {
   return {
     id,
@@ -50,7 +75,7 @@ function makeLoad(id: string, overrides: Partial<LoadData> = {}): LoadData {
     carrierRate: 2000,
     driverPay: 1200,
     miles: 500,
-    pickupDate: "2025-01-01",
+    pickupDate: TODAY_ISO,
     pickup: { city: "Chicago", state: "IL" },
     dropoff: { city: "Dallas", state: "TX" },
     ...overrides,
@@ -108,13 +133,7 @@ describe("AnalyticsDashboard Charts — R-P6-05", () => {
         miles: 600,
       }),
     ];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     const pieCharts = screen.getAllByTestId("pie-chart");
     expect(pieCharts.length).toBeGreaterThanOrEqual(1);
   });
@@ -134,7 +153,7 @@ describe("AnalyticsDashboard Charts — R-P6-05", () => {
     const barCharts = screen.getAllByTestId("bar-chart");
     // BarChart with broker data should have data entries matching number of brokers
     const brokerChart = barCharts.find(
-      (c) => parseInt(c.getAttribute("data-count") || "0") === 2
+      (c) => parseInt(c.getAttribute("data-count") || "0") === 2,
     );
     expect(brokerChart).toBeTruthy();
   });
@@ -154,13 +173,7 @@ describe("AnalyticsDashboard Charts — R-P6-05", () => {
         miles: 600,
       }),
     ];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     // PieChart should contain pie data with 2 lane entries
     const pies = screen.getAllByTestId("pie-revenue");
     expect(pies.length).toBeGreaterThanOrEqual(1);
@@ -208,9 +221,14 @@ describe("AnalyticsDashboard Drill-Down — R-P6-06", () => {
       />,
     );
     // Click on a lane card row
-    const laneCard = screen.getByText(/Chicago, IL/).closest("[data-lane-id]") || screen.getByText(/Chicago, IL/).closest(".cursor-pointer");
+    const laneCard =
+      screen.getByText(/Chicago, IL/).closest("[data-lane-id]") ||
+      screen.getByText(/Chicago, IL/).closest(".cursor-pointer");
     expect(laneCard).toBeTruthy();
     fireEvent.click(laneCard!);
-    expect(onNavigate).toHaveBeenCalledWith("loads", expect.stringContaining("lane:"));
+    expect(onNavigate).toHaveBeenCalledWith(
+      "loads",
+      expect.stringContaining("lane:"),
+    );
   });
 });
