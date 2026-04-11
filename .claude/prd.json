@@ -76,8 +76,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-push-service.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
@@ -169,8 +169,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/055_push_tokens.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",
@@ -244,8 +244,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/push-tokens.test.ts __tests__/lib/expo-push.test.ts __tests__/index.push-tokens-mount.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-005",
@@ -339,7 +339,7 @@
         },
         {
           "id": "R-P6-05",
-          "criterion": "PATCH without `driver_id` in the body (e.g. `{weight: 500}`) does NOT modify the `driver_id` column \u2014 the pool.query UPDATE SQL does not contain the substring `driver_id = ?`; verified via `expect(sqlString.includes(\"driver_id = ?\")).toBe(false)`.",
+          "criterion": "PATCH without `driver_id` in the body (e.g. `{weight: 500}`) does NOT modify the `driver_id` column — the pool.query UPDATE SQL does not contain the substring `driver_id = ?`; verified via `expect(sqlString.includes(\"driver_id = ?\")).toBe(false)`.",
           "testType": "integration",
           "testFile": null
         }
@@ -471,7 +471,7 @@
         },
         {
           "id": "R-P9-03",
-          "criterion": "`GET /api/drivers/me` without `Authorization` \u2192 401; verified via supertest.",
+          "criterion": "`GET /api/drivers/me` without `Authorization` → 401; verified via supertest.",
           "testType": "integration",
           "testFile": null
         },

@@ -942,3 +942,24 @@
 ---
 
 ## SPRINT COMPLETE: 10/10 stories passed (0 skipped)
+
+### STORY-001 — PASS (2026-04-11)
+
+- Files: `apps/trucker/package.json`, `apps/trucker/app.json`, `apps/trucker/src/services/pushNotifications.ts`, `scripts/verify-push-service.cjs`
+- Criteria verified: R-P1-01..09 (9 criteria)
+- Merge commit: `08f26f9`
+- Summary: Expo Notifications service with all 6 functions (requestPushPermissions, getPushToken, registerPushToken, unregisterPushToken, attachTokenRefreshListener, attachNotificationResponseHandler) + 23-check verification script.
+
+### STORY-003 — PASS (2026-04-11)
+
+- Files: `server/migrations/055_push_tokens.sql`, `server/__tests__/migrations/055_push_tokens.test.ts`
+- Criteria verified: R-P3-01..03 (3 criteria)
+- Merge commit: `838f371`
+- Summary: Migration 055 push_tokens table with UNIQUE KEY `(user_id, expo_push_token)`, ENUM platform, 14/14 vitest tests green.
+
+### STORY-004 — PASS (2026-04-11)
+
+- Files: `server/routes/push-tokens.ts`, `server/lib/expo-push.ts`, `server/index.ts`, `server/__tests__/routes/push-tokens.test.ts`, `server/__tests__/lib/expo-push.test.ts`, `server/__tests__/index.push-tokens-mount.test.ts`
+- Criteria verified: R-P4-01..09 (9 criteria)
+- Merge commit: `99d1304`
+- Summary: POST /api/push-tokens register + /unregister routes + sendPush utility (100-token batches, never throws) + mount. 17/17 vitest tests green.
