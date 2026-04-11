@@ -1019,3 +1019,21 @@
 - Criteria verified: R-P11-01..09 (9 criteria)
 - Merge commit: `9dda8c5`
 - Summary: Settings screen with 3 Switches (notification prefs via AsyncStorage @loadpilot/notification-prefs), sign-out via Alert.alert destructive button calling logout() + router.replace('/'), version display via Constants.expoConfig. _layout.tsx converted Slot→Stack to register settings route. 17/17 verify checks pass.
+
+### STORY-012 — PASS (2026-04-11)
+
+- Files: `scripts/verify-sprint-f.cjs`, `docs/trucker-app-sprint-history.md`
+- Criteria verified: R-P12-01..03 (3 criteria)
+- Merge commit: `0242a00`
+- Summary: Sprint F combined verification orchestrator (spawnSync for all 5 mobile verify scripts + sprint-history heading check). Exits non-zero on any failure. **74/74 checks green on merged branch** (23 push-svc + 11 auth-wiring + 5 deep-link + 18 profile + 17 settings + history).
+
+---
+
+## Sprint F — COMPLETE (2026-04-11)
+
+- 12/12 stories passed, 0 skipped
+- 67 R-markers across 12 phases all verified
+- Feature branch: `ralph/trucker-app-sprint-f`
+- Final merge HEAD: `0242a00`
+- Base branch for PR: `mobile/trucker-app`
+- Sprint F combined verification: 74/74 checks on merged branch + history heading PASS

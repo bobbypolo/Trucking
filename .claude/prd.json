@@ -686,8 +686,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-sprint-f.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
