@@ -28,7 +28,12 @@ export const extractLoadInfo = async (
   const ai = getClient();
   const model = GEMINI_FAST_MODEL;
   const prompt =
-    "Extract comprehensive load and broker information from this document. Ensure you capture the 'Carrier Total' or 'Rate' and the 'Broker Name'. Itemize pickup and dropoff locations.";
+    "Extract comprehensive load and broker information from this document. " +
+    "Capture the Carrier Total or Rate, Broker Name, and pickup/dropoff locations. " +
+    "Also extract: equipment type (freight type such as Dry Van, Reefer, Flatbed), " +
+    "delivery date (dropoff date), pickup and dropoff appointment times, " +
+    "BOL number, special instructions or driver notes, pallet count, " +
+    "container number, and chassis number when visible.";
   const schema = {
     type: Type.OBJECT,
     properties: {
@@ -40,6 +45,18 @@ export const extractLoadInfo = async (
           commodity: { type: Type.STRING },
           weight: { type: Type.NUMBER },
           pickupDate: { type: Type.STRING },
+          // 5 scheduling + pay fields (R-P5-01)
+          freightType: { type: Type.STRING },
+          driverPay: { type: Type.NUMBER },
+          dropoffDate: { type: Type.STRING },
+          pickupAppointmentTime: { type: Type.STRING },
+          dropoffAppointmentTime: { type: Type.STRING },
+          // 5 document + container fields (R-P5-02)
+          bolNumber: { type: Type.STRING },
+          specialInstructions: { type: Type.STRING },
+          palletCount: { type: Type.NUMBER },
+          containerNumber: { type: Type.STRING },
+          chassisNumber: { type: Type.STRING },
           pickup: {
             type: Type.OBJECT,
             properties: {
@@ -234,7 +251,14 @@ export const extractFuelReceipt = async (
       truckId: { type: Type.STRING },
       cardNumber: { type: Type.STRING },
     },
-    required: ["vendorName", "gallons", "pricePerGallon", "totalCost", "transactionDate", "stateCode"],
+    required: [
+      "vendorName",
+      "gallons",
+      "pricePerGallon",
+      "totalCost",
+      "transactionDate",
+      "stateCode",
+    ],
   };
   const response = await ai.models.generateContent({
     model,
