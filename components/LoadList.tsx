@@ -306,8 +306,18 @@ export const LoadList: React.FC<Props> = ({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenHub?.("messaging", true);
+                      const phone = load.customerContact?.phone;
+                      if (phone) {
+                        window.open(`tel:${phone}`);
+                      } else {
+                        onOpenHub?.("messaging", true);
+                      }
                     }}
+                    title={
+                      load.customerContact?.phone
+                        ? `Call ${load.customerContact.phone}`
+                        : "Open messaging hub"
+                    }
                     className="px-3 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-[11px] font-black uppercase tracking-widest transition-all border border-blue-500/20"
                   >
                     <Phone className="w-3 h-3 inline mr-1.5" /> Call
