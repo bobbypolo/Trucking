@@ -1,8 +1,34 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QuoteManager } from "../../../components/QuoteManager";
+
+/**
+ * Post-R-P1-07 the default activeView is "intake" (not "pipeline").
+ * This wrapper restores the pre-R-P1-07 landing view for legacy assertions
+ * in this file. Tests that specifically need the intake view should use
+ * `rtlRender` directly.
+ */
+function render(ui: React.ReactElement) {
+  const result = rtlRender(ui);
+  try {
+    const btn = screen.queryByText("Pipeline View");
+    if (btn) {
+      act(() => {
+        btn.click();
+      });
+    }
+  } catch {
+    // no-op
+  }
+  return result;
+}
 import type {
   User,
   Company,

@@ -56,6 +56,7 @@ import {
   saveIncidentCharge,
 } from "../services/storageService";
 import { getVendors } from "../services/safetyService";
+import { ExceptionConsole } from "./ExceptionConsole";
 import { NetworkPortal } from "./NetworkPortal";
 import { QuoteManager } from "./QuoteManager";
 import {
@@ -1532,6 +1533,7 @@ const IntelligenceHub: React.FC<{
                 { label: "OPS", tab: "ops" },
                 { label: "FEED", tab: "messaging" },
                 { label: "COMMAND", tab: "command" },
+                { label: "SAFETY", tab: "safety" },
                 { label: "SALES/CRM", tab: "crm" },
                 { label: "NETWORK", tab: "directory" },
                 { label: "INTELLIGENCE", tab: "intelligence" },
@@ -1540,7 +1542,7 @@ const IntelligenceHub: React.FC<{
                 <button
                   key={chip.label}
                   onClick={() => setSelectedTab(chip.tab)}
-                  className={`text-[10px] font-black uppercase tracking-widest transition-all border-b pb-1 ${selectedTab === chip.tab ? "text-blue-400 border-blue-400/50" : "text-slate-500 border-transparent hover:text-blue-400 hover:border-blue-400/50"}`}
+                  className={`text-[11px] font-black uppercase tracking-widest transition-all border-b pb-1 ${selectedTab === chip.tab ? "text-blue-400 border-blue-400/50" : "text-slate-500 border-transparent hover:text-blue-400 hover:border-blue-400/50"}`}
                 >
                   {chip.label}
                 </button>
@@ -1747,6 +1749,16 @@ const IntelligenceHub: React.FC<{
                       : showSuccessMessage(msg)
                   }
                 />
+              )}
+
+              {selectedTab === "safety" && (
+                <div className="flex-1 overflow-y-auto no-scrollbar bg-[#020617]">
+                  <ExceptionConsole
+                    currentUser={user}
+                    loads={loads}
+                    initialView="safety"
+                  />
+                </div>
               )}
 
               {selectedTab === "messaging" && (

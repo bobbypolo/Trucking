@@ -1,8 +1,41 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  render as rtlRender,
+  screen,
+  waitFor,
+  act,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { QuoteManager } from "../../../components/QuoteManager";
+
+/**
+ * Post-R-P1-07 the default activeView is "intake" (not "pipeline").
+ * Legacy tests in this file assume pipeline view is the landing view.
+ * This wrapper preserves the original behavior by rendering the component
+ * and then clicking the "Pipeline View" tab, so all historical assertions
+ * continue to work. Individual tests that specifically need the intake view
+ * should use `rtlRender` directly.
+ */
+function render(ui: React.ReactElement) {
+  const result = rtlRender(ui);
+  // Fire-and-forget click on the Pipeline View button to restore the pre-R-P1-07
+  // landing view for tests that predate the default swap. The click is wrapped
+  // in act() and ignores missing-button errors so this helper is safe to call
+  // even when the Pipeline View tab is not in the DOM yet.
+  try {
+    const btn = screen.queryByText("Pipeline View");
+    if (btn) {
+      act(() => {
+        btn.click();
+      });
+    }
+  } catch {
+    // no-op: if Pipeline View tab is not present, fall through to the caller's
+    // own assertions and waitFor logic.
+  }
+  return result;
+}
 import type {
   User,
   Company,
