@@ -20,6 +20,7 @@ import type { Request, Response, NextFunction } from "express";
 import mysql from "mysql2/promise";
 import { requireAuth } from "../middleware/requireAuth";
 import type { AuthenticatedRequest } from "../middleware/requireAuth";
+import { requireTenant } from "../middleware/requireTenant";
 import { logger } from "../lib/logger";
 import { SALES_DEMO_COMPANY_ID } from "../scripts/seed-sales-demo";
 
@@ -87,6 +88,7 @@ export function setCreateConnectionForTests(
 router.post(
   "/reset",
   requireAuth,
+  requireTenant,
   async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = (req as AuthenticatedRequest).user;
