@@ -963,3 +963,24 @@
 - Criteria verified: R-P4-01..09 (9 criteria)
 - Merge commit: `99d1304`
 - Summary: POST /api/push-tokens register + /unregister routes + sendPush utility (100-token batches, never throws) + mount. 17/17 vitest tests green.
+
+### STORY-002 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/contexts/AuthContext.tsx`, `scripts/verify-auth-push-wiring.cjs`
+- Criteria verified: R-P2-01..05 (5 criteria)
+- Merge commit: `fc788a0`
+- Summary: AuthContext wired with requestPushPermissions → getPushToken → registerPushToken → attachTokenRefreshListener on login (in try/catch); logout unregisters token BEFORE signOut. 11/11 verify checks pass.
+
+### STORY-005 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/__tests__/routes/loads.push-on-create.test.ts`
+- Criteria verified: R-P5-01..04 (4 criteria)
+- Merge commit: `8329b84`
+- Summary: POST /api/loads fires sendPush to assigned driver after successful insert. Self-assignment short-circuits; empty tokens no-op; sendPush rejection never blocks 201. 4/4 vitest tests pass.
+
+### STORY-008 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/_layout.tsx`, `scripts/verify-push-deep-link.cjs`
+- Criteria verified: R-P8-01..03 (3 criteria)
+- Merge commit: `e162657`
+- Summary: Root _layout.tsx wires useRouter + attachNotificationResponseHandler(router) inside a useEffect with .remove() cleanup. 5/5 verify checks pass.

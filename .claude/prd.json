@@ -130,8 +130,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-auth-push-wiring.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-003",
@@ -292,8 +292,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-create.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-006",
@@ -339,7 +339,7 @@
         },
         {
           "id": "R-P6-05",
-          "criterion": "PATCH without `driver_id` in the body (e.g. `{weight: 500}`) does NOT modify the `driver_id` column — the pool.query UPDATE SQL does not contain the substring `driver_id = ?`; verified via `expect(sqlString.includes(\"driver_id = ?\")).toBe(false)`.",
+          "criterion": "PATCH without `driver_id` in the body (e.g. `{weight: 500}`) does NOT modify the `driver_id` column â€” the pool.query UPDATE SQL does not contain the substring `driver_id = ?`; verified via `expect(sqlString.includes(\"driver_id = ?\")).toBe(false)`.",
           "testType": "integration",
           "testFile": null
         }
@@ -438,8 +438,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-push-deep-link.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-009",
@@ -471,7 +471,7 @@
         },
         {
           "id": "R-P9-03",
-          "criterion": "`GET /api/drivers/me` without `Authorization` → 401; verified via supertest.",
+          "criterion": "`GET /api/drivers/me` without `Authorization` â†’ 401; verified via supertest.",
           "testType": "integration",
           "testFile": null
         },
