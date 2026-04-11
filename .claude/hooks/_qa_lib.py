@@ -1792,7 +1792,7 @@ def read_verification_log(log_path: Path, plan_hash: str | None = None) -> dict:
 # ── Plan Utilities ────────────────────────────────────────────────────────────
 
 _PLAN_CRITERIA_RE = re.compile(
-    r"^\s*-\s+(R-P\d+-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\r\n]+\])*\s*:",
+    r"^\s*-\s+`?(R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?)`?(?:\s+\[[^\]\r\n]+\])*\s*[: ]",
     re.MULTILINE,
 )
 
@@ -1814,7 +1814,7 @@ def extract_plan_r_markers(plan_path: Path) -> set[str]:
 
 # Regex to capture full bullet-format R-marker lines for hashing
 _PLAN_CRITERIA_LINE_RE = re.compile(
-    r"^\s*-\s+R-P\d+-\d{2}(?:-AC\d+)?(?:\s+\[[^\]\r\n]+\])*\s*:.*$",
+    r"^\s*-\s+`?R-[A-Z][A-Z0-9]*-\d{2}(?:-AC\d+)?`?(?:\s+\[[^\]\r\n]+\])*\s*[: ].*$",
     re.MULTILINE,
 )
 

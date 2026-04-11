@@ -94,23 +94,22 @@ Generate `.claude/docs/HANDOFF.md` using the protocol below.
 
 1. `git log --oneline -10` for recent commits
 2. `git status` for uncommitted work
-3. Resolve sprint paths: call `_lib.active_sprint_paths()` to get `plan_path`, `prd_path`. Read the resolved `plan_path` for phase status (note if file exists or not). If no active sprint, fall back to `.claude/docs/PLAN.md`.
+3. `.claude/docs/PLAN.md` for phase status (note if file exists or not)
 4. Any blockers or open questions from the session
 
 ### Step 2: Detect Session Type
 
 Check these conditions to determine what type of session just occurred:
 
-**Build-in-progress session**: The resolved `plan_path` exists AND/OR a Ralph sprint is in progress (`.claude/.workflow-state.json` has ralph section with incomplete stories or `active_sprint_id` is set).
+**Build-in-progress session**: `.claude/docs/PLAN.md` exists AND/OR a Ralph sprint is in progress (`.claude/.workflow-state.json` has ralph section with incomplete stories).
 
 **Standard session**: None of the above conditions match (e.g., debugging, one-off tasks, documentation updates).
 
 Detection steps:
 
-1. Check `ralph.active_sprint_id` in workflow state — if set, this is a sprint-namespaced session.
-2. Check if the resolved `plan_path` exists and has content.
-3. Check if `.claude/.workflow-state.json` has ralph section with incomplete stories.
-4. Classify the session type based on the conditions above.
+1. Check if `.claude/docs/PLAN.md` exists and has content.
+2. Check if `.claude/.workflow-state.json` has ralph section with incomplete stories.
+3. Classify the session type based on the conditions above.
 
 ### Step 3: Write Handoff Document
 

@@ -64,15 +64,6 @@ Before staging files, run `ruff format <changed-files>` and `ruff check --fix <c
 
 ---
 
-## Environment Variable Consistency
-
-1. **Read `.env` before using env vars** -- You MUST read the project's `.env` file before writing any `os.getenv()`, `os.environ.get()`, or `os.environ[]` call. **Always use the Read tool** (never Bash grep/cat) to read `.env` files — the Read tool is auto-approved while Bash commands on `.env` may be denied by permissions. Reading `.env` is explicitly authorized and expected — it contains the key names you need to reference. Use the exact key names already defined there. Do not invent synonyms (e.g. if `.env` has `DATABASE_URL`, do not create `DB_CONNECTION_STRING`). You may also read `.env.example` for key discovery.
-2. **Never remove `.env` keys** -- The `pre_env_guard.py` hook blocks any Edit/Write that would delete existing keys from `.env` files. Add new keys, update values, but never remove entries.
-3. **Reuse existing variables** -- Before creating any new variable, constant, or config value, search the codebase for existing definitions. Prefer reusing an established pattern over introducing a parallel one.
-4. **New env vars require `.env.example`** -- If a genuinely new env var is needed, add it to `.env.example` (or document it in `PROJECT_BRIEF.md`) with a descriptive comment explaining its purpose.
-
----
-
 ## Production-Grade Code Standards
 
 Follow Production-Grade Code Standards from `.claude/rules/production-standards.md`. No exceptions -- every violation must be fixed before the phase can pass.

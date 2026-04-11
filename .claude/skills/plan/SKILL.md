@@ -1,25 +1,10 @@
 ---
 name: ralph-plan
-description: Create/update PLAN.md for the requested feature (sprint-namespaced when active). Use /brainstorm first when you need to research and compare approaches before locking the plan.
+description: Create/update .claude/docs/PLAN.md for the requested feature. Use /brainstorm first when you need to research and compare approaches before locking the plan.
 agent: architect
 context: fork
 argument-hint: "[feature description]"
 ---
-
-## Pre-0: Auto-Worktree Guard
-
-Check `root_kind()`:
-
-- **`canonical_root`**: Auto-enter a worktree before planning.
-  1. If user provided an issue ref, use `issue-{ref}` as worktree name.
-  2. Otherwise use a descriptive name from the feature request (e.g. `plan-{short-slug}`).
-  3. Name must NOT start with `agent-` (reserved for Ralph worker worktrees).
-  4. Call `EnterWorktree` with the name. On name collision, append a 4-char random suffix and retry once.
-  5. Display: `"Auto-entered worktree: {name} — session is now isolated."`
-
-- **`linked_human_worktree`**: Already isolated. Continue without action.
-
-- **`worker_worktree`**: Display error and STOP.
 
 ## Step 0: Check for Brainstorm Context
 
@@ -28,12 +13,6 @@ If a brainstorm note exists for this topic (check `.claude/docs/brainstorms/` fo
 If no brainstorm exists and the feature is complex, suggest: `"Consider running /brainstorm first to research and evaluate approaches."` — but do not block planning.
 
 ## Procedure (follow every step in order — do not skip any step)
-
-### 0. Issue Reference
-
-Read `github.require_issue_ref` from `.claude/workflow.json`. If `true`, the user must provide a GitHub issue reference (e.g. `#123` or `123`) with the feature request. If not provided: ask for one before proceeding. Store the issue ref immediately in workflow state: `update_workflow_state(ralph={"issue_ref": "[number]", "base_branch": "[github.base_branch or main]"})`.
-
-If `require_issue_ref` is `false` or the `github` section is absent, issue ref is optional — skip this step.
 
 ### 1. Load Context
 
@@ -86,11 +65,9 @@ Interaction contract for questions:
 
 Wait for answers before proceeding.
 
-### 5. Initialize Sprint & Write the Plan
+### 5. Write the Plan
 
-**Sprint initialization**: Derive a sprint ID from the session context. If inside a linked worktree with branch `session/<name>`, use `<name>` as the sprint ID. Otherwise, derive from the plan title slug. Call `_lib.init_sprint(sprint_id)` to create `.claude/sprints/<sprint-id>/` and register the paths in workflow state. Display: `"Sprint: [sprint-id] -> .claude/sprints/[sprint-id]/"`.
-
-Write the plan to the resolved `plan_path` (e.g. `.claude/sprints/<sprint-id>/PLAN.md`) with ALL mandatory sections filled. Also create a symlink or copy at `.claude/docs/PLAN.md` for backward compatibility with tools that don't yet read sprint paths.
+Write `.claude/docs/PLAN.md` with ALL mandatory sections filled:
 
 **Top-level (required):**
 
@@ -173,25 +150,25 @@ After Step 6a passes, run these 7 automated checks against the plan. ANY failure
 
 **Check f — Cross-phase consistency**: For each Interface Contract in Phase N that is consumed by Phase N+1 (identified by matching Component names in Called By/Calls columns), verify the signatures match. If mismatch: **FAIL** `"Signature mismatch: [component] between Phase [N] and Phase [M]"`.
 
-**Check g — Plan validator**: Run `python .claude/hooks/plan_validator.py --plan [resolved plan_path]` on the generated plan. This validates measurable verbs in Done When criteria, R-PN-NN format IDs, non-empty Testing Strategy per phase, no placeholder verification commands, and Test File column presence in Changes tables. If the validator exits with code 1 (FAIL): **FAIL** with the validator's JSON output showing which checks failed. Fix the plan issues and re-run.
+**Check g — Plan validator**: Run `python .claude/hooks/plan_validator.py --plan .claude/docs/PLAN.md` on the generated plan. This validates measurable verbs in Done When criteria, R-PN-NN format IDs, non-empty Testing Strategy per phase, no placeholder verification commands, and Test File column presence in Changes tables. If the validator exits with code 1 (FAIL): **FAIL** with the validator's JSON output showing which checks failed. Fix the plan issues and re-run.
 
 If ANY check fails: fix the plan, then re-run Step 6b.
 If ALL checks pass: proceed to Step 7.
 
 ### 7. Auto-Generate prd.json from PLAN.md
 
-After Step 6b passes, run the **deterministic prd generator** to produce prd.json at the resolved `prd_path`. This step runs ONLY after Pre-Flight validation succeeds. Do NOT manually parse PLAN.md — the generator handles all extraction deterministically.
+After Step 6b passes, run the **deterministic prd generator** to produce `.claude/prd.json`. This step runs ONLY after Pre-Flight validation succeeds. Do NOT manually parse PLAN.md — the generator handles all extraction deterministically.
 
 #### 7a. Run the Generator
 
 ```bash
-python .claude/hooks/prd_generator.py --plan [resolved plan_path] --output [resolved prd_path]
+python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --output .claude/prd.json
 ```
 
 **Re-planning with existing prd.json (state-preserving regeneration)**: If a `prd.json` already exists and has stories with `passed: true` or `verificationRef` set (e.g., after a partial sprint or plan revision), use `--merge` to preserve that state:
 
 ```bash
-python .claude/hooks/prd_generator.py --plan [resolved plan_path] --merge [resolved prd_path] --output [resolved prd_path]
+python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --merge .claude/prd.json --output .claude/prd.json
 ```
 
 The `--merge` flag copies `passed` and `verificationRef` from the existing prd.json into the freshly generated one (matched by story `id`). Use this when revising PLAN.md mid-sprint to avoid losing completed story state.
@@ -214,7 +191,7 @@ If exit code is 1, review the generated prd.json for `"parseError"` fields and f
 Use `--dry-run` to preview without writing:
 
 ```bash
-python .claude/hooks/prd_generator.py --plan [resolved plan_path] --dry-run
+python .claude/hooks/prd_generator.py --plan .claude/docs/PLAN.md --dry-run
 ```
 
 #### 7b. Verify sync (optional sanity check)
@@ -222,7 +199,7 @@ python .claude/hooks/prd_generator.py --plan [resolved plan_path] --dry-run
 After generation, verify PLAN.md and prd.json are in sync:
 
 ```bash
-python -c "import sys; sys.path.insert(0,'.claude/hooks'); from _lib import active_sprint_paths; from _qa_lib import check_plan_prd_sync; from pathlib import Path; p=active_sprint_paths(); r=check_plan_prd_sync(p['plan_path'], p['prd_path']); print('in_sync:', r['in_sync']); [print(f'  {k}: {v}') for k,v in r.items() if k != 'in_sync']"
+python -c "import sys; sys.path.insert(0,'.claude/hooks'); from _qa_lib import check_plan_prd_sync; from pathlib import Path; r=check_plan_prd_sync(Path('.claude/docs/PLAN.md'), Path('.claude/prd.json')); print('in_sync:', r['in_sync']); [print(f'  {k}: {v}') for k,v in r.items() if k != 'in_sync']"
 ```
 
 #### Reference: prd.json v2.2 Schema

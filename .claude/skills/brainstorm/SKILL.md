@@ -14,7 +14,7 @@ Read the relevant project context first:
 
 - `PROJECT_BRIEF.md`
 - `.claude/docs/ARCHITECTURE.md`
-- Active sprint plan (resolve via `_lib.active_sprint_paths()["plan_path"]`, falls back to `.claude/docs/PLAN.md`) if it exists
+- `.claude/docs/PLAN.md` if it exists
 - `.claude/docs/HANDOFF.md` if it exists
 - `.claude/docs/knowledge/lessons.md` if it exists
 - Relevant files under `.claude/docs/decisions/`

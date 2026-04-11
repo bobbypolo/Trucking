@@ -2,16 +2,85 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "a8726eed03820d66938283897533a820dc10c3946ee6b29950a6286dc5e51259",
+  "plan_hash": "c6bed60d51714b6fd643269114a31829f1c791e7277792665262f1efa2dbcc02",
   "stories": [
     {
       "id": "STORY-001",
-      "description": "Load List Service + Load List Screen (Sprint C Foundation)",
+      "description": "- Shared Types Package Extraction (foundation)",
       "phase": 1,
-      "phase_type": "module",
+      "phase_type": null,
+      "component": "packages/",
+      "scope": [
+        "package.json",
+        "packages/",
+        "scripts/",
+        "tsconfig.json",
+        "types.ts"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P1-01",
+          "criterion": "`packages/shared/package.json` exists with `\"name\": \"@loadpilot/shared\"` and `\"version\": \"0.0.1\"`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting via JSON.parse",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-02",
+          "criterion": "`packages/shared/src/types.ts` contains all 150 exported symbols from the original `types.ts`; verified by `scripts/verify-shared-package.cjs` reading both files via `fs.readFileSync` and comparing export counts via regex `export (type|interface|const|enum|function)` match count",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-03",
+          "criterion": "`packages/shared/src/index.ts` contains barrel re-export `export * from './types'`; verified by `scripts/verify-shared-package.cjs` reading file and matching regex",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-04",
+          "criterion": "Root `types.ts` contains exactly one line: re-export shim `export * from '@loadpilot/shared'`; verified by `scripts/verify-shared-package.cjs` reading file and asserting line count equals 1 and content matches regex",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "Root `package.json` contains `\"workspaces\": [\"packages/*\"]`; verified by `scripts/verify-shared-package.cjs` reading file via `fs.readFileSync` and asserting JSON.parse result",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-06",
+          "criterion": "Root `tsconfig.json` contains path alias `\"@loadpilot/shared\"` pointing to `\"./packages/shared/src\"`; verified by `scripts/verify-shared-package.cjs` reading file and asserting paths entry exists",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "`npx tsc --noEmit` exits with code 0 from project root (existing frontend types resolve through shim); verified by `scripts/verify-shared-package.cjs` spawning process via `child_process.spawnSync` and asserting exit code",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "packages/shared/src/types.ts (canonical source, 2130 lines)"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-002",
+      "description": "- Expo Project Initialization (foundation)",
+      "phase": 2,
+      "phase_type": null,
       "component": "apps/",
       "scope": [
-        "apps/"
+        ".gitignore",
+        "apps/",
+        "scripts/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
@@ -19,113 +88,57 @@
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-P1-01",
-          "criterion": "`loads.ts` exports 3 functions: `fetchLoads()` calling `api.get(\"/loads\")` returning the raw array, `fetchLoadById(id)` calling `fetchLoads()` then filtering by `id`, and `updateLoadStatus(id, status)` calling `api.patch`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-02",
-          "criterion": "`load.ts` defines a `Load` interface with `id`, `status`, `pickup_date`, and a `legs` array of `LoadLeg` objects (each with `type`, `city`, `state`, `facility_name`, `date`, `sequence_order`). Also exports `getOrigin(load)` and `getDestination(load)` helpers that extract the first Pickup and last Dropoff leg's city+state",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-03",
-          "criterion": "`LoadCard.tsx` renders a `Pressable` card showing origin (from `getOrigin(load)`), destination (from `getDestination(load)`), and a color-coded status badge",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-04",
-          "criterion": "`loads.tsx` renders 1 `FlatList` of `LoadCard` components with `renderItem` fed by `fetchLoads()` response data array",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-05",
-          "criterion": "`loads.tsx` passes 2 refresh props (`refreshing={refreshing}` and `onRefresh`) to `FlatList` that re-call `fetchLoads()`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-06",
-          "criterion": "`loads.tsx` renders `<ActivityIndicator />` when `loading` state is `true` during initial fetch",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P1-07",
-          "criterion": "`loads.tsx` renders an error `<Text>` and a \"Retry\" `<Pressable>` when `fetchLoads()` returns an error",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-trip-workspace.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-002",
-      "description": "Load Detail Screen + Navigation",
-      "phase": 2,
-      "phase_type": "module",
-      "component": "apps/",
-      "scope": [
-        "apps/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": 1,
-      "acceptanceCriteria": [
-        {
           "id": "R-P2-01",
-          "criterion": "`loads/[id].tsx` calls `fetchLoadById(id)` on mount via `useEffect` and renders 1 `Load` object (fetched by filtering the full loads list since no GET /loads/:id endpoint exists)",
+          "criterion": "`apps/trucker/package.json` exists with `\"expo\"`, `\"react-native\"`, and `\"expo-router\"` as 3 required keys in `dependencies`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and asserting all 3 keys present in `JSON.parse(content).dependencies`",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-02",
-          "criterion": "`loads/[id].tsx` renders 4 labeled sections: origin (via `getOrigin(load)` from first Pickup leg), destination (via `getDestination(load)` from last Dropoff leg), `pickup_date`, and delivery date (from last Dropoff leg's `date` field)",
+          "criterion": "`apps/trucker/app.json` contains `expo.name`, `expo.slug`, `expo.scheme`, and `expo.platforms` including both `\"ios\"` and `\"android\"`; verified by `scripts/verify-expo-project.cjs` reading file and asserting JSON structure",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-03",
-          "criterion": "`loads/[id].tsx` renders 1 status badge component with the `load.status` value mapped to a distinct background color per status",
+          "criterion": "`apps/trucker/eas.json` contains `build.development`, `build.preview`, and `build.production` profiles; verified by `scripts/verify-expo-project.cjs` reading file and asserting all 3 keys exist",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-04",
-          "criterion": "`loads/_layout.tsx` defines a `Stack` navigator with 2 screens: `index` (list) and `[id]` (detail)",
+          "criterion": "`apps/trucker/src/app/_layout.tsx` exports `export default function RootLayout` that renders Expo Router `Slot` or `Stack`; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync` and matching `/export default function RootLayout/` regex returning exactly 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P2-05",
-          "criterion": "`LoadCard` calls `router.push(\"/loads/${load.id}\")` on `Pressable` press to navigate to detail",
+          "criterion": "`apps/trucker/src/app/index.tsx` exists and contains `export default` matching `/export default/` regex with exactly 1 match; verified by `scripts/verify-expo-project.cjs` reading file via `fs.readFileSync`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-06",
+          "criterion": "`.gitignore` contains entries for `apps/trucker/node_modules/` and `apps/trucker/.expo/`; verified by `scripts/verify-expo-project.cjs` reading `.gitignore` via `fs.readFileSync` and asserting both patterns present via regex (at minimum these 2, additional entries allowed)",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-load-detail.cjs"
+        "unit": "apps/trucker/package.json"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     },
     {
       "id": "STORY-003",
-      "description": "Status Update Flow",
+      "description": "- Mobile Navigation Shell (module)",
       "phase": 3,
-      "phase_type": "module",
+      "phase_type": null,
       "component": "apps/",
       "scope": [
-        "apps/"
+        "apps/",
+        "scripts/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
@@ -136,118 +149,136 @@
       "acceptanceCriteria": [
         {
           "id": "R-P3-01",
-          "criterion": "`StatusUpdateButton` accepts 2 props (`currentStatus: LoadStatus`, `onStatusChange`) and renders 1+ `Pressable` buttons for valid next statuses",
+          "criterion": "`apps/trucker/src/contexts/AuthContext.tsx` exports `AuthProvider` and `useAuth` hook; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/export.*AuthProvider/` and `/export.*useAuth/` regexes each return >= 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-02",
-          "criterion": "`useLoadStatus` hook exports 1 function `transitionTo(status)` that calls `updateLoadStatus(loadId, status)` from `loads.ts`",
+          "criterion": "`AuthContext.tsx` defines `isAuthenticated` state with default `false` and exposes `login` and `logout` functions; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/isAuthenticated.*false/` and both `/login/` and `/logout/` patterns present",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-03",
-          "criterion": "`useLoadStatus` sets status optimistically before the API call and reverts to `previousStatus` in the `catch` block on error",
+          "criterion": "Tab layout at `apps/trucker/src/app/(tabs)/_layout.tsx` renders `Tabs` component with screen entries for `index`, `loads`, and `profile`; verified by `scripts/verify-mobile-nav.cjs` reading file via `fs.readFileSync` and asserting `/Tabs/` regex returns >= 1 match and file contains all 3 screen name strings",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-04",
-          "criterion": "`loads/[id].tsx` renders 1 `StatusUpdateButton` with 2 props: `currentStatus={status}` and `onStatusChange={transitionTo}`",
+          "criterion": "Auth group contains exactly 2 route files: `(auth)/login.tsx` and `(auth)/signup.tsx`; verified by `scripts/verify-mobile-nav.cjs` asserting `fs.existsSync` returns `true` for both paths under `apps/trucker/src/app/`",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-05",
-          "criterion": "`StatusUpdateButton` filters to 3 driver transitions: \"dispatched\" to \"in_transit\", \"in_transit\" to \"arrived\", \"arrived\" to \"delivered\"",
+          "criterion": "Root layout at `apps/trucker/src/app/_layout.tsx` wraps content with `<AuthProvider>` and contains redirect logic for unauthenticated users; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/AuthProvider/` regex returns >= 1 match and `/Redirect|router\\.replace/` returns >= 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-06",
-          "criterion": "A failed transition renders an error `<Text>` showing the server's `message` field from the 422 response body",
+          "criterion": "Login screen at `apps/trucker/src/app/(auth)/login.tsx` contains at least 2 `TextInput` components and 1 submit button (`Pressable` or `TouchableOpacity`); verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P3-07",
-          "criterion": "`useLoadStatus` rejects an invalid transition by rolling back optimistic state and displaying the \"Invalid load transition\" 422 error",
+          "criterion": "Signup screen at `apps/trucker/src/app/(auth)/signup.tsx` contains at least 2 `TextInput` components and 1 submit button; verified by `scripts/verify-mobile-nav.cjs` reading file and asserting `/TextInput/g` returns >= 2 matches and `/Pressable|TouchableOpacity/` returns >= 1 match",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-status-update.cjs"
+        "unit": "node scripts/verify-mobile-nav.cjs"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     },
     {
       "id": "STORY-004",
-      "description": "Camera Capture + Image Preview (Sprint D Foundation)",
+      "description": "- Mobile Auth Integration (module)",
       "phase": 4,
-      "phase_type": "module",
+      "phase_type": null,
       "component": "apps/",
       "scope": [
-        "apps/"
+        "apps/",
+        "scripts/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": 1,
+      "dependsOn": [
+        "STORY-003"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
           "id": "R-P4-01",
-          "criterion": "`package.json` declares 2 new dependencies: `\"expo-camera\"` and `\"expo-image-manipulator\"` in the `dependencies` object",
+          "criterion": "`AuthContext.tsx` imports `signInWithEmailAndPassword` from Firebase Auth and calls it in the `login` function; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/signInWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-02",
-          "criterion": "`app.json` includes `\"NSCameraUsageDescription\"` string and Android `\"CAMERA\"` permission in the `plugins` or `permissions` section",
+          "criterion": "`AuthContext.tsx` contains error handling that maps Firebase error codes to user-friendly messages (at least `auth/wrong-password` and `auth/user-not-found`); verified by `scripts/verify-mobile-auth.cjs` asserting `/auth\\/wrong-password|auth\\/user-not-found/` regex returns >= 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-03",
-          "criterion": "`CameraScreen.tsx` imports `CameraView` from `expo-camera` and calls `takePictureAsync()` on a \"Capture\" `Pressable` press",
+          "criterion": "`AuthContext.tsx` imports `createUserWithEmailAndPassword` from Firebase Auth and calls it in the `signup` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/createUserWithEmailAndPassword/` regex returns >= 2 matches (import + call)",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-04",
-          "criterion": "`PreviewScreen.tsx` renders the photo via `<Image source={{ uri }}>` with 2 buttons: \"Retake\" (navigates back) and \"Use Photo\" (proceeds)",
+          "criterion": "`AuthContext.tsx` imports `signOut` from Firebase Auth and calls it in the `logout` function; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/signOut/` regex returns >= 2 matches (import + call)",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-05",
-          "criterion": "`imageService.ts` exports `compressImage(uri)` calling `manipulateAsync` with `resize` action (max 1920px) and `compress: 0.7`",
+          "criterion": "`apps/trucker/src/services/api.ts` attaches `Authorization: Bearer` header using Firebase ID token; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/Authorization.*Bearer/` regex returns >= 1 match and `/getIdToken/` returns >= 1 match",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P4-06",
-          "criterion": "`CameraScreen.tsx` calls `useCameraPermissions()` and renders a \"Grant Permission\" prompt when `status` is \"denied\"",
+          "criterion": "`api.ts` handles HTTP 401 responses by triggering logout or auth state clearing; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/401/` and `/logout|signOut|clearAuth/` regexes each return >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-07",
+          "criterion": "`api.ts` catches network errors (TypeError from fetch) and wraps them in user-friendly messages; verified by `scripts/verify-mobile-auth.cjs` reading file and asserting `/catch/` and `/network|Network|TypeError/` regexes each return >= 1 match",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-08",
+          "criterion": "Firebase config at `apps/trucker/src/config/firebase.ts` reads all 6 Firebase config values from `EXPO_PUBLIC_FIREBASE_*` env vars and contains 0 hardcoded API key strings; verified by `scripts/verify-mobile-auth.cjs` reading file via `fs.readFileSync` and asserting `/EXPO_PUBLIC_FIREBASE/g` returns >= 6 matches and `/AIza[a-zA-Z0-9_-]{35}/` returns 0 matches",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-camera-capture.cjs"
+        "unit": "node scripts/verify-mobile-auth.cjs"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     },
     {
       "id": "STORY-005",
-      "description": "Document Upload + OCR Integration",
+      "description": "- Baseline Debt Cleanup (foundation)",
       "phase": 5,
-      "phase_type": "module",
-      "component": "apps/",
+      "phase_type": null,
+      "component": "server/",
       "scope": [
-        "apps/"
+        ".claude/",
+        "docs/",
+        "scripts/",
+        "server/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
@@ -256,392 +287,86 @@
       "acceptanceCriteria": [
         {
           "id": "R-P5-01",
-          "criterion": "`documents.ts` exports 4 functions: `uploadDocument`, `triggerOcr`, `getOcrResult`, `listDocuments`",
+          "criterion": "`e2e/ifta-audit-packet-smoke.spec.ts` can resolve JSZip import without TS2307 error; verified by `scripts/verify-baseline-debt-resolved.cjs` checking that `@types/jszip` is in devDependencies or that a type declaration exists for jszip",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P5-02",
-          "criterion": "`api.ts` exports `uploadFile(urlPath, formData)` that sends `FormData` via `fetch()` without setting \"Content-Type\" header",
+          "criterion": "`server/__tests__/helpers/port-env.ts` exists and sets `process.env.PORT` to a test port value via JavaScript (not shell `PORT=5000` syntax); verified by `scripts/verify-baseline-debt-resolved.cjs` reading file via `fs.readFileSync` and asserting `process.env.PORT` assignment pattern",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P5-03",
-          "criterion": "`upload.tsx` renders a picker with 5 document types: \"BOL\", \"Rate Confirmation\", \"POD\", \"Fuel Receipt\", \"Scale Ticket\" (matching server's supported document types)",
+          "criterion": "`.claude/hooks/tests/` directory exists (created locally); verified by `scripts/verify-baseline-debt-resolved.cjs` asserting `fs.existsSync('.claude/hooks/tests/')` returns true. NOTE: directory is gitignored — worker creates it locally but does NOT stage it",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P5-04",
-          "criterion": "`UploadScreen.tsx` calls `uploadDocument()` with 3 params: compressed photo `uri`, `loadId`, and selected `documentType`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-05",
-          "criterion": "`upload.tsx` calls `triggerOcr(documentId)` using the `documentId` field from the upload response (NOT `document.id`) and navigates to `ocr-result` screen. Note: server also auto-fires OCR for eligible types, so this is a redundant-but-safe explicit trigger",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-06",
-          "criterion": "`ocr-result.tsx` calls `getOcrResult(documentId)` on mount and renders the server's `fields[]` array using a `FlatList` or `map()` showing each item's `field_name`, `extracted_value`, and `confidence` score",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-07",
-          "criterion": "`UploadScreen.tsx` renders an error `<Text>` and a \"Retry\" `<Pressable>` when `uploadDocument()` returns an error",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-08",
-          "criterion": "`api.ts` `uploadFile` deletes the \"Content-Type\" key from headers so the runtime sets the multipart boundary automatically",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P5-09",
-          "criterion": "`UploadScreen.tsx` renders \"File too large\" error text when the server returns status code 413",
+          "criterion": "`docs/trucker-app-baseline-debt.md` contains resolution annotations for all 3 debt entries; verified by `scripts/verify-baseline-debt-resolved.cjs` reading file and asserting each original failure description has an adjacent resolution note",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-doc-upload.cjs"
+        "unit": "node scripts/verify-baseline-debt-resolved.cjs"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     },
     {
       "id": "STORY-006",
-      "description": "Document List per Load",
+      "description": "- SaaS Non-Regression Verification (e2e)",
       "phase": 6,
-      "phase_type": "module",
-      "component": "apps/",
+      "phase_type": null,
+      "component": "docs/",
       "scope": [
-        "apps/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-002",
-        "STORY-003"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P6-01",
-          "criterion": "`DocumentList.tsx` calls `listDocuments(loadId)` on mount via `useEffect` and re-fetches on screen focus using `useFocusEffect` from `expo-router` (so new documents appear after camera capture flow returns)",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-02",
-          "criterion": "`DocumentList.tsx` renders each document in a `FlatList` showing 3 fields: `document_type`, `filename`, `created_at`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-03",
-          "criterion": "`loads/[id].tsx` renders a \"Capture Document\" `Pressable` that navigates to `CameraScreen` with `loadId` param",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P6-04",
-          "criterion": "`DocumentList.tsx` renders \"No documents yet\" `<Text>` when the documents array has length 0",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-doc-list.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-007",
-      "description": "Connectivity Service + Offline Banner (Sprint E Foundation)",
-      "phase": 7,
-      "phase_type": "module",
-      "component": "apps/",
-      "scope": [
-        "apps/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-004"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P7-01",
-          "criterion": "`package.json` declares `\"@react-native-community/netinfo\"` in the `dependencies` object",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-02",
-          "criterion": "`connectivity.ts` calls `NetInfo.addEventListener` and exports 1 boolean `isOnline` tracking connectivity state changes",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-03",
-          "criterion": "`ConnectivityContext.tsx` exports 2 items: `ConnectivityProvider` component and `useConnectivity` hook returning `{ isOnline: boolean }`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-04",
-          "criterion": "`OfflineBanner.tsx` calls `useConnectivity()` and renders \"You are offline\" `<Text>` only when `isOnline === false`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P7-05",
-          "criterion": "Root `_layout.tsx` wraps app tree with 1 `<ConnectivityProvider>` wrapper and renders 1 `<OfflineBanner />` at top level",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-offline-core.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-008",
-      "description": "Local File Storage + Upload Queue",
-      "phase": 8,
-      "phase_type": "module",
-      "component": "apps/",
-      "scope": [
-        "apps/"
+        "docs/",
+        "scripts/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
-      "dependsOn": [
-        "STORY-004",
-        "STORY-007"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P8-01",
-          "criterion": "`package.json` declares both `\"expo-file-system\"` and `\"@react-native-async-storage/async-storage\"` in the `dependencies` object",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-02",
-          "criterion": "`fileStorage.ts` exports 2 functions: `saveFileLocally(uri)` returning the permanent path and `deleteLocalFile(path)` removing the file",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-03",
-          "criterion": "`uploadQueue.ts` exports 3 functions: `addToQueue()`, `processQueue()`, and `getQueueItems()`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-04",
-          "criterion": "`uploadQueue.ts` computes retry delay as `Math.pow(2, retryCount) * 1000` ms (exponential backoff: 1s, 2s, 4s, 8s, 16s)",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-05",
-          "criterion": "`queue.ts` defines `QueueItem` with 7 fields: `id`, `filePath`, `loadId`, `documentType`, `status`, `retryCount`, `createdAt`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-06",
-          "criterion": "`uploadQueue.ts` calls `AsyncStorage.setItem(\"uploadQueue\", JSON.stringify(items))` to persist queue state",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-07",
-          "criterion": "`fileStorage.ts` calls `FileSystem.copyAsync` with 2 params `{ from: uri, to: permanentPath }` to save files from temp storage",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P8-08",
-          "criterion": "`processQueue()` marks items with `retryCount >= 5` as `status: \"failed\"` permanently and skips them",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-upload-queue.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-009",
-      "description": "Background Sync Task",
-      "phase": 9,
-      "phase_type": "module",
-      "component": "apps/",
-      "scope": [
-        "apps/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-004",
-        "STORY-007",
-        "STORY-008"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P9-01",
-          "criterion": "`package.json` declares `\"expo-task-manager\"` in the `dependencies` object",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P9-02",
-          "criterion": "`backgroundSync.ts` calls `TaskManager.defineTask(\"loadpilot-upload-sync\", handler)` with a handler that runs `processQueue()`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P9-03",
-          "criterion": "The background task handler calls 1 function `processQueue()` and returns `BackgroundFetch.BackgroundFetchResult.NewData`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P9-04",
-          "criterion": "`connectivity.ts` calls `processQueue()` when `NetInfo` transitions from `isConnected === false` to `isConnected === true`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P9-05",
-          "criterion": "Root `_layout.tsx` calls `registerBackgroundSync()` inside 1 `useEffect` hook with empty dependency array `[]` during mount",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-background-sync.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-010",
-      "description": "Queue Status UI + Offline Upload Integration",
-      "phase": 10,
-      "phase_type": "integration",
-      "component": "apps/",
-      "scope": [
-        "apps/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-002",
-        "STORY-005"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-P10-01",
-          "criterion": "`QueueStatusBadge.tsx` calls `getQueueItems()` and renders a red badge with the count of items where `status === \"pending\"` or `status === \"failed\"`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P10-02",
-          "criterion": "`QueueScreen.tsx` renders all queue items in a `FlatList` showing 4 fields: filename, `documentType`, `status`, `retryCount`",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P10-03",
-          "criterion": "`QueueScreen.tsx` renders a \"Retry\" `<Pressable>` for each item with `status === \"failed\"` that re-triggers upload",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P10-04",
-          "criterion": "`upload.tsx` checks `useConnectivity().isOnline`; when `isOnline === false`, calls `saveFileLocally()` then `addToQueue()` instead of direct upload; when online upload fails with a network error, falls back to the same queue path",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-P10-05",
-          "criterion": "Tab `_layout.tsx` adds a 4th `Tabs.Screen` for `queue` with `QueueStatusBadge` rendering the pending count as a tab badge number (visible when count > 0)",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "node scripts/verify-queue-ui.cjs"
-      },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
-    },
-    {
-      "id": "STORY-011",
-      "description": "Combined Verification + Home Screen Dashboard",
-      "phase": 11,
-      "phase_type": "e2e",
-      "component": "apps/",
-      "scope": [
-        "apps/",
-        "scripts/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 100,
       "dependsOn": [],
       "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-P11-01",
-          "criterion": "`index.tsx` calls `fetchLoads()` and renders an \"Active Loads\" card counting loads with status in `[\"dispatched\", \"in_transit\", \"arrived\"]`",
+          "id": "R-P6-01",
+          "criterion": "`npx vitest run` from project root exits with code 0, confirming all existing frontend tests pass after shared types extraction; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
           "testType": "e2e",
           "testFile": null
         },
         {
-          "id": "R-P11-02",
-          "criterion": "`index.tsx` calls `getQueueItems()` and renders a \"Pending Uploads\" card showing the count when count > 0",
+          "id": "R-P6-02",
+          "criterion": "`cd server && npx vitest run --exclude=__tests__/integration/** --exclude=__tests__/regression/** --exclude=__tests__/performance/**` exits with code 0, confirming all existing server tests pass; verified by `scripts/verify-b2-completion.cjs` spawning process and asserting exit code",
           "testType": "e2e",
           "testFile": null
         },
         {
-          "id": "R-P11-03",
-          "criterion": "`scripts/verify-sprint-cde.cjs` exists and invokes all 10 phase `verify-*.cjs` scripts, reporting aggregated pass/fail totals",
+          "id": "R-P6-03",
+          "criterion": "`docs/trucker-app-sprint-history.md` contains a `## Sprint B2` section with `Stories` row showing \"6\" and `Status` showing \"Engineering Complete\"; verified by `scripts/verify-b2-completion.cjs` reading file via `fs.readFileSync` and asserting `/## Sprint B2/` heading exists and `/Stories.*6/` pattern matches",
           "testType": "e2e",
           "testFile": null
         },
         {
-          "id": "R-P11-04",
-          "criterion": "`scripts/verify-sprint-cde.cjs` calls `process.exit(1)` when `failures > 0` and `process.exit(0)` when all checks pass",
+          "id": "R-P6-04",
+          "criterion": "All 5 Phase 1-5 verification scripts (`verify-shared-package.cjs`, `verify-expo-project.cjs`, `verify-mobile-nav.cjs`, `verify-mobile-auth.cjs`, `verify-baseline-debt-resolved.cjs`) exit with code 0; verified by `scripts/verify-b2-completion.cjs` spawning each and asserting all 5 exit codes equal 0",
+          "testType": "e2e",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-05",
+          "criterion": "If any existing test fails during regression run, `verify-b2-completion.cjs` returns non-zero exit code and reports the failing test name in stdout; verified by the script's error-path logic that captures stderr from vitest and includes it in the failure message",
           "testType": "e2e",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "node scripts/verify-sprint-cde.cjs"
+        "unit": "node scripts/verify-b2-completion.cjs"
       },
-      "passed": true,
-      "verificationRef": "verification-log.jsonl"
+      "passed": false,
+      "verificationRef": null
     }
   ]
 }

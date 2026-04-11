@@ -11,7 +11,6 @@ import warnings
 from pathlib import Path
 
 import sys
-
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _lib import AuditMode
@@ -20,7 +19,7 @@ from _lib import AuditMode
 _SECTION_MAP: dict[AuditMode, list[int]] = {
     AuditMode.QUICK: [1, 2, 6],
     AuditMode.DELIVERY: [1, 2, 3, 4],
-    AuditMode.FULL: list(range(1, 11)),
+    AuditMode.FULL: list(range(1, 10)),
 }
 
 
@@ -38,7 +37,7 @@ def get_audit_sections(mode: AuditMode) -> list[int]:
     -------
     list[int]
         Ordered section numbers.  QUICK -> [1, 2, 6], DELIVERY -> [1, 2, 3, 4],
-        FULL -> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].
+        FULL -> [1, 2, 3, 4, 5, 6, 7, 8, 9].
     """
     if mode not in _SECTION_MAP:
         warnings.warn(f"Unknown mode '{mode}' — defaulting to full", stacklevel=2)

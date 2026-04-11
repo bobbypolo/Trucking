@@ -13,7 +13,7 @@ paths:
 
 Enforced by hooks (`post_write_prod_scan.py`, `_lib.py` PROD_VIOLATION_PATTERNS), QA Step 12, and `/audit` Section 7. **NO EXCEPTIONS** — every violation must be fixed before a phase can pass.
 
-1. **Security**: Reading `.env` files is authorized and required when working with environment variables — always read `.env` to discover available key names before writing `os.getenv()` calls. No hardcoded secrets, no injection vectors (SQL, shell, HTML), no XSS sinks (innerHTML, document.write, dangerouslySetInnerHTML, v-html, jQuery .html()), no unsafe subprocess calls, no unsafe deserialization (pickle/yaml.load/marshal), no path traversal, no eval/exec with variables, no tempfile.mktemp, no unvalidated redirects, no privilege escalation (os.setuid/setgid) -- **Automated (regex)** — Reference: OWASP Top 10 2025
+1. **Security**: No hardcoded secrets, no injection vectors (SQL, shell, HTML), no XSS sinks (innerHTML, document.write, dangerouslySetInnerHTML, v-html, jQuery .html()), no unsafe subprocess calls, no unsafe deserialization (pickle/yaml.load/marshal), no path traversal, no eval/exec with variables, no tempfile.mktemp, no unvalidated redirects, no privilege escalation (os.setuid/setgid) -- **Automated (regex)** — Reference: OWASP Top 10 2025
 2. **Code hygiene**: No debug prints, unused imports/variables, bare excepts, or TODO/FIXME markers; all public APIs have type hints -- **Automated (lint/type-check)**
 3. **Robustness**: Proper error handling at system boundaries, input validation at system boundaries (never trust external data), resource cleanup (close files, connections, cursors) via context managers/try-finally -- **Review guidance**
 

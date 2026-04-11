@@ -207,10 +207,9 @@
         6,
         7,
         8,
-        9,
-        10
+        9
       ],
-      "description": "Exhaustive audit — all 10 sections including GitHub protocol."
+      "description": "Exhaustive audit — all 9 sections. Current default behavior, unchanged."
     }
   },
   "languages": {
@@ -263,18 +262,5 @@
     "warn_threshold": 17,
     "fail_threshold": 25
   },
-  "project_mode": "host_project",
-  "github": {
-    "base_branch": "main",
-    "require_issue_ref": true,
-    "create_draft_pr_by_default": true,
-    "default_reviewers": [],
-    "default_labels": [],
-    "required_pr_sections": [
-      "Summary",
-      "Test Plan",
-      "Risks",
-      "Links"
-    ]
-  }
+  "project_mode": "host_project"
 }

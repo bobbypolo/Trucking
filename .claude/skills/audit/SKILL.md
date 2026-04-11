@@ -27,7 +27,7 @@ Log at the top of your output:
 Mode: <mode.value> — Sections: <comma-separated active_sections>
 ```
 
-For each section number 1–10: if the section number is **not** in `active_sections`, record:
+For each section number 1–9: if the section number is **not** in `active_sections`, record:
 
 ```
 SKIP (mode: <mode.value>)
@@ -35,13 +35,11 @@ SKIP (mode: <mode.value>)
 
 and move to the next section. Do **not** evaluate the section's checks.
 
-**Resolve sprint paths first:** Call `_lib.active_sprint_paths()` to get `plan_path`, `prd_path`, `progress_path`, and `verification_log_path`. Use these resolved paths for all artifact references below. Falls back to legacy singleton paths when no `active_sprint_id` is set.
-
-Run all 10 audit sections in order. For each check, record PASS, FAIL, or SKIP with evidence. Missing files are SKIP (not FAIL) with reason.
+Run all 9 audit sections in order. For each check, record PASS, FAIL, or SKIP with evidence. Missing files are SKIP (not FAIL) with reason.
 
 ## Section 1: PLAN.md Completeness
 
-Read the resolved `plan_path`. If not found: **SKIP** `"PLAN.md not found"`.
+Read `.claude/docs/PLAN.md`. If not found: **SKIP** `"PLAN.md not found"`.
 
 - [ ] Goal section filled (not placeholder brackets)
 - [ ] At least 1 phase defined
@@ -75,13 +73,13 @@ For each phase block in PLAN.md:
 
 ## Section 2: prd.json <-> PLAN.md Alignment
 
-Read the resolved `prd_path`. If not found: **SKIP** `"prd.json not found"`.
+Read `.claude/prd.json`. If not found: **SKIP** `"prd.json not found"`.
 
 - [ ] `version` field equals `"2.0"`
-- [ ] Forward check: every prd.json acceptanceCriteria `id` exists in the plan's Done When
-- [ ] Backward check: every plan R-PN-NN ID appears in at least one prd.json story's criteria
+- [ ] Forward check: every prd.json acceptanceCriteria `id` exists in PLAN.md Done When
+- [ ] Backward check: every PLAN.md R-PN-NN ID appears in at least one prd.json story's criteria
 - [ ] Story count vs phase count comparison (flag mismatches)
-- [ ] `gateCmds` entries match plan Verification Commands (semantic comparison)
+- [ ] `gateCmds` entries match PLAN.md Verification Commands (semantic comparison)
 - [ ] `planRef` points to an existing file
 - [ ] `plan_hash` check: if prd.json has a `plan_hash` field, compute normalized hash via `compute_plan_hash()` from `_qa_lib.py` (hashes only R-marker lines, sorted) and compare against stored hash. **FAIL** if mismatch (R-marker criteria changed but prd.json not regenerated). **SKIP** if `plan_hash` field absent (legacy prd.json without hash). **PASS** if hashes match.
 
@@ -98,7 +96,7 @@ If no test files exist: **SKIP** `"No test files found"`.
 
 ## Section 4: Verification Log Integrity
 
-Read the resolved `verification_log_path` (JSONL format — one JSON object per line). If the file is missing and no phases are completed: **SKIP** `"No verification log (no phases completed)"`. If missing but stories are marked `passed: true`: **FAIL** `"Stories passed but no verification log"`.
+Read `.claude/docs/verification-log.jsonl` (JSONL format — one JSON object per line). If the file is missing and no phases are completed: **SKIP** `"No verification log (no phases completed)"`. If missing but stories are marked `passed: true`: **FAIL** `"Stories passed but no verification log"`.
 
 **Namespace isolation**: Use `read_verification_log(path, plan_hash=current_hash)` from `_qa_lib.py` to scope the audit to the current planning cycle. Read the current plan hash from `prd.json["plan_hash"]`. If `plan_hash` is absent from prd.json (legacy format), fall back to `read_verification_log(path)` (no filter) with a **WARNING** `"prd.json has no plan_hash — reading all verification entries (no namespace isolation)"`.
 
@@ -208,7 +206,7 @@ If not in a git repository: **SKIP** `"Not a git repository"`.
 Run the automated test quality analyzer for programmatic detection:
 
 ```bash
-python .claude/hooks/test_quality.py --dir [test-directory] --prd [resolved prd_path]
+python .claude/hooks/test_quality.py --dir [test-directory] --prd .claude/prd.json
 ```
 
 Parse the JSON output and report findings. If `test_quality.py` is not available, fall back to manual analysis below.
@@ -302,29 +300,12 @@ For each `.py`, `.js`, or `.ts` file in the diff:
 - If no patterns found: PASS `"Built-in fallback scan: clean"`
 - This fallback does NOT produce FAIL results — it is advisory only
 
-## Section 10: GitHub Protocol
-
-Validate branch naming, commit format, issue linkage, and PR readiness. Read `github` config from `workflow.json`.
-
-**SKIP conditions**: If `github` section is absent from `workflow.json`: SKIP `"No GitHub protocol configured"`.
-
-**Checks**:
-
-1. **Branch name convention**: Current branch must match `ralph/<issue>-<slug>` or `ralph/<slug>` pattern. WARN if it doesn't match.
-2. **Conventional commits**: Run `git log main..HEAD --format=%s`. Each subject must match `^(feat|fix|docs|chore|refactor|test|perf|ci|build|style|revert)(\([^)]+\))?: .+`. FAIL if any non-merge commit subject is non-conventional.
-3. **Issue ref present**: If `github.require_issue_ref` is `true`, check `ralph.issue_ref` in workflow state. FAIL if empty.
-4. **PR exists**: If sprint is complete (all stories passed or skipped), check `ralph.pull_request_number > 0` or run `gh pr list --head [branch] --json number`. WARN if no PR found.
-5. **PR sections**: If PR exists, run `gh pr view [number] --json body` and verify all `github.required_pr_sections` appear as `## ` headers. WARN for missing sections.
-6. **Reviewers/labels**: If PR exists and `github.default_reviewers` or `github.default_labels` are configured, verify they were applied via `gh pr view [number] --json reviewRequests,labels`. WARN if missing.
-
-**PASS/FAIL**: FAIL if checks 2 or 3 fail. WARN for checks 1, 4, 5, 6. Overall PASS if no FAIL.
-
 ## Output Format
 
 ```
 ## Audit Report — [date]
 
-### Summary: [X]/10 sections PASS — Overall: [PASS/FAIL]
+### Summary: [X]/9 sections PASS — Overall: [PASS/FAIL]
 
 ### Section 1: PLAN.md Completeness — [PASS/FAIL/SKIP]
 [Per-check results with evidence]

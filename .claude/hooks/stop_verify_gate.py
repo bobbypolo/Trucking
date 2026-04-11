@@ -107,21 +107,6 @@ def main():
                 )
                 marker_content = None
 
-    # Active-Ralph bypass: when workers are dispatched, warn but don't block.
-    # This prevents background workers from making the main session impossible
-    # to pause. Verification is deferred until the sprint is idle.
-    if marker_content:
-        ralph = state.get("ralph", {})
-        dispatch_active = ralph.get("active_dispatch_count", 0) > 0
-        if dispatch_active:
-            reason = (
-                "Ralph sprint still active; allowing stop while background workers run. "
-                "Unverified edits remain and will be enforced again when the sprint is idle."
-            )
-            audit_log("stop_verify_gate", "active_ralph_warn_allow", reason)
-            sys.stdout.write(json.dumps({"decision": "warn", "reason": reason}) + "\n")
-            sys.exit(0)
-
     if not marker_content:
         # No unverified changes — allow stop
         # Advisory: remind user if the override env var is active (even though it's not needed)

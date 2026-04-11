@@ -2,12 +2,12 @@
 
 ## Project Overview
 
-LoadPilot is a full-stack trucking dispatch and load management platform. The **SaaS web app** is a React 19 + TypeScript SPA built with Vite (on `main` branch). The **driver mobile app** is a React Native / Expo app under `apps/trucker/` (on `mobile/trucker-app` branch). The backend is a Node.js + Express + TypeScript API server shared by both clients. Data is split between Firebase Firestore (real-time, auth) and MySQL (relational loads/fleet data). Google Gemini AI powers document scanning (BOL, Rate Confirmations). Google Maps handles live fleet tracking.
+LoadPilot is a full-stack trucking dispatch and load management platform. The frontend is a React 19 + TypeScript SPA built with Vite. The backend is a Node.js + Express + TypeScript API server. Data is split between Firebase Firestore (real-time, auth) and MySQL (relational loads/fleet data). Google Gemini AI powers document scanning (BOL, Rate Confirmations). Google Maps handles live fleet tracking.
 
 ## System Architecture
 
 ```
-Browser (React SPA — main branch)
+Browser (React SPA)
   │
   ├── Firebase Auth          → Authentication (JWT + Firebase tokens)
   ├── Firebase Firestore     → Real-time data (messages, live tracking)
@@ -16,17 +16,6 @@ Browser (React SPA — main branch)
         ├── db.ts            → MySQL connection pool
         ├── firestore.ts     → Firestore helpers
         └── index.ts         → Routes + server entry
-
-Mobile App (Expo / React Native — mobile/trucker-app branch)
-  │
-  ├── Firebase Auth          → Driver authentication (shared with SaaS)
-  ├── Express API (server/)  → Same backend (shared endpoints)
-  ├── expo-camera            → Document photo capture
-  ├── expo-image-manipulator → Image compression before upload
-  ├── expo-file-system       → Local file storage for offline queue
-  ├── expo-task-manager      → Background sync when connectivity returns
-  ├── @react-native-community/netinfo → Connectivity detection
-  └── @react-native-async-storage     → Queue persistence
 
 External Services:
   ├── Google Gemini AI       → BOL / Rate-Con document parsing
@@ -68,75 +57,6 @@ External Services:
 | `firestore.ts`  | Firebase Admin Firestore wrappers            |
 | `local_db.ts`   | Local database utilities                     |
 | `geoUtils.ts`   | Geographic calculations (distance, IFTA)     |
-
-## Mobile App (`apps/trucker/`)
-
-Branch: `mobile/trucker-app` (separate from `main` SaaS branch)
-Stack: Expo 55, React Native 0.76, expo-router 5, TypeScript strict
-
-### Navigation Structure
-
-```
-_layout.tsx (root — AuthProvider + ConnectivityProvider + OfflineBanner)
-  ├── (auth)/
-  │   ├── login.tsx
-  │   └── signup.tsx
-  ├── (tabs)/ (4-tab layout: Home / Loads / Profile / Queue)
-  │   ├── index.tsx (Home dashboard — Active Loads + Pending Uploads cards)
-  │   ├── loads/
-  │   │   ├── _layout.tsx (Stack: index ↔ [id])
-  │   │   ├── index.tsx (FlatList of LoadCard, pull-to-refresh, error+retry)
-  │   │   └── [id].tsx (Load detail + StatusUpdateButton + DocumentList + Capture button)
-  │   ├── profile.tsx
-  │   └── queue.tsx (Upload queue status — retry failed items)
-  └── (camera)/ (Stack: camera → preview → upload → ocr-result)
-      ├── _layout.tsx
-      ├── camera.tsx (CameraView + permissions)
-      ├── preview.tsx (Retake / Use Photo)
-      ├── upload.tsx (doc type picker + upload + offline queue fallback)
-      └── ocr-result.tsx (extracted fields display)
-```
-
-### Services & Contexts
-
-| File | Purpose |
-|------|---------|
-| `services/api.ts` | REST client (get/post/patch/delete + uploadFile for multipart) |
-| `services/loads.ts` | fetchLoads, fetchLoadById, updateLoadStatus |
-| `services/documents.ts` | uploadDocument, triggerOcr, getOcrResult, listDocuments |
-| `services/imageService.ts` | compressImage (expo-image-manipulator, max 1920px) |
-| `services/fileStorage.ts` | saveFileLocally, deleteLocalFile (expo-file-system) |
-| `services/uploadQueue.ts` | addToQueue, processQueue, getQueueItems (AsyncStorage, exponential backoff) |
-| `services/connectivity.ts` | NetInfo subscription, triggers processQueue on reconnect |
-| `services/backgroundSync.ts` | expo-task-manager background task registration |
-| `contexts/AuthContext.tsx` | Firebase Auth provider + useAuth hook |
-| `contexts/ConnectivityContext.tsx` | ConnectivityProvider + useConnectivity hook |
-| `hooks/useLoadStatus.ts` | Optimistic status transition with 422 rollback |
-| `types/load.ts` | Load, LoadLeg interfaces + getOrigin/getDestination helpers |
-| `types/queue.ts` | QueueItem interface (7 fields) |
-
-### Mobile App Data Flow
-
-```
-Driver opens app → Firebase Auth → Bearer token attached to all API calls
-  → Load list: GET /api/loads → FlatList of LoadCard
-  → Load detail: fetchLoadById(id) → origin/destination/dates/status
-  → Status update: PATCH /api/loads/:id/status (optimistic + rollback)
-  → Document capture: expo-camera → preview → compress → upload
-    → Online: POST /api/documents (multipart) → triggerOcr → view results
-    → Offline: saveFileLocally → addToQueue → processQueue on reconnect
-  → Queue UI: view pending/failed items, retry failed uploads
-```
-
-### Completed Sprints
-
-| Sprint | Scope | Stories | PR |
-|--------|-------|---------|-----|
-| Sprint A | Expo project init | 2 | — |
-| Sprint B | Auth integration + Navigation shell | 4 | — |
-| Sprint C | Trip Workspace (load list, detail, status updates) | 3 (STORY-001..003) | #69 |
-| Sprint D | Document Capture (camera, upload, OCR) | 3 (STORY-004..006) | #69 |
-| Sprint E | Offline Queue (connectivity, sync, queue UI) | 5 (STORY-007..011) | #69 |
 
 ## Data Flow
 
