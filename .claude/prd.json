@@ -498,8 +498,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/056_digital_agreements.test.ts server/__tests__/routes/agreements.test.ts && npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.agreement-button.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-010",

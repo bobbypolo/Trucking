@@ -984,3 +984,8 @@
 - **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.tag-event.test.tsx
 - **Criteria**: 3/3 (R-P6-01..R-P6-03)
 - **Summary**: Tag for Action button now fires fire-and-forget POST /api/dispatch-events with ACTION_TAGGED/ACTION_UNTAGGED; failures silently swallowed (no error toast). 3 tests pass + 93 regression. Commit e89a6d7.
+
+### STORY-009 — PASS (2026-04-11)
+- **Files**: server/migrations/056_digital_agreements.sql, server/routes/agreements.ts, server/schemas/agreement.ts, server/repositories/agreement.repository.ts, server/index.ts, components/LoadDetailView.tsx, + 3 test files
+- **Criteria**: 8/8 (R-P9-01..R-P9-08)
+- **Summary**: Migration 056 creates digital_agreements table (9 columns). POST/GET/PATCH routes under /api/agreements with DRAFT/SIGNED state machine, 400/404/409 error handling. Frontend Generate Agreement button in LoadDetailView. 32 tests pass (16 migration + 11 route + 5 frontend). Commit ecf08e48.
