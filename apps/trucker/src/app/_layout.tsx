@@ -1,9 +1,10 @@
 import { useEffect } from "react";
-import { Slot, Redirect, useSegments } from "expo-router";
+import { Slot, Redirect, useSegments, useRouter } from "expo-router";
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ConnectivityProvider } from "../contexts/ConnectivityContext";
 import OfflineBanner from "../components/OfflineBanner";
 import { registerBackgroundSync } from "../services/backgroundSync";
+import { attachNotificationResponseHandler } from "../services/pushNotifications";
 
 function RootLayoutNav() {
   const { isAuthenticated } = useAuth();
@@ -18,8 +19,18 @@ function RootLayoutNav() {
   return <Slot />;
 }
 
-// # Tests R-P9-05
+// # Tests R-P9-05, R-P8-01, R-P8-02, R-P8-03
 export default function RootLayout() {
+  const router = useRouter();
+
+  // # Tests R-P8-03
+  useEffect(() => {
+    const subscription = attachNotificationResponseHandler(router);
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   useEffect(() => {
     registerBackgroundSync();
   }, []);
