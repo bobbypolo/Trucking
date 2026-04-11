@@ -661,8 +661,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/integration/ux-remediation.smoke.test.tsx && npx vitest run --reporter=verbose --config server/vitest.config.ts --exclude=server/__tests__/integration/** --exclude=server/__tests__/regression/** --exclude=server/__tests__/performance/**"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
