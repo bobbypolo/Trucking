@@ -32,12 +32,13 @@ router.get(
     const log = createRequestLogger(req, "GET /api/drivers/me");
     try {
       const userId = req.user!.id;
+      const tenantId = req.user!.tenantId;
 
       const [rows] = (await pool.query(
         `SELECT id, name, email, phone, role, company_id AS companyId
          FROM users
-         WHERE id = ?`,
-        [userId],
+         WHERE id = ? AND company_id = ?`,
+        [userId, tenantId],
       )) as [Array<Record<string, unknown>>, unknown];
 
       if (!Array.isArray(rows) || rows.length === 0) {
@@ -90,15 +91,18 @@ router.patch(
       }
 
       const userId = req.user!.id;
+      const tenantId = req.user!.tenantId;
 
       // NOTE: This SQL is *hard-coded* to `phone` only. Do NOT template
       // arbitrary column names from req.body into this statement — doing so
       // would reopen the privilege-escalation vector this endpoint exists
-      // to close (R-P9-06).
-      await pool.query(`UPDATE users SET phone = ? WHERE id = ?`, [
-        rawPhone,
-        userId,
-      ]);
+      // to close (R-P9-06). `company_id` is included for tenant-scope
+      // defense-in-depth so a compromised or malformed auth token cannot
+      // mutate a user row outside the caller's tenant.
+      await pool.query(
+        `UPDATE users SET phone = ? WHERE id = ? AND company_id = ?`,
+        [rawPhone, userId, tenantId],
+      );
 
       res.status(200).json({ id: userId, phone: rawPhone });
     } catch (error) {
