@@ -397,8 +397,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-status.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-008",
@@ -640,8 +640,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-settings-screen.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-012",

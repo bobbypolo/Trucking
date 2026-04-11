@@ -1005,3 +1005,17 @@
 - Criteria verified: R-P10-01..06 (6 criteria)
 - Merge commit: `07c1c03`
 - Summary: Mobile Profile screen replaces placeholder. Loads driver via api.get('/drivers/me'), loading/error/success branches, editable phone TextInput → api.patch, Settings nav button. 18/18 verify checks pass.
+
+### STORY-007 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/__tests__/routes/loads.push-on-status.test.ts`
+- Criteria verified: R-P7-01..04 (4 criteria)
+- Merge commit: `f6c570c`
+- Summary: PATCH /api/loads/:id/status fires sendPush to assigned driver on status transition. Self-transition / NULL driver_id / sendPush rejection all handled. 4/4 tests green + 9/9 STORY-005/006 regression green.
+
+### STORY-011 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/settings.tsx`, `apps/trucker/src/app/_layout.tsx`, `scripts/verify-settings-screen.cjs`
+- Criteria verified: R-P11-01..09 (9 criteria)
+- Merge commit: `9dda8c5`
+- Summary: Settings screen with 3 Switches (notification prefs via AsyncStorage @loadpilot/notification-prefs), sign-out via Alert.alert destructive button calling logout() + router.replace('/'), version display via Constants.expoConfig. _layout.tsx converted Slot→Stack to register settings route. 17/17 verify checks pass.
