@@ -94,3 +94,16 @@ export async function processQueue(): Promise<void> {
 export async function getQueueItems(): Promise<QueueItem[]> {
   return loadQueue();
 }
+
+// Tests R-P10-03: Reset a failed item's retry count and re-queue it for processing.
+export async function retryQueueItem(itemId: string): Promise<void> {
+  const items = await loadQueue();
+  const item = items.find((i) => i.id === itemId);
+  if (!item) {
+    return;
+  }
+  item.retryCount = 0;
+  item.status = "pending";
+  await saveQueue(items);
+  await processQueue();
+}

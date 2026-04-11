@@ -7,6 +7,7 @@ export type LoadStatus =
   | "assigned"
   | "dispatched"
   | "in_transit"
+  | "arrived"
   | "at_pickup"
   | "at_dropoff"
   | "delivered"
