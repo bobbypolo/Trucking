@@ -34,6 +34,7 @@ import {
   recordLoadCompletion,
 } from "../services/discrepancyPipeline";
 import { exportLoadToBigQuery } from "../services/bigqueryPipeline";
+import { sendPush } from "../lib/expo-push";
 
 const router = Router();
 let cachedLoadNotesColumn: string | null | undefined;
@@ -298,6 +299,50 @@ router.post(
           notification_emails,
           `Load Secured: #${load_number}`,
           `Manifest for ${load_number} has been synchronized. Status: ${status}.`,
+        );
+      }
+
+      // ── Push notification trigger (STORY-005 R-P5-01..04) ────────────
+      // Fire a push to the assigned driver when a dispatcher creates a
+      // load for someone else. Push failures must NEVER block the request.
+      try {
+        if (driver_id && driver_id !== req.user!.id) {
+          const [tokenRows] = await pool.query<RowDataPacket[]>(
+            "SELECT expo_push_token FROM push_tokens WHERE user_id = ? AND enabled = 1",
+            [driver_id],
+          );
+          const tokens = (tokenRows as RowDataPacket[])
+            .map((r) => r.expo_push_token)
+            .filter((t): t is string => typeof t === "string" && t.length > 0);
+
+          if (tokens.length > 0) {
+            const [legRows] = await pool.query<RowDataPacket[]>(
+              "SELECT city, type FROM load_legs WHERE load_id = ? ORDER BY sequence_order",
+              [id],
+            );
+            const legsList = legRows as RowDataPacket[];
+            const pickupRow = legsList.find((r) => r.type === "Pickup");
+            const dropoffRows = legsList.filter((r) => r.type === "Dropoff");
+            const dropoffRow =
+              dropoffRows.length > 0
+                ? dropoffRows[dropoffRows.length - 1]
+                : undefined;
+            const pickupCity = pickupRow?.city ?? "";
+            const dropoffCity = dropoffRow?.city ?? "";
+
+            await sendPush(
+              tokens,
+              "New load assigned",
+              `${load_number} — ${pickupCity} to ${dropoffCity}`,
+              { loadId: id },
+            );
+          }
+        }
+      } catch (pushErr) {
+        const log = createRequestLogger(req, "POST /api/loads");
+        log.error(
+          { err: pushErr },
+          "push notification on new load creation failed",
         );
       }
 
