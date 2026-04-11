@@ -999,3 +999,12 @@
 - **Files**: server/migrations/057_financial_objectives.sql, server/routes/financial-objectives.ts, server/schemas/financial-objective.ts, server/repositories/financial-objective.repository.ts, server/index.ts, components/AnalyticsDashboard.tsx, + 3 test files
 - **Criteria**: 7/7 (R-P10-01..R-P10-07)
 - **Summary**: Migration 057 creates financial_objectives table (9 cols). GET/POST /api/financial-objectives routes with quarter filter + 400 validation. AnalyticsDashboard Q1-Q4 selector, Actual vs Target progress bars, Set quarterly targets empty prompt. 33 tests pass (16 migration + 12 route + 5 frontend). Commit 8ec52d3.
+
+### STORY-011 — PASS (2026-04-11)
+- **Files**: server/routes/analytics.ts, server/services/lane-trends.ts, components/Intelligence.tsx, + 2 test files
+- **Criteria**: 4/4 (R-P11-01..R-P11-04)
+- **Summary**: GET /api/analytics/lane-trends?months=6 aggregates loads by lane+month, classifies trend as up/down/flat (±5% threshold). Intelligence.tsx renders TrendingUp/TrendingDown icons with data-testid='trend-indicator' and lane rows with avgRate + trend. 20 tests pass (13 route + 7 frontend). Commit a1087e5.
+
+---
+
+## SPRINT COMPLETE: 12/12 stories passed (0 skipped)
