@@ -19,8 +19,15 @@ describe("server/index.ts mounts push-tokens router", () => {
     expect(importRegex.test(source)).toBe(true);
   });
 
-  it("calls app.use(pushTokensRouter)", () => {
-    const useRegex = /app\.use\(\s*pushTokensRouter\s*\)/;
-    expect(useRegex.test(source)).toBe(true);
+  // Accepts either an explicit `app.use(pushTokensRouter)` call or inclusion
+  // in the for-loop router mount array that index.ts uses to stay under the
+  // modularization line-count cap.
+  it("mounts pushTokensRouter via app.use", () => {
+    const explicitUseRegex = /app\.use\(\s*pushTokensRouter\s*\)/;
+    const loopMountRegex =
+      /for\s*\(\s*const\s+\w+\s+of\s+\[[^\]]*\bpushTokensRouter\b[^\]]*\]\s*\)\s*app\.use\s*\(/;
+    const mounted =
+      explicitUseRegex.test(source) || loopMountRegex.test(source);
+    expect(mounted).toBe(true);
   });
 });

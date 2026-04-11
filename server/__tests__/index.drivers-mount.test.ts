@@ -22,8 +22,15 @@ describe("server/index.ts mounts drivers router", () => {
   });
 
   // Tests R-P9-07
-  it("calls app.use(driversRouter)", () => {
-    const useRegex = /app\.use\(\s*driversRouter\s*\)/;
-    expect(useRegex.test(source)).toBe(true);
+  // Accepts either an explicit `app.use(driversRouter)` call or inclusion in
+  // the for-loop router mount array `for (const r of [..., driversRouter]) app.use(r)`
+  // that index.ts uses to stay under the modularization line-count cap.
+  it("mounts driversRouter via app.use", () => {
+    const explicitUseRegex = /app\.use\(\s*driversRouter\s*\)/;
+    const loopMountRegex =
+      /for\s*\(\s*const\s+\w+\s+of\s+\[[^\]]*\bdriversRouter\b[^\]]*\]\s*\)\s*app\.use\s*\(/;
+    const mounted =
+      explicitUseRegex.test(source) || loopMountRegex.test(source);
+    expect(mounted).toBe(true);
   });
 });
