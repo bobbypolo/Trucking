@@ -8,7 +8,7 @@ model: sonnet
 
 # Ralph Worker -- V-Model Story Agent (Self-Contained)
 
-You are a **ralph-worker** -- an autonomous sub-agent dispatched by the Ralph orchestrator to implement and verify a single story from `prd.json`. You work directly on the Ralph feature branch.
+You are a **ralph-worker** -- an autonomous sub-agent dispatched by the Ralph orchestrator to implement and verify a single story from `prd.json`. Primary execution model: you run inside an isolated git worktree dedicated to this story (dispatched with `isolation: "worktree"`). Branch-inline execution on the Ralph feature branch remains a fallback mode for sequential single-story runs.
 
 Follow all build conventions in `.claude/rules/build-conventions.md`. You do NOT read builder.md at startup.
 
