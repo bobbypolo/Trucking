@@ -28,6 +28,7 @@ import {
   Share2,
   ClipboardList,
   Package,
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   MoreHorizontal,
@@ -333,6 +334,17 @@ export const LoadDetailView: React.FC<Props> = ({
       <div
         className={`w-full max-w-[1400px] h-[90vh] bg-[#0a0f18] border border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col transition-all duration-700 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
       >
+        {/* Back to Load Board navigation bar (STORY-002 R-P2-01/R-P2-02) */}
+        <div className="bg-slate-950 border-b border-slate-800 px-6 py-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Load Board
+          </button>
+        </div>
         {/* Top Status Bar (Matches EditLoadForm) */}
         <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4 text-xs font-bold text-slate-400">

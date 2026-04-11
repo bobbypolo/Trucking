@@ -1699,6 +1699,37 @@ const IntelligenceHub: React.FC<{
           </div>
 
           <div className="flex-1 flex flex-col bg-slate-950/10 border-r border-white/5 overflow-hidden">
+            {/* Breadcrumb bar (STORY-002 R-P2-03) — visible when not on root "ops" tab */}
+            {selectedTab !== "ops" && (
+              <div
+                data-testid="breadcrumb"
+                className="flex items-center gap-2 px-6 py-2 bg-slate-900/60 border-b border-white/5 text-[11px] font-black uppercase tracking-widest text-slate-400"
+              >
+                <button
+                  type="button"
+                  onClick={() => setSelectedTab("ops")}
+                  aria-label="Back to OPS root"
+                  className="hover:text-white transition-colors"
+                >
+                  Home
+                </button>
+                <span className="text-slate-600">/</span>
+                <span className="text-blue-400">
+                  Viewing{" "}
+                  {(
+                    {
+                      command: "COMMAND",
+                      messaging: "FEED",
+                      safety: "SAFETY",
+                      crm: "SALES/CRM",
+                      directory: "NETWORK",
+                      intelligence: "INTELLIGENCE",
+                      reports: "REPORTS",
+                    } as Record<string, string>
+                  )[selectedTab] || selectedTab.toUpperCase()}
+                </span>
+              </div>
+            )}
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* === OPS DASHBOARD VIEW === */}
               {selectedTab === "ops" && (
