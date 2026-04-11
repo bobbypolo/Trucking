@@ -111,6 +111,8 @@ export const LoadDetailView: React.FC<Props> = ({
   );
   const [notifyMessage, setNotifyMessage] = useState("");
   const [isSendingNotify, setIsSendingNotify] = useState(false);
+  // STORY-009 Phase 9 R-P9-06: Generate Agreement button state
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = useState(false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
   const settlementRef = useRef<HTMLDivElement>(null);
   const detailOverlayRef = useRef<HTMLDivElement>(null);
@@ -435,6 +437,38 @@ export const LoadDetailView: React.FC<Props> = ({
     }
   }, [load, currentUser, localIsLocked, isLocking]);
 
+  // STORY-009 Phase 9 R-P9-06: Generate digital agreement from rate confirmation
+  const handleGenerateAgreement = useCallback(async () => {
+    if (isGeneratingAgreement) return;
+    setIsGeneratingAgreement(true);
+    try {
+      const rateConData = {
+        carrierRate: load.carrierRate ?? null,
+        broker: broker?.name ?? null,
+        brokerMc: broker?.mcNumber ?? null,
+        loadNumber: load.loadNumber,
+        pickup: load.pickup,
+        dropoff: load.dropoff,
+        pickupDate: load.pickupDate,
+        dropoffDate: load.dropoffDate,
+        commodity: load.commodity,
+        freightType: load.freightType,
+      };
+      await api.post("/agreements", {
+        load_id: load.id,
+        rate_con_data: rateConData,
+      });
+      setToast({ message: "Agreement generated", type: "success" });
+    } catch {
+      setToast({
+        message: "Failed to generate agreement",
+        type: "error",
+      });
+    } finally {
+      setIsGeneratingAgreement(false);
+    }
+  }, [isGeneratingAgreement, load, broker]);
+
   return (
     <div
       ref={detailOverlayRef}
@@ -626,6 +660,16 @@ export const LoadDetailView: React.FC<Props> = ({
             >
               <Send className="w-4 h-4" />
               Notify Partners
+            </button>
+            {/* STORY-009 Phase 9 R-P9-06: Generate Agreement button sends POST /api/agreements */}
+            <button
+              type="button"
+              onClick={handleGenerateAgreement}
+              disabled={isGeneratingAgreement}
+              className="flex items-center gap-2 px-5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 transition-all disabled:opacity-50"
+            >
+              <FileText className="w-4 h-4" />
+              {isGeneratingAgreement ? "Generating..." : "Generate Agreement"}
             </button>
             <button
               onClick={handleToggleLock}
