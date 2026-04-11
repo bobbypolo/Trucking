@@ -22,6 +22,11 @@ const QUOTE_UPDATABLE_COLUMNS = [
   "valid_until",
   "notes",
   "version",
+  "margin",
+  "discount",
+  "commission",
+  "estimated_driver_pay",
+  "company_cost_factor",
 ] as const;
 
 export const quoteRepository = {
@@ -35,7 +40,10 @@ export const quoteRepository = {
   },
 
   async findById(id: string) {
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT * FROM quotes WHERE id = ?", [id]);
+    const [rows] = await pool.query<RowDataPacket[]>(
+      "SELECT * FROM quotes WHERE id = ?",
+      [id],
+    );
     return rows[0] || null;
   },
 
@@ -45,8 +53,9 @@ export const quoteRepository = {
       `INSERT INTO quotes (id, company_id, status, pickup_city, pickup_state, pickup_facility,
         dropoff_city, dropoff_state, dropoff_facility, equipment_type,
         linehaul, fuel_surcharge, total_rate, customer_id, broker_id,
-        valid_until, notes, created_by, updated_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        valid_until, notes, margin, discount, commission,
+        estimated_driver_pay, company_cost_factor, created_by, updated_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         companyId,
@@ -65,6 +74,11 @@ export const quoteRepository = {
         data.broker_id,
         data.valid_until,
         data.notes,
+        data.margin,
+        data.discount,
+        data.commission,
+        data.estimated_driver_pay,
+        data.company_cost_factor,
         userId,
         userId,
       ],
