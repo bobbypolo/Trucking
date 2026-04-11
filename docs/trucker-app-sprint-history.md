@@ -73,3 +73,28 @@ This document tracks each completed sprint with its merge SHA, story count, and 
 - 6 verification scripts (verify-*.cjs) for each phase
 
 ---
+
+## Sprint F — Push Notifications + Driver Profile + Settings
+
+| Field | Value |
+|-------|-------|
+| Branch | `ralph/trucker-app-sprint-f` |
+| Stories | 12 |
+| Criteria | 54 |
+| Skipped | 0 |
+| Status | Engineering Complete |
+| Date | 2026-04-10 |
+
+**Summary**: Delivered the Sprint F mobile feature slice for the LoadPilot trucker app — push-notification infrastructure end-to-end, a driver profile screen, a settings screen with preference toggles, and a combined verification gate. Expo Notifications were wired into the mobile runtime (`pushNotifications.ts`), AuthContext was extended to register/rotate/unregister push tokens on sign-in and sign-out, a server-side `/api/push-tokens` route pair and migration added persistence, a push-on-status server hook announces load-status transitions, the mobile notification-tap handler deep-links to `/loads/:id`, and driver profile and settings screens landed behind the existing `(tabs)` shell with `<Stack.Screen>` registration in `_layout.tsx`. A combined `verify-sprint-f.cjs` orchestrator now runs all five Sprint F mobile verify scripts in order and gates Sprint F promotion on the sprint-history heading.
+
+**Key artifacts**:
+- `apps/trucker/src/services/pushNotifications.ts` — Expo Notifications service (register, rotate, unregister, attach-response-handler)
+- `apps/trucker/src/contexts/AuthContext.tsx` — push-token lifecycle wired into login/logout
+- `apps/trucker/src/app/(tabs)/_layout.tsx` — Slot→Stack migration + `<Stack.Screen>` registrations for `profile` and `settings`
+- `apps/trucker/src/app/(tabs)/profile.tsx`, `apps/trucker/src/app/(tabs)/settings.tsx` — new driver profile and settings screens (three preference Switches + logout)
+- `server/routes/push-tokens.ts` + migration `055_push_tokens.sql` — token registration persistence with tenant scoping
+- `server/services/load.service.ts` push-on-status hook — announces load-status transitions through Expo Push
+- `scripts/verify-push-service.cjs`, `verify-auth-push-wiring.cjs`, `verify-push-deep-link.cjs`, `verify-profile-screen.cjs`, `verify-settings-screen.cjs` — per-story mobile verify scripts
+- `scripts/verify-sprint-f.cjs` — combined Sprint F verification gate (runs all five mobile verify scripts + sprint-history heading check)
+
+---
