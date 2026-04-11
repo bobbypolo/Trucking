@@ -984,3 +984,24 @@
 - Criteria verified: R-P8-01..03 (3 criteria)
 - Merge commit: `e162657`
 - Summary: Root _layout.tsx wires useRouter + attachNotificationResponseHandler(router) inside a useEffect with .remove() cleanup. 5/5 verify checks pass.
+
+### STORY-006 — PASS (2026-04-11)
+
+- Files: `server/routes/loads.ts`, `server/schemas/loads.ts`, `server/__tests__/routes/loads.push-on-reassign.test.ts`
+- Criteria verified: R-P6-01..05 (5 criteria)
+- Merge commit: `a0f55b2`
+- Summary: PATCH /api/loads/:id extended to accept driver_id via schema + fires sendPush on reassignment when new driver differs from old and from caller. 5/5 vitest tests green; STORY-005 regression 4/4 still green.
+
+### STORY-009 — PASS (2026-04-11)
+
+- Files: `server/routes/drivers.ts`, `server/index.ts`, `server/__tests__/routes/drivers.test.ts`, `server/__tests__/index.drivers-mount.test.ts`
+- Criteria verified: R-P9-01..07 (7 criteria)
+- Merge commit: `deabc2f`
+- Summary: New `/api/drivers/me` GET + PATCH endpoints. GET returns 6-key profile or 404. PATCH hard-coded to UPDATE users SET phone=? only (role escalation blocked). 10/10 vitest tests green.
+
+### STORY-010 — PASS (2026-04-11)
+
+- Files: `apps/trucker/src/app/(tabs)/profile.tsx`, `apps/trucker/src/types/driver.ts`, `scripts/verify-profile-screen.cjs`
+- Criteria verified: R-P10-01..06 (6 criteria)
+- Merge commit: `07c1c03`
+- Summary: Mobile Profile screen replaces placeholder. Loads driver via api.get('/drivers/me'), loading/error/success branches, editable phone TextInput → api.patch, Settings nav button. 18/18 verify checks pass.

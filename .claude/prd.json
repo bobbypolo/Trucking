@@ -347,8 +347,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/loads.push-on-reassign.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-007",
@@ -503,8 +503,8 @@
       "gateCmds": {
         "unit": "bash -c \"cd server && npx vitest run __tests__/routes/drivers.test.ts __tests__/index.drivers-mount.test.ts\""
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-010",
@@ -562,8 +562,8 @@
       "gateCmds": {
         "unit": "node scripts/verify-profile-screen.cjs"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-011",
