@@ -974,3 +974,8 @@
 - **Files**: components/LoadDetailView.tsx, components/IntelligenceHub.tsx, + 2 test files
 - **Criteria**: 3/3 (R-P2-01..R-P2-03)
 - **Summary**: Back to Load Board button with ArrowLeft icon in LoadDetailView header (calls onClose), IntelligenceHub breadcrumb bar showing current tab label when selectedTab !== 'ops'. 4 tests pass + 205 regression tests. Commit 0831c5d → merge 7eb7f8c.
+
+### STORY-004 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.notify-partners.test.tsx
+- **Criteria**: 5/5 (R-P4-01..R-P4-05)
+- **Summary**: Notify Partners button + inline modal with broker/driver/customerContact checkboxes, POSTs to /api/notification-jobs with channel:Multi, success/error toasts. 5 tests pass + 48 regression tests. Commit 1a5f7b1 → merge ca845df.

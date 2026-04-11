@@ -229,8 +229,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.notify-partners.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-005",
