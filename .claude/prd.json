@@ -126,8 +126,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.back-button.test.tsx src/__tests__/components/IntelligenceHub.breadcrumb.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-003",
@@ -150,32 +150,32 @@
           "id": "R-P3-01",
           "criterion": "`LoadList.tsx` Call button calls `window.open(\"tel:555-0100\")` when `load.customerContact.phone` is `\"555-0100\"`",
           "testType": "unit",
-          "testFile": null
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
         },
         {
           "id": "R-P3-02",
           "criterion": "`LoadList.tsx` Call button falls back to `onOpenHub('messaging', true)` when `load.customerContact.phone` is `undefined`",
           "testType": "unit",
-          "testFile": null
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
         },
         {
           "id": "R-P3-03",
           "criterion": "`LoadList.tsx` Call button shows tooltip with phone number `\"555-0100\"` on hover when phone is available",
           "testType": "unit",
-          "testFile": null
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
         },
         {
           "id": "R-P3-04",
           "criterion": "`CommsOverlay.tsx` renders a clickable `<a href=\"tel:555-0100\">` link when the active call session contact has a phone number",
           "testType": "unit",
-          "testFile": null
+          "testFile": "src/__tests__/components/CommsOverlay.tel-link.test.tsx"
         }
       ],
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadList.call-button.test.tsx src/__tests__/components/CommsOverlay.tel-link.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",

@@ -964,3 +964,13 @@
 - **Files**: components/IntelligenceHub.tsx, components/LoadList.tsx, components/QuoteManager.tsx, components/operations/TriageWorkspacePanel.tsx, services/dateFormat.ts, + 6 test files
 - **Criteria**: 10/10 (R-P1-01..R-P1-10)
 - **Summary**: UX quick fixes — formatDate/formatDateTime service, TriageWorkspacePanel contrast (text-slate-400, bg-white/[0.08], no opacity-60/70), LoadList uses formatDate for dates, text-[11px] for tabs, QuoteManager defaults to intake, IntelligenceHub adds SAFETY tab. 24 tests pass across 5 gate files. Commit 98e2191.
+
+### STORY-003 — PASS (2026-04-11)
+- **Files**: components/LoadList.tsx, components/CommsOverlay.tsx, + 2 test files
+- **Criteria**: 4/4 (R-P3-01..R-P3-04)
+- **Summary**: Call button opens tel:${phone} when customerContact.phone present, falls back to onOpenHub('messaging', true) otherwise, shows phone tooltip on hover. CommsOverlay renders <a href="tel:..."> in header when active call session has contactPhone. 10 tests pass. Commit 96b547d.
+
+### STORY-002 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, components/IntelligenceHub.tsx, + 2 test files
+- **Criteria**: 3/3 (R-P2-01..R-P2-03)
+- **Summary**: Back to Load Board button with ArrowLeft icon in LoadDetailView header (calls onClose), IntelligenceHub breadcrumb bar showing current tab label when selectedTab !== 'ops'. 4 tests pass + 205 regression tests. Commit 0831c5d → merge 7eb7f8c.
