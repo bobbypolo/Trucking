@@ -56,10 +56,12 @@ const DEV_ALLOWED_ORIGINS = [
  * - In staging/production: uses CORS_ORIGIN from env (validated by validateEnv).
  *   If CORS_ORIGIN contains commas, splits into an array.
  * - In development/test/undefined: if CORS_ORIGIN is set, uses it;
- *   otherwise allows localhost origins + *.trycloudflare.com for tunnel access.
+ *   otherwise returns DEV_ALLOWED_ORIGINS array (localhost variants) plus a
+ *   RegExp entry matching *.trycloudflare.com for tunnel access. The `cors`
+ *   package accepts `(string | RegExp)[]` for the `origin` option.
  * - Never returns "*" when credentials are enabled (CORS spec violation).
  */
-export function getCorsOrigin(): string | string[] | ((origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void) {
+export function getCorsOrigin(): string | Array<string | RegExp> {
   const corsOrigin = process.env.CORS_ORIGIN;
   const nodeEnv = process.env.NODE_ENV;
   const isStrict = nodeEnv !== undefined && STRICT_ENVIRONMENTS.has(nodeEnv);
@@ -82,22 +84,14 @@ export function getCorsOrigin(): string | string[] | ((origin: string | undefine
     );
   }
 
-  // Development/test: allow localhost origins + Cloudflare tunnel origins
+  // Development/test: allow localhost origins + Cloudflare tunnel origins.
+  // Returned as an array so cors() can compare against each entry directly,
+  // and tests can assert Array.isArray + .toContain on the localhost entries.
   logger.info(
     { origins: DEV_ALLOWED_ORIGINS },
     "CORS_ORIGIN not set — allowing localhost + *.trycloudflare.com origins",
   );
-  const allowedSet = new Set(DEV_ALLOWED_ORIGINS);
-  return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // Allow requests with no origin (e.g. server-to-server, curl)
-    if (!origin) return callback(null, true);
-    // Allow all localhost origins
-    if (allowedSet.has(origin)) return callback(null, true);
-    // Allow Cloudflare Quick Tunnel origins
-    if (origin.endsWith(".trycloudflare.com")) return callback(null, true);
-    // Block everything else
-    callback(new Error("CORS: origin not allowed: " + origin));
-  };
+  return [...DEV_ALLOWED_ORIGINS, /\.trycloudflare\.com$/];
 }
 
 /**

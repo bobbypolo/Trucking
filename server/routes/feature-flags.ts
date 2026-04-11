@@ -10,6 +10,7 @@ import {
   requireAuth,
   type AuthenticatedRequest,
 } from "../middleware/requireAuth";
+import { requireTenant } from "../middleware/requireTenant";
 import { ForbiddenError } from "../errors/AppError";
 import { createRequestLogger } from "../lib/logger";
 import db from "../db";
@@ -35,6 +36,7 @@ const FLAG_ENV_MAP: Record<string, string> = {
 router.get(
   "/",
   requireAuth,
+  requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "GET /api/feature-flags");
     try {
@@ -76,6 +78,7 @@ router.get(
 router.put(
   "/:name",
   requireAuth,
+  requireTenant,
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const log = createRequestLogger(req, "PUT /api/feature-flags/:name");
     try {

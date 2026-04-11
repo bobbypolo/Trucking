@@ -35,6 +35,17 @@ vi.mock("../../middleware/requireAuth", () => ({
   },
 }));
 
+// Pass-through mock so the route-level requireTenant middleware does not
+// short-circuit the handler's own unauthenticated / not_admin / tenant
+// checks that the 4-gate tests (R-P6-05) exercise directly.
+vi.mock("../../middleware/requireTenant", () => ({
+  requireTenant: (
+    _req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction,
+  ) => next(),
+}));
+
 // Mock the reset script so the test never touches a real database.
 const resetMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("../../scripts/reset-sales-demo", () => ({
