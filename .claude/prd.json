@@ -565,8 +565,8 @@
       "gateCmds": {
         "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/057_financial_objectives.test.ts server/__tests__/routes/financial-objectives.test.ts && npx vitest run --reporter=verbose src/__tests__/components/AnalyticsDashboard.quarterly.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-011",

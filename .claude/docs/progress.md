@@ -989,3 +989,13 @@
 - **Files**: server/migrations/056_digital_agreements.sql, server/routes/agreements.ts, server/schemas/agreement.ts, server/repositories/agreement.repository.ts, server/index.ts, components/LoadDetailView.tsx, + 3 test files
 - **Criteria**: 8/8 (R-P9-01..R-P9-08)
 - **Summary**: Migration 056 creates digital_agreements table (9 columns). POST/GET/PATCH routes under /api/agreements with DRAFT/SIGNED state machine, 400/404/409 error handling. Frontend Generate Agreement button in LoadDetailView. 32 tests pass (16 migration + 11 route + 5 frontend). Commit ecf08e48.
+
+### STORY-012 — PASS (2026-04-11)
+- **Files**: src/__tests__/integration/ux-remediation.smoke.test.tsx
+- **Criteria**: 3/3 (R-P12-01..R-P12-03)
+- **Summary**: Integration smoke test covering 7 modified components (LoadList, LoadDetailView, IntelligenceHub, QuoteManager, BookingPortal, TriageWorkspacePanel, CommsOverlay) with console.error spy asserting 0 errors. Verifies formatted dates, SAFETY tab, Notify Partners + Generate Agreement buttons. 7/7 tests pass. Commit 2923630.
+
+### STORY-010 — PASS (2026-04-11)
+- **Files**: server/migrations/057_financial_objectives.sql, server/routes/financial-objectives.ts, server/schemas/financial-objective.ts, server/repositories/financial-objective.repository.ts, server/index.ts, components/AnalyticsDashboard.tsx, + 3 test files
+- **Criteria**: 7/7 (R-P10-01..R-P10-07)
+- **Summary**: Migration 057 creates financial_objectives table (9 cols). GET/POST /api/financial-objectives routes with quarter filter + 400 validation. AnalyticsDashboard Q1-Q4 selector, Actual vs Target progress bars, Set quarterly targets empty prompt. 33 tests pass (16 migration + 12 route + 5 frontend). Commit 8ec52d3.
