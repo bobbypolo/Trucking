@@ -17,7 +17,6 @@
     "demo:tunnel": "node scripts/demo-tunnel.cjs",
     "demo:seed:sales": "ts-node --transpile-only server/scripts/seed-sales-demo.ts",
     "demo:reset:sales": "ts-node --transpile-only server/scripts/reset-sales-demo.ts",
-    "demo:host:sales": "node scripts/demo-host.cjs",
     "demo:certify:sales": "node scripts/demo-certify.cjs"
   },
   "dependencies": {

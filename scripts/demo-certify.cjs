@@ -27,17 +27,11 @@
 "use strict";
 
 const { execSync, spawn } = require("child_process");
+const dotenv = require("dotenv");
 const fs = require("fs");
 const http = require("http");
 const os = require("os");
 const path = require("path");
-const {
-  ENV_LOCAL,
-  ensureEnvLocalFile,
-  formatDemoEnvProblems,
-  loadEnvFileIntoProcess,
-  validateDemoEnvFile,
-} = require("./demo-env.cjs");
 
 const EVIDENCE_H2 = "## Sales Demo Certification";
 const DEFAULT_LOG_BASENAME = "sales-demo-cert-latest.log";
@@ -47,21 +41,10 @@ const VITE_PORT = 3101;
 const HEALTH_TIMEOUT_MS = 90000;
 const HEALTH_POLL_MS = 1000;
 
-function preflightDemoEnv() {
-  if (!ensureEnvLocalFile()) {
-    throw new Error(
-      ".env.local is missing. Copy .env.example.sales-demo to .env.local and fill in the required values.",
-    );
-  }
-
-  loadEnvFileIntoProcess(ENV_LOCAL);
-  const { problems } = validateDemoEnvFile(ENV_LOCAL, {
-    requireGemini: true,
-  });
-  if (problems.length > 0) {
-    throw new Error(formatDemoEnvProblems(problems, ENV_LOCAL));
-  }
-}
+// Load demo env before any child processes spawn so certification picks up the
+// same credentials and feature flags used by reset/seed/runtime scripts.
+dotenv.config({ path: path.join(process.cwd(), ".env.local"), override: false });
+dotenv.config({ path: path.join(process.cwd(), ".env"), override: false });
 
 /* ------------------------------------------------------------------ */
 /*  Utility helpers (also exported for unit tests)                     */
@@ -224,8 +207,6 @@ function killProcess(child, label) {
 /* ------------------------------------------------------------------ */
 
 async function runFullPipeline() {
-  preflightDemoEnv();
-
   const logFile = defaultLogPath();
   const evidenceFile = defaultEvidencePath();
   let backendChild = null;

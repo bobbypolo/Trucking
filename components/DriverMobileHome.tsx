@@ -13,7 +13,6 @@ import {
   Truck,
   MapPin,
   CheckCircle2,
-  CircleAlert,
   MessageSquare,
   User as UserIcon,
   LogOut,
@@ -103,28 +102,6 @@ const base64ToFile = (
   return new File([bytes], fileName, { type: mimeType });
 };
 
-const isBlank = (value: string) => value.trim().length === 0;
-
-const buildEmptyIntakeFormData = () => ({
-  pickupCity: "",
-  pickupState: "",
-  pickupFacility: "",
-  dropoffCity: "",
-  dropoffState: "",
-  dropoffFacility: "",
-  pickupDate: "",
-  commodity: "",
-  weight: "",
-  referenceNumber: "",
-  specialInstructions: "",
-  scannedDocTypes: [] as string[],
-  scannedDocImages: [] as Array<{
-    base64: string;
-    mimeType: string;
-    docType: string;
-  }>,
-});
-
 export const DriverMobileHome: React.FC<Props> = ({
   user,
   company,
@@ -179,6 +156,7 @@ export const DriverMobileHome: React.FC<Props> = ({
   const [loadOverrides, setLoadOverrides] = useState<
     Record<string, Partial<LoadData>>
   >({});
+  // Driver Load Intake Panel (new driver-intake flow via POST /api/loads/driver-intake)
   const [showIntakePanel, setShowIntakePanel] = useState(false);
 
   // Breakdown modal flow state
@@ -210,35 +188,22 @@ export const DriverMobileHome: React.FC<Props> = ({
       mimeType: string;
       docType: string;
     }>;
-  }>(buildEmptyIntakeFormData);
+  }>({
+    pickupCity: "",
+    pickupState: "",
+    pickupFacility: "",
+    dropoffCity: "",
+    dropoffState: "",
+    dropoffFacility: "",
+    pickupDate: "",
+    commodity: "",
+    weight: "",
+    referenceNumber: "",
+    specialInstructions: "",
+    scannedDocTypes: [],
+    scannedDocImages: [],
+  });
   const [intakeSubmitting, setIntakeSubmitting] = useState(false);
-
-  const isSalesDemoMode = import.meta.env.VITE_DEMO_NAV_MODE === "sales";
-
-  const intakeValidation = useMemo(() => {
-    const pickupLocationMissing =
-      isBlank(intakeFormData.pickupCity) && isBlank(intakeFormData.pickupFacility);
-    const dropoffLocationMissing =
-      isBlank(intakeFormData.dropoffCity) &&
-      isBlank(intakeFormData.dropoffFacility);
-
-    return {
-      pickupLocationMissing,
-      dropoffLocationMissing,
-      pickupDateMissing: isBlank(intakeFormData.pickupDate),
-      commodityMissing: isBlank(intakeFormData.commodity),
-    };
-  }, [intakeFormData]);
-
-  const intakeMissingFieldCount = Object.values(intakeValidation).filter(Boolean).length;
-  const intakeFormReady = intakeMissingFieldCount === 0;
-
-  const getIntakeFieldClass = (hasError: boolean) =>
-    `w-full rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:outline-none ${
-      hasError
-        ? "bg-red-950/30 border border-red-500/60 focus:border-red-400"
-        : "bg-slate-900 border border-white/10 focus:border-blue-500"
-    }`;
 
   // Fuel receipt scanning state
   const [fuelReviewData, setFuelReviewData] = useState<{
@@ -602,19 +567,19 @@ export const DriverMobileHome: React.FC<Props> = ({
   /** Submit the intake review form to create a new pending load */
   const submitIntake = useCallback(async () => {
     // Validate required fields
-    if (intakeValidation.pickupLocationMissing) {
+    if (!intakeFormData.pickupCity && !intakeFormData.pickupFacility) {
       setToast({ message: "Pickup location is required", type: "error" });
       return;
     }
-    if (intakeValidation.dropoffLocationMissing) {
+    if (!intakeFormData.dropoffCity && !intakeFormData.dropoffFacility) {
       setToast({ message: "Dropoff location is required", type: "error" });
       return;
     }
-    if (intakeValidation.pickupDateMissing) {
+    if (!intakeFormData.pickupDate) {
       setToast({ message: "Pickup date is required", type: "error" });
       return;
     }
-    if (intakeValidation.commodityMissing) {
+    if (!intakeFormData.commodity) {
       setToast({ message: "Commodity description is required", type: "error" });
       return;
     }
@@ -697,7 +662,21 @@ export const DriverMobileHome: React.FC<Props> = ({
       }
 
       setIntakeStep("idle");
-      setIntakeFormData(buildEmptyIntakeFormData());
+      setIntakeFormData({
+        pickupCity: "",
+        pickupState: "",
+        pickupFacility: "",
+        dropoffCity: "",
+        dropoffState: "",
+        dropoffFacility: "",
+        pickupDate: "",
+        commodity: "",
+        weight: "",
+        referenceNumber: "",
+        specialInstructions: "",
+        scannedDocTypes: [],
+        scannedDocImages: [],
+      });
 
       let toastMessage: string;
       if (totalDocs === 0) {
@@ -716,7 +695,7 @@ export const DriverMobileHome: React.FC<Props> = ({
     } finally {
       setIntakeSubmitting(false);
     }
-  }, [intakeFormData, intakeValidation, user.id, user.companyId, onSaveLoad]);
+  }, [intakeFormData, user.id, user.companyId, onSaveLoad]);
 
   /** Handle data extracted from Scanner in fuel mode — show review step */
   const handleFuelDataExtracted = useCallback((data: any) => {
@@ -1478,28 +1457,15 @@ export const DriverMobileHome: React.FC<Props> = ({
               New Load Intake — Scan Documents
             </button>
 
-            {/* Submit Load Intake tile — legacy intake path, hidden in sales mode */}
-            {isSalesDemoMode ? (
-              <div className="rounded-2xl border border-white/5 bg-[#0a0f1e] px-4 py-3">
-                <div className="text-[11px] font-black uppercase tracking-widest text-white">
-                  Certified Demo Path
-                </div>
-                <p className="mt-2 text-xs font-medium leading-relaxed text-slate-400">
-                  Use <span className="font-black text-emerald-400">New Load Intake</span>{" "}
-                  to scan the rate confirmation, review the extracted fields, and
-                  submit the intake for dispatcher approval.
-                </p>
-              </div>
-            ) : (
-              <button
-                data-testid="submit-load-intake-tile"
-                onClick={() => setShowIntakePanel(true)}
-                className="w-full py-4 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
-              >
-                <Camera className="w-5 h-5" />
-                Submit Load Intake
-              </button>
-            )}
+            {/* Submit Load Intake tile — driver-intake flow (R-P5-16) */}
+            <button
+              data-testid="submit-load-intake-tile"
+              onClick={() => setShowIntakePanel(true)}
+              className="w-full py-4 bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 rounded-2xl text-xs font-black uppercase tracking-widest border border-blue-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+            >
+              <Camera className="w-5 h-5" />
+              Submit Load Intake
+            </button>
 
             {/* Scan Fuel Receipt CTA (from PR #44 IFTA fuel pipeline) */}
             <button
@@ -1908,6 +1874,24 @@ export const DriverMobileHome: React.FC<Props> = ({
         }}
       />
 
+      {/* Driver Load Intake Panel Overlay (R-P5-16) */}
+      {showIntakePanel && (
+        <div className="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
+            <DriverLoadIntakePanel
+              onComplete={() => {
+                setShowIntakePanel(false);
+                setToast({
+                  message: "Load submitted for dispatcher review",
+                  type: "success",
+                });
+              }}
+              onCancel={() => setShowIntakePanel(false)}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Intake Scanner Overlay */}
       {intakeStep === "scanning" && (
         <div className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
@@ -1928,24 +1912,6 @@ export const DriverMobileHome: React.FC<Props> = ({
               onCancel={cancelIntake}
               onDismiss={cancelIntake}
               mode="intake"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Legacy Driver Load Intake Panel Overlay */}
-      {showIntakePanel && !isSalesDemoMode && (
-        <div className="fixed inset-0 z-[160] bg-black/90 backdrop-blur-md flex items-center justify-center p-6">
-          <div className="w-full max-w-sm bg-[#0a0f1e] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl">
-            <DriverLoadIntakePanel
-              onComplete={() => {
-                setShowIntakePanel(false);
-                setToast({
-                  message: "Load submitted for dispatcher review",
-                  type: "success",
-                });
-              }}
-              onCancel={() => setShowIntakePanel(false)}
             />
           </div>
         </div>
@@ -1972,41 +1938,6 @@ export const DriverMobileHome: React.FC<Props> = ({
             </div>
 
             <div className="p-6 space-y-4">
-              <div className="rounded-2xl border border-blue-500/20 bg-blue-950/20 p-4">
-                <div className="flex items-start gap-3">
-                  <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-blue-400" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-black uppercase tracking-widest text-white">
-                      Review Before Submit
-                    </p>
-                    <p className="text-xs leading-relaxed text-slate-300">
-                      AI pre-filled this intake from the scanned document. Confirm the
-                      required fields below before submitting it to dispatch.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {intakeMissingFieldCount > 0 && (
-                <div
-                  data-testid="intake-required-warning"
-                  className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-                    <div className="space-y-1">
-                      <p className="text-xs font-black uppercase tracking-widest text-amber-300">
-                        Required Fields Missing
-                      </p>
-                      <p className="text-xs leading-relaxed text-slate-300">
-                        Complete pickup, dropoff, pickup date, and commodity before
-                        submitting this intake.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {/* Pickup */}
               <div className="space-y-2">
                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -2023,7 +1954,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="City"
-                  className={getIntakeFieldClass(intakeValidation.pickupLocationMissing)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
                 <input
                   data-testid="intake-pickup-state"
@@ -2036,13 +1967,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="State"
-                  className={getIntakeFieldClass(false)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
-                {intakeValidation.pickupLocationMissing && (
-                  <p className="text-xs font-medium text-red-300">
-                    Enter a pickup city or pickup facility before you submit.
-                  </p>
-                )}
               </div>
 
               {/* Dropoff */}
@@ -2062,7 +1988,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="City"
-                  className={getIntakeFieldClass(intakeValidation.dropoffLocationMissing)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
                 <input
                   data-testid="intake-dropoff-state"
@@ -2075,13 +2001,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="State"
-                  className={getIntakeFieldClass(false)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
-                {intakeValidation.dropoffLocationMissing && (
-                  <p className="text-xs font-medium text-red-300">
-                    Enter a dropoff city or dropoff facility before you submit.
-                  </p>
-                )}
               </div>
 
               {/* Date */}
@@ -2099,13 +2020,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                       pickupDate: e.target.value,
                     }))
                   }
-                  className={getIntakeFieldClass(intakeValidation.pickupDateMissing)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-blue-500 focus:outline-none"
                 />
-                {intakeValidation.pickupDateMissing && (
-                  <p className="text-xs font-medium text-red-300">
-                    Add the pickup date so dispatch can schedule the load.
-                  </p>
-                )}
               </div>
 
               {/* Commodity */}
@@ -2124,13 +2040,8 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="e.g. Dry Goods, Refrigerated Produce"
-                  className={getIntakeFieldClass(intakeValidation.commodityMissing)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
-                {intakeValidation.commodityMissing && (
-                  <p className="text-xs font-medium text-red-300">
-                    Add a commodity description before you submit.
-                  </p>
-                )}
               </div>
 
               {/* Reference Number (optional) */}
@@ -2150,7 +2061,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="Optional"
-                  className={getIntakeFieldClass(false)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -2170,7 +2081,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                     }))
                   }
                   placeholder="Optional"
-                  className={getIntakeFieldClass(false)}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none"
                 />
               </div>
 
@@ -2190,7 +2101,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                   }
                   placeholder="Optional"
                   rows={2}
-                  className={`${getIntakeFieldClass(false)} resize-none`}
+                  className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-600 focus:border-blue-500 focus:outline-none resize-none"
                 />
               </div>
 
@@ -2216,7 +2127,7 @@ export const DriverMobileHome: React.FC<Props> = ({
                 <button
                   data-testid="intake-submit"
                   onClick={submitIntake}
-                  disabled={intakeSubmitting || !intakeFormReady}
+                  disabled={intakeSubmitting}
                   className="flex-[2] py-4 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:opacity-50 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/40 transition-all flex items-center justify-center gap-2"
                 >
                   {intakeSubmitting ? (

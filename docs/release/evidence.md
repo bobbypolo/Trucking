@@ -336,24 +336,3 @@ Fixed in commit `de2cbdf`.
 Produced by old append-only `demo-certify.cjs` (no real pipeline).
 
 </details>
-
-### 2026-04-10T01:59:42.893Z [PASS]
-
-```
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
-
-Running 7 tests using 1 worker
-
-  ok 1 [chromium] › e2e\sales-demo\00-smoke.spec.ts:24:3 › sales-demo smoke › health + homepage render (R-P7-04) (642ms)
-[dotenv@17.2.3] injecting env (0) from .env.local -- tip: ⚙️  load multiple .env files with { path: ['.env.local', '.env'] }
-[dotenv@17.2.3] injecting env (0) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
-  ok 2 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:46:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-07: hero load LP-DEMO-RC-001 renders canonical continuity values (4.2s)
-  ok 3 [chromium] › e2e\sales-demo\01-document-automation.spec.ts:78:3 › Sales Demo — Hero load walkthrough (R-P2-07, R-P2-13) › R-P2-13: each of the 3 hero document cards shows real filename and non-undefined type (4.3s)
-  ok 4 [chromium] › e2e\sales-demo\02-ifta-walkthrough.spec.ts:40:3 › Sales Demo — IFTA Q4 2025 audit-lock walkthrough (R-P3-05) › R-P3-05: hero load IFTA evidence lock sequence completes within 10 seconds (8.0s)
-  ok 5 [chromium] › e2e\sales-demo\03-crm-walkthrough.spec.ts:53:3 › Sales Demo — CRM registry walkthrough (R-P4-06) › R-P4-06: NetworkPortal renders ≥12 parties, drills into ACME Logistics LLC, and exposes content in all 6 profile tabs (3.6s)
-  ok 6 [chromium] › e2e\sales-demo\04-live-driver-intake.spec.ts:29:3 › Sales Demo — Live driver intake walkthrough › driver upload -> Gemini extraction -> review -> submit -> dispatcher queue (16.2s)
-  ok 7 [chromium] › e2e\sales-demo\05-reset-demo.spec.ts:11:3 › Sales Demo — Reset Demo walkthrough › Reset Demo button returns success and hero load persists (5.0s)
-
-  7 passed (43.9s)
-```
