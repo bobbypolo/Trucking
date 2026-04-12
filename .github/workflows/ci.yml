@@ -91,7 +91,7 @@ jobs:
 
   tenant-scope-check:
     name: Tenant Scope Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Check for unscoped tenant-table queries (R-P3-04)
@@ -123,7 +123,7 @@ jobs:
 
   migration-validation:
     name: Migration Validation
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: server
@@ -135,7 +135,6 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm ci
-        shell: cmd
       - name: Validate migration files (R-P1-07)
         shell: bash
         run: |
@@ -297,17 +296,15 @@ jobs:
 
   python-hooks:
     name: Python Hook Tests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install test dependencies
-        shell: cmd
         run: pip install pytest pyyaml
       - name: Run hook tests
-        shell: cmd
         run: python -m pytest .claude/hooks/tests/ -v
 
   e2e-api-smoke:
