@@ -6,6 +6,8 @@
  * Tests R-P2-03: Renders status badge with color-coded background per LoadStatus.
  * Tests R-P3-04: Renders StatusUpdateButton with currentStatus and onStatusChange={transitionTo}.
  * Tests R-P6-03: Renders "Capture Document" Pressable that navigates to CameraScreen with loadId param.
+ * Tests R-P5-07: Renders StopList with the current load ID.
+ * Tests R-P5-09: Renders document checklist with BOL/POD present/missing indicators.
  */
 
 import { useEffect, useState } from "react";
@@ -22,7 +24,9 @@ import { fetchLoadById } from "../../../services/loads";
 import { getOrigin, getDestination } from "../../../types/load";
 import { StatusUpdateButton } from "../../../components/StatusUpdateButton";
 import { DocumentList } from "../../../components/DocumentList";
+import { StopList } from "../../../components/StopList";
 import { useLoadStatus } from "../../../hooks/useLoadStatus";
+import { fetchDocuments } from "../../../services/stops";
 import type { Load, LoadStatus } from "../../../types/load";
 
 const STATUS_COLORS: Record<LoadStatus, string> = {
@@ -50,6 +54,7 @@ export default function LoadDetailScreen() {
   const [load, setLoad] = useState<Load | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [presentDocTypes, setPresentDocTypes] = useState<string[]>([]);
 
   const {
     status: currentStatus,
@@ -85,6 +90,29 @@ export default function LoadDetailScreen() {
     }
 
     loadDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    let cancelled = false;
+
+    async function loadDocChecklist() {
+      try {
+        const docs = await fetchDocuments(id);
+        if (!cancelled) {
+          setPresentDocTypes(docs.map((d) => d.document_type));
+        }
+      } catch (_err: unknown) {
+        // Document checklist fetch failure is non-critical
+      }
+    }
+
+    loadDocChecklist();
 
     return () => {
       cancelled = true;
@@ -177,6 +205,32 @@ export default function LoadDetailScreen() {
           <Text style={styles.statusErrorText}>{statusError}</Text>
         </View>
       ) : null}
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Stops</Text>
+      </View>
+
+      <StopList loadId={id || ""} />
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Document Checklist</Text>
+      </View>
+
+      {["BOL", "POD"].map((docType) => {
+        const isPresent = presentDocTypes.includes(docType);
+        return (
+          <View key={docType} style={styles.checklistRow}>
+            <Text style={styles.checklistLabel}>{docType}</Text>
+            <Text
+              style={
+                isPresent ? styles.checklistPresent : styles.checklistMissing
+              }
+            >
+              {isPresent ? "Present" : "Missing"}
+            </Text>
+          </View>
+        );
+      })}
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Documents</Text>
@@ -294,6 +348,31 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#DC2626",
     textAlign: "center",
+  },
+  checklistRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    marginBottom: 6,
+    padding: 14,
+    borderRadius: 10,
+  },
+  checklistLabel: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  checklistPresent: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#22C55E",
+  },
+  checklistMissing: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#EF4444",
   },
   captureContainer: {
     paddingHorizontal: 16,
