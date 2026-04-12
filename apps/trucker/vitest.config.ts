@@ -17,6 +17,10 @@ export default defineConfig({
         __dirname,
         "__mocks__/netinfo.ts",
       ),
+      "expo-file-system": path.resolve(
+        __dirname,
+        "__mocks__/expo-file-system.ts",
+      ),
     },
   },
   esbuild: {

@@ -61,6 +61,22 @@ vi.mock("react-native", () => {
         { "data-testid": "activity-indicator", ...props },
         "Loading...",
       ),
+    TextInput: (props: any) => React.createElement("input", props),
+    RefreshControl: ({ refreshing, onRefresh, ...props }: any) =>
+      React.createElement("div", {
+        "data-testid": "refresh-control",
+        "data-refreshing": String(refreshing),
+        onClick: onRefresh,
+        ...props,
+      }),
+    Modal: ({ children, visible, ...props }: any) =>
+      visible
+        ? React.createElement(
+            "div",
+            { "data-testid": "modal", ...props },
+            children,
+          )
+        : null,
     Alert: { alert: vi.fn() },
   };
   return { ...RN, default: RN };
@@ -120,6 +136,18 @@ vi.mock("../../src/components/DocumentList", () => ({
       { "data-testid": "document-list" },
       `DocumentList for ${loadId}`,
     ),
+}));
+
+// Mock IssueReportForm (added by STORY-007, uses Modal)
+vi.mock("../../src/components/IssueReportForm", () => ({
+  IssueReportForm: () =>
+    React.createElement("div", { "data-testid": "issue-report-form" }),
+}));
+
+// Mock issues service (used by load detail after STORY-007)
+vi.mock("../../src/services/issues", () => ({
+  reportIssue: vi.fn().mockResolvedValue({ id: "exc-1" }),
+  fetchDriverExceptions: vi.fn().mockResolvedValue([]),
 }));
 
 // Mock StatusUpdateButton
