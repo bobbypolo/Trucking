@@ -2,382 +2,4412 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "6b6bc474eddaa5f5b8d55e0686114da647d514b5f3be7e0966df02227de4017d",
+  "plan_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "stories": [
     {
-      "id": "STORY-B1-01",
-      "description": "Migration adds aging_bucket column to ar_invoices",
+      "id": "STORY-001",
+      "description": "- Route inventory and allowlist",
       "phase": 1,
       "phase_type": "module",
       "component": "server/",
       "scope": [
-        "server/migrations/",
-        "server/__tests__/migrations/"
+        "server/"
       ],
       "complexity": "simple",
-      "maxTurns": 80,
+      "maxTurns": 100,
       "dependsOn": [],
-      "parallelGroup": null,
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-01",
-          "criterion": "test reads SQL file via `fs.readFileSync` and asserts UP section contains exactly one `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL` line via regex match.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-01 [backend]: Every route is classified and the explicit allowlist is documented and tested",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 1"
         },
         {
-          "id": "R-B1-02",
-          "criterion": "test reads file via `fs.readFileSync` and asserts DOWN section contains exactly one `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other `DROP` occurrences (regex count).",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 1"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 1"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-001.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-02",
-      "description": "Job populates aging_bucket with 5-bucket assignment",
-      "phase": 1,
+      "id": "STORY-002",
+      "description": "- Missing auth / tenant / validation closure",
+      "phase": 2,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "route files missing guards"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-04 [backend]: Known gaps are closed and route audit passes",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 2"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 2"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 2"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-002.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-003",
+      "description": "- Server-side RBAC completion",
+      "phase": 3,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "protected mutation routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-07 [backend]: Sensitive routes enforce server-side roles and tiers",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 3"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 3"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 3"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-003.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-004",
+      "description": "- Pagination and filtering standard",
+      "phase": 4,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "list-heavy routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-10 [backend]: Large endpoints expose and honor pagination and filters",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 4"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 4"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 4"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-004.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-005",
+      "description": "- Health check and dependency readiness",
+      "phase": 5,
       "phase_type": "module",
       "component": "server/",
       "scope": [
-        "server/jobs/",
-        "server/__tests__/jobs/"
+        "server/"
       ],
-      "complexity": "moderate",
+      "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-01"
-      ],
-      "parallelGroup": null,
+      "dependsOn": [],
+      "parallelGroup": 2,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-03",
-          "criterion": "5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`; test asserts exact values via `.toBe()`.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-13 [backend]: Health reflects DB and dependency readiness correctly",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 5"
         },
         {
-          "id": "R-B1-04",
-          "criterion": "invoice with null `issued_at` results in `aging_bucket` staying null (test asserts `.toBeNull()`).",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 5"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 5"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/jobs/invoice-aging-nightly.test.ts\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-005.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-03",
-      "description": "External scheduler wrapper (Windows-safe .cjs)",
-      "phase": 1,
+      "id": "STORY-006",
+      "description": "- Rate limiting and idempotency baseline",
+      "phase": 6,
       "phase_type": "module",
-      "component": "scripts/",
+      "component": "",
       "scope": [
-        "scripts/",
-        "server/__tests__/scripts/",
-        "docs/ops/"
+        "middleware"
       ],
-      "complexity": "moderate",
+      "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-02"
-      ],
-      "parallelGroup": null,
+      "dependsOn": [],
+      "parallelGroup": 2,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-05",
-          "criterion": "test spawns `node scripts/invoice-aging-nightly.cjs --dry-run` via `child_process.spawnSync`; asserts exit code 0 and stdout contains `\"status\":\"dry-run\"`.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-16 [backend]: Repeated writes are safe and abusive traffic is constrained",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 6"
         },
         {
-          "id": "R-B1-06",
-          "criterion": "runbook `docs/ops/invoice-aging-nightly.md` contains H2 sections `## Dry-run`, `## Production invocation`, `## Idempotency`, `## Failure alerting`, `## Cron example`, `## GitHub Actions example`, `## Rollback`; test reads file via `fs.readFileSync` and asserts each heading via regex.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 6"
         },
         {
-          "id": "R-B1-07",
-          "criterion": "test spawns wrapper with no `DATABASE_URL` env; asserts non-zero exit and stderr JSON contains `\"error\":\"missing_database_url\"`.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 6"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/invoice-aging-nightly.test.ts\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-006.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-04",
-      "description": "Sentry server-side init (gated on SENTRY_DSN)",
-      "phase": 1,
+      "id": "STORY-007",
+      "description": "- Tenant isolation regression pack",
+      "phase": 7,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 2,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-19 [backend]: Cross-tenant regression suite passes",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 7"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 7"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W0-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 7"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-007.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-008",
+      "description": "- `server/index.ts` modularization",
+      "phase": 8,
       "phase_type": "module",
       "component": "server/",
       "scope": [
-        "server/index.ts",
-        "server/__tests__/"
+        "server/"
       ],
       "complexity": "simple",
-      "maxTurns": 80,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-08",
-          "criterion": "test reads `server/index.ts` via `fs.readFileSync` and asserts the import line and conditional `initSentry()` call via regex match.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-09",
-          "criterion": "integration test sets `process.env.SENTRY_DSN = 'test-dsn'`, mocks `initSentry`, imports `server/index`, asserts `initSentry` called exactly once.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-10",
-          "criterion": "integration test with `SENTRY_DSN` unset -> server module loads without throwing.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/index.sentry-init.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-05",
-      "description": "Master program document + release checklist + sprint history",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/",
-        "scripts/"
-      ],
-      "complexity": "moderate",
       "maxTurns": 100,
       "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "parallelGroup": 2,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-11",
-          "criterion": "master plan contains H2 sections for all 13 sprints (B1..M); verified by `scripts/verify-program-docs.cjs` reading file via `fs.readFileSync` and asserting each heading via regex.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-22 [backend]: Bootstrap is delegated cleanly and route behavior is unchanged",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 8"
         },
         {
-          "id": "R-B1-12",
-          "criterion": "master plan contains `## Shipped Baseline (Sprint A)` section; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 8"
         },
         {
-          "id": "R-B1-13",
-          "criterion": "release checklist contains tables for operator gates `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`, `OP-LEGAL-*`; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-14",
-          "criterion": "sprint-history has initial entry with `dd8a8f4` Sprint A SHA.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W0-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 8"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-008.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-06",
-      "description": "Baseline debt register populated with REAL entries",
-      "phase": 1,
+      "id": "STORY-009",
+      "description": "- Canonical load / trip / stop ruling implementation scaffold",
+      "phase": 9,
       "phase_type": "module",
-      "component": "docs/",
+      "component": "",
       "scope": [
-        "docs/",
-        "scripts/"
+        "schema docs"
       ],
-      "complexity": "moderate",
-      "maxTurns": 120,
+      "complexity": "simple",
+      "maxTurns": 100,
       "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "parallelGroup": 3,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-15",
-          "criterion": "`docs/trucker-app-baseline-debt.md` exists and contains a markdown table with columns `file | failure | owner | first-seen | expiry | justification`; verified via `scripts/verify-baseline-debt.cjs` parsing the markdown table using `fs.readFileSync` + regex.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-01 [backend]: Architecture ruling is encoded in contracts and docs",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 9"
         },
         {
-          "id": "R-B1-16",
-          "criterion": "register either contains >= 1 real entry OR an explicit `| _(verified clean at <date>)_ |` placeholder row; helper script asserts one of the two.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 9"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 9"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-baseline-debt.cjs\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-009.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-07",
-      "description": "Env matrix doc",
-      "phase": 1,
+      "id": "STORY-010",
+      "description": "- Trip foundation schema",
+      "phase": 10,
       "phase_type": "module",
-      "component": "docs/",
+      "component": "",
       "scope": [
-        "docs/"
+        "new trip table and load-to-trip linkage migrations"
       ],
       "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 3,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-17",
-          "criterion": "doc contains table with columns `Variable`, `Category`, `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`, `Rotation`; verified via helper script reading file with `fs.readFileSync` and matching header via regex.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-04 [backend]: First-class trip entity exists without breaking current flows",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 10"
         },
         {
-          "id": "R-B1-18",
-          "criterion": "doc contains H2 section `## EXPO_PUBLIC_* rule` stating that mobile public keys MUST use the prefix and server secrets MUST NOT.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 10"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 10"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-010.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-08",
-      "description": "Feature flags doc + migration numbering rule",
-      "phase": 1,
+      "id": "STORY-011",
+      "description": "- Stop linkage normalization",
+      "phase": 11,
       "phase_type": "module",
-      "component": "docs/",
+      "component": "",
       "scope": [
-        "docs/"
+        "load_legs"
       ],
       "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 3,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-19",
-          "criterion": "feature flags doc lists all 6 flags (`FEATURE_TRUCKER_MOBILE_BETA`, `FEATURE_MOTIVE_ELD`, `FEATURE_BROKER_CREDIT`, `FEATURE_FACILITY_DWELL`, `FEATURE_FREEMIUM_QUOTA`, `FEATURE_FORCE_UPGRADE`); helper script reads file and asserts each flag name via regex.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-07 [backend]: Existing `load_legs` is linked into the new execution model",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 11"
         },
         {
-          "id": "R-B1-20",
-          "criterion": "migration-numbering doc contains the placeholder rule and assignment procedure; helper script asserts H2 sections `## Placeholder convention` and `## Assignment procedure`.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W1-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 11"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 11"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-011.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-09",
-      "description": "feature_flags DB table + read/write endpoint + server/index.ts mount",
-      "phase": 1,
+      "id": "STORY-012",
+      "description": "- Document lineage foundation",
+      "phase": 12,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "document schema and indexes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 3,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-10 [docs]: Documents can link to canonical parents under the new lineage model",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 12"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-11 [docs]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 12"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-12 [docs]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 12"
+        }
+      ],
+      "gateCmds": {
+        "unit": "test -f document schema and indexes"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-013",
+      "description": "- Lineage matrix and ownership enforcement",
+      "phase": 13,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "contracts"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-13 [backend]: Canonical ownership map is implemented, not just documented",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 13"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 13"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 13"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-013.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-014",
+      "description": "- OCR result lineage completion",
+      "phase": 14,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "OCR tables"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-16 [backend]: OCR results can be traced to document and business context",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 14"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 14"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 14"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-014.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-015",
+      "description": "- Settlement lineage schema",
+      "phase": 15,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "settlement tables and repositories"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-19 [backend]: Settlement records and lines trace to load and trip correctly",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 15"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 15"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 15"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-015.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-016",
+      "description": "- Expense and reimbursement lineage",
+      "phase": 16,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "financial tables and services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 5,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-22 [backend]: Expenses tie to source trip, stop, document, or policy",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 16"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 16"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 16"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-016.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-017",
+      "description": "- Telematics lineage schema",
+      "phase": 17,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "tracking tables and repositories"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 6,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-25 [backend]: Telemetry can attach to trip and vehicle consistently",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 17"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-26 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 17"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-27 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 17"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-017.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-018",
+      "description": "- Compliance evidence lineage",
+      "phase": 18,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "IFTA and compliance tables"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 6,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-28 [backend]: Evidence ties to compliance period and trip/load context",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 18"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-29 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 18"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-30 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 18"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-018.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-019",
+      "description": "- Orphan-row backfill engine",
+      "phase": 19,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "migrations"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 6,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-31 [backend]: Existing records are classified, backfilled, or queued for review",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 19"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-32 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 19"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-33 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 19"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-019.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-020",
+      "description": "- Duplicate-truth reconciliation",
+      "phase": 20,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "reconciliation service"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 6,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-34 [backend]: Duplicate parentage and shadow models are surfaced and reduced",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 20"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-35 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 20"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-36 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 20"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-020.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-021",
+      "description": "- Lineage query pack for certified journeys",
+      "phase": 21,
+      "phase_type": "module",
+      "component": "SQL/",
+      "scope": [
+        "SQL/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 7,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-37 [backend]: Each certified journey has reproducible lineage output",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 21"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-38 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 21"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-39 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 21"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-021.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-022",
+      "description": "- Strictness hardening for new writes",
+      "phase": 22,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "validators"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-012"
+      ],
+      "parallelGroup": 7,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-40 [backend]: New writes require canonical parent linkage where mandated",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 22"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-41 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 22"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W1-42 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 22"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-022.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-023",
+      "description": "- Quote model normalization",
+      "phase": 23,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "quote schema"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-01 [backend]: Quotes carry the fields needed for full downstream continuity",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 23"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 23"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 23"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-023.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-024",
+      "description": "- Booking-to-load conversion hardening",
+      "phase": 24,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "booking repo"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-04 [backend]: Bookings convert cleanly with no data loss",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 24"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 24"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 24"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-024.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-025",
+      "description": "- Load lifecycle state certification",
+      "phase": 25,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "load routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-07 [backend]: Full valid and invalid state transitions are verified",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 25"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 25"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 25"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-025.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-026",
+      "description": "- Assignment and repower closure",
+      "phase": 26,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "dispatch routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 8,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-10 [backend]: Reassignment and repower keep continuity and audit trail",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 26"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 26"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 26"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-026.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-027",
+      "description": "- Dispatcher timeline and calendar truth",
+      "phase": 27,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "timeline and calendar components"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 9,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-13 [frontend]: Timeline and calendar reflect canonical load/trip state",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 27"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-14 [frontend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 27"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-15 [frontend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 27"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run src/__tests__/fleet-os/phase-027.test.tsx"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-028",
+      "description": "- Exception and work-item continuity",
+      "phase": 28,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "exception console"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 9,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-16 [backend]: Operational exceptions remain tied to the same business context",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 28"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 28"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 28"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-028.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-029",
+      "description": "- Customer and broker continuity",
+      "phase": 29,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "network"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 9,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-19 [backend]: Customer / broker identity is preserved across execution views",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 29"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 29"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W2-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 29"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-029.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-030",
+      "description": "- Document completeness by trip and load",
+      "phase": 30,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "docs routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 9,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-01 [docs]: Missing artifacts are visible and block downstream steps where required",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 30"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-02 [docs]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 30"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-03 [docs]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 30"
+        }
+      ],
+      "gateCmds": {
+        "unit": "test -f docs routes"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-031",
+      "description": "- OCR review-to-apply pipeline closure",
+      "phase": 31,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "OCR review UI"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 10,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-04 [backend]: Human-reviewed extraction can safely update target records",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 31"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 31"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W3-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 31"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-031.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-032",
+      "description": "- Quote-to-load-to-settlement certification",
+      "phase": 32,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "cross-domain tests and runbooks"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 10,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-01 [backend]: Full core loop journey is certified end to end",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 32"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 32"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 32"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-032.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-033",
+      "description": "- Driver trip workspace canonicalization",
+      "phase": 33,
+      "phase_type": "module",
+      "component": "apps/",
+      "scope": [
+        "apps/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 12,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-01 [frontend]: Driver sees one canonical trip workspace with the same execution truth used by dispatch",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 33"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-02 [frontend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 33"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-03 [frontend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 33"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run src/__tests__/fleet-os/phase-033.test.tsx"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-034",
+      "description": "- Stop sequence, appointment, and next-action truth",
+      "phase": 34,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "load_legs"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-011",
+        "STORY-022"
+      ],
+      "parallelGroup": 12,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-04 [backend]: Driver UI reflects ordered stops, appointments, next required action, and stop-level state correctly",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 34"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 34"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 34"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-034.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-035",
+      "description": "- Driver status update contract completion",
+      "phase": 35,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "mobile actions"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 12,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-07 [backend]: Departed, arrived, loaded, unloaded, delivered, and exception statuses map cleanly to backend state transitions",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 35"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 35"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 35"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-035.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-036",
+      "description": "- Delay, detention, lumper, and breakdown workflow closure",
+      "phase": 36,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "issue routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 12,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-10 [backend]: Field-reported operational events create traceable office-side work items and downstream impacts",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 36"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 36"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 36"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-036.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-037",
+      "description": "- Driver messaging and read-state continuity",
+      "phase": 37,
       "phase_type": "module",
       "component": "server/",
       "scope": [
-        "server/migrations/",
-        "server/routes/",
-        "server/index.ts",
-        "server/__tests__/"
+        "server/"
       ],
-      "complexity": "complex",
-      "maxTurns": 150,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 13,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-21",
-          "criterion": "migration creates `feature_flags` table with 6 columns (id, tenant_id, flag_name, flag_value, updated_at, updated_by); test reads SQL file via `fs.readFileSync`.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W9-01 [backend]: Driver and dispatcher messaging shares one thread model with visible read and delivery state",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 37"
         },
         {
-          "id": "R-B1-22",
-          "criterion": "`GET /api/feature-flags` returns merged flag map (env + DB) for authenticated user's tenant; integration test via supertest.",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W9-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 37"
         },
         {
-          "id": "R-B1-23",
-          "criterion": "`PUT /api/feature-flags/:name` requires admin role; non-admin returns HTTP 403 (auth-negative Rule 16).",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-24",
-          "criterion": "`server/index.ts` mount line `app.use('/api/feature-flags', featureFlagsRouter)` present; test reads file via `fs.readFileSync` and asserts via regex match (no shell grep).",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W9-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 37"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/ __tests__/routes/feature-flags.test.ts\""
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-037.test.ts"
       },
       "passed": false,
       "verificationRef": null
     },
     {
-      "id": "STORY-B1-10",
-      "description": "SaaS non-regression verification",
-      "phase": 1,
+      "id": "STORY-038",
+      "description": "- Document checklist and mobile scan flow",
+      "phase": 38,
       "phase_type": "module",
-      "component": "scripts/",
+      "component": "",
       "scope": [
-        "scripts/"
+        "scanner UI"
       ],
-      "complexity": "moderate",
+      "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 13,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-25",
-          "criterion": "helper script `scripts/verify-saas-regression.cjs` runs `npx vitest run src/__tests__/` and `cd server && npx vitest run __tests__/routes/accounting.test.ts __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts` via `child_process.spawnSync`, captures exit codes, asserts all 0 (modulo baseline debt exclusions).",
-          "testType": "unit",
-          "testFile": null
+          "id": "",
+          "criterion": "R-FLEET-W4-13 [docs]: Required documents are visible by trip and can be captured from the field into the canonical document lifecycle",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 38"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-14 [docs]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 38"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-15 [docs]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 38"
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-saas-regression.cjs\""
+        "unit": "test -f scanner UI"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-039",
+      "description": "- Driver pay and settlement visibility",
+      "phase": 39,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "mobile pay UI"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 13,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-16 [backend]: Driver can see allowed settlement and pay details without exposing back-office-only controls",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 39"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 39"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 39"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-039.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-040",
+      "description": "- Offline queue, sync, and conflict handling",
+      "phase": 40,
+      "phase_type": "module",
+      "component": "mobile storage/",
+      "scope": [
+        "mobile storage/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 13,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-19 [backend]: Core field actions queue offline, replay safely, and surface conflicts deterministically",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 40"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 40"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 40"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-040.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-041",
+      "description": "- Mobile auth, session, and device hardening",
+      "phase": 41,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "mobile auth flows"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 14,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-22 [backend]: Authentication, re-auth, session expiry, and lost-connectivity behavior are safe and predictable in field conditions",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 41"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 41"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 41"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-041.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-042",
+      "description": "- Push, alert, and acknowledgement path",
+      "phase": 42,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "notification services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 14,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-04 [backend]: Critical operational alerts reach the driver and capture acknowledgement or visible failure",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 42"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 42"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 42"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-042.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-043",
+      "description": "- Pilot-channel release and legal readiness",
+      "phase": 43,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "build config"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 14,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-25 [backend]: Pilot build is signable, distributable, policy-complete, and crash-observable on the supported device matrix",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 43"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-26 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 43"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-27 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 43"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-043.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-044",
+      "description": "- Driver field-loop certification",
+      "phase": 44,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "certified mobile journey tests"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 14,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-28 [backend]: Assignment-through-proof mobile loop is certified end to end in staging and pilot conditions",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 44"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-29 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 44"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W4-30 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 44"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-044.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-045",
+      "description": "- Provider abstraction hardening",
+      "phase": 45,
+      "phase_type": "integration",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 16,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-01 [backend]: Telematics providers share a stable abstraction for auth, ingest, health, retry, and mapping",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 45"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 45"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 45"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-045.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-046",
+      "description": "- Primary provider production path",
+      "phase": 46,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "Samsara adapter"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 16,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-04 [backend]: One named provider works end to end with production-grade setup, sync, and visible failure states",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 46"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 46"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 46"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-046.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-047",
+      "description": "- Vehicle, trailer, driver, and asset mapping closure",
+      "phase": 47,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "telematics mapping UI"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 16,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-07 [backend]: Provider entities map cleanly to internal drivers, vehicles, and equipment with conflict handling",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 47"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 47"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 47"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-047.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-048",
+      "description": "- Live telemetry ingest, health, and replay",
+      "phase": 48,
+      "phase_type": "integration",
+      "component": "webhook/",
+      "scope": [
+        "webhook/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 16,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-10 [backend]: Telemetry events ingest reliably, expose health state, and can replay or backfill after outage",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 48"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 48"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 48"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-048.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-049",
+      "description": "- Trip-linked telemetry consumer layer",
+      "phase": 49,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "dispatch views"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 17,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-13 [backend]: Telemetry flows into dispatch, trip history, and compliance consumers from one canonical event stream",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 49"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 49"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 49"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-049.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-050",
+      "description": "- HOS display and conflict handling",
+      "phase": 50,
+      "phase_type": "integration",
+      "component": "future ELD/",
+      "scope": [
+        "future ELD/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 17,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-16 [backend]: HOS data is visible, stale or conflicting states are surfaced, and unsupported cases are represented honestly",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 50"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 50"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W5-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 50"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-050.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-051",
+      "description": "- IFTA evidence ingestion and gap detection",
+      "phase": 51,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "IFTA services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 17,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-01 [backend]: Mileage and fuel evidence ingest consistently and gap detection surfaces actionable missing evidence",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 51"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 51"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 51"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-051.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-052",
+      "description": "- Quarter-close lock, review, and audit export",
+      "phase": 52,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "IFTA close workflows"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 17,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-04 [backend]: IFTA quarter close produces a locked, reproducible packet with traceable evidence",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 52"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 52"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 52"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-052.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-053",
+      "description": "- Compliance cockpit truth model",
+      "phase": 53,
+      "phase_type": "integration",
+      "component": "compliance routes/",
+      "scope": [
+        "compliance routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 18,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-07 [backend]: Every compliance status shows source, freshness, verifier state, and whether it is manual, derived, or synced",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 53"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 53"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 53"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-053.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-054",
+      "description": "- Permits, deadlines, and annual filing continuity",
+      "phase": 54,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "compliance scheduler"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 18,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-10 [backend]: IRP, UCR, HVUT/2290, permits, and annual deadlines are tracked with reminders and evidence continuity",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 54"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 54"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 54"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-054.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-055",
+      "description": "- Maintenance scheduling and return-to-service continuity",
+      "phase": 55,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "maintenance UI"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 18,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-13 [backend]: Maintenance and inspection actions connect equipment status, repair records, and return-to-service state",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 55"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 55"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 55"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-055.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-056",
+      "description": "- DVIR defect, repair signoff, and photo flow",
+      "phase": 56,
+      "phase_type": "integration",
+      "component": "DVIR UI/",
+      "scope": [
+        "DVIR UI/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 18,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-16 [backend]: DVIR supports field submission, photo evidence, defect escalation, repair signoff, and return-to-service",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 56"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 56"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 56"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-056.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-057",
+      "description": "- Safety, incident, certificate, and inspection lifecycle",
+      "phase": 57,
+      "phase_type": "integration",
+      "component": "safety routes/",
+      "scope": [
+        "safety routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 19,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-19 [backend]: Safety-critical records maintain field-to-office continuity and auditability across the full lifecycle",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 57"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 57"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 57"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-057.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-058",
+      "description": "- Telematics-to-compliance certification",
+      "phase": 58,
+      "phase_type": "integration",
+      "component": "",
+      "scope": [
+        "cross-domain tests"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-022"
+      ],
+      "parallelGroup": 19,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-22 [backend]: Provider-backed telemetry path and compliance workflows are certified together, not as separate demos",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 58"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 58"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W6-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 58"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-058.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-059",
+      "description": "- Settlement rule engine completion",
+      "phase": 59,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "settlement services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 20,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-04 [backend]: Settlement generation covers core trip/load cases with explicit rate, deduction, reimbursement, and provenance logic",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 59"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 59"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 59"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-059.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-060",
+      "description": "- Settlement review, posting, and immutability",
+      "phase": 60,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "settlement posting flows"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 20,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-07 [backend]: Posted settlements are immutable except through explicit adjustment workflows with audit trail",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 60"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 60"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 60"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-060.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-061",
+      "description": "- AP workflow certification",
+      "phase": 61,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "AP routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 20,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-10 [backend]: Accounts payable can move from evidence to payable state without spreadsheet side-processes for core cases",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 61"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 61"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 61"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-061.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-062",
+      "description": "- AR, invoicing, and aging completion",
+      "phase": 62,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "invoice routes"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 20,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-13 [backend]: Accounts receivable, invoice issuance, status, and aging operate end to end from canonical load/commercial data",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 62"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 62"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 62"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-062.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-063",
+      "description": "- GL, journal, and close baseline",
+      "phase": 63,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "accounting services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 21,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-16 [backend]: Financial events land in consistent ledger structures and support core close activities without data drift",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 63"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 63"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 63"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-063.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-064",
+      "description": "- Reconciliation and exception handling",
+      "phase": 64,
+      "phase_type": "module",
+      "component": "reconciliation services/",
+      "scope": [
+        "reconciliation services/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 21,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-19 [backend]: Sync mismatches, payment mismatches, and missing postings surface in an actionable reconciliation console",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 64"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 64"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 64"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-064.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-065",
+      "description": "- QuickBooks sync completion",
+      "phase": 65,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 21,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-22 [backend]: QuickBooks supports connect, sync, retry, visible error states, and reconciliation for the supported entities",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 65"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 65"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 65"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-065.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-066",
+      "description": "- Stripe subscription and billing completion",
+      "phase": 66,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 21,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-25 [backend]: Stripe supports subscription/billing lifecycle, webhook handling, failure visibility, and tenant billing truth",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 66"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-26 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 66"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W7-27 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 66"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-066.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-067",
+      "description": "- Customer and broker master normalization",
+      "phase": 67,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "contacts"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 22,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-01 [backend]: Customer and broker identities no longer fork across quotes, loads, settlements, and invoices",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 67"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 67"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 67"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-067.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-068",
+      "description": "- Quote, load, proof, invoice, and payment continuity",
+      "phase": 68,
+      "phase_type": "module",
+      "component": "quote/",
+      "scope": [
+        "quote/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 22,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-04 [backend]: Commercial lineage from quote through proof and invoice/payment is queryable and operator-visible",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 68"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 68"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 68"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-068.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-069",
+      "description": "- Broker payment intelligence groundwork",
+      "phase": 69,
+      "phase_type": "module",
+      "component": "broker performance/",
+      "scope": [
+        "broker performance/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 22,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-07 [backend]: Broker payment status and performance metrics derive from canonical financial and operational records",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 69"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 69"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 69"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-069.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-070",
+      "description": "- Financial controls and approval baseline",
+      "phase": 70,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "permissions"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-032"
+      ],
+      "parallelGroup": 22,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-10 [backend]: Financially material actions require the correct approvals and leave a durable audit trail",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 70"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 70"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 70"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-070.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-071",
+      "description": "- Back-office workflow certification",
+      "phase": 71,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "cross-domain tests"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-058",
+        "STORY-032"
+      ],
+      "parallelGroup": 23,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-13 [backend]: Finance and commercial workflows are certified end to end for supported fleet operating cases",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 71"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 71"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W8-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 71"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-071.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-072",
+      "description": "- Real email provider completion",
+      "phase": 72,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "email services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 24,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-07 [backend]: Email delivery is no longer stubbed and exposes success, retry, and failure state",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 72"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 72"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 72"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-072.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-073",
+      "description": "- Real SMS provider completion",
+      "phase": 73,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "SMS services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 24,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-10 [backend]: SMS delivery is real, observable, and policy-compliant for the supported use cases",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 73"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 73"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 73"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-073.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-074",
+      "description": "- Notification delivery and acknowledgement model",
+      "phase": 74,
+      "phase_type": "module",
+      "component": "message/",
+      "scope": [
+        "message/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 24,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-13 [backend]: Notifications have canonical queued, sent, delivered, failed, and acknowledged states where applicable",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 74"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 74"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 74"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-074.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-075",
+      "description": "- Operational alerts and escalation rules",
+      "phase": 75,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "alerting config"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 24,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-01 [backend]: Critical domain events create the right alerts and escalations for operations and support",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 75"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 75"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 75"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-075.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-076",
+      "description": "- Notification and job observability",
+      "phase": 76,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "job dashboards"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 25,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-16 [backend]: Operators can see notification/job health, backlogs, retries, and failures without digging through logs",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 76"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 76"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W9-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 76"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-076.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-077",
+      "description": "- Structured logging and correlation standard",
+      "phase": 77,
+      "phase_type": "module",
+      "component": "backend/",
+      "scope": [
+        "backend/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 25,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-04 [backend]: Logs across services and clients are structured and correlate a workflow across route, job, and UI layers",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 77"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 77"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 77"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-077.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-078",
+      "description": "- Sentry and runtime error strategy completion",
+      "phase": 78,
+      "phase_type": "module",
+      "component": "Sentry client/",
+      "scope": [
+        "Sentry client/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 25,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-07 [backend]: All major runtime surfaces emit actionable error telemetry with environment and release context",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 78"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 78"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 78"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-078.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-079",
+      "description": "- Service ownership, on-call, and runbook completion",
+      "phase": 79,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "docs"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 25,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-10 [backend]: Every production-critical subsystem has an owner, on-call path, and usable runbook",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 79"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-11 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 79"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-12 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 79"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-079.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-080",
+      "description": "- Deployment, rollback, and recovery drills",
+      "phase": 80,
+      "phase_type": "module",
+      "component": "deployment scripts/",
+      "scope": [
+        "deployment scripts/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 26,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-13 [backend]: Blue-green or equivalent rollout, rollback, and restore procedures are proven in drills",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 80"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 80"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 80"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-080.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-081",
+      "description": "- Feature flags and progressive rollout controls",
+      "phase": 81,
+      "phase_type": "module",
+      "component": "feature-flag routes/",
+      "scope": [
+        "feature-flag routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 26,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-16 [backend]: New capabilities can be gated by tenant/tier and disabled safely during incidents",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 81"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 81"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 81"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-081.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-082",
+      "description": "- Release evidence bundle and launch checklist",
+      "phase": 82,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "release docs"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 26,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-19 [backend]: Every release can produce a repeatable evidence bundle showing what changed and how it was verified",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 82"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 82"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 82"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-082.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-083",
+      "description": "- Product truth matrix and customer-facing alignment",
+      "phase": 83,
+      "phase_type": "module",
+      "component": "sales/",
+      "scope": [
+        "sales/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 26,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-22 [backend]: Sales, support, implementation, and product all speak from the same truth table for live vs partial vs planned",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 83"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 83"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 83"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-083.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-084",
+      "description": "- Repo and environment hygiene cleanup",
+      "phase": 84,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "stale directories"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 27,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-25 [backend]: Repo hygiene issues and environment inconsistencies that undermine trust are removed or documented with controls",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 84"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-26 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 84"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-27 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 84"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-084.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-085",
+      "description": "- Pilot and production support model",
+      "phase": 85,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "support playbooks"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 27,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-28 [backend]: Pilot fleets and production fleets have an explicit support and escalation operating model",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 85"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-29 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 85"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-30 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 85"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-085.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-086",
+      "description": "- Operate-and-launch certification",
+      "phase": 86,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "runbook drills"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-044",
+        "STORY-058",
+        "STORY-071"
+      ],
+      "parallelGroup": 27,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-31 [backend]: The product can be operated, supported, rolled back, and truthfully launched without hidden manual heroics",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 86"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-32 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 86"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W10-33 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 86"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-086.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-087",
+      "description": "- Versioned public API contract",
+      "phase": 87,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 28,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-01 [backend]: A versioned API namespace exists with explicit resource contracts and deprecation policy",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 87"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-02 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 87"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-03 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 87"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-087.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-088",
+      "description": "- Tenant API keys, scopes, and rate limits",
+      "phase": 88,
+      "phase_type": "module",
+      "component": "API key routes/",
+      "scope": [
+        "API key routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 28,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-04 [backend]: API keys can be issued, rotated, revoked, scoped, and rate-limited per tenant",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 88"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-05 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 88"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-06 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 88"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-088.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-089",
+      "description": "- Outbound webhook platform",
+      "phase": 89,
+      "phase_type": "module",
+      "component": "future webhook routes/",
+      "scope": [
+        "future webhook routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 28,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-07 [backend]: Tenants can subscribe to supported domain events and receive signed, retryable outbound webhooks",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 89"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-08 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 89"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-09 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 89"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-089.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-090",
+      "description": "- Developer docs and sandbox path",
+      "phase": 90,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "developer docs portal"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 28,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-10 [docs]: External developers have documentation and a safe path to integrate without production guesswork",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 90"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-11 [docs]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 90"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-12 [docs]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 90"
+        }
+      ],
+      "gateCmds": {
+        "unit": "test -f developer docs portal"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-091",
+      "description": "- SSO / SAML identity path",
+      "phase": 91,
+      "phase_type": "module",
+      "component": "future SSO routes/",
+      "scope": [
+        "future SSO routes/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 29,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-13 [backend]: Enterprise tenants can authenticate through supported SSO/SAML flows with correct tenant boundaries",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 91"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-14 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 91"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-15 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 91"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-091.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-092",
+      "description": "- SCIM or bulk provisioning path",
+      "phase": 92,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "provisioning services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 29,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-16 [backend]: Enterprise user provisioning can be automated or bulk-managed with auditability",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 92"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-17 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 92"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-18 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 92"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-092.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-093",
+      "description": "- Customer onboarding and migration toolkit",
+      "phase": 93,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "import UI"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 29,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-19 [backend]: Existing fleet data can be imported through guided mapping, validation, preview, and rollback-capable tooling",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 93"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-20 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 93"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-21 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 93"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-093.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-094",
+      "description": "- Data export, portability, retention, and legal holds",
+      "phase": 94,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "export services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 29,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-22 [backend]: Customers can export their data, retention rules are explicit, and legal-hold style requirements are supportable",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 94"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-23 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 94"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-24 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 94"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-094.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-095",
+      "description": "- Data residency and multi-region control path",
+      "phase": 95,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "deployment architecture docs"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 30,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-25 [backend]: Regional storage/processing constraints and future multi-region strategy are explicit and technically grounded",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 95"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-26 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 95"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-27 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 95"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-095.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-096",
+      "description": "- Internationalization, multi-currency, and unit framework",
+      "phase": 96,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "shared formatting utilities"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 30,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-28 [backend]: Currency, unit, locale, and cross-border presentation rules are supported without ad hoc duplication",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 96"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-29 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 96"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-30 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 96"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-096.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-097",
+      "description": "- Reporting scale and analytical workload separation",
+      "phase": 97,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "reporting services"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 30,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-31 [backend]: Historical analytics and reporting no longer depend solely on the OLTP path and can scale separately",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 97"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-32 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 97"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-33 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 97"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-097.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-098",
+      "description": "- Enterprise financial controls and period governance",
+      "phase": 98,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "approval controls"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 30,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-34 [backend]: Enterprise-grade financial controls exist for approvals, period locks, retention, and adjustment governance",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 98"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-35 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 98"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-36 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 98"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-098.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-099",
+      "description": "- Enterprise DR, SLA, and audit-evidence path",
+      "phase": 99,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "DR docs"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 31,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-37 [backend]: Recovery targets, availability expectations, and audit evidence for enterprise customers are explicit and testable",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 99"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-38 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 99"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-39 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 99"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-099.test.ts"
+      },
+      "passed": false,
+      "verificationRef": null
+    },
+    {
+      "id": "STORY-100",
+      "description": "- Enterprise-grade certification and truth update",
+      "phase": 100,
+      "phase_type": "module",
+      "component": "",
+      "scope": [
+        "enterprise readiness checklist"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-086"
+      ],
+      "parallelGroup": 31,
+      "acceptanceCriteria": [
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-40 [backend]: Enterprise claims are only enabled for capabilities that have evidence-backed completion, not roadmap intent",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 100"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-41 [backend]: Tests verify implementation matches acceptance criterion",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 100"
+        },
+        {
+          "id": "",
+          "criterion": "R-FLEET-W11-42 [backend]: No regression in existing test suite for affected files",
+          "testType": "manual",
+          "testFile": null,
+          "parseError": "Missing R-PN-NN ID in Phase 100"
+        }
+      ],
+      "gateCmds": {
+        "unit": "cd server && npx vitest run __tests__/fleet-os/phase-100.test.ts"
       },
       "passed": false,
       "verificationRef": null

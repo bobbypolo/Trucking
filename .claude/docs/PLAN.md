@@ -1,376 +1,2445 @@
-# Sprint B1 — Phase 1 gap fix + Sentry + program docs + feature flags DB
+# Fleet OS Complete -- Ralph Mega-Sprint
 
-> **Active sprint plan.** Full program roadmap: `docs/PLAN-trucker-app-master.md`
->
-> This file contains ONLY the Sprint B1 execution contract. After B1
-> merges, the handoff script replaces this file with Sprint B2's contract.
+## Goal
 
-## Context
+Convert LoadPilot SaaS into a production-ready fleet operating system.
+Single Ralph sprint: 8 gated phases (A-H), ~100 stories,
+~400 R-markers across 12 workstreams.
+Phase gates enforced via story dependencies.
 
-Sprint A shipped Phase 1 IFTA audit packet export (PR #59, SHA `dd8a8f4`).
-B1 is the first sprint of 13 (B1 → M) that delivers the trucker mobile
-app and all supporting backend, docs, telemetry, and store-launch work.
+**Base branch**: main
+**Issue ref**: Fleet OS Master Plan (docs/MASTER_PLAN_FLEET_OS.md)
+**Branch**: ralph/fleet-os-complete
+**R-marker convention**: R-FLEET-W{workstream}-{XX}
 
-## Locked decisions (applicable to B1)
+## Operating Constraints
 
-1. **Package manager**: root stays npm. `apps/trucker/` (created in B2)
-   is an isolated npm subproject. Use `npm ci` (not `npm install`) in
-   all verification and CI commands.
+1. Phase-gate checkpoint after each execution phase
+2. Re-baseline qa_runner after each phase
+3. Cross-phase replanning if assumptions invalidated
+4. Circuit breaker on 2x phase verification failure
+5. Parallel dispatch only within a phase
 
-2. **Peer layout** — `apps/trucker/` is a peer directory to root
-   `src/`, `components/`, `services/`. Web app stays exactly where it
-   is.
+## Dependency Graph
 
-3. **Phase 1 gap fix is additive** — Sprint A's `tax_year`,
-   `packet_hash`, DB-blob storage is canonical. B1 adds migration
-   with `aging_bucket` column, updates job, wraps in external scheduler.
-   Bucket contract: `current=0`, `1_30=1..30`, `31_60=31..60`,
-   `61_90=61..90`, `90_plus=>90`.
-
-4. **Windows-safe tooling only** — All operator-run scripts are
-   `.cjs`/`.mjs` (Node.js) or `.ps1` (PowerShell). NEVER `.sh`.
-   All verification commands use cross-platform tools: `npx vitest run`,
-   `npx tsc --noEmit`, `node scripts/*.cjs`. NEVER use `grep`, `wc`,
-   `/dev/null`, `/tmp`, or shell pipelines. **All R-marker assertions
-   that read a file use `fs.readFileSync` + regex — the word "grep"
-   does not appear in any R-marker description.**
-
-5. **Migration-number management**: placeholders resolved for B1:
-   053 = `invoices_aging_bucket` (STORY-B1-01),
-   054 = `feature_flags` (STORY-B1-09).
-   Max existing migration at dispatch = 052.
-
-6. **Feature flags consistent from B1**: `feature_flags` table
-   migration + minimal read endpoint ship in B1 (so flags are
-   DB-or-env from the first mobile sprint, not env-only for B2–G).
-
-7. **Operator gates separated from Ralph R-markers.** Simulator
-   validation, real-device testing, EAS builds, store submissions,
-   legal review are release checklist rows signed by operator,
-   NEVER Ralph R-markers.
-
-8. **Two-layer completion**: Engineering complete (code + targeted
-   tests + SaaS non-regression) vs Launch complete (+ real device
-   validation + legal review + store submission).
-
-## SaaS regression protection strategy
-
-Every sprint that touches `server/`, `shared/contracts/`, or root
-`package.json` runs the SaaS non-regression gate:
-
-1. **Additive backend changes only** — existing routes/services/migrations
-   are FROZEN unless explicitly additively extended.
-2. **No web UI replacement** — web components are NOT touched.
-3. **Role/tenant contract tests** — every new route runs existing
-   `requireAuth` + `requireTenant` middleware tests.
-4. **Existing route regression** — any sprint that touches a route file
-   runs the full existing test file for that route.
-
-## Required documents written by B1
-
-| Doc | Content |
-|---|---|
-| `docs/PLAN-trucker-app-master.md` | Canonical roadmap mirror of full program plan |
-| `docs/trucker-app-release-checklist.md` | All operator-run validation + release gates |
-| `docs/trucker-app-baseline-debt.md` | Populated with REAL baseline failures |
-| `docs/trucker-app-sprint-history.md` | Initial entry = Sprint A SHA `dd8a8f4` |
-| `docs/trucker-app-env-matrix.md` | Env variable table (see content spec below) |
-| `docs/trucker-app-feature-flags.md` | 6 flag inventory + DB read path |
-| `docs/trucker-app-migration-numbering.md` | Placeholder rule |
-
-### Content spec: `docs/trucker-app-env-matrix.md`
-
-- Table with columns: `Variable`, `Category`, `Local`, `Staging`,
-  `Production`, `EAS Build-time`, `Scope`, `Rotation`
-- Categories: Database, Firebase, Stripe, Twilio, Sentry, PostHog,
-  Motive, Gemini, JWT, EXPO_PUBLIC_*
-- Rule: any `EXPO_PUBLIC_*` key is bundled into the mobile binary —
-  server secrets MUST NOT use that prefix
-- Secret rotation procedure
-
-### Content spec: `docs/trucker-app-feature-flags.md`
-
-- Flag inventory:
-  - `FEATURE_TRUCKER_MOBILE_BETA` — gates whole app, default false in prod
-  - `FEATURE_MOTIVE_ELD` — gates ELD integration, default false
-  - `FEATURE_BROKER_CREDIT` — gates broker credit display, default false
-  - `FEATURE_FACILITY_DWELL` — gates dwell export, default false
-  - `FEATURE_FREEMIUM_QUOTA` — gates AI quota enforcement, default false
-  - `FEATURE_FORCE_UPGRADE` — gates force-upgrade modal, default false
-- Read priority: DB > env > default false
-- DB read endpoint: `GET /api/feature-flags` returns merged flag map
-  for current tenant
-- Admin write: `PUT /api/feature-flags/:name` admin-only, tenant-scoped
-- Removal criteria: 100% enabled for 30 days with no rollback → remove
-
-## Sprint B1 Contract
-
-**Branch**: `ralph/trucker-app-sprint-b1`
-**Phases**: 1-gap + 11-partial (Sentry init) + feature-flags foundation
-**Dispatch gate**: Sprint A merged (confirmed — PR #59, SHA `dd8a8f4`)
-**External accounts**: None
-**Story count**: 10 stories / 25 R-markers
-**Operator gates**: None
-**Parallelism**: STORY-01..03 sequential; 04..10 parallel (07, 08 depend on 05 for verify script)
-**SaaS non-regression gate**: YES — touches `server/jobs/`, `server/index.ts`
-**Mobile domain layering rule**: N/A (no mobile code)
-
-### Stories
-
-**STORY-B1-01 — Migration adds `aging_bucket`**
-- Files (new):
-  - `server/migrations/053_invoices_aging_bucket.sql`
-- Test file (new):
-  - `server/__tests__/migrations/053_invoices_aging_bucket.test.ts`
-- R-markers:
-  - `R-B1-01` test reads SQL file via `fs.readFileSync` and asserts UP
-    section contains exactly one
-    `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL`
-    line via regex match.
-  - `R-B1-02` test reads file via `fs.readFileSync` and asserts DOWN
-    section contains exactly one
-    `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other
-    `DROP` occurrences (regex count).
-
-**STORY-B1-02 — Job populates `aging_bucket`**
-- Files (extended):
-  - `server/jobs/invoice-aging-nightly.ts` (~20 line addition)
-- Test file (extended):
-  - `server/__tests__/jobs/invoice-aging-nightly.test.ts` (~30 line addition)
-- R-markers:
-  - `R-B1-03` 5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce
-    bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`;
-    test asserts exact values via `.toBe()`.
-  - `R-B1-04` invoice with null `issued_at` → `aging_bucket` stays null
-    (test asserts `.toBeNull()`).
-
-**STORY-B1-03 — External scheduler wrapper (Windows-safe)**
-- Files (new):
-  - `scripts/invoice-aging-nightly.cjs`
-  - `docs/ops/invoice-aging-nightly.md`
-- Test file (new):
-  - `server/__tests__/scripts/invoice-aging-nightly.test.ts`
-- R-markers:
-  - `R-B1-05` test spawns `node scripts/invoice-aging-nightly.cjs --dry-run`
-    via `child_process.spawnSync`; asserts exit code 0 and stdout
-    contains `"status":"dry-run"`.
-  - `R-B1-06` runbook contains H2 sections `## Dry-run`,
-    `## Production invocation`, `## Idempotency`, `## Failure alerting`,
-    `## Cron example`, `## GitHub Actions example`, `## Rollback`;
-    test reads file via `fs.readFileSync` and asserts each heading via
-    regex.
-  - `R-B1-07` test spawns wrapper with no `DATABASE_URL` env; asserts
-    non-zero exit and stderr JSON contains `"error":"missing_database_url"`.
-
-**STORY-B1-04 — Sentry server-side init**
-- Files (extended):
-  - `server/index.ts` (add `import { initSentry } from './lib/sentry'`
-    + `initSentry()` call before `app.listen`, gated on DSN)
-- Test file (new):
-  - `server/__tests__/index.sentry-init.test.ts`
-- R-markers:
-  - `R-B1-08` test reads `server/index.ts` via `fs.readFileSync` and
-    asserts the import line and conditional `initSentry()` call via
-    regex match.
-  - `R-B1-09` integration test sets `process.env.SENTRY_DSN='test-dsn'`,
-    mocks `initSentry`, imports `server/index`, asserts `initSentry`
-    called exactly once.
-  - `R-B1-10` integration test with `SENTRY_DSN` unset → server module
-    loads without throwing.
-
-**STORY-B1-05 — Master program document + release checklist + sprint history**
-- Files (extended):
-  - `docs/PLAN-trucker-app-master.md` (ensure required sections exist)
-- Files (new):
-  - `docs/trucker-app-release-checklist.md`
-  - `docs/trucker-app-sprint-history.md`
-  - `scripts/verify-program-docs.cjs` (Node.js helper reading the 3
-    docs and asserting required section headings exist via regex)
-- R-markers:
-  - `R-B1-11` master plan contains H2 sections for all 13 sprints
-    (B1..M); verified by `scripts/verify-program-docs.cjs` using regex
-    on file content read via `fs.readFileSync`.
-  - `R-B1-12` master plan contains `## Shipped Baseline (Sprint A)`
-    section; verified by helper script.
-  - `R-B1-13` release checklist contains tables for operator gates
-    `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`,
-    `OP-LEGAL-*`; verified by helper script.
-  - `R-B1-14` sprint-history has initial entry with `dd8a8f4` Sprint A
-    SHA.
-
-**STORY-B1-06 — Baseline debt register populated with REAL entries**
-- Files (new):
-  - `docs/trucker-app-baseline-debt.md`
-  - `scripts/verify-baseline-debt.cjs`
-- Approach: The Ralph worker runs `npx vitest run` (root + server)
-  capturing output via `child_process.spawnSync`, extracts failing
-  test file paths, populates the register with 6-column entries.
-- R-markers:
-  - `R-B1-15` `docs/trucker-app-baseline-debt.md` exists and contains
-    a markdown table with columns `file | failure | owner | first-seen
-    | expiry | justification`; verified via
-    `scripts/verify-baseline-debt.cjs` which parses the markdown
-    table using `fs.readFileSync` + regex.
-  - `R-B1-16` register either contains ≥ 1 real entry OR an explicit
-    `| _(verified clean at <date>)_ |` placeholder row; helper script
-    asserts one of the two.
-
-**STORY-B1-07 — Env matrix doc**
-- Files (new):
-  - `docs/trucker-app-env-matrix.md`
-- Depends on: STORY-B1-05 (verify script)
-- R-markers:
-  - `R-B1-17` doc contains table with columns `Variable`, `Category`,
-    `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`,
-    `Rotation`; verified via helper script reading file with
-    `fs.readFileSync` and matching header via regex.
-  - `R-B1-18` doc contains H2 section `## EXPO_PUBLIC_* rule` stating
-    that mobile public keys MUST use the prefix and server secrets
-    MUST NOT.
-
-**STORY-B1-08 — Feature flags doc + migration numbering rule**
-- Files (new):
-  - `docs/trucker-app-feature-flags.md`
-  - `docs/trucker-app-migration-numbering.md`
-- Depends on: STORY-B1-05 (verify script)
-- R-markers:
-  - `R-B1-19` feature flags doc lists all 6 flags (per spec above);
-    helper script reads file and asserts each flag name via regex.
-  - `R-B1-20` migration-numbering doc contains the placeholder rule
-    and assignment procedure; helper script asserts H2 sections
-    `## Placeholder convention` and `## Assignment procedure`.
-
-**STORY-B1-09 — `feature_flags` DB table + read endpoint**
-- Files (new):
-  - `server/migrations/054_feature_flags.sql` (table columns: id,
-    tenant_id, flag_name, flag_value BOOLEAN, updated_at, updated_by)
-  - `server/routes/feature-flags.ts`
-- Files (extended):
-  - `server/index.ts`
-    (mount: `app.use('/api/feature-flags', featureFlagsRouter)`)
-- Test files (new):
-  - `server/__tests__/migrations/054_feature_flags.test.ts`
-  - `server/__tests__/routes/feature-flags.test.ts`
-- R-markers:
-  - `R-B1-21` migration creates `feature_flags` table with 6 columns;
-    test reads SQL file via `fs.readFileSync`.
-  - `R-B1-22` `GET /api/feature-flags` returns merged flag map (env +
-    DB) for authenticated user's tenant; integration test via supertest.
-  - `R-B1-23` `PUT /api/feature-flags/:name` requires admin role;
-    non-admin → HTTP 403 (auth-negative R-marker per Rule 16).
-  - `R-B1-24` `server/index.ts` mount line
-    `app.use('/api/feature-flags', featureFlagsRouter)` present —
-    test reads file via `fs.readFileSync` and asserts via regex match
-    (no shell `grep`).
-
-**STORY-B1-10 — SaaS non-regression verification**
-- Files (new):
-  - `scripts/verify-saas-regression.cjs`
-- R-markers:
-  - `R-B1-25` helper script runs `npx vitest run src/__tests__/` and
-    `cd server && npx vitest run __tests__/routes/accounting.test.ts
-    __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts`
-    via `child_process.spawnSync`, captures exit codes, asserts all 0
-    (modulo baseline debt exclusions from `baseline-debt.md`).
-
-### Files NOT touched
-- `server/migrations/051_ifta_audit_packets.sql` (FROZEN)
-- `server/migrations/052_invoices_aging_tracking.sql` (FROZEN)
-- `server/routes/ifta-audit-packets.ts` (FROZEN)
-- `server/services/ifta-audit-packet.service.ts` (FROZEN)
-- `components/IFTAManager.tsx` (FROZEN)
-- `services/financialService.ts` (FROZEN)
-- `server/scripts/seed-sales-demo.ts` (FROZEN — BSD contract)
-- `scripts/demo-certify.cjs` (FROZEN — BSD contract)
-- Any file under `apps/` or `packages/`
-
-### Baseline debt exceptions
-Populated during STORY-B1-06 execution. The register is the runtime
-source of truth; this line in the plan is a pointer.
-
-### Targeted verification command (Windows-safe)
 ```
-cd server
-npx vitest run __tests__/migrations __tests__/jobs/invoice-aging-nightly.test.ts __tests__/index.sentry-init.test.ts __tests__/routes/feature-flags.test.ts __tests__/scripts/invoice-aging-nightly.test.ts
-npx tsc --noEmit
-cd ..
-node scripts/invoice-aging-nightly.cjs --dry-run
-node scripts/verify-program-docs.cjs
-node scripts/verify-baseline-debt.cjs
-node scripts/verify-saas-regression.cjs
+A(1-12) -> B(13-22) -> C(23-32) -> F(59-71) -> G(72-86) -> H(87-100)
+                    -> D(33-44) -> G
+                    -> E(45-58) -> G
 ```
 
-### Exit artifact
-- PR `Sprint B1: Phase 1 gap + Sentry + program docs + feature flags DB`
-- All 25 R-markers green (R-B1-01..R-B1-25)
-- `docs/trucker-app-sprint-history.md` appended with B1 merge SHA
+## Phase 1 -- Route inventory and allowlist
 
-## V-Model Guarantee
+**Phase Type**: module
 
-Every sprint traverses the full V: requirements (R-markers) →
-design (file inventory + architecture docs) → implementation (Ralph
-stories with 4-checkpoint TDD) → unit tests → integration tests (sprint
-targeted verification) → system tests (`/verify` + `/audit`) →
-acceptance tests (release checklist, operator-signed).
+<!-- Phase: A | A-01 | W0 | PG:1 -->
 
-**R-markers are Ralph-automatable only.** Real-device validation,
-simulator validation, EAS build invocation, store submission, legal
-review, and any other operator-run validation are tracked as **release
-checklist rows** signed off by a human operator, NOT as Ralph R-markers.
+### Changes
 
-## Ralph dispatch invariants
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/*` | Route inventory and allowlist |
 
-1. Worktree isolation per story worker
-2. Checkpoint hash before each story
-3. Feature branch `ralph/trucker-app-sprint-b1`
-4. 4-checkpoint TDD (Red → Green → Refactor → Gate)
-5. Selective staging (no `git add -A`)
-6. Format before commit
-7. Fixture validation (collect-only)
-8. Circuit breaker (3 consecutive skips → halt)
-9. `needs_verify` cleared before next sprint dispatch
-10. `npm ci` (not `npm install`) in all verifications
-11. All R-marker assertions use `fs.readFileSync` + regex (no shell `grep`)
+### Done When
 
-## SaaS Non-Regression Gate
+- R-FLEET-W0-01 [backend]: Every route is classified and the explicit allowlist is documented and tested
+- R-FLEET-W0-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-03 [backend]: No regression in existing test suite for affected files
 
-| Sprint | Touches SaaS backend? | Gate |
-|---|---|---|
-| **B1** | YES (jobs, index.ts) | accounting/ifta/documents/requireAuth tests |
+### Verification Command
 
-## Feature Flags Strategy (B1 onward)
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-001.test.ts
+```
 
-Feature flags are available from Sprint B1 via DB (`feature_flags`
-table + `/api/feature-flags` endpoint) + env var fallback. Read
-priority: DB > env > default false.
+## Phase 2 -- Missing auth / tenant / validation closure
 
-| Flag | Default | Enabled when | Removal criteria |
-|---|---|---|---|
-| `FEATURE_TRUCKER_MOBILE_BETA` | false | B2 dev, M beta launch | 100% rollout 30d |
-| `FEATURE_MOTIVE_ELD` | false | G stories, M user-facing | 100% rollout 30d |
-| `FEATURE_BROKER_CREDIT` | false | K with MIN_HISTORY_DAYS | 90d data + 100% |
-| `FEATURE_FACILITY_DWELL` | false | K admin-only | admin adoption complete |
-| `FEATURE_FREEMIUM_QUOTA` | false | J enforcement | 100% paid-tier conversion track |
-| `FEATURE_FORCE_UPGRADE` | false | L on, M user-facing | version deprecation cycle |
+**Phase Type**: module
 
-## Migration Number Management
+<!-- Phase: A | A-02 | W0 | PG:1 -->
 
-Master plan uses placeholders `<NEXT>`. For B1, all placeholders are
-resolved: 053 (aging_bucket), 054 (feature_flags).
+### Changes
 
-Assignment procedure for future sprints:
-1. Operator runs `node scripts/next-migration-number.cjs`
-2. Helper reads `server/migrations/` via `fs.readdirSync`, returns max+1
-3. Operator replaces `<NEXT>` in sprint PLAN.md with actual numbers
-4. Ralph halts if it sees unresolved `<NEXT>` in file paths
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `route files missing guards` | Missing auth / tenant / validation closure |
 
-## Sprint Handoff
+### Done When
 
-After B1 merges:
-1. Record merge SHA in `docs/trucker-app-sprint-history.md`
-2. Extract Sprint B2 section from `docs/PLAN-trucker-app-master.md`
-3. Replace this file (`.claude/docs/PLAN.md`) with Sprint B2 contract
-4. Regenerate `.claude/prd.json` for Sprint B2
-5. Reset `.claude/.workflow-state.json`
-6. Create branch `ralph/trucker-app-sprint-b2`
-7. Dispatch `/ralph`
+- R-FLEET-W0-04 [backend]: Known gaps are closed and route audit passes
+- R-FLEET-W0-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-002.test.ts
+```
+
+## Phase 3 -- Server-side RBAC completion
+
+**Phase Type**: module
+
+<!-- Phase: A | A-03 | W0 | PG:1 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `protected mutation routes` | Server-side RBAC completion |
+
+### Done When
+
+- R-FLEET-W0-07 [backend]: Sensitive routes enforce server-side roles and tiers
+- R-FLEET-W0-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-003.test.ts
+```
+
+## Phase 4 -- Pagination and filtering standard
+
+**Phase Type**: module
+
+<!-- Phase: A | A-04 | W0 | PG:1 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `list-heavy routes` | Pagination and filtering standard |
+
+### Done When
+
+- R-FLEET-W0-10 [backend]: Large endpoints expose and honor pagination and filters
+- R-FLEET-W0-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-004.test.ts
+```
+
+## Phase 5 -- Health check and dependency readiness
+
+**Phase Type**: module
+
+<!-- Phase: A | A-05 | W0 | PG:2 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/health.ts` | Health check and dependency readiness |
+
+### Done When
+
+- R-FLEET-W0-13 [backend]: Health reflects DB and dependency readiness correctly
+- R-FLEET-W0-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-005.test.ts
+```
+
+## Phase 6 -- Rate limiting and idempotency baseline
+
+**Phase Type**: module
+
+<!-- Phase: A | A-06 | W0 | PG:2 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `middleware` | Rate limiting and idempotency baseline |
+
+### Done When
+
+- R-FLEET-W0-16 [backend]: Repeated writes are safe and abusive traffic is constrained
+- R-FLEET-W0-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-006.test.ts
+```
+
+## Phase 7 -- Tenant isolation regression pack
+
+**Phase Type**: module
+
+<!-- Phase: A | A-07 | W0 | PG:2 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `routes` | Tenant isolation regression pack |
+
+### Done When
+
+- R-FLEET-W0-19 [backend]: Cross-tenant regression suite passes
+- R-FLEET-W0-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-007.test.ts
+```
+
+## Phase 8 -- `server/index.ts` modularization
+
+**Phase Type**: module
+
+<!-- Phase: A | A-08 | W0 | PG:2 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/index.ts` | `server/index.ts` modularization |
+
+### Done When
+
+- R-FLEET-W0-22 [backend]: Bootstrap is delegated cleanly and route behavior is unchanged
+- R-FLEET-W0-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W0-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-008.test.ts
+```
+
+## Phase 9 -- Canonical load / trip / stop ruling implementation scaffold
+
+**Phase Type**: module
+
+<!-- Phase: A | A-09 | W1 | PG:3 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `schema docs` | Canonical load / trip / stop ruling implementation scaffold |
+
+### Done When
+
+- R-FLEET-W1-01 [backend]: Architecture ruling is encoded in contracts and docs
+- R-FLEET-W1-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-009.test.ts
+```
+
+## Phase 10 -- Trip foundation schema
+
+**Phase Type**: module
+
+<!-- Phase: A | A-10 | W1 | PG:3 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| ADD | `new trip table and load-to-trip linkage migrations` | Trip foundation schema |
+
+### Done When
+
+- R-FLEET-W1-04 [backend]: First-class trip entity exists without breaking current flows
+- R-FLEET-W1-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-010.test.ts
+```
+
+## Phase 11 -- Stop linkage normalization
+
+**Phase Type**: module
+
+<!-- Phase: A | A-11 | W1 | PG:3 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `load_legs` | Stop linkage normalization |
+
+### Done When
+
+- R-FLEET-W1-07 [backend]: Existing `load_legs` is linked into the new execution model
+- R-FLEET-W1-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-011.test.ts
+```
+
+## Phase 12 -- Document lineage foundation
+
+**Phase Type**: module
+
+<!-- Phase: A | A-12 | W1 | PG:3 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `document schema and indexes` | Document lineage foundation |
+
+### Done When
+
+- R-FLEET-W1-10 [docs]: Documents can link to canonical parents under the new lineage model
+- R-FLEET-W1-11 [docs]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-12 [docs]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+test -f document schema and indexes
+```
+
+## Phase 13 -- Lineage matrix and ownership enforcement
+
+**Phase Type**: module
+
+<!-- Phase: B | B-01 | W1 | PG:5 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `contracts` | Lineage matrix and ownership enforcement |
+
+### Done When
+
+- R-FLEET-W1-13 [backend]: Canonical ownership map is implemented, not just documented
+- R-FLEET-W1-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-013.test.ts
+```
+
+## Phase 14 -- OCR result lineage completion
+
+**Phase Type**: module
+
+<!-- Phase: B | B-02 | W1 | PG:5 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `OCR tables` | OCR result lineage completion |
+
+### Done When
+
+- R-FLEET-W1-16 [backend]: OCR results can be traced to document and business context
+- R-FLEET-W1-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-014.test.ts
+```
+
+## Phase 15 -- Settlement lineage schema
+
+**Phase Type**: module
+
+<!-- Phase: B | B-03 | W1 | PG:5 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `settlement tables and repositories` | Settlement lineage schema |
+
+### Done When
+
+- R-FLEET-W1-19 [backend]: Settlement records and lines trace to load and trip correctly
+- R-FLEET-W1-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-015.test.ts
+```
+
+## Phase 16 -- Expense and reimbursement lineage
+
+**Phase Type**: module
+
+<!-- Phase: B | B-04 | W1 | PG:5 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `financial tables and services` | Expense and reimbursement lineage |
+
+### Done When
+
+- R-FLEET-W1-22 [backend]: Expenses tie to source trip, stop, document, or policy
+- R-FLEET-W1-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-016.test.ts
+```
+
+## Phase 17 -- Telematics lineage schema
+
+**Phase Type**: module
+
+<!-- Phase: B | B-05 | W1 | PG:6 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `tracking tables and repositories` | Telematics lineage schema |
+
+### Done When
+
+- R-FLEET-W1-25 [backend]: Telemetry can attach to trip and vehicle consistently
+- R-FLEET-W1-26 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-27 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-017.test.ts
+```
+
+## Phase 18 -- Compliance evidence lineage
+
+**Phase Type**: module
+
+<!-- Phase: B | B-06 | W1 | PG:6 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `IFTA and compliance tables` | Compliance evidence lineage |
+
+### Done When
+
+- R-FLEET-W1-28 [backend]: Evidence ties to compliance period and trip/load context
+- R-FLEET-W1-29 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-30 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-018.test.ts
+```
+
+## Phase 19 -- Orphan-row backfill engine
+
+**Phase Type**: module
+
+<!-- Phase: B | B-07 | W1 | PG:6 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| ADD | `migrations` | Orphan-row backfill engine |
+
+### Done When
+
+- R-FLEET-W1-31 [backend]: Existing records are classified, backfilled, or queued for review
+- R-FLEET-W1-32 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-33 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-019.test.ts
+```
+
+## Phase 20 -- Duplicate-truth reconciliation
+
+**Phase Type**: module
+
+<!-- Phase: B | B-08 | W1 | PG:6 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `reconciliation service` | Duplicate-truth reconciliation |
+
+### Done When
+
+- R-FLEET-W1-34 [backend]: Duplicate parentage and shadow models are surfaced and reduced
+- R-FLEET-W1-35 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-36 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-020.test.ts
+```
+
+## Phase 21 -- Lineage query pack for certified journeys
+
+**Phase Type**: module
+
+<!-- Phase: B | B-09 | W1 | PG:7 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `SQL/reporting utilities` | Lineage query pack for certified journeys |
+
+### Done When
+
+- R-FLEET-W1-37 [backend]: Each certified journey has reproducible lineage output
+- R-FLEET-W1-38 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-39 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-021.test.ts
+```
+
+## Phase 22 -- Strictness hardening for new writes
+
+**Phase Type**: module
+
+<!-- Phase: B | B-10 | W1 | PG:7 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `validators` | Strictness hardening for new writes |
+
+### Done When
+
+- R-FLEET-W1-40 [backend]: New writes require canonical parent linkage where mandated
+- R-FLEET-W1-41 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W1-42 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-022.test.ts
+```
+
+## Phase 23 -- Quote model normalization
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-01 | W2 | PG:8 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `quote schema` | Quote model normalization |
+
+### Done When
+
+- R-FLEET-W2-01 [backend]: Quotes carry the fields needed for full downstream continuity
+- R-FLEET-W2-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-023.test.ts
+```
+
+## Phase 24 -- Booking-to-load conversion hardening
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-02 | W2 | PG:8 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `booking repo` | Booking-to-load conversion hardening |
+
+### Done When
+
+- R-FLEET-W2-04 [backend]: Bookings convert cleanly with no data loss
+- R-FLEET-W2-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-024.test.ts
+```
+
+## Phase 25 -- Load lifecycle state certification
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-03 | W2 | PG:8 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `load routes` | Load lifecycle state certification |
+
+### Done When
+
+- R-FLEET-W2-07 [backend]: Full valid and invalid state transitions are verified
+- R-FLEET-W2-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-025.test.ts
+```
+
+## Phase 26 -- Assignment and repower closure
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-04 | W2 | PG:8 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `dispatch routes` | Assignment and repower closure |
+
+### Done When
+
+- R-FLEET-W2-10 [backend]: Reassignment and repower keep continuity and audit trail
+- R-FLEET-W2-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-026.test.ts
+```
+
+## Phase 27 -- Dispatcher timeline and calendar truth
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-05 | W2 | PG:9 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `timeline and calendar components` | Dispatcher timeline and calendar truth |
+
+### Done When
+
+- R-FLEET-W2-13 [frontend]: Timeline and calendar reflect canonical load/trip state
+- R-FLEET-W2-14 [frontend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-15 [frontend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+npx vitest run src/__tests__/fleet-os/phase-027.test.tsx
+```
+
+## Phase 28 -- Exception and work-item continuity
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-06 | W2 | PG:9 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `exception console` | Exception and work-item continuity |
+
+### Done When
+
+- R-FLEET-W2-16 [backend]: Operational exceptions remain tied to the same business context
+- R-FLEET-W2-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-028.test.ts
+```
+
+## Phase 29 -- Customer and broker continuity
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-07 | W2 | PG:9 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `network` | Customer and broker continuity |
+
+### Done When
+
+- R-FLEET-W2-19 [backend]: Customer / broker identity is preserved across execution views
+- R-FLEET-W2-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W2-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-029.test.ts
+```
+
+## Phase 30 -- Document completeness by trip and load
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-08 | W3 | PG:9 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `docs routes` | Document completeness by trip and load |
+
+### Done When
+
+- R-FLEET-W3-01 [docs]: Missing artifacts are visible and block downstream steps where required
+- R-FLEET-W3-02 [docs]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W3-03 [docs]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+test -f docs routes
+```
+
+## Phase 31 -- OCR review-to-apply pipeline closure
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-09 | W3 | PG:10 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `OCR review UI` | OCR review-to-apply pipeline closure |
+
+### Done When
+
+- R-FLEET-W3-04 [backend]: Human-reviewed extraction can safely update target records
+- R-FLEET-W3-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W3-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-031.test.ts
+```
+
+## Phase 32 -- Quote-to-load-to-settlement certification
+
+**Phase Type**: integration
+
+<!-- Phase: C | C-10 | W7 | PG:10 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `cross-domain tests and runbooks` | Quote-to-load-to-settlement certification |
+
+### Done When
+
+- R-FLEET-W7-01 [backend]: Full core loop journey is certified end to end
+- R-FLEET-W7-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-032.test.ts
+```
+
+## Phase 33 -- Driver trip workspace canonicalization
+
+**Phase Type**: module
+
+<!-- Phase: D | D-01 | W4 | PG:12 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `apps/trucker/src/app/*` | Driver trip workspace canonicalization |
+| MODIFY | `components/DriverMobileHome.tsx` | Driver trip workspace canonicalization |
+
+### Done When
+
+- R-FLEET-W4-01 [frontend]: Driver sees one canonical trip workspace with the same execution truth used by dispatch
+- R-FLEET-W4-02 [frontend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-03 [frontend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+npx vitest run src/__tests__/fleet-os/phase-033.test.tsx
+```
+
+## Phase 34 -- Stop sequence, appointment, and next-action truth
+
+**Phase Type**: module
+
+<!-- Phase: D | D-02 | W4 | PG:12 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `load_legs` | Stop sequence, appointment, and next-action truth |
+
+### Done When
+
+- R-FLEET-W4-04 [backend]: Driver UI reflects ordered stops, appointments, next required action, and stop-level state correctly
+- R-FLEET-W4-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-034.test.ts
+```
+
+## Phase 35 -- Driver status update contract completion
+
+**Phase Type**: module
+
+<!-- Phase: D | D-03 | W4 | PG:12 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `mobile actions` | Driver status update contract completion |
+
+### Done When
+
+- R-FLEET-W4-07 [backend]: Departed, arrived, loaded, unloaded, delivered, and exception statuses map cleanly to backend state transitions
+- R-FLEET-W4-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-035.test.ts
+```
+
+## Phase 36 -- Delay, detention, lumper, and breakdown workflow closure
+
+**Phase Type**: module
+
+<!-- Phase: D | D-04 | W4 | PG:12 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `issue routes` | Delay, detention, lumper, and breakdown workflow closure |
+
+### Done When
+
+- R-FLEET-W4-10 [backend]: Field-reported operational events create traceable office-side work items and downstream impacts
+- R-FLEET-W4-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-036.test.ts
+```
+
+## Phase 37 -- Driver messaging and read-state continuity
+
+**Phase Type**: module
+
+<!-- Phase: D | D-05 | W9 | PG:13 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/messages.ts` | Driver messaging and read-state continuity |
+
+### Done When
+
+- R-FLEET-W9-01 [backend]: Driver and dispatcher messaging shares one thread model with visible read and delivery state
+- R-FLEET-W9-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-037.test.ts
+```
+
+## Phase 38 -- Document checklist and mobile scan flow
+
+**Phase Type**: module
+
+<!-- Phase: D | D-06 | W4 | PG:13 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `scanner UI` | Document checklist and mobile scan flow |
+
+### Done When
+
+- R-FLEET-W4-13 [docs]: Required documents are visible by trip and can be captured from the field into the canonical document lifecycle
+- R-FLEET-W4-14 [docs]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-15 [docs]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+test -f scanner UI
+```
+
+## Phase 39 -- Driver pay and settlement visibility
+
+**Phase Type**: module
+
+<!-- Phase: D | D-07 | W4 | PG:13 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `mobile pay UI` | Driver pay and settlement visibility |
+
+### Done When
+
+- R-FLEET-W4-16 [backend]: Driver can see allowed settlement and pay details without exposing back-office-only controls
+- R-FLEET-W4-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-039.test.ts
+```
+
+## Phase 40 -- Offline queue, sync, and conflict handling
+
+**Phase Type**: module
+
+<!-- Phase: D | D-08 | W4 | PG:13 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `mobile storage/services` | Offline queue, sync, and conflict handling |
+
+### Done When
+
+- R-FLEET-W4-19 [backend]: Core field actions queue offline, replay safely, and surface conflicts deterministically
+- R-FLEET-W4-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-040.test.ts
+```
+
+## Phase 41 -- Mobile auth, session, and device hardening
+
+**Phase Type**: module
+
+<!-- Phase: D | D-09 | W4 | PG:14 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `mobile auth flows` | Mobile auth, session, and device hardening |
+
+### Done When
+
+- R-FLEET-W4-22 [backend]: Authentication, re-auth, session expiry, and lost-connectivity behavior are safe and predictable in field conditions
+- R-FLEET-W4-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-041.test.ts
+```
+
+## Phase 42 -- Push, alert, and acknowledgement path
+
+**Phase Type**: module
+
+<!-- Phase: D | D-10 | W9 | PG:14 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `notification services` | Push, alert, and acknowledgement path |
+
+### Done When
+
+- R-FLEET-W9-04 [backend]: Critical operational alerts reach the driver and capture acknowledgement or visible failure
+- R-FLEET-W9-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-042.test.ts
+```
+
+## Phase 43 -- Pilot-channel release and legal readiness
+
+**Phase Type**: module
+
+<!-- Phase: D | D-11 | W4 | PG:14 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `build config` | Pilot-channel release and legal readiness |
+
+### Done When
+
+- R-FLEET-W4-25 [backend]: Pilot build is signable, distributable, policy-complete, and crash-observable on the supported device matrix
+- R-FLEET-W4-26 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-27 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-043.test.ts
+```
+
+## Phase 44 -- Driver field-loop certification
+
+**Phase Type**: module
+
+<!-- Phase: D | D-12 | W4 | PG:14 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `certified mobile journey tests` | Driver field-loop certification |
+
+### Done When
+
+- R-FLEET-W4-28 [backend]: Assignment-through-proof mobile loop is certified end to end in staging and pilot conditions
+- R-FLEET-W4-29 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W4-30 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-044.test.ts
+```
+
+## Phase 45 -- Provider abstraction hardening
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-01 | W5 | PG:16 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/services/gps/*` | Provider abstraction hardening |
+
+### Done When
+
+- R-FLEET-W5-01 [backend]: Telematics providers share a stable abstraction for auth, ingest, health, retry, and mapping
+- R-FLEET-W5-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-045.test.ts
+```
+
+## Phase 46 -- Primary provider production path
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-02 | W5 | PG:16 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `Samsara adapter` | Primary provider production path |
+
+### Done When
+
+- R-FLEET-W5-04 [backend]: One named provider works end to end with production-grade setup, sync, and visible failure states
+- R-FLEET-W5-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-046.test.ts
+```
+
+## Phase 47 -- Vehicle, trailer, driver, and asset mapping closure
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-03 | W5 | PG:16 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `telematics mapping UI` | Vehicle, trailer, driver, and asset mapping closure |
+
+### Done When
+
+- R-FLEET-W5-07 [backend]: Provider entities map cleanly to internal drivers, vehicles, and equipment with conflict handling
+- R-FLEET-W5-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-047.test.ts
+```
+
+## Phase 48 -- Live telemetry ingest, health, and replay
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-04 | W5 | PG:16 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `webhook/sync routes` | Live telemetry ingest, health, and replay |
+
+### Done When
+
+- R-FLEET-W5-10 [backend]: Telemetry events ingest reliably, expose health state, and can replay or backfill after outage
+- R-FLEET-W5-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-048.test.ts
+```
+
+## Phase 49 -- Trip-linked telemetry consumer layer
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-05 | W5 | PG:17 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `dispatch views` | Trip-linked telemetry consumer layer |
+
+### Done When
+
+- R-FLEET-W5-13 [backend]: Telemetry flows into dispatch, trip history, and compliance consumers from one canonical event stream
+- R-FLEET-W5-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-049.test.ts
+```
+
+## Phase 50 -- HOS display and conflict handling
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-06 | W5 | PG:17 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| ADD | `future ELD/HOS services` | HOS display and conflict handling |
+
+### Done When
+
+- R-FLEET-W5-16 [backend]: HOS data is visible, stale or conflicting states are surfaced, and unsupported cases are represented honestly
+- R-FLEET-W5-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W5-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-050.test.ts
+```
+
+## Phase 51 -- IFTA evidence ingestion and gap detection
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-07 | W6 | PG:17 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `IFTA services` | IFTA evidence ingestion and gap detection |
+
+### Done When
+
+- R-FLEET-W6-01 [backend]: Mileage and fuel evidence ingest consistently and gap detection surfaces actionable missing evidence
+- R-FLEET-W6-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-051.test.ts
+```
+
+## Phase 52 -- Quarter-close lock, review, and audit export
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-08 | W6 | PG:17 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `IFTA close workflows` | Quarter-close lock, review, and audit export |
+
+### Done When
+
+- R-FLEET-W6-04 [backend]: IFTA quarter close produces a locked, reproducible packet with traceable evidence
+- R-FLEET-W6-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-052.test.ts
+```
+
+## Phase 53 -- Compliance cockpit truth model
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-09 | W6 | PG:18 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `compliance routes/UI` | Compliance cockpit truth model |
+
+### Done When
+
+- R-FLEET-W6-07 [backend]: Every compliance status shows source, freshness, verifier state, and whether it is manual, derived, or synced
+- R-FLEET-W6-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-053.test.ts
+```
+
+## Phase 54 -- Permits, deadlines, and annual filing continuity
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-10 | W6 | PG:18 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `compliance scheduler` | Permits, deadlines, and annual filing continuity |
+
+### Done When
+
+- R-FLEET-W6-10 [backend]: IRP, UCR, HVUT/2290, permits, and annual deadlines are tracked with reminders and evidence continuity
+- R-FLEET-W6-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-054.test.ts
+```
+
+## Phase 55 -- Maintenance scheduling and return-to-service continuity
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-11 | W6 | PG:18 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `maintenance UI` | Maintenance scheduling and return-to-service continuity |
+
+### Done When
+
+- R-FLEET-W6-13 [backend]: Maintenance and inspection actions connect equipment status, repair records, and return-to-service state
+- R-FLEET-W6-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-055.test.ts
+```
+
+## Phase 56 -- DVIR defect, repair signoff, and photo flow
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-12 | W6 | PG:18 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `DVIR UI/routes` | DVIR defect, repair signoff, and photo flow |
+
+### Done When
+
+- R-FLEET-W6-16 [backend]: DVIR supports field submission, photo evidence, defect escalation, repair signoff, and return-to-service
+- R-FLEET-W6-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-056.test.ts
+```
+
+## Phase 57 -- Safety, incident, certificate, and inspection lifecycle
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-13 | W6 | PG:19 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `safety routes/UI` | Safety, incident, certificate, and inspection lifecycle |
+
+### Done When
+
+- R-FLEET-W6-19 [backend]: Safety-critical records maintain field-to-office continuity and auditability across the full lifecycle
+- R-FLEET-W6-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-057.test.ts
+```
+
+## Phase 58 -- Telematics-to-compliance certification
+
+**Phase Type**: integration
+
+<!-- Phase: E | E-14 | W6 | PG:19 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `cross-domain tests` | Telematics-to-compliance certification |
+
+### Done When
+
+- R-FLEET-W6-22 [backend]: Provider-backed telemetry path and compliance workflows are certified together, not as separate demos
+- R-FLEET-W6-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W6-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-058.test.ts
+```
+
+## Phase 59 -- Settlement rule engine completion
+
+**Phase Type**: module
+
+<!-- Phase: F | F-01 | W7 | PG:20 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `settlement services` | Settlement rule engine completion |
+
+### Done When
+
+- R-FLEET-W7-04 [backend]: Settlement generation covers core trip/load cases with explicit rate, deduction, reimbursement, and provenance logic
+- R-FLEET-W7-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-059.test.ts
+```
+
+## Phase 60 -- Settlement review, posting, and immutability
+
+**Phase Type**: module
+
+<!-- Phase: F | F-02 | W7 | PG:20 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `settlement posting flows` | Settlement review, posting, and immutability |
+
+### Done When
+
+- R-FLEET-W7-07 [backend]: Posted settlements are immutable except through explicit adjustment workflows with audit trail
+- R-FLEET-W7-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-060.test.ts
+```
+
+## Phase 61 -- AP workflow certification
+
+**Phase Type**: module
+
+<!-- Phase: F | F-03 | W7 | PG:20 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `AP routes` | AP workflow certification |
+
+### Done When
+
+- R-FLEET-W7-10 [backend]: Accounts payable can move from evidence to payable state without spreadsheet side-processes for core cases
+- R-FLEET-W7-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-061.test.ts
+```
+
+## Phase 62 -- AR, invoicing, and aging completion
+
+**Phase Type**: module
+
+<!-- Phase: F | F-04 | W7 | PG:20 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `invoice routes` | AR, invoicing, and aging completion |
+
+### Done When
+
+- R-FLEET-W7-13 [backend]: Accounts receivable, invoice issuance, status, and aging operate end to end from canonical load/commercial data
+- R-FLEET-W7-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-062.test.ts
+```
+
+## Phase 63 -- GL, journal, and close baseline
+
+**Phase Type**: module
+
+<!-- Phase: F | F-05 | W7 | PG:21 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `accounting services` | GL, journal, and close baseline |
+
+### Done When
+
+- R-FLEET-W7-16 [backend]: Financial events land in consistent ledger structures and support core close activities without data drift
+- R-FLEET-W7-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-063.test.ts
+```
+
+## Phase 64 -- Reconciliation and exception handling
+
+**Phase Type**: module
+
+<!-- Phase: F | F-06 | W7 | PG:21 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `reconciliation services/views` | Reconciliation and exception handling |
+
+### Done When
+
+- R-FLEET-W7-19 [backend]: Sync mismatches, payment mismatches, and missing postings surface in an actionable reconciliation console
+- R-FLEET-W7-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-064.test.ts
+```
+
+## Phase 65 -- QuickBooks sync completion
+
+**Phase Type**: module
+
+<!-- Phase: F | F-07 | W7 | PG:21 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/quickbooks.ts` | QuickBooks sync completion |
+
+### Done When
+
+- R-FLEET-W7-22 [backend]: QuickBooks supports connect, sync, retry, visible error states, and reconciliation for the supported entities
+- R-FLEET-W7-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-065.test.ts
+```
+
+## Phase 66 -- Stripe subscription and billing completion
+
+**Phase Type**: module
+
+<!-- Phase: F | F-08 | W7 | PG:21 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/stripe.ts` | Stripe subscription and billing completion |
+
+### Done When
+
+- R-FLEET-W7-25 [backend]: Stripe supports subscription/billing lifecycle, webhook handling, failure visibility, and tenant billing truth
+- R-FLEET-W7-26 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W7-27 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-066.test.ts
+```
+
+## Phase 67 -- Customer and broker master normalization
+
+**Phase Type**: module
+
+<!-- Phase: F | F-09 | W8 | PG:22 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `contacts` | Customer and broker master normalization |
+
+### Done When
+
+- R-FLEET-W8-01 [backend]: Customer and broker identities no longer fork across quotes, loads, settlements, and invoices
+- R-FLEET-W8-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W8-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-067.test.ts
+```
+
+## Phase 68 -- Quote, load, proof, invoice, and payment continuity
+
+**Phase Type**: module
+
+<!-- Phase: F | F-10 | W8 | PG:22 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `quote/bookings` | Quote, load, proof, invoice, and payment continuity |
+
+### Done When
+
+- R-FLEET-W8-04 [backend]: Commercial lineage from quote through proof and invoice/payment is queryable and operator-visible
+- R-FLEET-W8-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W8-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-068.test.ts
+```
+
+## Phase 69 -- Broker payment intelligence groundwork
+
+**Phase Type**: module
+
+<!-- Phase: F | F-11 | W8 | PG:22 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `broker performance/payment views` | Broker payment intelligence groundwork |
+
+### Done When
+
+- R-FLEET-W8-07 [backend]: Broker payment status and performance metrics derive from canonical financial and operational records
+- R-FLEET-W8-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W8-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-069.test.ts
+```
+
+## Phase 70 -- Financial controls and approval baseline
+
+**Phase Type**: module
+
+<!-- Phase: F | F-12 | W8 | PG:22 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `permissions` | Financial controls and approval baseline |
+
+### Done When
+
+- R-FLEET-W8-10 [backend]: Financially material actions require the correct approvals and leave a durable audit trail
+- R-FLEET-W8-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W8-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-070.test.ts
+```
+
+## Phase 71 -- Back-office workflow certification
+
+**Phase Type**: module
+
+<!-- Phase: F | F-13 | W8 | PG:23 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `cross-domain tests` | Back-office workflow certification |
+
+### Done When
+
+- R-FLEET-W8-13 [backend]: Finance and commercial workflows are certified end to end for supported fleet operating cases
+- R-FLEET-W8-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W8-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-071.test.ts
+```
+
+## Phase 72 -- Real email provider completion
+
+**Phase Type**: module
+
+<!-- Phase: G | G-01 | W9 | PG:24 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `email services` | Real email provider completion |
+
+### Done When
+
+- R-FLEET-W9-07 [backend]: Email delivery is no longer stubbed and exposes success, retry, and failure state
+- R-FLEET-W9-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-072.test.ts
+```
+
+## Phase 73 -- Real SMS provider completion
+
+**Phase Type**: module
+
+<!-- Phase: G | G-02 | W9 | PG:24 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `SMS services` | Real SMS provider completion |
+
+### Done When
+
+- R-FLEET-W9-10 [backend]: SMS delivery is real, observable, and policy-compliant for the supported use cases
+- R-FLEET-W9-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-073.test.ts
+```
+
+## Phase 74 -- Notification delivery and acknowledgement model
+
+**Phase Type**: module
+
+<!-- Phase: G | G-03 | W9 | PG:24 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `message/notification jobs` | Notification delivery and acknowledgement model |
+
+### Done When
+
+- R-FLEET-W9-13 [backend]: Notifications have canonical queued, sent, delivered, failed, and acknowledged states where applicable
+- R-FLEET-W9-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-074.test.ts
+```
+
+## Phase 75 -- Operational alerts and escalation rules
+
+**Phase Type**: module
+
+<!-- Phase: G | G-04 | W10 | PG:24 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `alerting config` | Operational alerts and escalation rules |
+
+### Done When
+
+- R-FLEET-W10-01 [backend]: Critical domain events create the right alerts and escalations for operations and support
+- R-FLEET-W10-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-075.test.ts
+```
+
+## Phase 76 -- Notification and job observability
+
+**Phase Type**: module
+
+<!-- Phase: G | G-05 | W9 | PG:25 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `job dashboards` | Notification and job observability |
+
+### Done When
+
+- R-FLEET-W9-16 [backend]: Operators can see notification/job health, backlogs, retries, and failures without digging through logs
+- R-FLEET-W9-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W9-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-076.test.ts
+```
+
+## Phase 77 -- Structured logging and correlation standard
+
+**Phase Type**: module
+
+<!-- Phase: G | G-06 | W10 | PG:25 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `backend/frontend/mobile logging` | Structured logging and correlation standard |
+
+### Done When
+
+- R-FLEET-W10-04 [backend]: Logs across services and clients are structured and correlate a workflow across route, job, and UI layers
+- R-FLEET-W10-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-077.test.ts
+```
+
+## Phase 78 -- Sentry and runtime error strategy completion
+
+**Phase Type**: module
+
+<!-- Phase: G | G-07 | W10 | PG:25 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `Sentry client/server wiring` | Sentry and runtime error strategy completion |
+
+### Done When
+
+- R-FLEET-W10-07 [backend]: All major runtime surfaces emit actionable error telemetry with environment and release context
+- R-FLEET-W10-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-078.test.ts
+```
+
+## Phase 79 -- Service ownership, on-call, and runbook completion
+
+**Phase Type**: module
+
+<!-- Phase: G | G-08 | W10 | PG:25 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `docs` | Service ownership, on-call, and runbook completion |
+
+### Done When
+
+- R-FLEET-W10-10 [backend]: Every production-critical subsystem has an owner, on-call path, and usable runbook
+- R-FLEET-W10-11 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-12 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-079.test.ts
+```
+
+## Phase 80 -- Deployment, rollback, and recovery drills
+
+**Phase Type**: module
+
+<!-- Phase: G | G-09 | W10 | PG:26 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `deployment scripts/docs` | Deployment, rollback, and recovery drills |
+
+### Done When
+
+- R-FLEET-W10-13 [backend]: Blue-green or equivalent rollout, rollback, and restore procedures are proven in drills
+- R-FLEET-W10-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-080.test.ts
+```
+
+## Phase 81 -- Feature flags and progressive rollout controls
+
+**Phase Type**: module
+
+<!-- Phase: G | G-10 | W10 | PG:26 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `feature-flag routes/services` | Feature flags and progressive rollout controls |
+
+### Done When
+
+- R-FLEET-W10-16 [backend]: New capabilities can be gated by tenant/tier and disabled safely during incidents
+- R-FLEET-W10-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-081.test.ts
+```
+
+## Phase 82 -- Release evidence bundle and launch checklist
+
+**Phase Type**: module
+
+<!-- Phase: G | G-11 | W10 | PG:26 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `release docs` | Release evidence bundle and launch checklist |
+
+### Done When
+
+- R-FLEET-W10-19 [backend]: Every release can produce a repeatable evidence bundle showing what changed and how it was verified
+- R-FLEET-W10-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-082.test.ts
+```
+
+## Phase 83 -- Product truth matrix and customer-facing alignment
+
+**Phase Type**: module
+
+<!-- Phase: G | G-12 | W10 | PG:26 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `sales/support docs` | Product truth matrix and customer-facing alignment |
+
+### Done When
+
+- R-FLEET-W10-22 [backend]: Sales, support, implementation, and product all speak from the same truth table for live vs partial vs planned
+- R-FLEET-W10-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-083.test.ts
+```
+
+## Phase 84 -- Repo and environment hygiene cleanup
+
+**Phase Type**: module
+
+<!-- Phase: G | G-13 | W10 | PG:27 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `stale directories` | Repo and environment hygiene cleanup |
+
+### Done When
+
+- R-FLEET-W10-25 [backend]: Repo hygiene issues and environment inconsistencies that undermine trust are removed or documented with controls
+- R-FLEET-W10-26 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-27 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-084.test.ts
+```
+
+## Phase 85 -- Pilot and production support model
+
+**Phase Type**: module
+
+<!-- Phase: G | G-14 | W10 | PG:27 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `support playbooks` | Pilot and production support model |
+
+### Done When
+
+- R-FLEET-W10-28 [backend]: Pilot fleets and production fleets have an explicit support and escalation operating model
+- R-FLEET-W10-29 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-30 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-085.test.ts
+```
+
+## Phase 86 -- Operate-and-launch certification
+
+**Phase Type**: module
+
+<!-- Phase: G | G-15 | W10 | PG:27 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `runbook drills` | Operate-and-launch certification |
+
+### Done When
+
+- R-FLEET-W10-31 [backend]: The product can be operated, supported, rolled back, and truthfully launched without hidden manual heroics
+- R-FLEET-W10-32 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W10-33 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-086.test.ts
+```
+
+## Phase 87 -- Versioned public API contract
+
+**Phase Type**: module
+
+<!-- Phase: H | H-01 | W11 | PG:28 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `server/routes/public-api/*` | Versioned public API contract |
+
+### Done When
+
+- R-FLEET-W11-01 [backend]: A versioned API namespace exists with explicit resource contracts and deprecation policy
+- R-FLEET-W11-02 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-03 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-087.test.ts
+```
+
+## Phase 88 -- Tenant API keys, scopes, and rate limits
+
+**Phase Type**: module
+
+<!-- Phase: H | H-02 | W11 | PG:28 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `API key routes/services` | Tenant API keys, scopes, and rate limits |
+
+### Done When
+
+- R-FLEET-W11-04 [backend]: API keys can be issued, rotated, revoked, scoped, and rate-limited per tenant
+- R-FLEET-W11-05 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-06 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-088.test.ts
+```
+
+## Phase 89 -- Outbound webhook platform
+
+**Phase Type**: module
+
+<!-- Phase: H | H-03 | W11 | PG:28 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| ADD | `future webhook routes/services` | Outbound webhook platform |
+
+### Done When
+
+- R-FLEET-W11-07 [backend]: Tenants can subscribe to supported domain events and receive signed, retryable outbound webhooks
+- R-FLEET-W11-08 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-09 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-089.test.ts
+```
+
+## Phase 90 -- Developer docs and sandbox path
+
+**Phase Type**: module
+
+<!-- Phase: H | H-04 | W11 | PG:28 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `developer docs portal` | Developer docs and sandbox path |
+
+### Done When
+
+- R-FLEET-W11-10 [docs]: External developers have documentation and a safe path to integrate without production guesswork
+- R-FLEET-W11-11 [docs]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-12 [docs]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+test -f developer docs portal
+```
+
+## Phase 91 -- SSO / SAML identity path
+
+**Phase Type**: module
+
+<!-- Phase: H | H-05 | W11 | PG:29 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| ADD | `future SSO routes/services` | SSO / SAML identity path |
+
+### Done When
+
+- R-FLEET-W11-13 [backend]: Enterprise tenants can authenticate through supported SSO/SAML flows with correct tenant boundaries
+- R-FLEET-W11-14 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-15 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-091.test.ts
+```
+
+## Phase 92 -- SCIM or bulk provisioning path
+
+**Phase Type**: module
+
+<!-- Phase: H | H-06 | W11 | PG:29 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `provisioning services` | SCIM or bulk provisioning path |
+
+### Done When
+
+- R-FLEET-W11-16 [backend]: Enterprise user provisioning can be automated or bulk-managed with auditability
+- R-FLEET-W11-17 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-18 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-092.test.ts
+```
+
+## Phase 93 -- Customer onboarding and migration toolkit
+
+**Phase Type**: module
+
+<!-- Phase: H | H-07 | W11 | PG:29 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `import UI` | Customer onboarding and migration toolkit |
+
+### Done When
+
+- R-FLEET-W11-19 [backend]: Existing fleet data can be imported through guided mapping, validation, preview, and rollback-capable tooling
+- R-FLEET-W11-20 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-21 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-093.test.ts
+```
+
+## Phase 94 -- Data export, portability, retention, and legal holds
+
+**Phase Type**: module
+
+<!-- Phase: H | H-08 | W11 | PG:29 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `export services` | Data export, portability, retention, and legal holds |
+
+### Done When
+
+- R-FLEET-W11-22 [backend]: Customers can export their data, retention rules are explicit, and legal-hold style requirements are supportable
+- R-FLEET-W11-23 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-24 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-094.test.ts
+```
+
+## Phase 95 -- Data residency and multi-region control path
+
+**Phase Type**: module
+
+<!-- Phase: H | H-09 | W11 | PG:30 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `deployment architecture docs` | Data residency and multi-region control path |
+
+### Done When
+
+- R-FLEET-W11-25 [backend]: Regional storage/processing constraints and future multi-region strategy are explicit and technically grounded
+- R-FLEET-W11-26 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-27 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-095.test.ts
+```
+
+## Phase 96 -- Internationalization, multi-currency, and unit framework
+
+**Phase Type**: module
+
+<!-- Phase: H | H-10 | W11 | PG:30 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `shared formatting utilities` | Internationalization, multi-currency, and unit framework |
+
+### Done When
+
+- R-FLEET-W11-28 [backend]: Currency, unit, locale, and cross-border presentation rules are supported without ad hoc duplication
+- R-FLEET-W11-29 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-30 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-096.test.ts
+```
+
+## Phase 97 -- Reporting scale and analytical workload separation
+
+**Phase Type**: module
+
+<!-- Phase: H | H-11 | W11 | PG:30 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `reporting services` | Reporting scale and analytical workload separation |
+
+### Done When
+
+- R-FLEET-W11-31 [backend]: Historical analytics and reporting no longer depend solely on the OLTP path and can scale separately
+- R-FLEET-W11-32 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-33 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-097.test.ts
+```
+
+## Phase 98 -- Enterprise financial controls and period governance
+
+**Phase Type**: module
+
+<!-- Phase: H | H-12 | W11 | PG:30 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `approval controls` | Enterprise financial controls and period governance |
+
+### Done When
+
+- R-FLEET-W11-34 [backend]: Enterprise-grade financial controls exist for approvals, period locks, retention, and adjustment governance
+- R-FLEET-W11-35 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-36 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-098.test.ts
+```
+
+## Phase 99 -- Enterprise DR, SLA, and audit-evidence path
+
+**Phase Type**: module
+
+<!-- Phase: H | H-13 | W11 | PG:31 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `DR docs` | Enterprise DR, SLA, and audit-evidence path |
+
+### Done When
+
+- R-FLEET-W11-37 [backend]: Recovery targets, availability expectations, and audit evidence for enterprise customers are explicit and testable
+- R-FLEET-W11-38 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-39 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-099.test.ts
+```
+
+## Phase 100 -- Enterprise-grade certification and truth update
+
+**Phase Type**: module
+
+<!-- Phase: H | H-14 | W11 | PG:31 -->
+
+### Changes
+
+| Action | File | Description |
+|--------|------|-------------|
+| MODIFY | `enterprise readiness checklist` | Enterprise-grade certification and truth update |
+
+### Done When
+
+- R-FLEET-W11-40 [backend]: Enterprise claims are only enabled for capabilities that have evidence-backed completion, not roadmap intent
+- R-FLEET-W11-41 [backend]: Tests verify implementation matches acceptance criterion
+- R-FLEET-W11-42 [backend]: No regression in existing test suite for affected files
+
+### Verification Command
+
+```bash
+cd server && npx vitest run __tests__/fleet-os/phase-100.test.ts
+```
+
+## Risks and Mitigations
+
+| Risk | Mitigation |
+|------|-----------|
+| Later phases stale after Phase A migrations | Cross-phase replanning; re-baselining |
+| Branch width (~100 commits) | Checkpoint commits per phase |
+| Regression isolation | Phase-gate verification bundles |
+| Integration partner delays | Partner stories deferrable |
+
+## Dependencies
+
+**Internal**: A -> B -> C/D/E -> F -> G -> H
+
+**External**: Motive/Samsara API, QuickBooks sandbox, Stripe test, SMTP, Twilio, App Store access
