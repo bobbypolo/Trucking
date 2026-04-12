@@ -68,7 +68,10 @@ vi.mock("../../../services/api", () => ({
   apiFetch: vi.fn().mockResolvedValue({}),
   ApiFetchOptions: {},
   ForbiddenError: class ForbiddenError extends Error {
-    constructor(msg = "Forbidden") { super(msg); this.name = "ForbiddenError"; }
+    constructor(msg = "Forbidden") {
+      super(msg);
+      this.name = "ForbiddenError";
+    }
   },
 }));
 
@@ -90,8 +93,17 @@ import {
   globalSearch,
   getOperationalTrends,
 } from "../../../services/storageService";
-import { fetchLoads as apiFetchLoads, createLoad as apiCreateLoad, updateLoadStatusApi, deleteLoadApi } from "../../../services/loadService";
-import { getCompany, updateCompany, getAuthHeaders } from "../../../services/authService";
+import {
+  fetchLoads as apiFetchLoads,
+  createLoad as apiCreateLoad,
+  updateLoadStatusApi,
+  deleteLoadApi,
+} from "../../../services/loadService";
+import {
+  getCompany,
+  updateCompany,
+  getAuthHeaders,
+} from "../../../services/authService";
 import { api } from "../../../services/api";
 
 const mockApiFetchLoads = apiFetchLoads as ReturnType<typeof vi.fn>;
@@ -191,7 +203,11 @@ describe("storageService — enhanced coverage", () => {
       mockApiFetchLoads.mockResolvedValue([
         { id: "l1", companyId: "c1", driverId: "d1" },
       ]);
-      const user = { id: "u1", companyId: "c1", role: "payroll_manager" } as any;
+      const user = {
+        id: "u1",
+        companyId: "c1",
+        role: "payroll_manager",
+      } as any;
       const loads = await getLoads(user);
       expect(loads).toHaveLength(1);
     });
@@ -207,11 +223,14 @@ describe("storageService — enhanced coverage", () => {
 
       await saveLoad(load, user);
 
+      // driverId defaults to "" (not user.id) — the hybrid load workflow
+      // remediation (commit b735d48) changed saveLoad to leave new loads
+      // unassigned so the dispatcher picks the driver explicitly.
       expect(mockApiCreateLoad).toHaveBeenCalledWith(
         expect.objectContaining({
           id: "l-new",
           companyId: "c1",
-          driverId: "u1",
+          driverId: "",
         }),
       );
     });
@@ -285,9 +304,7 @@ describe("storageService — enhanced coverage", () => {
       const mockApiPost = api.post as ReturnType<typeof vi.fn>;
       mockApiPost.mockRejectedValueOnce(new Error("offline"));
 
-      await expect(
-        logTime({ userId: "u1" }),
-      ).resolves.toBeUndefined();
+      await expect(logTime({ userId: "u1" })).resolves.toBeUndefined();
     });
   });
 
@@ -316,9 +333,7 @@ describe("storageService — enhanced coverage", () => {
       const mockApiPost = api.post as ReturnType<typeof vi.fn>;
       mockApiPost.mockRejectedValueOnce(new Error("offline"));
 
-      await expect(
-        logDispatchEvent({ loadId: "l1" }),
-      ).resolves.toBeUndefined();
+      await expect(logDispatchEvent({ loadId: "l1" })).resolves.toBeUndefined();
     });
   });
 
@@ -340,7 +355,10 @@ describe("storageService — enhanced coverage", () => {
       expect(events[0].loadId).toBe("l1");
       expect(events[0].dispatcherId).toBe("d1");
       expect(events[0].eventType).toBe("assigned");
-      expect(mockApiGet).toHaveBeenCalledWith("/dispatch-events/c1", expect.anything());
+      expect(mockApiGet).toHaveBeenCalledWith(
+        "/dispatch-events/c1",
+        expect.anything(),
+      );
     });
 
     it("throws on API failure", async () => {
