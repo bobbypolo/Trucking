@@ -58,6 +58,7 @@ import featureFlagsRouter from "./routes/feature-flags";
 import demoRouter from "./routes/demo";
 import pushTokensRouter from "./routes/push-tokens";
 import driversRouter from "./routes/drivers";
+import driverStopsRouter from "./routes/driver-stops";
 const app = express();
 const port = process.env.PORT || 5000;
 app.set("trust proxy", 1);
@@ -84,7 +85,7 @@ app.use(
   }),
 );
 // prettier-ignore
-for (const r of [usersRouter, loadsRouter, equipmentRouter, clientsRouter, contractsRouter, dispatchRouter, complianceRouter, incidentsRouter, accountingRouter, quickbooksRouter, exceptionsRouter, trackingRouter, weatherRouter, metricsRouter, messagesRouter, callSessionsRouter, quotesRouter, leadsRouter, bookingsRouter, contactsRouter, providersRouter, tasksRouter, kciRequestsRouter, crisisActionsRouter, serviceTicketsRouter, safetyRouter, notificationJobsRouter, documentsRouter, callLogsRouter, geofenceRouter, invitationsRouter, intelligenceRouter, driverIntakeRouter, iftaAuditPacketsRouter, pushTokensRouter, driversRouter]) app.use(r);
+for (const r of [usersRouter, loadsRouter, equipmentRouter, clientsRouter, contractsRouter, dispatchRouter, complianceRouter, incidentsRouter, accountingRouter, quickbooksRouter, exceptionsRouter, trackingRouter, weatherRouter, metricsRouter, messagesRouter, callSessionsRouter, quotesRouter, leadsRouter, bookingsRouter, contactsRouter, providersRouter, tasksRouter, kciRequestsRouter, crisisActionsRouter, serviceTicketsRouter, safetyRouter, notificationJobsRouter, documentsRouter, callLogsRouter, geofenceRouter, invitationsRouter, intelligenceRouter, driverIntakeRouter, iftaAuditPacketsRouter, pushTokensRouter, driversRouter, driverStopsRouter]) app.use(r);
 app.use("/api/ai", express.json({ limit: "5mb" }), aiRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
 if (process.env.ALLOW_DEMO_RESET === "1") app.use("/api/demo", demoRouter);
