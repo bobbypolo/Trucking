@@ -13,6 +13,10 @@ export default defineConfig({
         __dirname,
         "__mocks__/async-storage.ts",
       ),
+      "@react-native-community/netinfo": path.resolve(
+        __dirname,
+        "__mocks__/netinfo.ts",
+      ),
     },
   },
   esbuild: {

@@ -27,6 +27,7 @@ import { DocumentList } from "../../../components/DocumentList";
 import { StopList } from "../../../components/StopList";
 import { useLoadStatus } from "../../../hooks/useLoadStatus";
 import { fetchDocuments } from "../../../services/stops";
+import { IssueReportForm } from "../../../components/IssueReportForm";
 import type { Load, LoadStatus } from "../../../types/load";
 
 const STATUS_COLORS: Record<LoadStatus, string> = {
@@ -55,6 +56,7 @@ export default function LoadDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [presentDocTypes, setPresentDocTypes] = useState<string[]>([]);
+  const [issueModalVisible, setIssueModalVisible] = useState(false);
 
   const {
     status: currentStatus,
@@ -253,6 +255,24 @@ export default function LoadDetailScreen() {
           <Text style={styles.captureButtonText}>Capture Document</Text>
         </Pressable>
       </View>
+
+      <View style={styles.reportIssueContainer}>
+        <Pressable
+          style={styles.reportIssueButton}
+          onPress={() => setIssueModalVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Report Issue"
+        >
+          <Text style={styles.reportIssueButtonText}>Report Issue</Text>
+        </Pressable>
+      </View>
+
+      <IssueReportForm
+        loadId={id || ""}
+        visible={issueModalVisible}
+        onClose={() => setIssueModalVisible(false)}
+        onSubmit={() => setIssueModalVisible(false)}
+      />
     </ScrollView>
   );
 }
@@ -386,6 +406,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   captureButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  reportIssueContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  reportIssueButton: {
+    backgroundColor: "#EF4444",
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  reportIssueButtonText: {
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
