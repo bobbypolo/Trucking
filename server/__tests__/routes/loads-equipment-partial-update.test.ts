@@ -198,8 +198,11 @@ describe("R-P4-21 — PATCH /api/loads/:id with equipment_id executes UPDATE wit
 
   // Tests R-P4-21
   it("Tests R-P4-21 — UPDATE SQL contains equipment_id = ? with correct parameter", async () => {
+    // Note: isTokenRevoked is globally mocked in __tests__/setup.ts and does
+    // NOT hit pool.execute. resolveLoadNotesColumn() is only called when the
+    // request body includes `notes` — not the case here. So the query sequence
+    // is: SELECT id, UPDATE, SELECT *, SELECT load_legs (4 calls, not 5).
     mockQuery
-      .mockResolvedValueOnce([[]]) // resolveLoadNotesColumn cache check
       .mockResolvedValueOnce([[{ id: "load-123" }]]) // SELECT id to confirm load exists
       .mockResolvedValueOnce([{ affectedRows: 1 }]) // UPDATE
       .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]]) // SELECT *
@@ -238,8 +241,9 @@ describe("R-P4-22 — PATCH with only equipment_id succeeds (no 400)", () => {
 
   // Tests R-P4-22
   it("Tests R-P4-22 — PATCH { equipment_id: 'EQ-001' } returns 200 not 400", async () => {
+    // See R-P4-21 note — 4 queries, not 5 (isTokenRevoked is globally mocked,
+    // and resolveLoadNotesColumn is only called when `notes` is in the body).
     mockQuery
-      .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id: "load-123" }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ ...loadRow, equipment_id: "EQ-001" }]])
