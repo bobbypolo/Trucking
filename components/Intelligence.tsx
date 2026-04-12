@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { LoadData, Broker } from "../types";
 // Added ChevronRight to fix missing import error
 import {
   TrendingUp,
+  TrendingDown,
+  Minus,
   MapPin,
   Building2,
   Search,
@@ -57,6 +59,54 @@ export const Intelligence: React.FC<Props> = ({
     type: "facility" | "broker";
     data: any;
   } | null>(null);
+
+  // STORY-011 Phase 11 — market trends enhancement
+  // R-P11-03/04: fetch lane trends from /api/analytics/lane-trends on mount
+  type LaneTrendRow = {
+    lane: string;
+    month: string;
+    avgRate: number;
+    volume: number;
+    trend: "up" | "down" | "flat";
+  };
+  const [laneTrends, setLaneTrends] = useState<LaneTrendRow[]>([]);
+  const [laneTrendsError, setLaneTrendsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadLaneTrends = async () => {
+      try {
+        const res = await fetch("/api/analytics/lane-trends?months=6");
+        if (!res.ok) {
+          if (!cancelled) setLaneTrendsError("Unable to load trends");
+          return;
+        }
+        const data = (await res.json()) as LaneTrendRow[];
+        if (!cancelled) setLaneTrends(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) setLaneTrendsError("Unable to load trends");
+      }
+    };
+    void loadLaneTrends();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Collapse lane trend rows to the latest row per lane so the UI
+  // shows one indicator per lane (R-P11-03).
+  const latestLaneTrends = useMemo(() => {
+    const latest = new Map<string, LaneTrendRow>();
+    for (const row of laneTrends) {
+      const prior = latest.get(row.lane);
+      if (!prior || row.month > prior.month) {
+        latest.set(row.lane, row);
+      }
+    }
+    return Array.from(latest.values()).sort((a, b) =>
+      a.lane.localeCompare(b.lane),
+    );
+  }, [laneTrends]);
 
   const normalize = (str?: string) =>
     str
@@ -318,6 +368,90 @@ export const Intelligence: React.FC<Props> = ({
       <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-6 no-scrollbar pb-20">
         {activeTab === "market" && (
           <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+            {/* STORY-011 Phase 11 — Lane Trend indicators
+                R-P11-03: TrendingUp/TrendingDown icons with data-testid
+                R-P11-04: lane rows with avgRate and trend */}
+            <section
+              aria-labelledby="lane-trends-heading"
+              data-testid="lane-trends-section"
+              className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-4"
+            >
+              <h3
+                id="lane-trends-heading"
+                className="text-xs font-black text-slate-500 uppercase tracking-widest"
+              >
+                Lane Rate Trends (Last 6 Months)
+              </h3>
+              {laneTrendsError && (
+                <div className="text-xs text-red-400 font-semibold">
+                  {laneTrendsError}
+                </div>
+              )}
+              {!laneTrendsError && latestLaneTrends.length === 0 && (
+                <div className="text-xs text-slate-500">
+                  No lane trend data available yet.
+                </div>
+              )}
+              {!laneTrendsError && latestLaneTrends.length > 0 && (
+                <ul className="divide-y divide-slate-800">
+                  {latestLaneTrends.map((row) => {
+                    const testId =
+                      row.trend === "up"
+                        ? "trend-indicator-up"
+                        : row.trend === "down"
+                          ? "trend-indicator-down"
+                          : "trend-indicator-flat";
+                    return (
+                      <li
+                        key={row.lane}
+                        data-testid="lane-trend-row"
+                        className="flex items-center justify-between py-3 text-xs text-slate-200"
+                      >
+                        <span className="font-black tracking-widest uppercase">
+                          {row.lane}
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <span
+                            data-testid="lane-trend-avg-rate"
+                            className="font-mono text-slate-300"
+                          >
+                            ${row.avgRate.toFixed(0)}
+                          </span>
+                          <span
+                            data-testid="lane-trend-value"
+                            className="text-slate-500 uppercase tracking-widest"
+                          >
+                            {row.trend}
+                          </span>
+                          {row.trend === "up" && (
+                            <TrendingUp
+                              data-testid={testId}
+                              aria-label="Trend up"
+                              className="w-4 h-4 text-green-500"
+                            />
+                          )}
+                          {row.trend === "down" && (
+                            <TrendingDown
+                              data-testid={testId}
+                              aria-label="Trend down"
+                              className="w-4 h-4 text-red-500"
+                            />
+                          )}
+                          {row.trend === "flat" && (
+                            <Minus
+                              data-testid={testId}
+                              aria-label="Trend flat"
+                              className="w-4 h-4 text-slate-500"
+                            />
+                          )}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 shadow-xl space-y-6">
                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">

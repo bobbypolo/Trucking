@@ -22,11 +22,7 @@ import {
 import { Plus, Search } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 import { checkCapability } from "../services/authService";
-import {
-  QuotePipelineView,
-  QuoteDetailView,
-  QuoteIntakeForm,
-} from "./quotes";
+import { QuotePipelineView, QuoteDetailView, QuoteIntakeForm } from "./quotes";
 
 interface Props {
   user: User;
@@ -47,7 +43,7 @@ export const QuoteManager: React.FC<Props> = ({
 
   const [activeView, setActiveView] = useState<
     "pipeline" | "details" | "intake"
-  >("pipeline");
+  >("intake");
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -368,16 +364,16 @@ export const QuoteManager: React.FC<Props> = ({
           <div className="h-8 w-px bg-white/5 mx-2" />
           <div className="flex bg-slate-950 rounded-xl p-1 border border-white/5">
             <button
-              onClick={() => setActiveView("pipeline")}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "pipeline" ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
-            >
-              Pipeline View
-            </button>
-            <button
               onClick={handleEnterIntake}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeView === "intake" ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
+              className={`px-4 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${activeView === "intake" ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
             >
               Intake Desk
+            </button>
+            <button
+              onClick={() => setActiveView("pipeline")}
+              className={`px-4 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${activeView === "pipeline" ? "bg-blue-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"}`}
+            >
+              Pipeline View
             </button>
           </div>
         </div>

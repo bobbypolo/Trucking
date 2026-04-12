@@ -146,7 +146,7 @@ const TriageItem: React.FC<{
           {type === "CALL" && (
             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
           )}
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest opacity-60">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
             {new Date(
               item.timestamp || item.reportedAt || item.createdAt || Date.now(),
             ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -177,7 +177,7 @@ const TriageItem: React.FC<{
 
         {(item.description || item.notes) && (
           <p
-            className={`${isHighObstruction ? "text-[12px] font-black" : "text-[11px] font-bold"} text-slate-400 leading-relaxed line-clamp-1 opacity-70 italic`}
+            className={`${isHighObstruction ? "text-[12px] font-black" : "text-[11px] font-bold"} text-slate-300 leading-relaxed line-clamp-1 italic`}
           >
             {item.description || item.notes}
           </p>
@@ -299,10 +299,10 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
         {!isCollapsed ? (
           <>
             <div className="h-[42%] flex flex-col border-b border-white/5 overflow-hidden">
-              <div className="p-5 border-b border-white/5 bg-white/[0.03] backdrop-blur-lg space-y-3">
+              <div className="p-5 border-b border-white/5 bg-white/[0.08] backdrop-blur-lg space-y-3">
                 <div className="flex justify-between items-center">
                   <div className="flex flex-col gap-0.5">
-                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 opacity-60">
+                    <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                       Strategic Voice Queue
                     </h2>
                     <div className="flex gap-2 items-center">
@@ -445,7 +445,7 @@ export const TriageWorkspacePanel: React.FC<TriageWorkspacePanelProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setActiveTriageTab(tab.id)}
-                    className={`flex-1 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-600 hover:text-slate-400"}`}
+                    className={`flex-1 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${activeTriageTab === tab.id ? "text-blue-500 bg-white/5" : "text-slate-400 hover:text-slate-200"}`}
                   >
                     {tab.label}
                   </button>

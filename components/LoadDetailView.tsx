@@ -28,6 +28,7 @@ import {
   Share2,
   ClipboardList,
   Package,
+  ArrowLeft,
   ArrowRight,
   CheckCircle2,
   MoreHorizontal,
@@ -40,6 +41,7 @@ import {
   Navigation,
   Trash2,
   Activity,
+  Send,
 } from "lucide-react";
 import { createARInvoice } from "../services/financialService";
 import { getDocuments } from "../services/storage/vault";
@@ -103,6 +105,14 @@ export const LoadDetailView: React.FC<Props> = ({
   const [isLocking, setIsLocking] = useState(false);
   const [isFlagging, setIsFlagging] = useState(false);
   const [showRateCard, setShowRateCard] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifySelected, setNotifySelected] = useState<Record<string, boolean>>(
+    {},
+  );
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [isSendingNotify, setIsSendingNotify] = useState(false);
+  // STORY-009 Phase 9 R-P9-06: Generate Agreement button state
+  const [isGeneratingAgreement, setIsGeneratingAgreement] = useState(false);
   const stopMatrixRef = useRef<HTMLDivElement>(null);
   const settlementRef = useRef<HTMLDivElement>(null);
   const detailOverlayRef = useRef<HTMLDivElement>(null);
@@ -282,12 +292,132 @@ export const LoadDetailView: React.FC<Props> = ({
         message: newFlagged ? "Load tagged for action" : "Action tag removed",
         type: "success",
       });
+      // STORY-006 Phase 6 R-P6-01/02/03: fire-and-forget POST to
+      // /api/dispatch-events so the operations event stream records
+      // the tag state change. Dispatch-event failures must NOT surface
+      // as an error toast -- the tag itself already succeeded.
+      try {
+        const response = await fetch("/api/dispatch-events", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: uuidv4(),
+            load_id: load.id,
+            dispatcher_id: currentUser.id,
+            event_type: newFlagged ? "ACTION_TAGGED" : "ACTION_UNTAGGED",
+            message: newFlagged
+              ? "Load tagged for action"
+              : "Action tag removed",
+          }),
+        });
+        if (!response.ok) {
+          // Swallow >= 400 responses silently. The outer try/catch below
+          // handles unexpected thrown errors (network, JSON, etc.).
+          console.warn(
+            "dispatch-events POST returned non-OK status",
+            response.status,
+          );
+        }
+      } catch (dispatchErr) {
+        console.warn("dispatch-events POST failed", dispatchErr);
+      }
     } catch {
       setToast({ message: "Failed to update tag", type: "error" });
     } finally {
       setIsFlagging(false);
     }
   }, [load, currentUser, localIsFlagged, isFlagging]);
+
+  // STORY-004 Phase 4: extract notification recipients from load data.
+  // Builds a list of contacts from brokerId, driverId, customerContact.
+  const notifyContacts = useMemo(() => {
+    const contacts: Array<{
+      id: string;
+      name: string;
+      role: string;
+      phone: string;
+    }> = [];
+    if (broker) {
+      contacts.push({
+        id: broker.id,
+        name: broker.name,
+        role: "broker",
+        phone: (broker as any).contactPhone || "",
+      });
+    }
+    if (driver) {
+      contacts.push({
+        id: driver.id,
+        name: driver.name,
+        role: "driver",
+        phone: (driver as any).phone || "",
+      });
+    }
+    if (load.customerContact?.name) {
+      contacts.push({
+        id: `customer-${load.id}`,
+        name: load.customerContact.name,
+        role: "customer",
+        phone: load.customerContact.phone || "",
+      });
+    }
+    return contacts;
+  }, [broker, driver, load.customerContact, load.id]);
+
+  const handleOpenNotifyModal = useCallback(() => {
+    setNotifySelected({});
+    setNotifyMessage("");
+    setShowNotifyModal(true);
+  }, []);
+
+  const handleCloseNotifyModal = useCallback(() => {
+    setShowNotifyModal(false);
+  }, []);
+
+  const handleToggleNotifyContact = useCallback((id: string) => {
+    setNotifySelected((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  const handleSendNotification = useCallback(async () => {
+    if (isSendingNotify) return;
+    const recipients = notifyContacts.filter((c) => notifySelected[c.id]);
+    if (recipients.length === 0) {
+      setToast({
+        message: "Select at least one recipient",
+        type: "error",
+      });
+      return;
+    }
+    setIsSendingNotify(true);
+    try {
+      await api.post("/notification-jobs", {
+        id: uuidv4(),
+        loadId: load.id,
+        recipients,
+        message: notifyMessage,
+        channel: "Multi",
+        status: "PENDING",
+        sentBy: currentUser?.id || "unknown",
+        sentAt: new Date().toISOString(),
+      });
+      setToast({ message: "Notification sent", type: "success" });
+      setShowNotifyModal(false);
+    } catch {
+      setToast({
+        message: "Failed to send notification",
+        type: "error",
+      });
+    } finally {
+      setIsSendingNotify(false);
+    }
+  }, [
+    isSendingNotify,
+    notifyContacts,
+    notifySelected,
+    notifyMessage,
+    load.id,
+    currentUser,
+  ]);
 
   const handleToggleLock = useCallback(async () => {
     if (!currentUser || isLocking) return;
@@ -306,6 +436,38 @@ export const LoadDetailView: React.FC<Props> = ({
       setIsLocking(false);
     }
   }, [load, currentUser, localIsLocked, isLocking]);
+
+  // STORY-009 Phase 9 R-P9-06: Generate digital agreement from rate confirmation
+  const handleGenerateAgreement = useCallback(async () => {
+    if (isGeneratingAgreement) return;
+    setIsGeneratingAgreement(true);
+    try {
+      const rateConData = {
+        carrierRate: load.carrierRate ?? null,
+        broker: broker?.name ?? null,
+        brokerMc: broker?.mcNumber ?? null,
+        loadNumber: load.loadNumber,
+        pickup: load.pickup,
+        dropoff: load.dropoff,
+        pickupDate: load.pickupDate,
+        dropoffDate: load.dropoffDate,
+        commodity: load.commodity,
+        freightType: load.freightType,
+      };
+      await api.post("/agreements", {
+        load_id: load.id,
+        rate_con_data: rateConData,
+      });
+      setToast({ message: "Agreement generated", type: "success" });
+    } catch {
+      setToast({
+        message: "Failed to generate agreement",
+        type: "error",
+      });
+    } finally {
+      setIsGeneratingAgreement(false);
+    }
+  }, [isGeneratingAgreement, load, broker]);
 
   return (
     <div
@@ -330,9 +492,102 @@ export const LoadDetailView: React.FC<Props> = ({
         onConfirm={doCloseLoad}
         onCancel={() => setConfirmClose(false)}
       />
+      {/* STORY-004 Phase 4 R-P4-02..05: Notify Partners modal */}
+      {showNotifyModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notify Partners"
+          className="fixed inset-0 z-[1100] bg-black/70 flex items-center justify-center p-4"
+        >
+          <div className="w-full max-w-md bg-[#0a0f18] border border-slate-800 rounded-2xl p-6 space-y-4">
+            <h2 className="text-lg font-black uppercase tracking-widest text-white">
+              Notify Partners
+            </h2>
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Recipients
+              </p>
+              {notifyContacts.length === 0 && (
+                <p className="text-xs text-slate-400">
+                  No contacts available for this load.
+                </p>
+              )}
+              {notifyContacts.map((contact) => {
+                const checkboxId = `notify-recipient-${contact.id}`;
+                return (
+                  <label
+                    key={contact.id}
+                    htmlFor={checkboxId}
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-900/50 border border-slate-800 cursor-pointer hover:bg-slate-800/50"
+                  >
+                    <input
+                      id={checkboxId}
+                      type="checkbox"
+                      checked={!!notifySelected[contact.id]}
+                      onChange={() => handleToggleNotifyContact(contact.id)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm text-white">
+                      {contact.name}
+                      <span className="text-[10px] text-slate-500 ml-2 uppercase">
+                        ({contact.role})
+                      </span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <div className="space-y-2">
+              <label
+                htmlFor="notify-message"
+                className="text-[11px] font-bold uppercase tracking-wider text-slate-500"
+              >
+                Message
+              </label>
+              <textarea
+                id="notify-message"
+                value={notifyMessage}
+                onChange={(e) => setNotifyMessage(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-lg text-sm text-white resize-none"
+                placeholder="Enter notification message..."
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleCloseNotifyModal}
+                className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSendNotification}
+                disabled={isSendingNotify}
+                className="px-4 py-2 bg-blue-600 border border-blue-500 rounded-lg text-xs font-black uppercase tracking-widest text-white hover:bg-blue-500 disabled:opacity-50"
+              >
+                {isSendingNotify ? "Sending..." : "Send Notification"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div
         className={`w-full max-w-[1400px] h-[90vh] bg-[#0a0f18] border border-slate-800 rounded-3xl shadow-[0_0_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col transition-all duration-700 ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
       >
+        {/* Back to Load Board navigation bar (STORY-002 R-P2-01/R-P2-02) */}
+        <div className="bg-slate-950 border-b border-slate-800 px-6 py-2 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Load Board
+          </button>
+        </div>
         {/* Top Status Bar (Matches EditLoadForm) */}
         <div className="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-4 text-xs font-bold text-slate-400">
@@ -396,6 +651,25 @@ export const LoadDetailView: React.FC<Props> = ({
                 : localIsFlagged
                   ? "Tagged"
                   : "Tag for Action"}
+            </button>
+            {/* STORY-004 Phase 4 R-P4-01: Notify Partners button next to Tag for Action */}
+            <button
+              type="button"
+              onClick={handleOpenNotifyModal}
+              className="flex items-center gap-2 px-5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 transition-all"
+            >
+              <Send className="w-4 h-4" />
+              Notify Partners
+            </button>
+            {/* STORY-009 Phase 9 R-P9-06: Generate Agreement button sends POST /api/agreements */}
+            <button
+              type="button"
+              onClick={handleGenerateAgreement}
+              disabled={isGeneratingAgreement}
+              className="flex items-center gap-2 px-5 py-2 bg-slate-800 border border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-300 hover:bg-slate-700 transition-all disabled:opacity-50"
+            >
+              <FileText className="w-4 h-4" />
+              {isGeneratingAgreement ? "Generating..." : "Generate Agreement"}
             </button>
             <button
               onClick={handleToggleLock}

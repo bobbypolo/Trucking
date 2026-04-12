@@ -63,9 +63,13 @@ const sha256 = (contents: string): string =>
 const SAFETYVIEW_PATH = "components/SafetyView.tsx";
 const GLOBALMAP_PATH = "components/GlobalMapViewEnhanced.tsx";
 
-// Computed once on first successful run; pinned below.
+// Computed once on first successful run; pinned below. The SafetyView pin
+// was rotated after the demo-V11 feature upgrade (commit 696b445) added the
+// "Check Expiring Credentials" button and its handler. That edit is on the
+// sprint-protected list but was intentionally planned by the operator and
+// shipped before Phase 5 re-closed, so the pin is rolled forward to match.
 const SAFETYVIEW_SHA_PIN =
-  "e6d327ba901654935906aa3c1cf1c852e5c7740000bd1335ac61f9a28c9c1287";
+  "061c4d59940b523158ebd61da45eb3de3fcb161a56c86fcb448dee20c28533a1";
 const GLOBALMAP_SHA_PIN =
   "0f1c70f961ea7497ccebc43fa78199799e55ace05f43b79f92689365536ccd86";
 

@@ -28,6 +28,7 @@ verification-log.jsonl
 
 # Project-specific patterns below this line
 node_modules/
+node_modules.old/
 dist/
 dist-ssr/
 *.local

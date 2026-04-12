@@ -34,6 +34,7 @@ import {
   recordLoadCompletion,
 } from "../services/discrepancyPipeline";
 import { exportLoadToBigQuery } from "../services/bigqueryPipeline";
+import { deliverNotification } from "../services/notification-delivery.service";
 
 const router = Router();
 let cachedLoadNotesColumn: string | null | undefined;
@@ -499,8 +500,8 @@ router.patch(
       // Pipeline: increment broker load count + export to BigQuery when load is settled
       if (status === "Settled" || status === "Completed") {
         const [rows] = await pool.query<RowDataPacket[]>(
-          "SELECT customer_id FROM loads WHERE id = ?",
-          [loadId],
+          "SELECT customer_id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+          [loadId, companyId],
         );
         if (rows[0]?.customer_id) {
           await recordLoadCompletion(
@@ -738,8 +739,10 @@ router.post(
 
     try {
       const [loadRows] = await pool.query<RowDataPacket[]>(
-        `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
-        [loadId],
+        `SELECT customer_id, quoted_weight, quoted_commodity
+         FROM loads
+         WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+        [loadId, companyId],
       );
 
       if (!loadRows.length)
@@ -767,6 +770,56 @@ router.post(
           scanned_weight,
           scanned_commodity ?? "",
           customer_id,
+        );
+      }
+
+      // Fire-and-forget: notify broker that the BOL was scanned (R-P7-03, R-P7-04).
+      // Any failure in the lookup or deliverNotification is swallowed so the
+      // bol-scan response is unaffected. Ignored: quoted_commodity is unused here.
+      void quoted_commodity;
+      try {
+        const [brokerRows] = await pool.query<RowDataPacket[]>(
+          `SELECT c.email AS email, l.load_number AS load_number
+           FROM loads l
+           LEFT JOIN customers c ON c.id = l.customer_id
+           WHERE l.id = ? AND l.company_id = ? AND l.deleted_at IS NULL`,
+          [loadId, companyId],
+        );
+        const brokerEmail = (brokerRows?.[0]?.email as string | null) ?? null;
+        const resolvedLoadNumber =
+          (brokerRows?.[0]?.load_number as string | null) ??
+          load_number ??
+          loadId;
+        if (brokerEmail) {
+          try {
+            await deliverNotification({
+              channel: "email",
+              recipients: [{ email: brokerEmail }],
+              subject: `BOL Scanned: Load #${resolvedLoadNumber}`,
+              message:
+                `The BOL for load ${resolvedLoadNumber} has been scanned. ` +
+                `Detention flagged: ${detentionResult.isBillable ? "yes" : "no"}. ` +
+                `Weight discrepancy flagged: ${discrepancyResult.flagged ? "yes" : "no"}.`,
+            });
+          } catch (notifyErr) {
+            const notifyLog = createRequestLogger(
+              req,
+              "POST /api/loads/:id/bol-scan",
+            );
+            notifyLog.error(
+              { err: notifyErr },
+              "BOL email notification failed (fire-and-forget)",
+            );
+          }
+        }
+      } catch (lookupErr) {
+        const lookupLog = createRequestLogger(
+          req,
+          "POST /api/loads/:id/bol-scan",
+        );
+        lookupLog.warn(
+          { err: lookupErr },
+          "Broker email lookup failed — skipping BOL notification",
         );
       }
 

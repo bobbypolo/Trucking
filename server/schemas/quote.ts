@@ -19,6 +19,11 @@ export const createQuoteSchema = z.object({
   broker_id: z.string().optional(),
   valid_until: z.string().optional(),
   notes: z.string().optional(),
+  margin: z.number().optional(),
+  discount: z.number().optional(),
+  commission: z.number().optional(),
+  estimated_driver_pay: z.number().optional(),
+  company_cost_factor: z.number().optional(),
 });
 
 export const updateQuoteSchema = createQuoteSchema.partial();

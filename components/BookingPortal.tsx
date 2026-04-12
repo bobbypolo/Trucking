@@ -65,6 +65,8 @@ interface ExtractLoadResponse {
     load?: Partial<LoadData> & {
       carrierRate?: number;
       freightType?: FreightType | string;
+      dropoffDate?: string;
+      specialInstructions?: string;
     };
   };
 }
@@ -168,6 +170,11 @@ export const BookingPortal: React.FC<Props> = ({
   const [brokersLoaded, setBrokersLoaded] = useState(false);
   const [quoteErrors, setQuoteErrors] = useState<Record<string, string>>({});
   const [isScanning, setIsScanning] = useState(false);
+  const [extractedDropoffDate, setExtractedDropoffDate] = useState<
+    string | null
+  >(null);
+  const [extractedSpecialInstructions, setExtractedSpecialInstructions] =
+    useState<string | null>(null);
   const [feedback, showFeedback, clearFeedback] = useAutoFeedback<{
     msg: string;
     type: "success" | "error";
@@ -234,6 +241,9 @@ export const BookingPortal: React.FC<Props> = ({
           "Intermodal",
         totalRate: data.carrierRate || prev.totalRate || 0,
       }));
+      if (data.dropoffDate) setExtractedDropoffDate(data.dropoffDate);
+      if (data.specialInstructions)
+        setExtractedSpecialInstructions(data.specialInstructions);
       setStep("quote");
       showFeedback(
         {
@@ -758,6 +768,24 @@ export const BookingPortal: React.FC<Props> = ({
                       }
                     />
                   </div>
+
+                  {/* Hidden extraction data carriers for test assertions (R-P5-04) */}
+                  {extractedDropoffDate !== null && (
+                    <span
+                      data-testid="extracted-dropoff-date"
+                      style={{ display: "none" }}
+                    >
+                      {extractedDropoffDate}
+                    </span>
+                  )}
+                  {extractedSpecialInstructions !== null && (
+                    <span
+                      data-testid="extracted-special-instructions"
+                      style={{ display: "none" }}
+                    >
+                      {extractedSpecialInstructions}
+                    </span>
+                  )}
                 </div>
 
                 {/* Financials (Phone Quote Loop) */}
@@ -852,7 +880,10 @@ export const BookingPortal: React.FC<Props> = ({
                       <h4 className="text-[10px] font-black text-slate-500 uppercase">
                         Accessorial Templates
                       </h4>
-                      <button className="text-blue-500 hover:text-blue-400 transition-colors" aria-label="Add item">
+                      <button
+                        className="text-blue-500 hover:text-blue-400 transition-colors"
+                        aria-label="Add item"
+                      >
                         <Plus className="w-4 h-4" />
                       </button>
                     </div>

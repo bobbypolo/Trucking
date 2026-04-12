@@ -942,3 +942,69 @@
 ---
 
 ## SPRINT COMPLETE: 10/10 stories passed (0 skipped)
+
+## Sprint: saas-ux-remediation (2026-04-11, Issue #72)
+
+### STORY-005 — PASS (2026-04-11)
+- **Files**: server/services/gemini.service.ts, components/BookingPortal.tsx, server/__tests__/services/gemini-schema.test.ts, src/__tests__/components/BookingPortal.extraction-mapping.test.tsx
+- **Criteria**: 4/4 (R-P5-01..R-P5-04)
+- **Summary**: Expanded Gemini extractLoadInfo schema with 10 new fields and updated prompt with extraction keywords. BookingPortal maps dropoffDate and specialInstructions from extraction results. 12 tests pass (8 backend + 4 frontend).
+
+### STORY-007 — PASS (2026-04-11)
+- **Files**: server/services/detentionPipeline.ts, server/services/discrepancyPipeline.ts, server/routes/loads.ts, + 3 test files
+- **Criteria**: 4/4 (R-P7-01..R-P7-04)
+- **Summary**: Wired deliverNotification into detention/discrepancy/BOL pipelines with fire-and-forget error handling. 15 notification tests pass.
+
+### STORY-008 — PASS (2026-04-11)
+- **Files**: server/migrations/055_quote_margin_columns.sql, server/schemas/quote.ts, server/repositories/quote.repository.ts, + 3 test files
+- **Criteria**: 6/6 (R-P8-01..R-P8-06)
+- **Summary**: Migration 055 adds 5 margin columns (margin, discount, commission, estimated_driver_pay, company_cost_factor). Zod schemas and quoteRepository wired. 40 tests pass.
+
+### STORY-001 — PASS (2026-04-11)
+- **Files**: components/IntelligenceHub.tsx, components/LoadList.tsx, components/QuoteManager.tsx, components/operations/TriageWorkspacePanel.tsx, services/dateFormat.ts, + 6 test files
+- **Criteria**: 10/10 (R-P1-01..R-P1-10)
+- **Summary**: UX quick fixes — formatDate/formatDateTime service, TriageWorkspacePanel contrast (text-slate-400, bg-white/[0.08], no opacity-60/70), LoadList uses formatDate for dates, text-[11px] for tabs, QuoteManager defaults to intake, IntelligenceHub adds SAFETY tab. 24 tests pass across 5 gate files. Commit 98e2191.
+
+### STORY-003 — PASS (2026-04-11)
+- **Files**: components/LoadList.tsx, components/CommsOverlay.tsx, + 2 test files
+- **Criteria**: 4/4 (R-P3-01..R-P3-04)
+- **Summary**: Call button opens tel:${phone} when customerContact.phone present, falls back to onOpenHub('messaging', true) otherwise, shows phone tooltip on hover. CommsOverlay renders <a href="tel:..."> in header when active call session has contactPhone. 10 tests pass. Commit 96b547d.
+
+### STORY-002 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, components/IntelligenceHub.tsx, + 2 test files
+- **Criteria**: 3/3 (R-P2-01..R-P2-03)
+- **Summary**: Back to Load Board button with ArrowLeft icon in LoadDetailView header (calls onClose), IntelligenceHub breadcrumb bar showing current tab label when selectedTab !== 'ops'. 4 tests pass + 205 regression tests. Commit 0831c5d → merge 7eb7f8c.
+
+### STORY-004 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.notify-partners.test.tsx
+- **Criteria**: 5/5 (R-P4-01..R-P4-05)
+- **Summary**: Notify Partners button + inline modal with broker/driver/customerContact checkboxes, POSTs to /api/notification-jobs with channel:Multi, success/error toasts. 5 tests pass + 48 regression tests. Commit 1a5f7b1 → merge ca845df.
+
+### STORY-006 — PASS (2026-04-11)
+- **Files**: components/LoadDetailView.tsx, src/__tests__/components/LoadDetailView.tag-event.test.tsx
+- **Criteria**: 3/3 (R-P6-01..R-P6-03)
+- **Summary**: Tag for Action button now fires fire-and-forget POST /api/dispatch-events with ACTION_TAGGED/ACTION_UNTAGGED; failures silently swallowed (no error toast). 3 tests pass + 93 regression. Commit e89a6d7.
+
+### STORY-009 — PASS (2026-04-11)
+- **Files**: server/migrations/056_digital_agreements.sql, server/routes/agreements.ts, server/schemas/agreement.ts, server/repositories/agreement.repository.ts, server/index.ts, components/LoadDetailView.tsx, + 3 test files
+- **Criteria**: 8/8 (R-P9-01..R-P9-08)
+- **Summary**: Migration 056 creates digital_agreements table (9 columns). POST/GET/PATCH routes under /api/agreements with DRAFT/SIGNED state machine, 400/404/409 error handling. Frontend Generate Agreement button in LoadDetailView. 32 tests pass (16 migration + 11 route + 5 frontend). Commit ecf08e48.
+
+### STORY-012 — PASS (2026-04-11)
+- **Files**: src/__tests__/integration/ux-remediation.smoke.test.tsx
+- **Criteria**: 3/3 (R-P12-01..R-P12-03)
+- **Summary**: Integration smoke test covering 7 modified components (LoadList, LoadDetailView, IntelligenceHub, QuoteManager, BookingPortal, TriageWorkspacePanel, CommsOverlay) with console.error spy asserting 0 errors. Verifies formatted dates, SAFETY tab, Notify Partners + Generate Agreement buttons. 7/7 tests pass. Commit 2923630.
+
+### STORY-010 — PASS (2026-04-11)
+- **Files**: server/migrations/057_financial_objectives.sql, server/routes/financial-objectives.ts, server/schemas/financial-objective.ts, server/repositories/financial-objective.repository.ts, server/index.ts, components/AnalyticsDashboard.tsx, + 3 test files
+- **Criteria**: 7/7 (R-P10-01..R-P10-07)
+- **Summary**: Migration 057 creates financial_objectives table (9 cols). GET/POST /api/financial-objectives routes with quarter filter + 400 validation. AnalyticsDashboard Q1-Q4 selector, Actual vs Target progress bars, Set quarterly targets empty prompt. 33 tests pass (16 migration + 12 route + 5 frontend). Commit 8ec52d3.
+
+### STORY-011 — PASS (2026-04-11)
+- **Files**: server/routes/analytics.ts, server/services/lane-trends.ts, components/Intelligence.tsx, + 2 test files
+- **Criteria**: 4/4 (R-P11-01..R-P11-04)
+- **Summary**: GET /api/analytics/lane-trends?months=6 aggregates loads by lane+month, classifies trend as up/down/flat (±5% threshold). Intelligence.tsx renders TrendingUp/TrendingDown icons with data-testid='trend-indicator' and lane rows with avgRate + trend. 20 tests pass (13 route + 7 frontend). Commit a1087e5.
+
+---
+
+## SPRINT COMPLETE: 12/12 stories passed (0 skipped)

@@ -25,6 +25,12 @@ const PRODUCTION_PUBLIC_ROUTES = new Set([
   "POST /api/stripe/webhook", // Stripe signature verification
   "POST /api/tracking/webhook", // X-GPS-API-Key header auth
   "POST /api/invitations/accept", // Token-based auth (invitation token in body)
+  // SPA fallback: serves dist/index.html for any non-/api GET so the React
+  // Router handles client-side navigation. This is the built frontend shell,
+  // not a data-access endpoint — it must remain public so unauthenticated
+  // users can load the login page. Defined inline in server/index.ts and
+  // guarded to skip /api paths before reaching sendFile.
+  "GET /{*path}",
 ]);
 
 // Dev/staging adds provisioning endpoints (Firebase-backed)
@@ -164,6 +170,11 @@ describe("R-P1-05: Route Protection Audit", () => {
       // - /api/metrics: admin-only cross-tenant operational metrics (uses requireAdmin)
       // - /api/ai/*: AI proxy routes scope output by user identity, not tenant DB rows.
       //   These are mounted at /api/ai in index.ts; route defs use bare paths /extract-* etc.
+      // - POST /reset: demo reset handler performs its own tenant check
+      //   (gate 3: user.tenantId === SALES_DEMO_COMPANY_ID). Adding requireTenant
+      //   on top would short-circuit gate 1 (401 unauthenticated) in the
+      //   demo.test.ts stub-requireAuth setup, so demo.ts is intentionally
+      //   auth-only with an inline tenancy check inside the handler.
       const TENANT_EXEMPT_ROUTES = new Set([
         "GET /api/users/me",
         "GET /api/metrics",
@@ -172,6 +183,7 @@ describe("R-P1-05: Route Protection Audit", () => {
         "POST /extract-equipment",
         "POST /generate-training",
         "POST /analyze-safety",
+        "POST /reset",
       ]);
 
       for (const route of allRoutes) {
@@ -195,8 +207,10 @@ describe("R-P1-05: Route Protection Audit", () => {
   });
 
   describe("AC3: Public endpoint allowlist enforcement", () => {
-    it("production public routes are health + webhooks only", () => {
-      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(4);
+    it("production public routes are health + webhooks + SPA fallback", () => {
+      // 5 entries: /api/health, 3 webhooks (stripe/tracking/invitations),
+      // and the SPA fallback GET /{*path} that serves the built frontend shell.
+      expect(PRODUCTION_PUBLIC_ROUTES.size).toBe(5);
       expect(PRODUCTION_PUBLIC_ROUTES.has("GET /api/health")).toBe(true);
     });
 

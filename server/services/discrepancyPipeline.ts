@@ -1,9 +1,72 @@
-import { v4 as uuidv4 } from 'uuid';
-import type { Pool, PoolConnection } from 'mysql2/promise';
+import { v4 as uuidv4 } from "uuid";
+import type { Pool, PoolConnection } from "mysql2/promise";
+import { deliverNotification } from "./notification-delivery.service";
+import { createChildLogger } from "../lib/logger";
+
+const log = createChildLogger({ module: "discrepancyPipeline" });
 
 type DbQueryable = Pool | PoolConnection;
 
 const DISCREPANCY_THRESHOLD_PCT = 5.0;
+
+/**
+ * Fire-and-forget discrepancy email notification.
+ *
+ * Called after a DISCREPANCY_FLAGGED event is logged. Looks up the broker
+ * contact via the loads + customers tables and calls deliverNotification with
+ * channel "email" and a subject containing "Discrepancy". Any rejection from
+ * deliverNotification is swallowed — the caller's pipeline result is never
+ * affected.
+ */
+async function sendDiscrepancyNotification(
+  db: DbQueryable,
+  loadId: string,
+  quotedWeight: number,
+  scannedWeight: number,
+  discrepancyPct: number,
+): Promise<void> {
+  let brokerEmail: string | null = null;
+  let loadNumber: string | null = null;
+  try {
+    const [rows] = await db.query(
+      `SELECT c.email AS email, l.load_number AS load_number
+             FROM loads l
+             LEFT JOIN customers c ON c.id = l.customer_id
+             WHERE l.id = ?`,
+      [loadId],
+    );
+    const row = (
+      rows as Array<{ email?: string | null; load_number?: string | null }>
+    )?.[0];
+    if (row) {
+      brokerEmail = row.email ?? null;
+      loadNumber = row.load_number ?? null;
+    }
+  } catch (err) {
+    log.warn({ err, loadId }, "broker email lookup failed");
+    return;
+  }
+
+  if (!brokerEmail) {
+    log.warn({ loadId }, "No broker email — skipping discrepancy notification");
+    return;
+  }
+
+  const displayLoadNumber = loadNumber || loadId;
+  try {
+    await deliverNotification({
+      channel: "email",
+      recipients: [{ email: brokerEmail }],
+      subject: `Weight Discrepancy: Load #${displayLoadNumber}`,
+      message:
+        `A weight discrepancy has been flagged for load ${displayLoadNumber}. ` +
+        `Quoted: ${quotedWeight} lbs, scanned: ${scannedWeight} lbs ` +
+        `(${discrepancyPct.toFixed(2)}% variance).`,
+    });
+  } catch (err) {
+    log.error({ err, loadId }, "Discrepancy email notification failed");
+  }
+}
 
 /**
  * discrepancyPipeline.ts
@@ -23,67 +86,91 @@ const DISCREPANCY_THRESHOLD_PCT = 5.0;
  * Writes results to loads table and logs DISCREPANCY_FLAGGED event if threshold exceeded.
  */
 export async function compareWeights(
-    db: DbQueryable,
-    loadId: string,
-    companyId: string,
-    quotedWeight: number,
-    scannedWeight: number,
-    scannedCommodity: string,
-    customerId: string
+  db: DbQueryable,
+  loadId: string,
+  companyId: string,
+  quotedWeight: number,
+  scannedWeight: number,
+  scannedCommodity: string,
+  customerId: string,
 ): Promise<{ flagged: boolean; discrepancyPct: number }> {
-
-    if (!quotedWeight || quotedWeight === 0) {
-        // No quoted weight on record — store scanned values but don't flag
-        await db.query(
-            `UPDATE loads SET scanned_weight = ?, scanned_commodity = ? WHERE id = ? AND company_id = ?`,
-            [scannedWeight, scannedCommodity, loadId, companyId]
-        );
-        return { flagged: false, discrepancyPct: 0 };
-    }
-
-    const discrepancyPct = ((scannedWeight - quotedWeight) / quotedWeight) * 100;
-    const flagged = Math.abs(discrepancyPct) > DISCREPANCY_THRESHOLD_PCT;
-
+  if (!quotedWeight || quotedWeight === 0) {
+    // No quoted weight on record — store scanned values but don't flag
     await db.query(
-        `UPDATE loads
+      `UPDATE loads SET scanned_weight = ?, scanned_commodity = ? WHERE id = ? AND company_id = ?`,
+      [scannedWeight, scannedCommodity, loadId, companyId],
+    );
+    return { flagged: false, discrepancyPct: 0 };
+  }
+
+  const discrepancyPct = ((scannedWeight - quotedWeight) / quotedWeight) * 100;
+  const flagged = Math.abs(discrepancyPct) > DISCREPANCY_THRESHOLD_PCT;
+
+  await db.query(
+    `UPDATE loads
          SET scanned_weight         = ?,
              scanned_commodity      = ?,
              weight_discrepancy_pct = ?,
              discrepancy_flagged    = ?
          WHERE id = ? AND company_id = ?`,
-        [scannedWeight, scannedCommodity, discrepancyPct.toFixed(2), flagged, loadId, companyId]
+    [
+      scannedWeight,
+      scannedCommodity,
+      discrepancyPct.toFixed(2),
+      flagged,
+      loadId,
+      companyId,
+    ],
+  );
+
+  if (flagged) {
+    log.info(
+      {
+        loadId,
+        quotedWeight,
+        scannedWeight,
+        discrepancyPct: Number(discrepancyPct.toFixed(1)),
+      },
+      "Discrepancy flagged",
     );
 
-    if (flagged) {
-        console.log(`[DiscrepancyPipeline] FLAGGED — Load ${loadId}: quoted ${quotedWeight}lbs, scanned ${scannedWeight}lbs (${discrepancyPct.toFixed(1)}%)`);
-
-        // Increment broker discrepancy score
-        await db.query(
-            `UPDATE customers
+    // Increment broker discrepancy score
+    await db.query(
+      `UPDATE customers
              SET discrepancy_score   = discrepancy_score + 1,
                  last_discrepancy_at = NOW()
              WHERE id = ?`,
-            [customerId]
-        );
+      [customerId],
+    );
 
-        // Log immutable event
-        await db.query(
-            `INSERT INTO load_events (id, load_id, event_type, occurred_at, payload)
+    // Log immutable event
+    await db.query(
+      `INSERT INTO load_events (id, load_id, event_type, occurred_at, payload)
              VALUES (?, ?, 'DISCREPANCY_FLAGGED', NOW(), ?)`,
-            [
-                uuidv4(),
-                loadId,
-                JSON.stringify({
-                    quoted_weight:   quotedWeight,
-                    scanned_weight:  scannedWeight,
-                    discrepancy_pct: discrepancyPct.toFixed(2),
-                    customer_id:     customerId
-                })
-            ]
-        );
-    }
+      [
+        uuidv4(),
+        loadId,
+        JSON.stringify({
+          quoted_weight: quotedWeight,
+          scanned_weight: scannedWeight,
+          discrepancy_pct: discrepancyPct.toFixed(2),
+          customer_id: customerId,
+        }),
+      ],
+    );
 
-    return { flagged, discrepancyPct };
+    // Fire-and-forget: notify broker of weight discrepancy via email.
+    // Any failure here is swallowed so the pipeline result is unaffected (R-P7-02, R-P7-04).
+    await sendDiscrepancyNotification(
+      db,
+      loadId,
+      quotedWeight,
+      scannedWeight,
+      discrepancyPct,
+    );
+  }
+
+  return { flagged, discrepancyPct };
 }
 
 /**
@@ -94,28 +181,28 @@ export async function compareWeights(
  * @param paidAt     - ISO date string when payment was received (null if not yet paid)
  */
 export async function recordLoadCompletion(
-    db: DbQueryable,
-    customerId: string,
-    invoicedAt: string,
-    paidAt: string | null
+  db: DbQueryable,
+  customerId: string,
+  invoicedAt: string,
+  paidAt: string | null,
 ): Promise<void> {
-    if (paidAt) {
-        // Rolling average: new_avg = (old_avg * old_count + new_days) / new_count
-        await db.query(
-            `UPDATE customers
+  if (paidAt) {
+    // Rolling average: new_avg = (old_avg * old_count + new_days) / new_count
+    await db.query(
+      `UPDATE customers
              SET total_loads_completed = total_loads_completed + 1,
                  avg_payment_days      = ROUND(
                      (avg_payment_days * total_loads_completed + DATEDIFF(?, ?)) / (total_loads_completed + 1),
                  1)
              WHERE id = ?`,
-            [paidAt, invoicedAt, customerId]
-        );
-    } else {
-        await db.query(
-            `UPDATE customers
+      [paidAt, invoicedAt, customerId],
+    );
+  } else {
+    await db.query(
+      `UPDATE customers
              SET total_loads_completed = total_loads_completed + 1
              WHERE id = ?`,
-            [customerId]
-        );
-    }
+      [customerId],
+    );
+  }
 }

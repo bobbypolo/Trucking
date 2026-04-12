@@ -76,7 +76,12 @@ function makeFetch(responses: Record<string, any>) {
 
 describe("PendingDriverIntakeQueue", () => {
   beforeEach(() => {
-    vi.resetAllMocks();
+    // clearAllMocks — resets call history but preserves the mock
+    // implementation declared in the module-level vi.mock factory
+    // (getIdTokenAsync → "mock-token"). Using resetAllMocks would
+    // wipe that implementation and break the component's token-
+    // guarded fetch retry loop introduced in Sprint B1.
+    vi.clearAllMocks();
   });
 
   // Tests R-P5-12

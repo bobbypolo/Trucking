@@ -2,385 +2,667 @@
   "version": "2.0",
   "planRef": ".claude/docs/PLAN.md",
   "conventionsRef": ".claude/docs/knowledge/conventions.md",
-  "plan_hash": "6b6bc474eddaa5f5b8d55e0686114da647d514b5f3be7e0966df02227de4017d",
+  "plan_hash": "0c85cc27b3f72db645fb132381fe759024158615f9c148e99936c281434b2729",
   "stories": [
     {
-      "id": "STORY-B1-01",
-      "description": "Migration adds aging_bucket column to ar_invoices",
+      "id": "STORY-001",
+      "description": "UX Quick Fixes: Contrast, Sizing, Date Format, Tab Order",
       "phase": 1,
       "phase_type": "module",
-      "component": "server/",
+      "component": "src/",
       "scope": [
-        "server/migrations/",
-        "server/__tests__/migrations/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 80,
-      "dependsOn": [],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-01",
-          "criterion": "test reads SQL file via `fs.readFileSync` and asserts UP section contains exactly one `ALTER TABLE ar_invoices ADD COLUMN aging_bucket VARCHAR(16) NULL` line via regex match.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-02",
-          "criterion": "test reads file via `fs.readFileSync` and asserts DOWN section contains exactly one `ALTER TABLE ar_invoices DROP COLUMN aging_bucket` and zero other `DROP` occurrences (regex count).",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-02",
-      "description": "Job populates aging_bucket with 5-bucket assignment",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/jobs/",
-        "server/__tests__/jobs/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-01"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-03",
-          "criterion": "5 invoice fixtures (ages 0, 15, 45, 75, 120 days) produce bucket assignments `current`, `1_30`, `31_60`, `61_90`, `90_plus`; test asserts exact values via `.toBe()`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-04",
-          "criterion": "invoice with null `issued_at` results in `aging_bucket` staying null (test asserts `.toBeNull()`).",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/jobs/invoice-aging-nightly.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-03",
-      "description": "External scheduler wrapper (Windows-safe .cjs)",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "scripts/",
-      "scope": [
-        "scripts/",
-        "server/__tests__/scripts/",
-        "docs/ops/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [
-        "STORY-B1-02"
-      ],
-      "parallelGroup": null,
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-05",
-          "criterion": "test spawns `node scripts/invoice-aging-nightly.cjs --dry-run` via `child_process.spawnSync`; asserts exit code 0 and stdout contains `\"status\":\"dry-run\"`.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-06",
-          "criterion": "runbook `docs/ops/invoice-aging-nightly.md` contains H2 sections `## Dry-run`, `## Production invocation`, `## Idempotency`, `## Failure alerting`, `## Cron example`, `## GitHub Actions example`, `## Rollback`; test reads file via `fs.readFileSync` and asserts each heading via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-07",
-          "criterion": "test spawns wrapper with no `DATABASE_URL` env; asserts non-zero exit and stderr JSON contains `\"error\":\"missing_database_url\"`.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/scripts/invoice-aging-nightly.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-04",
-      "description": "Sentry server-side init (gated on SENTRY_DSN)",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/index.ts",
-        "server/__tests__/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 80,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-08",
-          "criterion": "test reads `server/index.ts` via `fs.readFileSync` and asserts the import line and conditional `initSentry()` call via regex match.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-09",
-          "criterion": "integration test sets `process.env.SENTRY_DSN = 'test-dsn'`, mocks `initSentry`, imports `server/index`, asserts `initSentry` called exactly once.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-10",
-          "criterion": "integration test with `SENTRY_DSN` unset -> server module loads without throwing.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/index.sentry-init.test.ts\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-05",
-      "description": "Master program document + release checklist + sprint history",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/",
-        "scripts/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-11",
-          "criterion": "master plan contains H2 sections for all 13 sprints (B1..M); verified by `scripts/verify-program-docs.cjs` reading file via `fs.readFileSync` and asserting each heading via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-12",
-          "criterion": "master plan contains `## Shipped Baseline (Sprint A)` section; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-13",
-          "criterion": "release checklist contains tables for operator gates `OP-ACCT-*`, `OP-SIM-*`, `OP-DEV-*`, `OP-EAS-*`, `OP-STORE-*`, `OP-LEGAL-*`; verified by helper script.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-14",
-          "criterion": "sprint-history has initial entry with `dd8a8f4` Sprint A SHA.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-06",
-      "description": "Baseline debt register populated with REAL entries",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/",
-        "scripts/"
-      ],
-      "complexity": "moderate",
-      "maxTurns": 120,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-15",
-          "criterion": "`docs/trucker-app-baseline-debt.md` exists and contains a markdown table with columns `file | failure | owner | first-seen | expiry | justification`; verified via `scripts/verify-baseline-debt.cjs` parsing the markdown table using `fs.readFileSync` + regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-16",
-          "criterion": "register either contains >= 1 real entry OR an explicit `| _(verified clean at <date>)_ |` placeholder row; helper script asserts one of the two.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-baseline-debt.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-07",
-      "description": "Env matrix doc",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-17",
-          "criterion": "doc contains table with columns `Variable`, `Category`, `Local`, `Staging`, `Production`, `EAS Build-time`, `Scope`, `Rotation`; verified via helper script reading file with `fs.readFileSync` and matching header via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-18",
-          "criterion": "doc contains H2 section `## EXPO_PUBLIC_* rule` stating that mobile public keys MUST use the prefix and server secrets MUST NOT.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-08",
-      "description": "Feature flags doc + migration numbering rule",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "docs/",
-      "scope": [
-        "docs/"
-      ],
-      "complexity": "simple",
-      "maxTurns": 60,
-      "dependsOn": [
-        "STORY-B1-05"
-      ],
-      "parallelGroup": "B1-parallel",
-      "acceptanceCriteria": [
-        {
-          "id": "R-B1-19",
-          "criterion": "feature flags doc lists all 6 flags (`FEATURE_TRUCKER_MOBILE_BETA`, `FEATURE_MOTIVE_ELD`, `FEATURE_BROKER_CREDIT`, `FEATURE_FACILITY_DWELL`, `FEATURE_FREEMIUM_QUOTA`, `FEATURE_FORCE_UPGRADE`); helper script reads file and asserts each flag name via regex.",
-          "testType": "unit",
-          "testFile": null
-        },
-        {
-          "id": "R-B1-20",
-          "criterion": "migration-numbering doc contains the placeholder rule and assignment procedure; helper script asserts H2 sections `## Placeholder convention` and `## Assignment procedure`.",
-          "testType": "unit",
-          "testFile": null
-        }
-      ],
-      "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-program-docs.cjs\""
-      },
-      "passed": false,
-      "verificationRef": null
-    },
-    {
-      "id": "STORY-B1-09",
-      "description": "feature_flags DB table + read/write endpoint + server/index.ts mount",
-      "phase": 1,
-      "phase_type": "module",
-      "component": "server/",
-      "scope": [
-        "server/migrations/",
-        "server/routes/",
-        "server/index.ts",
-        "server/__tests__/"
+        "components/",
+        "services/",
+        "src/"
       ],
       "complexity": "complex",
-      "maxTurns": 150,
+      "maxTurns": 200,
       "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "parallelGroup": 1,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-21",
-          "criterion": "migration creates `feature_flags` table with 6 columns (id, tenant_id, flag_name, flag_value, updated_at, updated_by); test reads SQL file via `fs.readFileSync`.",
+          "id": "R-P1-01",
+          "criterion": "`formatDate(\"2026-04-10\")` returns `\"Apr 10, 2026\"` and `formatDate(\"\")` returns `\"---\"`",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-22",
-          "criterion": "`GET /api/feature-flags` returns merged flag map (env + DB) for authenticated user's tenant; integration test via supertest.",
+          "id": "R-P1-02",
+          "criterion": "`formatDateTime(\"2026-04-10T14:30:00Z\")` returns a string containing `\"Apr 10, 2026\"` and a time component",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-23",
-          "criterion": "`PUT /api/feature-flags/:name` requires admin role; non-admin returns HTTP 403 (auth-negative Rule 16).",
+          "id": "R-P1-03",
+          "criterion": "`TriageWorkspacePanel.tsx` source contains 0 instances of `opacity-60` or `opacity-70` on text elements",
           "testType": "unit",
           "testFile": null
         },
         {
-          "id": "R-B1-24",
-          "criterion": "`server/index.ts` mount line `app.use('/api/feature-flags', featureFlagsRouter)` present; test reads file via `fs.readFileSync` and asserts via regex match (no shell grep).",
+          "id": "R-P1-04",
+          "criterion": "`TriageWorkspacePanel.tsx` inactive tab classes use `text-slate-400` instead of `text-slate-600`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-05",
+          "criterion": "`LoadList.tsx` renders dates via `formatDate()` -- 0 instances of raw `{load.pickupDate}` remain in rendered output",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-06",
+          "criterion": "0 instances of `text-[10px]` on interactive buttons remain in `LoadList.tsx`, `IntelligenceHub.tsx` tabs, and `QuoteManager.tsx` tabs -- all changed to `text-[11px]`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-07",
+          "criterion": "`QuoteManager.tsx` default `activeView` is `\"intake\"` and `Intake Desk` button renders before `Pipeline View`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-08",
+          "criterion": "`IntelligenceHub.tsx` tab array includes `{ label: \"SAFETY\", tab: \"safety\" }` after `COMMAND`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-09",
+          "criterion": "When `selectedTab === \"safety\"`, `IntelligenceHub.tsx` renders `ExceptionConsole` with `initialView=\"safety\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P1-10",
+          "criterion": "`TriageWorkspacePanel.tsx` header panel background uses `bg-white/[0.08]` instead of `bg-white/[0.03]`",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"cd server && npx vitest run __tests__/migrations/ __tests__/routes/feature-flags.test.ts\""
+        "unit": "npx vitest run --reporter=verbose src/__tests__/services/dateFormat.test.ts src/__tests__/components/TriageWorkspacePanel.contrast.test.tsx src/__tests__/components/LoadList.dateformat.test.tsx src/__tests__/components/QuoteManager.taborder.test.tsx src/__tests__/components/IntelligenceHub.safety-tab.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
-      "id": "STORY-B1-10",
-      "description": "SaaS non-regression verification",
-      "phase": 1,
+      "id": "STORY-002",
+      "description": "Navigation & Back Buttons",
+      "phase": 2,
       "phase_type": "module",
-      "component": "scripts/",
+      "component": "components/",
       "scope": [
-        "scripts/"
+        "components/",
+        "src/"
       ],
-      "complexity": "moderate",
+      "complexity": "simple",
       "maxTurns": 100,
-      "dependsOn": [],
-      "parallelGroup": "B1-parallel",
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": null,
       "acceptanceCriteria": [
         {
-          "id": "R-B1-25",
-          "criterion": "helper script `scripts/verify-saas-regression.cjs` runs `npx vitest run src/__tests__/` and `cd server && npx vitest run __tests__/routes/accounting.test.ts __tests__/routes/ifta.test.ts __tests__/middleware/requireAuth.test.ts` via `child_process.spawnSync`, captures exit codes, asserts all 0 (modulo baseline debt exclusions).",
+          "id": "R-P2-01",
+          "criterion": "`LoadDetailView.tsx` renders a visible `\"Back to Load Board\"` button with `ArrowLeft` icon above the manifest header",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-02",
+          "criterion": "Clicking the back button in `LoadDetailView.tsx` calls the `onClose` prop exactly 1 time",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P2-03",
+          "criterion": "`IntelligenceHub.tsx` renders a breadcrumb bar showing the current tab label when `selectedTab !== \"ops\"`",
           "testType": "unit",
           "testFile": null
         }
       ],
       "gateCmds": {
-        "unit": "bash -c \"node scripts/verify-saas-regression.cjs\""
+        "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.back-button.test.tsx src/__tests__/components/IntelligenceHub.breadcrumb.test.tsx"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-003",
+      "description": "Call Button Fix (Load Board + Comms Overlay)",
+      "phase": 3,
+      "phase_type": "module",
+      "component": "components/",
+      "scope": [
+        "components/",
+        "src/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P3-01",
+          "criterion": "`LoadList.tsx` Call button calls `window.open(\"tel:555-0100\")` when `load.customerContact.phone` is `\"555-0100\"`",
+          "testType": "unit",
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
+        },
+        {
+          "id": "R-P3-02",
+          "criterion": "`LoadList.tsx` Call button falls back to `onOpenHub('messaging', true)` when `load.customerContact.phone` is `undefined`",
+          "testType": "unit",
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
+        },
+        {
+          "id": "R-P3-03",
+          "criterion": "`LoadList.tsx` Call button shows tooltip with phone number `\"555-0100\"` on hover when phone is available",
+          "testType": "unit",
+          "testFile": "src/__tests__/components/LoadList.call-button.test.tsx"
+        },
+        {
+          "id": "R-P3-04",
+          "criterion": "`CommsOverlay.tsx` renders a clickable `<a href=\"tel:555-0100\">` link when the active call session contact has a phone number",
+          "testType": "unit",
+          "testFile": "src/__tests__/components/CommsOverlay.tel-link.test.tsx"
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadList.call-button.test.tsx src/__tests__/components/CommsOverlay.tel-link.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-004",
+      "description": "Notify Partners from Load Detail",
+      "phase": 4,
+      "phase_type": "module",
+      "component": "components/",
+      "scope": [
+        "components/",
+        "src/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-002"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P4-01",
+          "criterion": "`LoadDetailView.tsx` renders a `\"Notify Partners\"` button in the action bar next to `\"Tag for Action\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-02",
+          "criterion": "Clicking `\"Notify Partners\"` opens an inline modal with >= 1 contact checkboxes extracted from load data (`brokerId`, `driverId`, `customerContact`)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-03",
+          "criterion": "Submitting the modal sends `POST /api/notification-jobs` with `channel: \"Multi\"`, selected contacts as `recipients[]`, and the message text",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-04",
+          "criterion": "A success toast with text `\"Notification sent\"` appears after successful POST returns 200",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P4-05",
+          "criterion": "An error toast appears when the `POST /api/notification-jobs` fails with status >= 400",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.notify-partners.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-005",
+      "description": "AI Extraction Enhancement (Gemini Schema + Prompt)",
+      "phase": 5,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "src/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P5-01",
+          "criterion": "`extractLoadInfo` schema `properties.load.properties` includes `freightType` (STRING), `driverPay` (NUMBER), `dropoffDate` (STRING), `pickupAppointmentTime` (STRING), `dropoffAppointmentTime` (STRING) -- 5 new fields",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-02",
+          "criterion": "`extractLoadInfo` schema `properties.load.properties` includes `bolNumber` (STRING), `specialInstructions` (STRING), `palletCount` (NUMBER), `containerNumber` (STRING), `chassisNumber` (STRING) -- 5 more new fields",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-03",
+          "criterion": "`extractLoadInfo` prompt string contains keywords `\"equipment type\"`, `\"delivery date\"`, `\"appointment\"`, `\"BOL\"`, `\"special\"`, `\"pallet\"`, `\"container\"`, `\"chassis\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P5-04",
+          "criterion": "`BookingPortal.tsx` maps 3 new fields from extraction: `data.freightType` to `equipmentType`, `data.dropoffDate`, and `data.specialInstructions`",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose src/__tests__/components/BookingPortal.extraction-mapping.test.tsx && npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/services/gemini-schema.test.ts"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-006",
+      "description": "Tag for Action Event Trigger",
+      "phase": 6,
+      "phase_type": "module",
+      "component": "components/",
+      "scope": [
+        "components/",
+        "src/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-002",
+        "STORY-004"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P6-01",
+          "criterion": "Tagging a load sends `POST /api/dispatch-events` with `event_type: \"ACTION_TAGGED\"` and `load_id` matching the current load",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-02",
+          "criterion": "Removing a tag sends `POST /api/dispatch-events` with `event_type: \"ACTION_UNTAGGED\"` and `load_id` matching the current load",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P6-03",
+          "criterion": "Failure to POST the dispatch event (status >= 400) does not render an error toast -- `screen.queryByText(\"Failed\")` returns `null`",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.tag-event.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-007",
+      "description": "Automated Email Notifications (BOL/Detention/Discrepancy)",
+      "phase": 7,
+      "phase_type": "integration",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P7-01",
+          "criterion": "After a billable `DETENTION_FLAGGED` event is inserted, `deliverNotification` is called with `channel: \"email\"` and `subject` containing `\"Detention\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-02",
+          "criterion": "After a `DISCREPANCY_FLAGGED` event is inserted, `deliverNotification` is called with `channel: \"email\"` and `subject` containing `\"Discrepancy\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-03",
+          "criterion": "After a successful BOL scan at `POST /api/loads/:id/bol-scan`, `deliverNotification` is called with `channel: \"email\"` and `subject` containing `\"BOL\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P7-04",
+          "criterion": "If `deliverNotification` rejects (throws), the parent pipeline still returns a valid result (fire-and-forget pattern)",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/services/detentionPipeline.notification.test.ts server/__tests__/services/discrepancyPipeline.notification.test.ts server/__tests__/routes/loads.bol-email.test.ts"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-008",
+      "description": "Quote Margin Settings (Migration + Backend)",
+      "phase": 8,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "server/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [],
+      "parallelGroup": 1,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P8-01",
+          "criterion": "Migration `055_quote_margin_columns.sql` adds 5 columns: `margin`, `discount`, `commission`, `estimated_driver_pay`, `company_cost_factor` to `quotes` table",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-02",
+          "criterion": "`company_cost_factor` has `DEFAULT 50.00` in migration `055`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-03",
+          "criterion": "`createQuoteSchema` and `updateQuoteSchema` accept 5 new numeric fields: `margin`, `discount`, `commission`, `estimated_driver_pay`, `company_cost_factor`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-04",
+          "criterion": "`QUOTE_UPDATABLE_COLUMNS` array includes all 5 strings: `\"margin\"`, `\"discount\"`, `\"commission\"`, `\"estimated_driver_pay\"`, `\"company_cost_factor\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-05",
+          "criterion": "`quoteRepository.create()` INSERT SQL includes all 5 new column names",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P8-06",
+          "criterion": "`createQuoteSchema.parse({ margin: \"invalid\" })` rejects with a Zod validation error",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/055_quote_margin_columns.test.ts server/__tests__/schemas/quote.margin.test.ts server/__tests__/repositories/quote.margin.test.ts"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-009",
+      "description": "Digital Agreement from Rate Confirmation",
+      "phase": 9,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "src/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-002",
+        "STORY-004",
+        "STORY-006"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P9-01",
+          "criterion": "Migration `056_digital_agreements.sql` creates `digital_agreements` table with 9 columns: `id`, `company_id`, `load_id`, `rate_con_data` JSON, `status` ENUM, `signature_data` JSON, `signed_at`, `created_at`, `updated_at`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-02",
+          "criterion": "`POST /api/agreements` creates a `DRAFT` agreement and returns status 201 with `{ id, status: \"DRAFT\" }`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-03",
+          "criterion": "`GET /api/agreements/:id` returns the full agreement record with status 200 or returns status 404",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-04",
+          "criterion": "`PATCH /api/agreements/:id/sign` updates `status` to `\"SIGNED\"` and stores `signature_data` JSON, returning status 200",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-05",
+          "criterion": "`PATCH /api/agreements/:id/sign` returns status 409 when the agreement `status` is already `\"SIGNED\"`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-06",
+          "criterion": "`LoadDetailView.tsx` renders a `\"Generate Agreement\"` button that sends `POST /api/agreements` on click",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-07",
+          "criterion": "`POST /api/agreements` rejects with status 400 when `load_id` is missing from the request body",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P9-08",
+          "criterion": "`PATCH /api/agreements/:id/sign` rejects with status 400 when `signature_data` is missing from the request body",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/056_digital_agreements.test.ts server/__tests__/routes/agreements.test.ts && npx vitest run --reporter=verbose src/__tests__/components/LoadDetailView.agreement-button.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-010",
+      "description": "Financial Quarters & Objectives (Migration + Analytics Enhancement)",
+      "phase": 10,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "src/"
+      ],
+      "complexity": "complex",
+      "maxTurns": 200,
+      "dependsOn": [
+        "STORY-009"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P10-01",
+          "criterion": "Migration `057_financial_objectives.sql` creates `financial_objectives` table with columns `id`, `company_id`, `quarter` (VARCHAR(7)), `revenue_target`, `expense_budget`, `profit_target`, `notes`, `created_at`, `updated_at`",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-02",
+          "criterion": "`GET /api/financial-objectives?quarter=2026-Q2` returns status 200 with array of objectives filtered by `quarter` parameter",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-03",
+          "criterion": "`POST /api/financial-objectives` creates a new objective and returns status 201",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-04",
+          "criterion": "`AnalyticsDashboard.tsx` renders a quarter selector with 4 options (`Q1`-`Q4`) that filters displayed lane data",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-05",
+          "criterion": "`AnalyticsDashboard.tsx` displays `\"Actual vs Target\"` progress bars when >= 1 financial objective exists for the selected quarter",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-06",
+          "criterion": "`AnalyticsDashboard.tsx` shows a `\"Set quarterly targets\"` prompt when 0 objectives exist for the selected quarter",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P10-07",
+          "criterion": "`GET /api/financial-objectives?quarter=invalid` rejects with status 400 when the `quarter` parameter fails `YYYY-QN` format validation",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/migrations/057_financial_objectives.test.ts server/__tests__/routes/financial-objectives.test.ts && npx vitest run --reporter=verbose src/__tests__/components/AnalyticsDashboard.quarterly.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-011",
+      "description": "Market Trends Enhancement",
+      "phase": 11,
+      "phase_type": "module",
+      "component": "server/",
+      "scope": [
+        "components/",
+        "server/",
+        "src/"
+      ],
+      "complexity": "medium",
+      "maxTurns": 150,
+      "dependsOn": [
+        "STORY-009",
+        "STORY-010"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P11-01",
+          "criterion": "`GET /api/analytics/lane-trends?months=6` returns status 200 with array of objects containing `lane`, `month`, `avgRate`, `volume`, `trend` (`\"up\"` / `\"down\"` / `\"flat\"`)",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-02",
+          "criterion": "Trend `\"up\"` when current month avg rate exceeds previous month by > 5%, `\"down\"` when < -5%, `\"flat\"` otherwise",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-03",
+          "criterion": "`Intelligence.tsx` renders >= 1 `TrendingUp` or `TrendingDown` icon elements matching `data-testid=\"trend-indicator-up\"` or `\"trend-indicator-down\"` for each lane",
+          "testType": "unit",
+          "testFile": null
+        },
+        {
+          "id": "R-P11-04",
+          "criterion": "`Intelligence.tsx` fetches from `GET /api/analytics/lane-trends` and displays >= 1 lane row with `avgRate` and `trend` values",
+          "testType": "unit",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose --config server/vitest.config.ts server/__tests__/routes/analytics.lane-trends.test.ts && npx vitest run --reporter=verbose src/__tests__/components/Intelligence.market-trends.test.tsx"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
+    },
+    {
+      "id": "STORY-012",
+      "description": "Integration Smoke & Cross-Cutting Verification",
+      "phase": 12,
+      "phase_type": "e2e",
+      "component": "src/",
+      "scope": [
+        "components/",
+        "src/"
+      ],
+      "complexity": "simple",
+      "maxTurns": 100,
+      "dependsOn": [
+        "STORY-001",
+        "STORY-002",
+        "STORY-004",
+        "STORY-006",
+        "STORY-009"
+      ],
+      "parallelGroup": null,
+      "acceptanceCriteria": [
+        {
+          "id": "R-P12-01",
+          "criterion": "All 10 modified frontend components render with `consoleErrors.length === 0` in the smoke test",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P12-02",
+          "criterion": "`LoadList` renders formatted dates matching `/[A-Z][a-z]{2} \\d{1,2}, \\d{4}/` pattern (not raw ISO strings) in the smoke test",
+          "testType": "integration",
+          "testFile": null
+        },
+        {
+          "id": "R-P12-03",
+          "criterion": "`\"SAFETY\"` tab, `\"Notify Partners\"` button, and `\"Generate Agreement\"` button are all found via `screen.getByText()` in the smoke test renders",
+          "testType": "integration",
+          "testFile": null
+        }
+      ],
+      "gateCmds": {
+        "unit": "npx vitest run --reporter=verbose src/__tests__/integration/ux-remediation.smoke.test.tsx && npx vitest run --reporter=verbose --config server/vitest.config.ts --exclude=server/__tests__/integration/** --exclude=server/__tests__/regression/** --exclude=server/__tests__/performance/**"
+      },
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }

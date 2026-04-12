@@ -15,6 +15,9 @@ const mockUser: User = {
   safetyScore: 100,
 };
 
+// Current quarter so loads pass AnalyticsDashboard's quarter filter.
+const TODAY_ISO = new Date().toISOString().slice(0, 10);
+
 function makeLoad(
   id: string,
   carrierRate: number,
@@ -30,7 +33,7 @@ function makeLoad(
     carrierRate,
     driverPay,
     miles,
-    pickupDate: "2025-01-01",
+    pickupDate: TODAY_ISO,
     pickup: { city: "Chicago", state: "IL" },
     dropoff: { city: "Dallas", state: "TX" },
   };
@@ -93,17 +96,16 @@ describe("AnalyticsDashboard: header and date selector (lines 121-138)", () => {
     expect(screen.getByText("Strategy & Analytics")).toBeInTheDocument();
   });
 
-  it("renders All Time date selector", () => {
+  it("renders quarter selector in header", () => {
+    // STORY-010 replaced the "All Time" label with a Q1-Q4 quarter selector
+    // (data-testid="quarter-selector") for quarter-scoped analytics.
     const loads = [makeLoad("1", 1500, 600)];
     render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
-    expect(screen.getByText("All Time")).toBeInTheDocument();
+    expect(screen.getByTestId("quarter-selector")).toBeInTheDocument();
   });
 
   it("displays total revenue from loads", () => {
-    const loads = [
-      makeLoad("1", 1500, 600),
-      makeLoad("2", 2500, 800),
-    ];
+    const loads = [makeLoad("1", 1500, 600), makeLoad("2", 2500, 800)];
     render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     expect(screen.getByText("$4,000")).toBeInTheDocument();
   });
@@ -117,9 +119,7 @@ describe("AnalyticsDashboard: broker scorecard (lines 198-231)", () => {
   });
 
   it("shows broker names and RPM when broker data provided", () => {
-    const loads = [
-      { ...makeLoad("1", 2000, 500), brokerId: "b-1" },
-    ];
+    const loads = [{ ...makeLoad("1", 2000, 500), brokerId: "b-1" }];
     const brokers = [
       { id: "b-1", name: "Alpha Logistics", mcNumber: "MC-111" },
     ];

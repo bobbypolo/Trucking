@@ -91,7 +91,7 @@ jobs:
 
   tenant-scope-check:
     name: Tenant Scope Check
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Check for unscoped tenant-table queries (R-P3-04)
@@ -123,7 +123,7 @@ jobs:
 
   migration-validation:
     name: Migration Validation
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: server
@@ -135,51 +135,9 @@ jobs:
           cache: npm
           cache-dependency-path: server/package-lock.json
       - run: npm ci
-        shell: cmd
       - name: Validate migration files (R-P1-07)
         shell: bash
-        run: |
-          npx tsx -e "
-          import { scanMigrationFiles } from './lib/migrator.js';
-          import * as path from 'path';
-
-          const migrationsDir = path.resolve('migrations');
-          const files = await scanMigrationFiles(migrationsDir);
-
-          let errors = 0;
-
-          // Check for duplicate filenames
-          const seen = new Set();
-          for (const f of files) {
-            if (seen.has(f.filename)) {
-              console.error('DUPLICATE filename:', f.filename);
-              errors++;
-            }
-            seen.add(f.filename);
-          }
-
-          // Check each migration parses and has UP and DOWN markers
-          for (const f of files) {
-            if (!f.parsed.up && !f.parsed.down) {
-              console.error('MISSING both UP and DOWN markers:', f.filename);
-              errors++;
-            } else if (!f.parsed.up) {
-              console.error('MISSING UP marker:', f.filename);
-              errors++;
-            } else if (!f.parsed.down) {
-              console.warn('WARNING: missing DOWN marker:', f.filename);
-            }
-          }
-
-          console.log('Scanned', files.length, 'migration files');
-          console.log('Errors:', errors);
-
-          if (errors > 0) {
-            process.exit(1);
-          }
-
-          console.log('Migration validation passed');
-          "
+        run: npx tsx scripts/validate-migrations.ts
 
   deployment-readiness:
     name: Deployment Readiness
@@ -297,18 +255,23 @@ jobs:
 
   python-hooks:
     name: Python Hook Tests
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - name: Install test dependencies
-        shell: cmd
         run: pip install pytest pyyaml
       - name: Run hook tests
-        shell: cmd
-        run: python -m pytest .claude/hooks/tests/ -v
+        shell: bash
+        run: |
+          python -m compileall .claude/hooks
+          if [ -d .claude/hooks/tests ]; then
+            python -m pytest .claude/hooks/tests/ -v
+          else
+            python .claude/hooks/plan_validator.py --plan .claude/docs/PLAN.md
+          fi
 
   e2e-api-smoke:
     name: E2E API Smoke

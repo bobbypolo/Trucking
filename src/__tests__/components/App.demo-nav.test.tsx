@@ -135,8 +135,9 @@ describe("App demo-nav integration (source-level)", () => {
     const navTestIdCount = (
       appSource.match(/data-testid="nav-demo-reset"/g) ?? []
     ).length;
-    // 4x isDemoNavMode (route guard useEffect, nav filter guard, button guard, refresh-toast suppress).
-    expect(isDemoCount).toBe(4);
+    // 5x isDemoNavMode (route guard useEffect, refresh-toast suppress,
+    // nav filter guard, Reset Demo button guard, CommsOverlay demo suppress).
+    expect(isDemoCount).toBe(5);
     // 1x applyDemoNavFilter call inside the nav filter block.
     expect(applyFilterCount).toBe(1);
     // 1x resetDemo invocation inside the Reset Demo button onClick.

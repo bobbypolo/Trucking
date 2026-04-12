@@ -15,10 +15,7 @@ const mockUser: User = {
   safetyScore: 100,
 };
 
-function makeLoad(
-  id: string,
-  overrides: Partial<LoadData> = {},
-): LoadData {
+function makeLoad(id: string, overrides: Partial<LoadData> = {}): LoadData {
   return {
     id,
     companyId: "company-1",
@@ -28,7 +25,8 @@ function makeLoad(
     carrierRate: 2000,
     driverPay: 1200,
     miles: 500,
-    pickupDate: "2025-01-01",
+    // Current quarter so loads pass AnalyticsDashboard's quarter filter.
+    pickupDate: new Date().toISOString().slice(0, 10),
     pickup: { city: "Chicago", state: "IL" },
     dropoff: { city: "Dallas", state: "TX" },
     ...overrides,
@@ -74,13 +72,7 @@ describe("AnalyticsDashboard coverage — lines 205-226, 294", () => {
 
   it("shows EmptyState when no broker data exists", () => {
     const loads = [makeLoad("1")];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     expect(screen.getByText("No broker data")).toBeInTheDocument();
   });
 
@@ -119,13 +111,7 @@ describe("AnalyticsDashboard coverage — lines 205-226, 294", () => {
         miles: 1000,
       }),
     ];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     // Lane name format: "City, ST -> City, ST"
     const laneText = screen.getByText(/Chicago, IL/);
     expect(laneText).toBeInTheDocument();
@@ -135,15 +121,13 @@ describe("AnalyticsDashboard coverage — lines 205-226, 294", () => {
 
   it("shows EmptyState when no lane data exists (loads without mileage)", () => {
     const loads = [
-      makeLoad("1", { miles: 0, pickup: { city: "A", state: "B" }, dropoff: { city: "C", state: "D" } }),
+      makeLoad("1", {
+        miles: 0,
+        pickup: { city: "A", state: "B" },
+        dropoff: { city: "C", state: "D" },
+      }),
     ];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     // Lane data exists but has 0 RPM, but it still renders
     // No lane data only when loads is empty
   });
@@ -182,13 +166,7 @@ describe("AnalyticsDashboard coverage — lines 205-226, 294", () => {
         miles: 300,
       }),
     ];
-    render(
-      <AnalyticsDashboard
-        user={mockUser}
-        loads={loads}
-        brokers={[]}
-      />,
-    );
+    render(<AnalyticsDashboard user={mockUser} loads={loads} brokers={[]} />);
     expect(screen.getByText("1 Load")).toBeInTheDocument();
   });
 });
