@@ -500,8 +500,8 @@ router.patch(
       // Pipeline: increment broker load count + export to BigQuery when load is settled
       if (status === "Settled" || status === "Completed") {
         const [rows] = await pool.query<RowDataPacket[]>(
-          "SELECT customer_id FROM loads WHERE id = ?",
-          [loadId],
+          "SELECT customer_id FROM loads WHERE id = ? AND company_id = ? AND deleted_at IS NULL",
+          [loadId, companyId],
         );
         if (rows[0]?.customer_id) {
           await recordLoadCompletion(
@@ -739,8 +739,10 @@ router.post(
 
     try {
       const [loadRows] = await pool.query<RowDataPacket[]>(
-        `SELECT customer_id, quoted_weight, quoted_commodity FROM loads WHERE id = ?`,
-        [loadId],
+        `SELECT customer_id, quoted_weight, quoted_commodity
+         FROM loads
+         WHERE id = ? AND company_id = ? AND deleted_at IS NULL`,
+        [loadId, companyId],
       );
 
       if (!loadRows.length)
@@ -780,8 +782,8 @@ router.post(
           `SELECT c.email AS email, l.load_number AS load_number
            FROM loads l
            LEFT JOIN customers c ON c.id = l.customer_id
-           WHERE l.id = ?`,
-          [loadId],
+           WHERE l.id = ? AND l.company_id = ? AND l.deleted_at IS NULL`,
+          [loadId, companyId],
         );
         const brokerEmail = (brokerRows?.[0]?.email as string | null) ?? null;
         const resolvedLoadNumber =
