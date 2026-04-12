@@ -1327,10 +1327,8 @@
       "description": "- Driver trip workspace canonicalization",
       "phase": 33,
       "phase_type": "module",
-      "component": "apps/",
-      "scope": [
-        "apps/"
-      ],
+      "component": "",
+      "scope": [],
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
@@ -1358,7 +1356,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.workspace.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/loads.driver-active.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1400,7 +1398,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.stops.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/dispatch.stops.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1441,7 +1439,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/loads.driver-status.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1482,7 +1480,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/exceptions.driver-issue.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1523,7 +1521,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/messages.readstate.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1564,7 +1562,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.docs.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/documents.driver-upload.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1605,7 +1603,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/accounting.driver-pay.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1646,7 +1644,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/offlineQueue.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1687,7 +1685,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/services/api.tokenRefresh.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1728,7 +1726,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx vitest run __tests__/routes/notification-jobs.driver-alerts.test.ts --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1769,7 +1767,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "test -f docs/release/pilot-release-checklist.md && test -f docs/legal/privacy-policy.md"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1821,7 +1819,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/journeys/j2-driver-trip-execution.test.tsx --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3654,7 +3652,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/public-api.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3695,7 +3693,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/api-keys.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3736,7 +3734,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/webhooks.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3777,7 +3775,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && test -f docs/api/developer-guide.md"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3818,7 +3816,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/sso.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3859,7 +3857,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/provisioning.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3900,7 +3898,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-import.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3941,19 +3939,19 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-export.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
     },
     {
       "id": "STORY-095",
-      "description": "- Data residency and multi-region implementation plan with infrastructure config",
+      "description": "- Data residency enforcement and multi-region routing implementation",
       "phase": 95,
       "phase_type": "module",
-      "component": "docs/",
+      "component": "server/",
       "scope": [
-        "docs/"
+        "server/"
       ],
       "complexity": "medium",
       "maxTurns": 150,
@@ -3964,7 +3962,7 @@
       "acceptanceCriteria": [
         {
           "id": "R-FLEET-W11-25",
-          "criterion": "Regional storage/processing constraints and future multi-region strategy are explicit and technically grounded",
+          "criterion": "Data residency middleware enforces tenant region config; multi-region routing implemented for at least one secondary region",
           "testType": "manual",
           "testFile": null
         },
@@ -3982,7 +3980,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/data-residency.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4023,7 +4021,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/i18n.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4064,7 +4062,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/reporting-warehouse.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4105,7 +4103,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/financial-controls.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4146,7 +4144,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-dr-drill.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4200,7 +4198,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-certification.test.ts --reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
       },
       "passed": false,
       "verificationRef": null
