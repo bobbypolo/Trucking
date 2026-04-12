@@ -81,7 +81,15 @@ router.patch(
       const updated = await agreementRepository.sign(
         req.params.id,
         req.body.signature_data,
+        companyId,
       );
+      if (!updated) {
+        // Race: another request signed (or voided) the agreement between
+        // our findById pre-check and our atomic UPDATE. The SQL guard
+        // refused the transition, so report the same 409 as the fast path.
+        res.status(409).json({ error: "Agreement already signed" });
+        return;
+      }
       res.json(updated);
     } catch (err) {
       next(err);

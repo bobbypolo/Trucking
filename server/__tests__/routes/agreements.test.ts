@@ -319,4 +319,72 @@ describe("PATCH /api/agreements/:id/sign", () => {
 
     expect(res.status).toBe(404);
   });
+
+  // Tests R-P9-05 — race: concurrent sign where another request flipped
+  // the row to SIGNED between our pre-check findById and our atomic
+  // UPDATE. The repository's sign() returns null because affectedRows
+  // was 0 under the status guard, and the route must map that to 409.
+  it("returns 409 when concurrent sign races (sign() returns null)", async () => {
+    // findById (pre-check): DRAFT row — passes the fast-path check
+    mockQuery.mockResolvedValueOnce([[AGREEMENT_ROW], []]);
+    // UPDATE: status guard refuses the transition → affectedRows = 0
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 0 }, []]);
+    // No second findById should be issued when sign() returns null.
+
+    const app = buildApp();
+    const res = await request(app)
+      .patch("/api/agreements/agr-1/sign")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        signature_data: {
+          dataUrl: "data:image/png;base64,CCC",
+          signedBy: "Carol",
+        },
+      });
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({ error: "Agreement already signed" });
+    // Exactly two queries: the pre-check SELECT and the refused UPDATE.
+    // No post-update SELECT because sign() short-circuits on affectedRows=0.
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+  });
+
+  // Tests R-P9-04 — repository SQL contract: the UPDATE must enforce
+  // tenant isolation AND a DRAFT/SENT status guard atomically. This
+  // documents the contract so future refactors cannot silently drop
+  // the guards and reintroduce the TOCTOU race.
+  it("sign() UPDATE includes company_id and status IN ('DRAFT', 'SENT') guards", async () => {
+    // findById (pre-check): DRAFT row
+    mockQuery.mockResolvedValueOnce([[AGREEMENT_ROW], []]);
+    // UPDATE: accepted
+    mockQuery.mockResolvedValueOnce([{ affectedRows: 1 }, []]);
+    // findById (post-update): SIGNED row
+    mockQuery.mockResolvedValueOnce([[SIGNED_AGREEMENT_ROW], []]);
+
+    const app = buildApp();
+    await request(app)
+      .patch("/api/agreements/agr-1/sign")
+      .set("Authorization", "Bearer valid-token")
+      .send({
+        signature_data: {
+          dataUrl: "data:image/png;base64,AAA",
+          signedBy: "Alice",
+        },
+      });
+
+    // mockQuery.mock.calls[1] is the UPDATE (calls[0] is the pre-check SELECT)
+    const [updateSql, updateParams] = mockQuery.mock.calls[1];
+    const updateSqlStr = String(updateSql);
+    // Tenant boundary enforced at the SQL layer (defense in depth)
+    expect(updateSqlStr).toContain("company_id = ?");
+    // Status guard atomically prevents double-signing under concurrency
+    expect(updateSqlStr).toContain("status IN ('DRAFT', 'SENT')");
+    // Params: [signatureJson, id, companyId]
+    expect(updateParams).toHaveLength(3);
+    expect(updateParams[1]).toBe("agr-1");
+    // companyId is the DEFAULT_SQL_PRINCIPAL's tenantId passed through
+    // requireTenant → req.user.tenantId → route → repository
+    expect(typeof updateParams[2]).toBe("string");
+    expect((updateParams[2] as string).length).toBeGreaterThan(0);
+  });
 });

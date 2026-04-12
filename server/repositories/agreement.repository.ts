@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import pool from "../db";
-import type { RowDataPacket } from "mysql2/promise";
+import type { RowDataPacket, ResultSetHeader } from "mysql2/promise";
 
 /**
  * Repository for the `digital_agreements` table (STORY-009 Phase 9).
@@ -47,16 +47,30 @@ export const agreementRepository = {
     return this.findById(id);
   },
 
-  async sign(id: string, signatureData: unknown): Promise<AgreementRow | null> {
+  async sign(
+    id: string,
+    signatureData: unknown,
+    companyId: string,
+  ): Promise<AgreementRow | null> {
     const signatureJson = JSON.stringify(signatureData);
-    await pool.query(
+    // Atomic state transition: only flip DRAFT/SENT → SIGNED, and only for
+    // the caller's tenant. This closes a TOCTOU race where two concurrent
+    // sign requests could both pass a JS-side status check and both UPDATE,
+    // with the second silently overwriting the first signature. Tenant is
+    // guarded here as defense in depth on top of the route-level check.
+    const [result] = await pool.query<ResultSetHeader>(
       `UPDATE digital_agreements
          SET status = 'SIGNED',
              signature_data = ?,
              signed_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [signatureJson, id],
+       WHERE id = ? AND company_id = ? AND status IN ('DRAFT', 'SENT')`,
+      [signatureJson, id, companyId],
     );
+    if (result.affectedRows === 0) {
+      // Row either does not exist, belongs to another tenant, or has already
+      // been signed/voided. Signal "could not transition" to the caller.
+      return null;
+    }
     return this.findById(id);
   },
 };
