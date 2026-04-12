@@ -59,8 +59,8 @@
       "gateCmds": {
         "unit": "npx vitest run server/__tests__/services/notification-delivery-push.test.ts --reporter=verbose && npx vitest run apps/trucker/__tests__/services/notifications.test.ts apps/trucker/__tests__/screens/notifications.test.tsx apps/trucker/__tests__/screens/tab-layout.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-002",
