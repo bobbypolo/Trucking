@@ -806,7 +806,7 @@ cd server && npx vitest run __tests__/routes/ --reporter=default && npx vitest r
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `apps/trucker/src/app/*` | Driver trip workspace canonicalization |
+| MODIFY | `components/DriverMobileHome.tsx`, `components/driver/DriverLoadIntakePanel.tsx` | Driver trip workspace canonicalization |
 | MODIFY | `components/DriverMobileHome.tsx` | Driver trip workspace canonicalization |
 
 ### Done When
@@ -2114,7 +2114,7 @@ cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 88 -- Tenant API keys, scopes, and rate limits
@@ -2138,7 +2138,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 89 -- Outbound webhook platform
@@ -2162,7 +2162,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 90 -- Developer docs and sandbox path
@@ -2186,7 +2186,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 91 -- SSO / SAML identity path
@@ -2210,7 +2210,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 92 -- SCIM or bulk provisioning path
@@ -2234,7 +2234,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 93 -- Customer onboarding and migration toolkit
@@ -2258,7 +2258,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 94 -- Data export, portability, retention, and legal holds
@@ -2282,10 +2282,10 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
-## Phase 95 -- Data residency and multi-region implementation plan with infrastructure config
+## Phase 95 -- Data residency enforcement and multi-region routing implementation
 
 **Phase Type**: module
 
@@ -2295,18 +2295,18 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `docs/deployment/architecture.md` | Data residency and multi-region implementation plan with infrastructure config |
+| MODIFY | `docs/deployment/architecture.md` | Data residency enforcement and multi-region routing implementation |
 
 ### Done When
 
-- R-FLEET-W11-25 [backend]: Regional storage/processing constraints and future multi-region strategy are explicit and technically grounded
+- R-FLEET-W11-25 [backend]: Data residency middleware enforces tenant region config; multi-region routing implemented for at least one secondary region
 - R-FLEET-W11-26 [backend]: Tests verify implementation matches acceptance criterion
 - R-FLEET-W11-27 [backend]: No regression in existing test suite for affected files
 
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 96 -- Internationalization, multi-currency, and unit framework
@@ -2330,7 +2330,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 97 -- Reporting scale and analytical workload separation
@@ -2354,7 +2354,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 98 -- Enterprise financial controls and period governance
@@ -2378,7 +2378,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 99 -- Enterprise DR drill, SLA monitoring, and audit-evidence implementation
@@ -2402,7 +2402,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Phase 100 -- Enterprise-grade certification with implementation evidence
@@ -2426,7 +2426,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run --reporter=default
 ```
 
 ## Risks and Mitigations
