@@ -122,8 +122,8 @@
       "gateCmds": {
         "unit": "npx vitest run server/__tests__/migrations/056_message_threading.test.ts server/__tests__/routes/messages-threading.test.ts server/__tests__/repositories/message-repository-threading.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-003",
