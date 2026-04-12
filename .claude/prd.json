@@ -591,8 +591,8 @@
       "gateCmds": {
         "unit": "npx vitest run apps/trucker/__tests__/screens/home-dashboard.test.tsx apps/trucker/__tests__/integration/driver-trip-loop.test.ts --reporter=verbose && npx vitest run server/__tests__/integration/driver-trip-loop.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     }
   ]
 }
