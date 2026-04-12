@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import QueueStatusBadge from "../../components/QueueStatusBadge";
 
-// # Tests R-P10-05, R-P1-06
+// # Tests R-P10-05, R-P1-06, R-P8-07
 export default function TabLayout() {
   return (
     <Tabs>
@@ -14,6 +14,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Tabs.Screen name="pay" options={{ title: "Pay" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
       <Tabs.Screen
         name="queue"

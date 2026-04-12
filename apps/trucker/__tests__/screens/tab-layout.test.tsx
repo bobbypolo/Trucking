@@ -80,3 +80,37 @@ describe("R-P1-06: Tab layout includes Notifications tab", () => {
     expect(tabNames).toContain("profile");
   });
 });
+
+describe("R-P8-07: Tab layout includes Pay tab", () => {
+  // # Tests R-P8-07
+  it("registers a Tabs.Screen with name='pay' and title='Pay'", async () => {
+    registeredScreens.length = 0;
+
+    const TabLayout = (await import("../../src/app/(tabs)/_layout")).default;
+
+    render(React.createElement(TabLayout));
+
+    const payTab = registeredScreens.find((s) => s.name === "pay");
+
+    expect(payTab).toBeDefined();
+    expect(payTab!.name).toBe("pay");
+    expect(payTab!.options.title).toBe("Pay");
+  });
+
+  // # Tests R-P8-07
+  it("contains the Pay tab among registered tabs", async () => {
+    registeredScreens.length = 0;
+
+    const TabLayout = (await import("../../src/app/(tabs)/_layout")).default;
+
+    render(React.createElement(TabLayout));
+
+    const tabNames = registeredScreens.map((s) => s.name);
+
+    expect(tabNames).toContain("pay");
+    expect(tabNames).toContain("index");
+    expect(tabNames).toContain("loads");
+    expect(tabNames).toContain("notifications");
+    expect(tabNames).toContain("profile");
+  });
+});
