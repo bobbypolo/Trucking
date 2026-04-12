@@ -187,8 +187,8 @@
       "gateCmds": {
         "unit": "npx vitest run apps/trucker/__tests__/services/messaging.test.ts apps/trucker/__tests__/screens/messages.test.tsx apps/trucker/__tests__/components/MessageThread.test.tsx apps/trucker/__tests__/screens/tab-layout.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-004",
