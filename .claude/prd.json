@@ -244,8 +244,8 @@
       "gateCmds": {
         "unit": "npx vitest run server/__tests__/migrations/057_stop_status_tracking.test.ts server/__tests__/routes/driver-stops.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-005",
@@ -577,13 +577,13 @@
         },
         {
           "id": "R-P9-05",
-          "criterion": "Server test: create load with stops → GET stops → PATCH arrive → POST exception → verify escalation message created → verify push notification dispatched",
+          "criterion": "Server test: create load with stops \u00e2\u2020\u2019 GET stops \u00e2\u2020\u2019 PATCH arrive \u00e2\u2020\u2019 POST exception \u00e2\u2020\u2019 verify escalation message created \u00e2\u2020\u2019 verify push notification dispatched",
           "testType": "unit",
           "testFile": null
         },
         {
           "id": "R-P9-06",
-          "criterion": "Mobile test: mock push received → load detail → stops rendered → arrive action → issue report → verify all API calls in correct sequence",
+          "criterion": "Mobile test: mock push received \u00e2\u2020\u2019 load detail \u00e2\u2020\u2019 stops rendered \u00e2\u2020\u2019 arrive action \u00e2\u2020\u2019 issue report \u00e2\u2020\u2019 verify all API calls in correct sequence",
           "testType": "unit",
           "testFile": null
         }
