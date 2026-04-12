@@ -817,7 +817,7 @@ cd server && npx vitest run __tests__/routes/ --reporter=default && npx vitest r
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/components/DriverMobileHome.workspace.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/loads.driver-active.test.ts --reporter=default
 ```
 
 ## Phase 34 -- Stop sequence, appointment, and next-action truth
@@ -841,7 +841,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/components/DriverMobileHome.stops.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/dispatch.stops.test.ts --reporter=default
 ```
 
 ## Phase 35 -- Driver status update contract completion
@@ -865,7 +865,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+cd server && npx vitest run __tests__/routes/loads.driver-status.test.ts --reporter=default
 ```
 
 ## Phase 36 -- Delay, detention, lumper, and breakdown workflow closure
@@ -889,7 +889,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+cd server && npx vitest run __tests__/routes/exceptions.driver-issue.test.ts --reporter=default
 ```
 
 ## Phase 37 -- Driver messaging and read-state continuity
@@ -913,7 +913,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+cd server && npx vitest run __tests__/routes/messages.readstate.test.ts --reporter=default
 ```
 
 ## Phase 38 -- Document checklist and mobile scan flow
@@ -937,7 +937,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/components/DriverMobileHome.docs.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/documents.driver-upload.test.ts --reporter=default
 ```
 
 ## Phase 39 -- Driver pay and settlement visibility
@@ -961,7 +961,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+cd server && npx vitest run __tests__/routes/accounting.driver-pay.test.ts --reporter=default
 ```
 
 ## Phase 40 -- Offline queue, sync, and conflict handling
@@ -985,7 +985,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/services/offlineQueue.test.ts --reporter=default
 ```
 
 ## Phase 41 -- Mobile auth, session, and device hardening
@@ -1009,7 +1009,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/services/api.tokenRefresh.test.ts --reporter=default
 ```
 
 ## Phase 42 -- Push, alert, and acknowledgement path
@@ -1033,7 +1033,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+cd server && npx vitest run __tests__/routes/notification-jobs.driver-alerts.test.ts --reporter=default
 ```
 
 ## Phase 43 -- Pilot-channel release and legal readiness
@@ -1057,7 +1057,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+test -f docs/release/pilot-release-checklist.md && test -f docs/legal/privacy-policy.md
 ```
 
 ## Phase 44 -- Driver field-loop certification
@@ -1081,7 +1081,7 @@ npx vitest run src/__tests__/components/ --reporter=default
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/components/ --reporter=default
+npx vitest run src/__tests__/journeys/j2-driver-trip-execution.test.tsx --reporter=default
 ```
 
 ## Phase 45 -- Provider abstraction hardening
@@ -2113,7 +2113,7 @@ cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/routes/public-api.test.ts --reporter=default
 ```
 
 ## Phase 88 -- Tenant API keys, scopes, and rate limits
@@ -2137,7 +2137,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/routes/api-keys.test.ts --reporter=default
 ```
 
 ## Phase 89 -- Outbound webhook platform
@@ -2161,7 +2161,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/routes/webhooks.test.ts --reporter=default
 ```
 
 ## Phase 90 -- Developer docs and sandbox path
@@ -2185,7 +2185,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && test -f docs/api/developer-guide.md
 ```
 
 ## Phase 91 -- SSO / SAML identity path
@@ -2209,7 +2209,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/routes/sso.test.ts --reporter=default
 ```
 
 ## Phase 92 -- SCIM or bulk provisioning path
@@ -2233,7 +2233,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/routes/provisioning.test.ts --reporter=default
 ```
 
 ## Phase 93 -- Customer onboarding and migration toolkit
@@ -2257,7 +2257,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-import.test.ts --reporter=default
 ```
 
 ## Phase 94 -- Data export, portability, retention, and legal holds
@@ -2281,7 +2281,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-export.test.ts --reporter=default
 ```
 
 ## Phase 95 -- Data residency enforcement and multi-region routing implementation
@@ -2308,7 +2308,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/data-residency.test.ts --reporter=default
 ```
 
 ## Phase 96 -- Internationalization, multi-currency, and unit framework
@@ -2332,7 +2332,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/services/i18n.test.ts --reporter=default
 ```
 
 ## Phase 97 -- Reporting scale and analytical workload separation
@@ -2356,7 +2356,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/services/reporting-warehouse.test.ts --reporter=default
 ```
 
 ## Phase 98 -- Enterprise financial controls and period governance
@@ -2380,7 +2380,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/financial-controls.test.ts --reporter=default
 ```
 
 ## Phase 99 -- Enterprise DR drill, SLA monitoring, and audit-evidence implementation
@@ -2404,7 +2404,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-dr-drill.test.ts --reporter=default
 ```
 
 ## Phase 100 -- Enterprise-grade certification with implementation evidence
@@ -2428,7 +2428,7 @@ cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ### Verification Command
 
 ```bash
-cd server && npx tsc --noEmit && npx vitest run __reporter=default
+cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-certification.test.ts --reporter=default
 ```
 
 ## Risks and Mitigations

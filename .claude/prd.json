@@ -445,17 +445,17 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-001",
-        "STORY-002",
-        "STORY-003",
         "STORY-004",
-        "STORY-005",
-        "STORY-006",
         "STORY-007",
-        "STORY-008",
-        "STORY-009",
+        "STORY-003",
         "STORY-010",
-        "STORY-011"
+        "STORY-002",
+        "STORY-006",
+        "STORY-011",
+        "STORY-005",
+        "STORY-009",
+        "STORY-008",
+        "STORY-001"
       ],
       "parallelGroup": 3,
       "acceptanceCriteria": [
@@ -865,16 +865,16 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
+        "STORY-018",
+        "STORY-021",
         "STORY-012",
-        "STORY-013",
+        "STORY-020",
         "STORY-014",
         "STORY-015",
         "STORY-016",
         "STORY-017",
-        "STORY-018",
         "STORY-019",
-        "STORY-020",
-        "STORY-021"
+        "STORY-013"
       ],
       "parallelGroup": 7,
       "acceptanceCriteria": [
@@ -1284,16 +1284,16 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-022",
-        "STORY-023",
-        "STORY-024",
-        "STORY-025",
-        "STORY-026",
-        "STORY-027",
-        "STORY-028",
         "STORY-029",
+        "STORY-031",
+        "STORY-022",
+        "STORY-026",
         "STORY-030",
-        "STORY-031"
+        "STORY-024",
+        "STORY-027",
+        "STORY-023",
+        "STORY-028",
+        "STORY-025"
       ],
       "parallelGroup": 10,
       "acceptanceCriteria": [
@@ -1356,7 +1356,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.workspace.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/loads.driver-active.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1398,7 +1398,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.stops.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/dispatch.stops.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1439,7 +1439,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "cd server && npx vitest run __tests__/routes/loads.driver-status.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1480,7 +1480,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "cd server && npx vitest run __tests__/routes/exceptions.driver-issue.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1521,7 +1521,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "cd server && npx vitest run __tests__/routes/messages.readstate.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1562,7 +1562,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/components/DriverMobileHome.docs.test.tsx --reporter=default && cd server && npx vitest run __tests__/routes/documents.driver-upload.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1603,7 +1603,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "cd server && npx vitest run __tests__/routes/accounting.driver-pay.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1644,7 +1644,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/services/offlineQueue.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1685,7 +1685,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/services/api.tokenRefresh.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1726,7 +1726,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "cd server && npx vitest run __tests__/routes/notification-jobs.driver-alerts.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -1767,7 +1767,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "test -f docs/release/pilot-release-checklist.md && test -f docs/legal/privacy-policy.md"
       },
       "passed": false,
       "verificationRef": null
@@ -1784,18 +1784,18 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-022",
-        "STORY-033",
-        "STORY-034",
-        "STORY-035",
-        "STORY-036",
-        "STORY-037",
-        "STORY-038",
         "STORY-039",
-        "STORY-040",
-        "STORY-041",
+        "STORY-022",
+        "STORY-038",
+        "STORY-035",
+        "STORY-037",
+        "STORY-033",
+        "STORY-036",
+        "STORY-043",
         "STORY-042",
-        "STORY-043"
+        "STORY-041",
+        "STORY-034",
+        "STORY-040"
       ],
       "parallelGroup": 14,
       "acceptanceCriteria": [
@@ -1819,7 +1819,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "npx vitest run src/__tests__/components/ --reporter=default"
+        "unit": "npx vitest run src/__tests__/journeys/j2-driver-trip-execution.test.tsx --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -2369,20 +2369,20 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-022",
-        "STORY-045",
-        "STORY-046",
-        "STORY-047",
-        "STORY-048",
-        "STORY-049",
-        "STORY-050",
-        "STORY-051",
-        "STORY-052",
+        "STORY-057",
         "STORY-053",
-        "STORY-054",
-        "STORY-055",
+        "STORY-022",
+        "STORY-052",
+        "STORY-047",
+        "STORY-050",
         "STORY-056",
-        "STORY-057"
+        "STORY-051",
+        "STORY-046",
+        "STORY-055",
+        "STORY-048",
+        "STORY-045",
+        "STORY-054",
+        "STORY-049"
       ],
       "parallelGroup": 19,
       "acceptanceCriteria": [
@@ -2915,20 +2915,20 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-058",
-        "STORY-032",
-        "STORY-059",
-        "STORY-060",
-        "STORY-061",
         "STORY-062",
-        "STORY-063",
-        "STORY-064",
-        "STORY-065",
+        "STORY-068",
         "STORY-066",
         "STORY-067",
-        "STORY-068",
+        "STORY-059",
+        "STORY-058",
+        "STORY-070",
+        "STORY-063",
+        "STORY-032",
         "STORY-069",
-        "STORY-070"
+        "STORY-061",
+        "STORY-065",
+        "STORY-060",
+        "STORY-064"
       ],
       "parallelGroup": 23,
       "acceptanceCriteria": [
@@ -2969,9 +2969,9 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 24,
       "acceptanceCriteria": [
@@ -3012,9 +3012,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 24,
       "acceptanceCriteria": [
@@ -3055,9 +3055,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 24,
       "acceptanceCriteria": [
@@ -3098,9 +3098,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 24,
       "acceptanceCriteria": [
@@ -3141,9 +3141,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 25,
       "acceptanceCriteria": [
@@ -3184,9 +3184,9 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 25,
       "acceptanceCriteria": [
@@ -3227,9 +3227,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 25,
       "acceptanceCriteria": [
@@ -3270,9 +3270,9 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 25,
       "acceptanceCriteria": [
@@ -3313,9 +3313,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 26,
       "acceptanceCriteria": [
@@ -3356,9 +3356,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 26,
       "acceptanceCriteria": [
@@ -3399,9 +3399,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 26,
       "acceptanceCriteria": [
@@ -3442,9 +3442,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 26,
       "acceptanceCriteria": [
@@ -3485,9 +3485,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 27,
       "acceptanceCriteria": [
@@ -3528,9 +3528,9 @@
       "complexity": "medium",
       "maxTurns": 150,
       "dependsOn": [
+        "STORY-071",
         "STORY-044",
-        "STORY-058",
-        "STORY-071"
+        "STORY-058"
       ],
       "parallelGroup": 27,
       "acceptanceCriteria": [
@@ -3571,23 +3571,23 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-044",
-        "STORY-058",
         "STORY-071",
-        "STORY-072",
-        "STORY-073",
-        "STORY-074",
+        "STORY-044",
+        "STORY-082",
+        "STORY-085",
+        "STORY-083",
         "STORY-075",
         "STORY-076",
-        "STORY-077",
-        "STORY-078",
+        "STORY-072",
         "STORY-079",
+        "STORY-058",
+        "STORY-078",
         "STORY-080",
         "STORY-081",
-        "STORY-082",
-        "STORY-083",
+        "STORY-074",
         "STORY-084",
-        "STORY-085"
+        "STORY-077",
+        "STORY-073"
       ],
       "parallelGroup": 27,
       "acceptanceCriteria": [
@@ -3652,7 +3652,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/public-api.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3693,7 +3693,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/api-keys.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3734,7 +3734,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/webhooks.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3775,7 +3775,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && test -f docs/api/developer-guide.md"
       },
       "passed": false,
       "verificationRef": null
@@ -3816,7 +3816,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/sso.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3857,7 +3857,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/routes/provisioning.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3898,7 +3898,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-import.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3939,7 +3939,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/data-export.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -3980,7 +3980,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/data-residency.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4021,7 +4021,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/i18n.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4062,7 +4062,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/services/reporting-warehouse.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4103,7 +4103,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/middleware/financial-controls.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4144,7 +4144,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-dr-drill.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
@@ -4161,20 +4161,20 @@
       "complexity": "complex",
       "maxTurns": 200,
       "dependsOn": [
-        "STORY-086",
-        "STORY-087",
-        "STORY-088",
-        "STORY-089",
-        "STORY-090",
         "STORY-091",
         "STORY-092",
-        "STORY-093",
-        "STORY-094",
-        "STORY-095",
         "STORY-096",
-        "STORY-097",
+        "STORY-087",
+        "STORY-089",
+        "STORY-094",
+        "STORY-093",
+        "STORY-095",
         "STORY-098",
-        "STORY-099"
+        "STORY-090",
+        "STORY-099",
+        "STORY-086",
+        "STORY-088",
+        "STORY-097"
       ],
       "parallelGroup": 31,
       "acceptanceCriteria": [
@@ -4198,7 +4198,7 @@
         }
       ],
       "gateCmds": {
-        "unit": "cd server && npx tsc --noEmit && npx vitest run __reporter=default"
+        "unit": "cd server && npx tsc --noEmit && npx vitest run __tests__/integration/enterprise-certification.test.ts --reporter=default"
       },
       "passed": false,
       "verificationRef": null
