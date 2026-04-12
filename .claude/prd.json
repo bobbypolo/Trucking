@@ -390,8 +390,8 @@
       "gateCmds": {
         "unit": "npx vitest run server/__tests__/routes/driver-exceptions.test.ts --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-007",
