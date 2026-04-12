@@ -20,6 +20,8 @@
 import nodemailer from "nodemailer";
 import Twilio from "twilio";
 import { createChildLogger } from "../lib/logger";
+import { sendPush } from "../lib/expo-push";
+import pool from "../db";
 
 const log = createChildLogger({ service: "notification-delivery" });
 
@@ -235,10 +237,73 @@ async function deliverSms(
 }
 
 /**
+ * Deliver a push notification via Expo Push API.
+ *
+ * Queries push_tokens for recipient user IDs where enabled=1,
+ * then delegates to sendPush() with the collected tokens.
+ *
+ * - Returns FAILED with "No push tokens found" when no enabled tokens exist
+ * - Returns SENT when sendPush() sends to at least one token
+ *
+ * # Tests R-P1-01, R-P1-02
+ */
+async function deliverPush(
+  options: DeliverNotificationOptions,
+): Promise<DeliverNotificationResult> {
+  const recipientIds = options.recipients
+    .map((r) => r.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+
+  if (recipientIds.length === 0) {
+    return {
+      status: "FAILED",
+      sync_error: "No push tokens found",
+    };
+  }
+
+  const placeholders = recipientIds.map(() => "?").join(",");
+  const [rows] = await pool.query(
+    `SELECT expo_push_token FROM push_tokens WHERE user_id IN (${placeholders}) AND enabled = 1`,
+    recipientIds,
+  );
+
+  const tokens = (rows as Array<{ expo_push_token: string }>).map(
+    (r) => r.expo_push_token,
+  );
+
+  if (tokens.length === 0) {
+    return {
+      status: "FAILED",
+      sync_error: "No push tokens found",
+    };
+  }
+
+  const result = await sendPush(
+    tokens,
+    options.subject || "LoadPilot Notification",
+    options.message,
+    {},
+  );
+
+  if (result.sent > 0) {
+    return {
+      status: "SENT",
+      sent_at: new Date().toISOString(),
+    };
+  }
+
+  return {
+    status: "FAILED",
+    sync_error: result.errors[0]?.reason || "All push deliveries failed",
+  };
+}
+
+/**
  * Deliver a notification by dispatching to the appropriate channel handler.
  *
  * - email: sends via nodemailer (falls back gracefully when SMTP not configured)
  * - sms: sends via Twilio (falls back gracefully when Twilio not configured)
+ * - push: sends via Expo Push API (queries push_tokens for recipient tokens)
  * - Other channels: returns FAILED with "Channel not supported"
  */
 export async function deliverNotification(
@@ -278,8 +343,7 @@ export async function deliverNotification(
     }
 
     // All failed
-    const firstError =
-      results[0]?.error || "All email deliveries failed";
+    const firstError = results[0]?.error || "All email deliveries failed";
     return {
       status: "FAILED",
       sync_error: firstError,
@@ -288,6 +352,10 @@ export async function deliverNotification(
 
   if (channel === "sms") {
     return deliverSms(options);
+  }
+
+  if (channel === "push") {
+    return deliverPush(options);
   }
 
   return {
