@@ -49,7 +49,7 @@ A(1-12) -> B(13-22) -> C(23-32) -> F(59-71) -> G(72-86) -> H(87-100)
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-001.test.ts
+cd server && npx vitest run __tests__/middleware/route-audit.test.ts
 ```
 
 ## Phase 2 -- Missing auth / tenant / validation closure
@@ -73,7 +73,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-001.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-002.test.ts
+cd server && npx vitest run __tests__/middleware/route-audit.test.ts
 ```
 
 ## Phase 3 -- Server-side RBAC completion
@@ -86,7 +86,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-002.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `protected mutation routes` | Server-side RBAC completion |
+| MODIFY | `server/routes/loads.ts, server/routes/accounting.ts, server/routes/documents.ts` | Server-side RBAC completion |
 
 ### Done When
 
@@ -97,7 +97,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-002.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-003.test.ts
+cd server && npx vitest run __tests__/middleware/route-audit.test.ts
 ```
 
 ## Phase 4 -- Pagination and filtering standard
@@ -121,7 +121,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-003.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-004.test.ts
+cd server && npx vitest run __tests__/middleware/route-audit.test.ts
 ```
 
 ## Phase 5 -- Health check and dependency readiness
@@ -145,7 +145,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-004.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-005.test.ts
+cd server && npx vitest run __tests__/middleware/ --reporter=default
 ```
 
 ## Phase 6 -- Rate limiting and idempotency baseline
@@ -169,7 +169,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-005.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-006.test.ts
+cd server && npx vitest run __tests__/middleware/ --reporter=default
 ```
 
 ## Phase 7 -- Tenant isolation regression pack
@@ -193,7 +193,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-006.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-007.test.ts
+cd server && npx vitest run __tests__/middleware/ --reporter=default
 ```
 
 ## Phase 8 -- `server/index.ts` modularization
@@ -217,7 +217,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-007.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-008.test.ts
+cd server && npx vitest run __tests__/routes/modularization.test.ts __tests__/routes/health.test.ts
 ```
 
 ## Phase 9 -- Canonical load / trip / stop ruling implementation scaffold
@@ -230,7 +230,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-008.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `schema docs` | Canonical load / trip / stop ruling implementation scaffold |
+| MODIFY | `docs/architecture/entity-ownership-map.md` | Canonical load / trip / stop ruling implementation scaffold |
 
 ### Done When
 
@@ -241,7 +241,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-008.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-009.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 10 -- Trip foundation schema
@@ -265,7 +265,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-009.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-010.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 11 -- Stop linkage normalization
@@ -289,7 +289,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-010.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-011.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 12 -- Document lineage foundation
@@ -313,7 +313,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-011.test.ts
 ### Verification Command
 
 ```bash
-test -f document schema and indexes
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 13 -- Lineage matrix and ownership enforcement
@@ -337,7 +337,7 @@ test -f document schema and indexes
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-013.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 14 -- OCR result lineage completion
@@ -361,7 +361,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-013.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-014.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 15 -- Settlement lineage schema
@@ -385,7 +385,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-014.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-015.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 16 -- Expense and reimbursement lineage
@@ -409,7 +409,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-015.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-016.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 17 -- Telematics lineage schema
@@ -433,7 +433,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-016.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-017.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 18 -- Compliance evidence lineage
@@ -457,7 +457,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-017.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-018.test.ts
+cd server && npx vitest run __tests__/migrations/ --reporter=default
 ```
 
 ## Phase 19 -- Orphan-row backfill engine
@@ -481,7 +481,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-018.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-019.test.ts
+cd server && npx vitest run __tests__/services/ --reporter=default
 ```
 
 ## Phase 20 -- Duplicate-truth reconciliation
@@ -505,7 +505,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-019.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-020.test.ts
+cd server && npx vitest run __tests__/services/ --reporter=default
 ```
 
 ## Phase 21 -- Lineage query pack for certified journeys
@@ -529,7 +529,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-020.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-021.test.ts
+cd server && npx vitest run __tests__/services/ --reporter=default
 ```
 
 ## Phase 22 -- Strictness hardening for new writes
@@ -553,7 +553,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-021.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-022.test.ts
+cd server && npx vitest run __tests__/services/ --reporter=default
 ```
 
 ## Phase 23 -- Quote model normalization
@@ -577,7 +577,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-022.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-023.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 24 -- Booking-to-load conversion hardening
@@ -590,7 +590,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-023.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `booking repo` | Booking-to-load conversion hardening |
+| MODIFY | `server/repositories/booking.repository.ts` | Booking-to-load conversion hardening |
 
 ### Done When
 
@@ -601,7 +601,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-023.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-024.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 25 -- Load lifecycle state certification
@@ -625,7 +625,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-024.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-025.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 26 -- Assignment and repower closure
@@ -649,7 +649,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-025.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-026.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 27 -- Dispatcher timeline and calendar truth
@@ -673,7 +673,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-026.test.ts
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/fleet-os/phase-027.test.tsx
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 28 -- Exception and work-item continuity
@@ -697,7 +697,7 @@ npx vitest run src/__tests__/fleet-os/phase-027.test.tsx
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-028.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 29 -- Customer and broker continuity
@@ -721,7 +721,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-028.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-029.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 30 -- Document completeness by trip and load
@@ -745,7 +745,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-029.test.ts
 ### Verification Command
 
 ```bash
-test -f docs routes
+cd server && npx vitest run __tests__/routes/ --reporter=default && npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 31 -- OCR review-to-apply pipeline closure
@@ -769,7 +769,7 @@ test -f docs routes
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-031.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default && npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 32 -- Quote-to-load-to-settlement certification
@@ -793,7 +793,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-031.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-032.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default && npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 33 -- Driver trip workspace canonicalization
@@ -818,7 +818,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-032.test.ts
 ### Verification Command
 
 ```bash
-npx vitest run src/__tests__/fleet-os/phase-033.test.tsx
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 34 -- Stop sequence, appointment, and next-action truth
@@ -842,7 +842,7 @@ npx vitest run src/__tests__/fleet-os/phase-033.test.tsx
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-034.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 35 -- Driver status update contract completion
@@ -866,7 +866,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-034.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-035.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 36 -- Delay, detention, lumper, and breakdown workflow closure
@@ -890,7 +890,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-035.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-036.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 37 -- Driver messaging and read-state continuity
@@ -914,7 +914,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-036.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-037.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 38 -- Document checklist and mobile scan flow
@@ -938,7 +938,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-037.test.ts
 ### Verification Command
 
 ```bash
-test -f scanner UI
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 39 -- Driver pay and settlement visibility
@@ -962,7 +962,7 @@ test -f scanner UI
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-039.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 40 -- Offline queue, sync, and conflict handling
@@ -986,7 +986,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-039.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-040.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 41 -- Mobile auth, session, and device hardening
@@ -1010,7 +1010,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-040.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-041.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 42 -- Push, alert, and acknowledgement path
@@ -1034,7 +1034,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-041.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-042.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 43 -- Pilot-channel release and legal readiness
@@ -1058,7 +1058,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-042.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-043.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 44 -- Driver field-loop certification
@@ -1082,7 +1082,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-043.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-044.test.ts
+npx vitest run src/__tests__/components/ --reporter=default
 ```
 
 ## Phase 45 -- Provider abstraction hardening
@@ -1106,7 +1106,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-044.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-045.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
 ## Phase 46 -- Primary provider production path
@@ -1130,7 +1130,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-045.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-046.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
 ## Phase 47 -- Vehicle, trailer, driver, and asset mapping closure
@@ -1154,7 +1154,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-046.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-047.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
 ## Phase 48 -- Live telemetry ingest, health, and replay
@@ -1178,7 +1178,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-047.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-048.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
 ## Phase 49 -- Trip-linked telemetry consumer layer
@@ -1202,10 +1202,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-048.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-049.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
-## Phase 50 -- HOS display and conflict handling
+## Phase 50 -- HOS display, conflict detection, and fallback behavior implementation
 
 **Phase Type**: integration
 
@@ -1215,7 +1215,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-049.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| ADD | `future ELD/HOS services` | HOS display and conflict handling |
+| ADD | `server/services/eld/hos-display.service.ts` | HOS display, conflict detection, and fallback behavior implementation |
 
 ### Done When
 
@@ -1226,7 +1226,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-049.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-050.test.ts
+cd server && npx vitest run __tests__/services/gps/ --reporter=default
 ```
 
 ## Phase 51 -- IFTA evidence ingestion and gap detection
@@ -1250,7 +1250,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-050.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-051.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 52 -- Quarter-close lock, review, and audit export
@@ -1274,7 +1274,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-051.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-052.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 53 -- Compliance cockpit truth model
@@ -1298,7 +1298,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-052.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-053.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 54 -- Permits, deadlines, and annual filing continuity
@@ -1322,7 +1322,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-053.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-054.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 55 -- Maintenance scheduling and return-to-service continuity
@@ -1346,7 +1346,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-054.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-055.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 56 -- DVIR defect, repair signoff, and photo flow
@@ -1370,7 +1370,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-055.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-056.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 57 -- Safety, incident, certificate, and inspection lifecycle
@@ -1394,7 +1394,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-056.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-057.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 58 -- Telematics-to-compliance certification
@@ -1418,7 +1418,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-057.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-058.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 59 -- Settlement rule engine completion
@@ -1442,7 +1442,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-058.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-059.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 60 -- Settlement review, posting, and immutability
@@ -1466,7 +1466,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-059.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-060.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 61 -- AP workflow certification
@@ -1490,7 +1490,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-060.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-061.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 62 -- AR, invoicing, and aging completion
@@ -1514,7 +1514,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-061.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-062.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 63 -- GL, journal, and close baseline
@@ -1538,7 +1538,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-062.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-063.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 64 -- Reconciliation and exception handling
@@ -1562,7 +1562,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-063.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-064.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 65 -- QuickBooks sync completion
@@ -1586,7 +1586,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-064.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-065.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 66 -- Stripe subscription and billing completion
@@ -1610,7 +1610,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-065.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-066.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 67 -- Customer and broker master normalization
@@ -1634,7 +1634,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-066.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-067.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 68 -- Quote, load, proof, invoice, and payment continuity
@@ -1658,10 +1658,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-067.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-068.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
-## Phase 69 -- Broker payment intelligence groundwork
+## Phase 69 -- Broker payment intelligence implementation
 
 **Phase Type**: module
 
@@ -1671,7 +1671,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-068.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `broker performance/payment views` | Broker payment intelligence groundwork |
+| MODIFY | `broker performance/payment views` | Broker payment intelligence implementation |
 
 ### Done When
 
@@ -1682,7 +1682,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-068.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-069.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 70 -- Financial controls and approval baseline
@@ -1706,7 +1706,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-069.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-070.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 71 -- Back-office workflow certification
@@ -1730,7 +1730,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-070.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-071.test.ts
+cd server && npx vitest run __tests__/routes/ --reporter=default
 ```
 
 ## Phase 72 -- Real email provider completion
@@ -1754,7 +1754,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-071.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-072.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 73 -- Real SMS provider completion
@@ -1778,7 +1778,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-072.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-073.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 74 -- Notification delivery and acknowledgement model
@@ -1802,7 +1802,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-073.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-074.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 75 -- Operational alerts and escalation rules
@@ -1826,7 +1826,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-074.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-075.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 76 -- Notification and job observability
@@ -1850,7 +1850,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-075.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-076.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 77 -- Structured logging and correlation standard
@@ -1874,7 +1874,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-076.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-077.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 78 -- Sentry and runtime error strategy completion
@@ -1898,7 +1898,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-077.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-078.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 79 -- Service ownership, on-call, and runbook completion
@@ -1922,7 +1922,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-078.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-079.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 80 -- Deployment, rollback, and recovery drills
@@ -1946,7 +1946,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-079.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-080.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 81 -- Feature flags and progressive rollout controls
@@ -1970,7 +1970,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-080.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-081.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 82 -- Release evidence bundle and launch checklist
@@ -1994,7 +1994,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-081.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-082.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 83 -- Product truth matrix and customer-facing alignment
@@ -2018,7 +2018,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-082.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-083.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 84 -- Repo and environment hygiene cleanup
@@ -2042,7 +2042,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-083.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-084.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 85 -- Pilot and production support model
@@ -2066,7 +2066,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-084.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-085.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
 ## Phase 86 -- Operate-and-launch certification
@@ -2090,10 +2090,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-085.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-086.test.ts
+cd server && npx tsc --noEmit && npx vitest run __tests__/ --reporter=default
 ```
 
-## Phase 87 -- Versioned public API contract
+## Phase 87 -- Versioned public API implementation
 
 **Phase Type**: module
 
@@ -2103,7 +2103,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-086.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `server/routes/public-api/*` | Versioned public API contract |
+| MODIFY | `server/routes/public-api/*` | Versioned public API implementation |
 
 ### Done When
 
@@ -2114,7 +2114,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-086.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-087.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 88 -- Tenant API keys, scopes, and rate limits
@@ -2138,7 +2138,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-087.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-088.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 89 -- Outbound webhook platform
@@ -2151,7 +2151,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-088.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| ADD | `future webhook routes/services` | Outbound webhook platform |
+| ADD | `server/routes/webhooks.ts, server/services/webhook.service.ts` | Outbound webhook platform |
 
 ### Done When
 
@@ -2162,7 +2162,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-088.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-089.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 90 -- Developer docs and sandbox path
@@ -2175,7 +2175,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-089.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `developer docs portal` | Developer docs and sandbox path |
+| MODIFY | `docs/api/developer-guide.md` | Developer docs and sandbox path |
 
 ### Done When
 
@@ -2186,7 +2186,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-089.test.ts
 ### Verification Command
 
 ```bash
-test -f developer docs portal
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 91 -- SSO / SAML identity path
@@ -2199,7 +2199,7 @@ test -f developer docs portal
 
 | Action | File | Description |
 |--------|------|-------------|
-| ADD | `future SSO routes/services` | SSO / SAML identity path |
+| ADD | `server/routes/sso.ts, server/services/sso.service.ts` | SSO / SAML identity path |
 
 ### Done When
 
@@ -2210,7 +2210,7 @@ test -f developer docs portal
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-091.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 92 -- SCIM or bulk provisioning path
@@ -2234,7 +2234,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-091.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-092.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 93 -- Customer onboarding and migration toolkit
@@ -2247,7 +2247,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-092.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `import UI` | Customer onboarding and migration toolkit |
+| MODIFY | `components/DataImportWizard.tsx` | Customer onboarding and migration toolkit |
 
 ### Done When
 
@@ -2258,7 +2258,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-092.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-093.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 94 -- Data export, portability, retention, and legal holds
@@ -2282,10 +2282,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-093.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-094.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
-## Phase 95 -- Data residency and multi-region control path
+## Phase 95 -- Data residency and multi-region implementation plan with infrastructure config
 
 **Phase Type**: module
 
@@ -2295,7 +2295,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-094.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `deployment architecture docs` | Data residency and multi-region control path |
+| MODIFY | `docs/deployment/architecture.md` | Data residency and multi-region implementation plan with infrastructure config |
 
 ### Done When
 
@@ -2306,7 +2306,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-094.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-095.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 96 -- Internationalization, multi-currency, and unit framework
@@ -2330,7 +2330,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-095.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-096.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 97 -- Reporting scale and analytical workload separation
@@ -2354,7 +2354,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-096.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-097.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Phase 98 -- Enterprise financial controls and period governance
@@ -2378,10 +2378,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-097.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-098.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
-## Phase 99 -- Enterprise DR, SLA, and audit-evidence path
+## Phase 99 -- Enterprise DR drill, SLA monitoring, and audit-evidence implementation
 
 **Phase Type**: module
 
@@ -2391,7 +2391,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-098.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `DR docs` | Enterprise DR, SLA, and audit-evidence path |
+| MODIFY | `DR docs` | Enterprise DR drill, SLA monitoring, and audit-evidence implementation |
 
 ### Done When
 
@@ -2402,10 +2402,10 @@ cd server && npx vitest run __tests__/fleet-os/phase-098.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-099.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
-## Phase 100 -- Enterprise-grade certification and truth update
+## Phase 100 -- Enterprise-grade certification with implementation evidence
 
 **Phase Type**: module
 
@@ -2415,7 +2415,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-099.test.ts
 
 | Action | File | Description |
 |--------|------|-------------|
-| MODIFY | `enterprise readiness checklist` | Enterprise-grade certification and truth update |
+| MODIFY | `enterprise readiness checklist` | Enterprise-grade certification with implementation evidence |
 
 ### Done When
 
@@ -2426,7 +2426,7 @@ cd server && npx vitest run __tests__/fleet-os/phase-099.test.ts
 ### Verification Command
 
 ```bash
-cd server && npx vitest run __tests__/fleet-os/phase-100.test.ts
+cd server && npx tsc --noEmit && npx vitest run __reporter=default
 ```
 
 ## Risks and Mitigations

@@ -41,7 +41,9 @@ _PHASE_NUM_RE = re.compile(r"##\s+Phase\s+(\d+)\s*[:—–-]\s*(.*)", re.IGNOREC
 
 # R-marker ID from acceptance-criteria bullets (supports AC-level IDs and
 # optional bracket annotations like [unit], [integration], [backend]).
-_R_ID_RE = re.compile(r"^(R-P\d+-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\n]+\])*\s*:\s*(.*)")
+_R_ID_RE = re.compile(
+    r"^(R-(?:P\d+|FLEET-W\d+)-\d{2}(?:-AC\d+)?)(?:\s+\[[^\]\n]+\])*\s*:\s*(.*)"
+)
 
 # Phase Type field: **Phase Type**: `module`
 _PHASE_TYPE_RE = re.compile(r"\*\*Phase\s+Type\*\*\s*:\s*`?(\w+)`?", re.IGNORECASE)
