@@ -533,8 +533,8 @@
       "gateCmds": {
         "unit": "npx vitest run apps/trucker/__tests__/services/settlements.test.ts apps/trucker/__tests__/screens/pay.test.tsx apps/trucker/__tests__/components/SettlementDetail.test.tsx apps/trucker/__tests__/screens/tab-layout.test.tsx --reporter=verbose"
       },
-      "passed": false,
-      "verificationRef": null
+      "passed": true,
+      "verificationRef": "verification-log.jsonl"
     },
     {
       "id": "STORY-009",
