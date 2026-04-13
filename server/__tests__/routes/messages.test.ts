@@ -195,14 +195,16 @@ describe("POST /api/messages", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 400 when load_id is missing", async () => {
+  it("accepts message without load_id (optional field)", async () => {
+    const newMessage = makeMessage({ id: "msg-no-load" });
+    mockCreate.mockResolvedValueOnce(newMessage);
+
     const res = await request(app)
       .post("/api/messages")
       .set("Authorization", AUTH_HEADER)
-      .send({ sender_id: "user-001" });
+      .send({ sender_id: "user-001", text: "thread-only message" });
 
-    expect(res.status).toBe(400);
-    expect(res.body.message).toBe("Validation failed");
+    expect(res.status).toBe(201);
   });
 
   it("returns 400 when sender_id is missing", async () => {
