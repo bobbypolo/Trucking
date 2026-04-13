@@ -36,15 +36,16 @@ router.get(
         );
       }
 
-      // Fetch stops ordered by sequence_order
+      // Fetch stops ordered by sequence_order (explicit tenant JOIN for defense-in-depth)
       const [stops] = await pool.query<RowDataPacket[]>(
         `SELECT ll.id, ll.load_id, ll.type, ll.facility_name, ll.city,
                 ll.state, ll.date, ll.appointment_time, ll.completed,
                 ll.sequence_order, ll.status, ll.arrived_at, ll.departed_at
            FROM load_legs ll
-          WHERE ll.load_id = ?
+           INNER JOIN loads l ON ll.load_id = l.id
+          WHERE ll.load_id = ? AND l.company_id = ?
           ORDER BY ll.sequence_order ASC`,
-        [loadId],
+        [loadId, companyId],
       );
 
       res.json({ stops });
@@ -120,6 +121,16 @@ router.patch(
            FROM load_legs WHERE id = ?`,
         [stopId],
       );
+
+      if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+        return next(
+          new NotFoundError(
+            "Stop not found after update",
+            {},
+            "STOP_NOT_FOUND_002",
+          ),
+        );
+      }
 
       res.json({ stop: updatedRows[0] });
     } catch (err) {

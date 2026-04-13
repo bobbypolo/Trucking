@@ -10,7 +10,9 @@ import pool from "../db";
 import { messageRepository } from "../repositories/message.repository";
 import { deliverNotification } from "../services/notification-delivery.service";
 import { NotFoundError } from "../errors/AppError";
+import { createChildLogger } from "../lib/logger";
 
+const log = createChildLogger({ service: "driver-exceptions" });
 const router = Router();
 
 /**
@@ -85,8 +87,11 @@ router.post(
           },
           tenantId,
         );
-      } catch {
-        // Non-blocking: log but do not fail the request
+      } catch (err) {
+        log.warn(
+          { err, exceptionId, load_id },
+          "Failed to create escalation message",
+        );
       }
 
       // Trigger push notification to dispatcher
@@ -98,8 +103,11 @@ router.post(
             subject: "Driver Exception Reported",
             recipients: [{ id: load.dispatcher_id }],
           });
-        } catch {
-          // Non-blocking: notification failure should not fail the request
+        } catch (err) {
+          log.warn(
+            { err, issue_type, load_id },
+            "Failed to deliver exception push notification",
+          );
         }
       }
 

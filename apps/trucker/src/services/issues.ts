@@ -59,7 +59,13 @@ export async function syncOfflineIssues(): Promise<void> {
   const raw = await AsyncStorage.getItem(ISSUE_QUEUE_KEY);
   if (!raw) return;
 
-  const queue: QueuedIssue[] = JSON.parse(raw);
+  let queue: QueuedIssue[];
+  try {
+    queue = JSON.parse(raw);
+  } catch {
+    await AsyncStorage.removeItem(ISSUE_QUEUE_KEY);
+    return;
+  }
   if (queue.length === 0) return;
 
   const remaining: QueuedIssue[] = [];

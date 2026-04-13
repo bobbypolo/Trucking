@@ -120,7 +120,11 @@ export const messageRepository = {
         input.attachments ? JSON.stringify(input.attachments) : null,
       ],
     );
-    return (await this.findById(id, companyId)) as MessageRow;
+    const created = await this.findById(id, companyId);
+    if (!created) {
+      throw new Error(`Failed to retrieve created message ${id}`);
+    }
+    return created;
   },
 
   /**

@@ -17,6 +17,7 @@ import {
   TextInput,
   Pressable,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { fetchThreadMessages, sendMessage } from "../services/messaging";
 import type { Message } from "../types/message";
@@ -43,8 +44,10 @@ export default function MessageThread({
         if (!cancelled) {
           setMessages(data);
         }
-      } catch {
-        // Silently handle fetch errors
+      } catch (err) {
+        if (!cancelled) {
+          Alert.alert("Error", "Failed to load messages");
+        }
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -65,8 +68,8 @@ export default function MessageThread({
       const newMessage = await sendMessage(threadId, currentUserId, trimmed);
       setMessages((prev) => [...prev, newMessage]);
       setText("");
-    } catch {
-      // Silently handle send errors
+    } catch (err) {
+      Alert.alert("Error", "Failed to send message");
     } finally {
       setSending(false);
     }

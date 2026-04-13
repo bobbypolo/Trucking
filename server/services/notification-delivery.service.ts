@@ -294,7 +294,7 @@ async function deliverPush(
 
   return {
     status: "FAILED",
-    sync_error: result.errors[0]?.reason || "All push deliveries failed",
+    sync_error: result.errors?.[0]?.reason || "All push deliveries failed",
   };
 }
 
