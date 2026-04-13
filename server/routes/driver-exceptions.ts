@@ -10,9 +10,8 @@ import pool from "../db";
 import { messageRepository } from "../repositories/message.repository";
 import { deliverNotification } from "../services/notification-delivery.service";
 import { NotFoundError } from "../errors/AppError";
-import { createChildLogger } from "../lib/logger";
+import { logger } from "../lib/logger";
 
-const log = createChildLogger({ service: "driver-exceptions" });
 const router = Router();
 
 /**
@@ -88,7 +87,7 @@ router.post(
           tenantId,
         );
       } catch (err) {
-        log.warn(
+        logger.warn(
           { err, exceptionId, load_id },
           "Failed to create escalation message",
         );
@@ -104,7 +103,7 @@ router.post(
             recipients: [{ id: load.dispatcher_id }],
           });
         } catch (err) {
-          log.warn(
+          logger.warn(
             { err, issue_type, load_id },
             "Failed to deliver exception push notification",
           );
