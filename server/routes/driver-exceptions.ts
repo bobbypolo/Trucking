@@ -8,7 +8,6 @@ import { validateBody } from "../middleware/validate";
 import { createDriverExceptionSchema } from "../schemas/driver-exceptions";
 import pool from "../db";
 import { messageRepository } from "../repositories/message.repository";
-import { deliverNotification } from "../services/notification-delivery.service";
 import { NotFoundError } from "../errors/AppError";
 import { logger } from "../lib/logger";
 
@@ -93,9 +92,12 @@ router.post(
         );
       }
 
-      // Trigger push notification to dispatcher
+      // Trigger push notification to dispatcher (lazy import avoids
+      // loading notification-delivery.service.ts at module eval time)
       if (load.dispatcher_id) {
         try {
+          const { deliverNotification } =
+            await import("../services/notification-delivery.service");
           await deliverNotification({
             channel: "push",
             message: `Driver reported ${issue_type} on load ${load_id}: ${description}`,
